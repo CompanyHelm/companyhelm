@@ -6,6 +6,8 @@ import type { ManagedServiceStatus } from "../status/StatusService.js";
 
 export class TerminalRenderer {
   private readonly useColor: boolean;
+  private static readonly OSC = "\u001B]";
+  private static readonly BEL = "\u0007";
 
   public constructor(useColor = true) {
     this.useColor = useColor;
@@ -21,6 +23,23 @@ export class TerminalRenderer {
 
   public success(message: string): string {
     return `${this.colorize("[ok]", "green")} ${message}`;
+  }
+
+  public successHighlight(message: string): string {
+    if (!this.useColor) {
+      return message;
+    }
+
+    return chalk.green.bold(message);
+  }
+
+  public clickableUrl(url: string): string {
+    if (!this.useColor) {
+      return url;
+    }
+
+    const display = this.successHighlight(url);
+    return `${TerminalRenderer.OSC}8;;${url}${TerminalRenderer.BEL}${display}${TerminalRenderer.OSC}8;;${TerminalRenderer.BEL}`;
   }
 
   public renderStatus(report: StatusReport): string {
@@ -47,11 +66,17 @@ export class TerminalRenderer {
 
   private renderServiceLine(label: string, status: ManagedServiceStatus, detail?: string): string {
     const statusLabel = status === "running" ? this.success("running") : this.warn("stopped");
-    return detail && status === "running" ? `${label}: ${statusLabel} (${detail})` : `${label}: ${statusLabel}`;
+    return detail && status === "running"
+      ? `${label}: ${statusLabel} (${this.formatDetail(detail)})`
+      : `${label}: ${statusLabel}`;
   }
 
   private warn(message: string): string {
     return `${this.colorize("[!]", "yellow")} ${message}`;
+  }
+
+  private formatDetail(detail: string): string {
+    return detail.startsWith("http://") || detail.startsWith("https://") ? this.clickableUrl(detail) : detail;
   }
 
   private colorize(text: string, color: "cyan" | "green" | "yellow"): string {

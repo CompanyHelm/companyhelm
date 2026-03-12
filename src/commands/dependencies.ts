@@ -98,13 +98,18 @@ export function createDefaultDependencies(): CommandDependencies {
         logLevel
       });
       await commandRunner.run(startCommand.command, startCommand.args);
-      process.stdout.write(`${renderer.success(`API: http://127.0.0.1:${state.ports.apiHttp}/graphql`)}\n`);
-      process.stdout.write(`${renderer.success(`UI: http://127.0.0.1:${state.ports.ui}`)}\n`);
+      const apiUrl = `http://127.0.0.1:${state.ports.apiHttp}/graphql`;
+      const uiUrl = `http://127.0.0.1:${state.ports.ui}`;
+      process.stdout.write(`${renderer.success(`API ready: ${apiUrl}`)}\n`);
       process.stdout.write(`CompanyHelm CLI: ${versions.cliPackage}\n`);
       process.stdout.write(`Runner package: ${versions.runnerPackage}\n`);
       process.stdout.write(`API image: ${versions.images.api}\n`);
       process.stdout.write(`Frontend image: ${versions.images.frontend}\n`);
       process.stdout.write(`Postgres image: ${versions.images.postgres}\n`);
+      process.stdout.write(`\n${renderer.success("CompanyHelm started successfully.")}\n`);
+      process.stdout.write(`${renderer.successHighlight("UI URL")}\n`);
+      process.stdout.write(`${renderer.clickableUrl(uiUrl)}\n`);
+      process.stdout.write(`${renderer.successHighlight("Login credentials")}\n`);
       process.stdout.write(`username: ${state.auth.username}\n`);
       process.stdout.write(`password: ${state.auth.password}\n`);
     },

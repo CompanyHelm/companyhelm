@@ -34,6 +34,8 @@ test("up prints resolved package versions and exact image references", async () 
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "successHighlight").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "clickableUrl").mockImplementation((url: string) => url);
 
   const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   const dependencies = createDefaultDependencies();
@@ -51,6 +53,11 @@ test("up prints resolved package versions and exact image references", async () 
   expect(output).toContain("API image: registry.example.com/companyhelm-api:2026.03.12");
   expect(output).toContain("Frontend image: registry.example.com/companyhelm-web:2026.03.12");
   expect(output).toContain("Postgres image: postgres:17.2-alpine");
+  expect(output).toContain("CompanyHelm started successfully.");
+  expect(output).toContain("UI URL\nhttp://127.0.0.1:4173");
+  expect(output).toContain("Login credentials\nusername: admin@local\npassword: ");
+  expect(output.indexOf("CompanyHelm started successfully.")).toBeLessThan(output.indexOf("UI URL\nhttp://127.0.0.1:4173"));
+  expect(output.indexOf("UI URL\nhttp://127.0.0.1:4173")).toBeLessThan(output.indexOf("Login credentials\nusername: admin@local\npassword: "));
 });
 
 test("status includes resolved versions", async () => {

@@ -5,16 +5,31 @@ It gives teams a way to organize agents by role, keep humans in the loop for app
 
 [https://www.companyhelm.com/](https://www.companyhelm.com/)
 
+## Quick start
+
+```bash
+npx @companyhelm/cli up
+```
+
+After startup, the CLI prints:
+
+- the local UI URL
+- the generated username and password
+- the resolved package and image versions
+
 ## What CompanyHelm is
 
 From the product perspective, CompanyHelm is built around a few core ideas:
 
-- your infrastructure, not a vendor-controlled runtime
-- model-agnostic agent execution through open runners and protocols
-- easy agent customization: add skills, MCP servers, and custom instructions to agents from the UI
-- human-in-the-loop workflows: tasks can be steered at any moment through the built-in chat; approvals and questions are still a work in progress
-- isolated execution so agents can work in parallel with minimal interference. Each runner can spin up the full app infrastructure within Docker and test in isolation
-- a remote repo as the source of truth. Agents automatically clone and submit PRs.
+- Your infrastructure, not a vendor-controlled runtime
+- Model-agnostic agent execution through open runners and protocols
+- Easy agent customization: add skills, MCP servers, and custom instructions to agents from the UI
+- Human-in-the-loop workflows: tasks can be steered at any moment through the built-in chat; approvals and questions are still a work in progress
+- Isolated execution so agents can work in parallel with minimal interference. Each runner can spin up the full app infrastructure within Docker and test in isolation
+- YOLO mode by default: agents run commands without pausing for trivial confirmations
+- Remote repository as the source of truth: agents clone the repo and submit PRs automatically
+- Parallel task execution: multiple agents can execute tasks independently in isolated environments
+
 
 This package is the local entry point for that system.
 Instead of asking you to clone multiple repos and stand up each service separately, the CLI starts a packaged local deployment for you.
@@ -36,19 +51,6 @@ On startup, the CLI prepares runtime state, starts the services, configures the 
 - Node.js `>=24`
 - Docker with Docker Compose support available locally
 - network access to pull the packaged runtime images
-
-## Quick start
-
-```bash
-npx @companyhelm/cli up
-```
-
-After startup, the CLI prints:
-
-- the local UI URL
-- the local GraphQL API URL
-- the generated username and password
-- the resolved package and image versions
 
 ## Command reference
 

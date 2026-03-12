@@ -14,6 +14,18 @@ test("formats success output with labels", () => {
   expect(renderer.success("ready")).toContain("ready");
 });
 
+test("returns plain urls when terminal hyperlinks are disabled", () => {
+  const renderer = new TerminalRenderer(false);
+
+  expect(renderer.clickableUrl("http://127.0.0.1:3001")).toBe("http://127.0.0.1:3001");
+});
+
+test("renders terminal hyperlinks when enabled", () => {
+  const renderer = new TerminalRenderer(true);
+
+  expect(renderer.clickableUrl("http://127.0.0.1:3001")).toContain("\u001B]8;;http://127.0.0.1:3001\u0007");
+});
+
 test("renders a readable status summary", () => {
   const renderer = new TerminalRenderer(false);
 
