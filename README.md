@@ -2,12 +2,6 @@
 
 Bootstrap and manage a local CompanyHelm deployment.
 
-## Install
-
-```bash
-npm install -g @companyhelm/cli
-```
-
 ## Commands
 
 Start or reconcile the local deployment:
