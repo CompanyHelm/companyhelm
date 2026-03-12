@@ -8,7 +8,6 @@ export interface StatusSnapshot {
 }
 
 export interface StatusOverrides {
-  frontend?: () => Promise<boolean> | boolean;
   runner?: () => Promise<boolean> | boolean;
 }
 
@@ -25,13 +24,12 @@ export class StatusService {
         .map((service) => service.trim())
         .filter(Boolean)
     );
-    const frontendRunning = this.overrides.frontend ? await this.overrides.frontend() : running.has("frontend");
     const runnerRunning = this.overrides.runner ? await this.overrides.runner() : running.has("runner");
 
     return {
       postgres: running.has("postgres") ? "running" : "stopped",
       api: running.has("api") ? "running" : "stopped",
-      frontend: frontendRunning ? "running" : "stopped",
+      frontend: running.has("frontend") ? "running" : "stopped",
       runner: runnerRunning ? "running" : "stopped"
     };
   }

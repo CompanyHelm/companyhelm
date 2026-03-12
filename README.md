@@ -53,11 +53,10 @@ By default the CLI pulls the published public images from Amazon ECR Public:
 - `public.ecr.aws/x6n0f2k4/companyhelm-web:latest`
 - `postgres:16-alpine`
 
-The published API and frontend images are currently `linux/amd64`, so the generated
-compose file pins those services to `linux/amd64` for Apple Silicon compatibility.
-On `arm64` hosts with the sibling [`frontend`](../frontend) repo available, the CLI
-starts the API from the public image and serves the frontend from the local repo to
-avoid the current `companyhelm-web` container build crash under emulation.
+The published API image is currently `linux/amd64`, so the generated compose file
+pins only the API service to `linux/amd64`. The frontend service always runs from
+the published `companyhelm-web` image and relies on that image's manifest to select
+the correct architecture for the host.
 
 The packaged stack can be overridden with environment variables:
 

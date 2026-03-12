@@ -17,36 +17,29 @@ export interface ComposePaths {
   seedFilePath: string;
 }
 
-export interface ComposeRenderOptions {
-  includeFrontend?: boolean;
-}
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export class ComposeTemplateRenderer {
-  public render(ports: ComposePorts, paths: ComposePaths, options: ComposeRenderOptions = {}): string {
+  public render(ports: ComposePorts, paths: ComposePaths): string {
     const templatePath = path.resolve(__dirname, "../../templates/docker-compose.yaml.tpl");
     const template = fs.readFileSync(templatePath, "utf8");
     const images = new ImageCatalog().resolve();
-    const frontendBlock = options.includeFrontend === false
-      ? ""
-      : [
-          "  frontend:",
-          `    image: ${images.frontend}`,
-          "    platform: linux/amd64",
-          "    depends_on:",
-          "      - api",
-          "    environment:",
-          "      COMPANYHELM_CONFIG_PATH: /run/companyhelm/config.yaml",
-          `      PORT: "${ports.uiPort}"`,
-          "    ports:",
-          `      - "${ports.uiPort}:${ports.uiPort}"`,
-          "    volumes:",
-          `      - "${paths.frontendConfigPath}:/run/companyhelm/config.yaml:ro"`,
-          "    networks:",
-          "      - companyhelm"
-        ].join("\n");
+    const frontendBlock = [
+      "  frontend:",
+      `    image: ${images.frontend}`,
+      "    depends_on:",
+      "      - api",
+      "    environment:",
+      "      COMPANYHELM_CONFIG_PATH: /run/companyhelm/config.yaml",
+      `      PORT: "${ports.uiPort}"`,
+      "    ports:",
+      `      - "${ports.uiPort}:${ports.uiPort}"`,
+      "    volumes:",
+      `      - "${paths.frontendConfigPath}:/run/companyhelm/config.yaml:ro"`,
+      "    networks:",
+      "      - companyhelm"
+    ].join("\n");
 
     return template
       .replaceAll("{{API_IMAGE}}", images.api)

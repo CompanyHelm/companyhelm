@@ -19,18 +19,6 @@ export class RuntimePaths {
     return path.join(this.root, "frontend-config.yaml");
   }
 
-  public frontendRuntimePath(): string {
-    return path.join(this.root, "frontend");
-  }
-
-  public frontendLogPath(): string {
-    return path.join(this.frontendRuntimePath(), "preview.log");
-  }
-
-  public frontendPidPath(): string {
-    return path.join(this.frontendRuntimePath(), "preview.pid");
-  }
-
   public seedFilePath(): string {
     return path.join(this.root, "seed.sql");
   }
