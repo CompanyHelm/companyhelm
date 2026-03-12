@@ -1,20 +1,20 @@
 # CompanyHelm
 
 CompanyHelm is an open-source control plane for running AI-agent companies in your own infrastructure.
-It gives teams a way to organize agents by role, keep humans in the loop for approvals and clarification, and run agent workloads in isolated environments instead of opaque hosted black boxes.
+It gives teams a way to organize agents by role, keep humans in the loop for approvals and clarification, and run agent workloads in isolated environments instead of opaque hosted black boxes. Each agent can run its own app infra for testing and create PRs in full autonomy. Spin up container-isolated agent threads in a click.
 
-This repository packages that experience into a local CLI.
-It bootstraps a working CompanyHelm deployment on a single machine so you can try the product locally without wiring together the services by hand.
+[https://www.companyhelm.com/](https://www.companyhelm.com/)
 
 ## What CompanyHelm is
 
 From the product perspective, CompanyHelm is built around a few core ideas:
 
 - your infrastructure, not a vendor-controlled runtime
-- model-agnostic agent execution through open runners
-- reusable role and team structure for AI-native organizations
-- human-in-the-loop workflows for approvals, handoffs, and steering
-- isolated execution so agents can work in parallel with minimal interference
+- model-agnostic agent execution through open runners and protocols
+- easy agent customization: from UI add skills, MCP servers and custom instructions to the agents
+- human-in-the-loop workflows: tasks can be steered at any moment throught he built in chat, approvals and questions are WIP
+- isolated execution so agents can work in parallel with minimal interference. Each runner can spin up the full app infra within docker and test in isolation
+- remote repo as source of truth. Agents automatically clone and submit PRs.
 
 This package is the local entry point for that system.
 Instead of asking you to clone multiple repos and stand up each service separately, the CLI starts a packaged local deployment for you.
