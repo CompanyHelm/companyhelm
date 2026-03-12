@@ -13,25 +13,25 @@ npm install -g @companyhelm/cli
 Start or reconcile the local deployment:
 
 ```bash
-companyhelm up
+npx @companyhelm/cli up
 ```
 
 Stop the local deployment:
 
 ```bash
-companyhelm down
+npx @companyhelm/cli down
 ```
 
 Show the current service status:
 
 ```bash
-companyhelm status
+npx @companyhelm/cli status
 ```
 
 Show logs for one managed service:
 
 ```bash
-companyhelm logs <service>
+npx @companyhelm/cli logs <service>
 ```
 
 Supported services:
@@ -44,12 +44,12 @@ Supported services:
 Destroy the local deployment and generated state:
 
 ```bash
-companyhelm reset --force
+npx @companyhelm/cli reset --force
 ```
 
 ## Authentication
 
-On first `companyhelm up`, the CLI generates a local `admin` account and a random password. The password is printed at startup and persisted in the local runtime state until `companyhelm reset --force` is run.
+On first `npx @companyhelm/cli up`, the CLI generates a local `admin` account and a random password. The password is printed at startup and persisted in the local runtime state until `npx @companyhelm/cli reset --force` is run.
 
 ## Image Overrides
 
