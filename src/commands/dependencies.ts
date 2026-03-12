@@ -127,7 +127,16 @@ export function createDefaultDependencies(): CommandDependencies {
       return logsService.stream(service);
     },
     async reset() {
-      await this.down();
+      if (stateStore.load()) {
+        const stopCommand = runnerSupervisor.buildStopArgs();
+        try {
+          await commandRunner.run(stopCommand.command, stopCommand.args);
+        } catch {
+          // Ignore runner stop failures during teardown so docker cleanup still runs.
+        }
+      }
+
+      await dockerStackManager.down({ removeVolumes: true });
       fs.rmSync(root, { recursive: true, force: true });
     }
   };

@@ -10,6 +10,10 @@ export interface DockerStackUpOptions {
   frontendLogLevel?: LogLevel;
 }
 
+export interface DockerStackDownOptions {
+  removeVolumes?: boolean;
+}
+
 export class DockerStackManager {
   private readonly runtimePaths: RuntimePaths;
 
@@ -110,17 +114,25 @@ export class DockerStackManager {
     return output.trim() === "1";
   }
 
-  public async down(): Promise<void> {
+  public async down(options: DockerStackDownOptions = {}): Promise<void> {
     if (!fs.existsSync(this.runtimePaths.composeFilePath())) {
       return;
     }
 
-    await this.commandRunner.run("docker", [
+    const args = [
       "compose",
       "-f",
       this.runtimePaths.composeFilePath(),
       "down",
       "--remove-orphans"
+    ];
+
+    if (options.removeVolumes) {
+      args.push("--volumes");
+    }
+
+    await this.commandRunner.run("docker", [
+      ...args
     ]);
   }
 

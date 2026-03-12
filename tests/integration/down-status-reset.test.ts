@@ -1,8 +1,10 @@
 import { expect, test, vi } from "vitest";
+import { PassThrough } from "node:stream";
 
 import { buildProgram } from "../../src/commands/register-commands.js";
+import { confirmReset } from "../../src/commands/reset.js";
 
-test("reset invokes the reset handler without requiring force", async () => {
+test("reset supports --yes to skip confirmation", async () => {
   const reset = vi.fn(async () => undefined);
   const program = buildProgram({
     up: async () => undefined,
@@ -14,9 +16,28 @@ test("reset invokes the reset handler without requiring force", async () => {
     reset
   });
 
-  await program.parseAsync(["node", "companyhelm", "reset"]);
+  await program.parseAsync(["node", "companyhelm", "reset", "--yes"]);
 
   expect(reset).toHaveBeenCalledOnce();
+});
+
+test("confirmReset accepts an explicit yes answer", async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean };
+  input.isTTY = true;
+  const output = new PassThrough();
+  input.end("yes\n");
+
+  await expect(confirmReset(input, output)).resolves.toBe(true);
+});
+
+test("confirmReset rejects non-interactive use without --yes", async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean };
+  input.isTTY = false;
+  const output = new PassThrough();
+
+  await expect(confirmReset(input, output)).rejects.toThrow(
+    "reset requires confirmation from a TTY. Re-run with --yes to skip the prompt."
+  );
 });
 
 test("logs without a service prints the available service list", async () => {

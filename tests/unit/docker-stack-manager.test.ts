@@ -43,3 +43,20 @@ test("applies seed SQL when the seeded user does not exist yet", async () => {
   expect(capture).toHaveBeenCalledTimes(1);
   expect(run).toHaveBeenCalledTimes(1);
 });
+
+test("down removes volumes when requested", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-docker-stack-"));
+  fs.writeFileSync(path.join(root, "docker-compose.yaml"), "services: {}\n", "utf8");
+  const run = vi.fn().mockResolvedValue(undefined);
+  const manager = new DockerStackManager(
+    root,
+    {
+      run,
+      capture: vi.fn()
+    } as never
+  );
+
+  await manager.down({ removeVolumes: true });
+
+  expect(run).toHaveBeenCalledWith("docker", expect.arrayContaining(["down", "--remove-orphans", "--volumes"]));
+});
