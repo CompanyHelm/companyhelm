@@ -17,6 +17,12 @@ After startup, the CLI prints:
 - the generated username and password
 - the resolved package and image versions
 
+Before startup, you can pin the packaged API or frontend image in a local `config.yaml`:
+
+```bash
+npx @companyhelm/cli set-image-version
+```
+
 ## What CompanyHelm is
 
 From the product perspective, CompanyHelm is built around a few core ideas:
@@ -64,6 +70,18 @@ Start with a specific log level:
 
 ```bash
 npx @companyhelm/cli up --log-level debug
+```
+
+Interactively choose a packaged API or frontend image tag and write it to `./config.yaml`:
+
+```bash
+npx @companyhelm/cli set-image-version
+```
+
+If you are working from this repository directly, the equivalent npm script is:
+
+```bash
+npm run set-image-version
 ```
 
 Inspect deployment status:
@@ -130,6 +148,18 @@ COMPANYHELM_HOME=/custom/path
 ```
 
 That runtime directory contains the generated deployment state, rendered configs, compose file, seed data, and runner logs used by the local install.
+
+## Local image pinning
+
+`set-image-version` stores selected packaged image references in `config.yaml` in the current working directory:
+
+```yaml
+images:
+  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29
+  frontend: public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844
+```
+
+`up` and `status` read that file automatically. If `config.yaml` is missing, CompanyHelm falls back to the default `latest` API and frontend images.
 
 ## Why this repo exists
 

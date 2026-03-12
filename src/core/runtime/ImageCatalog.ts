@@ -1,17 +1,20 @@
+import { LocalConfigStore } from "./LocalConfigStore.js";
+import { defaultManagedImageReference } from "./ManagedImages.js";
+
 export interface RuntimeImages {
   api: string;
   frontend: string;
   postgres: string;
 }
 
-const DEFAULT_API_IMAGE = "public.ecr.aws/x6n0f2k4/companyhelm-api:latest";
-const DEFAULT_FRONTEND_IMAGE = "public.ecr.aws/x6n0f2k4/companyhelm-web:latest";
-
 export class ImageCatalog {
   public resolve(): RuntimeImages {
+    const configuredImages = new LocalConfigStore().load().images;
+
     return {
-      api: process.env.COMPANYHELM_API_IMAGE || DEFAULT_API_IMAGE,
-      frontend: process.env.COMPANYHELM_WEB_IMAGE || DEFAULT_FRONTEND_IMAGE,
+      api: configuredImages.api || process.env.COMPANYHELM_API_IMAGE || defaultManagedImageReference("api"),
+      frontend:
+        configuredImages.frontend || process.env.COMPANYHELM_WEB_IMAGE || defaultManagedImageReference("frontend"),
       postgres: process.env.COMPANYHELM_POSTGRES_IMAGE || "postgres:16-alpine"
     };
   }

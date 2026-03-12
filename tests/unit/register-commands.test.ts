@@ -10,6 +10,7 @@ test("registers the initial command surface", () => {
     "down",
     "status",
     "logs",
+    "set-image-version",
     "reset"
   ]);
 });
