@@ -30,6 +30,14 @@ export class TerminalRenderer {
     lines.push(this.renderServiceLine("Frontend", report.services.frontend, report.uiUrl));
     lines.push(this.renderServiceLine("Runner", report.services.runner));
 
+    if (report.versions) {
+      lines.push(`CompanyHelm CLI: ${report.versions.cliPackage}`);
+      lines.push(`Runner package: ${report.versions.runnerPackage}`);
+      lines.push(`API image: ${report.versions.images.api}`);
+      lines.push(`Frontend image: ${report.versions.images.frontend}`);
+      lines.push(`Postgres image: ${report.versions.images.postgres}`);
+    }
+
     if (report.username) {
       lines.push(`username: ${report.username}`);
     }

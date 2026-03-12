@@ -25,6 +25,15 @@ test("renders a readable status summary", () => {
       runner: "running"
     },
     apiUrl: "http://127.0.0.1:4000/graphql",
-    username: "admin@local"
-  })).toContain("Postgres: [ok] running");
+    username: "admin@local",
+    versions: {
+      cliPackage: "@companyhelm/cli@0.1.2",
+      runnerPackage: "@companyhelm/runner@0.0.13",
+      images: {
+        api: "public.ecr.aws/x6n0f2k4/companyhelm-api:latest",
+        frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:latest",
+        postgres: "postgres:16-alpine"
+      }
+    }
+  })).toContain("CompanyHelm CLI: @companyhelm/cli@0.1.2");
 });

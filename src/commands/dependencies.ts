@@ -10,6 +10,7 @@ import { RunnerSupervisor } from "../core/runner/RunnerSupervisor.js";
 import { createPasswordHash } from "../core/runtime/Secrets.js";
 import { RuntimePaths } from "../core/runtime/RuntimePaths.js";
 import { RuntimeStateStore } from "../core/runtime/RuntimeStateStore.js";
+import { VersionCatalog, type RuntimeVersions } from "../core/runtime/VersionCatalog.js";
 import { StatusService, type StatusSnapshot } from "../core/status/StatusService.js";
 import { TerminalRenderer } from "../core/ui/TerminalRenderer.js";
 
@@ -24,6 +25,7 @@ export interface StatusReport {
   apiUrl?: string;
   uiUrl?: string;
   username?: string;
+  versions?: RuntimeVersions;
 }
 
 export interface CommandDependencies {
@@ -47,6 +49,7 @@ export function createDefaultDependencies(): CommandDependencies {
   const dockerStackManager = new DockerStackManager(root, commandRunner);
   const runnerSupervisor = new RunnerSupervisor(runtimePaths.runnerConfigPath());
   const bootstrapper = new DeploymentBootstrapper();
+  const versionCatalog = new VersionCatalog();
   const statusService = new StatusService(
     () => dockerStackManager.runningServices(),
     {
@@ -76,6 +79,7 @@ export function createDefaultDependencies(): CommandDependencies {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
       const state = stateStore.initialize();
+      const versions = versionCatalog.resolve();
       const passwordRecord = createPasswordHash(state.auth.password);
       fs.mkdirSync(root, { recursive: true });
       bootstrapper.writeSeedSql(root, state, passwordRecord.passwordHash, passwordRecord.passwordSalt);
@@ -96,6 +100,11 @@ export function createDefaultDependencies(): CommandDependencies {
       await commandRunner.run(startCommand.command, startCommand.args);
       process.stdout.write(`${renderer.success(`API: http://127.0.0.1:${state.ports.apiHttp}/graphql`)}\n`);
       process.stdout.write(`${renderer.success(`UI: http://127.0.0.1:${state.ports.ui}`)}\n`);
+      process.stdout.write(`CompanyHelm CLI: ${versions.cliPackage}\n`);
+      process.stdout.write(`Runner package: ${versions.runnerPackage}\n`);
+      process.stdout.write(`API image: ${versions.images.api}\n`);
+      process.stdout.write(`Frontend image: ${versions.images.frontend}\n`);
+      process.stdout.write(`Postgres image: ${versions.images.postgres}\n`);
       process.stdout.write(`username: ${state.auth.username}\n`);
       process.stdout.write(`password: ${state.auth.password}\n`);
     },
@@ -120,7 +129,8 @@ export function createDefaultDependencies(): CommandDependencies {
         services,
         apiUrl: state ? `http://127.0.0.1:${state.ports.apiHttp}/graphql` : undefined,
         uiUrl: state ? `http://127.0.0.1:${state.ports.ui}` : undefined,
-        username: state?.auth.username
+        username: state?.auth.username,
+        versions: versionCatalog.resolve()
       };
     },
     logs(service: string) {
