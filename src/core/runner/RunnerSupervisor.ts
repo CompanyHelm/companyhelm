@@ -40,7 +40,6 @@ export class RunnerSupervisor {
         runnerCliPath,
         "--config-path",
         this.configPath,
-        "runner",
         "start",
         "--daemon",
         "--server-url",
@@ -62,7 +61,7 @@ export class RunnerSupervisor {
 
     return {
       command: process.execPath,
-      args: [runnerCliPath, "--config-path", this.configPath, "runner", "stop"]
+      args: [runnerCliPath, "--config-path", this.configPath, "stop"]
     };
   }
 

@@ -16,6 +16,7 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.command).toBe(process.execPath);
   expect(args.args[0]).toContain("@companyhelm/runner");
   expect(args.args).toContain("--daemon");
+  expect(args.args).toContain("start");
   expect(args.args).toContain("--server-url");
   expect(args.args).toContain("127.0.0.1:50051");
   expect(args.args).toContain("--agent-api-url");
@@ -25,6 +26,7 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.args).toContain("runner-secret");
   expect(args.args).toContain("--log-level");
   expect(args.args).toContain("DEBUG");
+  expect(args.args).not.toContain("runner");
 });
 
 test("builds host auth setup args for the bundled runner cli", () => {
@@ -68,4 +70,14 @@ test("builds runner status args", () => {
   expect(args.command).toBe(process.execPath);
   expect(args.args[0]).toContain("@companyhelm/runner");
   expect(args.args.slice(1)).toEqual(["--config-path", "/tmp/companyhelm", "status"]);
+});
+
+test("builds runner stop args at the root command level", () => {
+  const supervisor = new RunnerSupervisor("/tmp/companyhelm");
+
+  const args = supervisor.buildStopArgs();
+
+  expect(args.command).toBe(process.execPath);
+  expect(args.args[0]).toContain("@companyhelm/runner");
+  expect(args.args.slice(1)).toEqual(["--config-path", "/tmp/companyhelm", "stop"]);
 });
