@@ -10,7 +10,14 @@ test("skips applying seed SQL when the seeded user already exists", async () => 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-docker-stack-"));
   fs.writeFileSync(path.join(root, "seed.sql"), "-- seed\n", "utf8");
   const run = vi.fn();
-  const capture = vi.fn().mockResolvedValue("1\n");
+  const capture = vi.fn().mockImplementation(async (_command: string, args: string[]) => {
+    const query = args.at(-1);
+    if (query === "SELECT to_regclass('public.user_auths') IS NOT NULL") {
+      return "t\n";
+    }
+
+    return "1\n";
+  });
   const manager = new DockerStackManager(
     root,
     {
@@ -21,7 +28,7 @@ test("skips applying seed SQL when the seeded user already exists", async () => 
 
   await manager.applySeedSql("admin@local");
 
-  expect(capture).toHaveBeenCalledTimes(1);
+  expect(capture).toHaveBeenCalledTimes(2);
   expect(run).not.toHaveBeenCalled();
 });
 
@@ -29,7 +36,14 @@ test("applies seed SQL when the seeded user does not exist yet", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-docker-stack-"));
   fs.writeFileSync(path.join(root, "seed.sql"), "-- seed\n", "utf8");
   const run = vi.fn().mockResolvedValue(undefined);
-  const capture = vi.fn().mockResolvedValue("");
+  const capture = vi.fn().mockImplementation(async (_command: string, args: string[]) => {
+    const query = args.at(-1);
+    if (query === "SELECT to_regclass('public.user_auths') IS NOT NULL") {
+      return "t\n";
+    }
+
+    return "";
+  });
   const manager = new DockerStackManager(
     root,
     {
@@ -40,8 +54,44 @@ test("applies seed SQL when the seeded user does not exist yet", async () => {
 
   await manager.applySeedSql("admin@local");
 
-  expect(capture).toHaveBeenCalledTimes(1);
+  expect(capture).toHaveBeenCalledTimes(2);
   expect(run).toHaveBeenCalledTimes(1);
+});
+
+test("waits for the api bootstrap schema before applying seed SQL", async () => {
+  vi.useFakeTimers();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-docker-stack-"));
+  fs.writeFileSync(path.join(root, "seed.sql"), "-- seed\n", "utf8");
+  const run = vi.fn().mockResolvedValue(undefined);
+  const capture = vi
+    .fn()
+    .mockResolvedValueOnce("f\n")
+    .mockResolvedValueOnce("f\n")
+    .mockImplementation(async (_command: string, args: string[]) => {
+      const query = args.at(-1);
+      if (query === "SELECT to_regclass('public.user_auths') IS NOT NULL") {
+        return "t\n";
+      }
+
+      return "";
+    });
+  const manager = new DockerStackManager(
+    root,
+    {
+      run,
+      capture
+    } as never
+  );
+
+  const applyPromise = manager.applySeedSql("admin@local");
+
+  await vi.runOnlyPendingTimersAsync();
+  await vi.runOnlyPendingTimersAsync();
+  await applyPromise;
+
+  expect(capture).toHaveBeenCalledTimes(4);
+  expect(run).toHaveBeenCalledTimes(1);
+  vi.useRealTimers();
 });
 
 test("down removes volumes when requested", async () => {

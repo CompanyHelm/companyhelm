@@ -15,6 +15,8 @@ export interface DockerStackDownOptions {
 }
 
 export class DockerStackManager {
+  private static readonly BOOTSTRAP_RETRY_COUNT = 60;
+  private static readonly BOOTSTRAP_RETRY_DELAY_MS = 1000;
   private readonly runtimePaths: RuntimePaths;
 
   public constructor(
@@ -60,8 +62,13 @@ export class DockerStackManager {
 
     let lastError: Error | null = null;
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
+    for (let attempt = 0; attempt < DockerStackManager.BOOTSTRAP_RETRY_COUNT; attempt += 1) {
       try {
+        if (!(await this.seedSchemaReady())) {
+          await this.waitForNextBootstrapAttempt();
+          continue;
+        }
+
         if (await this.seedAlreadyApplied(seedEmail)) {
           return;
         }
@@ -84,13 +91,31 @@ export class DockerStackManager {
         return;
       } catch (error) {
         lastError = error as Error;
-        await new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
+        await this.waitForNextBootstrapAttempt();
       }
     }
 
     throw lastError ?? new Error("Failed to apply seed SQL.");
+  }
+
+  private async seedSchemaReady(): Promise<boolean> {
+    const output = await this.commandRunner.capture("docker", [
+      "compose",
+      "-f",
+      this.runtimePaths.composeFilePath(),
+      "exec",
+      "-T",
+      "postgres",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "companyhelm",
+      "-tAc",
+      "SELECT to_regclass('public.user_auths') IS NOT NULL"
+    ]);
+
+    return output.trim() === "t";
   }
 
   private async seedAlreadyApplied(seedEmail: string): Promise<boolean> {
@@ -112,6 +137,12 @@ export class DockerStackManager {
     ]);
 
     return output.trim() === "1";
+  }
+
+  private async waitForNextBootstrapAttempt(): Promise<void> {
+    await new Promise((resolve) => {
+      setTimeout(resolve, DockerStackManager.BOOTSTRAP_RETRY_DELAY_MS);
+    });
   }
 
   public async down(options: DockerStackDownOptions = {}): Promise<void> {

@@ -1,4 +1,4 @@
-import { createInterface } from "node:readline/promises";
+import * as clack from "@clack/prompts";
 import type { Readable, Writable } from "node:stream";
 
 import type { Command } from "commander";
@@ -10,6 +10,7 @@ import {
   type ManagedImageService
 } from "../core/runtime/ManagedImages.js";
 import { PublicImageTagRegistry } from "../core/runtime/PublicImageTagRegistry.js";
+import { requireInteractiveTerminal, unwrapPromptResult } from "./interactive.js";
 
 export interface SetImageVersionOptions {
   service?: string;
@@ -35,12 +36,6 @@ function parsePositiveInteger(value: string): number {
   return parsed;
 }
 
-function requireInteractiveTerminal(input: Readable): void {
-  if (!("isTTY" in input) || !input.isTTY) {
-    throw new Error("set-image-version requires a TTY so you can choose an image interactively.");
-  }
-}
-
 async function promptForSelection(
   message: string,
   options: string[],
@@ -48,35 +43,50 @@ async function promptForSelection(
   output: Writable,
   defaultIndex?: number
 ): Promise<string> {
-  requireInteractiveTerminal(input);
+  requireInteractiveTerminal(input, output, "set-image-version requires a TTY so you can choose an image interactively.");
   if (options.length === 0) {
     throw new Error("No selectable options were provided.");
   }
 
-  const rl = createInterface({ input, output });
+  const selected = await clack.select({
+    message,
+    options: options.map((option, index) => ({
+      value: option,
+      label: option,
+      hint: index === defaultIndex ? "current" : undefined
+    })),
+    initialValue: defaultIndex === undefined ? undefined : options[defaultIndex],
+    input,
+    output
+  });
 
+  return unwrapPromptResult(selected, "Image selection cancelled.", output);
+}
+
+async function loadAvailableTags(
+  registry: InteractiveImageSelector,
+  service: ManagedImageService,
+  limit: number,
+  output: Writable
+): Promise<string[]> {
+  const spinner = clack.spinner({ output });
+  spinner.start(`Loading the latest ${limit} image tags for ${service}`);
+
+  let tags: string[];
   try {
-    output.write(`${message}\n`);
-    options.forEach((option, index) => {
-      const currentSuffix = index === defaultIndex ? " [current]" : "";
-      output.write(`${index + 1}. ${option}${currentSuffix}\n`);
-    });
-
-    const promptSuffix = defaultIndex === undefined ? "" : ` [${defaultIndex + 1}]`;
-    const answer = (await rl.question(`Select an option${promptSuffix}: `)).trim();
-    if (!answer && defaultIndex !== undefined) {
-      return options[defaultIndex];
-    }
-
-    const selectedIndex = Number.parseInt(answer, 10);
-    if (!Number.isInteger(selectedIndex) || selectedIndex < 1 || selectedIndex > options.length) {
-      throw new Error(`Invalid selection: ${answer || "(empty)"}`);
-    }
-
-    return options[selectedIndex - 1];
-  } finally {
-    rl.close();
+    tags = await registry.listAvailableTags(service, limit);
+  } catch (error) {
+    spinner.stop("Unable to load image tags");
+    throw error;
   }
+
+  if (tags.length === 0) {
+    spinner.stop("No image tags found");
+    throw new Error(`No image tags found for ${service}.`);
+  }
+
+  spinner.stop(`Loaded ${tags.length} image tag${tags.length === 1 ? "" : "s"}`);
+  return tags;
 }
 
 export async function runSetImageVersion(
@@ -93,7 +103,7 @@ export async function runSetImageVersion(
   const registry = dependencies.registry ?? new PublicImageTagRegistry();
   const configStore = dependencies.configStore ?? new LocalConfigStore();
 
-  output.write("CompanyHelm image selection\n");
+  clack.intro("CompanyHelm image selection", { output });
   const selectedService = options.service
     ? requireManagedImageService(options.service)
     : await promptForSelection("Which image do you want to pin?", [...MANAGED_IMAGE_SERVICES], input, output).then(
@@ -101,12 +111,9 @@ export async function runSetImageVersion(
       );
 
   const currentImage = configStore.load().images[selectedService];
-  output.write(`Current configured image for ${selectedService}: ${currentImage ?? "default (latest)"}\n`);
+  clack.log.info(`Current configured image for ${selectedService}: ${currentImage ?? "default (latest)"}`, { output });
 
-  const tags = await registry.listAvailableTags(selectedService, options.limit);
-  if (tags.length === 0) {
-    throw new Error(`No image tags found for ${selectedService}.`);
-  }
+  const tags = await loadAvailableTags(registry, selectedService, options.limit, output);
 
   const currentTag = currentImage ? currentImage.slice(currentImage.lastIndexOf(":") + 1) : undefined;
   const defaultIndex = currentTag ? tags.indexOf(currentTag) : -1;
@@ -119,7 +126,7 @@ export async function runSetImageVersion(
   );
 
   const result = configStore.setImage(selectedService, registry.buildImageReference(selectedService, selectedTag));
-  output.write(`Updated ${result.configPath} to ${result.image}\n`);
+  clack.outro(`Updated ${result.configPath} to ${result.image}`, { output });
 }
 
 export function registerSetImageVersionCommand(program: Command): void {

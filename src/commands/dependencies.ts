@@ -88,6 +88,7 @@ export function createDefaultDependencies(): CommandDependencies {
       process.stdout.write(`${renderer.renderBanner()}\n`);
       await dockerStackManager.up(state, { frontendLogLevel: logLevel });
       process.stdout.write(`${renderer.progress("Initializing the database...")}\n`);
+      process.stdout.write(`${renderer.progress("Waiting for database migrations...")}\n`);
       await dockerStackManager.applySeedSql(state.auth.username);
       const configureSdkCommand = runnerSupervisor.buildUseHostAuthArgs();
       process.stdout.write(`${renderer.progress("Configuring runner authentication...")}\n`);

@@ -13,14 +13,19 @@ import { TerminalRenderer } from "../../src/core/ui/TerminalRenderer.js";
 
 const require = createRequire(import.meta.url);
 const originalEnv = { ...process.env };
+const originalCwd = process.cwd();
+const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 
 afterEach(() => {
   vi.restoreAllMocks();
   process.env = { ...originalEnv };
+  process.chdir(originalCwd);
 });
 
 test("up prints resolved package versions and exact image references", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
+  process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
   process.env.COMPANYHELM_API_IMAGE = "registry.example.com/companyhelm-api:2026.03.12";
   process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
@@ -44,7 +49,10 @@ test("up prints resolved package versions and exact image references", async () 
   await dependencies.up();
 
   const output = stdoutWrite.mock.calls.map(([chunk]) => String(chunk)).join("");
-  const cliPackage = JSON.parse(fs.readFileSync("package.json", "utf8")) as { name: string; version: string };
+  const cliPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")) as {
+    name: string;
+    version: string;
+  };
   const runnerPackage = JSON.parse(
     fs.readFileSync(require.resolve("@companyhelm/runner/package.json"), "utf8")
   ) as { name: string; version: string };
@@ -54,6 +62,7 @@ test("up prints resolved package versions and exact image references", async () 
   expect(output).toContain("API image: registry.example.com/companyhelm-api:2026.03.12");
   expect(output).toContain("Frontend image: registry.example.com/companyhelm-web:2026.03.12");
   expect(output).toContain("Postgres image: postgres:17.2-alpine");
+  expect(output).toContain("... Waiting for database migrations...");
   expect(output).toContain("CompanyHelm started successfully.");
   expect(output).toContain("UI URL\nhttp://127.0.0.1:4173");
   expect(output).toContain("Login credentials\nusername: admin@local\npassword: ");
@@ -62,6 +71,8 @@ test("up prints resolved package versions and exact image references", async () 
 });
 
 test("status includes resolved versions", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
+  process.chdir(projectRoot);
   process.env.COMPANYHELM_API_IMAGE = "registry.example.com/companyhelm-api:2026.03.12";
   process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
   process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
@@ -71,7 +82,10 @@ test("status includes resolved versions", async () => {
 
   const dependencies = createDefaultDependencies();
   const status = await dependencies.status();
-  const cliPackage = JSON.parse(fs.readFileSync("package.json", "utf8")) as { name: string; version: string };
+  const cliPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")) as {
+    name: string;
+    version: string;
+  };
   const runnerPackage = JSON.parse(
     fs.readFileSync(require.resolve("@companyhelm/runner/package.json"), "utf8")
   ) as { name: string; version: string };

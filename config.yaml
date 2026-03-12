@@ -1,0 +1,3 @@
+images:
+  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29
+  frontend: public.ecr.aws/x6n0f2k4/companyhelm-web:main-b82fbda
