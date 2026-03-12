@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID, scryptSync } from "node:crypto";
+import { generateKeyPairSync, randomBytes, randomUUID, scryptSync } from "node:crypto";
 
 export function randomSecret(length = 24): string {
   return randomBytes(length).toString("base64url");
@@ -14,5 +14,18 @@ export function createPasswordHash(password: string): { passwordSalt: string; pa
   return {
     passwordSalt,
     passwordHash
+  };
+}
+
+export function createPemKeyPair(): { privateKeyPem: string; publicKeyPem: string } {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    privateKeyEncoding: { format: "pem", type: "pkcs1" },
+    publicKeyEncoding: { format: "pem", type: "pkcs1" }
+  });
+
+  return {
+    privateKeyPem: privateKey,
+    publicKeyPem: publicKey
   };
 }

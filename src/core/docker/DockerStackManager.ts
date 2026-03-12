@@ -21,9 +21,14 @@ export class DockerStackManager {
     fs.writeFileSync(
       this.runtimePaths.composeFilePath(),
       this.composeRenderer.render({
+        apiHttpPort: state.ports.apiHttp,
         uiPort: state.ports.ui,
         runnerGrpcPort: state.ports.runnerGrpc,
         agentCliGrpcPort: state.ports.agentCliGrpc
+      }, {
+        apiConfigPath: this.runtimePaths.apiConfigPath(),
+        frontendConfigPath: this.runtimePaths.frontendConfigPath(),
+        seedFilePath: this.runtimePaths.seedFilePath()
       }),
       "utf8"
     );
@@ -35,6 +40,42 @@ export class DockerStackManager {
       "up",
       "-d"
     ]);
+  }
+
+  public async applySeedSql(): Promise<void> {
+    if (!fs.existsSync(this.runtimePaths.seedFilePath())) {
+      return;
+    }
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        await this.commandRunner.run("docker", [
+          "compose",
+          "-f",
+          this.runtimePaths.composeFilePath(),
+          "exec",
+          "-T",
+          "postgres",
+          "psql",
+          "-U",
+          "postgres",
+          "-d",
+          "companyhelm",
+          "-f",
+          "/run/companyhelm/seed.sql"
+        ]);
+        return;
+      } catch (error) {
+        lastError = error as Error;
+        await new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        });
+      }
+    }
+
+    throw lastError ?? new Error("Failed to apply seed SQL.");
   }
 
   public async down(): Promise<void> {

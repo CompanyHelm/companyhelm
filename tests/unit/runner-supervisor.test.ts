@@ -6,14 +6,22 @@ test("builds runner launch args with the generated secret", () => {
   const supervisor = new RunnerSupervisor("/tmp/companyhelm");
 
   const args = supervisor.buildStartArgs({
-    grpcTarget: "127.0.0.1:5051",
+    serverUrl: "127.0.0.1:50051",
+    agentApiUrl: "127.0.0.1:50052",
+    logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret"
   });
 
   expect(args.command).toBe(process.execPath);
   expect(args.args[0]).toContain("@companyhelm/runner");
+  expect(args.args).toContain("--daemon");
+  expect(args.args).toContain("--server-url");
+  expect(args.args).toContain("127.0.0.1:50051");
+  expect(args.args).toContain("--agent-api-url");
+  expect(args.args).toContain("127.0.0.1:50052");
+  expect(args.args).toContain("--log-path");
+  expect(args.args).toContain("/tmp/companyhelm/daemon.log");
   expect(args.args).toContain("runner-secret");
-  expect(args.args).toContain("127.0.0.1:5051");
 });
 
 test("prefers an explicit runner cli override", () => {
@@ -21,7 +29,9 @@ test("prefers an explicit runner cli override", () => {
 
   const supervisor = new RunnerSupervisor("/tmp/companyhelm");
   const args = supervisor.buildStartArgs({
-    grpcTarget: "127.0.0.1:5051",
+    serverUrl: "127.0.0.1:50051",
+    agentApiUrl: "127.0.0.1:50052",
+    logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret"
   });
 

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { PortAllocator } from "./PortAllocator.js";
 import { RuntimePaths } from "./RuntimePaths.js";
 import type { RuntimeState } from "./RuntimeState.js";
-import { randomCompanyId, randomSecret } from "./Secrets.js";
+import { createPemKeyPair, randomCompanyId, randomSecret } from "./Secrets.js";
 
 export class RuntimeStateStore {
   private readonly runtimePaths: RuntimePaths;
@@ -20,6 +20,7 @@ export class RuntimeStateStore {
 
     fs.mkdirSync(this.root, { recursive: true });
 
+    const authKeys = createPemKeyPair();
     const state: RuntimeState = {
       version: 1,
       company: {
@@ -28,7 +29,9 @@ export class RuntimeStateStore {
       },
       auth: {
         username: "admin",
-        password: randomSecret()
+        password: randomSecret(),
+        jwtPrivateKeyPem: authKeys.privateKeyPem,
+        jwtPublicKeyPem: authKeys.publicKeyPem
       },
       runner: {
         name: "local-runner",

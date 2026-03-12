@@ -1,4 +1,5 @@
 export interface RuntimePorts {
+  apiHttp: number;
   ui: number;
   runnerGrpc: number;
   agentCliGrpc: number;
@@ -13,6 +14,8 @@ export interface RuntimeState {
   auth: {
     username: "admin";
     password: string;
+    jwtPrivateKeyPem: string;
+    jwtPublicKeyPem: string;
   };
   runner: {
     name: string;

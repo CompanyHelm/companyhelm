@@ -52,13 +52,19 @@ export function createDefaultDependencies(): CommandDependencies {
       const passwordRecord = createPasswordHash(state.auth.password);
       fs.mkdirSync(root, { recursive: true });
       bootstrapper.writeSeedSql(root, state, passwordRecord.passwordHash, passwordRecord.passwordSalt);
+      bootstrapper.writeApiConfig(root, state);
+      bootstrapper.writeFrontendConfig(root, state);
       process.stdout.write(`${renderer.renderBanner()}\n`);
       await dockerStackManager.up(state);
+      await dockerStackManager.applySeedSql();
       const startCommand = runnerSupervisor.buildStartArgs({
-        grpcTarget: `127.0.0.1:${state.ports.runnerGrpc}`,
+        serverUrl: `127.0.0.1:${state.ports.runnerGrpc}`,
+        agentApiUrl: `127.0.0.1:${state.ports.agentCliGrpc}`,
+        logPath: runtimePaths.runnerLogPath(),
         secret: state.runner.secret
       });
       await commandRunner.run(startCommand.command, startCommand.args);
+      process.stdout.write(`${renderer.success(`API: http://127.0.0.1:${state.ports.apiHttp}/graphql`)}\n`);
       process.stdout.write(`${renderer.success(`UI: http://127.0.0.1:${state.ports.ui}`)}\n`);
       process.stdout.write(`admin password: ${state.auth.password}\n`);
     },

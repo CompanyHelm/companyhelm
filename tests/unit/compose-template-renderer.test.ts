@@ -4,14 +4,21 @@ import { ComposeTemplateRenderer } from "../../src/core/docker/ComposeTemplateRe
 
 test("renders frontend, api, and postgres with only allowed host ports", () => {
   const yaml = new ComposeTemplateRenderer().render({
+    apiHttpPort: 4000,
     uiPort: 4173,
-    runnerGrpcPort: 5051,
-    agentCliGrpcPort: 5052
+    runnerGrpcPort: 50051,
+    agentCliGrpcPort: 50052
+  }, {
+    apiConfigPath: "/tmp/companyhelm/api-config.yaml",
+    frontendConfigPath: "/tmp/companyhelm/frontend-config.yaml",
+    seedFilePath: "/tmp/companyhelm/seed.sql"
   });
 
   expect(yaml).toContain("frontend:");
+  expect(yaml).toContain('"4000:4000"');
   expect(yaml).toContain('"4173:4173"');
-  expect(yaml).toContain('"5051:5051"');
-  expect(yaml).toContain('"5052:5052"');
-  expect(yaml).not.toContain("5432:5432");
+  expect(yaml).toContain('"50051:50051"');
+  expect(yaml).toContain('"50052:50052"');
+  expect(yaml).toContain('"/tmp/companyhelm/api-config.yaml:/run/companyhelm/config.yaml:ro"');
+  expect(yaml).toContain('"/tmp/companyhelm/seed.sql:/run/companyhelm/seed.sql:ro"');
 });

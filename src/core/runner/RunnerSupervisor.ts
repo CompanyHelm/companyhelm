@@ -2,7 +2,9 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 export interface RunnerStartInput {
-  grpcTarget: string;
+  serverUrl: string;
+  agentApiUrl: string;
+  logPath: string;
   secret: string;
 }
 
@@ -27,8 +29,13 @@ export class RunnerSupervisor {
         this.configPath,
         "runner",
         "start",
-        "--grpc-target",
-        input.grpcTarget,
+        "--daemon",
+        "--server-url",
+        input.serverUrl,
+        "--agent-api-url",
+        input.agentApiUrl,
+        "--log-path",
+        input.logPath,
         "--secret",
         input.secret
       ]

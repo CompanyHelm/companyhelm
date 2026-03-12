@@ -11,6 +11,14 @@ export class RuntimePaths {
     return path.join(this.root, "docker-compose.yaml");
   }
 
+  public apiConfigPath(): string {
+    return path.join(this.root, "api-config.yaml");
+  }
+
+  public frontendConfigPath(): string {
+    return path.join(this.root, "frontend-config.yaml");
+  }
+
   public seedFilePath(): string {
     return path.join(this.root, "seed.sql");
   }
@@ -19,7 +27,11 @@ export class RuntimePaths {
     return path.join(this.root, "runner");
   }
 
+  public runnerStateDbPath(): string {
+    return path.join(this.runnerConfigPath(), "state.db");
+  }
+
   public runnerLogPath(): string {
-    return path.join(this.root, "runner.log");
+    return path.join(this.runnerConfigPath(), "daemon.log");
   }
 }
