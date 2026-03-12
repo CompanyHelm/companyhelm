@@ -24,6 +24,22 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.args).toContain("runner-secret");
 });
 
+test("builds host auth setup args for the bundled runner cli", () => {
+  const supervisor = new RunnerSupervisor("/tmp/companyhelm");
+
+  const args = supervisor.buildUseHostAuthArgs();
+
+  expect(args.command).toBe(process.execPath);
+  expect(args.args[0]).toContain("@companyhelm/runner");
+  expect(args.args.slice(1)).toEqual([
+    "--config-path",
+    "/tmp/companyhelm",
+    "sdk",
+    "codex",
+    "use-host-auth"
+  ]);
+});
+
 test("prefers an explicit runner cli override", () => {
   process.env.COMPANYHELM_RUNNER_CLI_PATH = "/tmp/custom-runner.js";
 
@@ -39,4 +55,14 @@ test("prefers an explicit runner cli override", () => {
   expect(args.args[0]).toBe("/tmp/custom-runner.js");
 
   delete process.env.COMPANYHELM_RUNNER_CLI_PATH;
+});
+
+test("builds runner status args", () => {
+  const supervisor = new RunnerSupervisor("/tmp/companyhelm");
+
+  const args = supervisor.buildStatusArgs();
+
+  expect(args.command).toBe(process.execPath);
+  expect(args.args[0]).toContain("@companyhelm/runner");
+  expect(args.args.slice(1)).toEqual(["--config-path", "/tmp/companyhelm", "status"]);
 });

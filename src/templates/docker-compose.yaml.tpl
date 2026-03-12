@@ -13,6 +13,7 @@ services:
 
   api:
     image: {{API_IMAGE}}
+    platform: linux/amd64
     depends_on:
       - postgres
     environment:
@@ -26,19 +27,7 @@ services:
     networks:
       - companyhelm
 
-  frontend:
-    image: {{FRONTEND_IMAGE}}
-    depends_on:
-      - api
-    environment:
-      COMPANYHELM_CONFIG_PATH: /run/companyhelm/config.yaml
-      PORT: "{{UI_PORT}}"
-    ports:
-      - "{{UI_PORT}}:{{UI_PORT}}"
-    volumes:
-      - "{{FRONTEND_CONFIG_PATH}}:/run/companyhelm/config.yaml:ro"
-    networks:
-      - companyhelm
+{{FRONTEND_SERVICE_BLOCK}}
 
 networks:
   companyhelm:

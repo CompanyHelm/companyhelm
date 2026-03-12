@@ -18,6 +18,15 @@ const require = createRequire(import.meta.url);
 export class RunnerSupervisor {
   public constructor(private readonly configPath: string) {}
 
+  public buildUseHostAuthArgs(): RunnerStartCommand {
+    const runnerCliPath = this.resolveRunnerCliPath();
+
+    return {
+      command: process.execPath,
+      args: [runnerCliPath, "--config-path", this.configPath, "sdk", "codex", "use-host-auth"]
+    };
+  }
+
   public buildStartArgs(input: RunnerStartInput): RunnerStartCommand {
     const runnerCliPath = this.resolveRunnerCliPath();
 
@@ -48,6 +57,15 @@ export class RunnerSupervisor {
     return {
       command: process.execPath,
       args: [runnerCliPath, "--config-path", this.configPath, "runner", "stop"]
+    };
+  }
+
+  public buildStatusArgs(): RunnerStartCommand {
+    const runnerCliPath = this.resolveRunnerCliPath();
+
+    return {
+      command: process.execPath,
+      args: [runnerCliPath, "--config-path", this.configPath, "status"]
     };
   }
 

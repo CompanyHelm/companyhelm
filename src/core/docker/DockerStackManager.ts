@@ -11,7 +11,8 @@ export class DockerStackManager {
   public constructor(
     root: string,
     private readonly commandRunner = new CommandRunner(),
-    private readonly composeRenderer = new ComposeTemplateRenderer()
+    private readonly composeRenderer = new ComposeTemplateRenderer(),
+    private readonly includeFrontend = true
   ) {
     this.runtimePaths = new RuntimePaths(root);
   }
@@ -29,6 +30,8 @@ export class DockerStackManager {
         apiConfigPath: this.runtimePaths.apiConfigPath(),
         frontendConfigPath: this.runtimePaths.frontendConfigPath(),
         seedFilePath: this.runtimePaths.seedFilePath()
+      }, {
+        includeFrontend: this.includeFrontend
       }),
       "utf8"
     );

@@ -22,18 +22,36 @@ export class SeedSqlRenderer {
     const template = fs.readFileSync(templatePath, "utf8");
     const email = `${input.username}@local.companyhelm`;
     const runnerSecretHash = createHash("sha256").update(input.runnerSecret).digest("hex");
+    const userId = deriveUuid(input.companyId, "user");
+    const userAuthId = deriveUuid(input.companyId, "user-auth");
+    const runnerId = deriveUuid(input.companyId, "runner");
 
     return template
       .replaceAll("{{COMPANY_ID}}", input.companyId)
       .replaceAll("{{COMPANY_NAME}}", input.companyName)
-      .replaceAll("{{USER_ID}}", `${input.companyId}-admin`)
-      .replaceAll("{{USER_AUTH_ID}}", `${input.companyId}-auth`)
+      .replaceAll("{{USER_ID}}", userId)
+      .replaceAll("{{USER_AUTH_ID}}", userAuthId)
       .replaceAll("{{USER_FIRST_NAME}}", input.username)
       .replaceAll("{{USER_EMAIL}}", email)
       .replaceAll("{{PASSWORD_SALT}}", input.passwordSalt ?? "password-salt")
       .replaceAll("{{PASSWORD_HASH}}", input.passwordHash)
-      .replaceAll("{{RUNNER_ID}}", `${input.companyId}-runner`)
+      .replaceAll("{{RUNNER_ID}}", runnerId)
       .replaceAll("{{RUNNER_NAME}}", input.runnerName)
       .replaceAll("{{RUNNER_SECRET_HASH}}", runnerSecretHash);
   }
+}
+
+function deriveUuid(companyId: string, scope: string): string {
+  const hex = createHash("sha256").update(`${companyId}:${scope}`).digest("hex");
+  const chars = hex.slice(0, 32).split("");
+  chars[12] = "4";
+  chars[16] = ((Number.parseInt(chars[16] ?? "0", 16) & 0x3) | 0x8).toString(16);
+  const normalized = chars.join("");
+  return [
+    normalized.slice(0, 8),
+    normalized.slice(8, 12),
+    normalized.slice(12, 16),
+    normalized.slice(16, 20),
+    normalized.slice(20, 32)
+  ].join("-");
 }
