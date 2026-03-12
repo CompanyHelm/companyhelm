@@ -16,10 +16,11 @@
     "src/templates"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-templates.cjs",
     "test": "npm run build && vitest run"
   },
   "dependencies": {
+    "@companyhelm/runner": "^0.0.13",
     "chalk": "^5.6.2",
     "commander": "^14.0.1",
     "dockerode": "^4.0.9",
