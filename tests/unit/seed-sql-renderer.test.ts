@@ -8,13 +8,14 @@ test("renders admin user and hashed runner secret", () => {
   const sql = new SeedSqlRenderer().render({
     companyId: "f467d460-5839-4a84-b14a-13d0a4705ded",
     companyName: "Local CompanyHelm",
-    username: "admin",
+    username: "admin@local",
     passwordHash: "password-hash",
     runnerName: "local-runner",
     runnerSecret: "runner-secret"
   });
 
   expect(sql).toContain("admin");
+  expect(sql).toContain("admin@local");
   expect(sql).toContain("password-hash");
   expect(sql).toContain(createHash("sha256").update("runner-secret").digest("hex"));
   expect(sql).toContain("'67f3a91e-ed9b-49f0-9f5d-5ba5156f96fc'");

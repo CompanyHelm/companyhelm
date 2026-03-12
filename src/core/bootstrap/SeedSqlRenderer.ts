@@ -20,7 +20,8 @@ export class SeedSqlRenderer {
   public render(input: SeedSqlInput): string {
     const templatePath = path.resolve(__dirname, "../../templates/seed.sql.tpl");
     const template = fs.readFileSync(templatePath, "utf8");
-    const email = `${input.username}@local.companyhelm`;
+    const email = input.username.trim();
+    const firstName = email.split("@")[0] || email;
     const runnerSecretHash = createHash("sha256").update(input.runnerSecret).digest("hex");
     const userId = deriveUuid(input.companyId, "user");
     const userAuthId = deriveUuid(input.companyId, "user-auth");
@@ -31,7 +32,7 @@ export class SeedSqlRenderer {
       .replaceAll("{{COMPANY_NAME}}", input.companyName)
       .replaceAll("{{USER_ID}}", userId)
       .replaceAll("{{USER_AUTH_ID}}", userAuthId)
-      .replaceAll("{{USER_FIRST_NAME}}", input.username)
+      .replaceAll("{{USER_FIRST_NAME}}", firstName)
       .replaceAll("{{USER_EMAIL}}", email)
       .replaceAll("{{PASSWORD_SALT}}", input.passwordSalt ?? "password-salt")
       .replaceAll("{{PASSWORD_HASH}}", input.passwordHash)

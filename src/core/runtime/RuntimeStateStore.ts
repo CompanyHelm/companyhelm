@@ -7,6 +7,7 @@ import { createPemKeyPair, randomCompanyId, randomSecret } from "./Secrets.js";
 
 export class RuntimeStateStore {
   private readonly runtimePaths: RuntimePaths;
+  private static readonly DEFAULT_USERNAME = "admin@local";
 
   public constructor(private readonly root: string) {
     this.runtimePaths = new RuntimePaths(root);
@@ -28,7 +29,7 @@ export class RuntimeStateStore {
         name: "Local CompanyHelm"
       },
       auth: {
-        username: "admin",
+        username: RuntimeStateStore.DEFAULT_USERNAME,
         password: randomSecret(),
         jwtPrivateKeyPem: authKeys.privateKeyPem,
         jwtPublicKeyPem: authKeys.publicKeyPem
@@ -49,7 +50,13 @@ export class RuntimeStateStore {
       return null;
     }
 
-    return JSON.parse(fs.readFileSync(this.runtimePaths.stateFilePath(), "utf8")) as RuntimeState;
+    const state = JSON.parse(fs.readFileSync(this.runtimePaths.stateFilePath(), "utf8")) as RuntimeState;
+    if (state.auth.username !== RuntimeStateStore.DEFAULT_USERNAME && state.auth.username === "admin") {
+      state.auth.username = RuntimeStateStore.DEFAULT_USERNAME;
+      this.save(state);
+    }
+
+    return state;
   }
 
   private save(state: RuntimeState): void {

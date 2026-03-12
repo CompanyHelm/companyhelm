@@ -42,7 +42,7 @@ export class DockerStackManager {
     ]);
   }
 
-  public async applySeedSql(): Promise<void> {
+  public async applySeedSql(seedEmail: string): Promise<void> {
     if (!fs.existsSync(this.runtimePaths.seedFilePath())) {
       return;
     }
@@ -51,6 +51,10 @@ export class DockerStackManager {
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
       try {
+        if (await this.seedAlreadyApplied(seedEmail)) {
+          return;
+        }
+
         await this.commandRunner.run("docker", [
           "compose",
           "-f",
@@ -76,6 +80,27 @@ export class DockerStackManager {
     }
 
     throw lastError ?? new Error("Failed to apply seed SQL.");
+  }
+
+  private async seedAlreadyApplied(seedEmail: string): Promise<boolean> {
+    const escapedEmail = seedEmail.replaceAll("'", "''");
+    const output = await this.commandRunner.capture("docker", [
+      "compose",
+      "-f",
+      this.runtimePaths.composeFilePath(),
+      "exec",
+      "-T",
+      "postgres",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "companyhelm",
+      "-tAc",
+      `SELECT 1 FROM user_auths WHERE email = '${escapedEmail}' LIMIT 1`
+    ]);
+
+    return output.trim() === "1";
   }
 
   public async down(): Promise<void> {

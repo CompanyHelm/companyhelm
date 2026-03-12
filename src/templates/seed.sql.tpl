@@ -5,8 +5,17 @@ VALUES ('{{COMPANY_ID}}', '{{COMPANY_NAME}}')
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name;
 
+UPDATE users
+SET first_name = '{{USER_FIRST_NAME}}',
+    last_name = NULL,
+    email = '{{USER_EMAIL}}',
+    auth_provider = 'companyhelm',
+    updated_at = NOW()
+WHERE id = '{{USER_ID}}'
+   OR email = '{{USER_EMAIL}}';
+
 INSERT INTO users (id, first_name, last_name, email, auth_provider, created_at, updated_at)
-VALUES (
+SELECT
   '{{USER_ID}}',
   '{{USER_FIRST_NAME}}',
   NULL,
@@ -14,14 +23,24 @@ VALUES (
   'companyhelm',
   NOW(),
   NOW()
-)
-ON CONFLICT (email) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    auth_provider = EXCLUDED.auth_provider,
-    updated_at = NOW();
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM users
+  WHERE id = '{{USER_ID}}'
+     OR email = '{{USER_EMAIL}}'
+);
+
+UPDATE user_auths
+SET user_id = '{{USER_ID}}',
+    email = '{{USER_EMAIL}}',
+    password_salt = '{{PASSWORD_SALT}}',
+    password_hash = '{{PASSWORD_HASH}}',
+    updated_at = NOW()
+WHERE user_id = '{{USER_ID}}'
+   OR email = '{{USER_EMAIL}}';
 
 INSERT INTO user_auths (id, user_id, email, password_salt, password_hash, created_at, updated_at)
-VALUES (
+SELECT
   '{{USER_AUTH_ID}}',
   '{{USER_ID}}',
   '{{USER_EMAIL}}',
@@ -29,12 +48,12 @@ VALUES (
   '{{PASSWORD_HASH}}',
   NOW(),
   NOW()
-)
-ON CONFLICT (user_id) DO UPDATE
-SET email = EXCLUDED.email,
-    password_salt = EXCLUDED.password_salt,
-    password_hash = EXCLUDED.password_hash,
-    updated_at = NOW();
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM user_auths
+  WHERE user_id = '{{USER_ID}}'
+     OR email = '{{USER_EMAIL}}'
+);
 
 INSERT INTO company_members (company_id, user_id)
 VALUES ('{{COMPANY_ID}}', '{{USER_ID}}')

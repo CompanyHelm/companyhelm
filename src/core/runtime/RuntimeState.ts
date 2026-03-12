@@ -12,7 +12,7 @@ export interface RuntimeState {
     name: string;
   };
   auth: {
-    username: "admin";
+    username: string;
     password: string;
     jwtPrivateKeyPem: string;
     jwtPublicKeyPem: string;

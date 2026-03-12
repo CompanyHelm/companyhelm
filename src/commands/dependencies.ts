@@ -69,7 +69,7 @@ export function createDefaultDependencies(): CommandDependencies {
       bootstrapper.writeFrontendConfig(root, state);
       process.stdout.write(`${renderer.renderBanner()}\n`);
       await dockerStackManager.up(state);
-      await dockerStackManager.applySeedSql();
+      await dockerStackManager.applySeedSql(state.auth.username);
       const configureSdkCommand = runnerSupervisor.buildUseHostAuthArgs();
       await commandRunner.run(configureSdkCommand.command, configureSdkCommand.args);
       const startCommand = runnerSupervisor.buildStartArgs({
@@ -81,7 +81,8 @@ export function createDefaultDependencies(): CommandDependencies {
       await commandRunner.run(startCommand.command, startCommand.args);
       process.stdout.write(`${renderer.success(`API: http://127.0.0.1:${state.ports.apiHttp}/graphql`)}\n`);
       process.stdout.write(`${renderer.success(`UI: http://127.0.0.1:${state.ports.ui}`)}\n`);
-      process.stdout.write(`admin password: ${state.auth.password}\n`);
+      process.stdout.write(`username: ${state.auth.username}\n`);
+      process.stdout.write(`password: ${state.auth.password}\n`);
     },
     async down() {
       if (!stateStore.load()) {
