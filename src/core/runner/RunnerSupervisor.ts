@@ -26,4 +26,11 @@ export class RunnerSupervisor {
       ]
     };
   }
+
+  public buildStopArgs(): RunnerStartCommand {
+    return {
+      command: "companyhelm-runner",
+      args: ["--config-path", this.configPath, "runner", "stop"]
+    };
+  }
 }

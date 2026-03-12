@@ -6,4 +6,20 @@ export class RuntimePaths {
   public stateFilePath(): string {
     return path.join(this.root, "state.json");
   }
+
+  public composeFilePath(): string {
+    return path.join(this.root, "docker-compose.yaml");
+  }
+
+  public seedFilePath(): string {
+    return path.join(this.root, "seed.sql");
+  }
+
+  public runnerConfigPath(): string {
+    return path.join(this.root, "runner");
+  }
+
+  public runnerLogPath(): string {
+    return path.join(this.root, "runner.log");
+  }
 }

@@ -1,5 +1,13 @@
 import type { Command } from "commander";
 
-export function registerLogsCommand(program: Command): void {
-  program.command("logs").description("Show logs for a managed service.").argument("<service>");
+import type { CommandDependencies } from "./dependencies.js";
+
+export function registerLogsCommand(program: Command, dependencies: CommandDependencies): void {
+  program
+    .command("logs")
+    .description("Show logs for a managed service.")
+    .argument("<service>")
+    .action(async (service: string) => {
+      await dependencies.logs(service);
+    });
 }

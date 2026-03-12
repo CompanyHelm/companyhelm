@@ -1,5 +1,9 @@
 import type { Command } from "commander";
 
-export function registerStatusCommand(program: Command): void {
-  program.command("status").description("Show deployment status.");
+import type { CommandDependencies } from "./dependencies.js";
+
+export function registerStatusCommand(program: Command, dependencies: CommandDependencies): void {
+  program.command("status").description("Show deployment status.").action(async () => {
+    process.stdout.write(`${JSON.stringify(await dependencies.status())}\n`);
+  });
 }
