@@ -1,11 +1,14 @@
 import path from "node:path";
 import { createRequire } from "node:module";
 
+import type { LogLevel } from "../../commands/dependencies.js";
+
 export interface RunnerStartInput {
   serverUrl: string;
   agentApiUrl: string;
   logPath: string;
   secret: string;
+  logLevel?: LogLevel;
 }
 
 export interface RunnerStartCommand {
@@ -29,6 +32,7 @@ export class RunnerSupervisor {
 
   public buildStartArgs(input: RunnerStartInput): RunnerStartCommand {
     const runnerCliPath = this.resolveRunnerCliPath();
+    const logLevel = (input.logLevel ?? "info").toUpperCase();
 
     return {
       command: process.execPath,
@@ -46,7 +50,9 @@ export class RunnerSupervisor {
         "--log-path",
         input.logPath,
         "--secret",
-        input.secret
+        input.secret,
+        "--log-level",
+        logLevel
       ]
     };
   }

@@ -1,9 +1,14 @@
 import fs from "node:fs";
 
+import type { LogLevel } from "../../commands/dependencies.js";
 import { CommandRunner } from "../process/CommandRunner.js";
 import { RuntimePaths } from "../runtime/RuntimePaths.js";
 import type { RuntimeState } from "../runtime/RuntimeState.js";
 import { ComposeTemplateRenderer } from "./ComposeTemplateRenderer.js";
+
+export interface DockerStackUpOptions {
+  frontendLogLevel?: LogLevel;
+}
 
 export class DockerStackManager {
   private readonly runtimePaths: RuntimePaths;
@@ -16,7 +21,7 @@ export class DockerStackManager {
     this.runtimePaths = new RuntimePaths(root);
   }
 
-  public async up(state: RuntimeState): Promise<void> {
+  public async up(state: RuntimeState, options: DockerStackUpOptions = {}): Promise<void> {
     fs.mkdirSync(this.runtimePaths.runnerConfigPath(), { recursive: true });
     fs.writeFileSync(
       this.runtimePaths.composeFilePath(),
@@ -29,6 +34,8 @@ export class DockerStackManager {
         apiConfigPath: this.runtimePaths.apiConfigPath(),
         frontendConfigPath: this.runtimePaths.frontendConfigPath(),
         seedFilePath: this.runtimePaths.seedFilePath()
+      }, {
+        frontendLogLevel: options.frontendLogLevel
       }),
       "utf8"
     );

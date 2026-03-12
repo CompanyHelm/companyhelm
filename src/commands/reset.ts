@@ -6,12 +6,7 @@ export function registerResetCommand(program: Command, dependencies: CommandDepe
   program
     .command("reset")
     .description("Destroy the local deployment state.")
-    .option("--force")
-    .action(async (options: { force?: boolean }) => {
-      if (!options.force) {
-        throw new Error("reset requires --force");
-      }
-
+    .action(async () => {
       await dependencies.reset();
     });
 }

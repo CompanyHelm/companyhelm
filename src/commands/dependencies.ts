@@ -13,10 +13,23 @@ import { RuntimeStateStore } from "../core/runtime/RuntimeStateStore.js";
 import { StatusService, type StatusSnapshot } from "../core/status/StatusService.js";
 import { TerminalRenderer } from "../core/ui/TerminalRenderer.js";
 
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+export interface UpOptions {
+  logLevel?: LogLevel;
+}
+
+export interface StatusReport {
+  services: StatusSnapshot;
+  apiUrl?: string;
+  uiUrl?: string;
+  username?: string;
+}
+
 export interface CommandDependencies {
-  up(): Promise<void>;
+  up(options?: UpOptions): Promise<void>;
   down(): Promise<void>;
-  status(): Promise<StatusSnapshot>;
+  status(): Promise<StatusReport>;
   logs(service: string): Promise<void>;
   reset(): Promise<void>;
 }
@@ -60,15 +73,16 @@ export function createDefaultDependencies(): CommandDependencies {
   });
 
   return {
-    async up() {
+    async up(options = {}) {
+      const logLevel = options.logLevel ?? "info";
       const state = stateStore.initialize();
       const passwordRecord = createPasswordHash(state.auth.password);
       fs.mkdirSync(root, { recursive: true });
       bootstrapper.writeSeedSql(root, state, passwordRecord.passwordHash, passwordRecord.passwordSalt);
-      bootstrapper.writeApiConfig(root, state);
+      bootstrapper.writeApiConfig(root, state, logLevel);
       bootstrapper.writeFrontendConfig(root, state);
       process.stdout.write(`${renderer.renderBanner()}\n`);
-      await dockerStackManager.up(state);
+      await dockerStackManager.up(state, { frontendLogLevel: logLevel });
       await dockerStackManager.applySeedSql(state.auth.username);
       const configureSdkCommand = runnerSupervisor.buildUseHostAuthArgs();
       await commandRunner.run(configureSdkCommand.command, configureSdkCommand.args);
@@ -76,7 +90,8 @@ export function createDefaultDependencies(): CommandDependencies {
         serverUrl: `127.0.0.1:${state.ports.runnerGrpc}`,
         agentApiUrl: `127.0.0.1:${state.ports.agentCliGrpc}`,
         logPath: runtimePaths.runnerLogPath(),
-        secret: state.runner.secret
+        secret: state.runner.secret,
+        logLevel
       });
       await commandRunner.run(startCommand.command, startCommand.args);
       process.stdout.write(`${renderer.success(`API: http://127.0.0.1:${state.ports.apiHttp}/graphql`)}\n`);
@@ -98,8 +113,15 @@ export function createDefaultDependencies(): CommandDependencies {
 
       await dockerStackManager.down();
     },
-    status() {
-      return statusService.read();
+    async status() {
+      const services = await statusService.read();
+      const state = stateStore.load();
+      return {
+        services,
+        apiUrl: state ? `http://127.0.0.1:${state.ports.apiHttp}/graphql` : undefined,
+        uiUrl: state ? `http://127.0.0.1:${state.ports.ui}` : undefined,
+        username: state?.auth.username
+      };
     },
     logs(service: string) {
       return logsService.stream(service);

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import type { LogLevel } from "../../commands/dependencies.js";
 import type { RuntimeState } from "../runtime/RuntimeState.js";
 import { RuntimePaths } from "../runtime/RuntimePaths.js";
 import { SeedSqlRenderer } from "./SeedSqlRenderer.js";
@@ -26,7 +27,7 @@ export class DeploymentBootstrapper {
     return outputPath;
   }
 
-  public writeApiConfig(root: string, state: RuntimeState): string {
+  public writeApiConfig(root: string, state: RuntimeState, logLevel: LogLevel = "info"): string {
     const runtimePaths = new RuntimePaths(root);
     const outputPath = runtimePaths.apiConfigPath();
     const yaml = [
@@ -74,7 +75,7 @@ export class DeploymentBootstrapper {
       "security:",
       "  encryption:",
       '    key: "companyhelm-local-encryption-key"',
-      'log_level: "info"',
+      `log_level: "${logLevel}"`,
       "log_pretty: false",
       ""
     ].join("\n");

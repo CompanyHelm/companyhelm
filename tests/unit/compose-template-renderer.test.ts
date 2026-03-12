@@ -27,3 +27,21 @@ test("renders frontend, api, and postgres with only allowed host ports", () => {
   expect(yaml).toContain('"/tmp/companyhelm/api-config.yaml:/run/companyhelm/config.yaml:ro"');
   expect(yaml).toContain('"/tmp/companyhelm/seed.sql:/run/companyhelm/seed.sql:ro"');
 });
+
+test("renders frontend log level overrides into the compose environment", () => {
+  const yaml = new ComposeTemplateRenderer().render({
+    apiHttpPort: 4000,
+    uiPort: 4173,
+    runnerGrpcPort: 50051,
+    agentCliGrpcPort: 50052
+  }, {
+    apiConfigPath: "/tmp/companyhelm/api-config.yaml",
+    frontendConfigPath: "/tmp/companyhelm/frontend-config.yaml",
+    seedFilePath: "/tmp/companyhelm/seed.sql"
+  }, {
+    frontendLogLevel: "debug"
+  });
+
+  expect(yaml).toContain('COMPANYHELM_LOG_LEVEL: "debug"');
+  expect(yaml).toContain('npm_config_loglevel: "debug"');
+});

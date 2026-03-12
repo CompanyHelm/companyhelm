@@ -9,7 +9,8 @@ test("builds runner launch args with the generated secret", () => {
     serverUrl: "127.0.0.1:50051",
     agentApiUrl: "127.0.0.1:50052",
     logPath: "/tmp/companyhelm/daemon.log",
-    secret: "runner-secret"
+    secret: "runner-secret",
+    logLevel: "debug"
   });
 
   expect(args.command).toBe(process.execPath);
@@ -22,6 +23,8 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.args).toContain("--log-path");
   expect(args.args).toContain("/tmp/companyhelm/daemon.log");
   expect(args.args).toContain("runner-secret");
+  expect(args.args).toContain("--log-level");
+  expect(args.args).toContain("DEBUG");
 });
 
 test("builds host auth setup args for the bundled runner cli", () => {
