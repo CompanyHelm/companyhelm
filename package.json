@@ -5,6 +5,10 @@
   "license": "MIT",
   "private": false,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CompanyHelm/companyhelm"
+  },
   "engines": {
     "node": ">=24"
   },
