@@ -21,6 +21,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/copy-templates.cjs",
+    "start": "npm run build && node dist/cli.js",
     "test": "npm run build && vitest run"
   },
   "dependencies": {
