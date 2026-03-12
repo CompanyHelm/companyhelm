@@ -14,6 +14,12 @@ test("formats success output with labels", () => {
   expect(renderer.success("ready")).toContain("ready");
 });
 
+test("formats progress output with ellipsis", () => {
+  const renderer = new TerminalRenderer(false);
+
+  expect(renderer.progress("Starting the runner...")).toBe("... Starting the runner...");
+});
+
 test("returns plain urls when terminal hyperlinks are disabled", () => {
   const renderer = new TerminalRenderer(false);
 

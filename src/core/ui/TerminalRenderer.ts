@@ -25,6 +25,10 @@ export class TerminalRenderer {
     return `${this.colorize("[ok]", "green")} ${message}`;
   }
 
+  public progress(message: string): string {
+    return this.colorize(`... ${message}`, "cyan");
+  }
+
   public successHighlight(message: string): string {
     if (!this.useColor) {
       return message;

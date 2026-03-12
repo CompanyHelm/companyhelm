@@ -34,6 +34,7 @@ test("up prints resolved package versions and exact image references", async () 
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "progress").mockImplementation((message: string) => `... ${message}`);
   vi.spyOn(TerminalRenderer.prototype, "successHighlight").mockImplementation((message: string) => message);
   vi.spyOn(TerminalRenderer.prototype, "clickableUrl").mockImplementation((url: string) => url);
 
