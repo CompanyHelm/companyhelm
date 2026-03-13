@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { afterEach, expect, test, vi } from "vitest";
 
 import { createDefaultDependencies } from "../../src/commands/dependencies.js";
+import * as setupGithubAppCommand from "../../src/commands/setup-github-app.js";
 import { DeploymentBootstrapper } from "../../src/core/bootstrap/DeploymentBootstrapper.js";
 import { ApiEnvFileWriter } from "../../src/core/config/ApiEnvFileWriter.js";
 import { GithubAppConfigStore } from "../../src/core/config/GithubAppConfigStore.js";
@@ -33,7 +34,7 @@ test("up prints resolved package versions and exact image references", async () 
   process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
   process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
 
-  vi.spyOn(GithubAppConfigStore.prototype, "loadOrThrow").mockReturnValue({
+  vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValue({
     appUrl: "https://github.com/apps/example-local",
     appClientId: "Iv123",
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
@@ -85,7 +86,7 @@ test("status includes resolved versions", async () => {
   process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
   process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
 
-  vi.spyOn(GithubAppConfigStore.prototype, "loadOrThrow").mockReturnValue({
+  vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValue({
     appUrl: "https://github.com/apps/example-local",
     appClientId: "Iv123",
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
@@ -117,11 +118,42 @@ test("status includes resolved versions", async () => {
 test("up fails with a setup hint when machine github app config is missing", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
   process.chdir(projectRoot);
-  vi.spyOn(GithubAppConfigStore.prototype, "loadOrThrow").mockImplementation(() => {
-    throw new Error("GitHub App config is not set up. Run `companyhelm setup-github-app`.");
-  });
+  vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValue(null);
 
   await expect(createDefaultDependencies().up()).rejects.toThrow(/setup-github-app/);
+});
+
+test("up auto-runs github app setup in a tty when config is missing", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+  process.env.COMPANYHELM_API_IMAGE = "registry.example.com/companyhelm-api:2026.03.12";
+  process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
+  process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
+
+  const ensureGithubAppConfig = vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
+    appUrl: "https://github.com/apps/example-local",
+    appClientId: "Iv123",
+    appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
+  });
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
+  vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+  vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
+  vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "progress").mockImplementation((message: string) => `... ${message}`);
+  vi.spyOn(TerminalRenderer.prototype, "successHighlight").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "clickableUrl").mockImplementation((url: string) => url);
+
+  const dependencies = createDefaultDependencies();
+  await expect(dependencies.up()).resolves.toBeUndefined();
+
+  expect(ensureGithubAppConfig).toHaveBeenCalledOnce();
 });
 
 test("reset deletes the generated project api env file", async () => {

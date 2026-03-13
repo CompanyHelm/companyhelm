@@ -139,6 +139,41 @@ export async function promptGithubAppConfig(
   });
 }
 
+export async function ensureGithubAppConfig(
+  store = new GithubAppConfigStore(),
+  input: Readable = process.stdin,
+  output: Writable = process.stdout,
+): Promise<GithubAppConfig> {
+  const existingConfig = store.load();
+  if (existingConfig) {
+    return existingConfig;
+  }
+
+  requireInteractiveTerminal(
+    input,
+    output,
+    `GitHub App config is not set up. Run \`companyhelm setup-github-app\` or rerun \`companyhelm up\` in a TTY.`,
+  );
+
+  clack.intro("CompanyHelm GitHub App setup", { output });
+  clack.note(
+    [
+      "No machine GitHub App config was found.",
+      "CompanyHelm will collect it now and then continue startup.",
+    ].join("\n"),
+    "Setup required",
+    { output },
+  );
+
+  const config = await promptGithubAppConfig(input, output);
+  const spinner = clack.spinner({ output });
+  spinner.start("Saving machine GitHub App config");
+  const configPath = store.save(config);
+  spinner.stop(`Saved GitHub App config to ${configPath}`);
+  clack.outro("GitHub App setup complete. Continuing startup.", { output });
+  return config;
+}
+
 export function registerSetupGithubAppCommand(
   program: Command,
   store = new GithubAppConfigStore(),
@@ -147,8 +182,12 @@ export function registerSetupGithubAppCommand(
     .command("setup-github-app")
     .description("Save machine-wide GitHub App config for local deploys.")
     .action(async () => {
+      clack.intro("CompanyHelm GitHub App setup");
       const config = await promptGithubAppConfig();
+      const spinner = clack.spinner();
+      spinner.start("Saving machine GitHub App config");
       const configPath = store.save(config);
+      spinner.stop(`Saved GitHub App config to ${configPath}`);
       clack.outro(`Saved GitHub App config to ${configPath}.`);
     });
 }

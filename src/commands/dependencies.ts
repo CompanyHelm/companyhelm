@@ -16,6 +16,7 @@ import { RuntimeStateStore } from "../core/runtime/RuntimeStateStore.js";
 import { VersionCatalog, type RuntimeVersions } from "../core/runtime/VersionCatalog.js";
 import { StatusService, type StatusSnapshot } from "../core/status/StatusService.js";
 import { TerminalRenderer } from "../core/ui/TerminalRenderer.js";
+import { ensureGithubAppConfig } from "./setup-github-app.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -84,7 +85,7 @@ export function createDefaultDependencies(): CommandDependencies {
   return {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
-      const githubAppConfig = githubAppConfigStore.loadOrThrow();
+      const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout);
       const state = stateStore.initialize();
       const versions = versionCatalog.resolve();
       const passwordRecord = createPasswordHash(state.auth.password);
