@@ -150,6 +150,12 @@ test("promptGithubAppConfig shows the new app URL and offers to open it in the b
     output,
   });
   expect(openBrowser).toHaveBeenCalledWith("https://github.com/settings/apps/new");
+  expect(promptState.text).toHaveBeenNthCalledWith(2, {
+    message: "GitHub App Client ID (not the App ID)",
+    input,
+    output,
+    validate: expect.any(Function),
+  });
   expect(outputText).toContain("New app page");
   expect(outputText).toContain("https://github.com/settings/apps/new");
   expect(outputText).toContain("Agents use that app to access and work on your repositories from isolated container workspaces");

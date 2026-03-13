@@ -216,7 +216,7 @@ export async function promptGithubAppConfig(
     },
   );
   const appClientId = await promptTextValue(
-    "GitHub App Client ID",
+    "GitHub App Client ID (not the App ID)",
     input,
     output,
     (value) => (String(value || "").trim() ? undefined : "Client ID is required."),
