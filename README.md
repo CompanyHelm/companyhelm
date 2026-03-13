@@ -11,9 +11,9 @@ Dependecies:
 - Docker
 - Node.js `>=24`
 - Codex subscription or api key
+- Github account
 
 ```bash
-npx @companyhelm/cli setup-github-app
 npx @companyhelm/cli up
 ```
 
