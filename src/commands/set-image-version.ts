@@ -17,8 +17,13 @@ export interface SetImageVersionOptions {
   limit: number;
 }
 
+export interface AvailableImageTag {
+  tag: string;
+  createdAt?: string;
+}
+
 export interface InteractiveImageSelector {
-  listAvailableTags(service: ManagedImageService, limit: number): Promise<string[]>;
+  listAvailableTags(service: ManagedImageService, limit: number): Promise<AvailableImageTag[]>;
   buildImageReference(service: ManagedImageService, tag: string): string;
 }
 
@@ -38,10 +43,10 @@ function parsePositiveInteger(value: string): number {
 
 async function promptForSelection(
   message: string,
-  options: string[],
+  options: Array<{ value: string; label: string }>,
   input: Readable,
   output: Writable,
-  defaultIndex?: number
+  defaultValue?: string
 ): Promise<string> {
   requireInteractiveTerminal(input, output, "set-image-version requires a TTY so you can choose an image interactively.");
   if (options.length === 0) {
@@ -51,11 +56,10 @@ async function promptForSelection(
   const selected = await clack.select({
     message,
     options: options.map((option, index) => ({
-      value: option,
-      label: option,
-      hint: index === defaultIndex ? "current" : undefined
+      ...option,
+      hint: option.value === defaultValue ? "current" : undefined
     })),
-    initialValue: defaultIndex === undefined ? undefined : options[defaultIndex],
+    initialValue: defaultValue,
     input,
     output
   });
@@ -68,11 +72,11 @@ async function loadAvailableTags(
   service: ManagedImageService,
   limit: number,
   output: Writable
-): Promise<string[]> {
+): Promise<AvailableImageTag[]> {
   const spinner = clack.spinner({ output });
   spinner.start(`Loading the latest ${limit} image tags for ${service}`);
 
-  let tags: string[];
+  let tags: AvailableImageTag[];
   try {
     tags = await registry.listAvailableTags(service, limit);
   } catch (error) {
@@ -87,6 +91,19 @@ async function loadAvailableTags(
 
   spinner.stop(`Loaded ${tags.length} image tag${tags.length === 1 ? "" : "s"}`);
   return tags;
+}
+
+function formatTagTimestamp(createdAt?: string): string {
+  if (!createdAt) {
+    return "timestamp unavailable";
+  }
+
+  const timestamp = new Date(createdAt);
+  if (Number.isNaN(timestamp.valueOf())) {
+    return "timestamp unavailable";
+  }
+
+  return timestamp.toISOString().slice(0, 16).replace("T", " ") + " UTC";
 }
 
 export async function runSetImageVersion(
@@ -106,9 +123,12 @@ export async function runSetImageVersion(
   clack.intro("CompanyHelm image selection", { output });
   const selectedService = options.service
     ? requireManagedImageService(options.service)
-    : await promptForSelection("Which image do you want to pin?", [...MANAGED_IMAGE_SERVICES], input, output).then(
-        (value) => requireManagedImageService(value)
-      );
+    : await promptForSelection(
+        "Which image do you want to pin?",
+        MANAGED_IMAGE_SERVICES.map((service) => ({ value: service, label: service })),
+        input,
+        output
+      ).then((value) => requireManagedImageService(value));
 
   const currentImage = configStore.load().images[selectedService];
   clack.log.info(`Current configured image for ${selectedService}: ${currentImage ?? "default (latest)"}`, { output });
@@ -116,13 +136,15 @@ export async function runSetImageVersion(
   const tags = await loadAvailableTags(registry, selectedService, options.limit, output);
 
   const currentTag = currentImage ? currentImage.slice(currentImage.lastIndexOf(":") + 1) : undefined;
-  const defaultIndex = currentTag ? tags.indexOf(currentTag) : -1;
   const selectedTag = await promptForSelection(
     `Choose the ${selectedService} image tag`,
-    tags,
+    tags.map((tag) => ({
+      value: tag.tag,
+      label: `${tag.tag} (${formatTagTimestamp(tag.createdAt)})`
+    })),
     input,
     output,
-    defaultIndex >= 0 ? defaultIndex : undefined
+    currentTag
   );
 
   const result = configStore.setImage(selectedService, registry.buildImageReference(selectedService, selectedTag));

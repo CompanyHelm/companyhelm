@@ -78,7 +78,15 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
       configStore: new LocalConfigStore(projectRoot),
       registry: {
         async listAvailableTags(service: ManagedImageService) {
-          return service === "api" ? ["latest", "main-c32cd29"] : ["latest", "main-8fc7844"];
+          return service === "api"
+            ? [
+                { tag: "main-c32cd29", createdAt: "2026-03-12T05:36:25.602Z" },
+                { tag: "latest", createdAt: "2026-03-13T20:48:37.557Z" }
+              ]
+            : [
+                { tag: "main-8fc7844", createdAt: "2026-03-10T01:00:00.000Z" },
+                { tag: "latest", createdAt: "2026-03-10T01:00:00.000Z" }
+              ];
         },
         buildImageReference(service: ManagedImageService, tag: string) {
           return service === "api"
@@ -106,8 +114,8 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
   expect(promptState.select).toHaveBeenNthCalledWith(2, {
     message: "Choose the api image tag",
     options: [
-      { value: "latest", label: "latest", hint: undefined },
-      { value: "main-c32cd29", label: "main-c32cd29", hint: undefined }
+      { value: "main-c32cd29", label: "main-c32cd29 (2026-03-12 05:36 UTC)", hint: undefined },
+      { value: "latest", label: "latest (2026-03-13 20:48 UTC)", hint: undefined }
     ],
     initialValue: undefined,
     input,
@@ -117,4 +125,49 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
     expect.stringContaining("Updated"),
     { output }
   );
+});
+
+test("shows tags in descending chronological order and marks the current tag", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-set-image-"));
+  fs.writeFileSync(
+    path.join(projectRoot, "config.yaml"),
+    "images:\n  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29\n"
+  );
+  const input = createInteractiveStream();
+  const output = createInteractiveStream();
+
+  promptState.select.mockResolvedValueOnce("api").mockResolvedValueOnce("main-4c5949c");
+
+  await runSetImageVersion(
+    { limit: 5 },
+    {
+      input,
+      output,
+      configStore: new LocalConfigStore(projectRoot),
+      registry: {
+        async listAvailableTags() {
+          return [
+            { tag: "main-4c5949c", createdAt: "2026-03-13T18:22:38.515Z" },
+            { tag: "main-47a7002", createdAt: "2026-03-13T18:11:56.827Z" },
+            { tag: "main-c32cd29", createdAt: "2026-03-12T05:36:25.602Z" }
+          ];
+        },
+        buildImageReference(service: ManagedImageService, tag: string) {
+          return `public.ecr.aws/x6n0f2k4/companyhelm-${service === "api" ? "api" : "web"}:${tag}`;
+        }
+      }
+    }
+  );
+
+  expect(promptState.select).toHaveBeenNthCalledWith(2, {
+    message: "Choose the api image tag",
+    options: [
+      { value: "main-4c5949c", label: "main-4c5949c (2026-03-13 18:22 UTC)", hint: undefined },
+      { value: "main-47a7002", label: "main-47a7002 (2026-03-13 18:11 UTC)", hint: undefined },
+      { value: "main-c32cd29", label: "main-c32cd29 (2026-03-12 05:36 UTC)", hint: "current" }
+    ],
+    initialValue: "main-c32cd29",
+    input,
+    output
+  });
 });
