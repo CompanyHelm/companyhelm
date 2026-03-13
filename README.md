@@ -56,9 +56,6 @@ npx @companyhelm/cli --help
 Common commands:
 
 ```bash
-npx @companyhelm/cli setup-github-app
-npx @companyhelm/cli set-image-version
-npx @companyhelm/cli logs api
-npx @companyhelm/cli reset --yes
-npm run set-image-version
+npx @companyhelm/cli logs {service]
+npx @companyhelm/cli reset
 ```
