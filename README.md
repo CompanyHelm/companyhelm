@@ -1,11 +1,16 @@
-# CompanyHelm
+# CompanyHelm - Distributed AI Agent Orchestration
 
 CompanyHelm is an open-source control plane for running AI-agent companies in your own infrastructure.
 It gives teams a way to organize agents by role, keep humans in the loop for approvals and clarification, and run agent workloads in isolated environments instead of opaque hosted black boxes. Each agent can run its own app infrastructure for testing and create PRs autonomously. Spin up container-isolated agent threads with a click.
 
-[https://www.companyhelm.com/](https://www.companyhelm.com/)
+[Website](https://www.companyhelm.com/)
 
 ## Quick start
+
+Dependecies:
+- Docker
+- Node.js `>=24`
+- Codex subscription or api key
 
 ```bash
 npx @companyhelm/cli up
@@ -13,15 +18,8 @@ npx @companyhelm/cli up
 
 After startup, the CLI prints:
 
-- the local UI URL
+- the local dashboard UI URL
 - the generated username and password
-- the resolved package and image versions
-
-Before startup, you can pin the packaged API or frontend image in a local `config.yaml`:
-
-```bash
-npx @companyhelm/cli set-image-version
-```
 
 ## What CompanyHelm is
 
@@ -36,86 +34,17 @@ From the product perspective, CompanyHelm is built around a few core ideas:
 - Remote repository as the source of truth: agents clone the repo and submit PRs automatically
 - Parallel task execution: multiple agents can execute tasks independently in isolated environments
 
-
-This package is the local entry point for that system.
-Instead of asking you to clone multiple repos and stand up each service separately, the CLI starts a packaged local deployment for you.
-
 ## What the CLI boots locally
 
 `npx @companyhelm/cli up` brings up a local CompanyHelm stack with:
 
-- Postgres
 - CompanyHelm API
+- Postgres
 - CompanyHelm frontend
-- a host-managed CompanyHelm runner
+- CompanyHelm agent runner
 
-The deployment is intended to feel like a product install, not a source-based developer workflow.
-On startup, the CLI prepares runtime state, starts the services, configures the runner, and prints the local URLs and login credentials.
-
-## Requirements
-
-- Node.js `>=24`
-- Docker with Docker Compose support available locally
-- network access to pull the packaged runtime images
 
 ## Command reference
-
-Start or reconcile the local deployment:
-
-```bash
-npx @companyhelm/cli up
-```
-
-Start with a specific log level:
-
-```bash
-npx @companyhelm/cli up --log-level debug
-```
-
-Interactively choose a packaged API or frontend image tag and write it to `./config.yaml`:
-
-```bash
-npx @companyhelm/cli set-image-version
-```
-
-If you are working from this repository directly, the equivalent npm script is:
-
-```bash
-npm run set-image-version
-```
-
-Inspect deployment status:
-
-```bash
-npx @companyhelm/cli status
-```
-
-Stream logs for a managed service:
-
-```bash
-npx @companyhelm/cli logs api
-npx @companyhelm/cli logs frontend
-npx @companyhelm/cli logs postgres
-npx @companyhelm/cli logs runner
-```
-
-Stop the local deployment while keeping runtime state:
-
-```bash
-npx @companyhelm/cli down
-```
-
-Destroy the local deployment and runtime state:
-
-```bash
-npx @companyhelm/cli reset
-```
-
-Skip the reset confirmation prompt:
-
-```bash
-npx @companyhelm/cli reset --yes
-```
 
 For the full CLI help:
 
@@ -123,52 +52,3 @@ For the full CLI help:
 npx @companyhelm/cli --help
 ```
 
-## Authentication
-
-On first `up`, CompanyHelm generates a local admin login and stores it in the runtime state directory.
-
-- username: `admin@local`
-- password: randomly generated on first boot
-
-The password is printed during startup and reused on later `up` runs.
-If you want a fresh local environment and a new password, run `npx @companyhelm/cli reset --yes` and start again.
-
-## Local runtime state
-
-By default, CompanyHelm stores local state under:
-
-```bash
-~/.companyhelm
-```
-
-You can override that location with:
-
-```bash
-COMPANYHELM_HOME=/custom/path
-```
-
-That runtime directory contains the generated deployment state, rendered configs, compose file, seed data, and runner logs used by the local install.
-
-## Local image pinning
-
-`set-image-version` stores selected packaged image references in `config.yaml` in the current working directory:
-
-```yaml
-images:
-  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29
-  frontend: public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844
-```
-
-`up` and `status` read that file automatically. If `config.yaml` is missing, CompanyHelm falls back to the default `latest` API and frontend images.
-
-## Why this repo exists
-
-The hosted landing page describes CompanyHelm as the operating layer for AI-agent companies.
-This repository is the fastest way to experience that locally:
-
-- bring up the control plane on your machine
-- inspect how the local runtime is configured
-- validate the runner integration
-- explore the product with a real UI and API instead of mocked examples
-
-If you want to evaluate CompanyHelm as a self-hosted system, this CLI is the starting point.
