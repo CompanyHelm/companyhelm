@@ -40,6 +40,21 @@ interface PublicRegistryBlobConfigResponse {
   created?: string;
 }
 
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+const MAX_FETCH_ATTEMPTS = 3;
+const DEFAULT_RETRY_DELAY_MS = 250;
+
+class PublicRegistryRequestError extends Error {
+  public readonly status: number;
+  public readonly retryAfterMs?: number;
+
+  public constructor(url: string, status: number, retryAfterMs?: number) {
+    super(`Public registry returned ${status} for ${url}.`);
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 export class PublicImageTagRegistry {
   public async listAvailableTags(service: ManagedImageService, limit = 20): Promise<PublicRegistryImageTag[]> {
     if (!Number.isInteger(limit) || limit < 1) {
@@ -64,13 +79,15 @@ export class PublicImageTagRegistry {
     }
 
     const uniqueTags = [...new Set(payload.tags ?? [])].map((tag, position) => ({ tag, position }));
-    const tagsWithMetadata = await Promise.all(
-      uniqueTags.map(async ({ tag, position }) => ({
+    const createdAtByDigest = new Map<string, string | undefined>();
+    const tagsWithMetadata: Array<{ tag: string; position: number; createdAt?: string }> = [];
+    for (const { tag, position } of uniqueTags) {
+      tagsWithMetadata.push({
         tag,
         position,
-        createdAt: await this.fetchCreatedAt(repositoryPath, token, tag)
-      }))
-    );
+        createdAt: await this.fetchCreatedAt(repositoryPath, token, tag, createdAtByDigest)
+      });
+    }
 
     return tagsWithMetadata
       .sort((left, right) => {
@@ -109,44 +126,61 @@ export class PublicImageTagRegistry {
     return payload.token;
   }
 
-  private async fetchCreatedAt(repositoryPath: string, token: string, tag: string): Promise<string | undefined> {
-    const manifestReference = await this.fetchJson<PublicRegistryImageIndexResponse | PublicRegistryImageManifestResponse>(
-      `https://public.ecr.aws/v2/${repositoryPath}/manifests/${encodeURIComponent(tag)}`,
-      {
-        Authorization: `Bearer ${token}`,
-        Accept: [
-          "application/vnd.oci.image.index.v1+json",
-          "application/vnd.docker.distribution.manifest.list.v2+json",
-          "application/vnd.oci.image.manifest.v1+json",
-          "application/vnd.docker.distribution.manifest.v2+json"
-        ].join(", ")
+  private async fetchCreatedAt(
+    repositoryPath: string,
+    token: string,
+    tag: string,
+    createdAtByDigest: Map<string, string | undefined>
+  ): Promise<string | undefined> {
+    try {
+      const manifestReference = await this.fetchJson<PublicRegistryImageIndexResponse | PublicRegistryImageManifestResponse>(
+        `https://public.ecr.aws/v2/${repositoryPath}/manifests/${encodeURIComponent(tag)}`,
+        {
+          Authorization: `Bearer ${token}`,
+          Accept: [
+            "application/vnd.oci.image.index.v1+json",
+            "application/vnd.docker.distribution.manifest.list.v2+json",
+            "application/vnd.oci.image.manifest.v1+json",
+            "application/vnd.docker.distribution.manifest.v2+json"
+          ].join(", ")
+        }
+      );
+
+      const digest = this.selectManifestDigest(manifestReference);
+      const manifest = digest
+        ? await this.fetchJson<PublicRegistryImageManifestResponse>(
+            `https://public.ecr.aws/v2/${repositoryPath}/manifests/${encodeURIComponent(digest)}`,
+            {
+              Authorization: `Bearer ${token}`,
+              Accept: ["application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json"].join(", ")
+            }
+          )
+        : manifestReference;
+
+      const configDigest = "config" in manifest ? manifest.config?.digest : undefined;
+      if (!configDigest) {
+        return undefined;
       }
-    );
 
-    const digest = this.selectManifestDigest(manifestReference);
-    const manifest = digest
-      ? await this.fetchJson<PublicRegistryImageManifestResponse>(
-          `https://public.ecr.aws/v2/${repositoryPath}/manifests/${encodeURIComponent(digest)}`,
-          {
-            Authorization: `Bearer ${token}`,
-            Accept: ["application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json"].join(", ")
-          }
-        )
-      : manifestReference;
+      if (createdAtByDigest.has(configDigest)) {
+        return createdAtByDigest.get(configDigest);
+      }
 
-    const configDigest = "config" in manifest ? manifest.config?.digest : undefined;
-    if (!configDigest) {
-      return undefined;
+      const config = await this.fetchJson<PublicRegistryBlobConfigResponse>(
+        `https://public.ecr.aws/v2/${repositoryPath}/blobs/${configDigest}`,
+        {
+          Authorization: `Bearer ${token}`
+        }
+      );
+      createdAtByDigest.set(configDigest, config.created);
+      return config.created;
+    } catch (error) {
+      if (error instanceof PublicRegistryRequestError) {
+        return undefined;
+      }
+
+      throw error;
     }
-
-    const config = await this.fetchJson<PublicRegistryBlobConfigResponse>(
-      `https://public.ecr.aws/v2/${repositoryPath}/blobs/${configDigest}`,
-      {
-        Authorization: `Bearer ${token}`
-      }
-    );
-
-    return config.created;
   }
 
   private selectManifestDigest(
@@ -163,11 +197,44 @@ export class PublicImageTagRegistry {
   }
 
   private async fetchJson<T>(url: string, headers: Record<string, string>): Promise<T> {
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Public registry returned ${response.status} for ${url}.`);
+    for (let attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt += 1) {
+      const response = await fetch(url, { headers });
+      if (response.ok) {
+        return (await response.json()) as T;
+      }
+
+      const retryAfterMs = this.parseRetryAfterMs(response);
+      if (attempt < MAX_FETCH_ATTEMPTS && RETRYABLE_STATUS_CODES.has(response.status)) {
+        await this.sleep(retryAfterMs ?? DEFAULT_RETRY_DELAY_MS * attempt);
+        continue;
+      }
+
+      throw new PublicRegistryRequestError(url, response.status, retryAfterMs);
     }
 
-    return (await response.json()) as T;
+    throw new PublicRegistryRequestError(url, 500);
+  }
+
+  private parseRetryAfterMs(response: Response): number | undefined {
+    const retryAfter = response.headers.get("retry-after");
+    if (!retryAfter) {
+      return undefined;
+    }
+
+    const retryAfterSeconds = Number.parseInt(retryAfter, 10);
+    if (Number.isFinite(retryAfterSeconds)) {
+      return Math.max(retryAfterSeconds, 0) * 1000;
+    }
+
+    const retryAt = Date.parse(retryAfter);
+    if (Number.isNaN(retryAt)) {
+      return undefined;
+    }
+
+    return Math.max(retryAt - Date.now(), 0);
+  }
+
+  private async sleep(delayMs: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 }
