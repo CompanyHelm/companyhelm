@@ -63,6 +63,10 @@ beforeEach(() => {
 test("readPemFromTerminal reads multiline pem content until the end marker", async () => {
   const input = createInteractiveStream();
   const output = createInteractiveStream();
+  let outputText = "";
+  output.on("data", (chunk) => {
+    outputText += chunk.toString();
+  });
 
   const promise = readPemFromTerminal(input, output);
   input.write("-----BEGIN PRIVATE KEY-----\n");
@@ -72,6 +76,9 @@ test("readPemFromTerminal reads multiline pem content until the end marker", asy
   await expect(promise).resolves.toBe(
     "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
   );
+  expect(outputText).toContain("Generate a private key.");
+  expect(outputText).toContain("cat ~/Downloads/{your-app-name}{date}.pem | pbcopy");
+  expect(outputText).toContain("paste it here");
 });
 
 test("setup-github-app saves the machine config from interactive prompts", async () => {

@@ -100,7 +100,13 @@ export async function readPemFromTerminal(
     output,
     "setup-github-app requires an interactive terminal.",
   );
-  output.write("Paste the GitHub App private key PEM. Input ends after the -----END ...----- line.\n");
+  output.write(
+    [
+      "Generate a private key.",
+      "Once downloaded copy the contents (e.g. cat ~/Downloads/{your-app-name}{date}.pem | pbcopy) and paste it here.",
+      "",
+    ].join("\n"),
+  );
 
   const readline = createInterface({
     input,
