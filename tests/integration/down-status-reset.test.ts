@@ -21,7 +21,8 @@ vi.mock("@clack/prompts", () => ({
 }));
 
 import { buildProgram } from "../../src/commands/register-commands.js";
-import { confirmReset } from "../../src/commands/reset.js";
+import { confirmRemoveGithubAppConfig, confirmReset } from "../../src/commands/reset.js";
+import { GithubAppConfigStore } from "../../src/core/config/GithubAppConfigStore.js";
 
 function createInteractiveStream(): PassThrough & { isTTY: boolean } {
   const stream = new PassThrough() as PassThrough & { isTTY: boolean };
@@ -68,6 +69,7 @@ test("reset supports --yes to skip confirmation", async () => {
   await program.parseAsync(["node", "companyhelm", "reset", "--yes"]);
 
   expect(reset).toHaveBeenCalledOnce();
+  expect(reset).toHaveBeenCalledWith({ removeGithubAppConfig: false });
 });
 
 test("confirmReset accepts an explicit yes answer", async () => {
@@ -84,6 +86,16 @@ test("confirmReset accepts an explicit yes answer", async () => {
     input,
     output
   });
+});
+
+test("confirmRemoveGithubAppConfig returns false when no machine config exists", async () => {
+  const input = createInteractiveStream();
+  const output = createInteractiveStream();
+  const store = new GithubAppConfigStore();
+  vi.spyOn(store, "hasConfig").mockReturnValue(false);
+
+  await expect(confirmRemoveGithubAppConfig(store, input, output)).resolves.toBe(false);
+  expect(promptState.confirm).not.toHaveBeenCalled();
 });
 
 test("confirmReset rejects non-interactive use without --yes", async () => {
@@ -122,6 +134,62 @@ test("reset without --yes cancels when the user declines", async () => {
 
   expect(reset).not.toHaveBeenCalled();
   expect(promptState.cancel).toHaveBeenCalledWith("Reset cancelled.");
+});
+
+test("reset without --yes asks whether to remove the machine GitHub App config", async () => {
+  const reset = vi.fn(async () => undefined);
+  promptState.confirm
+    .mockResolvedValueOnce(true)
+    .mockResolvedValueOnce(true);
+  vi.spyOn(GithubAppConfigStore.prototype, "hasConfig").mockReturnValue(true);
+  vi.spyOn(GithubAppConfigStore.prototype, "configPath").mockReturnValue("/tmp/github-app.yaml");
+  const program = buildProgram({
+    up: async () => undefined,
+    down: async () => undefined,
+    status: async () => ({
+      services: { postgres: "stopped", api: "stopped", frontend: "stopped", runner: "stopped" }
+    }),
+    logs: async () => undefined,
+    reset
+  });
+
+  const restoreStdin = setIsTty(process.stdin, true);
+  const restoreStdout = setIsTty(process.stdout, true);
+
+  try {
+    await program.parseAsync(["node", "companyhelm", "reset"]);
+  } finally {
+    restoreStdin();
+    restoreStdout();
+  }
+
+  expect(promptState.confirm).toHaveBeenNthCalledWith(2, {
+    message: "Also remove the machine GitHub App config at /tmp/github-app.yaml?",
+    active: "Remove it",
+    inactive: "Keep it",
+    initialValue: false,
+    input: process.stdin,
+    output: process.stdout
+  });
+  expect(reset).toHaveBeenCalledWith({ removeGithubAppConfig: true });
+});
+
+test("reset supports removing machine GitHub App config with --yes", async () => {
+  const reset = vi.fn(async () => undefined);
+  const program = buildProgram({
+    up: async () => undefined,
+    down: async () => undefined,
+    status: async () => ({
+      services: { postgres: "stopped", api: "stopped", frontend: "stopped", runner: "stopped" }
+    }),
+    logs: async () => undefined,
+    reset
+  });
+
+  await program.parseAsync(["node", "companyhelm", "reset", "--yes", "--remove-github-app-config"]);
+
+  expect(reset).toHaveBeenCalledOnce();
+  expect(reset).toHaveBeenCalledWith({ removeGithubAppConfig: true });
 });
 
 test("logs without a service prints the available service list", async () => {

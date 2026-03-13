@@ -24,6 +24,10 @@ export interface UpOptions {
   logLevel?: LogLevel;
 }
 
+export interface ResetOptions {
+  removeGithubAppConfig?: boolean;
+}
+
 export interface StatusReport {
   services: StatusSnapshot;
   apiUrl?: string;
@@ -37,7 +41,7 @@ export interface CommandDependencies {
   down(): Promise<void>;
   status(): Promise<StatusReport>;
   logs(service: string): Promise<void>;
-  reset(): Promise<void>;
+  reset(options?: ResetOptions): Promise<void>;
 }
 
 function runtimeRoot(): string {
@@ -154,7 +158,7 @@ export function createDefaultDependencies(): CommandDependencies {
     logs(service: string) {
       return logsService.stream(service);
     },
-    async reset() {
+    async reset(options = {}) {
       if (stateStore.load()) {
         const stopCommand = runnerSupervisor.buildStopArgs();
         try {
@@ -167,6 +171,9 @@ export function createDefaultDependencies(): CommandDependencies {
       await dockerStackManager.down({ removeVolumes: true });
       fs.rmSync(projectPaths.apiEnvPath(), { force: true });
       fs.rmSync(root, { recursive: true, force: true });
+      if (options.removeGithubAppConfig) {
+        githubAppConfigStore.delete();
+      }
     }
   };
 }

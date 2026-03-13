@@ -33,6 +33,10 @@ export class GithubAppConfigStore {
     return path.join(this.configRoot, "github-app.yaml");
   }
 
+  public hasConfig(): boolean {
+    return fs.existsSync(this.configPath());
+  }
+
   public save(config: GithubAppConfig): string {
     const normalized = normalizeGithubAppConfig(config);
     fs.mkdirSync(this.configRoot, { recursive: true });
@@ -49,7 +53,7 @@ export class GithubAppConfigStore {
   }
 
   public load(): GithubAppConfig | null {
-    if (!fs.existsSync(this.configPath())) {
+    if (!this.hasConfig()) {
       return null;
     }
 
@@ -73,5 +77,9 @@ export class GithubAppConfigStore {
       );
     }
     return config;
+  }
+
+  public delete(): void {
+    fs.rmSync(this.configPath(), { force: true });
   }
 }

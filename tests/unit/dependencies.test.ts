@@ -170,3 +170,19 @@ test("reset deletes the generated project api env file", async () => {
 
   expect(fs.existsSync(path.join(projectRoot, ".companyhelm", "api", ".env"))).toBe(false);
 });
+
+test("reset deletes the machine GitHub App config when requested", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-project-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-runtime-"));
+  const configRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-config-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+  process.env.COMPANYHELM_CONFIG_HOME = configRoot;
+  fs.writeFileSync(path.join(configRoot, "github-app.yaml"), "app_url: https://github.com/apps/example\n", "utf8");
+
+  vi.spyOn(DockerStackManager.prototype, "down").mockResolvedValue(undefined);
+
+  await createDefaultDependencies().reset({ removeGithubAppConfig: true });
+
+  expect(fs.existsSync(path.join(configRoot, "github-app.yaml"))).toBe(false);
+});
