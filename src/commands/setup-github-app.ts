@@ -2,7 +2,7 @@ import * as clack from "@clack/prompts";
 import chalk from "chalk";
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import type { Readable, Writable } from "node:stream";
+import { Writable, type Readable } from "node:stream";
 
 import type { Command } from "commander";
 
@@ -13,6 +13,14 @@ import { normalizeGithubAppConfig, type GithubAppConfig } from "../core/config/G
 const GITHUB_NEW_APP_URL = "https://github.com/settings/apps/new";
 
 type BrowserUrlOpener = (url: string) => Promise<void>;
+
+function createHiddenTerminalOutput(): Writable {
+  return new Writable({
+    write(_chunk, _encoding, callback) {
+      callback();
+    },
+  });
+}
 
 function getBrowserOpenCommand(url: string): { command: string; args: string[] } {
   if (process.platform === "darwin") {
@@ -110,7 +118,7 @@ export async function readPemFromTerminal(
 
   const readline = createInterface({
     input,
-    output,
+    output: createHiddenTerminalOutput(),
     terminal: false,
   });
 

@@ -79,6 +79,9 @@ test("readPemFromTerminal reads multiline pem content until the end marker", asy
   expect(outputText).toContain("Generate a private key.");
   expect(outputText).toContain("cat ~/Downloads/{your-app-name}{date}.pem | pbcopy");
   expect(outputText).toContain("paste it here");
+  expect(outputText).not.toContain("-----BEGIN PRIVATE KEY-----");
+  expect(outputText).not.toContain("-----END PRIVATE KEY-----");
+  expect(outputText).not.toContain("\nkey\n");
 });
 
 test("setup-github-app saves the machine config from interactive prompts", async () => {
