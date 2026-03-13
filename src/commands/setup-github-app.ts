@@ -1,4 +1,6 @@
 import * as clack from "@clack/prompts";
+import chalk from "chalk";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { Readable, Writable } from "node:stream";
 
@@ -7,6 +9,72 @@ import type { Command } from "commander";
 import { unwrapPromptResult, requireInteractiveTerminal, InteractiveCommandCancelledError } from "./interactive.js";
 import { GithubAppConfigStore } from "../core/config/GithubAppConfigStore.js";
 import { normalizeGithubAppConfig, type GithubAppConfig } from "../core/config/GithubAppConfig.js";
+
+const GITHUB_NEW_APP_URL = "https://github.com/settings/apps/new";
+
+type BrowserUrlOpener = (url: string) => Promise<void>;
+
+function getBrowserOpenCommand(url: string): { command: string; args: string[] } {
+  if (process.platform === "darwin") {
+    return { command: "open", args: [url] };
+  }
+
+  if (process.platform === "win32") {
+    return { command: "cmd", args: ["/c", "start", "", url] };
+  }
+
+  return { command: "xdg-open", args: [url] };
+}
+
+async function openUrlInBrowser(url: string): Promise<void> {
+  const { command, args } = getBrowserOpenCommand(url);
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore",
+    });
+
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolve();
+    });
+  });
+}
+
+function writeGithubAppCreationGuide(output: Writable): void {
+  const divider = chalk.dim("=".repeat(68));
+  const label = (text: string) => chalk.bold(chalk.cyan(text));
+  const value = (text: string) => chalk.white(text);
+
+  output.write(
+    [
+      divider,
+      chalk.bold("Create a GitHub App before continuing"),
+      chalk.dim("CompanyHelm needs a local GitHub App before startup can continue."),
+      chalk.dim("Agents use that app to access and work on your repositories from isolated container workspaces."),
+      chalk.dim("That lets each agent clone repos and operate safely without reusing your host checkout."),
+      "",
+      `${label("New app page")} ${chalk.underline(chalk.green(GITHUB_NEW_APP_URL))}`,
+      "",
+      chalk.bold("Recommended form values"),
+      `${label("GitHub App name:")} ${value("Any name you like, e.g. companyhelm <your deployment name>")}`,
+      `${label("Public link:")} ${value("Paste your public link here")}`,
+      `${label("Setup URL (optional):")} ${value("http://localhost:4173/github/install")}`,
+      `${label("Redirect on update:")} ${value("Checked")}`,
+      `${label("Webhook:")} ${value("Leave it inactive and uncheck the webhook option")}`,
+      `${label("Permissions:")} ${value("Grant at least Contents so CompanyHelm can download repositories; add any additional permissions your agents need")}`,
+      `${label("Where can this GitHub App be installed?")} ${value("Select Any account")}`,
+      "",
+      chalk.bold("Bring back after creation"),
+      value("App URL, Client ID, and private key PEM"),
+      "",
+      divider,
+      "",
+    ].join("\n"),
+  );
+}
 
 async function promptTextValue(
   message: string,
@@ -96,6 +164,7 @@ export async function readPemFromTerminal(
 export async function promptGithubAppConfig(
   input: Readable = process.stdin,
   output: Writable = process.stdout,
+  openBrowser: BrowserUrlOpener = openUrlInBrowser,
 ): Promise<GithubAppConfig> {
   requireInteractiveTerminal(
     input,
@@ -103,13 +172,35 @@ export async function promptGithubAppConfig(
     "setup-github-app requires an interactive terminal.",
   );
 
-  output.write(
-    [
-      "Create a GitHub App before continuing.",
-      "You will need the App URL, the Client ID, and the private key PEM.",
-      "",
-    ].join("\n"),
+  writeGithubAppCreationGuide(output);
+
+  const shouldOpenBrowser = unwrapPromptResult(
+    await clack.confirm({
+      message: `Open ${GITHUB_NEW_APP_URL} in your browser now?`,
+      active: "Yes",
+      inactive: "No",
+      initialValue: true,
+      input,
+      output,
+    }),
+    "GitHub App setup cancelled.",
+    output,
   );
+
+  if (shouldOpenBrowser) {
+    try {
+      await openBrowser(GITHUB_NEW_APP_URL);
+      output.write(`Opened ${GITHUB_NEW_APP_URL} in your browser.\n\n`);
+    } catch {
+      output.write(
+        [
+          "Could not open a browser automatically.",
+          `Open this URL manually: ${GITHUB_NEW_APP_URL}`,
+          "",
+        ].join("\n"),
+      );
+    }
+  }
 
   const appUrl = await promptTextValue(
     "GitHub App URL",

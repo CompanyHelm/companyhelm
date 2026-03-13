@@ -3,6 +3,7 @@ import { PassThrough } from "node:stream";
 
 const promptState = vi.hoisted(() => ({
   text: vi.fn(),
+  confirm: vi.fn(),
   intro: vi.fn(),
   note: vi.fn(),
   outro: vi.fn(),
@@ -15,6 +16,7 @@ const promptState = vi.hoisted(() => ({
 
 vi.mock("@clack/prompts", () => ({
   text: promptState.text,
+  confirm: promptState.confirm,
   intro: promptState.intro,
   note: promptState.note,
   outro: promptState.outro,
@@ -27,6 +29,7 @@ import { Command } from "commander";
 
 import {
   ensureGithubAppConfig,
+  promptGithubAppConfig,
   registerSetupGithubAppCommand,
   readPemFromTerminal,
 } from "../../src/commands/setup-github-app.js";
@@ -41,6 +44,7 @@ function createInteractiveStream(): PassThrough & { isTTY: boolean } {
 beforeEach(() => {
   vi.restoreAllMocks();
   promptState.text.mockReset();
+  promptState.confirm.mockReset();
   promptState.intro.mockReset();
   promptState.note.mockReset();
   promptState.outro.mockReset();
@@ -53,6 +57,7 @@ beforeEach(() => {
     start: promptState.spinnerStart,
     stop: promptState.spinnerStop,
   });
+  promptState.confirm.mockResolvedValue(true);
 });
 
 test("readPemFromTerminal reads multiline pem content until the end marker", async () => {
@@ -110,6 +115,59 @@ test("setup-github-app saves the machine config from interactive prompts", async
   expect(promptState.spinnerStart).toHaveBeenCalledWith("Saving machine GitHub App config");
   expect(promptState.spinnerStop).toHaveBeenCalledWith("Saved GitHub App config to /tmp/github-app.yaml");
   expect(promptState.outro).toHaveBeenCalledWith("Saved GitHub App config to /tmp/github-app.yaml.");
+});
+
+test("promptGithubAppConfig shows the new app URL and offers to open it in the browser", async () => {
+  promptState.text
+    .mockResolvedValueOnce("https://github.com/apps/example-local")
+    .mockResolvedValueOnce("Iv123");
+
+  const input = createInteractiveStream();
+  const output = createInteractiveStream();
+  let outputText = "";
+  output.on("data", (chunk) => {
+    outputText += chunk.toString();
+  });
+
+  const openBrowser = vi.fn().mockResolvedValue(undefined);
+  const promise = promptGithubAppConfig(input, output, openBrowser);
+  input.write("-----BEGIN PRIVATE KEY-----\n");
+  input.write("key\n");
+  input.write("-----END PRIVATE KEY-----\n");
+
+  await expect(promise).resolves.toEqual({
+    appUrl: "https://github.com/apps/example-local",
+    appClientId: "Iv123",
+    appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
+  });
+
+  expect(promptState.confirm).toHaveBeenCalledWith({
+    message: "Open https://github.com/settings/apps/new in your browser now?",
+    active: "Yes",
+    inactive: "No",
+    initialValue: true,
+    input,
+    output,
+  });
+  expect(openBrowser).toHaveBeenCalledWith("https://github.com/settings/apps/new");
+  expect(outputText).toContain("New app page");
+  expect(outputText).toContain("https://github.com/settings/apps/new");
+  expect(outputText).toContain("Agents use that app to access and work on your repositories from isolated container workspaces");
+  expect(outputText).toContain("operate safely without reusing your host checkout");
+  expect(outputText).toContain("GitHub App name:");
+  expect(outputText).toContain("companyhelm <your deployment name>");
+  expect(outputText).toContain("Public link:");
+  expect(outputText).toContain("Paste your public link here");
+  expect(outputText).toContain("Setup URL (optional):");
+  expect(outputText).toContain("http://localhost:4173/github/install");
+  expect(outputText).toContain("Redirect on update:");
+  expect(outputText).toContain("Checked");
+  expect(outputText).toContain("Webhook:");
+  expect(outputText).toContain("Leave it inactive and uncheck the webhook option");
+  expect(outputText).toContain("Permissions:");
+  expect(outputText).toContain("Grant at least Contents so CompanyHelm can download repositories");
+  expect(outputText).toContain("Where can this GitHub App be installed?");
+  expect(outputText).toContain("Select Any account");
 });
 
 test("ensureGithubAppConfig prompts and saves when missing in a tty", async () => {
