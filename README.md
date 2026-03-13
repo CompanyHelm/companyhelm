@@ -13,6 +13,7 @@ Dependecies:
 - Codex subscription or api key
 
 ```bash
+npx @companyhelm/cli setup-github-app
 npx @companyhelm/cli up
 ```
 
@@ -52,3 +53,12 @@ For the full CLI help:
 npx @companyhelm/cli --help
 ```
 
+Common commands:
+
+```bash
+npx @companyhelm/cli setup-github-app
+npx @companyhelm/cli set-image-version
+npx @companyhelm/cli logs api
+npx @companyhelm/cli reset --yes
+npm run set-image-version
+```

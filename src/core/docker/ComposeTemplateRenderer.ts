@@ -14,6 +14,7 @@ export interface ComposePorts {
 
 export interface ComposePaths {
   apiConfigPath: string;
+  apiEnvPath: string;
   frontendConfigPath: string;
   seedFilePath: string;
 }
@@ -53,6 +54,7 @@ export class ComposeTemplateRenderer {
       .replaceAll("{{API_IMAGE}}", images.api)
       .replaceAll("{{POSTGRES_IMAGE}}", images.postgres)
       .replaceAll("{{API_CONFIG_PATH}}", paths.apiConfigPath)
+      .replaceAll("{{API_ENV_PATH}}", paths.apiEnvPath)
       .replaceAll("{{SEED_FILE_PATH}}", paths.seedFilePath)
       .replaceAll("{{API_HTTP_PORT}}", String(ports.apiHttpPort))
       .replaceAll("{{UI_PORT}}", String(ports.uiPort))
