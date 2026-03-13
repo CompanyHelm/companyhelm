@@ -174,7 +174,7 @@ test("promptGithubAppConfig shows the new app URL and offers to open it in the b
   expect(outputText).toContain("companyhelm <your deployment name>");
   expect(outputText).toContain("Public link:");
   expect(outputText).toContain("Paste your public link here");
-  expect(outputText).toContain("Setup URL (optional):");
+  expect(outputText).toContain("Setup URL:");
   expect(outputText).toContain("http://localhost:4173/github/install");
   expect(outputText).toContain("Redirect on update:");
   expect(outputText).toContain("Checked");
