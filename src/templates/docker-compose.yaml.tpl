@@ -16,6 +16,8 @@ services:
     platform: linux/amd64
     depends_on:
       - postgres
+    env_file:
+      - "{{API_ENV_PATH}}"
     environment:
       COMPANYHELM_CONFIG_PATH: /run/companyhelm/config.yaml
     ports:

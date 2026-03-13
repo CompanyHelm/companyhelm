@@ -12,7 +12,7 @@ export async function confirmReset(
 ): Promise<boolean> {
   requireInteractiveTerminal(input, output, "reset requires confirmation from a TTY. Re-run with --yes to skip the prompt.");
   const confirmed = await clack.confirm({
-    message: "This will remove CompanyHelm containers, Postgres data, and local runtime state. Continue?",
+    message: "This will remove CompanyHelm containers, Postgres data, local runtime state, and generated .companyhelm/api/.env. Continue?",
     active: "Yes",
     inactive: "No",
     initialValue: false,

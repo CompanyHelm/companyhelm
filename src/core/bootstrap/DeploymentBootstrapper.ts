@@ -8,7 +8,6 @@ import { SeedSqlRenderer } from "./SeedSqlRenderer.js";
 
 export class DeploymentBootstrapper {
   private readonly renderer = new SeedSqlRenderer();
-  private readonly githubAppClientId = "Iv23lirb9vZAi67f5bSQ";
 
   public writeSeedSql(root: string, state: RuntimeState, passwordHash: string, passwordSalt: string): string {
     const runtimePaths = new RuntimePaths(root);
@@ -58,10 +57,9 @@ export class DeploymentBootstrapper {
       '      username: "postgres"',
       '      password: "postgres"',
       "github:",
-      `  app_client_id: "${this.githubAppClientId}"`,
-      "  app_private_key_pem: |-",
-      this.indentBlock(state.auth.jwtPrivateKeyPem, 4),
-      '  app_link: "https://github.com/apps/companyhelm-local"',
+      '  app_client_id: "${GITHUB_APP_CLIENT_ID}"',
+      '  app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"',
+      '  app_link: "${GITHUB_APP_URL}"',
       'authProvider: "companyhelm"',
       "auth:",
       "  companyhelm:",

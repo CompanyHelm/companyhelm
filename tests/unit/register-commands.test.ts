@@ -6,6 +6,7 @@ test("registers the initial command surface", () => {
   const program = buildProgram();
 
   expect(program.commands.map((command) => command.name())).toEqual([
+    "setup-github-app",
     "up",
     "down",
     "status",

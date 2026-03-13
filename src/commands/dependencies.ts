@@ -3,9 +3,12 @@ import os from "node:os";
 import path from "node:path";
 
 import { DeploymentBootstrapper } from "../core/bootstrap/DeploymentBootstrapper.js";
+import { ApiEnvFileWriter } from "../core/config/ApiEnvFileWriter.js";
+import { GithubAppConfigStore } from "../core/config/GithubAppConfigStore.js";
 import { DockerStackManager } from "../core/docker/DockerStackManager.js";
 import { LogsService } from "../core/logs/LogsService.js";
 import { CommandRunner } from "../core/process/CommandRunner.js";
+import { ProjectPaths } from "../core/runtime/ProjectPaths.js";
 import { RunnerSupervisor } from "../core/runner/RunnerSupervisor.js";
 import { createPasswordHash } from "../core/runtime/Secrets.js";
 import { RuntimePaths } from "../core/runtime/RuntimePaths.js";
@@ -49,6 +52,9 @@ export function createDefaultDependencies(): CommandDependencies {
   const dockerStackManager = new DockerStackManager(root, commandRunner);
   const runnerSupervisor = new RunnerSupervisor(runtimePaths.runnerConfigPath());
   const bootstrapper = new DeploymentBootstrapper();
+  const githubAppConfigStore = new GithubAppConfigStore();
+  const apiEnvFileWriter = new ApiEnvFileWriter(process.cwd());
+  const projectPaths = new ProjectPaths(process.cwd());
   const versionCatalog = new VersionCatalog();
   const statusService = new StatusService(
     () => dockerStackManager.runningServices(),
@@ -78,10 +84,12 @@ export function createDefaultDependencies(): CommandDependencies {
   return {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
+      const githubAppConfig = githubAppConfigStore.loadOrThrow();
       const state = stateStore.initialize();
       const versions = versionCatalog.resolve();
       const passwordRecord = createPasswordHash(state.auth.password);
       fs.mkdirSync(root, { recursive: true });
+      apiEnvFileWriter.write(githubAppConfig);
       bootstrapper.writeSeedSql(root, state, passwordRecord.passwordHash, passwordRecord.passwordSalt);
       bootstrapper.writeApiConfig(root, state, logLevel);
       bootstrapper.writeFrontendConfig(root, state);
@@ -156,6 +164,7 @@ export function createDefaultDependencies(): CommandDependencies {
       }
 
       await dockerStackManager.down({ removeVolumes: true });
+      fs.rmSync(projectPaths.apiEnvPath(), { force: true });
       fs.rmSync(root, { recursive: true, force: true });
     }
   };

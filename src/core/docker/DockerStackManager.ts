@@ -2,6 +2,7 @@ import fs from "node:fs";
 
 import type { LogLevel } from "../../commands/dependencies.js";
 import { CommandRunner } from "../process/CommandRunner.js";
+import { ProjectPaths } from "../runtime/ProjectPaths.js";
 import { RuntimePaths } from "../runtime/RuntimePaths.js";
 import type { RuntimeState } from "../runtime/RuntimeState.js";
 import { ComposeTemplateRenderer } from "./ComposeTemplateRenderer.js";
@@ -38,6 +39,7 @@ export class DockerStackManager {
         agentCliGrpcPort: state.ports.agentCliGrpc
       }, {
         apiConfigPath: this.runtimePaths.apiConfigPath(),
+        apiEnvPath: new ProjectPaths(process.cwd()).apiEnvPath(),
         frontendConfigPath: this.runtimePaths.frontendConfigPath(),
         seedFilePath: this.runtimePaths.seedFilePath()
       }, {

@@ -77,7 +77,7 @@ test("confirmReset accepts an explicit yes answer", async () => {
 
   await expect(confirmReset(input, output)).resolves.toBe(true);
   expect(promptState.confirm).toHaveBeenCalledWith({
-    message: "This will remove CompanyHelm containers, Postgres data, and local runtime state. Continue?",
+    message: "This will remove CompanyHelm containers, Postgres data, local runtime state, and generated .companyhelm/api/.env. Continue?",
     active: "Yes",
     inactive: "No",
     initialValue: false,
