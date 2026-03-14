@@ -26,28 +26,42 @@ export class DeploymentBootstrapper {
     return outputPath;
   }
 
-  public writeApiConfig(root: string, state: RuntimeState, logLevel: LogLevel = "info"): string {
+  public writeApiConfig(
+    root: string,
+    state: RuntimeState,
+    logLevel: LogLevel = "info",
+    options: {
+      databaseHost?: string;
+      appPort?: number;
+      runnerGrpcPort?: number;
+      agentGrpcPort?: number;
+    } = {}
+  ): string {
     const runtimePaths = new RuntimePaths(root);
     const outputPath = runtimePaths.apiConfigPath();
+    const appPort = options.appPort ?? state.ports.apiHttp;
+    const runnerGrpcPort = options.runnerGrpcPort ?? state.ports.runnerGrpc;
+    const agentGrpcPort = options.agentGrpcPort ?? state.ports.agentCliGrpc;
+    const databaseHost = options.databaseHost ?? "postgres";
     const yaml = [
       "app:",
       '  host: "0.0.0.0"',
-      '  port: 4000',
+      `  port: ${appPort}`,
       '  graphqlEndpoint: "/graphql"',
       "  graphiql: true",
       "  grpc:",
       '    host: "0.0.0.0"',
-      "    port: 50051",
+      `    port: ${runnerGrpcPort}`,
       "    heartbeat:",
       "      intervalMs: 20000",
       "      jitterMs: 10000",
       "agent:",
       "  grpc:",
       '    host: "0.0.0.0"',
-      "    port: 50052",
+      `    port: ${agentGrpcPort}`,
       "database:",
       '  name: "companyhelm"',
-      '  host: "postgres"',
+      `  host: "${databaseHost}"`,
       "  port: 5432",
       "  roles:",
       "    app_runtime:",

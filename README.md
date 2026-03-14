@@ -17,6 +17,19 @@ Dependecies:
 npx @companyhelm/cli up
 ```
 
+To start services from sibling local repos instead of Docker images:
+
+```bash
+npx @companyhelm/cli up --api-repo-path --web-repo-path
+```
+
+You can also switch only one service to a local repo, or pass explicit paths:
+
+```bash
+npx @companyhelm/cli up --api-repo-path ../companyhelm-api
+npx @companyhelm/cli up --web-repo-path /abs/path/to/companyhelm-web
+```
+
 After startup, the CLI prints:
 
 - the local dashboard UI URL

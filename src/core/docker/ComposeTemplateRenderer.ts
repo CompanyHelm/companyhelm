@@ -21,6 +21,9 @@ export interface ComposePaths {
 
 export interface ComposeRenderOptions {
   frontendLogLevel?: LogLevel;
+  includeApi?: boolean;
+  includeFrontend?: boolean;
+  exposePostgresPort?: boolean;
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,11 +35,35 @@ export class ComposeTemplateRenderer {
     const template = fs.readFileSync(templatePath, "utf8");
     const images = new ImageCatalog().resolve();
     const frontendLogLevel = options.frontendLogLevel ?? "info";
-    const frontendBlock = [
+    const includeApi = options.includeApi ?? true;
+    const includeFrontend = options.includeFrontend ?? true;
+    const postgresPortsBlock = options.exposePostgresPort ? [
+      "    ports:",
+      '      - "5432:5432"'
+    ].join("\n") : "";
+    const apiBlock = includeApi ? [
+      "  api:",
+      `    image: ${images.api}`,
+      "    platform: linux/amd64",
+      "    depends_on:",
+      "      - postgres",
+      "    env_file:",
+      `      - "${paths.apiEnvPath}"`,
+      "    environment:",
+      "      COMPANYHELM_CONFIG_PATH: /run/companyhelm/config.yaml",
+      "    ports:",
+      `      - "${ports.apiHttpPort}:4000"`,
+      `      - "${ports.runnerGrpcPort}:${ports.runnerGrpcPort}"`,
+      `      - "${ports.agentCliGrpcPort}:${ports.agentCliGrpcPort}"`,
+      "    volumes:",
+      `      - "${paths.apiConfigPath}:/run/companyhelm/config.yaml:ro"`,
+      "    networks:",
+      "      - companyhelm"
+    ].join("\n") : "";
+    const frontendBlock = includeFrontend ? [
       "  frontend:",
       `    image: ${images.frontend}`,
-      "    depends_on:",
-      "      - api",
+      ...(includeApi ? ["    depends_on:", "      - api"] : []),
       "    environment:",
       "      COMPANYHELM_CONFIG_PATH: /run/companyhelm/config.yaml",
       `      COMPANYHELM_LOG_LEVEL: "${frontendLogLevel}"`,
@@ -48,11 +75,12 @@ export class ComposeTemplateRenderer {
       `      - "${paths.frontendConfigPath}:/run/companyhelm/config.yaml:ro"`,
       "    networks:",
       "      - companyhelm"
-    ].join("\n");
+    ].join("\n") : "";
 
     return template
-      .replaceAll("{{API_IMAGE}}", images.api)
       .replaceAll("{{POSTGRES_IMAGE}}", images.postgres)
+      .replace("{{POSTGRES_PORTS_BLOCK}}", postgresPortsBlock)
+      .replace("{{API_SERVICE_BLOCK}}", apiBlock)
       .replaceAll("{{API_CONFIG_PATH}}", paths.apiConfigPath)
       .replaceAll("{{API_ENV_PATH}}", paths.apiEnvPath)
       .replaceAll("{{SEED_FILE_PATH}}", paths.seedFilePath)
