@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.1.0",
-    "@companyhelm/runner": "^0.1.0",
+    "@companyhelm/runner": "^0.1.1",
     "chalk": "^5.6.2",
     "commander": "^14.0.1",
     "dockerode": "^4.0.9",
