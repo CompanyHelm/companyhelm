@@ -3,9 +3,6 @@ import { expect, test } from "vitest";
 import { RunnerSupervisor } from "../../src/core/runner/RunnerSupervisor.js";
 
 test("builds runner launch args with the generated secret", () => {
-  const originalDockerHost = process.env.DOCKER_HOST;
-  delete process.env.DOCKER_HOST;
-
   const supervisor = new RunnerSupervisor("/tmp/companyhelm");
 
   const args = supervisor.buildStartArgs({
@@ -29,17 +26,36 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.args).toContain("runner-secret");
   expect(args.args).toContain("--log-level");
   expect(args.args).toContain("DEBUG");
+  expect(args.args).not.toContain("--use-host-docker-runtime");
+  expect(args.args).not.toContain("--host-docker-path");
+  expect(args.args).not.toContain("runner");
+});
+
+test("adds host docker runtime args when enabled", () => {
+  const originalDockerHost = process.env.DOCKER_HOST;
+  delete process.env.DOCKER_HOST;
+
+  const supervisor = new RunnerSupervisor("/tmp/companyhelm");
+  const args = supervisor.buildStartArgs({
+    serverUrl: "127.0.0.1:50051",
+    agentApiUrl: "127.0.0.1:50052",
+    logPath: "/tmp/companyhelm/daemon.log",
+    secret: "runner-secret",
+    useHostDockerRuntime: true,
+  });
+
   expect(args.args).toContain("--use-host-docker-runtime");
   expect(args.args).toContain("--host-docker-path");
   expect(args.args).toContain("unix:///var/run/docker.sock");
-  expect(args.args).not.toContain("runner");
 
   if (originalDockerHost) {
     process.env.DOCKER_HOST = originalDockerHost;
+  } else {
+    delete process.env.DOCKER_HOST;
   }
 });
 
-test("uses DOCKER_HOST for the runner host docker path when it is set", () => {
+test("uses DOCKER_HOST for the runner host docker path when host runtime is enabled", () => {
   const originalDockerHost = process.env.DOCKER_HOST;
   process.env.DOCKER_HOST = "tcp://localhost:2375";
 
@@ -49,6 +65,7 @@ test("uses DOCKER_HOST for the runner host docker path when it is set", () => {
     agentApiUrl: "127.0.0.1:50052",
     logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret",
+    useHostDockerRuntime: true,
   });
 
   const dockerPathIndex = args.args.indexOf("--host-docker-path");

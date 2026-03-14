@@ -9,6 +9,7 @@ export interface RunnerStartInput {
   logPath: string;
   secret: string;
   logLevel?: LogLevel;
+  useHostDockerRuntime?: boolean;
 }
 
 export interface RunnerStartCommand {
@@ -34,7 +35,9 @@ export class RunnerSupervisor {
   public buildStartArgs(input: RunnerStartInput): RunnerStartCommand {
     const runnerCliPath = this.resolveRunnerCliPath();
     const logLevel = (input.logLevel ?? "info").toUpperCase();
-    const hostDockerPath = this.resolveHostDockerPath();
+    const hostDockerArgs = input.useHostDockerRuntime
+      ? ["--use-host-docker-runtime", "--host-docker-path", this.resolveHostDockerPath()]
+      : [];
 
     return {
       command: process.execPath,
@@ -50,9 +53,7 @@ export class RunnerSupervisor {
         input.agentApiUrl,
         "--log-path",
         input.logPath,
-        "--use-host-docker-runtime",
-        "--host-docker-path",
-        hostDockerPath,
+        ...hostDockerArgs,
         "--secret",
         input.secret,
         "--log-level",
