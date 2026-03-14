@@ -40,10 +40,8 @@ export class WebLocalService {
       repoPath: input.repoPath,
       command: process.execPath,
       args: [
-        "scripts/vite.js",
+        "./node_modules/vite/bin/vite.js",
         "dev",
-        "--config-path",
-        input.configPath,
         "--host",
         "0.0.0.0",
         "--port",

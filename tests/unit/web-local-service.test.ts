@@ -16,6 +16,25 @@ test("starts companyhelm-web on the requested port", async () => {
   const repoPath = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-web-local-"));
   const logPath = path.join(repoPath, "companyhelm-web.log");
   fs.mkdirSync(path.join(repoPath, "node_modules"), { recursive: true });
+  const uiPort = await new Promise<number>((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "0.0.0.0", () => {
+      const address = server.address();
+      if (typeof address !== "object" || !address?.port) {
+        reject(new Error("Failed to allocate a test port."));
+        return;
+      }
+
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(address.port);
+      });
+    });
+  });
 
   const processManager = {
     start: vi.fn().mockReturnValue({
@@ -36,8 +55,8 @@ test("starts companyhelm-web on the requested port", async () => {
   await expect(service.start({
     repoPath,
     configPath: "/tmp/companyhelm/frontend-config.yaml",
-    url: "http://127.0.0.1:4173",
-    uiPort: 4173,
+    url: `http://127.0.0.1:${uiPort}`,
+    uiPort,
     logPath,
     logLevel: "debug"
   })).resolves.toEqual({
@@ -57,7 +76,14 @@ test("starts companyhelm-web on the requested port", async () => {
   );
   expect(processManager.start).toHaveBeenCalledWith(expect.objectContaining({
     serviceName: "companyhelm-web",
-    args: expect.arrayContaining(["--port", "4173"])
+    args: [
+      "./node_modules/vite/bin/vite.js",
+      "dev",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      String(uiPort)
+    ]
   }));
 });
 
