@@ -28,6 +28,7 @@ export type LocalRepoOptionValue = string | true | undefined;
 
 export interface UpOptions {
   logLevel?: LogLevel;
+  useHostDockerRuntime?: boolean;
   apiRepoPath?: LocalRepoOptionValue;
   webRepoPath?: LocalRepoOptionValue;
 }
@@ -124,6 +125,7 @@ export function createDefaultDependencies(): CommandDependencies {
   return {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
+      const useHostDockerRuntime = options.useHostDockerRuntime ?? false;
       const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout);
       const state = stateStore.initialize();
       const desiredSources = localRepoSourceResolver.resolve(options);
@@ -181,7 +183,8 @@ export function createDefaultDependencies(): CommandDependencies {
           agentApiUrl: `127.0.0.1:${state.ports.agentCliGrpc}`,
           logPath: runtimePaths.runnerLogPath(),
           secret: state.runner.secret,
-          logLevel
+          logLevel,
+          useHostDockerRuntime
         });
         process.stdout.write(`${renderer.progress("Starting the runner...")}\n`);
         await commandRunner.run(startCommand.command, startCommand.args);

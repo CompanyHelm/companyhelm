@@ -9,6 +9,7 @@ export interface RunnerStartInput {
   logPath: string;
   secret: string;
   logLevel?: LogLevel;
+  useHostDockerRuntime?: boolean;
 }
 
 export interface RunnerStartCommand {
@@ -17,6 +18,7 @@ export interface RunnerStartCommand {
 }
 
 const require = createRequire(import.meta.url);
+const DEFAULT_HOST_DOCKER_PATH = "unix:///var/run/docker.sock";
 
 export class RunnerSupervisor {
   public constructor(private readonly configPath: string) {}
@@ -33,6 +35,9 @@ export class RunnerSupervisor {
   public buildStartArgs(input: RunnerStartInput): RunnerStartCommand {
     const runnerCliPath = this.resolveRunnerCliPath();
     const logLevel = (input.logLevel ?? "info").toUpperCase();
+    const hostDockerArgs = input.useHostDockerRuntime
+      ? ["--use-host-docker-runtime", "--host-docker-path", this.resolveHostDockerPath()]
+      : [];
 
     return {
       command: process.execPath,
@@ -48,6 +53,7 @@ export class RunnerSupervisor {
         input.agentApiUrl,
         "--log-path",
         input.logPath,
+        ...hostDockerArgs,
         "--secret",
         input.secret,
         "--log-level",
@@ -81,5 +87,14 @@ export class RunnerSupervisor {
 
     const packageJsonPath = require.resolve("@companyhelm/runner/package.json");
     return path.resolve(path.dirname(packageJsonPath), "dist/cli.js");
+  }
+
+  private resolveHostDockerPath(): string {
+    const dockerHost = String(process.env.DOCKER_HOST || "").trim();
+    if (dockerHost) {
+      return dockerHost;
+    }
+
+    return DEFAULT_HOST_DOCKER_PATH;
   }
 }

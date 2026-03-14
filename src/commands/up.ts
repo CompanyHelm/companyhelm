@@ -9,19 +9,30 @@ export function registerUpCommand(program: Command, dependencies: CommandDepende
     .command("up")
     .description("Start or reconcile the local deployment.")
     .option("--log-level <level>", "Set log level for api, companyhelm-web, and runner.", "info")
+    .option("--use-host-docker-runtime", "Run thread containers against the host Docker runtime instead of DinD sidecars.")
     .option("--api-repo-path [path]", "Start the API from a local repo path. Defaults to ../companyhelm-api when provided without a value.")
     .option("--web-repo-path [path]", "Start companyhelm-web from a local repo path. Defaults to ../companyhelm-web when provided without a value.")
-    .action(async (options: { logLevel: string; apiRepoPath?: string | boolean; webRepoPath?: string | boolean }) => {
+    .action(async (options: { logLevel: string; useHostDockerRuntime?: boolean; apiRepoPath?: string | boolean; webRepoPath?: string | boolean }) => {
       const logLevel = String(options.logLevel || "").trim().toLowerCase();
       if (!LOG_LEVELS.has(logLevel as LogLevel)) {
         throw new Error(`Unsupported log level "${options.logLevel}". Expected one of: debug, info, warn, error.`);
       }
 
-      await dependencies.up({
+      const upOptions: Parameters<CommandDependencies["up"]>[0] = {
         logLevel: logLevel as LogLevel,
-        apiRepoPath: normalizeLocalRepoOption(options.apiRepoPath),
-        webRepoPath: normalizeLocalRepoOption(options.webRepoPath)
-      });
+        useHostDockerRuntime: Boolean(options.useHostDockerRuntime)
+      };
+      const apiRepoPath = normalizeLocalRepoOption(options.apiRepoPath);
+      const webRepoPath = normalizeLocalRepoOption(options.webRepoPath);
+
+      if (apiRepoPath !== undefined) {
+        upOptions.apiRepoPath = apiRepoPath;
+      }
+      if (webRepoPath !== undefined) {
+        upOptions.webRepoPath = webRepoPath;
+      }
+
+      await dependencies.up(upOptions);
     });
 }
 
