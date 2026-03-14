@@ -5,7 +5,7 @@ import path from "node:path";
 import type { LocalManagedServiceRuntime } from "../runtime/RuntimeState.js";
 
 export interface LocalProcessStartInput {
-  serviceName: "api" | "frontend";
+  serviceName: string;
   repoPath: string;
   command: string;
   args: string[];

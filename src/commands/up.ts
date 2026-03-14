@@ -8,9 +8,9 @@ export function registerUpCommand(program: Command, dependencies: CommandDepende
   program
     .command("up")
     .description("Start or reconcile the local deployment.")
-    .option("--log-level <level>", "Set log level for api, frontend, and runner.", "info")
+    .option("--log-level <level>", "Set log level for api, companyhelm-web, and runner.", "info")
     .option("--api-repo-path [path]", "Start the API from a local repo path. Defaults to ../companyhelm-api when provided without a value.")
-    .option("--web-repo-path [path]", "Start the frontend from a local repo path. Defaults to ../companyhelm-web when provided without a value.")
+    .option("--web-repo-path [path]", "Start companyhelm-web from a local repo path. Defaults to ../companyhelm-web when provided without a value.")
     .action(async (options: { logLevel: string; apiRepoPath?: string | boolean; webRepoPath?: string | boolean }) => {
       const logLevel = String(options.logLevel || "").trim().toLowerCase();
       if (!LOG_LEVELS.has(logLevel as LogLevel)) {

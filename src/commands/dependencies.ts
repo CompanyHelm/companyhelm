@@ -154,6 +154,7 @@ export function createDefaultDependencies(): CommandDependencies {
         const uiUrl = `http://127.0.0.1:${state.ports.ui}`;
 
         if (desiredSources.api.source === "local") {
+          process.stdout.write(`${renderer.progress(`Starting companyhelm-api from ${desiredSources.api.repoPath}...`)}\n`);
           state.services.api = await apiLocalService.start({
             repoPath: desiredSources.api.repoPath,
             configPath: runtimePaths.apiConfigPath(),
@@ -187,6 +188,7 @@ export function createDefaultDependencies(): CommandDependencies {
         runnerStarted = true;
 
         if (desiredSources.frontend.source === "local") {
+          process.stdout.write(`${renderer.progress(`Starting companyhelm-web from ${desiredSources.frontend.repoPath}...`)}\n`);
           state.services.frontend = await webLocalService.start({
             repoPath: desiredSources.frontend.repoPath,
             configPath: runtimePaths.frontendConfigPath(),
@@ -211,8 +213,8 @@ export function createDefaultDependencies(): CommandDependencies {
         );
         process.stdout.write(
           desiredSources.frontend.source === "local"
-            ? `Frontend repo: ${desiredSources.frontend.repoPath}\n`
-            : `Frontend image: ${versions.images.frontend}\n`
+            ? `companyhelm-web repo: ${desiredSources.frontend.repoPath}\n`
+            : `companyhelm-web image: ${versions.images.frontend}\n`
         );
         process.stdout.write(`Postgres image: ${versions.images.postgres}\n`);
         process.stdout.write(`\n${renderer.success("CompanyHelm started successfully.")}\n`);

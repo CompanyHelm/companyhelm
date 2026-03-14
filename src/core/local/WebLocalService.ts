@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import net from "node:net";
 
 import { LocalServiceProcessManager } from "./LocalServiceProcessManager.js";
 import { CommandRunner } from "../process/CommandRunner.js";
@@ -15,12 +16,15 @@ export interface WebLocalServiceStartInput {
 }
 
 export class WebLocalService {
+  private static readonly SERVICE_NAME = "companyhelm-web";
+
   public constructor(
     private readonly processManager = new LocalServiceProcessManager(),
     private readonly commandRunner = new CommandRunner()
   ) {}
 
   public async start(input: WebLocalServiceStartInput): Promise<LocalManagedServiceRuntime> {
+    await this.assertUiPortAvailable(input.uiPort);
     await this.ensureNodeModules(input.repoPath);
     await this.commandRunner.run(
       "npm",
@@ -32,7 +36,7 @@ export class WebLocalService {
     );
 
     const runtime = this.processManager.start({
-      serviceName: "frontend",
+      serviceName: WebLocalService.SERVICE_NAME,
       repoPath: input.repoPath,
       command: process.execPath,
       args: [
@@ -69,7 +73,7 @@ export class WebLocalService {
     const deadline = Date.now() + 60_000;
     while (Date.now() < deadline) {
       if (!this.processManager.isRunning(runtime)) {
-        throw new Error("Frontend exited before becoming ready.");
+        throw new Error(this.buildStartupFailureMessage(runtime, `${WebLocalService.SERVICE_NAME} exited before becoming ready.`));
       }
 
       try {
@@ -86,6 +90,47 @@ export class WebLocalService {
       });
     }
 
-    throw new Error(`Frontend did not become ready: ${url}`);
+    throw new Error(`companyhelm-web did not become ready: ${url}`);
+  }
+
+  private async assertUiPortAvailable(port: number): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const server = net.createServer();
+
+      server.once("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "EADDRINUSE") {
+          reject(new Error(`companyhelm-web cannot start because port ${port} is already in use.`));
+          return;
+        }
+
+        reject(new Error(`companyhelm-web cannot verify port ${port}: ${error.message}`));
+      });
+
+      server.once("listening", () => {
+        server.close((closeError) => {
+          if (closeError) {
+            reject(closeError);
+            return;
+          }
+          resolve();
+        });
+      });
+
+      server.listen(port, "0.0.0.0");
+    });
+  }
+
+  private buildStartupFailureMessage(runtime: LocalManagedServiceRuntime, summary: string): string {
+    if (!fs.existsSync(runtime.logPath)) {
+      return summary;
+    }
+
+    const startupLog = fs.readFileSync(runtime.logPath, "utf8").trim();
+    if (!startupLog) {
+      return summary;
+    }
+
+    const tail = startupLog.split(/\r?\n/).slice(-20).join("\n");
+    return `${summary}\nStartup log:\n${tail}`;
   }
 }

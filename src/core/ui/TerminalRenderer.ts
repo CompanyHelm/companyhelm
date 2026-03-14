@@ -50,14 +50,14 @@ export class TerminalRenderer {
     const lines = ["Status"];
     lines.push(this.renderServiceLine("Postgres", report.services.postgres));
     lines.push(this.renderServiceLine("API", report.services.api, report.apiUrl));
-    lines.push(this.renderServiceLine("Frontend", report.services.frontend, report.uiUrl));
+    lines.push(this.renderServiceLine("companyhelm-web", report.services.frontend, report.uiUrl));
     lines.push(this.renderServiceLine("Runner", report.services.runner));
 
     if (report.versions) {
       lines.push(`CompanyHelm CLI: ${report.versions.cliPackage}`);
       lines.push(`Runner package: ${report.versions.runnerPackage}`);
       lines.push(`API image: ${report.versions.images.api}`);
-      lines.push(`Frontend image: ${report.versions.images.frontend}`);
+      lines.push(`companyhelm-web image: ${report.versions.images.frontend}`);
       lines.push(`Postgres image: ${report.versions.images.postgres}`);
     }
 

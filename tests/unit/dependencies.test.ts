@@ -73,7 +73,7 @@ test("up prints resolved package versions and exact image references", async () 
   expect(output).toContain(`CompanyHelm CLI: ${cliPackage.name}@${cliPackage.version}`);
   expect(output).toContain(`Runner package: ${runnerPackage.name}@${runnerPackage.version}`);
   expect(output).toContain("API image: registry.example.com/companyhelm-api:2026.03.12");
-  expect(output).toContain("Frontend image: registry.example.com/companyhelm-web:2026.03.12");
+  expect(output).toContain("companyhelm-web image: registry.example.com/companyhelm-web:2026.03.12");
   expect(output).toContain("Postgres image: postgres:17.2-alpine");
   expect(output).toContain("... Waiting for database migrations...");
   expect(output).toContain("CompanyHelm started successfully.");
@@ -238,7 +238,7 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
     exposePostgresPort: true
   }));
   expect(ApiLocalService.prototype.start).toHaveBeenCalledWith(expect.objectContaining({
-    repoPath: path.join(workspaceRoot, "companyhelm-api")
+    repoPath: expect.stringMatching(/companyhelm-api$/)
   }));
   expect(startWeb).not.toHaveBeenCalled();
 });

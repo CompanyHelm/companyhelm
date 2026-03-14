@@ -54,4 +54,33 @@ test("renders a readable status summary", () => {
       }
     }
   })).toContain("CompanyHelm CLI: @companyhelm/cli@0.1.2");
+  expect(renderer.renderStatus({
+    services: {
+      postgres: "running",
+      api: "running",
+      frontend: "stopped",
+      runner: "running"
+    },
+    apiUrl: "http://127.0.0.1:4000/graphql",
+    username: "admin@local",
+    versions: {
+      cliPackage: "@companyhelm/cli@0.1.2",
+      runnerPackage: "@companyhelm/runner@0.0.13",
+      images: {
+        api: "public.ecr.aws/x6n0f2k4/companyhelm-api:latest",
+        frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:latest",
+        postgres: "postgres:16-alpine"
+      }
+    }
+  })).toContain("companyhelm-web image: public.ecr.aws/x6n0f2k4/companyhelm-web:latest");
+  expect(renderer.renderStatus({
+    services: {
+      postgres: "running",
+      api: "running",
+      frontend: "stopped",
+      runner: "running"
+    },
+    apiUrl: "http://127.0.0.1:4000/graphql",
+    username: "admin@local"
+  })).toContain("companyhelm-web: [!] stopped");
 });
