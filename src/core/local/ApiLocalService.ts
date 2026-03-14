@@ -72,7 +72,7 @@ export class ApiLocalService {
       }
 
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { method: "OPTIONS" });
         if (response.ok) {
           return;
         }
