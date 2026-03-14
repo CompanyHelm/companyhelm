@@ -11,8 +11,12 @@ import { DeploymentBootstrapper } from "../../src/core/bootstrap/DeploymentBoots
 import { ApiEnvFileWriter } from "../../src/core/config/ApiEnvFileWriter.js";
 import { GithubAppConfigStore } from "../../src/core/config/GithubAppConfigStore.js";
 import { DockerStackManager } from "../../src/core/docker/DockerStackManager.js";
+import { ApiLocalService } from "../../src/core/local/ApiLocalService.js";
+import { LocalServiceProcessManager } from "../../src/core/local/LocalServiceProcessManager.js";
+import { WebLocalService } from "../../src/core/local/WebLocalService.js";
 import { CommandRunner } from "../../src/core/process/CommandRunner.js";
 import { TerminalRenderer } from "../../src/core/ui/TerminalRenderer.js";
+import YAML from "yaml";
 
 const require = createRequire(import.meta.url);
 const originalEnv = { ...process.env };
@@ -185,4 +189,161 @@ test("reset deletes the machine GitHub App config when requested", async () => {
   await createDefaultDependencies().reset({ removeGithubAppConfig: true });
 
   expect(fs.existsSync(path.join(configRoot, "github-app.yaml"))).toBe(false);
+});
+
+test("up starts the api from a local repo when apiRepoPath is selected", async () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-up-"));
+  const projectRoot = path.join(workspaceRoot, "companyhelm");
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
+  fs.mkdirSync(projectRoot, { recursive: true });
+  fs.mkdirSync(path.join(workspaceRoot, "companyhelm-api"), { recursive: true });
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+
+  vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
+    appUrl: "https://github.com/apps/example-local",
+    appClientId: "Iv123",
+    appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
+  });
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
+  const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+  vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(ApiLocalService.prototype, "start").mockResolvedValue({
+    source: "local",
+    repoPath: path.join(workspaceRoot, "companyhelm-api"),
+    logPath: path.join(runtimeRoot, "services", "api.log"),
+    pid: 1234
+  });
+  const startWeb = vi.spyOn(WebLocalService.prototype, "start").mockResolvedValue({
+    source: "local",
+    repoPath: path.join(workspaceRoot, "companyhelm-web"),
+    logPath: path.join(runtimeRoot, "services", "frontend.log"),
+    pid: 5678
+  });
+  vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
+  vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "progress").mockImplementation((message: string) => `... ${message}`);
+  vi.spyOn(TerminalRenderer.prototype, "successHighlight").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "clickableUrl").mockImplementation((url: string) => url);
+
+  await createDefaultDependencies().up({ apiRepoPath: true });
+
+  expect(dockerUp).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+    includeApi: false,
+    includeFrontend: true,
+    exposePostgresPort: true
+  }));
+  expect(ApiLocalService.prototype.start).toHaveBeenCalledWith(expect.objectContaining({
+    repoPath: path.join(workspaceRoot, "companyhelm-api")
+  }));
+  expect(startWeb).not.toHaveBeenCalled();
+});
+
+test("logs reads the local api log file when api is running from a local repo", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-logs-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-runtime-"));
+  const logPath = path.join(runtimeRoot, "services", "api.log");
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  fs.writeFileSync(logPath, "api-local-log\n", "utf8");
+  fs.writeFileSync(path.join(runtimeRoot, "state.yaml"), YAML.stringify({
+    version: 1,
+    company: {
+      id: "company-id",
+      name: "Local CompanyHelm"
+    },
+    auth: {
+      username: "admin@local",
+      password: "secret",
+      jwtPrivateKeyPem: "private",
+      jwtPublicKeyPem: "public"
+    },
+    runner: {
+      name: "local-runner",
+      secret: "runner-secret"
+    },
+    ports: {
+      apiHttp: 4000,
+      ui: 4173,
+      runnerGrpc: 50051,
+      agentCliGrpc: 50052
+    },
+    services: {
+      api: {
+        source: "local",
+        repoPath: "/workspace/companyhelm-api",
+        logPath,
+        pid: 1234
+      },
+      frontend: {
+        source: "docker"
+      }
+    }
+  }), "utf8");
+
+  const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  const dockerLogs = vi.spyOn(DockerStackManager.prototype, "logs").mockResolvedValue(undefined);
+
+  await createDefaultDependencies().logs("api");
+
+  expect(stdoutWrite).toHaveBeenCalledWith("api-local-log\n");
+  expect(dockerLogs).not.toHaveBeenCalled();
+});
+
+test("down stops local services recorded in runtime state before tearing down docker", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-down-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-runtime-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+  fs.writeFileSync(path.join(runtimeRoot, "state.yaml"), YAML.stringify({
+    version: 1,
+    company: {
+      id: "company-id",
+      name: "Local CompanyHelm"
+    },
+    auth: {
+      username: "admin@local",
+      password: "secret",
+      jwtPrivateKeyPem: "private",
+      jwtPublicKeyPem: "public"
+    },
+    runner: {
+      name: "local-runner",
+      secret: "runner-secret"
+    },
+    ports: {
+      apiHttp: 4000,
+      ui: 4173,
+      runnerGrpc: 50051,
+      agentCliGrpc: 50052
+    },
+    services: {
+      api: {
+        source: "local",
+        repoPath: "/workspace/companyhelm-api",
+        logPath: path.join(runtimeRoot, "services", "api.log"),
+        pid: 1234
+      },
+      frontend: {
+        source: "local",
+        repoPath: "/workspace/companyhelm-web",
+        logPath: path.join(runtimeRoot, "services", "frontend.log"),
+        pid: 5678
+      }
+    }
+  }), "utf8");
+
+  const stopLocalService = vi.spyOn(LocalServiceProcessManager.prototype, "stop").mockResolvedValue(undefined);
+  const dockerDown = vi.spyOn(DockerStackManager.prototype, "down").mockResolvedValue(undefined);
+  vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
+
+  await createDefaultDependencies().down();
+
+  expect(stopLocalService).toHaveBeenCalledTimes(2);
+  expect(dockerDown).toHaveBeenCalledOnce();
 });

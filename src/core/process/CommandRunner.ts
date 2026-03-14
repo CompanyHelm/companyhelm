@@ -1,10 +1,14 @@
 import { spawn } from "node:child_process";
 
 export class CommandRunner {
-  public run(command: string, args: string[], cwd?: string): Promise<void> {
+  public run(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<void> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         cwd,
+        env: {
+          ...process.env,
+          ...env
+        },
         stdio: "inherit"
       });
 
@@ -20,10 +24,14 @@ export class CommandRunner {
     });
   }
 
-  public capture(command: string, args: string[], cwd?: string): Promise<string> {
+  public capture(command: string, args: string[], cwd?: string, env?: NodeJS.ProcessEnv): Promise<string> {
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, {
         cwd,
+        env: {
+          ...process.env,
+          ...env
+        },
         stdio: ["ignore", "pipe", "pipe"]
       });
 

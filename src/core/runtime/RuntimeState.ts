@@ -5,6 +5,19 @@ export interface RuntimePorts {
   agentCliGrpc: number;
 }
 
+export interface DockerManagedServiceRuntime {
+  source: "docker";
+}
+
+export interface LocalManagedServiceRuntime {
+  source: "local";
+  repoPath: string;
+  logPath: string;
+  pid: number;
+}
+
+export type ManagedServiceRuntime = DockerManagedServiceRuntime | LocalManagedServiceRuntime;
+
 export interface RuntimeState {
   version: 1;
   company: {
@@ -22,4 +35,8 @@ export interface RuntimeState {
     secret: string;
   };
   ports: RuntimePorts;
+  services: {
+    api: ManagedServiceRuntime;
+    frontend: ManagedServiceRuntime;
+  };
 }

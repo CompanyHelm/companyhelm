@@ -48,3 +48,25 @@ test("renders frontend log level overrides into the compose environment", () => 
   expect(yaml).toContain('COMPANYHELM_LOG_LEVEL: "debug"');
   expect(yaml).toContain('npm_config_loglevel: "debug"');
 });
+
+test("omits docker api and frontend services when local repo mode selects them", () => {
+  const yaml = new ComposeTemplateRenderer().render({
+    apiHttpPort: 4000,
+    uiPort: 4173,
+    runnerGrpcPort: 50051,
+    agentCliGrpcPort: 50052
+  }, {
+    apiConfigPath: "/tmp/companyhelm/api-config.yaml",
+    apiEnvPath: "/tmp/project/.companyhelm/api/.env",
+    frontendConfigPath: "/tmp/companyhelm/frontend-config.yaml",
+    seedFilePath: "/tmp/companyhelm/seed.sql"
+  }, {
+    includeApi: false,
+    includeFrontend: false,
+    exposePostgresPort: true
+  });
+
+  expect(yaml).not.toContain("\n  api:\n");
+  expect(yaml).not.toContain("\n  frontend:\n");
+  expect(yaml).toContain('"5432:5432"');
+});

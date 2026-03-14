@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { expect, test } from "vitest";
+import YAML from "yaml";
 
 import { RuntimeStateStore } from "../../src/core/runtime/RuntimeStateStore.js";
 
@@ -30,7 +31,7 @@ test("persists initialized state to disk", () => {
 test("upgrades legacy admin username to admin@local", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-state-"));
   const store = new RuntimeStateStore(root);
-  fs.writeFileSync(path.join(root, "state.json"), JSON.stringify({
+  fs.writeFileSync(path.join(root, "state.yaml"), YAML.stringify({
     version: 1,
     company: {
       id: "company-id",
@@ -51,10 +52,61 @@ test("upgrades legacy admin username to admin@local", () => {
       ui: 4173,
       runnerGrpc: 50051,
       agentCliGrpc: 50052
+    },
+    services: {
+      api: {
+        source: "docker"
+      },
+      frontend: {
+        source: "docker"
+      }
     }
-  }, null, 2));
+  }));
 
   const loaded = store.load();
 
   expect(loaded?.auth.username).toBe("admin@local");
+});
+
+test("persists runtime state as yaml", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-state-"));
+  const store = new RuntimeStateStore(root);
+
+  store.initialize();
+
+  const statePath = path.join(root, "state.yaml");
+  expect(fs.existsSync(statePath)).toBe(true);
+  expect(fs.readFileSync(statePath, "utf8")).toContain("version: 1");
+});
+
+test("persists local service metadata in yaml", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-state-"));
+  const store = new RuntimeStateStore(root);
+
+  const state = store.initialize();
+  state.services = {
+    api: {
+      source: "local",
+      repoPath: "/workspace/companyhelm-api",
+      logPath: "/tmp/companyhelm-api.log",
+      pid: 1234
+    },
+    frontend: {
+      source: "docker"
+    }
+  };
+
+  fs.writeFileSync(path.join(root, "state.yaml"), YAML.stringify(state), "utf8");
+
+  expect(store.load()?.services).toEqual({
+    api: {
+      source: "local",
+      repoPath: "/workspace/companyhelm-api",
+      logPath: "/tmp/companyhelm-api.log",
+      pid: 1234
+    },
+    frontend: {
+      source: "docker"
+    }
+  });
 });

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import YAML from "yaml";
 
 import { PortAllocator } from "./PortAllocator.js";
 import { RuntimePaths } from "./RuntimePaths.js";
@@ -38,7 +39,15 @@ export class RuntimeStateStore {
         name: "local-runner",
         secret: randomSecret()
       },
-      ports: new PortAllocator().allocate()
+      ports: new PortAllocator().allocate(),
+      services: {
+        api: {
+          source: "docker"
+        },
+        frontend: {
+          source: "docker"
+        }
+      }
     };
 
     this.save(state);
@@ -50,17 +59,33 @@ export class RuntimeStateStore {
       return null;
     }
 
-    const state = JSON.parse(fs.readFileSync(this.runtimePaths.stateFilePath(), "utf8")) as RuntimeState;
+    const state = YAML.parse(fs.readFileSync(this.runtimePaths.stateFilePath(), "utf8")) as RuntimeState;
     if (state.auth.username !== RuntimeStateStore.DEFAULT_USERNAME && state.auth.username === "admin") {
       state.auth.username = RuntimeStateStore.DEFAULT_USERNAME;
+      this.save(state);
+    }
+
+    if (!state.services) {
+      state.services = {
+        api: {
+          source: "docker"
+        },
+        frontend: {
+          source: "docker"
+        }
+      };
       this.save(state);
     }
 
     return state;
   }
 
+  public persist(state: RuntimeState): void {
+    this.save(state);
+  }
+
   private save(state: RuntimeState): void {
-    fs.writeFileSync(this.runtimePaths.stateFilePath(), `${JSON.stringify(state, null, 2)}\n`, {
+    fs.writeFileSync(this.runtimePaths.stateFilePath(), YAML.stringify(state), {
       encoding: "utf8",
       mode: 0o600
     });

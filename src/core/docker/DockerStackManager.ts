@@ -9,6 +9,9 @@ import { ComposeTemplateRenderer } from "./ComposeTemplateRenderer.js";
 
 export interface DockerStackUpOptions {
   frontendLogLevel?: LogLevel;
+  includeApi?: boolean;
+  includeFrontend?: boolean;
+  exposePostgresPort?: boolean;
 }
 
 export interface DockerStackDownOptions {
@@ -43,7 +46,10 @@ export class DockerStackManager {
         frontendConfigPath: this.runtimePaths.frontendConfigPath(),
         seedFilePath: this.runtimePaths.seedFilePath()
       }, {
-        frontendLogLevel: options.frontendLogLevel
+        frontendLogLevel: options.frontendLogLevel,
+        includeApi: options.includeApi,
+        includeFrontend: options.includeFrontend,
+        exposePostgresPort: options.exposePostgresPort
       }),
       "utf8"
     );

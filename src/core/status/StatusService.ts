@@ -8,7 +8,9 @@ export interface StatusSnapshot {
 }
 
 export interface StatusOverrides {
-  runner?: () => Promise<boolean> | boolean;
+  api?: () => Promise<boolean | undefined> | boolean | undefined;
+  frontend?: () => Promise<boolean | undefined> | boolean | undefined;
+  runner?: () => Promise<boolean | undefined> | boolean | undefined;
 }
 
 export class StatusService {
@@ -24,13 +26,28 @@ export class StatusService {
         .map((service) => service.trim())
         .filter(Boolean)
     );
-    const runnerRunning = this.overrides.runner ? await this.overrides.runner() : running.has("runner");
+    const apiRunning = await this.resolveServiceRunning("api", this.overrides.api, running);
+    const frontendRunning = await this.resolveServiceRunning("frontend", this.overrides.frontend, running);
+    const runnerRunning = await this.resolveServiceRunning("runner", this.overrides.runner, running);
 
     return {
       postgres: running.has("postgres") ? "running" : "stopped",
-      api: running.has("api") ? "running" : "stopped",
-      frontend: running.has("frontend") ? "running" : "stopped",
+      api: apiRunning ? "running" : "stopped",
+      frontend: frontendRunning ? "running" : "stopped",
       runner: runnerRunning ? "running" : "stopped"
     };
+  }
+
+  private async resolveServiceRunning(
+    service: "api" | "frontend" | "runner",
+    override: (() => Promise<boolean | undefined> | boolean | undefined) | undefined,
+    running: Set<string>
+  ): Promise<boolean> {
+    if (!override) {
+      return running.has(service);
+    }
+
+    const result = await override();
+    return typeof result === "boolean" ? result : running.has(service);
   }
 }
