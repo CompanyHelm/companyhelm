@@ -128,6 +128,8 @@ export function createDefaultDependencies(): CommandDependencies {
       const useHostDockerRuntime = options.useHostDockerRuntime ?? false;
       const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout);
       const state = stateStore.initialize();
+      process.stdout.write(`${renderer.renderBanner()}\n`);
+      const runnerAlreadyRunning = await isRunnerRunning(commandRunner, runnerSupervisor);
       const desiredSources = localRepoSourceResolver.resolve(options);
       const versions = versionCatalog.resolve();
       const passwordRecord = createPasswordHash(state.auth.password);
@@ -141,7 +143,6 @@ export function createDefaultDependencies(): CommandDependencies {
         databaseHost: desiredSources.api.source === "local" ? "127.0.0.1" : "postgres"
       });
       bootstrapper.writeFrontendConfig(root, state);
-      process.stdout.write(`${renderer.renderBanner()}\n`);
       await stopLocalServicesFromState(stateStore.load(), localServiceProcessManager);
 
       try {
@@ -175,20 +176,24 @@ export function createDefaultDependencies(): CommandDependencies {
         process.stdout.write(`${renderer.progress("Waiting for database migrations...")}\n`);
         await dockerStackManager.applySeedSql(state.auth.username);
 
-        const configureSdkCommand = runnerSupervisor.buildUseHostAuthArgs();
-        process.stdout.write(`${renderer.progress("Configuring runner authentication...")}\n`);
-        await commandRunner.run(configureSdkCommand.command, configureSdkCommand.args);
-        const startCommand = runnerSupervisor.buildStartArgs({
-          serverUrl: `127.0.0.1:${state.ports.runnerGrpc}`,
-          agentApiUrl: `127.0.0.1:${state.ports.agentCliGrpc}`,
-          logPath: runtimePaths.runnerLogPath(),
-          secret: state.runner.secret,
-          logLevel,
-          useHostDockerRuntime
-        });
-        process.stdout.write(`${renderer.progress("Starting the runner...")}\n`);
-        await commandRunner.run(startCommand.command, startCommand.args);
-        runnerStarted = true;
+        if (runnerAlreadyRunning) {
+          process.stdout.write(`${renderer.progress("Runner already running; skipping startup.")}\n`);
+        } else {
+          const configureSdkCommand = runnerSupervisor.buildUseHostAuthArgs();
+          process.stdout.write(`${renderer.progress("Configuring runner authentication...")}\n`);
+          await commandRunner.run(configureSdkCommand.command, configureSdkCommand.args);
+          const startCommand = runnerSupervisor.buildStartArgs({
+            serverUrl: `127.0.0.1:${state.ports.runnerGrpc}`,
+            agentApiUrl: `127.0.0.1:${state.ports.agentCliGrpc}`,
+            logPath: runtimePaths.runnerLogPath(),
+            secret: state.runner.secret,
+            logLevel,
+            useHostDockerRuntime
+          });
+          process.stdout.write(`${renderer.progress("Starting the runner...")}\n`);
+          await commandRunner.run(startCommand.command, startCommand.args);
+          runnerStarted = true;
+        }
 
         if (desiredSources.frontend.source === "local") {
           process.stdout.write(`${renderer.progress(`Starting companyhelm-web from ${desiredSources.frontend.repoPath}...`)}\n`);
@@ -247,16 +252,16 @@ export function createDefaultDependencies(): CommandDependencies {
       }
     },
     async down() {
-      const state = stateStore.load();
-      if (!state) {
-        return;
-      }
-
       const stopCommand = runnerSupervisor.buildStopArgs();
       try {
         await commandRunner.run(stopCommand.command, stopCommand.args);
       } catch {
         // Ignore runner stop failures during teardown so container cleanup still happens.
+      }
+
+      const state = stateStore.load();
+      if (!state) {
+        return;
       }
 
       await stopLocalServicesFromState(state, localServiceProcessManager);
@@ -313,5 +318,18 @@ async function stopLocalServicesFromState(
 
   if (state.services.frontend.source === "local") {
     await processManager.stop(state.services.frontend);
+  }
+}
+
+async function isRunnerRunning(
+  commandRunner: CommandRunner,
+  runnerSupervisor: RunnerSupervisor
+): Promise<boolean> {
+  try {
+    const statusCommand = runnerSupervisor.buildStatusArgs();
+    const output = await commandRunner.capture(statusCommand.command, statusCommand.args);
+    return output.includes("Daemon: running");
+  } catch (error) {
+    return false;
   }
 }

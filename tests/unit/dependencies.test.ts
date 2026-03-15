@@ -23,6 +23,10 @@ const originalEnv = { ...process.env };
 const originalCwd = process.cwd();
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 
+function mockRunnerNotRunning(): void {
+  vi.spyOn(CommandRunner.prototype, "capture").mockRejectedValue(new Error("CompanyHelm runner is not running."));
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   process.env = { ...originalEnv };
@@ -49,6 +53,7 @@ test("up prints resolved package versions and exact image references", async () 
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
   vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  mockRunnerNotRunning();
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
@@ -147,6 +152,7 @@ test("up auto-runs github app setup in a tty when config is missing", async () =
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
   vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  mockRunnerNotRunning();
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
@@ -158,6 +164,39 @@ test("up auto-runs github app setup in a tty when config is missing", async () =
   await expect(dependencies.up()).resolves.toBeUndefined();
 
   expect(ensureGithubAppConfig).toHaveBeenCalledOnce();
+});
+
+test("up reuses an existing runner daemon and logs that startup was skipped", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+
+  vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
+    appUrl: "https://github.com/apps/example-local",
+    appClientId: "Iv123",
+    appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
+  });
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
+  vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+  vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  vi.spyOn(CommandRunner.prototype, "capture").mockResolvedValue("Daemon: running");
+  const run = vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
+  vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "progress").mockImplementation((message: string) => `... ${message}`);
+  vi.spyOn(TerminalRenderer.prototype, "successHighlight").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "clickableUrl").mockImplementation((url: string) => url);
+  const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+  await createDefaultDependencies().up();
+
+  const output = stdoutWrite.mock.calls.map(([chunk]) => String(chunk)).join("");
+  expect(run).not.toHaveBeenCalled();
+  expect(output).toContain("... Runner already running; skipping startup.");
 });
 
 test("reset deletes the generated project api env file", async () => {
@@ -211,6 +250,7 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
   const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  mockRunnerNotRunning();
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(ApiLocalService.prototype, "start").mockResolvedValue({
     source: "local",
@@ -346,4 +386,20 @@ test("down stops local services recorded in runtime state before tearing down do
 
   expect(stopLocalService).toHaveBeenCalledTimes(2);
   expect(dockerDown).toHaveBeenCalledOnce();
+});
+
+test("down still stops the runner when runtime state is missing", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-down-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-runtime-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+
+  const run = vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
+  const dockerDown = vi.spyOn(DockerStackManager.prototype, "down").mockResolvedValue(undefined);
+
+  await createDefaultDependencies().down();
+
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(run.mock.calls[0]?.[1].slice(-1)).toEqual(["stop"]);
+  expect(dockerDown).not.toHaveBeenCalled();
 });
