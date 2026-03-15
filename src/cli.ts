@@ -1,3 +1,7 @@
+#!/usr/bin/env node
+
+import { realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 import { buildProgram } from "./commands/register-commands.js";
 import { InteractiveCommandCancelledError } from "./commands/interactive.js";
 
@@ -15,6 +19,15 @@ export async function main(argv = process.argv): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+function isCliEntrypoint(argv = process.argv): boolean {
+  const entrypointPath = argv[1];
+  if (!entrypointPath) {
+    return false;
+  }
+
+  return pathToFileURL(realpathSync(entrypointPath)).href === import.meta.url;
+}
+
+if (isCliEntrypoint()) {
   void main();
 }
