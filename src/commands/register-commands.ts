@@ -1,6 +1,7 @@
 import { Command } from "commander";
 
 import { createDefaultDependencies, type CommandDependencies } from "./dependencies.js";
+import { CliPackageMetadata } from "../core/runtime/CliPackageMetadata.js";
 import { registerDownCommand } from "./down.js";
 import { registerLogsCommand } from "./logs.js";
 import { registerResetCommand } from "./reset.js";
@@ -10,7 +11,9 @@ import { registerStatusCommand } from "./status.js";
 import { registerUpCommand } from "./up.js";
 
 export function buildProgram(dependencies: CommandDependencies = createDefaultDependencies()): Command {
-  const program = new Command().name("companyhelm");
+  const program = new Command()
+    .name("companyhelm")
+    .version(new CliPackageMetadata().version());
 
   registerSetupGithubAppCommand(program);
   registerUpCommand(program, dependencies);

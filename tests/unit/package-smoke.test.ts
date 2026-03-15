@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -35,4 +36,15 @@ test("built cli entrypoint runs through a symlinked bin path", () => {
   } finally {
     rmSync(fixtureDir, { force: true, recursive: true });
   }
+});
+
+test("cli prints the package version with --version", () => {
+  const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
+
+  const output = execFileSync(process.execPath, ["dist/cli.js", "--version"], {
+    cwd: process.cwd(),
+    encoding: "utf8"
+  });
+
+  expect(output.trim()).toBe(packageJson.version);
 });
