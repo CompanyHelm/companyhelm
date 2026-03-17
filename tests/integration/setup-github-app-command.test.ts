@@ -209,7 +209,30 @@ test("ensureGithubAppConfig prompts and saves when missing in a tty", async () =
 
   expect(load).toHaveBeenCalledOnce();
   expect(promptState.note).toHaveBeenCalled();
+  expect(promptState.confirm).toHaveBeenNthCalledWith(1, {
+    message: "Set up GitHub auth now?",
+    active: "Set it up",
+    inactive: "Skip for now",
+    initialValue: false,
+    input,
+    output,
+  });
   expect(promptState.spinnerStart).toHaveBeenCalledWith("Saving machine GitHub App config");
   expect(save).toHaveBeenCalledOnce();
   expect(promptState.outro).toHaveBeenCalledWith("GitHub App setup complete. Continuing startup.", { output });
+});
+
+test("ensureGithubAppConfig skips setup when the user declines", async () => {
+  const input = createInteractiveStream();
+  const output = createInteractiveStream();
+  vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValueOnce(null);
+  promptState.confirm.mockResolvedValueOnce(false);
+
+  await expect(ensureGithubAppConfig(new GithubAppConfigStore(), input, output)).resolves.toBeNull();
+
+  expect(promptState.text).not.toHaveBeenCalled();
+  expect(promptState.outro).toHaveBeenCalledWith(
+    "Skipping GitHub App setup. Continuing startup without GitHub access.",
+    { output }
+  );
 });

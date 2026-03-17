@@ -11,7 +11,7 @@ export interface ApiLocalServiceStartInput {
   configPath: string;
   graphqlUrl: string;
   logPath: string;
-  githubAppConfig: GithubAppConfig;
+  githubAppConfig: GithubAppConfig | null;
   state: RuntimeState;
   logLevel: LogLevel;
 }
@@ -39,9 +39,9 @@ export class ApiLocalService {
       logPath: input.logPath,
       env: {
         APP_ENV: "local",
-        GITHUB_APP_CLIENT_ID: input.githubAppConfig.appClientId,
-        GITHUB_APP_URL: input.githubAppConfig.appUrl,
-        GITHUB_APP_PRIVATE_KEY_PEM: input.githubAppConfig.appPrivateKeyPem,
+        GITHUB_APP_CLIENT_ID: input.githubAppConfig?.appClientId ?? "",
+        GITHUB_APP_URL: input.githubAppConfig?.appUrl ?? "",
+        GITHUB_APP_PRIVATE_KEY_PEM: input.githubAppConfig?.appPrivateKeyPem ?? "",
         COMPANYHELM_JWT_PRIVATE_KEY_PEM: input.state.auth.jwtPrivateKeyPem,
         COMPANYHELM_JWT_PUBLIC_KEY_PEM: input.state.auth.jwtPublicKeyPem,
         COMPANYHELM_LOG_LEVEL: input.logLevel

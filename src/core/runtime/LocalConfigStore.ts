@@ -3,7 +3,10 @@ import path from "node:path";
 
 import type { ManagedImageService } from "./ManagedImages.js";
 
+export type AgentWorkspaceMode = "dedicated" | "current-working-directory";
+
 export interface LocalConfig {
+  agentWorkspaceMode?: AgentWorkspaceMode;
   images: Partial<Record<ManagedImageService, string>>;
 }
 
@@ -30,8 +33,21 @@ export class LocalConfigStore {
     return { configPath: this.configPath(), image };
   }
 
+  public setAgentWorkspaceMode(
+    agentWorkspaceMode: AgentWorkspaceMode
+  ): { configPath: string; agentWorkspaceMode: AgentWorkspaceMode } {
+    const nextConfig = this.load();
+    nextConfig.agentWorkspaceMode = agentWorkspaceMode;
+    this.save(nextConfig);
+    return { configPath: this.configPath(), agentWorkspaceMode };
+  }
+
   public save(config: LocalConfig): void {
-    const lines = ["images:"];
+    const lines: string[] = [];
+    if (config.agentWorkspaceMode) {
+      lines.push(`agent_workspace_mode: ${config.agentWorkspaceMode}`);
+    }
+    lines.push("images:");
     if (config.images.api) {
       lines.push(`  api: ${config.images.api}`);
     }
@@ -44,6 +60,7 @@ export class LocalConfigStore {
 
   private parse(content: string): LocalConfig {
     const images: LocalConfig["images"] = {};
+    let agentWorkspaceMode: AgentWorkspaceMode | undefined;
     let inImagesSection = false;
 
     for (const rawLine of content.split(/\r?\n/)) {
@@ -55,6 +72,12 @@ export class LocalConfigStore {
 
       if (line === "images:") {
         inImagesSection = true;
+        continue;
+      }
+
+      const workspaceModeMatch = line.match(/^agent_workspace_mode:\s*(dedicated|current-working-directory)$/);
+      if (workspaceModeMatch) {
+        agentWorkspaceMode = workspaceModeMatch[1] as AgentWorkspaceMode;
         continue;
       }
 
@@ -72,6 +95,9 @@ export class LocalConfigStore {
       }
     }
 
-    return { images };
+    return {
+      agentWorkspaceMode,
+      images
+    };
   }
 }

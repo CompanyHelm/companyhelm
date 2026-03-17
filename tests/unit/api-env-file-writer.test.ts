@@ -26,3 +26,19 @@ test("writes the generated api env file with github app variables", () => {
     ].join("\n"),
   );
 });
+
+test("writes blank github app variables when github auth is skipped", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-project-env-"));
+  const writer = new ApiEnvFileWriter(projectRoot);
+
+  const envPath = writer.write(null);
+
+  expect(fs.readFileSync(envPath, "utf8")).toBe(
+    [
+      "GITHUB_APP_URL=",
+      "GITHUB_APP_CLIENT_ID=",
+      "GITHUB_APP_PRIVATE_KEY_PEM=",
+      "",
+    ].join("\n"),
+  );
+});

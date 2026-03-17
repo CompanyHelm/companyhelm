@@ -6,9 +6,10 @@ import { Writable, type Readable } from "node:stream";
 
 import type { Command } from "commander";
 
-import { unwrapPromptResult, requireInteractiveTerminal, InteractiveCommandCancelledError } from "./interactive.js";
+import { unwrapPromptResult, requireInteractiveTerminal, InteractiveCommandCancelledError, hasInteractiveTerminal } from "./interactive.js";
 import { GithubAppConfigStore } from "../core/config/GithubAppConfigStore.js";
 import { normalizeGithubAppConfig, type GithubAppConfig } from "../core/config/GithubAppConfig.js";
+import type { AgentWorkspaceMode } from "../core/runtime/LocalConfigStore.js";
 
 const GITHUB_NEW_APP_URL = "https://github.com/settings/apps/new";
 
@@ -248,27 +249,54 @@ export async function ensureGithubAppConfig(
   store = new GithubAppConfigStore(),
   input: Readable = process.stdin,
   output: Writable = process.stdout,
-): Promise<GithubAppConfig> {
+  options: {
+    workspaceMode?: AgentWorkspaceMode;
+  } = {},
+): Promise<GithubAppConfig | null> {
   const existingConfig = store.load();
   if (existingConfig) {
     return existingConfig;
   }
 
-  requireInteractiveTerminal(
-    input,
-    output,
-    `GitHub App config is not set up. Run \`companyhelm setup-github-app\` or rerun \`companyhelm up\` in a TTY.`,
-  );
+  if (!hasInteractiveTerminal(input, output)) {
+    return null;
+  }
 
-  clack.intro("CompanyHelm GitHub App setup", { output });
+  const workspaceMode = options.workspaceMode ?? "dedicated";
+  clack.intro("CompanyHelm GitHub auth", { output });
   clack.note(
-    [
-      "No machine GitHub App config was found.",
-      "CompanyHelm will collect it now and then continue startup.",
-    ].join("\n"),
-    "Setup required",
+    workspaceMode === "dedicated"
+      ? [
+          "No machine GitHub App config was found.",
+          "Dedicated workspaces cannot access files from your host system.",
+          "GitHub auth is recommended so agents can clone and work in your repositories.",
+        ].join("\n")
+      : [
+          "No machine GitHub App config was found.",
+          "GitHub auth is optional in current working directory mode.",
+          "Set it up now if you want agents to access GitHub directly from this deployment.",
+        ].join("\n"),
+    "Optional setup",
     { output },
   );
+
+  const shouldSetup = unwrapPromptResult(
+    await clack.confirm({
+      message: "Set up GitHub auth now?",
+      active: "Set it up",
+      inactive: "Skip for now",
+      initialValue: false,
+      input,
+      output,
+    }),
+    "GitHub App setup cancelled.",
+    output,
+  );
+
+  if (!shouldSetup) {
+    clack.outro("Skipping GitHub App setup. Continuing startup without GitHub access.", { output });
+    return null;
+  }
 
   const config = await promptGithubAppConfig(input, output);
   const spinner = clack.spinner({ output });

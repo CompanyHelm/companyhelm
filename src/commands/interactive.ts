@@ -12,8 +12,12 @@ function isReadableTty(input: Readable): boolean {
   return "isTTY" in input && Boolean(input.isTTY);
 }
 
+export function hasInteractiveTerminal(input: Readable, output: Writable): boolean {
+  return isReadableTty(input) && clack.isTTY(output);
+}
+
 export function requireInteractiveTerminal(input: Readable, output: Writable, message: string): void {
-  if (!isReadableTty(input) || !clack.isTTY(output)) {
+  if (!hasInteractiveTerminal(input, output)) {
     throw new Error(message);
   }
 }

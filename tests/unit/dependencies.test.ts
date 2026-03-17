@@ -7,6 +7,7 @@ import { afterEach, expect, test, vi } from "vitest";
 
 import { createDefaultDependencies } from "../../src/commands/dependencies.js";
 import * as setupGithubAppCommand from "../../src/commands/setup-github-app.js";
+import * as startupPreferencesCommand from "../../src/commands/startup-preferences.js";
 import { DeploymentBootstrapper } from "../../src/core/bootstrap/DeploymentBootstrapper.js";
 import { ApiEnvFileWriter } from "../../src/core/config/ApiEnvFileWriter.js";
 import { GithubAppConfigStore } from "../../src/core/config/GithubAppConfigStore.js";
@@ -42,6 +43,7 @@ test("up prints resolved package versions and exact image references", async () 
   process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
   process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
 
+  vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValue({
     appUrl: "https://github.com/apps/example-local",
     appClientId: "Iv123",
@@ -124,28 +126,14 @@ test("status includes resolved versions", async () => {
   });
 });
 
-test("up fails with a setup hint when machine github app config is missing", async () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
-  process.chdir(projectRoot);
-  vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValue(null);
-
-  await expect(createDefaultDependencies().up()).rejects.toThrow(/setup-github-app/);
-});
-
-test("up auto-runs github app setup in a tty when config is missing", async () => {
+test("up continues without github auth when machine github app config is missing", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
-  process.env.COMPANYHELM_API_IMAGE = "registry.example.com/companyhelm-api:2026.03.12";
-  process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
-  process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
+  vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
 
-  const ensureGithubAppConfig = vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
-    appUrl: "https://github.com/apps/example-local",
-    appClientId: "Iv123",
-    appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
-  });
+  const ensureGithubAppConfig = vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue(null);
   vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
@@ -164,6 +152,7 @@ test("up auto-runs github app setup in a tty when config is missing", async () =
   await expect(dependencies.up()).resolves.toBeUndefined();
 
   expect(ensureGithubAppConfig).toHaveBeenCalledOnce();
+  expect(ApiEnvFileWriter.prototype.write).toHaveBeenCalledWith(null);
 });
 
 test("up reuses an existing runner daemon and logs that startup was skipped", async () => {
@@ -172,6 +161,7 @@ test("up reuses an existing runner daemon and logs that startup was skipped", as
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
 
+  vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
     appUrl: "https://github.com/apps/example-local",
     appClientId: "Iv123",
@@ -239,6 +229,7 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
 
+  vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
     appUrl: "https://github.com/apps/example-local",
     appClientId: "Iv123",

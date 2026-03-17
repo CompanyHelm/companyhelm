@@ -1,7 +1,9 @@
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 import type { LogLevel } from "../../commands/dependencies.js";
+import type { AgentWorkspaceMode } from "../runtime/LocalConfigStore.js";
 
 export interface RunnerStartInput {
   serverUrl: string;
@@ -10,11 +12,14 @@ export interface RunnerStartInput {
   secret: string;
   logLevel?: LogLevel;
   useHostDockerRuntime?: boolean;
+  workspaceMode?: AgentWorkspaceMode;
+  projectRoot?: string;
 }
 
 export interface RunnerStartCommand {
   command: string;
   args: string[];
+  env?: NodeJS.ProcessEnv;
 }
 
 const require = createRequire(import.meta.url);
@@ -38,10 +43,18 @@ export class RunnerSupervisor {
     const hostDockerArgs = input.useHostDockerRuntime
       ? ["--use-host-docker-runtime", "--host-docker-path", this.resolveHostDockerPath()]
       : [];
+    const runnerEntrypoint = this.resolveRunnerEntrypointPath();
+    const env = input.workspaceMode === "current-working-directory" && input.projectRoot
+      ? {
+          COMPANYHELM_RUNNER_WORKSPACE_MODE: input.workspaceMode,
+          COMPANYHELM_RUNNER_PROJECT_ROOT: input.projectRoot,
+        }
+      : undefined;
 
     return {
       command: process.execPath,
       args: [
+        runnerEntrypoint,
         runnerCliPath,
         "--config-path",
         this.configPath,
@@ -58,7 +71,8 @@ export class RunnerSupervisor {
         input.secret,
         "--log-level",
         logLevel
-      ]
+      ],
+      env
     };
   }
 
@@ -87,6 +101,10 @@ export class RunnerSupervisor {
 
     const packageJsonPath = require.resolve("@companyhelm/runner/package.json");
     return path.resolve(path.dirname(packageJsonPath), "dist/cli.js");
+  }
+
+  private resolveRunnerEntrypointPath(): string {
+    return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "runner-bootstrap.js");
   }
 
   private resolveHostDockerPath(): string {

@@ -21,7 +21,9 @@ import { RuntimeStateStore } from "../core/runtime/RuntimeStateStore.js";
 import { VersionCatalog, type RuntimeVersions } from "../core/runtime/VersionCatalog.js";
 import { StatusService, type StatusSnapshot } from "../core/status/StatusService.js";
 import { TerminalRenderer } from "../core/ui/TerminalRenderer.js";
+import { LocalConfigStore } from "../core/runtime/LocalConfigStore.js";
 import { ensureGithubAppConfig } from "./setup-github-app.js";
+import { ensureAgentWorkspaceMode } from "./startup-preferences.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LocalRepoOptionValue = string | true | undefined;
@@ -70,6 +72,7 @@ export function createDefaultDependencies(): CommandDependencies {
   const apiEnvFileWriter = new ApiEnvFileWriter(process.cwd());
   const projectPaths = new ProjectPaths(process.cwd());
   const localRepoSourceResolver = new LocalRepoSourceResolver(process.cwd());
+  const localConfigStore = new LocalConfigStore(process.cwd());
   const localServiceProcessManager = new LocalServiceProcessManager();
   const apiLocalService = new ApiLocalService(localServiceProcessManager, commandRunner);
   const webLocalService = new WebLocalService(localServiceProcessManager, commandRunner);
@@ -126,7 +129,8 @@ export function createDefaultDependencies(): CommandDependencies {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
       const useHostDockerRuntime = options.useHostDockerRuntime ?? false;
-      const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout);
+      const workspaceMode = await ensureAgentWorkspaceMode(localConfigStore, process.stdin, process.stdout);
+      const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout, { workspaceMode });
       const state = stateStore.initialize();
       process.stdout.write(`${renderer.renderBanner()}\n`);
       const runnerAlreadyRunning = await isRunnerRunning(commandRunner, runnerSupervisor);
@@ -188,10 +192,12 @@ export function createDefaultDependencies(): CommandDependencies {
             logPath: runtimePaths.runnerLogPath(),
             secret: state.runner.secret,
             logLevel,
-            useHostDockerRuntime
+            useHostDockerRuntime,
+            workspaceMode,
+            projectRoot: process.cwd()
           });
           process.stdout.write(`${renderer.progress("Starting the runner...")}\n`);
-          await commandRunner.run(startCommand.command, startCommand.args);
+          await commandRunner.run(startCommand.command, startCommand.args, undefined, startCommand.env);
           runnerStarted = true;
         }
 

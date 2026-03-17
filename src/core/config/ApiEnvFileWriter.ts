@@ -18,12 +18,12 @@ export class ApiEnvFileWriter {
     this.projectPaths = new ProjectPaths(projectRoot);
   }
 
-  public write(config: GithubAppConfig): string {
+  public write(config: GithubAppConfig | null): string {
     fs.mkdirSync(this.projectPaths.apiDirectoryPath(), { recursive: true });
     const contents = [
-      `GITHUB_APP_URL=${escapeEnvValue(config.appUrl)}`,
-      `GITHUB_APP_CLIENT_ID=${escapeEnvValue(config.appClientId)}`,
-      `GITHUB_APP_PRIVATE_KEY_PEM=${escapeEnvValue(config.appPrivateKeyPem)}`,
+      `GITHUB_APP_URL=${escapeEnvValue(config?.appUrl ?? "")}`,
+      `GITHUB_APP_CLIENT_ID=${escapeEnvValue(config?.appClientId ?? "")}`,
+      `GITHUB_APP_PRIVATE_KEY_PEM=${escapeEnvValue(config?.appPrivateKeyPem ?? "")}`,
       "",
     ].join("\n");
     fs.writeFileSync(this.projectPaths.apiEnvPath(), contents, "utf8");

@@ -14,7 +14,8 @@ test("builds runner launch args with the generated secret", () => {
   });
 
   expect(args.command).toBe(process.execPath);
-  expect(args.args[0]).toContain("@companyhelm/runner");
+  expect(args.args[0]).toContain("runner-bootstrap.js");
+  expect(args.args[1]).toContain("@companyhelm/runner");
   expect(args.args).toContain("--daemon");
   expect(args.args).toContain("start");
   expect(args.args).toContain("--server-url");
@@ -28,7 +29,7 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.args).toContain("DEBUG");
   expect(args.args).not.toContain("--use-host-docker-runtime");
   expect(args.args).not.toContain("--host-docker-path");
-  expect(args.args).not.toContain("runner");
+  expect(args.env).toBeUndefined();
 });
 
 test("adds host docker runtime args when enabled", () => {
@@ -107,9 +108,28 @@ test("prefers an explicit runner cli override", () => {
   });
 
   expect(args.command).toBe(process.execPath);
-  expect(args.args[0]).toBe("/tmp/custom-runner.js");
+  expect(args.args[0]).toContain("runner-bootstrap.js");
+  expect(args.args[1]).toBe("/tmp/custom-runner.js");
 
   delete process.env.COMPANYHELM_RUNNER_CLI_PATH;
+});
+
+test("passes current working directory workspace mode through the environment", () => {
+  const supervisor = new RunnerSupervisor("/tmp/companyhelm");
+
+  const args = supervisor.buildStartArgs({
+    serverUrl: "127.0.0.1:50051",
+    agentApiUrl: "127.0.0.1:50052",
+    logPath: "/tmp/companyhelm/daemon.log",
+    secret: "runner-secret",
+    workspaceMode: "current-working-directory",
+    projectRoot: "/workspace/companyhelm"
+  });
+
+  expect(args.env).toEqual({
+    COMPANYHELM_RUNNER_WORKSPACE_MODE: "current-working-directory",
+    COMPANYHELM_RUNNER_PROJECT_ROOT: "/workspace/companyhelm"
+  });
 });
 
 test("builds runner status args", () => {
