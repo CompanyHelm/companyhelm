@@ -53,7 +53,9 @@ test("writes disabled github config when github auth is skipped", () => {
   expect(config).toContain("  workers:");
   expect(config).toContain("    agentHeartbeats:");
   expect(config).toContain("    taskWorker:");
-  expect(config).not.toContain("\nagent:\n");
+  expect(config).toContain("agent:");
+  expect(config).toContain('    host: "0.0.0.0"');
+  expect(config).toContain("    port: 50052");
   expect(config).toContain('app_client_id: "companyhelm-local-github-disabled"');
   expect(config).toContain('app_private_key_pem: "companyhelm-local-github-disabled"');
   expect(config).toContain('app_link: "https://github.com/apps/companyhelm-local-disabled"');

@@ -42,6 +42,7 @@ export class DeploymentBootstrapper {
     const outputPath = runtimePaths.apiConfigPath();
     const appPort = options.appPort ?? state.ports.apiHttp;
     const runnerGrpcPort = options.runnerGrpcPort ?? state.ports.runnerGrpc;
+    const agentCliGrpcPort = state.ports.agentCliGrpc;
     const databaseHost = options.databaseHost ?? "postgres";
     const githubConfigLines = options.githubAppConfig
       ? [
@@ -77,6 +78,10 @@ export class DeploymentBootstrapper {
       "      jitterSeconds: 60",
       "      batchSize: 10",
       "      leaseSeconds: 120",
+      "agent:",
+      "  grpc:",
+      '    host: "0.0.0.0"',
+      `    port: ${agentCliGrpcPort}`,
       "database:",
       '  name: "companyhelm"',
       `  host: "${databaseHost}"`,
