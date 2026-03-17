@@ -22,7 +22,7 @@ If `COMPANYHELM_HOME` is set, CompanyHelm uses that path instead for runtime fil
 
 Repo-owned image pins stay in the repo root in:
 
-- `companyhelm.yaml`
+- `config.yaml`
 
 ## What generates them
 
