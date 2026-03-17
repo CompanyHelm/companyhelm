@@ -208,7 +208,9 @@ test("logs without a service prints the available service list", async () => {
   await program.parseAsync(["node", "companyhelm", "logs"]);
 
   expect(logs).not.toHaveBeenCalled();
-  expect(stdoutWrite).toHaveBeenCalledWith("Available services:\n- postgres\n- api\n- frontend\n- runner\n");
+  expect(stdoutWrite).toHaveBeenCalledWith(
+    "Available services:\n- postgres\n- companyhelm-api\n- companyhelm-web\n- companyhelm-runner\n"
+  );
 
   stdoutWrite.mockRestore();
 });

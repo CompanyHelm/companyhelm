@@ -38,12 +38,12 @@ export class RunnerSupervisor {
   }
 
   public buildStartArgs(input: RunnerStartInput): RunnerStartCommand {
-    const runnerCliPath = this.resolveRunnerCliPath();
     const logLevel = (input.logLevel ?? "info").toUpperCase();
     const hostDockerArgs = input.useHostDockerRuntime
       ? ["--use-host-docker-runtime", "--host-docker-path", this.resolveHostDockerPath()]
       : [];
     const runnerEntrypoint = this.resolveRunnerEntrypointPath();
+    const runnerCliOverridePath = this.resolveRunnerCliOverridePath();
     const env = input.workspaceMode === "current-working-directory" && input.projectRoot
       ? {
           COMPANYHELM_RUNNER_WORKSPACE_MODE: input.workspaceMode,
@@ -55,7 +55,7 @@ export class RunnerSupervisor {
       command: process.execPath,
       args: [
         runnerEntrypoint,
-        runnerCliPath,
+        ...(runnerCliOverridePath ? [runnerCliOverridePath] : []),
         "--config-path",
         this.configPath,
         "start",
@@ -101,6 +101,11 @@ export class RunnerSupervisor {
 
     const packageJsonPath = require.resolve("@companyhelm/runner/package.json");
     return path.resolve(path.dirname(packageJsonPath), "dist/cli.js");
+  }
+
+  private resolveRunnerCliOverridePath(): string | null {
+    const overridePath = String(process.env.COMPANYHELM_RUNNER_CLI_PATH || "").trim();
+    return overridePath || null;
   }
 
   private resolveRunnerEntrypointPath(): string {

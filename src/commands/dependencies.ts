@@ -155,7 +155,8 @@ export function createDefaultDependencies(): CommandDependencies {
       apiEnvFileWriter.write(githubAppConfig);
       bootstrapper.writeSeedSql(root, state, passwordRecord.passwordHash, passwordRecord.passwordSalt);
       bootstrapper.writeApiConfig(root, state, logLevel, {
-        databaseHost: desiredSources.api.source === "local" ? "127.0.0.1" : "postgres"
+        databaseHost: desiredSources.api.source === "local" ? "127.0.0.1" : "postgres",
+        githubAppConfig
       });
       bootstrapper.writeFrontendConfig(root, state);
       await stopLocalServicesFromState(stateStore.load(), localServiceProcessManager);

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { LogLevel } from "../../commands/dependencies.js";
+import type { GithubAppConfig } from "../config/GithubAppConfig.js";
 import type { RuntimeState } from "../runtime/RuntimeState.js";
 import { RuntimePaths } from "../runtime/RuntimePaths.js";
 import { SeedSqlRenderer } from "./SeedSqlRenderer.js";
@@ -35,6 +36,7 @@ export class DeploymentBootstrapper {
       appPort?: number;
       runnerGrpcPort?: number;
       agentGrpcPort?: number;
+      githubAppConfig?: GithubAppConfig | null;
     } = {}
   ): string {
     const runtimePaths = new RuntimePaths(root);
@@ -43,6 +45,17 @@ export class DeploymentBootstrapper {
     const runnerGrpcPort = options.runnerGrpcPort ?? state.ports.runnerGrpc;
     const agentGrpcPort = options.agentGrpcPort ?? state.ports.agentCliGrpc;
     const databaseHost = options.databaseHost ?? "postgres";
+    const githubConfigLines = options.githubAppConfig
+      ? [
+          '  app_client_id: "${GITHUB_APP_CLIENT_ID}"',
+          '  app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"',
+          '  app_link: "${GITHUB_APP_URL}"'
+        ]
+      : [
+          '  app_client_id: "companyhelm-local-github-disabled"',
+          '  app_private_key_pem: "companyhelm-local-github-disabled"',
+          '  app_link: "https://github.com/apps/companyhelm-local-disabled"'
+        ];
     const yaml = [
       "app:",
       '  host: "0.0.0.0"',
@@ -55,6 +68,17 @@ export class DeploymentBootstrapper {
       "    heartbeat:",
       "      intervalMs: 20000",
       "      jitterMs: 10000",
+      "  workers:",
+      "    agentHeartbeats:",
+      "      intervalSeconds: 60",
+      "      jitterSeconds: 60",
+      "      batchSize: 10",
+      "      leaseSeconds: 120",
+      "    taskWorker:",
+      "      intervalSeconds: 60",
+      "      jitterSeconds: 60",
+      "      batchSize: 10",
+      "      leaseSeconds: 120",
       "agent:",
       "  grpc:",
       '    host: "0.0.0.0"',
@@ -71,9 +95,7 @@ export class DeploymentBootstrapper {
       '      username: "postgres"',
       '      password: "postgres"',
       "github:",
-      '  app_client_id: "${GITHUB_APP_CLIENT_ID}"',
-      '  app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"',
-      '  app_link: "${GITHUB_APP_URL}"',
+      ...githubConfigLines,
       'authProvider: "companyhelm"',
       "auth:",
       "  companyhelm:",

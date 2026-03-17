@@ -15,7 +15,7 @@ test("builds runner launch args with the generated secret", () => {
 
   expect(args.command).toBe(process.execPath);
   expect(args.args[0]).toContain("runner-bootstrap.js");
-  expect(args.args[1]).toContain("@companyhelm/runner");
+  expect(args.args[1]).toBe("--config-path");
   expect(args.args).toContain("--daemon");
   expect(args.args).toContain("start");
   expect(args.args).toContain("--server-url");

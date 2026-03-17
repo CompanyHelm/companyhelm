@@ -435,7 +435,7 @@ test("logs reads the local api log file when api is running from a local repo", 
   const stdoutWrite = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
   const dockerLogs = vi.spyOn(DockerStackManager.prototype, "logs").mockResolvedValue(undefined);
 
-  await createDefaultDependencies().logs("api");
+  await createDefaultDependencies().logs("companyhelm-api");
 
   expect(stdoutWrite).toHaveBeenCalledWith("api-local-log\n");
   expect(dockerLogs).not.toHaveBeenCalled();

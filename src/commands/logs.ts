@@ -1,8 +1,7 @@
 import type { Command } from "commander";
 
 import type { CommandDependencies } from "./dependencies.js";
-
-const AVAILABLE_LOG_SERVICES = ["postgres", "api", "frontend", "runner"] as const;
+import { AVAILABLE_MANAGED_SERVICE_NAMES } from "../core/services/ManagedServiceNames.js";
 
 export function registerLogsCommand(program: Command, dependencies: CommandDependencies): void {
   program
@@ -11,7 +10,7 @@ export function registerLogsCommand(program: Command, dependencies: CommandDepen
     .argument("[service]")
     .action(async (service?: string) => {
       if (!service) {
-        process.stdout.write(`Available services:\n${AVAILABLE_LOG_SERVICES.map((name) => `- ${name}`).join("\n")}\n`);
+        process.stdout.write(`Available services:\n${AVAILABLE_MANAGED_SERVICE_NAMES.map((name) => `- ${name}`).join("\n")}\n`);
         return;
       }
 

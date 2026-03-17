@@ -1,13 +1,18 @@
-const MANAGED_SERVICES = new Set(["postgres", "api", "frontend", "runner"] as const);
+import {
+  AVAILABLE_MANAGED_SERVICE_NAMES,
+  resolveManagedServiceKey,
+  type ManagedServiceKey
+} from "../services/ManagedServiceNames.js";
 
 export class LogsService {
-  public constructor(private readonly streamServiceLogs: (service: "postgres" | "api" | "frontend" | "runner") => Promise<void>) {}
+  public constructor(private readonly streamServiceLogs: (service: ManagedServiceKey) => Promise<void>) {}
 
   public async stream(service: string): Promise<void> {
-    if (!MANAGED_SERVICES.has(service as never)) {
-      throw new Error(`Unknown service '${service}'. Expected one of: ${Array.from(MANAGED_SERVICES).join(", ")}`);
+    const resolvedService = resolveManagedServiceKey(service);
+    if (!resolvedService) {
+      throw new Error(`Unknown service '${service}'. Expected one of: ${AVAILABLE_MANAGED_SERVICE_NAMES.join(", ")}`);
     }
 
-    await this.streamServiceLogs(service as "postgres" | "api" | "frontend" | "runner");
+    await this.streamServiceLogs(resolvedService);
   }
 }

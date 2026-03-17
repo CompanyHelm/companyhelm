@@ -36,12 +36,34 @@ function applyCurrentWorkingDirectoryMode(projectRoot: string): void {
   threadLifecycle.resolveThreadDirectory = (() => resolvedProjectRoot) as typeof threadLifecycle.resolveThreadDirectory;
 }
 
+export function resolveRunnerCliEntrypointArg(argv: string[]): string | null {
+  const candidate = String(argv[2] || "").trim();
+  if (!candidate || candidate.startsWith("-")) {
+    return null;
+  }
+
+  return candidate;
+}
+
 const workspaceMode = String(process.env.COMPANYHELM_RUNNER_WORKSPACE_MODE || "").trim();
 const projectRoot = String(process.env.COMPANYHELM_RUNNER_PROJECT_ROOT || "").trim();
 
-if (workspaceMode === "current-working-directory" && projectRoot) {
-  applyCurrentWorkingDirectoryMode(projectRoot);
+export async function runRunnerBootstrap(): Promise<void> {
+  if (workspaceMode === "current-working-directory" && projectRoot) {
+    applyCurrentWorkingDirectoryMode(projectRoot);
+  }
+
+  const runnerEntrypoint = resolveRunnerCliEntrypointArg(process.argv);
+  if (runnerEntrypoint) {
+    process.argv.splice(2, 1);
+  }
+  await import(runnerEntrypoint ? pathToFileURL(runnerEntrypoint).href : "@companyhelm/runner/dist/cli.js");
 }
 
-const runnerEntrypoint = process.argv[2];
-await import(runnerEntrypoint ? pathToFileURL(runnerEntrypoint).href : "@companyhelm/runner/dist/cli.js");
+const invokedAsEntrypoint = process.argv[1]
+  ? pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
+  : false;
+
+if (invokedAsEntrypoint) {
+  await runRunnerBootstrap();
+}
