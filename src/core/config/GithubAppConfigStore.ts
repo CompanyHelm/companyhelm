@@ -1,10 +1,10 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import { parse, stringify } from "yaml";
 
 import { type GithubAppConfig, normalizeGithubAppConfig } from "./GithubAppConfig.js";
+import { defaultCliConfigRoot } from "../runtime/CliRoot.js";
 
 interface StoredGithubAppConfig {
   app_url?: string;
@@ -13,17 +13,7 @@ interface StoredGithubAppConfig {
 }
 
 function defaultConfigRoot(): string {
-  const explicitRoot = String(process.env.COMPANYHELM_CONFIG_HOME || "").trim();
-  if (explicitRoot) {
-    return path.resolve(explicitRoot);
-  }
-
-  const xdgRoot = String(process.env.XDG_CONFIG_HOME || "").trim();
-  if (xdgRoot) {
-    return path.resolve(xdgRoot, "companyhelm");
-  }
-
-  return path.join(os.homedir(), ".config", "companyhelm");
+  return defaultCliConfigRoot();
 }
 
 export class GithubAppConfigStore {

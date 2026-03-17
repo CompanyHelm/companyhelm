@@ -20,5 +20,10 @@ export function defaultCliConfigRoot(): string {
     return path.resolve(explicitRoot);
   }
 
+  const explicitRuntimeRoot = String(process.env.COMPANYHELM_HOME || "").trim();
+  if (explicitRuntimeRoot) {
+    return path.resolve(explicitRuntimeRoot);
+  }
+
   return defaultCliBaseRoot();
 }

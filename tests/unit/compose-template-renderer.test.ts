@@ -9,10 +9,10 @@ test("renders frontend, api, and postgres with only allowed host ports", () => {
     runnerGrpcPort: 50051,
     agentCliGrpcPort: 50052
   }, {
-    apiConfigPath: "/tmp/companyhelm/api-config.yaml",
-    apiEnvPath: "/tmp/project/.companyhelm/api/.env",
-    frontendConfigPath: "/tmp/companyhelm/frontend-config.yaml",
-    seedFilePath: "/tmp/companyhelm/seed.sql"
+    apiConfigPath: "/tmp/companyhelm/cli/runtime/api-config.yaml",
+    apiEnvPath: "/tmp/companyhelm/cli/runtime/api/.env",
+    frontendConfigPath: "/tmp/companyhelm/cli/runtime/frontend-config.yaml",
+    seedFilePath: "/tmp/companyhelm/cli/runtime/seed.sql"
   });
 
   expect(yaml).toContain("frontend:");
@@ -24,10 +24,10 @@ test("renders frontend, api, and postgres with only allowed host ports", () => {
   expect(yaml).toContain('"4173:4173"');
   expect(yaml).toContain('"50051:50051"');
   expect(yaml).not.toContain('"50052:50052"');
-  expect(yaml).toContain('"/tmp/project/.companyhelm/api/.env"');
-  expect(yaml).toContain('"/tmp/companyhelm/frontend-config.yaml:/run/companyhelm/config.yaml:ro"');
-  expect(yaml).toContain('"/tmp/companyhelm/api-config.yaml:/run/companyhelm/config.yaml:ro"');
-  expect(yaml).toContain('"/tmp/companyhelm/seed.sql:/run/companyhelm/seed.sql:ro"');
+  expect(yaml).toContain('"/tmp/companyhelm/cli/runtime/api/.env"');
+  expect(yaml).toContain('"/tmp/companyhelm/cli/runtime/frontend-config.yaml:/run/companyhelm/config.yaml:ro"');
+  expect(yaml).toContain('"/tmp/companyhelm/cli/runtime/api-config.yaml:/run/companyhelm/config.yaml:ro"');
+  expect(yaml).toContain('"/tmp/companyhelm/cli/runtime/seed.sql:/run/companyhelm/seed.sql:ro"');
 });
 
 test("renders frontend log level overrides into the compose environment", () => {
@@ -37,10 +37,10 @@ test("renders frontend log level overrides into the compose environment", () => 
     runnerGrpcPort: 50051,
     agentCliGrpcPort: 50052
   }, {
-    apiConfigPath: "/tmp/companyhelm/api-config.yaml",
-    apiEnvPath: "/tmp/project/.companyhelm/api/.env",
-    frontendConfigPath: "/tmp/companyhelm/frontend-config.yaml",
-    seedFilePath: "/tmp/companyhelm/seed.sql"
+    apiConfigPath: "/tmp/companyhelm/cli/runtime/api-config.yaml",
+    apiEnvPath: "/tmp/companyhelm/cli/runtime/api/.env",
+    frontendConfigPath: "/tmp/companyhelm/cli/runtime/frontend-config.yaml",
+    seedFilePath: "/tmp/companyhelm/cli/runtime/seed.sql"
   }, {
     frontendLogLevel: "debug"
   });
@@ -56,10 +56,10 @@ test("omits docker api and frontend services when local repo mode selects them",
     runnerGrpcPort: 50051,
     agentCliGrpcPort: 50052
   }, {
-    apiConfigPath: "/tmp/companyhelm/api-config.yaml",
-    apiEnvPath: "/tmp/project/.companyhelm/api/.env",
-    frontendConfigPath: "/tmp/companyhelm/frontend-config.yaml",
-    seedFilePath: "/tmp/companyhelm/seed.sql"
+    apiConfigPath: "/tmp/companyhelm/cli/runtime/api-config.yaml",
+    apiEnvPath: "/tmp/companyhelm/cli/runtime/api/.env",
+    frontendConfigPath: "/tmp/companyhelm/cli/runtime/frontend-config.yaml",
+    seedFilePath: "/tmp/companyhelm/cli/runtime/seed.sql"
   }, {
     includeApi: false,
     includeFrontend: false,

@@ -15,7 +15,7 @@ export class RepoConfigStore {
   public constructor(private readonly root: string = defaultRepoConfigRoot()) {}
 
   public configPath(): string {
-    return path.join(this.root, "config.yaml");
+    return path.join(this.root, "companyhelm.yaml");
   }
 
   public load(): RepoConfig {
