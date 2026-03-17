@@ -1,6 +1,6 @@
 {
   "name": "@companyhelm/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Bootstrap and manage a local CompanyHelm deployment.",
   "license": "MIT",
   "private": false,
