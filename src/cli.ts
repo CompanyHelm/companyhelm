@@ -26,7 +26,9 @@ export async function main(argv = process.argv): Promise<void> {
       return;
     }
 
-    throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
   }
 }
 

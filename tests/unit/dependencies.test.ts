@@ -17,6 +17,7 @@ import { LocalServiceProcessManager } from "../../src/core/local/LocalServicePro
 import { WebLocalService } from "../../src/core/local/WebLocalService.js";
 import { CommandRunner } from "../../src/core/process/CommandRunner.js";
 import { TerminalRenderer } from "../../src/core/ui/TerminalRenderer.js";
+import { PostgresPortPreflightCheck } from "../../src/preflight/PostgresPortPreflightCheck.js";
 import YAML from "yaml";
 
 const require = createRequire(import.meta.url);
@@ -247,6 +248,7 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
+  vi.spyOn(PostgresPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
   const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
   vi.spyOn(CommandRunner.prototype, "capture")
@@ -366,6 +368,25 @@ test("up fails before startup when the API port is already occupied", async () =
       resolve();
     });
   });
+});
+
+test("up fails before startup when the postgres port is already occupied for local api mode", async () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-local-up-"));
+  const projectRoot = path.join(workspaceRoot, "companyhelm");
+  fs.mkdirSync(projectRoot, { recursive: true });
+  fs.mkdirSync(path.join(workspaceRoot, "companyhelm-api"), { recursive: true });
+  process.chdir(projectRoot);
+
+  vi.spyOn(CommandRunner.prototype, "capture").mockResolvedValue("Docker version 28.0.0");
+  vi.spyOn(PostgresPortPreflightCheck.prototype, "run").mockRejectedValue(
+    new Error("Postgres cannot start because port 5432 is already in use.")
+  );
+  const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+
+  await expect(createDefaultDependencies().up({ apiRepoPath: true })).rejects.toThrow(
+    "Postgres cannot start because port 5432 is already in use."
+  );
+  expect(dockerUp).not.toHaveBeenCalled();
 });
 
 test("logs reads the local api log file when api is running from a local repo", async () => {

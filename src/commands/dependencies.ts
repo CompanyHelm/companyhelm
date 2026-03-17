@@ -131,6 +131,7 @@ export function createDefaultDependencies(): CommandDependencies {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
       const useHostDockerRuntime = options.useHostDockerRuntime ?? false;
+      process.stdout.write(`${renderer.renderBanner()}\n`);
       const desiredSources = localRepoSourceResolver.resolve(options);
       const currentState = stateStore.load();
       const allocatedPorts = currentState?.ports ?? new PortAllocator().allocate();
@@ -144,7 +145,6 @@ export function createDefaultDependencies(): CommandDependencies {
       const workspaceMode = await ensureAgentWorkspaceMode(localConfigStore, process.stdin, process.stdout);
       const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout, { workspaceMode });
       const state = currentState ?? stateStore.initialize();
-      process.stdout.write(`${renderer.renderBanner()}\n`);
       const runnerAlreadyRunning = await isRunnerRunning(commandRunner, runnerSupervisor);
       const versions = versionCatalog.resolve();
       const passwordRecord = createPasswordHash(state.auth.password);

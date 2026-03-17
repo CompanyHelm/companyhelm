@@ -4,9 +4,11 @@ import type { RuntimePorts, RuntimeState } from "../core/runtime/RuntimeState.js
 import type { ManagedServiceStatus } from "../core/status/StatusService.js";
 import { DockerInstalledPreflightCheck } from "./DockerInstalledPreflightCheck.js";
 import { ApiPortPreflightCheck } from "./ApiPortPreflightCheck.js";
+import { PostgresPortPreflightCheck } from "./PostgresPortPreflightCheck.js";
 import { WebPortPreflightCheck } from "./WebPortPreflightCheck.js";
 
 interface StartupStatusSnapshot {
+  postgres: ManagedServiceStatus;
   api: ManagedServiceStatus;
   frontend: ManagedServiceStatus;
 }
@@ -30,6 +32,10 @@ export async function runStartupPreflightChecks(options: StartupPreflightOptions
   if (shouldCheckWebPort(options, currentStatus)) {
     await new WebPortPreflightCheck(options.ports.ui).run();
   }
+
+  if (shouldCheckPostgresPort(options, currentStatus)) {
+    await new PostgresPortPreflightCheck().run();
+  }
 }
 
 function shouldCheckApiPort(options: StartupPreflightOptions, currentStatus: StartupStatusSnapshot): boolean {
@@ -48,6 +54,14 @@ function shouldCheckWebPort(options: StartupPreflightOptions, currentStatus: Sta
     currentStatus.frontend,
     options.desiredSources.frontend.source
   );
+}
+
+function shouldCheckPostgresPort(options: StartupPreflightOptions, currentStatus: StartupStatusSnapshot): boolean {
+  if (options.desiredSources.api.source !== "local") {
+    return false;
+  }
+
+  return currentStatus.postgres !== "running";
 }
 
 function shouldCheckServicePort(
