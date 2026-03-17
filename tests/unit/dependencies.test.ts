@@ -44,6 +44,9 @@ test("up prints resolved package versions and exact image references", async () 
   process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
 
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
+  vi.spyOn(CommandRunner.prototype, "capture")
+    .mockResolvedValueOnce("Docker version 28.0.0")
+    .mockRejectedValue(new Error("CompanyHelm runner is not running."));
   vi.spyOn(GithubAppConfigStore.prototype, "load").mockReturnValue({
     appUrl: "https://github.com/apps/example-local",
     appClientId: "Iv123",
@@ -55,7 +58,6 @@ test("up prints resolved package versions and exact image references", async () 
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
   vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
-  mockRunnerNotRunning();
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
@@ -134,13 +136,15 @@ test("up continues without github auth when machine github app config is missing
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
 
   const ensureGithubAppConfig = vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue(null);
+  vi.spyOn(CommandRunner.prototype, "capture")
+    .mockResolvedValueOnce("Docker version 28.0.0")
+    .mockRejectedValue(new Error("CompanyHelm runner is not running."));
   vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
   vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
-  mockRunnerNotRunning();
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
@@ -171,9 +175,13 @@ test("up reuses an existing runner daemon and logs that startup was skipped", as
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
+  vi.spyOn(DockerStackManager.prototype, "runningServices").mockResolvedValue("postgres\napi\nfrontend");
   vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
-  vi.spyOn(CommandRunner.prototype, "capture").mockResolvedValue("Daemon: running");
+  vi.spyOn(CommandRunner.prototype, "capture")
+    .mockResolvedValueOnce("Docker version 28.0.0")
+    .mockResolvedValueOnce("Daemon: running")
+    .mockResolvedValueOnce("Daemon: running");
   const run = vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
   vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
@@ -241,7 +249,9 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
   const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
   vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
-  mockRunnerNotRunning();
+  vi.spyOn(CommandRunner.prototype, "capture")
+    .mockResolvedValueOnce("Docker version 28.0.0")
+    .mockRejectedValue(new Error("CompanyHelm runner is not running."));
   vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
   vi.spyOn(ApiLocalService.prototype, "start").mockResolvedValue({
     source: "local",
@@ -272,6 +282,90 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
     repoPath: expect.stringMatching(/companyhelm-api$/)
   }));
   expect(startWeb).not.toHaveBeenCalled();
+});
+
+test("up fails before startup when docker is unavailable", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
+  process.chdir(projectRoot);
+
+  vi.spyOn(CommandRunner.prototype, "capture").mockRejectedValue(new Error("spawn docker ENOENT"));
+  const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+
+  await expect(createDefaultDependencies().up()).rejects.toThrow(
+    "Docker is required for `companyhelm up`, but the `docker` command is unavailable. Install Docker and make sure it is on your PATH."
+  );
+  expect(dockerUp).not.toHaveBeenCalled();
+});
+
+test("up fails before startup when the API port is already occupied", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-runtime-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+
+  const server = await import("node:net").then(({ createServer }) => createServer());
+  const occupiedPort = await new Promise<number>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "0.0.0.0", () => {
+      const address = server.address();
+      if (typeof address === "object" && address?.port) {
+        resolve(address.port);
+        return;
+      }
+
+      reject(new Error("Failed to occupy the API port."));
+    });
+  });
+  fs.writeFileSync(path.join(runtimeRoot, "state.yaml"), YAML.stringify({
+    version: 1,
+    company: {
+      id: "company-id",
+      name: "Local CompanyHelm"
+    },
+    auth: {
+      username: "admin@local",
+      password: "secret",
+      jwtPrivateKeyPem: "private",
+      jwtPublicKeyPem: "public"
+    },
+    runner: {
+      name: "local-runner",
+      secret: "runner-secret"
+    },
+    ports: {
+      apiHttp: occupiedPort,
+      ui: 4173,
+      runnerGrpc: 50051,
+      agentCliGrpc: 50052
+    },
+    services: {
+      api: {
+        source: "docker"
+      },
+      frontend: {
+        source: "docker"
+      }
+    }
+  }), "utf8");
+
+  vi.spyOn(CommandRunner.prototype, "capture").mockResolvedValue("Docker version 28.0.0");
+  const dockerUp = vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+
+  await expect(createDefaultDependencies().up()).rejects.toThrow(
+    `companyhelm-api cannot start because port ${occupiedPort} is already in use.`
+  );
+  expect(dockerUp).not.toHaveBeenCalled();
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
 });
 
 test("logs reads the local api log file when api is running from a local repo", async () => {

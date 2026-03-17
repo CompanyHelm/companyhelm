@@ -22,6 +22,8 @@ import { VersionCatalog, type RuntimeVersions } from "../core/runtime/VersionCat
 import { StatusService, type StatusSnapshot } from "../core/status/StatusService.js";
 import { TerminalRenderer } from "../core/ui/TerminalRenderer.js";
 import { LocalConfigStore } from "../core/runtime/LocalConfigStore.js";
+import { PortAllocator } from "../core/runtime/PortAllocator.js";
+import { runStartupPreflightChecks } from "../preflight/runStartupPreflightChecks.js";
 import { ensureGithubAppConfig } from "./setup-github-app.js";
 import { ensureAgentWorkspaceMode } from "./startup-preferences.js";
 
@@ -129,12 +131,21 @@ export function createDefaultDependencies(): CommandDependencies {
     async up(options = {}) {
       const logLevel = options.logLevel ?? "info";
       const useHostDockerRuntime = options.useHostDockerRuntime ?? false;
+      const desiredSources = localRepoSourceResolver.resolve(options);
+      const currentState = stateStore.load();
+      const allocatedPorts = currentState?.ports ?? new PortAllocator().allocate();
+      await runStartupPreflightChecks({
+        commandRunner,
+        currentState,
+        desiredSources,
+        ports: allocatedPorts,
+        readStatus: () => statusService.read()
+      });
       const workspaceMode = await ensureAgentWorkspaceMode(localConfigStore, process.stdin, process.stdout);
       const githubAppConfig = await ensureGithubAppConfig(githubAppConfigStore, process.stdin, process.stdout, { workspaceMode });
-      const state = stateStore.initialize();
+      const state = currentState ?? stateStore.initialize();
       process.stdout.write(`${renderer.renderBanner()}\n`);
       const runnerAlreadyRunning = await isRunnerRunning(commandRunner, runnerSupervisor);
-      const desiredSources = localRepoSourceResolver.resolve(options);
       const versions = versionCatalog.resolve();
       const passwordRecord = createPasswordHash(state.auth.password);
       const startedLocalServices: Array<"api" | "frontend"> = [];
