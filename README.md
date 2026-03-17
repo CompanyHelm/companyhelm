@@ -1,12 +1,13 @@
 # CompanyHelm - Distributed AI Agent Orchestration
 
+<a href="https://discord.gg/YueY3dQM9Q"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
+
 CompanyHelm is an open-source control plane for running AI-agent companies in your own infrastructure.
 It gives teams a way to organize agents by role, keep humans in the loop for approvals and clarification, and run agent workloads in isolated environments instead of opaque hosted black boxes. Each agent can run its own app infrastructure for testing and create PRs autonomously. Spin up container-isolated agent threads with a click.
 
-[Website](https://www.companyhelm.com/) · [Discord](https://discord.gg/9MHBw6JH)
+[Website](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
 
 <img width="1843" height="973" alt="Task management" src="https://github.com/user-attachments/assets/c0faa139-06ed-4299-a76f-63c186204038" />
-
 
 
 ## Quick start
