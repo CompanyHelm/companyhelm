@@ -19,7 +19,7 @@ export class ImageConfigStore {
   public constructor(private readonly root: string = defaultPackageRoot()) {}
 
   public configPath(): string {
-    return path.join(this.root, "src", "core", "runtime", "ImageConfig.ts");
+    return path.join(this.root, "src", "config", "image_config.ts");
   }
 
   public load(): ImageConfig {

@@ -45,14 +45,14 @@ test("writes and reads cli config workspace mode", () => {
   });
 });
 
-test("writes and reads packaged image pins from ImageConfig.ts", () => {
+test("writes and reads packaged image pins from image_config.ts", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-project-config-"));
   const store = new ImageConfigStore(projectRoot);
 
   store.setImage("api", "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29");
   store.setImage("frontend", "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844");
 
-  expect(fs.readFileSync(path.join(projectRoot, "src", "core", "runtime", "ImageConfig.ts"), "utf8")).toBe(
+  expect(fs.readFileSync(path.join(projectRoot, "src", "config", "image_config.ts"), "utf8")).toBe(
     [
       "export const PACKAGED_IMAGE_CONFIG = {",
       '  api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",',

@@ -63,7 +63,7 @@ beforeEach(() => {
   });
 });
 
-test("uses clack prompts to select an image tag and write ImageConfig.ts", async () => {
+test("uses clack prompts to select an image tag and write image_config.ts", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-set-image-"));
   const input = createInteractiveStream();
   const output = createInteractiveStream();
@@ -97,7 +97,7 @@ test("uses clack prompts to select an image tag and write ImageConfig.ts", async
     }
   );
 
-  expect(fs.readFileSync(path.join(projectRoot, "src/core/runtime/ImageConfig.ts"), "utf8")).toContain(
+  expect(fs.readFileSync(path.join(projectRoot, "src", "config", "image_config.ts"), "utf8")).toContain(
     'api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29"'
   );
   expect(promptState.intro).toHaveBeenCalledWith("CompanyHelm image selection", { output });
@@ -129,9 +129,9 @@ test("uses clack prompts to select an image tag and write ImageConfig.ts", async
 
 test("shows tags in descending chronological order and marks the current tag", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-set-image-"));
-  fs.mkdirSync(path.join(projectRoot, "src", "core", "runtime"), { recursive: true });
+  fs.mkdirSync(path.join(projectRoot, "src", "config"), { recursive: true });
   fs.writeFileSync(
-    path.join(projectRoot, "src", "core", "runtime", "ImageConfig.ts"),
+    path.join(projectRoot, "src", "config", "image_config.ts"),
     [
       "export const PACKAGED_IMAGE_CONFIG = {",
       '  api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",',
