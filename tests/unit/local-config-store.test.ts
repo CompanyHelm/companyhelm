@@ -45,14 +45,14 @@ test("writes and reads cli config workspace mode", () => {
   });
 });
 
-test("writes and reads repo image pins from companyhelm.yaml", () => {
+test("writes and reads repo image pins from config.yaml", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-project-config-"));
   const store = new RepoConfigStore(projectRoot);
 
   store.setImage("api", "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29");
   store.setImage("frontend", "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844");
 
-  expect(fs.readFileSync(path.join(projectRoot, "companyhelm.yaml"), "utf8")).toBe(
+  expect(fs.readFileSync(path.join(projectRoot, "config.yaml"), "utf8")).toBe(
     [
       "images:",
       "  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",
@@ -72,7 +72,7 @@ test("image catalog prefers repo config image pins", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-config-project-"));
   process.chdir(projectRoot);
   fs.writeFileSync(
-    path.join(projectRoot, "companyhelm.yaml"),
+    path.join(projectRoot, "config.yaml"),
     "images:\n  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29\n",
     "utf8"
   );

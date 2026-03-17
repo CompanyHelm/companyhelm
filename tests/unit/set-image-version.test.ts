@@ -97,7 +97,7 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
     }
   );
 
-  expect(fs.readFileSync(path.join(projectRoot, "companyhelm.yaml"), "utf8")).toContain(
+  expect(fs.readFileSync(path.join(projectRoot, "config.yaml"), "utf8")).toContain(
     "api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29"
   );
   expect(promptState.intro).toHaveBeenCalledWith("CompanyHelm image selection", { output });
@@ -130,7 +130,7 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
 test("shows tags in descending chronological order and marks the current tag", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-set-image-"));
   fs.writeFileSync(
-    path.join(projectRoot, "companyhelm.yaml"),
+    path.join(projectRoot, "config.yaml"),
     "images:\n  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29\n"
   );
   const input = createInteractiveStream();
