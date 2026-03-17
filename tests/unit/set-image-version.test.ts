@@ -37,8 +37,8 @@ vi.mock("@clack/prompts", () => ({
 }));
 
 import { runSetImageVersion } from "../../src/commands/set-image-version.js";
-import { LocalConfigStore } from "../../src/core/runtime/LocalConfigStore.js";
 import { MANAGED_IMAGE_SERVICES, type ManagedImageService } from "../../src/core/runtime/ManagedImages.js";
+import { RepoConfigStore } from "../../src/core/runtime/RepoConfigStore.js";
 
 function createInteractiveStream(): PassThrough {
   const stream = new PassThrough();
@@ -75,7 +75,7 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
     {
       input,
       output,
-      configStore: new LocalConfigStore(projectRoot),
+      configStore: new RepoConfigStore(projectRoot),
       registry: {
         async listAvailableTags(service: ManagedImageService) {
           return service === "api"
@@ -143,7 +143,7 @@ test("shows tags in descending chronological order and marks the current tag", a
     {
       input,
       output,
-      configStore: new LocalConfigStore(projectRoot),
+      configStore: new RepoConfigStore(projectRoot),
       registry: {
         async listAvailableTags() {
           return [

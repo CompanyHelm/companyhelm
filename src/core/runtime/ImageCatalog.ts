@@ -1,5 +1,5 @@
-import { LocalConfigStore } from "./LocalConfigStore.js";
 import { defaultManagedImageReference } from "./ManagedImages.js";
+import { RepoConfigStore } from "./RepoConfigStore.js";
 
 export interface RuntimeImages {
   api: string;
@@ -9,7 +9,7 @@ export interface RuntimeImages {
 
 export class ImageCatalog {
   public resolve(): RuntimeImages {
-    const configuredImages = new LocalConfigStore().load().images;
+    const configuredImages = new RepoConfigStore().load().images;
 
     return {
       api: configuredImages.api || process.env.COMPANYHELM_API_IMAGE || defaultManagedImageReference("api"),

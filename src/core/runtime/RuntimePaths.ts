@@ -11,6 +11,14 @@ export class RuntimePaths {
     return path.join(this.root, "docker-compose.yaml");
   }
 
+  public apiDirectoryPath(): string {
+    return path.join(this.root, "api");
+  }
+
+  public apiEnvPath(): string {
+    return path.join(this.apiDirectoryPath(), ".env");
+  }
+
   public apiConfigPath(): string {
     return path.join(this.root, "api-config.yaml");
   }

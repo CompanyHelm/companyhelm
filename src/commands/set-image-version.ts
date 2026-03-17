@@ -3,13 +3,13 @@ import type { Readable, Writable } from "node:stream";
 
 import type { Command } from "commander";
 
-import { LocalConfigStore } from "../core/runtime/LocalConfigStore.js";
 import {
   MANAGED_IMAGE_SERVICES,
   requireManagedImageService,
   type ManagedImageService
 } from "../core/runtime/ManagedImages.js";
 import { PublicImageTagRegistry } from "../core/runtime/PublicImageTagRegistry.js";
+import { RepoConfigStore } from "../core/runtime/RepoConfigStore.js";
 import { requireInteractiveTerminal, unwrapPromptResult } from "./interactive.js";
 
 export interface SetImageVersionOptions {
@@ -118,7 +118,7 @@ export async function runSetImageVersion(
   const input = dependencies.input ?? process.stdin;
   const output = dependencies.output ?? process.stdout;
   const registry = dependencies.registry ?? new PublicImageTagRegistry();
-  const configStore = dependencies.configStore ?? new LocalConfigStore();
+  const configStore = dependencies.configStore ?? new RepoConfigStore();
 
   clack.intro("CompanyHelm image selection", { output });
   const selectedService = options.service
@@ -154,7 +154,7 @@ export async function runSetImageVersion(
 export function registerSetImageVersionCommand(program: Command): void {
   program
     .command("set-image-version")
-    .description("Interactively choose an API or frontend image tag and store it in the CompanyHelm home config.")
+    .description("Interactively choose an API or frontend image tag and store it in the project config.")
     .option("-s, --service <service>", "Prefill the service to update (api or frontend)")
     .option("-l, --limit <count>", "How many image tags to show", parsePositiveInteger, 20)
     .action(async (options: SetImageVersionOptions) => {

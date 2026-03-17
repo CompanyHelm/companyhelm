@@ -7,8 +7,8 @@ import { expect, test } from "vitest";
 import { ApiEnvFileWriter } from "../../src/core/config/ApiEnvFileWriter.js";
 
 test("writes the generated api env file with github app variables", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-project-env-"));
-  const writer = new ApiEnvFileWriter(projectRoot);
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-runtime-env-"));
+  const writer = new ApiEnvFileWriter(runtimeRoot);
 
   const envPath = writer.write({
     appUrl: "https://github.com/apps/example-local",
@@ -16,7 +16,7 @@ test("writes the generated api env file with github app variables", () => {
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
   });
 
-  expect(envPath).toBe(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  expect(envPath).toBe(path.join(runtimeRoot, "api", ".env"));
   expect(fs.readFileSync(envPath, "utf8")).toBe(
     [
       "GITHUB_APP_URL=https://github.com/apps/example-local",
@@ -28,8 +28,8 @@ test("writes the generated api env file with github app variables", () => {
 });
 
 test("writes blank github app variables when github auth is skipped", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-project-env-"));
-  const writer = new ApiEnvFileWriter(projectRoot);
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-runtime-env-"));
+  const writer = new ApiEnvFileWriter(runtimeRoot);
 
   const envPath = writer.write(null);
 

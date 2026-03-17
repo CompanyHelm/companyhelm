@@ -1,6 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 
 import { DeploymentBootstrapper } from "../core/bootstrap/DeploymentBootstrapper.js";
 import { ApiEnvFileWriter } from "../core/config/ApiEnvFileWriter.js";
@@ -12,8 +10,8 @@ import { LocalServiceProcessManager } from "../core/local/LocalServiceProcessMan
 import { WebLocalService } from "../core/local/WebLocalService.js";
 import { LogsService } from "../core/logs/LogsService.js";
 import { CommandRunner } from "../core/process/CommandRunner.js";
-import { ProjectPaths } from "../core/runtime/ProjectPaths.js";
 import { RunnerSupervisor } from "../core/runner/RunnerSupervisor.js";
+import { defaultCliRoot } from "../core/runtime/CliRoot.js";
 import { createPasswordHash } from "../core/runtime/Secrets.js";
 import { RuntimePaths } from "../core/runtime/RuntimePaths.js";
 import type { RuntimeState } from "../core/runtime/RuntimeState.js";
@@ -58,7 +56,7 @@ export interface CommandDependencies {
 }
 
 function runtimeRoot(): string {
-  return process.env.COMPANYHELM_HOME || path.join(os.homedir(), ".companyhelm");
+  return defaultCliRoot();
 }
 
 export function createDefaultDependencies(): CommandDependencies {
@@ -71,10 +69,9 @@ export function createDefaultDependencies(): CommandDependencies {
   const runnerSupervisor = new RunnerSupervisor(runtimePaths.runnerConfigPath());
   const bootstrapper = new DeploymentBootstrapper();
   const githubAppConfigStore = new GithubAppConfigStore();
-  const apiEnvFileWriter = new ApiEnvFileWriter(process.cwd());
-  const projectPaths = new ProjectPaths(process.cwd());
+  const apiEnvFileWriter = new ApiEnvFileWriter(root);
   const localRepoSourceResolver = new LocalRepoSourceResolver(process.cwd());
-  const localConfigStore = new LocalConfigStore(root);
+  const localConfigStore = new LocalConfigStore();
   const localServiceProcessManager = new LocalServiceProcessManager();
   const apiLocalService = new ApiLocalService(localServiceProcessManager, commandRunner);
   const webLocalService = new WebLocalService(localServiceProcessManager, commandRunner);
@@ -313,7 +310,6 @@ export function createDefaultDependencies(): CommandDependencies {
       }
 
       await dockerStackManager.down({ removeVolumes: true });
-      fs.rmSync(projectPaths.apiEnvPath(), { force: true });
       fs.rmSync(localConfigStore.configPath(), { force: true });
       fs.rmSync(root, { recursive: true, force: true });
       if (options.removeGithubAppConfig) {

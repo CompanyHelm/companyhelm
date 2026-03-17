@@ -17,7 +17,9 @@ import { LocalServiceProcessManager } from "../../src/core/local/LocalServicePro
 import { WebLocalService } from "../../src/core/local/WebLocalService.js";
 import { CommandRunner } from "../../src/core/process/CommandRunner.js";
 import { TerminalRenderer } from "../../src/core/ui/TerminalRenderer.js";
+import { ApiPortPreflightCheck } from "../../src/preflight/ApiPortPreflightCheck.js";
 import { PostgresPortPreflightCheck } from "../../src/preflight/PostgresPortPreflightCheck.js";
+import { WebPortPreflightCheck } from "../../src/preflight/WebPortPreflightCheck.js";
 import YAML from "yaml";
 
 const require = createRequire(import.meta.url);
@@ -27,6 +29,12 @@ const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "
 
 function mockRunnerNotRunning(): void {
   vi.spyOn(CommandRunner.prototype, "capture").mockRejectedValue(new Error("CompanyHelm runner is not running."));
+}
+
+function mockAvailablePorts(): void {
+  vi.spyOn(ApiPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(PostgresPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(WebPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
 }
 
 afterEach(() => {
@@ -43,6 +51,7 @@ test("up prints resolved package versions and exact image references", async () 
   process.env.COMPANYHELM_API_IMAGE = "registry.example.com/companyhelm-api:2026.03.12";
   process.env.COMPANYHELM_WEB_IMAGE = "registry.example.com/companyhelm-web:2026.03.12";
   process.env.COMPANYHELM_POSTGRES_IMAGE = "postgres:17.2-alpine";
+  mockAvailablePorts();
 
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(CommandRunner.prototype, "capture")
@@ -53,7 +62,7 @@ test("up prints resolved package versions and exact image references", async () 
     appClientId: "Iv123",
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
   });
-  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(runtimeRoot, "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
@@ -134,13 +143,14 @@ test("up continues without github auth when machine github app config is missing
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
+  mockAvailablePorts();
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
 
   const ensureGithubAppConfig = vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue(null);
   vi.spyOn(CommandRunner.prototype, "capture")
     .mockResolvedValueOnce("Docker version 28.0.0")
     .mockRejectedValue(new Error("CompanyHelm runner is not running."));
-  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(runtimeRoot, "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
@@ -165,6 +175,7 @@ test("up starts the runner with the HTTP agent API on the API port", async () =>
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
+  mockAvailablePorts();
 
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
@@ -172,7 +183,7 @@ test("up starts the runner with the HTTP agent API on the API port", async () =>
     appClientId: "Iv123",
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
   });
-  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(runtimeRoot, "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
@@ -203,6 +214,7 @@ test("up reuses an existing runner daemon and logs that startup was skipped", as
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
+  mockAvailablePorts();
 
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
@@ -210,7 +222,7 @@ test("up reuses an existing runner daemon and logs that startup was skipped", as
     appClientId: "Iv123",
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
   });
-  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(runtimeRoot, "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
@@ -236,28 +248,28 @@ test("up reuses an existing runner daemon and logs that startup was skipped", as
   expect(output).toContain("... Runner already running; skipping startup.");
 });
 
-test("reset deletes the generated project api env file", async () => {
+test("reset removes the generated api env file from the cli runtime root", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-project-"));
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-runtime-"));
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
-  fs.mkdirSync(path.join(projectRoot, ".companyhelm", "api"), { recursive: true });
-  fs.writeFileSync(path.join(projectRoot, ".companyhelm", "api", ".env"), "GITHUB_APP_URL=value\n", "utf8");
+  fs.mkdirSync(path.join(runtimeRoot, "api"), { recursive: true });
+  fs.writeFileSync(path.join(runtimeRoot, "api", ".env"), "GITHUB_APP_URL=value\n", "utf8");
 
   vi.spyOn(DockerStackManager.prototype, "down").mockResolvedValue(undefined);
 
   await createDefaultDependencies().reset();
 
-  expect(fs.existsSync(path.join(projectRoot, ".companyhelm", "api", ".env"))).toBe(false);
+  expect(fs.existsSync(path.join(runtimeRoot, "api", ".env"))).toBe(false);
 });
 
-test("reset deletes the CompanyHelm home config file but preserves the repo config", async () => {
+test("reset deletes the cli config file but preserves the repo config", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-project-"));
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-reset-runtime-"));
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
   fs.writeFileSync(path.join(projectRoot, "config.yaml"), "repo config should stay\n", "utf8");
-  fs.writeFileSync(path.join(runtimeRoot, "config.yaml"), "agent_workspace_mode: dedicated\nimages:\n", "utf8");
+  fs.writeFileSync(path.join(runtimeRoot, "config.yaml"), "agent_workspace_mode: dedicated\n", "utf8");
 
   vi.spyOn(DockerStackManager.prototype, "down").mockResolvedValue(undefined);
 
@@ -291,6 +303,8 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
   fs.mkdirSync(path.join(workspaceRoot, "companyhelm-api"), { recursive: true });
   process.chdir(projectRoot);
   process.env.COMPANYHELM_HOME = runtimeRoot;
+  vi.spyOn(ApiPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(WebPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
 
   vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
   vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
@@ -298,7 +312,7 @@ test("up starts the api from a local repo when apiRepoPath is selected", async (
     appClientId: "Iv123",
     appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
   });
-  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(runtimeRoot, "api", ".env"));
   vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
   vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
@@ -430,6 +444,8 @@ test("up fails before startup when the postgres port is already occupied for loc
   fs.mkdirSync(projectRoot, { recursive: true });
   fs.mkdirSync(path.join(workspaceRoot, "companyhelm-api"), { recursive: true });
   process.chdir(projectRoot);
+  vi.spyOn(ApiPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(WebPortPreflightCheck.prototype, "run").mockResolvedValue(undefined);
 
   vi.spyOn(CommandRunner.prototype, "capture").mockResolvedValue("Docker version 28.0.0");
   vi.spyOn(PostgresPortPreflightCheck.prototype, "run").mockRejectedValue(
