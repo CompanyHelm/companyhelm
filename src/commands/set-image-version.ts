@@ -154,7 +154,7 @@ export async function runSetImageVersion(
 export function registerSetImageVersionCommand(program: Command): void {
   program
     .command("set-image-version")
-    .description("Interactively choose an API or frontend image tag and store it in local config.yaml.")
+    .description("Interactively choose an API or frontend image tag and store it in the CompanyHelm home config.")
     .option("-s, --service <service>", "Prefill the service to update (api or frontend)")
     .option("-l, --limit <count>", "How many image tags to show", parsePositiveInteger, 20)
     .action(async (options: SetImageVersionOptions) => {

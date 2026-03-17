@@ -74,7 +74,7 @@ export function createDefaultDependencies(): CommandDependencies {
   const apiEnvFileWriter = new ApiEnvFileWriter(process.cwd());
   const projectPaths = new ProjectPaths(process.cwd());
   const localRepoSourceResolver = new LocalRepoSourceResolver(process.cwd());
-  const localConfigStore = new LocalConfigStore(process.cwd());
+  const localConfigStore = new LocalConfigStore(root);
   const localServiceProcessManager = new LocalServiceProcessManager();
   const apiLocalService = new ApiLocalService(localServiceProcessManager, commandRunner);
   const webLocalService = new WebLocalService(localServiceProcessManager, commandRunner);

@@ -8,9 +8,15 @@ import { ImageCatalog } from "../../src/core/runtime/ImageCatalog.js";
 import { LocalConfigStore } from "../../src/core/runtime/LocalConfigStore.js";
 
 const originalCwd = process.cwd();
+const originalHome = process.env.COMPANYHELM_HOME;
 
 afterEach(() => {
   process.chdir(originalCwd);
+  if (originalHome === undefined) {
+    delete process.env.COMPANYHELM_HOME;
+  } else {
+    process.env.COMPANYHELM_HOME = originalHome;
+  }
   delete process.env.COMPANYHELM_API_IMAGE;
   delete process.env.COMPANYHELM_WEB_IMAGE;
 });
@@ -42,10 +48,10 @@ test("writes and reads local config image pins", () => {
 });
 
 test("image catalog prefers local config image pins", () => {
-  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-config-"));
-  process.chdir(projectRoot);
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-config-home-"));
+  process.env.COMPANYHELM_HOME = runtimeRoot;
   fs.writeFileSync(
-    path.join(projectRoot, "config.yaml"),
+    path.join(runtimeRoot, "config.yaml"),
     "images:\n  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29\n",
     "utf8"
   );
@@ -56,6 +62,17 @@ test("image catalog prefers local config image pins", () => {
     frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:latest",
     postgres: "postgres:16-alpine"
   });
+});
+
+test("default local config store uses COMPANYHELM_HOME", () => {
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-config-home-"));
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+
+  const store = new LocalConfigStore();
+  store.setAgentWorkspaceMode("dedicated");
+
+  expect(store.configPath()).toBe(path.join(runtimeRoot, "config.yaml"));
+  expect(fs.readFileSync(path.join(runtimeRoot, "config.yaml"), "utf8")).toContain("agent_workspace_mode: dedicated");
 });
 
 test("loads agent workspace mode without image pins", () => {

@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import type { ManagedImageService } from "./ManagedImages.js";
@@ -10,8 +11,12 @@ export interface LocalConfig {
   images: Partial<Record<ManagedImageService, string>>;
 }
 
+function defaultLocalConfigRoot(): string {
+  return process.env.COMPANYHELM_HOME || path.join(os.homedir(), ".companyhelm");
+}
+
 export class LocalConfigStore {
-  public constructor(private readonly root: string = process.cwd()) {}
+  public constructor(private readonly root: string = defaultLocalConfigRoot()) {}
 
   public configPath(): string {
     return path.join(this.root, "config.yaml");
@@ -55,6 +60,7 @@ export class LocalConfigStore {
       lines.push(`  frontend: ${config.images.frontend}`);
     }
 
+    fs.mkdirSync(path.dirname(this.configPath()), { recursive: true });
     fs.writeFileSync(this.configPath(), `${lines.join("\n")}\n`, "utf8");
   }
 
