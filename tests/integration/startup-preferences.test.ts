@@ -50,24 +50,24 @@ test("prompts for and stores the agent workspace mode", async () => {
     message: "Where should agents operate?",
     options: [
       {
+        value: "current-working-directory",
+        label: "Current working directory",
+        hint: "recommended: agents work directly in this checkout"
+      },
+      {
         value: "dedicated",
         label: "Dedicated workspaces directory",
         hint: "isolated thread workspaces"
-      },
-      {
-        value: "current-working-directory",
-        label: "Current working directory",
-        hint: "agents work directly in this checkout"
       }
     ],
-    initialValue: "dedicated",
+    initialValue: "current-working-directory",
     input,
     output
   });
   expect(setAgentWorkspaceMode).toHaveBeenCalledWith("current-working-directory");
 });
 
-test("defaults to dedicated mode without prompting outside a tty", async () => {
+test("defaults to current working directory mode without prompting outside a tty", async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean };
   input.isTTY = false;
   const output = new PassThrough() as PassThrough & { isTTY: boolean };
@@ -75,7 +75,7 @@ test("defaults to dedicated mode without prompting outside a tty", async () => {
   const store = new LocalConfigStore("/tmp/companyhelm-startup-preferences");
   const setAgentWorkspaceMode = vi.spyOn(store, "setAgentWorkspaceMode");
 
-  await expect(ensureAgentWorkspaceMode(store, input, output)).resolves.toBe("dedicated");
+  await expect(ensureAgentWorkspaceMode(store, input, output)).resolves.toBe("current-working-directory");
 
   expect(promptState.select).not.toHaveBeenCalled();
   expect(setAgentWorkspaceMode).not.toHaveBeenCalled();

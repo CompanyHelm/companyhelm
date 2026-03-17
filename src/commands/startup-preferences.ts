@@ -4,7 +4,7 @@ import type { Readable, Writable } from "node:stream";
 import { unwrapPromptResult, hasInteractiveTerminal } from "./interactive.js";
 import { LocalConfigStore, type AgentWorkspaceMode } from "../core/runtime/LocalConfigStore.js";
 
-const DEFAULT_WORKSPACE_MODE: AgentWorkspaceMode = "dedicated";
+const DEFAULT_WORKSPACE_MODE: AgentWorkspaceMode = "current-working-directory";
 
 export async function ensureAgentWorkspaceMode(
   store = new LocalConfigStore(),
@@ -36,14 +36,14 @@ export async function ensureAgentWorkspaceMode(
       message: "Where should agents operate?",
       options: [
         {
+          value: "current-working-directory",
+          label: "Current working directory",
+          hint: "recommended: agents work directly in this checkout"
+        },
+        {
           value: "dedicated",
           label: "Dedicated workspaces directory",
           hint: "isolated thread workspaces"
-        },
-        {
-          value: "current-working-directory",
-          label: "Current working directory",
-          hint: "agents work directly in this checkout"
         }
       ],
       initialValue: DEFAULT_WORKSPACE_MODE,
