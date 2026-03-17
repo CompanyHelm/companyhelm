@@ -314,6 +314,7 @@ export function createDefaultDependencies(): CommandDependencies {
 
       await dockerStackManager.down({ removeVolumes: true });
       fs.rmSync(projectPaths.apiEnvPath(), { force: true });
+      fs.rmSync(localConfigStore.configPath(), { force: true });
       fs.rmSync(root, { recursive: true, force: true });
       if (options.removeGithubAppConfig) {
         githubAppConfigStore.delete();
