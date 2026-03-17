@@ -43,6 +43,7 @@ interface PublicRegistryBlobConfigResponse {
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 const MAX_FETCH_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 250;
+const METADATA_FETCH_CONCURRENCY = 6;
 
 class PublicRegistryRequestError extends Error {
   public readonly status: number;
@@ -79,15 +80,17 @@ export class PublicImageTagRegistry {
     }
 
     const uniqueTags = [...new Set(payload.tags ?? [])].map((tag, position) => ({ tag, position }));
-    const createdAtByDigest = new Map<string, string | undefined>();
-    const tagsWithMetadata: Array<{ tag: string; position: number; createdAt?: string }> = [];
-    for (const { tag, position } of uniqueTags) {
-      tagsWithMetadata.push({
-        tag,
-        position,
-        createdAt: await this.fetchCreatedAt(repositoryPath, token, tag, createdAtByDigest)
-      });
-    }
+    const candidateTags = uniqueTags.slice(0, limit);
+    const createdAtByDigest = new Map<string, Promise<string | undefined>>();
+    const tagsWithMetadata = await this.mapWithConcurrency(
+      candidateTags,
+      METADATA_FETCH_CONCURRENCY,
+      async ({ tag, position }) => ({
+      tag,
+      position,
+      createdAt: await this.fetchCreatedAt(repositoryPath, token, tag, createdAtByDigest)
+      })
+    );
 
     return tagsWithMetadata
       .sort((left, right) => {
@@ -100,7 +103,6 @@ export class PublicImageTagRegistry {
 
         return left.position - right.position;
       })
-      .slice(0, limit)
       .map(({ tag, createdAt }) => ({ tag, createdAt }));
   }
 
@@ -130,7 +132,7 @@ export class PublicImageTagRegistry {
     repositoryPath: string,
     token: string,
     tag: string,
-    createdAtByDigest: Map<string, string | undefined>
+    createdAtByDigest: Map<string, Promise<string | undefined>>
   ): Promise<string | undefined> {
     try {
       const manifestReference = await this.fetchJson<PublicRegistryImageIndexResponse | PublicRegistryImageManifestResponse>(
@@ -162,18 +164,24 @@ export class PublicImageTagRegistry {
         return undefined;
       }
 
-      if (createdAtByDigest.has(configDigest)) {
-        return createdAtByDigest.get(configDigest);
+      const existingCreatedAt = createdAtByDigest.get(configDigest);
+      if (existingCreatedAt) {
+        return await existingCreatedAt;
       }
 
-      const config = await this.fetchJson<PublicRegistryBlobConfigResponse>(
+      const createdAtPromise = this.fetchJson<PublicRegistryBlobConfigResponse>(
         `https://public.ecr.aws/v2/${repositoryPath}/blobs/${configDigest}`,
         {
           Authorization: `Bearer ${token}`
         }
-      );
-      createdAtByDigest.set(configDigest, config.created);
-      return config.created;
+      )
+        .then((config) => config.created)
+        .catch((error: unknown) => {
+          createdAtByDigest.delete(configDigest);
+          throw error;
+        });
+      createdAtByDigest.set(configDigest, createdAtPromise);
+      return await createdAtPromise;
     } catch (error) {
       if (error instanceof PublicRegistryRequestError) {
         return undefined;
@@ -236,5 +244,31 @@ export class PublicImageTagRegistry {
 
   private async sleep(delayMs: number): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  private async mapWithConcurrency<T, TResult>(
+    items: readonly T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<TResult>
+  ): Promise<TResult[]> {
+    if (items.length === 0) {
+      return [];
+    }
+
+    const results = new Array<TResult>(items.length);
+    let nextIndex = 0;
+    const workerCount = Math.min(concurrency, items.length);
+
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (nextIndex < items.length) {
+          const currentIndex = nextIndex;
+          nextIndex += 1;
+          results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+        }
+      })
+    );
+
+    return results;
   }
 }
