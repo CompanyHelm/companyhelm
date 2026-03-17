@@ -1,4 +1,4 @@
 agent_workspace_mode: current-working-directory
 images:
-  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-039402d
-  frontend: public.ecr.aws/x6n0f2k4/companyhelm-web:main-50b2e05
+  api: public.ecr.aws/x6n0f2k4/companyhelm-api:0.6.0
+  frontend: public.ecr.aws/x6n0f2k4/companyhelm-web:0.1.0
