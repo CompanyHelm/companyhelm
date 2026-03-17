@@ -1,0 +1,4 @@
+export const PACKAGED_IMAGE_CONFIG = {
+  api: "public.ecr.aws/x6n0f2k4/companyhelm-api:0.6.1",
+  frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:0.1.1"
+} as const;

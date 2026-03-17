@@ -17,10 +17,11 @@
   },
   "files": [
     "dist",
-    "src/templates"
+    "src/templates",
+    "src/core/runtime/ImageConfig.ts"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/copy-templates.cjs",
+    "build": "rm -rf dist && tsc -p tsconfig.json && node scripts/copy-templates.cjs",
     "set-image-version": "npm run build && node dist/cli.js set-image-version",
     "start": "npm run build && node dist/cli.js",
     "test": "npm run build && vitest run"

@@ -38,7 +38,7 @@ vi.mock("@clack/prompts", () => ({
 
 import { runSetImageVersion } from "../../src/commands/set-image-version.js";
 import { MANAGED_IMAGE_SERVICES, type ManagedImageService } from "../../src/core/runtime/ManagedImages.js";
-import { RepoConfigStore } from "../../src/core/runtime/RepoConfigStore.js";
+import { ImageConfigStore } from "../../src/core/runtime/ImageConfigStore.js";
 
 function createInteractiveStream(): PassThrough {
   const stream = new PassThrough();
@@ -63,7 +63,7 @@ beforeEach(() => {
   });
 });
 
-test("uses clack prompts to select an image tag and write config.yaml", async () => {
+test("uses clack prompts to select an image tag and write ImageConfig.ts", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-set-image-"));
   const input = createInteractiveStream();
   const output = createInteractiveStream();
@@ -75,7 +75,7 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
     {
       input,
       output,
-      configStore: new RepoConfigStore(projectRoot),
+      configStore: new ImageConfigStore(projectRoot),
       registry: {
         async listAvailableTags(service: ManagedImageService) {
           return service === "api"
@@ -97,8 +97,8 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
     }
   );
 
-  expect(fs.readFileSync(path.join(projectRoot, "config.yaml"), "utf8")).toContain(
-    "api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29"
+  expect(fs.readFileSync(path.join(projectRoot, "src/core/runtime/ImageConfig.ts"), "utf8")).toContain(
+    'api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29"'
   );
   expect(promptState.intro).toHaveBeenCalledWith("CompanyHelm image selection", { output });
   expect(promptState.logInfo).toHaveBeenCalledWith("Current configured image for api: default (latest)", { output });
@@ -129,9 +129,16 @@ test("uses clack prompts to select an image tag and write config.yaml", async ()
 
 test("shows tags in descending chronological order and marks the current tag", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-set-image-"));
+  fs.mkdirSync(path.join(projectRoot, "src", "core", "runtime"), { recursive: true });
   fs.writeFileSync(
-    path.join(projectRoot, "config.yaml"),
-    "images:\n  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29\n"
+    path.join(projectRoot, "src", "core", "runtime", "ImageConfig.ts"),
+    [
+      "export const PACKAGED_IMAGE_CONFIG = {",
+      '  api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",',
+      '  frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844"',
+      "} as const;",
+      ""
+    ].join("\n")
   );
   const input = createInteractiveStream();
   const output = createInteractiveStream();
@@ -143,7 +150,7 @@ test("shows tags in descending chronological order and marks the current tag", a
     {
       input,
       output,
-      configStore: new RepoConfigStore(projectRoot),
+      configStore: new ImageConfigStore(projectRoot),
       registry: {
         async listAvailableTags() {
           return [

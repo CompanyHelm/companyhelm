@@ -9,7 +9,7 @@ import {
   type ManagedImageService
 } from "../core/runtime/ManagedImages.js";
 import { PublicImageTagRegistry } from "../core/runtime/PublicImageTagRegistry.js";
-import { RepoConfigStore } from "../core/runtime/RepoConfigStore.js";
+import { ImageConfigStore } from "../core/runtime/ImageConfigStore.js";
 import { requireInteractiveTerminal, unwrapPromptResult } from "./interactive.js";
 
 export interface SetImageVersionOptions {
@@ -27,7 +27,7 @@ export interface InteractiveImageSelector {
   buildImageReference(service: ManagedImageService, tag: string): string;
 }
 
-export interface ImageConfigStore {
+export interface ImageVersionStore {
   load(): { images: Partial<Record<ManagedImageService, string>> };
   setImage(service: ManagedImageService, image: string): { configPath: string; image: string };
 }
@@ -112,13 +112,13 @@ export async function runSetImageVersion(
     input?: Readable;
     output?: Writable;
     registry?: InteractiveImageSelector;
-    configStore?: ImageConfigStore;
+    configStore?: ImageVersionStore;
   } = {}
 ): Promise<void> {
   const input = dependencies.input ?? process.stdin;
   const output = dependencies.output ?? process.stdout;
   const registry = dependencies.registry ?? new PublicImageTagRegistry();
-  const configStore = dependencies.configStore ?? new RepoConfigStore();
+  const configStore = dependencies.configStore ?? new ImageConfigStore();
 
   clack.intro("CompanyHelm image selection", { output });
   const selectedService = options.service
@@ -154,7 +154,7 @@ export async function runSetImageVersion(
 export function registerSetImageVersionCommand(program: Command): void {
   program
     .command("set-image-version")
-    .description("Interactively choose an API or frontend image tag and store it in the project config.")
+    .description("Interactively choose an API or frontend image tag and store it in the packaged image config.")
     .option("-s, --service <service>", "Prefill the service to update (api or frontend)")
     .option("-l, --limit <count>", "How many image tags to show", parsePositiveInteger, 20)
     .action(async (options: SetImageVersionOptions) => {

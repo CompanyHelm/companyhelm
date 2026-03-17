@@ -5,8 +5,8 @@ import path from "node:path";
 import { afterEach, expect, test } from "vitest";
 
 import { ImageCatalog } from "../../src/core/runtime/ImageCatalog.js";
+import { ImageConfigStore } from "../../src/core/runtime/ImageConfigStore.js";
 import { LocalConfigStore } from "../../src/core/runtime/LocalConfigStore.js";
-import { RepoConfigStore } from "../../src/core/runtime/RepoConfigStore.js";
 
 const originalCwd = process.cwd();
 const originalHome = process.env.COMPANYHELM_HOME;
@@ -45,18 +45,19 @@ test("writes and reads cli config workspace mode", () => {
   });
 });
 
-test("writes and reads repo image pins from config.yaml", () => {
+test("writes and reads packaged image pins from ImageConfig.ts", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-project-config-"));
-  const store = new RepoConfigStore(projectRoot);
+  const store = new ImageConfigStore(projectRoot);
 
   store.setImage("api", "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29");
   store.setImage("frontend", "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844");
 
-  expect(fs.readFileSync(path.join(projectRoot, "config.yaml"), "utf8")).toBe(
+  expect(fs.readFileSync(path.join(projectRoot, "src", "core", "runtime", "ImageConfig.ts"), "utf8")).toBe(
     [
-      "images:",
-      "  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",
-      "  frontend: public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844",
+      "export const PACKAGED_IMAGE_CONFIG = {",
+      '  api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",',
+      '  frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844"',
+      "} as const;",
       ""
     ].join("\n")
   );
@@ -68,19 +69,43 @@ test("writes and reads repo image pins from config.yaml", () => {
   });
 });
 
-test("image catalog prefers repo config image pins", () => {
+test("image catalog uses packaged image pins without relying on cwd", () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-config-project-"));
-  process.chdir(projectRoot);
+  const imageConfigStore = new ImageConfigStore(projectRoot);
+  fs.mkdirSync(path.dirname(imageConfigStore.configPath()), { recursive: true });
   fs.writeFileSync(
-    path.join(projectRoot, "config.yaml"),
-    "images:\n  api: public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29\n",
+    imageConfigStore.configPath(),
+    [
+      "export const PACKAGED_IMAGE_CONFIG = {",
+      '  api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",',
+      '  frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844"',
+      "} as const;",
+      ""
+    ].join("\n"),
     "utf8"
   );
-  process.env.COMPANYHELM_API_IMAGE = "registry.example.com/ignored-api:old";
 
-  expect(new ImageCatalog().resolve()).toEqual({
+  expect(new ImageCatalog(imageConfigStore).resolve()).toEqual({
     api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",
-    frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:latest",
+    frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844",
+    postgres: "postgres:16-alpine"
+  });
+});
+
+test("image catalog lets explicit env vars override packaged image pins", () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-config-project-"));
+  const imageConfigStore = new ImageConfigStore(projectRoot);
+  imageConfigStore.save({
+    images: {
+      api: "public.ecr.aws/x6n0f2k4/companyhelm-api:main-c32cd29",
+      frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844"
+    }
+  });
+  process.env.COMPANYHELM_API_IMAGE = "registry.example.com/override-api:new";
+
+  expect(new ImageCatalog(imageConfigStore).resolve()).toEqual({
+    api: "registry.example.com/override-api:new",
+    frontend: "public.ecr.aws/x6n0f2k4/companyhelm-web:main-8fc7844",
     postgres: "postgres:16-alpine"
   });
 });

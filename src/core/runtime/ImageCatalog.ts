@@ -1,5 +1,5 @@
 import { defaultManagedImageReference } from "./ManagedImages.js";
-import { RepoConfigStore } from "./RepoConfigStore.js";
+import { ImageConfigStore } from "./ImageConfigStore.js";
 
 export interface RuntimeImages {
   api: string;
@@ -8,13 +8,15 @@ export interface RuntimeImages {
 }
 
 export class ImageCatalog {
+  public constructor(private readonly configStore = new ImageConfigStore()) {}
+
   public resolve(): RuntimeImages {
-    const configuredImages = new RepoConfigStore().load().images;
+    const configuredImages = this.configStore.load().images;
 
     return {
-      api: configuredImages.api || process.env.COMPANYHELM_API_IMAGE || defaultManagedImageReference("api"),
+      api: process.env.COMPANYHELM_API_IMAGE || configuredImages.api || defaultManagedImageReference("api"),
       frontend:
-        configuredImages.frontend || process.env.COMPANYHELM_WEB_IMAGE || defaultManagedImageReference("frontend"),
+        process.env.COMPANYHELM_WEB_IMAGE || configuredImages.frontend || defaultManagedImageReference("frontend"),
       postgres: process.env.COMPANYHELM_POSTGRES_IMAGE || "postgres:16-alpine"
     };
   }
