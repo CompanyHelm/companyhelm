@@ -160,6 +160,44 @@ test("up continues without github auth when machine github app config is missing
   expect(ApiEnvFileWriter.prototype.write).toHaveBeenCalledWith(null);
 });
 
+test("up starts the runner with the HTTP agent API on the API port", async () => {
+  const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));
+  process.chdir(projectRoot);
+  process.env.COMPANYHELM_HOME = runtimeRoot;
+
+  vi.spyOn(startupPreferencesCommand, "ensureAgentWorkspaceMode").mockResolvedValue("dedicated");
+  vi.spyOn(setupGithubAppCommand, "ensureGithubAppConfig").mockResolvedValue({
+    appUrl: "https://github.com/apps/example-local",
+    appClientId: "Iv123",
+    appPrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n",
+  });
+  vi.spyOn(ApiEnvFileWriter.prototype, "write").mockReturnValue(path.join(projectRoot, ".companyhelm", "api", ".env"));
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeSeedSql").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeApiConfig").mockImplementation(() => undefined);
+  vi.spyOn(DeploymentBootstrapper.prototype, "writeFrontendConfig").mockImplementation(() => undefined);
+  vi.spyOn(CommandRunner.prototype, "capture")
+    .mockResolvedValueOnce("Docker version 28.0.0")
+    .mockRejectedValue(new Error("CompanyHelm runner is not running."));
+  vi.spyOn(DockerStackManager.prototype, "up").mockResolvedValue(undefined);
+  vi.spyOn(DockerStackManager.prototype, "applySeedSql").mockResolvedValue(undefined);
+  const run = vi.spyOn(CommandRunner.prototype, "run").mockResolvedValue(undefined);
+  vi.spyOn(TerminalRenderer.prototype, "renderBanner").mockReturnValue("COMPANYHELM");
+  vi.spyOn(TerminalRenderer.prototype, "success").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "progress").mockImplementation((message: string) => `... ${message}`);
+  vi.spyOn(TerminalRenderer.prototype, "successHighlight").mockImplementation((message: string) => message);
+  vi.spyOn(TerminalRenderer.prototype, "clickableUrl").mockImplementation((url: string) => url);
+
+  await createDefaultDependencies().up();
+
+  const startInvocation = run.mock.calls.find(([, args]) => Array.isArray(args) && args.includes("--agent-api-url"));
+  expect(startInvocation).toBeDefined();
+  expect(startInvocation?.[1]).toContain("--server-url");
+  expect(startInvocation?.[1]).toContain("127.0.0.1:50051");
+  expect(startInvocation?.[1]).toContain("--agent-api-url");
+  expect(startInvocation?.[1]).toContain("http://127.0.0.1:4000/agent/v1");
+});
+
 test("up reuses an existing runner daemon and logs that startup was skipped", async () => {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-project-"));
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "companyhelm-deps-test-"));

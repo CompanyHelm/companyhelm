@@ -23,7 +23,7 @@ test("renders frontend, api, and postgres with only allowed host ports", () => {
   expect(yaml).toContain('"4000:4000"');
   expect(yaml).toContain('"4173:4173"');
   expect(yaml).toContain('"50051:50051"');
-  expect(yaml).toContain('"50052:50052"');
+  expect(yaml).not.toContain('"50052:50052"');
   expect(yaml).toContain('"/tmp/project/.companyhelm/api/.env"');
   expect(yaml).toContain('"/tmp/companyhelm/frontend-config.yaml:/run/companyhelm/config.yaml:ro"');
   expect(yaml).toContain('"/tmp/companyhelm/api-config.yaml:/run/companyhelm/config.yaml:ro"');

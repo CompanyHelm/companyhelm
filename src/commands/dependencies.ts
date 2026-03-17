@@ -200,7 +200,7 @@ export function createDefaultDependencies(): CommandDependencies {
           await commandRunner.run(configureSdkCommand.command, configureSdkCommand.args);
           const startCommand = runnerSupervisor.buildStartArgs({
             serverUrl: `127.0.0.1:${state.ports.runnerGrpc}`,
-            agentApiUrl: `127.0.0.1:${state.ports.agentCliGrpc}`,
+            agentApiUrl: `http://127.0.0.1:${state.ports.apiHttp}/agent/v1`,
             logPath: runtimePaths.runnerLogPath(),
             secret: state.runner.secret,
             logLevel,

@@ -54,7 +54,6 @@ export class ComposeTemplateRenderer {
       "    ports:",
       `      - "${ports.apiHttpPort}:4000"`,
       `      - "${ports.runnerGrpcPort}:${ports.runnerGrpcPort}"`,
-      `      - "${ports.agentCliGrpcPort}:${ports.agentCliGrpcPort}"`,
       "    volumes:",
       `      - "${paths.apiConfigPath}:/run/companyhelm/config.yaml:ro"`,
       "    networks:",

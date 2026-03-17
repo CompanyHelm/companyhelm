@@ -7,7 +7,7 @@ test("builds runner launch args with the generated secret", () => {
 
   const args = supervisor.buildStartArgs({
     serverUrl: "127.0.0.1:50051",
-    agentApiUrl: "127.0.0.1:50052",
+    agentApiUrl: "http://127.0.0.1:4000/agent/v1",
     logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret",
     logLevel: "debug"
@@ -21,7 +21,7 @@ test("builds runner launch args with the generated secret", () => {
   expect(args.args).toContain("--server-url");
   expect(args.args).toContain("127.0.0.1:50051");
   expect(args.args).toContain("--agent-api-url");
-  expect(args.args).toContain("127.0.0.1:50052");
+  expect(args.args).toContain("http://127.0.0.1:4000/agent/v1");
   expect(args.args).toContain("--log-path");
   expect(args.args).toContain("/tmp/companyhelm/daemon.log");
   expect(args.args).toContain("runner-secret");
@@ -39,7 +39,7 @@ test("adds host docker runtime args when enabled", () => {
   const supervisor = new RunnerSupervisor("/tmp/companyhelm");
   const args = supervisor.buildStartArgs({
     serverUrl: "127.0.0.1:50051",
-    agentApiUrl: "127.0.0.1:50052",
+    agentApiUrl: "http://127.0.0.1:4000/agent/v1",
     logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret",
     useHostDockerRuntime: true,
@@ -63,7 +63,7 @@ test("uses DOCKER_HOST for the runner host docker path when host runtime is enab
   const supervisor = new RunnerSupervisor("/tmp/companyhelm");
   const args = supervisor.buildStartArgs({
     serverUrl: "127.0.0.1:50051",
-    agentApiUrl: "127.0.0.1:50052",
+    agentApiUrl: "http://127.0.0.1:4000/agent/v1",
     logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret",
     useHostDockerRuntime: true,
@@ -102,7 +102,7 @@ test("prefers an explicit runner cli override", () => {
   const supervisor = new RunnerSupervisor("/tmp/companyhelm");
   const args = supervisor.buildStartArgs({
     serverUrl: "127.0.0.1:50051",
-    agentApiUrl: "127.0.0.1:50052",
+    agentApiUrl: "http://127.0.0.1:4000/agent/v1",
     logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret"
   });
@@ -119,7 +119,7 @@ test("passes current working directory workspace mode through the environment", 
 
   const args = supervisor.buildStartArgs({
     serverUrl: "127.0.0.1:50051",
-    agentApiUrl: "127.0.0.1:50052",
+    agentApiUrl: "http://127.0.0.1:4000/agent/v1",
     logPath: "/tmp/companyhelm/daemon.log",
     secret: "runner-secret",
     workspaceMode: "current-working-directory",
