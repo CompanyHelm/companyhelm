@@ -1,0 +1,16 @@
+{
+  "name": "companyhelm-ng",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:api": "npm run dev -w @companyhelm/api",
+    "dev:web": "npm run dev -w @companyhelm/web"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.20"
+  }
+}

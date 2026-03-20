@@ -1,0 +1,11 @@
+{
+  "name": "@companyhelm/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1"
+  }
+}
