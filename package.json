@@ -9,9 +9,15 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:api": "npm run dev -w @companyhelm/api",
-    "dev:web": "npm run dev -w @companyhelm/web"
+    "dev:web": "npm run dev -w @companyhelm/web",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:up": "docker compose up -d postgres pgadmin && echo \"pgAdmin: http://localhost:5050\"",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d postgres pgadmin && echo \"pgAdmin: http://localhost:5050\""
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.9",
     "turbo": "^2.8.20"
   }
 }
