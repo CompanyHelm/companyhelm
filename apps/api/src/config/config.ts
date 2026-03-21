@@ -1,10 +1,9 @@
-import { existsSync, readFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import { ZodError, type ZodType } from "zod";
 import { parse } from "yaml";
-
-const DEFAULT_LOCAL_CONFIG_FILE_NAME = "local.yaml";
-const envPlaceholderPattern = /\$\{([A-Z0-9_]+)\}/g;
+import { ConfigPathResolver } from "./config_path_resolver.ts";
+import { DotEnvLoader } from "./dot_env_loader.ts";
+import { EnvironmentPlaceholderResolver } from "./environment_placeholder_resolver.ts";
 
 export type ConfigDefinition<TConfig> = {
   schema: ZodType<TConfig>;
@@ -34,15 +33,17 @@ export class Config<TConfig> {
   }
 
   static loadFromPath<TConfig>(
-    definition: ConfigDefinition<TConfig>,
     configPath: string,
+    schema: ZodType<TConfig>,
   ): Config<TConfig> {
-    const resolvedConfigPath = Config.resolveConfigPath(definition, configPath);
-    DotEnvLoader.loadForConfigPath(resolvedConfigPath, definition.localConfigFileName);
+    const resolvedConfigPath = Config.resolveConfigPath({
+      schema,
+    }, configPath);
+    DotEnvLoader.loadForConfigPath(resolvedConfigPath);
     const rawConfig = readFileSync(resolvedConfigPath, "utf8");
     const parsedConfig = parse(rawConfig) as unknown;
     const resolvedConfig = EnvironmentPlaceholderResolver.resolve(parsedConfig);
-    const document = Config.parseDocument(resolvedConfig, definition.schema);
+    const document = Config.parseDocument(resolvedConfig, schema);
     return new Config(resolvedConfigPath, document);
   }
 
@@ -51,8 +52,8 @@ export class Config<TConfig> {
     configPath?: string,
   ): Config<TConfig> {
     return Config.loadFromPath(
-      definition,
       Config.resolveConfigPath(definition, configPath),
+      definition.schema,
     );
   }
 
@@ -73,7 +74,7 @@ export class Config<TConfig> {
       return cachedConfig as Config<TConfig>;
     }
 
-    const loadedConfig = Config.loadFromPath(definition, resolvedConfigPath);
+    const loadedConfig = Config.loadFromPath(resolvedConfigPath, definition.schema);
     cachedConfigsForSchema.set(resolvedConfigPath, loadedConfig as Config<unknown>);
     return loadedConfig;
   }
@@ -118,126 +119,5 @@ export class Config<TConfig> {
 
     const issuePath = firstIssue.path.length > 0 ? firstIssue.path.join(".") : "<root>";
     return `Invalid config value at "${issuePath}": ${firstIssue.message}`;
-  }
-}
-
-class ConfigPathResolver {
-  static resolve<TConfig>(
-    definition: ConfigDefinition<TConfig>,
-    configPath: string | undefined,
-    cwd: string,
-  ): string {
-    const explicitPath = ConfigPathResolver.readExplicitPath(
-      definition.configPathEnvironmentVariableName,
-      configPath,
-    );
-    const resolvedConfigPath = explicitPath
-      ? ConfigPathResolver.resolveExplicitPath(explicitPath, cwd)
-      : ConfigPathResolver.resolveLocalPath(cwd, definition.localConfigFileName);
-
-    if (!existsSync(resolvedConfigPath)) {
-      throw new Error(`No config file found at path "${resolvedConfigPath}".`);
-    }
-
-    return resolvedConfigPath;
-  }
-
-  private static readExplicitPath(
-    configPathEnvironmentVariableName: string | undefined,
-    configPath: string | undefined,
-  ): string | undefined {
-    const normalizedConfigPath = configPath?.trim();
-    if (normalizedConfigPath) {
-      return normalizedConfigPath;
-    }
-
-    return configPathEnvironmentVariableName
-      ? process.env[configPathEnvironmentVariableName]?.trim()
-      : undefined;
-  }
-
-  private static resolveLocalPath(cwd: string, localConfigFileName?: string): string {
-    return resolve(cwd, "config", localConfigFileName ?? DEFAULT_LOCAL_CONFIG_FILE_NAME);
-  }
-
-  private static resolveExplicitPath(configPath: string, cwd: string): string {
-    if (!configPath.trim()) {
-      throw new Error("Config path cannot be empty.");
-    }
-
-    return isAbsolute(configPath) ? configPath : resolve(cwd, configPath);
-  }
-}
-
-class DotEnvLoader {
-  static loadForConfigPath(configPath: string, localConfigFileName?: string) {
-    const dotEnvPath = DotEnvLoader.resolveDotEnvPathForConfigPath(configPath, localConfigFileName);
-    if (!dotEnvPath || !existsSync(dotEnvPath)) {
-      return;
-    }
-
-    process.loadEnvFile(dotEnvPath);
-  }
-
-  private static resolveDotEnvPathForConfigPath(
-    configPath: string,
-    localConfigFileName?: string,
-  ): string | undefined {
-    const expectedLocalConfigFileName = localConfigFileName ?? DEFAULT_LOCAL_CONFIG_FILE_NAME;
-    if (basename(configPath) !== expectedLocalConfigFileName) {
-      return undefined;
-    }
-
-    return resolve(dirname(configPath), "..", ".env.local");
-  }
-}
-
-class EnvironmentPlaceholderResolver {
-  static resolve(value: unknown, path = ""): unknown {
-    if (typeof value === "string") {
-      const placeholderPath = path || "<root>";
-      const placeholders = [...value.matchAll(envPlaceholderPattern)];
-      if (placeholders.length === 0) {
-        return value;
-      }
-
-      return value.replace(envPlaceholderPattern, (_fullMatch, variableName: string) => {
-        const resolvedValue = process.env[variableName];
-        if (!resolvedValue) {
-          throw new Error(
-            EnvironmentPlaceholderResolver.createMissingVariableMessage(
-              variableName,
-              placeholderPath,
-            ),
-          );
-        }
-
-        return resolvedValue;
-      });
-    }
-
-    if (Array.isArray(value)) {
-      return value.map((entry, index) =>
-        EnvironmentPlaceholderResolver.resolve(entry, `${path}[${index}]`),
-      );
-    }
-
-    if (value && typeof value === "object") {
-      return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-          key,
-          EnvironmentPlaceholderResolver.resolve(
-            entry,
-            path ? `${path}.${key}` : key,
-          ),
-        ]),
-      );
-    }
-
-    return value;
-  }
-
-  private static createMissingVariableMessage(variableName: string, _placeholderPath: string): string {
-    return `Missing environment variable "${variableName}".`;
   }
 }
