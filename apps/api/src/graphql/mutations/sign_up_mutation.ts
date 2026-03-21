@@ -1,7 +1,7 @@
-import { AuthProviderFactory } from "../auth/providers/auth_provider_factory.ts";
-import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
-import type { Config } from "../config/config.ts";
-import type { AppConfigDocument } from "../config/schema.ts";
+import { AuthProviderFactory } from "../../auth/providers/auth_provider_factory.ts";
+import type { AuthProviderDatabase } from "../../auth/providers/auth_provider_interface.ts";
+import type { Config } from "../../config/config.ts";
+import type { AppConfigDocument } from "../../config/schema.ts";
 
 type SignUpMutationArguments = {
   input: {
