@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: companyhelm-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-companyhelm}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - companyhelm_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-companyhelm}"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+
+  pgadmin:
+    image: dpage/pgadmin4:9.12
+    container_name: companyhelm-pgadmin
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@companyhelm.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-postgres}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        umask 077
+        printf '%s:%s:*:%s:%s\n' "postgres" "5432" "$${POSTGRES_USER}" "$${POSTGRES_PASSWORD}" > /tmp/pgpassfile
+        chmod 600 /tmp/pgpassfile
+        exec /entrypoint.sh
+    volumes:
+      - companyhelm_pgadmin_data:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+
+volumes:
+  companyhelm_postgres_data:
+  companyhelm_pgadmin_data:
