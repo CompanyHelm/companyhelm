@@ -1,0 +1,28 @@
+type Query {
+  health: String!
+}
+
+type Mutation {
+  SignUp(input: SignUpInput!): AuthSession!
+}
+
+type AuthSession {
+  token: String!
+  user: AuthenticatedUser!
+}
+
+type AuthenticatedUser {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String
+  provider: String!
+  providerSubject: String!
+}
+
+input SignUpInput {
+  email: String!
+  firstName: String!
+  lastName: String
+  password: String!
+}

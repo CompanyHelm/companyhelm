@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
 import type { Config } from "../config/config.ts";
 import type { AppConfigDocument } from "../config/schema.ts";
+import { GraphqlSchema } from "./graphql_schema.ts";
 import { SignUpMutation } from "./sign_up_mutation.ts";
 
 /**
@@ -22,7 +23,7 @@ export class GraphqlApplication {
 
   async register(app: FastifyInstance): Promise<void> {
     await app.register(mercurius, {
-      schema: GraphqlApplication.getSchema(),
+      schema: GraphqlSchema.getDocument(),
       resolvers: {
         Query: {
           health: async () => "ok",
@@ -41,38 +42,5 @@ export class GraphqlApplication {
       path: this.configDocument.graphql.endpoint,
       graphiql: this.configDocument.graphql.graphiql,
     });
-  }
-
-  private static getSchema(): string {
-    return `
-      type Query {
-        health: String!
-      }
-
-      type Mutation {
-        SignUp(input: SignUpInput!): AuthSession!
-      }
-
-      type AuthSession {
-        token: String!
-        user: AuthenticatedUser!
-      }
-
-      type AuthenticatedUser {
-        id: ID!
-        email: String!
-        firstName: String!
-        lastName: String
-        provider: String!
-        providerSubject: String!
-      }
-
-      input SignUpInput {
-        email: String!
-        firstName: String!
-        lastName: String
-        password: String!
-      }
-    `;
   }
 }
