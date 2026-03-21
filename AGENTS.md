@@ -6,6 +6,7 @@
 - avoid directories with a lot of files, unless they are all truly unrelated
 - avoid directories with a single file, doesn't make sense, just keep the file 1 level up
 - keep files that are used by a particular implementation under that implementation folder e.g. /auth/providers/companyhelm/{implementation files here if only used by companyhelm implemenation}
+- do not repeate the directory name in the file name, it is reduntant e.g. config/config_loader.ts should be config/loader.ts
 
 ## Object oriented programming
 
@@ -26,3 +27,8 @@
 
 - tests should not be trivial, e.g. testing the docs is stupid and should not be done
 - tests should be in a /tests directory, same level as /src directory
+
+## Graphql
+
+- each resolver should be in its own file, under graphql/resolvers. Resolver file should not contain reduntant names like resolver since it is still part of directory.
+- each mutation should be in its own file, under grpahql/mutations. Mutation file should not contain reduntant names like mutation since it is still part of directory.
