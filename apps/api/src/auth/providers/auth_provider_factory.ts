@@ -1,4 +1,4 @@
-import type { AppConfig } from "../config/config.ts";
+import type { AppConfig } from "../../config/config.ts";
 import type { AuthProviderInterface } from "./auth_provider_interface.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm_auth_provider.ts";
 

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { AppConfig } from "../../src/config/config.ts";
+import { AppConfig } from "../src/config/config.ts";
 
 /**
  * Creates isolated config fixtures so AppConfig can be exercised from the public config path.

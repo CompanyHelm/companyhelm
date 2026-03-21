@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
-import type { AppConfig } from "../config/config.ts";
-import type { AppDatabaseInterface } from "../db/app_database_interface.ts";
-import { userAuths, users } from "../db/schema.ts";
+import type { AppConfig } from "../../config/config.ts";
+import { userAuths, users } from "../../db/schema.ts";
 import type { AuthenticatedUserInterface } from "./authenticated_user_interface.ts";
 import type { AuthProviderInterface } from "./auth_provider_interface.ts";
 import type { AuthSessionInterface } from "./auth_session_interface.ts";
-import { JwtService } from "./jwt_service.ts";
-import { PasswordService } from "./password_service.ts";
 import type { SignInInputInterface } from "./sign_in_input_interface.ts";
-import { SignInThrottleRegistry } from "./sign_in_throttle_registry.ts";
 import type { SignUpInputInterface } from "./sign_up_input_interface.ts";
+import { PasswordService } from "../password_service.ts";
+import { SignInThrottleRegistry } from "../sign_in_throttle_registry.ts";
+import { JwtService } from "../jwt_service.ts";
+import type { AppDatabaseInterface } from "./app_database_interface.ts";
 
 type UserRecord = {
   id: string;

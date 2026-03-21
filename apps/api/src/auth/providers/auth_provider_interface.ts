@@ -1,4 +1,4 @@
-import type { AppDatabaseInterface } from "../db/app_database_interface.ts";
+import type { AppDatabaseInterface } from "./app_database_interface.ts";
 import type { AuthenticatedUserInterface } from "./authenticated_user_interface.ts";
 import type { AuthSessionInterface } from "./auth_session_interface.ts";
 import type { SignInInputInterface } from "./sign_in_input_interface.ts";
