@@ -3,6 +3,7 @@ import {
   check,
   pgTable,
   text,
+  pgEnum,
   timestamp,
   primaryKey,
   index,
@@ -10,6 +11,8 @@ import {
   uuid
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
+
+export const modelProviderEnum = pgEnum("model_provider", ["openai"]);
 
 
 export const companies = pgTable("companies", {
@@ -38,7 +41,7 @@ export const users = pgTable("users", {
 }));
 
 
-export const user_auths = pgTable("user_auths", {
+export const userAuths = pgTable("user_auths", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
@@ -56,7 +59,7 @@ export const user_auths = pgTable("user_auths", {
   emailUnique: uniqueIndex("user_auths_email_uidx").on(table.email),
 }));
 
-export const company_members = pgTable("company_members", {
+export const companyMembers = pgTable("company_members", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
@@ -82,10 +85,17 @@ export const agents = pgTable("agents", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
   default_model_name: text("default_model_name").notNull(),
   default_reasoning_level: text("default_reasoning_level"),
+  modelApiKeyId: uuid("model_api_key_id")
+    .references(() => modelApiKeys.id, { onDelete: "set null" }),
+  modelOAuthTokenId: uuid("model_oauth_token_id")
+    .references(() => modelOauthTokens.id, { onDelete: "set null" }),
   system_prompt: text("system_prompt"),
 },
 (table) => ({
   companyIdIndex: index("agents_company_id_idx").on(table.companyId),
+  // either api key or oauth token must be present, not both at the same time
+  modelApiKeyIdOrOauthTokenIdCheck: check("agents_model_api_key_id_or_oauth_token_id_check",
+    sql`(NOT (${table.modelApiKeyId} IS NOT NULL AND ${table.modelOAuthTokenId} IS NOT NULL))`),
 }));
 
 export const threads = pgTable("threads", {
@@ -100,4 +110,39 @@ export const threads = pgTable("threads", {
 },
 (table) => ({
   companyIdIndex: index("threads_company_id_idx").on(table.companyId),
+}));
+
+export const modelApiKeys = pgTable("model_api_keys", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  modelProvider: modelProviderEnum("model_provider").notNull(),
+  encryptedKey: text("encrypted_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("model_api_keys_company_id_idx").on(table.companyId),
+}));
+
+export const modelOauthTokens = pgTable("model_oauth_tokens", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  modelProvider: modelProviderEnum("model_provider").notNull(),
+  encryptedRefreshToken: text("encrypted_refresh_token").notNull(),
+  encryptedAccessToken: text("encrypted_access_token").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("model_oauth_tokens_company_id_idx").on(table.companyId),
 }));
