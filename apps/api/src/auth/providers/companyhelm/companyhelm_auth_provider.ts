@@ -1,15 +1,61 @@
 import { eq } from "drizzle-orm";
-import type { AppConfig } from "../../config/config.ts";
-import { userAuths, users } from "../../db/schema.ts";
-import type { AuthenticatedUserInterface } from "./authenticated_user_interface.ts";
-import type { AuthProviderInterface } from "./auth_provider_interface.ts";
-import type { AuthSessionInterface } from "./auth_session_interface.ts";
-import type { SignInInputInterface } from "./sign_in_input_interface.ts";
-import type { SignUpInputInterface } from "./sign_up_input_interface.ts";
-import { PasswordService } from "../password_service.ts";
-import { SignInThrottleRegistry } from "../sign_in_throttle_registry.ts";
-import { JwtService } from "../jwt_service.ts";
-import type { AppDatabaseInterface } from "./app_database_interface.ts";
+import type { AppConfig } from "../../../config/config.ts";
+import { userAuths, users } from "../../../db/schema.ts";
+import { PasswordService } from "./password_service.ts";
+import { SignInThrottleRegistry } from "./sign_in_throttle_registry.ts";
+import { JwtService } from "./jwt_service.ts";
+
+type AuthenticatedUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  provider: "companyhelm" | "supabase";
+  providerSubject: string;
+};
+
+type AuthSession = {
+  token: string;
+  user: AuthenticatedUser;
+};
+
+type SignInInput = {
+  email: string;
+  password: string;
+};
+
+type SignUpInput = {
+  email: string;
+  firstName: string;
+  lastName?: string | null;
+  password: string;
+};
+
+type AuthProviderDatabaseTransaction = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): {
+        limit(limit: number): Promise<unknown[]>;
+      };
+    };
+  };
+  insert(table: unknown): {
+    values(value: Record<string, unknown>): {
+      returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
+    };
+  };
+};
+
+type AuthProviderDatabase = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): {
+        limit(limit: number): Promise<unknown[]>;
+      };
+    };
+  };
+  transaction?<T>(callback: (transaction: AuthProviderDatabaseTransaction) => Promise<T>): Promise<T>;
+};
 
 type UserRecord = {
   id: string;
@@ -21,7 +67,7 @@ type UserRecord = {
 /**
  * Implements the local CompanyHelm auth flow using only config-selected behavior and password records.
  */
-export class CompanyhelmAuthProvider implements AuthProviderInterface {
+export class CompanyhelmAuthProvider {
   readonly name = "companyhelm" as const;
   private readonly config: NonNullable<ReturnType<AppConfig["getDocument"]>["auth"]["companyhelm"]>;
   private readonly dummySignInPasswordRecord = PasswordService.createPasswordHash("CompanyHelm!1");
@@ -34,7 +80,7 @@ export class CompanyhelmAuthProvider implements AuthProviderInterface {
     };
   }
 
-  async authenticateBearerToken(_db: AppDatabaseInterface, token: string): Promise<AuthenticatedUserInterface> {
+  async authenticateBearerToken(_db: AuthProviderDatabase, token: string): Promise<AuthenticatedUser> {
     const payload = JwtService.verifyRs256Jwt({
       token,
       publicKeyPem: this.config.jwt_public_key_pem,
@@ -58,7 +104,7 @@ export class CompanyhelmAuthProvider implements AuthProviderInterface {
     }, userId);
   }
 
-  async signUp(db: AppDatabaseInterface, input: SignUpInputInterface): Promise<AuthSessionInterface> {
+  async signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession> {
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
@@ -117,7 +163,7 @@ export class CompanyhelmAuthProvider implements AuthProviderInterface {
     return this.issueSession(createdUser);
   }
 
-  async signIn(db: AppDatabaseInterface, input: SignInInputInterface): Promise<AuthSessionInterface> {
+  async signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession> {
     const normalizedEmail = CompanyhelmAuthProvider.normalizeEmail(input.email);
     if (SignInThrottleRegistry.isSignInThrottled(normalizedEmail)) {
       throw new Error("Too many sign-in attempts. Please try again later.");
@@ -177,7 +223,7 @@ export class CompanyhelmAuthProvider implements AuthProviderInterface {
     return this.issueSession(existingUser);
   }
 
-  private issueSession(user: UserRecord): AuthSessionInterface {
+  private issueSession(user: UserRecord): AuthSession {
     const token = JwtService.signRs256Jwt({
       payload: {
         sub: user.id,
@@ -198,7 +244,7 @@ export class CompanyhelmAuthProvider implements AuthProviderInterface {
     };
   }
 
-  private toAuthenticatedUser(user: UserRecord, providerSubject: string): AuthenticatedUserInterface {
+  private toAuthenticatedUser(user: UserRecord, providerSubject: string): AuthenticatedUser {
     return {
       id: user.id,
       email: user.email,
