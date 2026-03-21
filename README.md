@@ -1,6 +1,6 @@
 # CompanyHelm NG
 
-Minimal monorepo skeleton with:
+Monorepo with:
 
 - `apps/api`: Fastify API
 - `apps/web`: Vite web app
@@ -23,10 +23,6 @@ Start the API:
 ```bash
 npm run dev:api
 ```
-
-The API listens on `http://127.0.0.1:3001` and exposes:
-
-- `GET /` -> `{"message":"hello world"}`
 
 Start the web app:
 
