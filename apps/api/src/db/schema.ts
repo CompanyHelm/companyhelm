@@ -101,16 +101,3 @@ export const threads = pgTable("threads", {
 (table) => ({
   companyIdIndex: index("threads_company_id_idx").on(table.companyId),
 }));
-
-
-export const thread_sandboxes = pgTable("thread_sandboxes", {
-  id: uuid("id")
-    .primaryKey()
-    .$defaultFn(() => randomUUID()),
-  company_id: uuid("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  thread_id: uuid("thread_id").notNull(),
-  created_at: timestamp("created_at", { withTimezone: true }).notNull(),
-  updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
