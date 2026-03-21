@@ -17,6 +17,20 @@ services:
       retries: 30
       start_period: 2s
 
+  redis:
+    image: redis:8-alpine
+    container_name: companyhelm-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - companyhelm_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+
   pgadmin:
     image: dpage/pgadmin4:9.12
     container_name: companyhelm-pgadmin
@@ -47,4 +61,5 @@ services:
 
 volumes:
   companyhelm_postgres_data:
+  companyhelm_redis_data:
   companyhelm_pgadmin_data:

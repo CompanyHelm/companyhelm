@@ -101,6 +101,9 @@ database:
     admin:
       username: "postgres"
       password: "postgres"
+redis:
+  host: "127.0.0.1"
+  port: 6379
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
@@ -127,6 +130,10 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     logger: {
       level: "debug",
     },
+  });
+  assert.deepEqual(config.getDocument().redis, {
+    host: "127.0.0.1",
+    port: 6379,
   });
   assert.equal(config.getDocument().github.app_client_id, "client-id");
   assert.equal(

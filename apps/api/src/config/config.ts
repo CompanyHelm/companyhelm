@@ -33,6 +33,10 @@ export type AppConfigDocument = {
       };
     };
   };
+  redis: {
+    host: string;
+    port: number;
+  };
   github: {
     app_client_id: string;
     app_private_key_pem: string;
@@ -245,6 +249,7 @@ class AppConfigDocumentParser {
       graphql: this.readGraphql(config),
       publicUrl: this.readString(config, "publicUrl"),
       database: this.readDatabase(config),
+      redis: this.readRedis(config),
       github: this.readGithub(config),
       auth,
       security: this.readSecurity(config),
@@ -284,6 +289,14 @@ class AppConfigDocumentParser {
     return {
       username: this.readString(role, "username", `database.roles.${roleName}`),
       password: this.readString(role, "password", `database.roles.${roleName}`),
+    };
+  }
+
+  private readRedis(config: Record<string, unknown>): AppConfigDocument["redis"] {
+    const redis = this.expectRecord(config.redis, "redis");
+    return {
+      host: this.readString(redis, "host", "redis"),
+      port: this.readPositiveInteger(redis, "port", "redis"),
     };
   }
 
