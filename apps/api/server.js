@@ -1,14 +1,15 @@
 import Fastify from "fastify";
+import { AppConfig } from "./src/config/config.ts";
 
-const app = Fastify({ logger: true });
-const port = Number(process.env.PORT || 3001);
+const config = AppConfig.get();
+const app = Fastify(config.getFastifyOptions());
 
 app.get("/", async () => {
   return { message: "hello world" };
 });
 
 try {
-  await app.listen({ port, host: "0.0.0.0" });
+  await app.listen(config.getListenOptions());
 } catch (error) {
   app.log.error(error);
   process.exit(1);
