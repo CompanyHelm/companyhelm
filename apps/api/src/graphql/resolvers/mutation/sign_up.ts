@@ -1,4 +1,4 @@
-import { SignUpMutation } from "../../mutations/sign_up_mutation.ts";
+import { SignUpMutation } from "../../mutations/sign_up.ts";
 
 type SignUpMutationResolverArguments = {
   input: {

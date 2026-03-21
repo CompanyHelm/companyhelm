@@ -3,10 +3,10 @@ import type { FastifyInstance } from "fastify";
 import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
 import type { Config } from "../config/config.ts";
 import type { AppConfigDocument } from "../config/schema.ts";
-import { SignUpMutation } from "./mutations/sign_up_mutation.ts";
+import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./graphql_schema.ts";
-import { SignUpMutationResolver } from "./resolvers/mutation/sign_up_mutation_resolver.ts";
-import { HealthQueryResolver } from "./resolvers/query/health_query_resolver.ts";
+import { SignUpMutationResolver } from "./resolvers/mutation/sign_up.ts";
+import { HealthQueryResolver } from "./resolvers/query/health.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
