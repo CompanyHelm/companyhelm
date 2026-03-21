@@ -6,8 +6,8 @@ import { parse } from "yaml";
 const DEFAULT_LOCAL_CONFIG_FILE_NAME = "local.yaml";
 const envPlaceholderPattern = /\$\{([A-Z0-9_]+)\}/g;
 
-export type ConfigDefinition<TDocument> = {
-  schema: ZodType<TDocument>;
+export type ConfigDefinition<TConfig> = {
+  schema: ZodType<TConfig>;
   configPathEnvironmentVariableName?: string;
   localConfigFileName?: string;
 };
@@ -15,28 +15,28 @@ export type ConfigDefinition<TDocument> = {
 /**
  * Loads, validates, and caches typed configuration documents for any schema-backed application.
  */
-export class Config<TDocument> {
+export class Config<TConfig> {
   private static cachedConfigs = new WeakMap<ZodType<unknown>, Map<string, Config<unknown>>>();
   private readonly configPath: string;
-  private readonly document: TDocument;
+  private readonly document: TConfig;
 
-  private constructor(configPath: string, document: TDocument) {
+  private constructor(configPath: string, document: TConfig) {
     this.configPath = configPath;
     this.document = document;
   }
 
-  static resolveConfigPath<TDocument>(
-    definition: ConfigDefinition<TDocument>,
+  static resolveConfigPath<TConfig>(
+    definition: ConfigDefinition<TConfig>,
     configPath?: string,
     cwd: string = process.cwd(),
   ): string {
     return ConfigPathResolver.resolve(definition, configPath, cwd);
   }
 
-  static loadFromPath<TDocument>(
-    definition: ConfigDefinition<TDocument>,
+  static loadFromPath<TConfig>(
+    definition: ConfigDefinition<TConfig>,
     configPath: string,
-  ): Config<TDocument> {
+  ): Config<TConfig> {
     const resolvedConfigPath = Config.resolveConfigPath(definition, configPath);
     DotEnvLoader.loadForConfigPath(resolvedConfigPath, definition.localConfigFileName);
     const rawConfig = readFileSync(resolvedConfigPath, "utf8");
@@ -46,20 +46,20 @@ export class Config<TDocument> {
     return new Config(resolvedConfigPath, document);
   }
 
-  static load<TDocument>(
-    definition: ConfigDefinition<TDocument>,
+  static load<TConfig>(
+    definition: ConfigDefinition<TConfig>,
     configPath?: string,
-  ): Config<TDocument> {
+  ): Config<TConfig> {
     return Config.loadFromPath(
       definition,
       Config.resolveConfigPath(definition, configPath),
     );
   }
 
-  static get<TDocument>(
-    definition: ConfigDefinition<TDocument>,
+  static get<TConfig>(
+    definition: ConfigDefinition<TConfig>,
     configPath?: string,
-  ): Config<TDocument> {
+  ): Config<TConfig> {
     const resolvedConfigPath = Config.resolveConfigPath(definition, configPath);
     let cachedConfigsForSchema = Config.cachedConfigs.get(definition.schema as ZodType<unknown>);
 
@@ -70,7 +70,7 @@ export class Config<TDocument> {
 
     const cachedConfig = cachedConfigsForSchema.get(resolvedConfigPath);
     if (cachedConfig) {
-      return cachedConfig as Config<TDocument>;
+      return cachedConfig as Config<TConfig>;
     }
 
     const loadedConfig = Config.loadFromPath(definition, resolvedConfigPath);
@@ -78,7 +78,7 @@ export class Config<TDocument> {
     return loadedConfig;
   }
 
-  static clearCache<TDocument>(definition?: ConfigDefinition<TDocument>) {
+  static clearCache<TConfig>(definition?: ConfigDefinition<TConfig>) {
     if (!definition) {
       Config.cachedConfigs = new WeakMap<ZodType<unknown>, Map<string, Config<unknown>>>();
       return;
@@ -91,14 +91,14 @@ export class Config<TDocument> {
     return this.configPath;
   }
 
-  getDocument(): TDocument {
+  getDocument(): TConfig {
     return this.document;
   }
 
-  private static parseDocument<TDocument>(
+  private static parseDocument<TConfig>(
     value: unknown,
-    schema: ZodType<TDocument>,
-  ): TDocument {
+    schema: ZodType<TConfig>,
+  ): TConfig {
     try {
       return schema.parse(value);
     } catch (error) {
@@ -122,8 +122,8 @@ export class Config<TDocument> {
 }
 
 class ConfigPathResolver {
-  static resolve<TDocument>(
-    definition: ConfigDefinition<TDocument>,
+  static resolve<TConfig>(
+    definition: ConfigDefinition<TConfig>,
     configPath: string | undefined,
     cwd: string,
   ): string {
