@@ -1,12 +1,12 @@
 import { existsSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import type { ConfigLoaderDefinition } from "./loader.ts";
+import type { ConfigDefinition } from "./config.ts";
 
 const DEFAULT_LOCAL_CONFIG_FILE_NAME = "local.yaml";
 
 export class ConfigPathResolver {
   static resolve<TConfig>(
-    definition: ConfigLoaderDefinition<TConfig>,
+    definition: ConfigDefinition<TConfig>,
     configPath: string | undefined,
     cwd: string,
   ): string {

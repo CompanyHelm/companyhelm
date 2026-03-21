@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ConfigLoader } from "../src/config/loader.ts";
+import type { Config } from "../src/config/config.ts";
 import type { AppConfigDocument } from "../src/config/schema.ts";
 import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
 
@@ -8,7 +8,7 @@ import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory
  * Creates the minimal Supabase auth fixtures needed to exercise the provider and factory behavior.
  */
 class SupabaseAuthProviderTestHarness {
-  static createConfigMock(): Pick<ConfigLoader<AppConfigDocument>, "getDocument"> {
+  static createConfigMock(): Pick<Config<AppConfigDocument>, "getDocument"> {
     return {
       getDocument() {
         return {

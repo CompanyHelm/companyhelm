@@ -1,6 +1,6 @@
 import { AuthProviderFactory } from "../../auth/providers/auth_provider_factory.ts";
 import type { AuthProviderDatabase } from "../../auth/providers/auth_provider_interface.ts";
-import type { ConfigLoader } from "../../config/loader.ts";
+import type { Config } from "../../config/config.ts";
 import type { AppConfigDocument } from "../../config/schema.ts";
 
 type SignUpMutationArguments = {
@@ -20,7 +20,7 @@ export class SignUpMutation {
   private readonly database: AuthProviderDatabase;
 
   constructor(
-    config: Pick<ConfigLoader<AppConfigDocument>, "getDocument">,
+    config: Pick<Config<AppConfigDocument>, "getDocument">,
     database: AuthProviderDatabase,
   ) {
     this.authProvider = AuthProviderFactory.createAuthProvider(config);

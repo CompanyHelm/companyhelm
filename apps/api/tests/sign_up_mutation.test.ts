@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 import Fastify from "fastify";
-import type { ConfigLoader } from "../src/config/loader.ts";
+import type { Config } from "../src/config/config.ts";
 import type { AppConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 
@@ -16,7 +16,7 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
  * Builds a tiny GraphQL runtime harness without touching a real database connection.
  */
 class SignUpMutationTestHarness {
-  static createConfigMock(): Pick<ConfigLoader<AppConfigDocument>, "getDocument"> {
+  static createConfigMock(): Pick<Config<AppConfigDocument>, "getDocument"> {
     return {
       getDocument() {
         return {

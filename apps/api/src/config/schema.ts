@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ConfigLoaderDefinition } from "./loader.ts";
+import type { ConfigDefinition } from "./config.ts";
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PositiveIntegerSchema = z.number().int().positive();
@@ -28,7 +28,7 @@ const SupabaseAuthSchema = z.object({
   }),
 });
 
-export const Config = z.object({
+export const AppConfigSchema = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
   graphql: z.object({
@@ -67,10 +67,10 @@ export const Config = z.object({
   log_pretty: z.boolean(),
 });
 
-export type AppConfigDocument = z.infer<typeof Config>;
+export type AppConfigDocument = z.infer<typeof AppConfigSchema>;
 
 export const AppConfigDefinition = {
-  schema: Config,
+  schema: AppConfigSchema,
   configPathEnvironmentVariableName: "COMPANYHELM_CONFIG_PATH",
   localConfigFileName: "local.yaml",
-} satisfies ConfigLoaderDefinition<AppConfigDocument>;
+} satisfies ConfigDefinition<AppConfigDocument>;
