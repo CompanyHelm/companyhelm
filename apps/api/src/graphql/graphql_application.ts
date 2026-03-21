@@ -23,7 +23,7 @@ export class GraphqlApplication {
 
   async register(app: FastifyInstance): Promise<void> {
     await app.register(mercurius, {
-      schema: GraphqlSchema.getDocument(),
+      schema: GraphqlSchema.getSchema(),
       resolvers: {
         Query: {
           health: async () => "ok",
