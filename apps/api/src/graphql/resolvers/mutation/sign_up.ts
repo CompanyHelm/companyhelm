@@ -19,7 +19,7 @@ export class SignUpMutationResolver {
     this.signUpMutation = signUpMutation;
   }
 
-  async execute(_root: unknown, arguments_: SignUpMutationResolverArguments) {
+  execute = async (_root: unknown, arguments_: SignUpMutationResolverArguments) => {
     return this.signUpMutation.execute(arguments_);
-  }
+  };
 }

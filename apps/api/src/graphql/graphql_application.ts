@@ -27,21 +27,17 @@ export class GraphqlApplication {
   }
 
   async register(app: FastifyInstance): Promise<void> {
+    const healthQueryResolver = this.healthQueryResolver.execute;
+    const signUpMutationResolver = this.signUpMutationResolver.execute;
+
     await app.register(mercurius, {
       schema: GraphqlSchema.getDocument(),
       resolvers: {
         Query: {
-          health: async () => this.healthQueryResolver.execute(),
+          health: healthQueryResolver,
         },
         Mutation: {
-          SignUp: async (root: unknown, arguments_: {
-            input: {
-              email: string;
-              firstName: string;
-              lastName?: string | null;
-              password: string;
-            };
-          }) => this.signUpMutationResolver.execute(root, arguments_),
+          SignUp: signUpMutationResolver,
         },
       },
       path: this.configDocument.graphql.endpoint,
