@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
-import type { AppConfig } from "../config/config.ts";
-import { signRs256Jwt } from "./jwt.ts";
-import { createPasswordHash } from "./password.ts";
-import { createAuthProvider } from "./provider.ts";
-import { resetSignInThrottleStateForTests } from "./sign-in-throttle.ts";
+import type { AppConfig } from "../../src/config/config.ts";
+import { AuthProviderFactory } from "../../src/auth/auth_provider_factory.ts";
+import { JwtService } from "../../src/auth/jwt_service.ts";
+import { PasswordService } from "../../src/auth/password_service.ts";
+import { SignInThrottleRegistry } from "../../src/auth/sign_in_throttle_registry.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -13,45 +13,50 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   publicKeyEncoding: { type: "spki", format: "pem" },
 });
 
-function createMockSelectChain(result: unknown[]) {
-  return {
-    from() {
-      return {
-        where() {
-          return {
-            limit: async () => result,
-          };
+/**
+ * Builds the small mock fixtures needed to exercise the provider without leaking helper functions.
+ */
+class CompanyhelmAuthProviderTestHarness {
+  static createConfigMock(): AppConfig {
+    return {
+      authProvider: "companyhelm",
+      auth: {
+        provider: "companyhelm",
+        companyhelm: {
+          jwt_private_key_pem: privateKey,
+          jwt_public_key_pem: publicKey,
+          jwt_issuer: "companyhelm.local",
+          jwt_audience: "companyhelm-web",
+          jwt_expiration_seconds: 3600,
         },
-      };
-    },
-  };
-}
-
-function createConfigMock(): AppConfig {
-  return {
-    authProvider: "companyhelm",
-    auth: {
-      provider: "companyhelm",
-      companyhelm: {
-        jwt_private_key_pem: privateKey,
-        jwt_public_key_pem: publicKey,
-        jwt_issuer: "companyhelm.local",
-        jwt_audience: "companyhelm-web",
-        jwt_expiration_seconds: 3600,
       },
-    },
-  } as AppConfig;
+    } as AppConfig;
+  }
+
+  static createMockSelectChain(result: unknown[]) {
+    return {
+      from() {
+        return {
+          where() {
+            return {
+              limit: async () => result,
+            };
+          },
+        };
+      },
+    };
+  }
 }
 
 test.beforeEach(() => {
-  resetSignInThrottleStateForTests();
+  SignInThrottleRegistry.resetForTests();
 });
 
 test("companyhelm auth provider rejects unknown users with a generic sign-in failure", async () => {
-  const provider = createAuthProvider(createConfigMock());
+  const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
   const db = {
     select() {
-      return createMockSelectChain([]);
+      return CompanyhelmAuthProviderTestHarness.createMockSelectChain([]);
     },
   };
 
@@ -65,23 +70,22 @@ test("companyhelm auth provider rejects unknown users with a generic sign-in fai
 });
 
 test("companyhelm auth provider signs in a matching local user", async () => {
-  const provider = createAuthProvider(createConfigMock());
-  const storedPassword = createPasswordHash("abc123!");
+  const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
+  const storedPassword = PasswordService.createPasswordHash("abc123!");
   let selectCallCount = 0;
   const db = {
     select() {
       selectCallCount += 1;
       if (selectCallCount === 1) {
-        return createMockSelectChain([{
+        return CompanyhelmAuthProviderTestHarness.createMockSelectChain([{
           id: "user-1",
           email: "user@example.com",
           first_name: "User",
           last_name: "One",
-          auth_provider: "companyhelm",
         }]);
       }
 
-      return createMockSelectChain([{
+      return CompanyhelmAuthProviderTestHarness.createMockSelectChain([{
         password_hash: storedPassword.passwordHash,
         password_salt: storedPassword.passwordSalt,
       }]);
@@ -99,10 +103,10 @@ test("companyhelm auth provider signs in a matching local user", async () => {
 });
 
 test("companyhelm auth provider throttles repeated failed attempts", async () => {
-  const provider = createAuthProvider(createConfigMock());
+  const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
   const db = {
     select() {
-      return createMockSelectChain([]);
+      return CompanyhelmAuthProviderTestHarness.createMockSelectChain([]);
     },
   };
 
@@ -126,15 +130,15 @@ test("companyhelm auth provider throttles repeated failed attempts", async () =>
 });
 
 test("companyhelm auth provider signs up a new user and stores password credentials", async () => {
-  const provider = createAuthProvider(createConfigMock());
+  const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
   const insertedValues: unknown[] = [];
   const tx = {
     select() {
-      return createMockSelectChain([]);
+      return CompanyhelmAuthProviderTestHarness.createMockSelectChain([]);
     },
     insert(_table: unknown) {
       return {
-        values(value: unknown) {
+        values(value: Record<string, unknown>) {
           insertedValues.push(value);
           return {
             async returning() {
@@ -143,7 +147,6 @@ test("companyhelm auth provider signs up a new user and stores password credenti
                 email: "new@example.com",
                 first_name: "New",
                 last_name: null,
-                auth_provider: "companyhelm",
               }];
             },
           };
@@ -168,8 +171,8 @@ test("companyhelm auth provider signs up a new user and stores password credenti
 });
 
 test("companyhelm auth provider authenticates a valid bearer token", async () => {
-  const provider = createAuthProvider(createConfigMock());
-  const token = signRs256Jwt({
+  const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
+  const token = JwtService.signRs256Jwt({
     payload: {
       sub: "user-1",
       email: "user@example.com",
