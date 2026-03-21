@@ -1,99 +1,24 @@
-import {
-  GraphQLID,
-  GraphQLInputObjectType,
-  GraphQLNonNull,
-  GraphQLObjectType,
-  GraphQLSchema as GraphqlJsSchema,
-  GraphQLString,
-} from "graphql";
+import { readFileSync } from "node:fs";
 
 /**
- * Builds the GraphQL schema object Mercurius executes against.
+ * Loads the GraphQL SDL from dedicated schema assets so transport code stays thin.
  */
 export class GraphqlSchema {
-  private static readonly authenticatedUserType = new GraphQLObjectType({
-    name: "AuthenticatedUser",
-    fields: {
-      id: {
-        type: new GraphQLNonNull(GraphQLID),
-      },
-      email: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-      firstName: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-      lastName: {
-        type: GraphQLString,
-      },
-      provider: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-      providerSubject: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-    },
-  });
+  private static readonly schemaDocument = GraphqlSchema.loadSchemaDocument();
 
-  private static readonly authSessionType = new GraphQLObjectType({
-    name: "AuthSession",
-    fields: {
-      token: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-      user: {
-        type: new GraphQLNonNull(GraphqlSchema.authenticatedUserType),
-      },
-    },
-  });
+  static getDocument(): string {
+    return GraphqlSchema.schemaDocument;
+  }
 
-  private static readonly signUpInputType = new GraphQLInputObjectType({
-    name: "SignUpInput",
-    fields: {
-      email: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-      firstName: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-      lastName: {
-        type: GraphQLString,
-      },
-      password: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-    },
-  });
-
-  private static readonly queryType = new GraphQLObjectType({
-    name: "Query",
-    fields: {
-      health: {
-        type: new GraphQLNonNull(GraphQLString),
-      },
-    },
-  });
-
-  private static readonly mutationType = new GraphQLObjectType({
-    name: "Mutation",
-    fields: {
-      SignUp: {
-        type: new GraphQLNonNull(GraphqlSchema.authSessionType),
-        args: {
-          input: {
-            type: new GraphQLNonNull(GraphqlSchema.signUpInputType),
-          },
-        },
-      },
-    },
-  });
-
-  private static readonly schema = new GraphqlJsSchema({
-    query: GraphqlSchema.queryType,
-    mutation: GraphqlSchema.mutationType,
-  });
-
-  static getSchema(): GraphqlJsSchema {
-    return GraphqlSchema.schema;
+  private static loadSchemaDocument(): string {
+    return [
+      "./schema/query.graphql",
+      "./schema/mutation.graphql",
+      "./schema/types/auth_session.graphql",
+      "./schema/types/authenticated_user.graphql",
+      "./schema/inputs/sign_up_input.graphql",
+    ]
+      .map((relativePath) => readFileSync(new URL(relativePath, import.meta.url), "utf8").trim())
+      .join("\n\n");
   }
 }

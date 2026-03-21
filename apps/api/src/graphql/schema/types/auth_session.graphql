@@ -1,0 +1,4 @@
+type AuthSession {
+  token: String!
+  user: AuthenticatedUser!
+}
