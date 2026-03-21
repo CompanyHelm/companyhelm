@@ -27,7 +27,7 @@ export class SignUpMutation {
     this.database = database;
   }
 
-  async execute(arguments_: SignUpMutationArguments) {
+  execute = async (arguments_: SignUpMutationArguments) => {
     if (!this.authProvider.signUp) {
       throw new Error("Configured auth provider does not support sign up.");
     }
@@ -38,5 +38,5 @@ export class SignUpMutation {
       lastName: arguments_.input.lastName ?? null,
       password: arguments_.input.password,
     });
-  }
+  };
 }

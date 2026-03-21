@@ -5,7 +5,7 @@ import type { Config } from "../config/config.ts";
 import type { AppConfigDocument } from "../config/schema.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./graphql_schema.ts";
-import { SignUpMutationResolver } from "./resolvers/mutation/sign_up.ts";
+import { Mutation } from "./resolvers/mutation.ts";
 import { HealthQueryResolver } from "./resolvers/query/health.ts";
 
 /**
@@ -14,21 +14,19 @@ import { HealthQueryResolver } from "./resolvers/query/health.ts";
 export class GraphqlApplication {
   private readonly configDocument;
   private readonly healthQueryResolver = new HealthQueryResolver();
-  private readonly signUpMutationResolver: SignUpMutationResolver;
+  private readonly signUpMutation: SignUpMutation;
 
   constructor(
     config: Pick<Config<AppConfigDocument>, "getDocument">,
     database: AuthProviderDatabase,
   ) {
     this.configDocument = config.getDocument();
-    this.signUpMutationResolver = new SignUpMutationResolver(
-      new SignUpMutation(config, database),
-    );
+    this.signUpMutation = new SignUpMutation(config, database);
   }
 
   async register(app: FastifyInstance): Promise<void> {
     const healthQueryResolver = this.healthQueryResolver.execute;
-    const signUpMutationResolver = this.signUpMutationResolver.execute;
+    const signUpMutationResolver = new Mutation(this.signUpMutation.execute).execute;
 
     await app.register(mercurius, {
       schema: GraphqlSchema.getDocument(),
