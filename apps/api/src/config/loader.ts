@@ -5,7 +5,7 @@ import { ConfigPathResolver } from "./config_path_resolver.ts";
 import { DotEnvLoader } from "./dot_env_loader.ts";
 import { EnvironmentPlaceholderResolver } from "./environment_placeholder_resolver.ts";
 
-export type ConfigDefinition<TConfig> = {
+export type ConfigLoaderDefinition<TConfig> = {
   schema: ZodType<TConfig>;
   configPathEnvironmentVariableName?: string;
   localConfigFileName?: string;
@@ -14,8 +14,8 @@ export type ConfigDefinition<TConfig> = {
 /**
  * Loads, validates, and caches typed configuration documents for any schema-backed application.
  */
-export class Config<TConfig> {
-  private static cachedConfigs = new WeakMap<ZodType<unknown>, Map<string, Config<unknown>>>();
+export class ConfigLoader<TConfig> {
+  private static cachedConfigs = new WeakMap<ZodType<unknown>, Map<string, ConfigLoader<unknown>>>();
   private readonly configPath: string;
   private readonly document: TConfig;
 
@@ -25,7 +25,7 @@ export class Config<TConfig> {
   }
 
   static resolveConfigPath<TConfig>(
-    definition: ConfigDefinition<TConfig>,
+    definition: ConfigLoaderDefinition<TConfig>,
     configPath?: string,
     cwd: string = process.cwd(),
   ): string {
@@ -35,57 +35,57 @@ export class Config<TConfig> {
   static loadFromPath<TConfig>(
     configPath: string,
     schema: ZodType<TConfig>,
-  ): Config<TConfig> {
-    const resolvedConfigPath = Config.resolveConfigPath({
+  ): ConfigLoader<TConfig> {
+    const resolvedConfigPath = ConfigLoader.resolveConfigPath({
       schema,
     }, configPath);
     DotEnvLoader.loadForConfigPath(resolvedConfigPath);
     const rawConfig = readFileSync(resolvedConfigPath, "utf8");
     const parsedConfig = parse(rawConfig) as unknown;
     const resolvedConfig = EnvironmentPlaceholderResolver.resolve(parsedConfig);
-    const document = Config.parseDocument(resolvedConfig, schema);
-    return new Config(resolvedConfigPath, document);
+    const document = ConfigLoader.parseDocument(resolvedConfig, schema);
+    return new ConfigLoader(resolvedConfigPath, document);
   }
 
   static load<TConfig>(
-    definition: ConfigDefinition<TConfig>,
+    definition: ConfigLoaderDefinition<TConfig>,
     configPath?: string,
-  ): Config<TConfig> {
-    return Config.loadFromPath(
-      Config.resolveConfigPath(definition, configPath),
+  ): ConfigLoader<TConfig> {
+    return ConfigLoader.loadFromPath(
+      ConfigLoader.resolveConfigPath(definition, configPath),
       definition.schema,
     );
   }
 
   static get<TConfig>(
-    definition: ConfigDefinition<TConfig>,
+    definition: ConfigLoaderDefinition<TConfig>,
     configPath?: string,
-  ): Config<TConfig> {
-    const resolvedConfigPath = Config.resolveConfigPath(definition, configPath);
-    let cachedConfigsForSchema = Config.cachedConfigs.get(definition.schema as ZodType<unknown>);
+  ): ConfigLoader<TConfig> {
+    const resolvedConfigPath = ConfigLoader.resolveConfigPath(definition, configPath);
+    let cachedConfigsForSchema = ConfigLoader.cachedConfigs.get(definition.schema as ZodType<unknown>);
 
     if (!cachedConfigsForSchema) {
-      cachedConfigsForSchema = new Map<string, Config<unknown>>();
-      Config.cachedConfigs.set(definition.schema as ZodType<unknown>, cachedConfigsForSchema);
+      cachedConfigsForSchema = new Map<string, ConfigLoader<unknown>>();
+      ConfigLoader.cachedConfigs.set(definition.schema as ZodType<unknown>, cachedConfigsForSchema);
     }
 
     const cachedConfig = cachedConfigsForSchema.get(resolvedConfigPath);
     if (cachedConfig) {
-      return cachedConfig as Config<TConfig>;
+      return cachedConfig as ConfigLoader<TConfig>;
     }
 
-    const loadedConfig = Config.loadFromPath(resolvedConfigPath, definition.schema);
-    cachedConfigsForSchema.set(resolvedConfigPath, loadedConfig as Config<unknown>);
+    const loadedConfig = ConfigLoader.loadFromPath(resolvedConfigPath, definition.schema);
+    cachedConfigsForSchema.set(resolvedConfigPath, loadedConfig as ConfigLoader<unknown>);
     return loadedConfig;
   }
 
-  static clearCache<TConfig>(definition?: ConfigDefinition<TConfig>) {
+  static clearCache<TConfig>(definition?: ConfigLoaderDefinition<TConfig>) {
     if (!definition) {
-      Config.cachedConfigs = new WeakMap<ZodType<unknown>, Map<string, Config<unknown>>>();
+      ConfigLoader.cachedConfigs = new WeakMap<ZodType<unknown>, Map<string, ConfigLoader<unknown>>>();
       return;
     }
 
-    Config.cachedConfigs.delete(definition.schema as ZodType<unknown>);
+    ConfigLoader.cachedConfigs.delete(definition.schema as ZodType<unknown>);
   }
 
   getPath(): string {
@@ -107,7 +107,7 @@ export class Config<TConfig> {
         throw error;
       }
 
-      throw new Error(Config.createValidationErrorMessage(error));
+      throw new Error(ConfigLoader.createValidationErrorMessage(error));
     }
   }
 

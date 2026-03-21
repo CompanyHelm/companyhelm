@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import type { Config } from "../config/config.ts";
+import type { ConfigLoader } from "../config/loader.ts";
 import type { AppConfigDocument } from "../config/schema.ts";
 
 /**
@@ -10,7 +10,7 @@ export class AppRuntimeDatabase {
   private readonly sqlClient;
   private readonly database;
 
-  constructor(config: Pick<Config<AppConfigDocument>, "getDocument">) {
+  constructor(config: Pick<ConfigLoader<AppConfigDocument>, "getDocument">) {
     const document = config.getDocument();
     const runtimeRole = document.database.roles.app_runtime;
     this.sqlClient = postgres({

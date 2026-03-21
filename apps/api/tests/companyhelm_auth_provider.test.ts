@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
-import type { Config } from "../src/config/config.ts";
+import type { ConfigLoader } from "../src/config/loader.ts";
 import type { AppConfigDocument } from "../src/config/schema.ts";
 import { PasswordService } from "../src/auth/providers/companyhelm/password_service.ts";
 import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
@@ -18,7 +18,7 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
  * Builds the small mock fixtures needed to exercise the provider without leaking helper functions.
  */
 class CompanyhelmAuthProviderTestHarness {
-  static createConfigMock(): Pick<Config<AppConfigDocument>, "getDocument"> {
+  static createConfigMock(): Pick<ConfigLoader<AppConfigDocument>, "getDocument"> {
     return {
       getDocument() {
         return {

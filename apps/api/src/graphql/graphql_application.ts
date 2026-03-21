@@ -1,7 +1,7 @@
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
-import type { Config } from "../config/config.ts";
+import type { ConfigLoader } from "../config/loader.ts";
 import type { AppConfigDocument } from "../config/schema.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./graphql_schema.ts";
@@ -17,7 +17,7 @@ export class GraphqlApplication {
   private readonly signUpMutation: SignUpMutation;
 
   constructor(
-    config: Pick<Config<AppConfigDocument>, "getDocument">,
+    config: Pick<ConfigLoader<AppConfigDocument>, "getDocument">,
     database: AuthProviderDatabase,
   ) {
     this.configDocument = config.getDocument();
