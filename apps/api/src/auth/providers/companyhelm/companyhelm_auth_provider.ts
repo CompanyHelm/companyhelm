@@ -2,13 +2,13 @@ import { eq } from "drizzle-orm";
 import type { AppConfig } from "../../../config/config.ts";
 import { userAuths, users } from "../../../db/schema.ts";
 import {
-  AuthProvider,
   type AuthenticatedUser,
   type AuthProviderDatabase,
   type AuthSession,
+  type AuthProviderInterface,
   type SignInInput,
   type SignUpInput,
-} from "../auth_provider.ts";
+} from "../auth_provider_interface.ts";
 import { PasswordService } from "./password_service.ts";
 import { SignInThrottleRegistry } from "./sign_in_throttle_registry.ts";
 import { JwtService } from "./jwt_service.ts";
@@ -23,13 +23,12 @@ type UserRecord = {
 /**
  * Implements the local CompanyHelm auth flow using only config-selected behavior and password records.
  */
-export class CompanyhelmAuthProvider extends AuthProvider {
+export class CompanyhelmAuthProvider implements AuthProviderInterface {
   readonly name = "companyhelm" as const;
   private readonly config: NonNullable<ReturnType<AppConfig["getDocument"]>["auth"]["companyhelm"]>;
   private readonly dummySignInPasswordRecord = PasswordService.createPasswordHash("CompanyHelm!1");
 
   constructor(config: NonNullable<ReturnType<AppConfig["getDocument"]>["auth"]["companyhelm"]>) {
-    super();
     this.config = {
       ...config,
       jwt_private_key_pem: CompanyhelmAuthProvider.normalizePem(config.jwt_private_key_pem),
