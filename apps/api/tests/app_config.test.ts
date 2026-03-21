@@ -3,10 +3,11 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { AppConfig } from "../src/config/config.ts";
+import { Config } from "../src/config/config.ts";
+import { AppConfigDefinition } from "../src/config/schema.ts";
 
 /**
- * Creates isolated config fixtures so AppConfig can be exercised from the public config path.
+ * Creates isolated config fixtures so the shared Config loader can be exercised with the API schema.
  */
 class AppConfigTestHarness {
   static createFixtureConfigPath(provider: "companyhelm" | "supabase" = "companyhelm"): {
@@ -120,33 +121,60 @@ log_pretty: true
 
 test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const config = AppConfig.loadFromPath(fixture.configPath);
+  const config = Config.loadFromPath(AppConfigDefinition, fixture.configPath);
+  const document = config.getDocument();
 
-  assert.deepEqual(config.getListenOptions(), {
+  assert.deepEqual({
+    host: document.host,
+    port: document.port,
+  }, {
     host: "127.0.0.1",
     port: 4000,
   });
-  assert.deepEqual(config.getFastifyOptions(), {
+  assert.deepEqual({
+    logger: {
+      level: document.log_level,
+    },
+  }, {
     logger: {
       level: "debug",
     },
   });
-  assert.deepEqual(config.getDocument().redis, {
+  assert.deepEqual(document.redis, {
     host: "127.0.0.1",
     port: 6379,
   });
-  assert.equal(config.getDocument().github.app_client_id, "client-id");
+  assert.equal(document.github.app_client_id, "client-id");
   assert.equal(
-    config.getDocument().auth.companyhelm?.jwt_private_key_pem,
+    document.auth.companyhelm?.jwt_private_key_pem,
     "private-key",
   );
 });
 
 test("AppConfig loads Supabase auth settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath("supabase");
-  const config = AppConfig.loadFromPath(fixture.configPath);
+  const config = Config.loadFromPath(AppConfigDefinition, fixture.configPath);
+  const document = config.getDocument();
 
-  assert.equal(config.authProvider, "supabase");
-  assert.equal(config.getDocument().auth.supabase?.url, "https://example.supabase.co");
-  assert.equal(config.getDocument().auth.supabase?.anon_key, "supabase-anon-key");
+  assert.equal(document.auth.provider, "supabase");
+  assert.equal(document.auth.supabase?.url, "https://example.supabase.co");
+  assert.equal(document.auth.supabase?.anon_key, "supabase-anon-key");
+});
+
+test("AppConfig explains how to provide missing environment variables", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const originalGithubClientId = process.env[fixture.githubClientVariableName];
+
+  delete process.env[fixture.githubClientVariableName];
+
+  try {
+    assert.throws(
+      () => Config.loadFromPath(AppConfigDefinition, fixture.configPath),
+      /Missing environment variable "COMPANYHELM_TEST_GITHUB_CLIENT"\./,
+    );
+  } finally {
+    if (originalGithubClientId) {
+      process.env[fixture.githubClientVariableName] = originalGithubClientId;
+    }
+  }
 });

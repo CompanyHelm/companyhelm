@@ -1,16 +1,26 @@
 import Fastify from "fastify";
-import { AppConfig } from "./src/config/config.ts";
-
-const config = AppConfig.get();
-const app = Fastify(config.getFastifyOptions());
-
-app.get("/", async () => {
-  return { message: "hello world" };
-});
+import { Config } from "./src/config/config.ts";
+import { AppConfigDefinition } from "./src/config/schema.ts";
 
 try {
-  await app.listen(config.getListenOptions());
+  const config = Config.get(AppConfigDefinition);
+  const document = config.getDocument();
+  const app = Fastify({
+    logger: {
+      level: document.log_level,
+    },
+  });
+
+  app.get("/", async () => {
+    return { message: "hello world" };
+  });
+
+  await app.listen({
+    host: document.host,
+    port: document.port,
+  });
 } catch (error) {
-  app.log.error(error);
+  const message = error instanceof Error ? error.message : "Failed to start API.";
+  console.error(message);
   process.exit(1);
 }

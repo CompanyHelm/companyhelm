@@ -1,4 +1,5 @@
-import type { AppConfig } from "../../config/config.ts";
+import type { Config } from "../../config/config.ts";
+import type { AppConfigDocument } from "../../config/schema.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
 import { SupabaseAuthProvider } from "./supabase/supabase_auth_provider.ts";
 import type { AuthProviderInterface } from "./auth_provider_interface.ts";
@@ -8,13 +9,14 @@ import type { AuthProviderInterface } from "./auth_provider_interface.ts";
  */
 export class AuthProviderFactory {
   static createAuthProvider(
-    config: AppConfig,
+    config: Pick<Config<AppConfigDocument>, "getDocument">,
     dependencies: {
       supabaseJwtVerifier?: ConstructorParameters<typeof SupabaseAuthProvider>[1]["supabaseJwtVerifier"];
     } = {},
   ): AuthProviderInterface {
-    if (config.authProvider === "companyhelm") {
-      const companyhelmConfig = config.auth.companyhelm;
+    const authConfig = config.getDocument().auth;
+    if (authConfig.provider === "companyhelm") {
+      const companyhelmConfig = authConfig.companyhelm;
       if (!companyhelmConfig) {
         throw new Error("CompanyHelm auth provider requires auth.companyhelm configuration.");
       }
@@ -22,7 +24,7 @@ export class AuthProviderFactory {
       return new CompanyhelmAuthProvider(companyhelmConfig);
     }
 
-    const supabaseConfig = config.auth.supabase;
+    const supabaseConfig = authConfig.supabase;
     if (!supabaseConfig) {
       throw new Error("Supabase auth provider requires auth.supabase configuration.");
     }
