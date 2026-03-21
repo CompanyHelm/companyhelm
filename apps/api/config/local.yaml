@@ -1,0 +1,34 @@
+host: "0.0.0.0"
+port: 4000
+graphql:
+  endpoint: "/graphql"
+  graphiql: true
+publicUrl: "http://localhost:4000"
+database:
+  name: "postgres"
+  host: "127.0.0.1"
+  port: 5432
+  roles:
+    app_runtime:
+      username: "app-runtime"
+      password: "companyhelm-local-app-runtime-role-password"
+    admin:
+      username: "postgres"
+      password: "postgres"
+github:
+  app_client_id: "${GITHUB_APP_CLIENT_ID}"
+  app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
+  app_link: "${GITHUB_APP_URL}"
+auth:
+  provider: "companyhelm"
+  companyhelm:
+    jwt_private_key_pem: "${COMPANYHELM_JWT_PRIVATE_KEY_PEM}"
+    jwt_public_key_pem: "${COMPANYHELM_JWT_PUBLIC_KEY_PEM}"
+    jwt_issuer: "companyhelm.local"
+    jwt_audience: "companyhelm-web"
+    jwt_expiration_seconds: 86400
+security:
+  encryption:
+    key: "companyhelm-local-encryption-key"
+log_level: "debug"
+log_pretty: true
