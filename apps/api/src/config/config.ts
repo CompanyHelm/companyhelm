@@ -130,6 +130,14 @@ export class AppConfig {
     return this.document;
   }
 
+  get authProvider(): AuthProvider {
+    return this.document.auth.provider;
+  }
+
+  get auth(): AppConfigDocument["auth"] {
+    return this.document.auth;
+  }
+
   getFastifyOptions(): FastifyServerOptions {
     return {
       logger: {

@@ -15,6 +15,13 @@
       "when": 1774071253171,
       "tag": "0001_daily_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774071616312,
+      "tag": "0002_cynical_jocasta",
+      "breakpoints": true
     }
   ]
 }

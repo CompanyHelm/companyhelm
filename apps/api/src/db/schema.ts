@@ -13,6 +13,7 @@ import {
 import { sql } from "drizzle-orm/sql";
 
 export const modelProviderEnum = pgEnum("model_provider", ["openai"]);
+export const authProviderEnum = pgEnum("auth_provider", ["companyhelm", "supabase"]);
 
 
 export const companies = pgTable("companies", {
@@ -29,6 +30,7 @@ export const users = pgTable("users", {
   first_name: text("first_name").notNull(),
   last_name: text("last_name"),
   email: text("email").notNull(),
+  auth_provider: authProviderEnum("auth_provider").notNull().default("companyhelm"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull()
 }, (table) => ({
