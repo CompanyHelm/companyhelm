@@ -1,21 +1,33 @@
 import type { AppConfig } from "../../config/config.ts";
+import { AuthProvider } from "./auth_provider.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
+import { SupabaseAuthProvider } from "./supabase/supabase_auth_provider.ts";
 
 /**
  * Centralizes auth-provider construction and header parsing so transport code keeps a tiny surface.
  */
 export class AuthProviderFactory {
-  static createAuthProvider(config: AppConfig): CompanyhelmAuthProvider {
-    if (config.authProvider !== "companyhelm") {
-      throw new Error("Only the companyhelm auth provider is implemented.");
+  static createAuthProvider(
+    config: AppConfig,
+    dependencies: {
+      supabaseJwtVerifier?: ConstructorParameters<typeof SupabaseAuthProvider>[1]["supabaseJwtVerifier"];
+    } = {},
+  ): AuthProvider {
+    if (config.authProvider === "companyhelm") {
+      const companyhelmConfig = config.auth.companyhelm;
+      if (!companyhelmConfig) {
+        throw new Error("CompanyHelm auth provider requires auth.companyhelm configuration.");
+      }
+
+      return new CompanyhelmAuthProvider(companyhelmConfig);
     }
 
-    const companyhelmConfig = config.auth.companyhelm;
-    if (!companyhelmConfig) {
-      throw new Error("CompanyHelm auth provider requires auth.companyhelm configuration.");
+    const supabaseConfig = config.auth.supabase;
+    if (!supabaseConfig) {
+      throw new Error("Supabase auth provider requires auth.supabase configuration.");
     }
 
-    return new CompanyhelmAuthProvider(companyhelmConfig);
+    return new SupabaseAuthProvider(supabaseConfig, dependencies);
   }
 
   static extractBearerToken(authorizationHeader: unknown): string | null {

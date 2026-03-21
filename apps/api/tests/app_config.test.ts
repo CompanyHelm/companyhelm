@@ -9,7 +9,7 @@ import { AppConfig } from "../src/config/config.ts";
  * Creates isolated config fixtures so AppConfig can be exercised from the public config path.
  */
 class AppConfigTestHarness {
-  static createFixtureConfigPath(): {
+  static createFixtureConfigPath(provider: "companyhelm" | "supabase" = "companyhelm"): {
     configPath: string;
     privateKeyVariableName: string;
     publicKeyVariableName: string;
@@ -35,7 +35,55 @@ class AppConfigTestHarness {
     mkdirSync(configDirectoryPath, { recursive: true });
     writeFileSync(
       configPath,
-      `
+      AppConfigTestHarness.createConfigDocument({
+        provider,
+        githubClientVariableName,
+        githubKeyVariableName,
+        githubUrlVariableName,
+        privateKeyVariableName,
+        publicKeyVariableName,
+      }),
+      "utf8",
+    );
+
+    return {
+      configPath,
+      privateKeyVariableName,
+      publicKeyVariableName,
+      githubClientVariableName,
+      githubKeyVariableName,
+      githubUrlVariableName,
+    };
+  }
+
+  private static createConfigDocument(params: {
+    provider: "companyhelm" | "supabase";
+    githubClientVariableName: string;
+    githubKeyVariableName: string;
+    githubUrlVariableName: string;
+    privateKeyVariableName: string;
+    publicKeyVariableName: string;
+  }): string {
+    const authDocument = params.provider === "companyhelm"
+      ? `
+auth:
+  provider: "companyhelm"
+  companyhelm:
+    jwt_private_key_pem: "\${${params.privateKeyVariableName}}"
+    jwt_public_key_pem: "\${${params.publicKeyVariableName}}"
+    jwt_issuer: "companyhelm.local"
+    jwt_audience: "companyhelm-web"
+    jwt_expiration_seconds: 86400
+`.trim()
+      : `
+auth:
+  provider: "supabase"
+  supabase:
+    url: "https://example.supabase.co"
+    anon_key: "supabase-anon-key"
+`.trim();
+
+    return `
 host: "127.0.0.1"
 port: 4000
 graphql:
@@ -54,34 +102,16 @@ database:
       username: "postgres"
       password: "postgres"
 github:
-  app_client_id: "\${${githubClientVariableName}}"
-  app_private_key_pem: "\${${githubKeyVariableName}}"
-  app_link: "\${${githubUrlVariableName}}"
-auth:
-  provider: "companyhelm"
-  companyhelm:
-    jwt_private_key_pem: "\${${privateKeyVariableName}}"
-    jwt_public_key_pem: "\${${publicKeyVariableName}}"
-    jwt_issuer: "companyhelm.local"
-    jwt_audience: "companyhelm-web"
-    jwt_expiration_seconds: 86400
+  app_client_id: "\${${params.githubClientVariableName}}"
+  app_private_key_pem: "\${${params.githubKeyVariableName}}"
+  app_link: "\${${params.githubUrlVariableName}}"
+${authDocument}
 security:
   encryption:
     key: "companyhelm-local-encryption-key"
 log_level: "debug"
 log_pretty: true
-`.trimStart(),
-      "utf8",
-    );
-
-    return {
-      configPath,
-      privateKeyVariableName,
-      publicKeyVariableName,
-      githubClientVariableName,
-      githubKeyVariableName,
-      githubUrlVariableName,
-    };
+`.trimStart();
   }
 }
 
@@ -103,4 +133,13 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     config.getDocument().auth.companyhelm?.jwt_private_key_pem,
     "private-key",
   );
+});
+
+test("AppConfig loads Supabase auth settings from local.yaml", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath("supabase");
+  const config = AppConfig.loadFromPath(fixture.configPath);
+
+  assert.equal(config.authProvider, "supabase");
+  assert.equal(config.getDocument().auth.supabase?.url, "https://example.supabase.co");
+  assert.equal(config.getDocument().auth.supabase?.anon_key, "supabase-anon-key");
 });

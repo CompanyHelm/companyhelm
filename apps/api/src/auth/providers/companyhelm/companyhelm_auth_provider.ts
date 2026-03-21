@@ -1,61 +1,17 @@
 import { eq } from "drizzle-orm";
 import type { AppConfig } from "../../../config/config.ts";
 import { userAuths, users } from "../../../db/schema.ts";
+import {
+  AuthProvider,
+  type AuthenticatedUser,
+  type AuthProviderDatabase,
+  type AuthSession,
+  type SignInInput,
+  type SignUpInput,
+} from "../auth_provider.ts";
 import { PasswordService } from "./password_service.ts";
 import { SignInThrottleRegistry } from "./sign_in_throttle_registry.ts";
 import { JwtService } from "./jwt_service.ts";
-
-type AuthenticatedUser = {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string | null;
-  provider: "companyhelm" | "supabase";
-  providerSubject: string;
-};
-
-type AuthSession = {
-  token: string;
-  user: AuthenticatedUser;
-};
-
-type SignInInput = {
-  email: string;
-  password: string;
-};
-
-type SignUpInput = {
-  email: string;
-  firstName: string;
-  lastName?: string | null;
-  password: string;
-};
-
-type AuthProviderDatabaseTransaction = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): {
-        limit(limit: number): Promise<unknown[]>;
-      };
-    };
-  };
-  insert(table: unknown): {
-    values(value: Record<string, unknown>): {
-      returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
-    };
-  };
-};
-
-type AuthProviderDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): {
-        limit(limit: number): Promise<unknown[]>;
-      };
-    };
-  };
-  transaction?<T>(callback: (transaction: AuthProviderDatabaseTransaction) => Promise<T>): Promise<T>;
-};
 
 type UserRecord = {
   id: string;
@@ -67,12 +23,13 @@ type UserRecord = {
 /**
  * Implements the local CompanyHelm auth flow using only config-selected behavior and password records.
  */
-export class CompanyhelmAuthProvider {
+export class CompanyhelmAuthProvider extends AuthProvider {
   readonly name = "companyhelm" as const;
   private readonly config: NonNullable<ReturnType<AppConfig["getDocument"]>["auth"]["companyhelm"]>;
   private readonly dummySignInPasswordRecord = PasswordService.createPasswordHash("CompanyHelm!1");
 
   constructor(config: NonNullable<ReturnType<AppConfig["getDocument"]>["auth"]["companyhelm"]>) {
+    super();
     this.config = {
       ...config,
       jwt_private_key_pem: CompanyhelmAuthProvider.normalizePem(config.jwt_private_key_pem),
