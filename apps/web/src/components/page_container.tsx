@@ -10,7 +10,7 @@ export function PageContainer(props: PageContainerProps) {
   return (
     <div className="page-container">
       <header className="app-header">
-        <Link className="app-header-brand" to="/app">
+        <Link className="app-header-brand" to="/">
           <img className="app-header-brand-mark" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
           <span className="app-header-brand-copy">
             <span className="app-header-brand-title">CompanyHelm</span>

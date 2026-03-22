@@ -10,9 +10,9 @@ export function ClerkPage(props: ClerkPageProps) {
   return (
     <main className="auth-shell">
       {props.mode === "signIn" ? (
-        <SignIn signUpUrl="/sign-up" forceRedirectUrl="/app" />
+        <SignIn signUpUrl="/sign-up" forceRedirectUrl="/" />
       ) : (
-        <SignUp signInUrl="/sign-in" forceRedirectUrl="/app" />
+        <SignUp signInUrl="/sign-in" forceRedirectUrl="/" />
       )}
     </main>
   );

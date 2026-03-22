@@ -14,7 +14,7 @@ export function AuthenticationRoute(props: AuthenticationRouteProps) {
 
   useEffect(() => {
     if (auth.isLoaded && auth.isSignedIn) {
-      void navigate({ to: "/app", replace: true });
+      void navigate({ to: "/", replace: true });
     }
   }, [auth.isLoaded, auth.isSignedIn, navigate]);
 

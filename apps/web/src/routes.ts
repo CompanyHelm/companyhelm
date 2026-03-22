@@ -8,7 +8,6 @@ import {
 import { AuthenticationRoute } from "./pages/auth/route";
 import { DashboardRoute } from "./pages/dashboard/route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
-import { RootRoute } from "./pages/root/route";
 
 function SignInRoute() {
   return createElement(AuthenticationRoute, { mode: "signIn" });
@@ -31,7 +30,7 @@ const pageContainerRoute = createRoute({
 const rootIndexRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/",
-  component: RootRoute,
+  component: DashboardRoute,
 });
 
 const signInRoute = createRoute({
@@ -46,16 +45,9 @@ const signUpRoute = createRoute({
   component: SignUpRoute,
 });
 
-const appRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/app",
-  component: DashboardRoute,
-});
-
 const routeTree = rootRoute.addChildren([
   pageContainerRoute.addChildren([
     rootIndexRoute,
-    appRoute,
   ]),
   signInRoute,
   signUpRoute,
