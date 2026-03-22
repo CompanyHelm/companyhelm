@@ -17,8 +17,8 @@
       "name": "Web Dev Server",
       "type": "node-terminal",
       "request": "launch",
-      "cwd": "${workspaceFolder}",
-      "command": "npm run dev -w @companyhelm/web"
+      "cwd": "${workspaceFolder}/apps/web",
+      "command": "npm run dev"
     },
     {
       "name": "Web (Brave)",
