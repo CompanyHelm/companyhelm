@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
-import test from "node:test";
+import { beforeEach, test } from "vitest";
 import type { ConfigDocument } from "../src/config/schema.ts";
-import { PasswordService } from "../src/auth/providers/companyhelm/password_service.ts";
-import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
-import { SignInThrottleRegistry } from "../src/auth/providers/companyhelm/sign_in_throttle_registry.ts";
-import { JwtService } from "../src/auth/providers/companyhelm/jwt_service.ts";
+import { PasswordService } from "../src/auth/companyhelm/password_service.ts";
+import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
+import { SignInThrottleRegistry } from "../src/auth/companyhelm/sign_in_throttle_registry.ts";
+import { JwtService } from "../src/auth/companyhelm/jwt_service.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -47,7 +47,7 @@ class CompanyhelmAuthProviderTestHarness {
   }
 }
 
-test.beforeEach(() => {
+beforeEach(() => {
   SignInThrottleRegistry.resetForTests();
 });
 

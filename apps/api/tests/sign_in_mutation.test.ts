@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
-import test from "node:test";
 import Fastify from "fastify";
-import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
-import { PasswordService } from "../src/auth/providers/companyhelm/password_service.ts";
+import { test } from "vitest";
+import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
+import { PasswordService } from "../src/auth/companyhelm/password_service.ts";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";

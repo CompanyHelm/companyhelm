@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import type { ConfigDocument } from "../../../config/schema.ts";
-import { userAuths, users } from "../../../db/schema.ts";
+import type { ConfigDocument } from "../../config/schema.ts";
+import { userAuths, users } from "../../db/schema.ts";
 import {
   AuthProvider,
   type AuthenticatedUser,

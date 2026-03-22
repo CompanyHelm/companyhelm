@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "tsx server.ts --config-path ./config/local.yaml",
     "lint": "eslint server.ts src tests",
-    "test": "tsx --test tests/*.test.ts"
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.2"
   },
   "dependencies": {
     "commander": "^14.0.3",
@@ -17,5 +20,8 @@
     "postgres": "^3.4.8",
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.0"
   }
 }

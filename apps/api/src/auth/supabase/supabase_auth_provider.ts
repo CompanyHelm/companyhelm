@@ -1,6 +1,6 @@
 import { eq, or } from "drizzle-orm";
-import type { ConfigDocument } from "../../../config/schema.ts";
-import { users } from "../../../db/schema.ts";
+import type { ConfigDocument } from "../../config/schema.ts";
+import { users } from "../../db/schema.ts";
 import {
   AuthProvider,
   type AuthenticatedUser,
@@ -75,11 +75,15 @@ export class SupabaseAuthProvider extends AuthProvider {
     };
   }
 
-  async signUp(_db: AuthProviderDatabase, _input: SignUpInput): Promise<AuthSession> {
+  async signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession> {
+    void db;
+    void input;
     throw new Error("Supabase auth provider does not support sign up.");
   }
 
-  async signIn(_db: AuthProviderDatabase, _input: SignInInput): Promise<AuthSession> {
+  async signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession> {
+    void db;
+    void input;
     throw new Error("Supabase auth provider does not support sign in.");
   }
 

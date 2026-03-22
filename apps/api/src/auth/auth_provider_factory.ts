@@ -1,4 +1,4 @@
-import type { ConfigDocument } from "../../config/schema.ts";
+import type { ConfigDocument } from "../config/schema.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
 import { SupabaseAuthProvider } from "./supabase/supabase_auth_provider.ts";
 import { AuthProvider } from "./auth_provider.ts";

@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { decorate, inject, injectable } from "inversify";
 import postgres from "postgres";
-import type { AuthProviderDatabase } from "../auth/providers/auth_provider.ts";
+import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
 import { Config, type ConfigDocument } from "../config/schema.ts";
 
 /**

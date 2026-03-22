@@ -1,8 +1,8 @@
 import { decorate, inject, injectable } from "inversify";
 import type {
   AuthSession,
-} from "../../auth/providers/auth_provider.ts";
-import { AuthProvider } from "../../auth/providers/auth_provider.ts";
+} from "../../auth/auth_provider.ts";
+import { AuthProvider } from "../../auth/auth_provider.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import { Mutation } from "./mutation.ts";
 

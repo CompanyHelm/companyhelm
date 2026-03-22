@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import type { ConfigDocument } from "../src/config/schema.ts";
-import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
+import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
 
 /**
  * Creates the minimal Supabase auth fixtures needed to exercise the provider and factory behavior.
