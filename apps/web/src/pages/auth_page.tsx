@@ -31,12 +31,12 @@ export function AuthPage(props: AuthPageProps) {
   const isSignInMode = props.mode === "signIn";
 
   const heading = useMemo(
-    () => (isSignInMode ? "Command center sign in" : "Create your CompanyHelm workspace"),
+    () => (isSignInMode ? "Welcome" : "Create account"),
     [isSignInMode],
   );
 
   const eyebrow = useMemo(
-    () => (isSignInMode ? "Secure access" : "New workspace"),
+    () => (isSignInMode ? "CompanyHelm" : "Join CompanyHelm"),
     [isSignInMode],
   );
 
@@ -69,41 +69,18 @@ export function AuthPage(props: AuthPageProps) {
 
   return (
     <main className="auth-shell">
-      <section className="auth-copy-panel">
-        <p className="auth-eyebrow">{eyebrow}</p>
-        <h1>{heading}</h1>
-        <p className="auth-lead">
-          Relay-backed authentication for the next CompanyHelm frontend. The flow mirrors the
-          existing product, but the presentation is cleaner and the entry points are split into
-          dedicated sign-in and sign-up routes.
-        </p>
-        <div className="auth-highlights">
-          <article>
-            <span>01</span>
-            <strong>Fast bootstrap</strong>
-            <p>Direct GraphQL mutations against the local API, no second client stack.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <strong>Typed front end</strong>
-            <p>React + TypeScript from the first render, with a single auth session store.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <strong>Separate routes</strong>
-            <p>Dedicated sign-in and sign-up pages instead of hiding both modes in one gate.</p>
-          </article>
-        </div>
-      </section>
-
       <section className="auth-panel">
         <div className="auth-panel-header">
-          <p className="auth-brand">CompanyHelm NG</p>
-          <p className="auth-panel-title">{isSignInMode ? "Welcome back" : "Get started"}</p>
+          <div className="auth-logo">
+            <span className="auth-logo-mark" aria-hidden="true" />
+            <span className="auth-logo-text">CompanyHelm</span>
+          </div>
+          <h1 className="auth-panel-title">{heading}</h1>
+          <p className="auth-eyebrow">{eyebrow}</p>
           <p className="auth-panel-copy">
             {isSignInMode
-              ? "Use your CompanyHelm credentials to continue."
-              : "Create an operator account for the new React frontend."}
+              ? "OPERATIONS FOR AI AGENTS"
+              : "SET UP YOUR OPERATOR WORKSPACE"}
           </p>
         </div>
 
@@ -167,10 +144,30 @@ export function AuthPage(props: AuthPageProps) {
           </button>
         </form>
 
-        <div className="auth-route-switch">
-          <span>{isSignInMode ? "Need access?" : "Already registered?"}</span>
+        <p className="auth-route-copy">
+          {isSignInMode ? "Don't have an account?" : "Already have an account?"}
+          {" "}
           <button type="button" onClick={isSignInMode ? props.onNavigateToSignUp : props.onNavigateToSignIn}>
-            {isSignInMode ? "Create an account" : "Go to sign in"}
+            {isSignInMode ? "Sign up" : "Sign in"}
+          </button>
+        </p>
+
+        <div className="auth-divider" aria-hidden="true">
+          <span>Or</span>
+        </div>
+
+        <div className="auth-secondary-actions">
+          <button type="button" className="auth-provider-button" onClick={props.onNavigateToSignIn}>
+            <span className="auth-provider-icon auth-provider-icon-google" aria-hidden="true">
+              G
+            </span>
+            Continue with email login
+          </button>
+          <button type="button" className="auth-provider-button" onClick={props.onNavigateToSignUp}>
+            <span className="auth-provider-icon auth-provider-icon-github" aria-hidden="true">
+              GH
+            </span>
+            {isSignInMode ? "Create a CompanyHelm account" : "Return to sign in"}
           </button>
         </div>
       </section>
