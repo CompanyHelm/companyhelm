@@ -1,5 +1,5 @@
-import { Application } from "./components/application";
+import { ApplicationRouter } from "./compoments/application_router/application_router";
 
 export default function App() {
-  return <Application />;
+  return <ApplicationRouter />;
 }

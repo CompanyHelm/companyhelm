@@ -1,8 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { authClient } from "../auth/auth_client";
-import { authSessionStore, type AuthSessionDocument } from "../auth/auth_session_store";
-import { AuthPage, type AuthPageMode } from "./auth/page";
-import { DashboardPage } from "./dashboard/page";
+import { authClient } from "../../auth/auth_client";
+import { authSessionStore, type AuthSessionDocument } from "../../auth/auth_session_store";
+import { AuthPage, type AuthPageMode } from "../../pages/auth/auth_page";
+import { DashboardPage } from "../../pages/dashboard/dashboard_page";
 
 type AppRouteDocument = "/" | "/app" | "/sign-in" | "/sign-up";
 
@@ -22,7 +22,7 @@ function pushRoute(pathName: AppRouteDocument): void {
   window.history.pushState({}, "", pathName);
 }
 
-export function Application() {
+export function ApplicationRouter() {
   const session = useSyncExternalStore(
     authSessionStore.subscribe.bind(authSessionStore),
     authSessionStore.getSession.bind(authSessionStore),
