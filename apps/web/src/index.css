@@ -96,26 +96,34 @@ button {
   margin-bottom: 24px;
 }
 
-.auth-logo {
+.auth-logo-lockup {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 16px;
   margin-bottom: 18px;
   color: var(--ink);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  text-align: left;
 }
 
 .auth-logo-mark {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, #ffb585, var(--accent) 62%, #ad5123 100%);
-  box-shadow: 0 0 0 4px rgba(254, 138, 76, 0.08);
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 10px 18px rgba(254, 138, 76, 0.18));
+}
+
+.auth-logo-copy {
+  display: grid;
+  gap: 4px;
+  align-items: start;
 }
 
 .auth-logo-text {
-  font-size: 1rem;
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+  font-weight: 800;
 }
 
 .auth-panel-title,
@@ -127,9 +135,17 @@ button {
   font-weight: 800;
 }
 
+.auth-panel-title {
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  color: #d8e2ef;
+}
+
 .auth-eyebrow,
 .dashboard-eyebrow {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   color: var(--accent-strong);
   font-size: 0.72rem;
   font-weight: 700;
@@ -337,8 +353,17 @@ button {
     padding: 22px;
   }
 
-  .auth-panel-title,
   .dashboard-card h1 {
     font-size: 1.9rem;
+  }
+
+  .auth-logo-lockup {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .auth-logo-mark {
+    width: 48px;
+    height: 48px;
   }
 }

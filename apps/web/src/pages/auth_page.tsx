@@ -31,12 +31,12 @@ export function AuthPage(props: AuthPageProps) {
   const isSignInMode = props.mode === "signIn";
 
   const heading = useMemo(
-    () => (isSignInMode ? "Welcome" : "Create account"),
+    () => (isSignInMode ? "Welcome back" : "Create account"),
     [isSignInMode],
   );
 
   const eyebrow = useMemo(
-    () => (isSignInMode ? "CompanyHelm" : "Join CompanyHelm"),
+    () => (isSignInMode ? "Operator access" : "Join the operator workspace"),
     [isSignInMode],
   );
 
@@ -71,11 +71,13 @@ export function AuthPage(props: AuthPageProps) {
     <main className="auth-shell">
       <section className="auth-panel">
         <div className="auth-panel-header">
-          <div className="auth-logo">
-            <span className="auth-logo-mark" aria-hidden="true" />
-            <span className="auth-logo-text">CompanyHelm</span>
+          <div className="auth-logo-lockup">
+            <img className="auth-logo-mark" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
+            <div className="auth-logo-copy">
+              <span className="auth-logo-text">CompanyHelm</span>
+              <h1 className="auth-panel-title">{heading}</h1>
+            </div>
           </div>
-          <h1 className="auth-panel-title">{heading}</h1>
           <p className="auth-eyebrow">{eyebrow}</p>
           <p className="auth-panel-copy">
             {isSignInMode
