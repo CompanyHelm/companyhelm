@@ -1,27 +1,6 @@
-import { useUser } from "@clerk/react";
+import { useClerk, useUser } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/cn";
-
-const primaryNavigation = [
-  "Dashboard",
-  "Lifecycle",
-  "Analytics",
-  "Projects",
-  "Team",
-] as const;
-
-const documentNavigation = [
-  "Data Library",
-  "Runbooks",
-  "Agent Prompts",
-  "Policies",
-] as const;
-
-const supportNavigation = [
-  "Settings",
-  "Get Help",
-  "Search",
-] as const;
 
 function getInitials(firstName: string, emailAddress: string) {
   const trimmedName = firstName.trim();
@@ -34,6 +13,7 @@ function getInitials(firstName: string, emailAddress: string) {
 }
 
 export function ApplicationSidebar() {
+  const clerk = useClerk();
   const userState = useUser();
   const firstName = String(userState.user?.firstName || "").trim() || "Operator";
   const emailAddress = String(userState.user?.primaryEmailAddress?.emailAddress || "").trim()
@@ -48,49 +28,30 @@ export function ApplicationSidebar() {
           <span>CompanyHelm</span>
         </Link>
 
-        <div className="app-sidebar__group">
-          <p className="app-sidebar__label">Home</p>
-          <nav className="app-sidebar__nav">
-            {primaryNavigation.map((item) => (
-              <Link
-                key={item}
-                className={cn("app-sidebar__link", item === "Dashboard" && "app-sidebar__link--active")}
-                to="/"
-              >
-                <span>{item}</span>
-                {item === "Dashboard" ? <span className="app-sidebar__dot" /> : null}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <div className="app-sidebar__group">
-          <p className="app-sidebar__label">Documents</p>
-          <nav className="app-sidebar__nav">
-            {documentNavigation.map((item) => (
-              <button key={item} className="app-sidebar__link" type="button">
-                <span>{item}</span>
-                <span className="app-sidebar__link-meta">More</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <nav className="app-sidebar__support">
-          {supportNavigation.map((item) => (
-            <button key={item} className="app-sidebar__support-link" type="button">
-              {item}
-            </button>
-          ))}
+        <nav className="app-sidebar__nav app-sidebar__nav--primary">
+          <Link className={cn("app-sidebar__link", "app-sidebar__link--active")} to="/">
+            <span>Dashboard</span>
+            <span className="app-sidebar__dot" />
+          </Link>
+          <button
+            className="app-sidebar__link"
+            type="button"
+            onClick={() => {
+              void clerk.openUserProfile();
+            }}
+          >
+            <span>Profile</span>
+            <span className="app-sidebar__link-meta">Clerk</span>
+          </button>
         </nav>
 
-        <button className="app-sidebar__account" type="button">
+        <div className="app-sidebar__account">
           <span className="app-sidebar__avatar">{initials}</span>
           <span className="app-sidebar__account-copy">
             <strong>{firstName}</strong>
             <span>{emailAddress}</span>
           </span>
-        </button>
+        </div>
       </div>
     </aside>
   );

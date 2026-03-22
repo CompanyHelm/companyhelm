@@ -202,9 +202,9 @@ button {
   position: sticky;
   top: 0;
   min-height: 100vh;
-  display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
-  gap: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   padding: 24px 18px;
 }
 
@@ -244,6 +244,10 @@ button {
 .app-sidebar__support {
   display: grid;
   gap: 4px;
+}
+
+.app-sidebar__nav--primary {
+  margin-top: 8px;
 }
 
 .app-sidebar__link,
@@ -293,6 +297,7 @@ button {
   align-items: center;
   gap: 12px;
   width: 100%;
+  margin-top: auto;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
