@@ -3,6 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 import Fastify from "fastify";
 import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
+import { PasswordService } from "../src/auth/providers/companyhelm/password_service.ts";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
@@ -16,9 +17,9 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
 });
 
 /**
- * Builds a tiny GraphQL runtime harness without touching a real database connection.
+ * Builds a tiny GraphQL runtime harness for the sign-in mutation.
  */
-class SignUpMutationTestHarness {
+class SignInMutationTestHarness {
   static createConfigMock(): ConfigDocument {
     return {
       graphql: {
@@ -39,69 +40,64 @@ class SignUpMutationTestHarness {
   }
 
   static createDatabaseMock() {
-    const insertedValues: Array<Record<string, unknown>> = [];
-    const transaction = {
+    const storedPassword = PasswordService.createPasswordHash("abc123!");
+    let selectCallCount = 0;
+
+    return {
       select() {
+        selectCallCount += 1;
+        if (selectCallCount === 1) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      id: "user-graphql-1",
+                      email: "user@example.com",
+                      first_name: "User",
+                      last_name: "One",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
         return {
           from() {
             return {
               where() {
                 return {
-                  limit: async () => [],
+                  limit: async () => [{
+                    password_hash: storedPassword.passwordHash,
+                    password_salt: storedPassword.passwordSalt,
+                  }],
                 };
               },
             };
           },
         };
       },
-      insert() {
-        return {
-          values(value: Record<string, unknown>) {
-            insertedValues.push(value);
-            return {
-              async returning() {
-                return [{
-                  id: "user-graphql-1",
-                  email: "new@example.com",
-                  first_name: "New",
-                  last_name: null,
-                }];
-              },
-            };
-          },
-        };
-      },
-    };
-
-    return {
-      insertedValues,
-      database: {
-        async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
-          return callback(transaction);
-        },
-      },
     };
   }
 }
 
-test("GraphQL SignUp mutation creates a session when lastName is omitted", async () => {
+test("GraphQL SignIn mutation creates a session for a matching local user", async () => {
   const app = Fastify();
-  const config = SignUpMutationTestHarness.createConfigMock();
-  const databaseFixture = SignUpMutationTestHarness.createDatabaseMock();
+  const config = SignInMutationTestHarness.createConfigMock();
   const authProvider = AuthProviderFactory.createAuthProvider(config);
   const database = {
     getDatabase() {
-      return databaseFixture.database as never;
+      return SignInMutationTestHarness.createDatabaseMock() as never;
     },
   };
-  const signUpMutation = new SignUpMutation(
-    authProvider,
-    database,
-  );
+
   await new GraphqlApplication(
     config,
     new SignInMutation(authProvider, database),
-    signUpMutation,
+    new SignUpMutation(authProvider, database),
     new HealthQueryResolver(),
   ).register(app);
 
@@ -110,8 +106,8 @@ test("GraphQL SignUp mutation creates a session when lastName is omitted", async
     url: "/graphql",
     payload: {
       query: `
-        mutation SignUp($input: SignUpInput!) {
-          SignUp(input: $input) {
+        mutation SignIn($input: SignInInput!) {
+          SignIn(input: $input) {
             token
             user {
               id
@@ -126,9 +122,8 @@ test("GraphQL SignUp mutation creates a session when lastName is omitted", async
       `,
       variables: {
         input: {
-          email: "new@example.com",
-          firstName: "New",
-          password: "Passw0rd!",
+          email: "user@example.com",
+          password: "abc123!",
         },
       },
     },
@@ -136,17 +131,15 @@ test("GraphQL SignUp mutation creates a session when lastName is omitted", async
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.equal(typeof document.data.SignUp.token, "string");
-  assert.deepEqual(document.data.SignUp.user, {
+  assert.equal(typeof document.data.SignIn.token, "string");
+  assert.deepEqual(document.data.SignIn.user, {
     id: "user-graphql-1",
-    email: "new@example.com",
-    firstName: "New",
-    lastName: null,
+    email: "user@example.com",
+    firstName: "User",
+    lastName: "One",
     provider: "companyhelm",
     providerSubject: "user-graphql-1",
   });
-  assert.equal(databaseFixture.insertedValues.length, 2);
-  assert.equal(databaseFixture.insertedValues[0]?.last_name, null);
 
   await app.close();
 });

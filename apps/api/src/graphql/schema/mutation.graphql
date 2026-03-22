@@ -1,3 +1,4 @@
 type Mutation {
+  SignIn(input: SignInInput!): AuthSession!
   SignUp(input: SignUpInput!): AuthSession!
 }

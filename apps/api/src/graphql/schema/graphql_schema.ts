@@ -12,11 +12,12 @@ export class GraphqlSchema {
 
   private static loadSchemaDocument(): string {
     return [
-      "./schema/query.graphql",
-      "./schema/mutation.graphql",
-      "./schema/types/auth_session.graphql",
-      "./schema/types/authenticated_user.graphql",
-      "./schema/inputs/sign_up_input.graphql",
+      "./query.graphql",
+      "./mutation.graphql",
+      "./types/auth_session.graphql",
+      "./types/authenticated_user.graphql",
+      "./inputs/sign_in_input.graphql",
+      "./inputs/sign_up_input.graphql",
     ]
       .map((relativePath) => readFileSync(new URL(relativePath, import.meta.url), "utf8").trim())
       .join("\n\n");
