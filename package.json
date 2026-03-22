@@ -23,6 +23,7 @@
     "drizzle-kit": "^0.31.9",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
+    "tsx": "^4.21.0",
     "turbo": "^2.8.20",
     "typescript-eslint": "^8.57.1"
   }

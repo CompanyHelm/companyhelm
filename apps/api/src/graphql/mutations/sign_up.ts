@@ -1,3 +1,5 @@
+import { bindingScopeValues, decorate, inject, injectable } from "inversify";
+import { AuthProviderServiceIdentifier } from "../../auth/providers/auth_provider_service_identifier.ts";
 import type {
   AuthProviderInterface,
   AuthSession,
@@ -17,6 +19,7 @@ type SignUpMutationArguments = {
 /**
  * Maps the GraphQL SignUp mutation onto the configured auth provider.
  */
+@injectable(bindingScopeValues.Singleton)
 export class SignUpMutation extends Mutation<SignUpMutationArguments, AuthSession> {
   private readonly authProvider: AuthProviderInterface;
   private readonly database: Pick<AppRuntimeDatabase, "getDatabase">;
@@ -43,3 +46,6 @@ export class SignUpMutation extends Mutation<SignUpMutationArguments, AuthSessio
     });
   };
 }
+
+decorate(inject(AuthProviderServiceIdentifier), SignUpMutation, 0);
+decorate(inject(AppRuntimeDatabase), SignUpMutation, 1);

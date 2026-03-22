@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { decorate, inject, injectable } from "inversify";
+import { bindingScopeValues, decorate, inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
 import { Config, type ConfigDocument } from "../config/schema.ts";
@@ -7,6 +7,7 @@ import { Config, type ConfigDocument } from "../config/schema.ts";
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
  */
+@injectable(bindingScopeValues.Singleton)
 export class ApiServer {
   private readonly config: ConfigDocument;
   private readonly database;
@@ -46,7 +47,6 @@ export class ApiServer {
   }
 }
 
-decorate(injectable(), ApiServer);
 decorate(inject(Config), ApiServer, 0);
 decorate(inject(AppRuntimeDatabase), ApiServer, 1);
 decorate(inject(GraphqlApplication), ApiServer, 2);

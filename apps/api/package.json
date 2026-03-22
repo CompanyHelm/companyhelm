@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.ts --config-path ./config/local.yaml",
+    "dev": "tsx server.ts --config-path ./config/local.yaml",
     "lint": "eslint server.ts src tests",
-    "test": "node --test tests/*.test.ts"
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "commander": "^14.0.3",

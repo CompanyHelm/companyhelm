@@ -1,6 +1,7 @@
+import { bindingScopeValues, decorate, inject, injectable } from "inversify";
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
-import type { ConfigDocument } from "../config/schema.ts";
+import { Config, type ConfigDocument } from "../config/schema.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./graphql_schema.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
@@ -8,9 +9,10 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
  */
+@injectable(bindingScopeValues.Singleton)
 export class GraphqlApplication {
   private readonly configDocument;
-  private readonly healthQueryResolver = new HealthQueryResolver();
+  private readonly healthQueryResolver: HealthQueryResolver;
   private readonly signUpMutation: SignUpMutation;
 
   constructor(
@@ -42,3 +44,7 @@ export class GraphqlApplication {
     });
   }
 }
+
+decorate(inject(Config), GraphqlApplication, 0);
+decorate(inject(SignUpMutation), GraphqlApplication, 1);
+decorate(inject(HealthQueryResolver), GraphqlApplication, 2);

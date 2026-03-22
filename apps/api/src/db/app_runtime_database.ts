@@ -1,11 +1,13 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import { bindingScopeValues, decorate, inject, injectable } from "inversify";
 import postgres from "postgres";
 import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
-import type { ConfigDocument } from "../config/schema.ts";
+import { Config, type ConfigDocument } from "../config/schema.ts";
 
 /**
  * Owns the runtime Postgres connection used by the API process.
  */
+@injectable(bindingScopeValues.Singleton)
 export class AppRuntimeDatabase {
   private readonly sqlClient;
   private readonly database;
@@ -32,3 +34,5 @@ export class AppRuntimeDatabase {
     });
   }
 }
+
+decorate(inject(Config), AppRuntimeDatabase, 0);
