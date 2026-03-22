@@ -4,10 +4,13 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch server.ts --config-path ./config/local.yaml",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "lint": "eslint server.ts src tests",
     "test": "vitest run"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.9",
     "vitest": "^4.1.0"
   },
   "dependencies": {
