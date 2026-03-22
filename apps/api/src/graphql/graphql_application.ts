@@ -1,6 +1,5 @@
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
-import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
 import type { ConfigDocument } from "../config/schema.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./graphql_schema.ts";
@@ -16,10 +15,12 @@ export class GraphqlApplication {
 
   constructor(
     config: ConfigDocument,
-    database: AuthProviderDatabase,
+    signUpMutation: SignUpMutation,
+    healthQueryResolver: HealthQueryResolver,
   ) {
     this.configDocument = config;
-    this.signUpMutation = new SignUpMutation(config, database);
+    this.signUpMutation = signUpMutation;
+    this.healthQueryResolver = healthQueryResolver;
   }
 
   async register(app: FastifyInstance): Promise<void> {

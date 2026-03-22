@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 import Fastify from "fastify";
+import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
+import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -82,10 +85,20 @@ class SignUpMutationTestHarness {
 
 test("GraphQL SignUp mutation creates a session when lastName is omitted", async () => {
   const app = Fastify();
+  const config = SignUpMutationTestHarness.createConfigMock();
   const databaseFixture = SignUpMutationTestHarness.createDatabaseMock();
+  const signUpMutation = new SignUpMutation(
+    AuthProviderFactory.createAuthProvider(config),
+    {
+      getDatabase() {
+        return databaseFixture.database as never;
+      },
+    },
+  );
   await new GraphqlApplication(
-    SignUpMutationTestHarness.createConfigMock(),
-    databaseFixture.database as never,
+    config,
+    signUpMutation,
+    new HealthQueryResolver(),
   ).register(app);
 
   const response = await app.inject({

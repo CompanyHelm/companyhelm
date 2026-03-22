@@ -10,11 +10,13 @@ import { Config, type ConfigDocument } from "../config/schema.ts";
 export class ApiServer {
   private readonly config: ConfigDocument;
   private readonly database;
+  private readonly graphqlApplication;
   private readonly app;
 
   constructor(container: Container) {
     this.config = container.get<ConfigDocument>(Config);
-    this.database = new AppRuntimeDatabase(this.config);
+    this.database = container.get(AppRuntimeDatabase);
+    this.graphqlApplication = container.get(GraphqlApplication);
     this.app = Fastify({
       logger: {
         level: this.config.log_level,
@@ -31,7 +33,7 @@ export class ApiServer {
       return { message: "hello world" };
     });
 
-    await new GraphqlApplication(this.config, this.database.getDatabase()).register(this.app);
+    await this.graphqlApplication.register(this.app);
 
     await this.app.listen({
       host: this.config.host,

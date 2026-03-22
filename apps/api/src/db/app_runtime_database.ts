@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
 import type { ConfigDocument } from "../config/schema.ts";
 
 /**
@@ -22,7 +23,7 @@ export class AppRuntimeDatabase {
   }
 
   getDatabase() {
-    return this.database;
+    return this.database as AuthProviderDatabase;
   }
 
   async close(): Promise<void> {
