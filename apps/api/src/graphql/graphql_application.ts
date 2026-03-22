@@ -3,7 +3,7 @@ import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import { Config, type ConfigDocument } from "../config/schema.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
-import { GraphqlSchema } from "./graphql_schema.ts";
+import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 
 /**
@@ -26,17 +26,14 @@ export class GraphqlApplication {
   }
 
   async register(app: FastifyInstance): Promise<void> {
-    const healthQueryResolver = this.healthQueryResolver.execute;
-    const signUpMutationResolver = this.signUpMutation.execute;
-
     await app.register(mercurius, {
       schema: GraphqlSchema.getDocument(),
       resolvers: {
         Query: {
-          health: healthQueryResolver,
+          health: this.healthQueryResolver.execute,
         },
         Mutation: {
-          SignUp: signUpMutationResolver,
+          SignUp: this.signUpMutation.execute,
         },
       },
       path: this.configDocument.graphql.endpoint,

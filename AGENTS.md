@@ -13,7 +13,7 @@
 - everything should be a class with methods, do not have files with top level functions
 - there should be only a single class in every file, file name should be related to the class name (apart from casing)
 - class name should be related to the file path
-- do not use abstract classes unless the pattern really supports it, prefer interfaces
+- do not use abstract classes unless the pattern really supports it, prefer interfaces. Or if you are binding an interface, prefer abstract class so type is present at runtime
 
 ## Interfaces
 

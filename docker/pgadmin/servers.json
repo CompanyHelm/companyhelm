@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "CompanyHelm Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "companyhelm",
+      "Username": "postgres",
+      "PassFile": "/tmp/pgpassfile",
+      "ConnectNow": true,
+      "SSLMode": "prefer"
+    }
+  }
+}
