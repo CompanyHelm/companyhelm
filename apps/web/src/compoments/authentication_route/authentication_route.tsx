@@ -1,5 +1,5 @@
-import { useState, useSyncExternalStore } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { authClient } from "../../auth/auth_client";
 import { authSessionStore, type AuthSessionDocument } from "../../auth/auth_session_store";
 import { AuthPage, type AuthPageMode } from "../../pages/auth/auth_page";
@@ -18,9 +18,11 @@ export function AuthenticationRoute(props: AuthenticationRouteProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  if (session) {
-    return <Navigate to="/app" replace />;
-  }
+  useEffect(() => {
+    if (session) {
+      void navigate({ to: "/app", replace: true });
+    }
+  }, [navigate, session]);
 
   async function handleSubmit(input: Record<string, string>) {
     setIsSubmitting(true);
@@ -41,12 +43,16 @@ export function AuthenticationRoute(props: AuthenticationRouteProps) {
         });
       }
 
-      navigate("/app", { replace: true });
+      await navigate({ to: "/app", replace: true });
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Authentication failed.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (session) {
+    return null;
   }
 
   return (
@@ -57,11 +63,11 @@ export function AuthenticationRoute(props: AuthenticationRouteProps) {
       onSubmit={handleSubmit}
       onNavigateToSignIn={() => {
         setErrorMessage("");
-        navigate("/sign-in");
+        void navigate({ to: "/sign-in" });
       }}
       onNavigateToSignUp={() => {
         setErrorMessage("");
-        navigate("/sign-up");
+        void navigate({ to: "/sign-up" });
       }}
     />
   );

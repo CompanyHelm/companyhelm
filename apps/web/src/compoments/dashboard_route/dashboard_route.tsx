@@ -1,5 +1,5 @@
-import { useSyncExternalStore } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { useEffect, useSyncExternalStore } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { authClient } from "../../auth/auth_client";
 import { authSessionStore, type AuthSessionDocument } from "../../auth/auth_session_store";
 import { DashboardPage } from "../../pages/dashboard/dashboard_page";
@@ -12,8 +12,14 @@ export function DashboardRoute() {
     authSessionStore.getSession.bind(authSessionStore),
   ) as AuthSessionDocument | null;
 
+  useEffect(() => {
+    if (!session) {
+      void navigate({ to: "/sign-in", replace: true });
+    }
+  }, [navigate, session]);
+
   if (!session) {
-    return <Navigate to="/sign-in" replace />;
+    return null;
   }
 
   return (
@@ -21,7 +27,7 @@ export function DashboardRoute() {
       user={session.user}
       onSignOut={() => {
         authClient.signOut();
-        navigate("/sign-in", { replace: true });
+        void navigate({ to: "/sign-in", replace: true });
       }}
     />
   );
