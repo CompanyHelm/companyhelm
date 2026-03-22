@@ -87,6 +87,18 @@ auth:
     return `
 host: "127.0.0.1"
 port: 4000
+cors:
+  origin:
+    - "http://127.0.0.1:5173"
+    - "http://localhost:5173"
+  credentials: true
+  methods:
+    - "GET"
+    - "POST"
+    - "OPTIONS"
+  allowed_headers:
+    - "content-type"
+    - "authorization"
 graphql:
   endpoint: "/graphql"
   graphiql: true
@@ -129,6 +141,22 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   }, {
     host: "127.0.0.1",
     port: 4000,
+  });
+  assert.deepEqual(document.cors, {
+    origin: [
+      "http://127.0.0.1:5173",
+      "http://localhost:5173",
+    ],
+    credentials: true,
+    methods: [
+      "GET",
+      "POST",
+      "OPTIONS",
+    ],
+    allowed_headers: [
+      "content-type",
+      "authorization",
+    ],
   });
   assert.deepEqual({
     logger: {

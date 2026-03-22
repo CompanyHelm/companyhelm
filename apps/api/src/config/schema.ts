@@ -30,6 +30,15 @@ const SupabaseAuthSchema = z.object({
 export const Config = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
+  cors: z.object({
+    origin: z.union([
+      NonEmptyStringSchema,
+      z.array(NonEmptyStringSchema).min(1),
+    ]),
+    credentials: z.boolean(),
+    methods: z.array(NonEmptyStringSchema).min(1),
+    allowed_headers: z.array(NonEmptyStringSchema).min(1),
+  }),
   graphql: z.object({
     endpoint: NonEmptyStringSchema,
     graphiql: z.boolean(),

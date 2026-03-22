@@ -4,7 +4,10 @@
 export class Config {
   static getDocument() {
     return {
-      graphqlUrl: Config.resolveStringValue(import.meta.env.VITE_GRAPHQL_URL, "/graphql"),
+      graphqlUrl: Config.resolveStringValue(
+        import.meta.env.VITE_GRAPHQL_URL,
+        Config.getDefaultGraphqlUrl(),
+      ),
       tokenStorageKey: Config.resolveStringValue(
         import.meta.env.VITE_AUTH_TOKEN_STORAGE_KEY,
         "companyhelm.ng.auth.token",
@@ -14,6 +17,10 @@ export class Config {
         "companyhelm.ng.auth.user",
       ),
     };
+  }
+
+  private static getDefaultGraphqlUrl(): string {
+    return import.meta.env.DEV ? "http://127.0.0.1:4000/graphql" : "/graphql";
   }
 
   private static resolveStringValue(value: unknown, fallbackValue: string): string {

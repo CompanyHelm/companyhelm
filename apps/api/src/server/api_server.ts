@@ -1,3 +1,4 @@
+import fastifyCors from "@fastify/cors";
 import Fastify from "fastify";
 import { decorate, inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
@@ -32,6 +33,13 @@ export class ApiServer {
   async start(): Promise<void> {
     this.app.addHook("onClose", async () => {
       await this.database.close();
+    });
+
+    await this.app.register(fastifyCors, {
+      origin: this.config.cors.origin,
+      credentials: this.config.cors.credentials,
+      methods: this.config.cors.methods,
+      allowedHeaders: this.config.cors.allowed_headers,
     });
 
     this.app.get("/", async () => {
