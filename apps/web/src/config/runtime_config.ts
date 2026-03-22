@@ -29,9 +29,7 @@ export class RuntimeConfig {
       return "http://127.0.0.1:4000/graphql";
     }
 
-    const protocol = window.location.protocol || "http:";
-    const hostName = window.location.hostname || "127.0.0.1";
-    return `${protocol}//${hostName}:4000/graphql`;
+    return "/graphql";
   }
 
   private static resolveStringValue(value: unknown, fallbackValue: string): string {
