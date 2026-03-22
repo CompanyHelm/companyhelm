@@ -1,4 +1,4 @@
-import { runtimeConfig } from "../config/runtime_config";
+import { config } from "../config";
 
 export interface AuthenticatedUserDocument {
   id: string;
@@ -22,7 +22,7 @@ export class AuthSessionStore {
   }
 
   getSession(): AuthSessionDocument | null {
-    const token = this.getStoredValue(runtimeConfig.tokenStorageKey);
+    const token = this.getStoredValue(config.tokenStorageKey);
     if (!token) {
       return null;
     }
@@ -43,11 +43,11 @@ export class AuthSessionStore {
       return;
     }
 
-    storage.setItem(runtimeConfig.tokenStorageKey, String(session.token || "").trim());
+    storage.setItem(config.tokenStorageKey, String(session.token || "").trim());
     if (session.user) {
-      storage.setItem(runtimeConfig.userStorageKey, JSON.stringify(session.user));
+      storage.setItem(config.userStorageKey, JSON.stringify(session.user));
     } else {
-      storage.removeItem(runtimeConfig.userStorageKey);
+      storage.removeItem(config.userStorageKey);
     }
     this.emit();
   }
@@ -58,8 +58,8 @@ export class AuthSessionStore {
       return;
     }
 
-    storage.removeItem(runtimeConfig.tokenStorageKey);
-    storage.removeItem(runtimeConfig.userStorageKey);
+    storage.removeItem(config.tokenStorageKey);
+    storage.removeItem(config.userStorageKey);
     this.emit();
   }
 
@@ -71,7 +71,7 @@ export class AuthSessionStore {
   }
 
   private getStoredUser(): AuthenticatedUserDocument | null {
-    const rawValue = this.getStoredValue(runtimeConfig.userStorageKey);
+    const rawValue = this.getStoredValue(config.userStorageKey);
     if (!rawValue) {
       return null;
     }

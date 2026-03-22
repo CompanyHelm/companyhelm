@@ -7,7 +7,7 @@ import {
   type RequestParameters,
   type Variables,
 } from "relay-runtime";
-import { runtimeConfig } from "../config/runtime_config";
+import { config } from "../config";
 import { authSessionStore } from "../auth/auth_session_store";
 
 interface GraphQLErrorDocument {
@@ -67,7 +67,7 @@ export class RelayEnvironmentBuilder {
       headers.authorization = `Bearer ${activeSession.token}`;
     }
 
-    const response = await fetch(runtimeConfig.graphqlUrl, {
+    const response = await fetch(config.graphqlUrl, {
       method: "POST",
       headers,
       body: JSON.stringify({
