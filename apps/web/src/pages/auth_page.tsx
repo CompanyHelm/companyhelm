@@ -31,17 +31,17 @@ export function AuthPage(props: AuthPageProps) {
   const isSignInMode = props.mode === "signIn";
 
   const heading = useMemo(
-    () => (isSignInMode ? "Welcome back" : "Create account"),
+    () => (isSignInMode ? "Welcome back" : "Provision operator account"),
     [isSignInMode],
   );
 
   const eyebrow = useMemo(
-    () => (isSignInMode ? "Operator access" : "Join the operator workspace"),
+    () => (isSignInMode ? "Operator access node" : "Bootstrap operator access"),
     [isSignInMode],
   );
 
   const submitLabel = useMemo(
-    () => (props.isSubmitting ? "Working..." : isSignInMode ? "Sign in" : "Create account"),
+    () => (props.isSubmitting ? "Negotiating..." : isSignInMode ? "Authenticate" : "Create operator"),
     [isSignInMode, props.isSubmitting],
   );
 
@@ -71,6 +71,11 @@ export function AuthPage(props: AuthPageProps) {
     <main className="auth-shell">
       <section className="auth-panel">
         <div className="auth-panel-header">
+          <div className="auth-status-row">
+            <span className="auth-status-chip">SYSTEM ONLINE</span>
+            <span className="auth-status-meta">{isSignInMode ? "LOCAL AUTH FLOW" : "OPERATOR ONBOARDING"}</span>
+          </div>
+
           <div className="auth-logo-lockup">
             <img className="auth-logo-mark" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
             <div className="auth-logo-copy">
@@ -78,12 +83,28 @@ export function AuthPage(props: AuthPageProps) {
               <h1 className="auth-panel-title">{heading}</h1>
             </div>
           </div>
+
           <p className="auth-eyebrow">{eyebrow}</p>
           <p className="auth-panel-copy">
             {isSignInMode
-              ? "OPERATIONS FOR AI AGENTS"
-              : "SET UP YOUR OPERATOR WORKSPACE"}
+              ? "Access the control surface for agent operations, session issuance, and GraphQL transport."
+              : "Create the first operator identity for this environment and initialize the local auth session."}
           </p>
+
+          <div className="auth-signal-grid" aria-hidden="true">
+            <div>
+              <span>AUTH</span>
+              <strong>JWT</strong>
+            </div>
+            <div>
+              <span>TRANSPORT</span>
+              <strong>GRAPHQL</strong>
+            </div>
+            <div>
+              <span>MODE</span>
+              <strong>LOCAL</strong>
+            </div>
+          </div>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit} autoComplete="on">
@@ -147,31 +168,17 @@ export function AuthPage(props: AuthPageProps) {
         </form>
 
         <p className="auth-route-copy">
-          {isSignInMode ? "Don't have an account?" : "Already have an account?"}
+          {isSignInMode ? "Need an operator record?" : "Already provisioned?"}
           {" "}
           <button type="button" onClick={isSignInMode ? props.onNavigateToSignUp : props.onNavigateToSignIn}>
-            {isSignInMode ? "Sign up" : "Sign in"}
+            {isSignInMode ? "Create one" : "Authenticate"}
           </button>
         </p>
 
-        <div className="auth-divider" aria-hidden="true">
-          <span>Or</span>
-        </div>
-
-        <div className="auth-secondary-actions">
-          <button type="button" className="auth-provider-button" onClick={props.onNavigateToSignIn}>
-            <span className="auth-provider-icon auth-provider-icon-google" aria-hidden="true">
-              G
-            </span>
-            Continue with email login
-          </button>
-          <button type="button" className="auth-provider-button" onClick={props.onNavigateToSignUp}>
-            <span className="auth-provider-icon auth-provider-icon-github" aria-hidden="true">
-              GH
-            </span>
-            {isSignInMode ? "Create a CompanyHelm account" : "Return to sign in"}
-          </button>
-        </div>
+        <p className="auth-footnote">
+          Email-password auth is the active transport in this environment. External providers stay
+          disabled until their control paths are wired.
+        </p>
       </section>
     </main>
   );
