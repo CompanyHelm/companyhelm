@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { DashboardRoute } from "./pages/dashboard/route";
+import { PageContainerRoute } from "./pages/root/page_container_route";
 import { RootRoute } from "./pages/root/route";
 
 function SignInRoute() {
@@ -21,8 +22,14 @@ const rootRoute = createRootRoute({
   component: Outlet,
 });
 
-const rootIndexRoute = createRoute({
+const pageContainerRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: "page-container",
+  component: PageContainerRoute,
+});
+
+const rootIndexRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
   path: "/",
   component: RootRoute,
 });
@@ -40,16 +47,18 @@ const signUpRoute = createRoute({
 });
 
 const appRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => pageContainerRoute,
   path: "/app",
   component: DashboardRoute,
 });
 
 const routeTree = rootRoute.addChildren([
-  rootIndexRoute,
+  pageContainerRoute.addChildren([
+    rootIndexRoute,
+    appRoute,
+  ]),
   signInRoute,
   signUpRoute,
-  appRoute,
 ]);
 
 export const applicationRouter = createRouter({
