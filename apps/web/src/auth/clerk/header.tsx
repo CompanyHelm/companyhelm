@@ -1,12 +1,7 @@
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
-import { config } from "../../config";
 
-export function ApplicationHeader() {
-  if (config.authProvider !== "clerk") {
-    return null;
-  }
-
+export function ClerkHeader() {
   return (
     <header className="app-header">
       <Link className="app-header-brand" to="/app">

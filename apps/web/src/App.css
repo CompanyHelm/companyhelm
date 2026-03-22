@@ -4,10 +4,6 @@
   grid-template-rows: auto 1fr;
 }
 
-.app-shell--companyhelm {
-  grid-template-rows: 1fr;
-}
-
 .app-content {
   min-height: 0;
 }

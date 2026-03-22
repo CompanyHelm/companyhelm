@@ -1,8 +1,10 @@
-import type { AuthenticatedUserDocument } from "../../auth/auth_session_store";
-
 interface DashboardPageProps {
-  user: AuthenticatedUserDocument | null;
-  onSignOut?: () => void;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+  } | null;
 }
 
 export function DashboardPage(props: DashboardPageProps) {
@@ -14,8 +16,8 @@ export function DashboardPage(props: DashboardPageProps) {
         <p className="dashboard-eyebrow">Authenticated</p>
         <h1>{displayName}, you are in.</h1>
         <p className="dashboard-copy">
-          The auth token is stored locally and all GraphQL traffic is now wired through Relay’s
-          network layer. This page is intentionally minimal until the rest of the NG app lands.
+          Your Clerk session is active and the NG app is ready for authenticated routes. This
+          page stays intentionally minimal until the rest of the workspace lands.
         </p>
         <dl className="dashboard-details">
           <div>
@@ -28,14 +30,9 @@ export function DashboardPage(props: DashboardPageProps) {
           </div>
           <div>
             <dt>Next step</dt>
-            <dd>Build the authenticated routes on top of this shell.</dd>
+            <dd>Build the authenticated application flows on top of this shell.</dd>
           </div>
         </dl>
-        {props.onSignOut ? (
-          <button className="dashboard-signout" type="button" onClick={props.onSignOut}>
-            Sign out
-          </button>
-        ) : null}
       </section>
     </main>
   );

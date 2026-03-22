@@ -1,12 +1,11 @@
 import "./App.css";
-import { ApplicationHeader } from "./compoments/application_header/application_header";
+import { ClerkHeader } from "./auth/clerk/header";
 import { ApplicationRouter } from "./compoments/application_router/application_router";
-import { config } from "./config";
 
 export default function App() {
   return (
-    <div className={`app-shell app-shell--${config.authProvider}`}>
-      <ApplicationHeader />
+    <div className="app-shell">
+      <ClerkHeader />
       <div className="app-content">
         <ApplicationRouter />
       </div>

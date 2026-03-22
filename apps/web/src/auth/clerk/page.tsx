@@ -1,12 +1,12 @@
 import { SignIn, SignUp } from "@clerk/react";
 
-export type ClerkAuthPageMode = "signIn" | "signUp";
+export type ClerkPageMode = "signIn" | "signUp";
 
-interface ClerkAuthPageProps {
-  mode: ClerkAuthPageMode;
+interface ClerkPageProps {
+  mode: ClerkPageMode;
 }
 
-export function ClerkAuthPage(props: ClerkAuthPageProps) {
+export function ClerkPage(props: ClerkPageProps) {
   const isSignInMode = props.mode === "signIn";
 
   return (

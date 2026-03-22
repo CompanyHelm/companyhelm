@@ -12,15 +12,9 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  config.authProvider === "clerk" ? (
-    <StrictMode>
-      <ClerkProvider publishableKey={config.clerkPublishableKey}>
-        <App />
-      </ClerkProvider>
-    </StrictMode>
-  ) : (
-    <StrictMode>
+  <StrictMode>
+    <ClerkProvider publishableKey={config.clerkPublishableKey}>
       <App />
-    </StrictMode>
-  ),
+    </ClerkProvider>
+  </StrictMode>,
 );
