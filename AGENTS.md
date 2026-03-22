@@ -1,5 +1,8 @@
 # Code conventions
 
+## Language
+- only use typescript, no javascript
+
 ## file structure
 
 - keep files grouped into directories if related
