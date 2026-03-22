@@ -1,4 +1,4 @@
-import type { AuthenticatedUserDocument } from "../auth/auth_session_store";
+import type { AuthenticatedUserDocument } from "../../auth/auth_session_store";
 
 interface DashboardPageProps {
   user: AuthenticatedUserDocument | null;

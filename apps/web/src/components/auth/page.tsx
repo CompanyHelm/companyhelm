@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { SignInInputDocument, SignUpInputDocument } from "../auth/auth_client";
+import type { SignInInputDocument, SignUpInputDocument } from "../../auth/auth_client";
 
 export type AuthPageMode = "signIn" | "signUp";
 
