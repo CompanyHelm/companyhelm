@@ -1,0 +1,128 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.app-shell--companyhelm {
+  grid-template-rows: 1fr;
+}
+
+.app-content {
+  min-height: 0;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 0;
+}
+
+.app-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(100% + 24px);
+  background: linear-gradient(180deg, rgba(6, 8, 13, 0.92) 0%, rgba(6, 8, 13, 0.48) 70%, transparent 100%);
+  backdrop-filter: blur(14px);
+  pointer-events: none;
+}
+
+.app-header-brand,
+.app-header-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.app-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.app-header-brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(254, 138, 76, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.app-header-brand-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.app-header-brand-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.app-header-brand-subtitle {
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.app-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-header-action {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.app-header-action:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.app-header-action--primary {
+  border-color: rgba(254, 138, 76, 0.3);
+  background: linear-gradient(180deg, rgba(254, 138, 76, 0.92) 0%, rgba(242, 121, 56, 0.92) 100%);
+  color: #16100b;
+}
+
+.app-header-action--primary:hover {
+  border-color: rgba(254, 138, 76, 0.5);
+  background: linear-gradient(180deg, rgba(255, 162, 111, 0.96) 0%, rgba(245, 136, 73, 0.96) 100%);
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px 14px 0;
+  }
+
+  .app-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .app-header-action {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+}

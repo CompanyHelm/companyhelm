@@ -9,6 +9,7 @@ import {
 import { authSessionStore } from "./auth/auth_session_store";
 import { AuthenticationRoute } from "./compoments/authentication_route/authentication_route";
 import { DashboardRoute } from "./compoments/dashboard_route/dashboard_route";
+import { config } from "./config";
 
 function SignInRoute() {
   return createElement(AuthenticationRoute, { mode: "signIn" });
@@ -27,7 +28,7 @@ const rootIndexRoute = createRoute({
   path: "/",
   beforeLoad: () => {
     throw redirect({
-      to: authSessionStore.getSession() ? "/app" : "/sign-in",
+      to: config.authProvider === "clerk" || authSessionStore.getSession() ? "/app" : "/sign-in",
     });
   },
 });
@@ -36,7 +37,7 @@ const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sign-in",
   beforeLoad: () => {
-    if (authSessionStore.getSession()) {
+    if (config.authProvider === "companyhelm" && authSessionStore.getSession()) {
       throw redirect({ to: "/app" });
     }
   },
@@ -47,7 +48,7 @@ const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sign-up",
   beforeLoad: () => {
-    if (authSessionStore.getSession()) {
+    if (config.authProvider === "companyhelm" && authSessionStore.getSession()) {
       throw redirect({ to: "/app" });
     }
   },
@@ -58,7 +59,7 @@ const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app",
   beforeLoad: () => {
-    if (!authSessionStore.getSession()) {
+    if (config.authProvider === "companyhelm" && !authSessionStore.getSession()) {
       throw redirect({ to: "/sign-in" });
     }
   },

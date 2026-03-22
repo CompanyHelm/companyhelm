@@ -2,7 +2,7 @@ import type { AuthenticatedUserDocument } from "../../auth/auth_session_store";
 
 interface DashboardPageProps {
   user: AuthenticatedUserDocument | null;
-  onSignOut: () => void;
+  onSignOut?: () => void;
 }
 
 export function DashboardPage(props: DashboardPageProps) {
@@ -31,9 +31,11 @@ export function DashboardPage(props: DashboardPageProps) {
             <dd>Build the authenticated routes on top of this shell.</dd>
           </div>
         </dl>
-        <button className="dashboard-signout" type="button" onClick={props.onSignOut}>
-          Sign out
-        </button>
+        {props.onSignOut ? (
+          <button className="dashboard-signout" type="button" onClick={props.onSignOut}>
+            Sign out
+          </button>
+        ) : null}
       </section>
     </main>
   );

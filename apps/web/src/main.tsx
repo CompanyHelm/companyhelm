@@ -1,6 +1,8 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
+import { ClerkProvider } from "@clerk/react";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
 import App from "./app";
+import { config } from "./config";
 import "./index.css";
 
 const rootElement = document.getElementById("app");
@@ -9,8 +11,16 @@ if (!rootElement) {
   throw new Error("Missing #app element.");
 }
 
-ReactDOM.createRoot(rootElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
+createRoot(rootElement).render(
+  config.authProvider === "clerk" ? (
+    <StrictMode>
+      <ClerkProvider publishableKey={config.clerkPublishableKey}>
+        <App />
+      </ClerkProvider>
+    </StrictMode>
+  ) : (
+    <StrictMode>
+      <App />
+    </StrictMode>
+  ),
 );

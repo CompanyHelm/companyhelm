@@ -59,7 +59,7 @@ button {
 
 .auth-shell,
 .dashboard-shell {
-  min-height: 100vh;
+  min-height: 100%;
   display: grid;
   place-items: center;
   padding: 32px 20px;
@@ -89,6 +89,10 @@ button {
 
 .auth-panel {
   padding: 28px;
+}
+
+.auth-panel--clerk {
+  width: min(100%, 520px);
 }
 
 .auth-panel-header {
