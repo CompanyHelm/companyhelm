@@ -11,7 +11,11 @@
     "strict": true,
     "types": ["vite/client"],
     "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
     "moduleResolution": "Bundler",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
