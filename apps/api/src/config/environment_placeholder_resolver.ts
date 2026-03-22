@@ -3,7 +3,6 @@ const envPlaceholderPattern = /\$\{([A-Z0-9_]+)\}/g;
 export class EnvironmentPlaceholderResolver {
   static resolve(value: unknown, path = ""): unknown {
     if (typeof value === "string") {
-      const placeholderPath = path || "<root>";
       const placeholders = [...value.matchAll(envPlaceholderPattern)];
       if (placeholders.length === 0) {
         return value;
@@ -15,7 +14,6 @@ export class EnvironmentPlaceholderResolver {
           throw new Error(
             EnvironmentPlaceholderResolver.createMissingVariableMessage(
               variableName,
-              placeholderPath,
             ),
           );
         }
@@ -45,7 +43,7 @@ export class EnvironmentPlaceholderResolver {
     return value;
   }
 
-  private static createMissingVariableMessage(variableName: string, _placeholderPath: string): string {
+  private static createMissingVariableMessage(variableName: string): string {
     return `Missing environment variable "${variableName}".`;
   }
 }

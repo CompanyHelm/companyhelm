@@ -50,7 +50,7 @@ class SignUpMutationTestHarness {
           },
         };
       },
-      insert(_table: unknown) {
+      insert() {
         return {
           values(value: Record<string, unknown>) {
             insertedValues.push(value);

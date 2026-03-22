@@ -4,8 +4,12 @@
       "build": {
         "outputs": ["dist/**"]
       },
+      "lint": {},
       "check-types": {
         "dependsOn": ["^check-types"]
+      },
+      "test": {
+        "dependsOn": ["lint"]
       },
       "dev": {
         "persistent": true,

@@ -135,7 +135,7 @@ test("companyhelm auth provider signs up a new user and stores password credenti
     select() {
       return CompanyhelmAuthProviderTestHarness.createMockSelectChain([]);
     },
-    insert(_table: unknown) {
+    insert() {
       return {
         values(value: Record<string, unknown>) {
           insertedValues.push(value);

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server.ts --config-path ./config/local.yaml",
+    "lint": "eslint server.ts src tests",
     "test": "node --test tests/*.test.ts"
   },
   "dependencies": {

@@ -10,6 +10,8 @@
     "dev": "turbo run dev",
     "dev:api": "npm run dev -w @companyhelm/api",
     "dev:web": "npm run dev -w @companyhelm/web",
+    "lint": "turbo run lint",
+    "test": "turbo run lint build test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:up": "docker compose up -d postgres redis pgadmin && echo \"pgAdmin: http://localhost:5050\" && echo \"Redis: localhost:6379\"",
@@ -17,7 +19,11 @@
     "db:reset": "docker compose down -v && docker compose up -d postgres redis pgadmin && echo \"pgAdmin: http://localhost:5050\" && echo \"Redis: localhost:6379\""
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "drizzle-kit": "^0.31.9",
-    "turbo": "^2.8.20"
+    "eslint": "^10.1.0",
+    "globals": "^17.4.0",
+    "turbo": "^2.8.20",
+    "typescript-eslint": "^8.57.1"
   }
 }
