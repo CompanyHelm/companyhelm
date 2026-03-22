@@ -1,19 +1,19 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
 :root {
   color-scheme: dark;
-  --bg: #071019;
-  --bg-elevated: #0c1724;
-  --panel: rgba(10, 18, 29, 0.94);
-  --panel-strong: rgba(7, 13, 22, 0.98);
-  --ink: #f3f8fe;
-  --muted: #8ea3b8;
-  --line: rgba(139, 173, 206, 0.14);
-  --line-strong: rgba(139, 173, 206, 0.3);
-  --accent: #38c9ff;
-  --accent-strong: #9be8ff;
-  --accent-soft: rgba(56, 201, 255, 0.16);
-  --shadow: 0 38px 90px rgba(0, 0, 0, 0.52);
+  --bg: #090b10;
+  --bg-elevated: #10131a;
+  --panel: rgba(17, 20, 27, 0.94);
+  --panel-strong: rgba(12, 15, 21, 0.98);
+  --ink: #f5f7fb;
+  --muted: #9aa3b2;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --accent: #fe8a4c;
+  --accent-strong: #ffab79;
+  --accent-soft: rgba(254, 138, 76, 0.16);
+  --shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -31,9 +31,9 @@ body {
   font-family: "Manrope", sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at top center, rgba(56, 201, 255, 0.14), transparent 20rem),
-    radial-gradient(circle at bottom left, rgba(74, 113, 255, 0.12), transparent 24rem),
-    linear-gradient(180deg, #071019 0%, #040a11 100%);
+    radial-gradient(circle at top center, rgba(254, 138, 76, 0.12), transparent 20rem),
+    radial-gradient(circle at bottom left, rgba(85, 126, 255, 0.08), transparent 24rem),
+    linear-gradient(180deg, #090b10 0%, #06080d 100%);
 }
 
 body::before {
@@ -42,10 +42,10 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(rgba(169, 203, 236, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(169, 203, 236, 0.035) 1px, transparent 1px);
-  background-size: 40px 40px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.42), transparent 85%);
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.35), transparent 85%);
 }
 
 button,
@@ -73,7 +73,7 @@ button {
   border-radius: 24px;
   border: 1px solid var(--line);
   background:
-    linear-gradient(180deg, rgba(13, 23, 37, 0.98) 0%, rgba(8, 14, 23, 0.98) 100%);
+    linear-gradient(180deg, rgba(23, 27, 36, 0.98) 0%, rgba(14, 17, 24, 0.98) 100%);
   box-shadow: var(--shadow);
   backdrop-filter: blur(20px);
 }
@@ -96,52 +96,6 @@ button {
   margin-bottom: 24px;
 }
 
-.auth-status-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 22px;
-}
-
-.auth-status-chip,
-.auth-status-meta,
-.auth-eyebrow,
-.dashboard-eyebrow,
-.dashboard-details dt {
-  font-family: "IBM Plex Mono", monospace;
-  text-transform: uppercase;
-}
-
-.auth-status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(56, 201, 255, 0.24);
-  background: rgba(56, 201, 255, 0.08);
-  color: var(--accent-strong);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-}
-
-.auth-status-chip::before {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #5df18e;
-  box-shadow: 0 0 12px rgba(93, 241, 142, 0.7);
-}
-
-.auth-status-meta {
-  color: var(--muted);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-}
-
 .auth-logo-lockup {
   display: inline-flex;
   align-items: center;
@@ -156,7 +110,7 @@ button {
   width: 56px;
   height: 56px;
   flex: 0 0 auto;
-  filter: drop-shadow(0 10px 18px rgba(56, 201, 255, 0.18));
+  filter: drop-shadow(0 10px 18px rgba(254, 138, 76, 0.18));
 }
 
 .auth-logo-copy {
@@ -166,9 +120,9 @@ button {
 }
 
 .auth-logo-text {
-  font-size: clamp(2.4rem, 8vw, 3.6rem);
-  line-height: 0.9;
-  letter-spacing: -0.08em;
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: 0.96;
+  letter-spacing: -0.06em;
   font-weight: 800;
 }
 
@@ -182,57 +136,29 @@ button {
 }
 
 .auth-panel-title {
-  font-size: clamp(0.98rem, 3vw, 1.18rem);
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-weight: 600;
-  color: #d3e0ec;
+  color: #d8e2ef;
 }
 
 .auth-eyebrow,
 .dashboard-eyebrow {
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   color: var(--accent-strong);
   font-size: 0.72rem;
   font-weight: 700;
+  text-transform: uppercase;
   letter-spacing: 0.18em;
 }
 
 .auth-panel-copy,
 .dashboard-copy {
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.68;
-}
-
-.auth-signal-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.auth-signal-grid div {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.auth-signal-grid span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.64rem;
-  letter-spacing: 0.14em;
-}
-
-.auth-signal-grid strong {
-  color: var(--ink);
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
+  font-size: 0.88rem;
+  line-height: 1.6;
 }
 
 .auth-form {
@@ -265,7 +191,7 @@ button {
 
 .auth-form input:focus {
   outline: none;
-  border-color: rgba(56, 201, 255, 0.7);
+  border-color: rgba(254, 138, 76, 0.65);
   box-shadow: 0 0 0 4px var(--accent-soft);
   background: rgba(255, 255, 255, 0.05);
 }
@@ -276,8 +202,8 @@ button {
   border: none;
   border-radius: 12px;
   margin-top: 4px;
-  background: linear-gradient(180deg, #7be6ff 0%, #27bfff 100%);
-  color: #041019;
+  background: linear-gradient(180deg, #ff985f 0%, #f27938 100%);
+  color: #16100b;
   font-size: 0.95rem;
   font-weight: 800;
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
@@ -286,7 +212,7 @@ button {
 .auth-submit:hover,
 .dashboard-signout:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(39, 191, 255, 0.28);
+  box-shadow: 0 12px 28px rgba(242, 121, 56, 0.28);
 }
 
 .auth-submit:disabled {
@@ -298,9 +224,9 @@ button {
   margin: 2px 0 0;
   border-radius: 12px;
   padding: 11px 12px;
-  border: 1px solid rgba(255, 128, 128, 0.22);
-  background: rgba(255, 128, 128, 0.1);
-  color: #ffd0d0;
+  border: 1px solid rgba(255, 143, 98, 0.22);
+  background: rgba(255, 143, 98, 0.12);
+  color: #ffc8ac;
   font-size: 0.88rem;
 }
 
@@ -315,17 +241,72 @@ button {
   border: none;
   padding: 0;
   background: transparent;
-  color: var(--accent-strong);
+  color: var(--ink);
   font-weight: 700;
 }
 
-.auth-footnote {
-  margin: 18px 0 0;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-  color: #7b92a9;
-  font-size: 0.78rem;
-  line-height: 1.6;
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: #7f8a9a;
+  font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--line);
+}
+
+.auth-secondary-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-provider-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #e7edf7;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.auth-provider-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.auth-provider-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.auth-provider-icon-google {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-provider-icon-github {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .dashboard-card {
@@ -350,6 +331,7 @@ button {
   margin-bottom: 6px;
   color: var(--muted);
   font-size: 0.74rem;
+  text-transform: uppercase;
   letter-spacing: 0.14em;
 }
 
@@ -378,7 +360,6 @@ button {
   .auth-logo-lockup {
     align-items: center;
     gap: 12px;
-    text-align: left;
   }
 
   .auth-logo-mark {
