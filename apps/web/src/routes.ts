@@ -4,10 +4,10 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  redirect,
 } from "@tanstack/react-router";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { DashboardRoute } from "./pages/dashboard/route";
+import { RootRoute } from "./pages/root/route";
 
 function SignInRoute() {
   return createElement(AuthenticationRoute, { mode: "signIn" });
@@ -24,11 +24,7 @@ const rootRoute = createRootRoute({
 const rootIndexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => {
-    throw redirect({
-      to: "/app",
-    });
-  },
+  component: RootRoute,
 });
 
 const signInRoute = createRoute({
