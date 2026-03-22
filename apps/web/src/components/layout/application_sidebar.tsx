@@ -1,4 +1,4 @@
-import { useClerk, useUser } from "@clerk/react";
+import { UserButton, useUser } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/cn";
 
@@ -13,7 +13,6 @@ function getInitials(firstName: string, emailAddress: string) {
 }
 
 export function ApplicationSidebar() {
-  const clerk = useClerk();
   const userState = useUser();
   const firstName = String(userState.user?.firstName || "").trim() || "Operator";
   const emailAddress = String(userState.user?.primaryEmailAddress?.emailAddress || "").trim()
@@ -33,16 +32,6 @@ export function ApplicationSidebar() {
             <span>Dashboard</span>
             <span className="app-sidebar__dot" />
           </Link>
-          <button
-            className="app-sidebar__link"
-            type="button"
-            onClick={() => {
-              void clerk.openUserProfile();
-            }}
-          >
-            <span>Profile</span>
-            <span className="app-sidebar__link-meta">Clerk</span>
-          </button>
         </nav>
 
         <div className="app-sidebar__account">
@@ -51,6 +40,9 @@ export function ApplicationSidebar() {
             <strong>{firstName}</strong>
             <span>{emailAddress}</span>
           </span>
+          <div className="app-sidebar__account-action">
+            <UserButton />
+          </div>
         </div>
       </div>
     </aside>

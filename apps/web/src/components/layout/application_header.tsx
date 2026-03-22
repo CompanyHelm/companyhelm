@@ -1,4 +1,3 @@
-import { UserButton } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 
 export function ApplicationHeader() {
@@ -23,9 +22,6 @@ export function ApplicationHeader() {
         >
           GitHub
         </Button>
-        <div className="app-header__user">
-          <UserButton />
-        </div>
       </div>
     </header>
   );
