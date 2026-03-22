@@ -1,7 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import type { Config } from "../config/config.ts";
-import type { AppConfigDocument } from "../config/schema.ts";
+import type { ConfigDocument } from "../config/schema.ts";
 
 /**
  * Owns the runtime Postgres connection used by the API process.
@@ -10,13 +9,12 @@ export class AppRuntimeDatabase {
   private readonly sqlClient;
   private readonly database;
 
-  constructor(config: Pick<Config<AppConfigDocument>, "getDocument">) {
-    const document = config.getDocument();
-    const runtimeRole = document.database.roles.app_runtime;
+  constructor(config: ConfigDocument) {
+    const runtimeRole = config.database.roles.app_runtime;
     this.sqlClient = postgres({
-      host: document.database.host,
-      port: document.database.port,
-      database: document.database.name,
+      host: config.database.host,
+      port: config.database.port,
+      database: config.database.name,
       username: runtimeRole.username,
       password: runtimeRole.password,
     });

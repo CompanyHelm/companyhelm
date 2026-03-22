@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { Config } from "../src/config/config.ts";
-import { AppConfigSchema } from "../src/config/schema.ts";
+import { ConfigLoader } from "../src/config/config_loader.ts";
+import { Config } from "../src/config/schema.ts";
 
 /**
  * Creates isolated config fixtures so the shared Config loader can be exercised with the API schema.
@@ -121,8 +121,7 @@ log_pretty: true
 
 test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const config = Config.load(fixture.configPath, AppConfigSchema);
-  const document = config.getDocument();
+  const document = ConfigLoader.load(fixture.configPath, Config);
 
   assert.deepEqual({
     host: document.host,
@@ -153,8 +152,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
 
 test("AppConfig loads Supabase auth settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath("supabase");
-  const config = Config.load(fixture.configPath, AppConfigSchema);
-  const document = config.getDocument();
+  const document = ConfigLoader.load(fixture.configPath, Config);
 
   assert.equal(document.auth.provider, "supabase");
   assert.equal(document.auth.supabase?.url, "https://example.supabase.co");
@@ -169,7 +167,7 @@ test("AppConfig explains how to provide missing environment variables", () => {
 
   try {
     assert.throws(
-      () => Config.load(fixture.configPath, AppConfigSchema),
+      () => ConfigLoader.load(fixture.configPath, Config),
       /Missing environment variable "COMPANYHELM_TEST_GITHUB_CLIENT"\./,
     );
   } finally {

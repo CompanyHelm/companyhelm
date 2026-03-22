@@ -1,5 +1,4 @@
-import type { Config } from "../../config/config.ts";
-import type { AppConfigDocument } from "../../config/schema.ts";
+import type { ConfigDocument } from "../../config/schema.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
 import { SupabaseAuthProvider } from "./supabase/supabase_auth_provider.ts";
 import type { AuthProviderInterface } from "./auth_provider_interface.ts";
@@ -9,12 +8,12 @@ import type { AuthProviderInterface } from "./auth_provider_interface.ts";
  */
 export class AuthProviderFactory {
   static createAuthProvider(
-    config: Pick<Config<AppConfigDocument>, "getDocument">,
+    config: ConfigDocument,
     dependencies: {
       supabaseJwtVerifier?: ConstructorParameters<typeof SupabaseAuthProvider>[1]["supabaseJwtVerifier"];
     } = {},
   ): AuthProviderInterface {
-    const authConfig = config.getDocument().auth;
+    const authConfig = config.auth;
     if (authConfig.provider === "companyhelm") {
       const companyhelmConfig = authConfig.companyhelm;
       if (!companyhelmConfig) {

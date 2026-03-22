@@ -1,5 +1,5 @@
 import { eq, or } from "drizzle-orm";
-import type { AppConfigDocument } from "../../../config/schema.ts";
+import type { ConfigDocument } from "../../../config/schema.ts";
 import { users } from "../../../db/schema.ts";
 import {
   type AuthenticatedUser,
@@ -23,7 +23,7 @@ export class SupabaseAuthProvider implements AuthProviderInterface {
   private readonly jwtVerifier: Pick<SupabaseJwtVerifier, "verify">;
 
   constructor(
-    config: NonNullable<AppConfigDocument["auth"]["supabase"]>,
+    config: NonNullable<ConfigDocument["auth"]["supabase"]>,
     dependencies: {
       supabaseJwtVerifier?: Pick<SupabaseJwtVerifier, "verify">;
     } = {},

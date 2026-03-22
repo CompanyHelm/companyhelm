@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
-import type { Config } from "../src/config/config.ts";
-import type { AppConfigDocument } from "../src/config/schema.ts";
+import type { ConfigDocument } from "../src/config/schema.ts";
 import { PasswordService } from "../src/auth/providers/companyhelm/password_service.ts";
 import { AuthProviderFactory } from "../src/auth/providers/auth_provider_factory.ts";
 import { SignInThrottleRegistry } from "../src/auth/providers/companyhelm/sign_in_throttle_registry.ts";
@@ -18,23 +17,19 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
  * Builds the small mock fixtures needed to exercise the provider without leaking helper functions.
  */
 class CompanyhelmAuthProviderTestHarness {
-  static createConfigMock(): Pick<Config<AppConfigDocument>, "getDocument"> {
+  static createConfigMock(): ConfigDocument {
     return {
-      getDocument() {
-        return {
-          auth: {
-            provider: "companyhelm",
-            companyhelm: {
-              jwt_private_key_pem: privateKey,
-              jwt_public_key_pem: publicKey,
-              jwt_issuer: "companyhelm.local",
-              jwt_audience: "companyhelm-web",
-              jwt_expiration_seconds: 3600,
-            },
-          },
-        } as AppConfigDocument;
+      auth: {
+        provider: "companyhelm",
+        companyhelm: {
+          jwt_private_key_pem: privateKey,
+          jwt_public_key_pem: publicKey,
+          jwt_issuer: "companyhelm.local",
+          jwt_audience: "companyhelm-web",
+          jwt_expiration_seconds: 3600,
+        },
       },
-    };
+    } as ConfigDocument;
   }
 
   static createMockSelectChain(result: unknown[]) {

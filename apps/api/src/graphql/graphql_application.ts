@@ -1,12 +1,11 @@
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import type { AuthProviderDatabase } from "../auth/providers/auth_provider_interface.ts";
-import type { Config } from "../config/config.ts";
-import type { AppConfigDocument } from "../config/schema.ts";
+import type { ConfigDocument } from "../config/schema.ts";
+import { Mutation } from "./mutations/mutation.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./graphql_schema.ts";
-import { Mutation } from "./resolvers/mutation.ts";
-import { HealthQueryResolver } from "./resolvers/query/health.ts";
+import { HealthQueryResolver } from "./resolvers/health.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -17,10 +16,10 @@ export class GraphqlApplication {
   private readonly signUpMutation: SignUpMutation;
 
   constructor(
-    config: Pick<Config<AppConfigDocument>, "getDocument">,
+    config: ConfigDocument,
     database: AuthProviderDatabase,
   ) {
-    this.configDocument = config.getDocument();
+    this.configDocument = config;
     this.signUpMutation = new SignUpMutation(config, database);
   }
 

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { AppConfigDocument } from "../../../config/schema.ts";
+import type { ConfigDocument } from "../../../config/schema.ts";
 import { userAuths, users } from "../../../db/schema.ts";
 import {
   type AuthenticatedUser,
@@ -25,10 +25,10 @@ type UserRecord = {
  */
 export class CompanyhelmAuthProvider implements AuthProviderInterface {
   readonly name = "companyhelm" as const;
-  private readonly config: NonNullable<AppConfigDocument["auth"]["companyhelm"]>;
+  private readonly config: NonNullable<ConfigDocument["auth"]["companyhelm"]>;
   private readonly dummySignInPasswordRecord = PasswordService.createPasswordHash("CompanyHelm!1");
 
-  constructor(config: NonNullable<AppConfigDocument["auth"]["companyhelm"]>) {
+  constructor(config: NonNullable<ConfigDocument["auth"]["companyhelm"]>) {
     this.config = {
       ...config,
       jwt_private_key_pem: CompanyhelmAuthProvider.normalizePem(config.jwt_private_key_pem),

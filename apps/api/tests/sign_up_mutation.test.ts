@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import test from "node:test";
 import Fastify from "fastify";
-import type { Config } from "../src/config/config.ts";
-import type { AppConfigDocument } from "../src/config/schema.ts";
+import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
@@ -16,27 +15,23 @@ const { privateKey, publicKey } = generateKeyPairSync("rsa", {
  * Builds a tiny GraphQL runtime harness without touching a real database connection.
  */
 class SignUpMutationTestHarness {
-  static createConfigMock(): Pick<Config<AppConfigDocument>, "getDocument"> {
+  static createConfigMock(): ConfigDocument {
     return {
-      getDocument() {
-        return {
-          graphql: {
-            endpoint: "/graphql",
-            graphiql: false,
-          },
-          auth: {
-            provider: "companyhelm",
-            companyhelm: {
-              jwt_private_key_pem: privateKey,
-              jwt_public_key_pem: publicKey,
-              jwt_issuer: "companyhelm.local",
-              jwt_audience: "companyhelm-web",
-              jwt_expiration_seconds: 3600,
-            },
-          },
-        } as AppConfigDocument;
+      graphql: {
+        endpoint: "/graphql",
+        graphiql: false,
       },
-    };
+      auth: {
+        provider: "companyhelm",
+        companyhelm: {
+          jwt_private_key_pem: privateKey,
+          jwt_public_key_pem: publicKey,
+          jwt_issuer: "companyhelm.local",
+          jwt_audience: "companyhelm-web",
+          jwt_expiration_seconds: 3600,
+        },
+      },
+    } as ConfigDocument;
   }
 
   static createDatabaseMock() {
