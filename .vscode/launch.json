@@ -1,0 +1,48 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Web Dev Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "command": "npm run dev -w @companyhelm/web"
+    },
+    {
+      "name": "Web (Brave)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/web",
+      "runtimeExecutable": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+      "presentation": {
+        "group": "web",
+        "order": 2
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Web (Dev + Brave)",
+      "configurations": ["Web Dev Server", "Web (Brave)"],
+      "stopAll": true
+    },
+    {
+      "name": "Full Stack (API + Web + Brave)",
+      "configurations": ["API", "Web Dev Server", "Web (Brave)"],
+      "stopAll": true
+    }
+  ]
+}
