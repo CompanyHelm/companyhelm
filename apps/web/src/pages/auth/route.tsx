@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useAuth } from "@clerk/react";
 import { useNavigate } from "@tanstack/react-router";
-import { ClerkPage } from "../../auth/clerk/page";
-import type { ClerkPageMode } from "../../auth/clerk/page";
+import { ClerkPage } from "./page";
+import type { ClerkPageMode } from "./page";
 
 interface AuthenticationRouteProps {
   mode: ClerkPageMode;

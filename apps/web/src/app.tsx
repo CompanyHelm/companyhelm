@@ -1,6 +1,6 @@
 import "./App.css";
-import { ClerkHeader } from "./auth/clerk/header";
-import { ApplicationRouter } from "./compoments/application_router/application_router";
+import { ClerkHeader } from "./components/clerk/header";
+import { ApplicationRouter } from "./components/router/application_router";
 
 export default function App() {
   return (

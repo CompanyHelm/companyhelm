@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth, useUser } from "@clerk/react";
 import { useNavigate } from "@tanstack/react-router";
-import { DashboardPage } from "../../pages/dashboard/dashboard_page";
+import { DashboardPage } from "./dashboard_page";
 
 export function DashboardRoute() {
   const navigate = useNavigate();
