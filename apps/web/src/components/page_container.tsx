@@ -1,6 +1,7 @@
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { LeftMenu } from "./left_menu";
 
 interface PageContainerProps {
   children: ReactNode;
@@ -37,7 +38,10 @@ export function PageContainer(props: PageContainerProps) {
         </div>
       </header>
 
-      <div className="page-container-content">{props.children}</div>
+      <div className="page-container-content">
+        <LeftMenu />
+        <div className="page-container-main">{props.children}</div>
+      </div>
 
       <footer className="page-container-footer">
         <p className="page-container-footer-copy">CompanyHelm NG</p>
