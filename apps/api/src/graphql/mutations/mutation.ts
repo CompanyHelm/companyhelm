@@ -1,16 +1,10 @@
-type MutationHandler<TArguments, TResult> = (arguments_: TArguments) => Promise<TResult> | TResult;
-
 /**
- * Adapts a mutation that only cares about GraphQL arguments to the GraphQL field resolver shape.
+ * Defines the shared GraphQL mutation adapter so concrete mutations only implement argument handling.
  */
-export class Mutation<TArguments, TResult> {
-  private readonly handler: MutationHandler<TArguments, TResult>;
-
-  constructor(handler: MutationHandler<TArguments, TResult>) {
-    this.handler = handler;
-  }
-
+export abstract class Mutation<TArguments, TResult> {
   execute = async (_root: unknown, arguments_: TArguments): Promise<TResult> => {
-    return this.handler(arguments_);
+    return this.resolve(arguments_);
   };
+
+  protected abstract resolve(arguments_: TArguments): Promise<TResult> | TResult;
 }
