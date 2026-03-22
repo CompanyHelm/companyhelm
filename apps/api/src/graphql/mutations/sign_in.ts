@@ -29,10 +29,6 @@ export class SignInMutation extends Mutation<SignInMutationArguments, AuthSessio
   }
 
   protected resolve = async (arguments_: SignInMutationArguments) => {
-    if (!this.authProvider.signIn) {
-      throw new Error("Configured auth provider does not support sign in.");
-    }
-
     return this.authProvider.signIn(this.database.getDatabase(), {
       email: arguments_.input.email,
       password: arguments_.input.password,

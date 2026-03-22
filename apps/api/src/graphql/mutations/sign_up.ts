@@ -33,10 +33,6 @@ export class SignUpMutation extends Mutation<SignUpMutationArguments, AuthSessio
   }
 
   protected resolve = async (arguments_: SignUpMutationArguments) => {
-    if (!this.authProvider.signUp) {
-      throw new Error("Configured auth provider does not support sign up.");
-    }
-
     return this.authProvider.signUp(this.database.getDatabase(), {
       email: arguments_.input.email,
       firstName: arguments_.input.firstName,

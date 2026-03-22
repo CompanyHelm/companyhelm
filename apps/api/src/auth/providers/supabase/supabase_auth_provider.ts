@@ -5,6 +5,9 @@ import {
   AuthProvider,
   type AuthenticatedUser,
   type AuthProviderDatabase,
+  type AuthSession,
+  type SignInInput,
+  type SignUpInput,
 } from "../auth_provider.ts";
 import { SupabaseJwtVerifier } from "./supabase_jwt_verifier.ts";
 
@@ -70,6 +73,14 @@ export class SupabaseAuthProvider extends AuthProvider {
       provider: "supabase",
       providerSubject,
     };
+  }
+
+  async signUp(_db: AuthProviderDatabase, _input: SignUpInput): Promise<AuthSession> {
+    throw new Error("Supabase auth provider does not support sign up.");
+  }
+
+  async signIn(_db: AuthProviderDatabase, _input: SignInInput): Promise<AuthSession> {
+    throw new Error("Supabase auth provider does not support sign in.");
   }
 
   private normalizeEmail(rawEmail: string): string {

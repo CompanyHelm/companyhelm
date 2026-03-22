@@ -60,7 +60,7 @@ test("companyhelm auth provider rejects unknown users with a generic sign-in fai
   };
 
   await assert.rejects(
-    provider.signIn?.(db as never, {
+    provider.signIn(db as never, {
       email: "missing@example.com",
       password: "abc123!",
     }),
@@ -91,7 +91,7 @@ test("companyhelm auth provider signs in a matching local user", async () => {
     },
   };
 
-  const session = await provider.signIn?.(db as never, {
+  const session = await provider.signIn(db as never, {
     email: "user@example.com",
     password: "abc123!",
   });
@@ -111,7 +111,7 @@ test("companyhelm auth provider throttles repeated failed attempts", async () =>
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     await assert.rejects(
-      provider.signIn?.(db as never, {
+      provider.signIn(db as never, {
         email: "missing@example.com",
         password: "abc123!",
       }),
@@ -120,7 +120,7 @@ test("companyhelm auth provider throttles repeated failed attempts", async () =>
   }
 
   await assert.rejects(
-    provider.signIn?.(db as never, {
+    provider.signIn(db as never, {
       email: "missing@example.com",
       password: "abc123!",
     }),
@@ -159,7 +159,7 @@ test("companyhelm auth provider signs up a new user and stores password credenti
     },
   };
 
-  const session = await provider.signUp?.(db as never, {
+  const session = await provider.signUp(db as never, {
     email: "new@example.com",
     firstName: "New",
     password: "Passw0rd!",

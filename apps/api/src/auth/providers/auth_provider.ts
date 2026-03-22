@@ -60,6 +60,6 @@ export abstract class AuthProvider {
     db: AuthProviderDatabase,
     token: string,
   ): Promise<AuthenticatedUser>;
-  signUp?(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
-  signIn?(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;
+  abstract signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
+  abstract signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;
 }
