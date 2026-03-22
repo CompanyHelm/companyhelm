@@ -7,7 +7,7 @@ import { Config, type ConfigDocument } from "../config/schema.ts";
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
  */
-@injectable()
+@injectable("Singleton")
 export class ApiServer {
   private readonly config: ConfigDocument;
   private readonly database;

@@ -9,7 +9,7 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
  */
-@injectable()
+@injectable("Singleton")
 export class GraphqlApplication {
   private readonly configDocument;
   private readonly healthQueryResolver: HealthQueryResolver;

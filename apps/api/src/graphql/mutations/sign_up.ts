@@ -18,7 +18,7 @@ type SignUpMutationArguments = {
 /**
  * Maps the GraphQL SignUp mutation onto the configured auth provider.
  */
-@injectable()
+@injectable("Singleton")
 export class SignUpMutation extends Mutation<SignUpMutationArguments, AuthSession> {
   private readonly authProvider: AuthProvider;
   private readonly database: Pick<AppRuntimeDatabase, "getDatabase">;

@@ -7,7 +7,7 @@ import { Config, type ConfigDocument } from "../config/schema.ts";
 /**
  * Owns the runtime Postgres connection used by the API process.
  */
-@injectable()
+@injectable("Singleton")
 export class AppRuntimeDatabase {
   private readonly sqlClient;
   private readonly database;
