@@ -40,7 +40,7 @@ try {
     );
   }).inSingletonScope();
 
-  await new ApiServer(container).start();
+  await container.get(ApiServer).start();
 } catch (error) {
   const message = error instanceof Error ? error.message : "Failed to start API.";
   console.error(message);

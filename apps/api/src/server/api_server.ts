@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import type { Container } from "inversify";
+import { decorate, inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
 import { Config, type ConfigDocument } from "../config/schema.ts";
@@ -13,10 +13,14 @@ export class ApiServer {
   private readonly graphqlApplication;
   private readonly app;
 
-  constructor(container: Container) {
-    this.config = container.get<ConfigDocument>(Config);
-    this.database = container.get(AppRuntimeDatabase);
-    this.graphqlApplication = container.get(GraphqlApplication);
+  constructor(
+    config: ConfigDocument,
+    database: AppRuntimeDatabase,
+    graphqlApplication: GraphqlApplication,
+  ) {
+    this.config = config;
+    this.database = database;
+    this.graphqlApplication = graphqlApplication;
     this.app = Fastify({
       logger: {
         level: this.config.log_level,
@@ -41,3 +45,8 @@ export class ApiServer {
     });
   }
 }
+
+decorate(injectable(), ApiServer);
+decorate(inject(Config), ApiServer, 0);
+decorate(inject(AppRuntimeDatabase), ApiServer, 1);
+decorate(inject(GraphqlApplication), ApiServer, 2);
