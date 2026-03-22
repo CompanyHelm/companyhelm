@@ -51,12 +51,15 @@ export type AuthProviderDatabase = {
 };
 
 /**
- * Defines the minimal shared auth-provider surface so the factory can return either implementation
- * without requiring inheritance.
+ * Defines the minimal shared auth-provider surface and serves as the runtime DI token for the
+ * configured provider singleton.
  */
-export interface AuthProviderInterface {
-  readonly name: "companyhelm" | "supabase";
-  authenticateBearerToken(db: AuthProviderDatabase, token: string): Promise<AuthenticatedUser>;
+export abstract class AuthProvider {
+  abstract readonly name: "companyhelm" | "supabase";
+  abstract authenticateBearerToken(
+    db: AuthProviderDatabase,
+    token: string,
+  ): Promise<AuthenticatedUser>;
   signUp?(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
   signIn?(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;
 }

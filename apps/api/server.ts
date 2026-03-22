@@ -2,8 +2,8 @@ import { ApiCli } from "./src/cli/api_cli.ts";
 import { ConfigLoader } from "./src/config/config_loader.ts";
 import { Config } from "./src/config/schema.ts";
 import { Container } from "inversify";
+import { AuthProvider } from "./src/auth/providers/auth_provider.ts";
 import { AuthProviderFactory } from "./src/auth/providers/auth_provider_factory.ts";
-import { AuthProviderServiceIdentifier } from "./src/auth/providers/auth_provider_service_identifier.ts";
 import { ApiServer } from "./src/server/api_server.ts";
 
 try {
@@ -13,7 +13,7 @@ try {
     autobind: true,
   });
   container.bind(Config).toConstantValue(config);
-  container.bind(AuthProviderServiceIdentifier).toDynamicValue((context) => {
+  container.bind(AuthProvider).toDynamicValue((context) => {
     return AuthProviderFactory.createAuthProvider(context.get(Config));
   }).inSingletonScope();
 

@@ -1,7 +1,7 @@
 import type { ConfigDocument } from "../../config/schema.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
 import { SupabaseAuthProvider } from "./supabase/supabase_auth_provider.ts";
-import type { AuthProviderInterface } from "./auth_provider_interface.ts";
+import { AuthProvider } from "./auth_provider.ts";
 
 /**
  * Centralizes auth-provider construction and header parsing so transport code keeps a tiny surface.
@@ -12,7 +12,7 @@ export class AuthProviderFactory {
     dependencies: {
       supabaseJwtVerifier?: ConstructorParameters<typeof SupabaseAuthProvider>[1]["supabaseJwtVerifier"];
     } = {},
-  ): AuthProviderInterface {
+  ): AuthProvider {
     const authConfig = config.auth;
     if (authConfig.provider === "companyhelm") {
       const companyhelmConfig = authConfig.companyhelm;

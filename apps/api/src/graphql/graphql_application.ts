@@ -1,4 +1,4 @@
-import { bindingScopeValues, decorate, inject, injectable } from "inversify";
+import { decorate, inject, injectable } from "inversify";
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import { Config, type ConfigDocument } from "../config/schema.ts";
@@ -9,7 +9,7 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
  */
-@injectable(bindingScopeValues.Singleton)
+@injectable()
 export class GraphqlApplication {
   private readonly configDocument;
   private readonly healthQueryResolver: HealthQueryResolver;

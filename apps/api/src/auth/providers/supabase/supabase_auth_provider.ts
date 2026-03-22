@@ -2,10 +2,10 @@ import { eq, or } from "drizzle-orm";
 import type { ConfigDocument } from "../../../config/schema.ts";
 import { users } from "../../../db/schema.ts";
 import {
+  AuthProvider,
   type AuthenticatedUser,
   type AuthProviderDatabase,
-  type AuthProviderInterface,
-} from "../auth_provider_interface.ts";
+} from "../auth_provider.ts";
 import { SupabaseJwtVerifier } from "./supabase_jwt_verifier.ts";
 
 type UserRecord = {
@@ -18,7 +18,7 @@ type UserRecord = {
 /**
  * Authenticates Supabase bearer tokens and maps them onto an already-provisioned local user record.
  */
-export class SupabaseAuthProvider implements AuthProviderInterface {
+export class SupabaseAuthProvider extends AuthProvider {
   readonly name = "supabase" as const;
   private readonly jwtVerifier: Pick<SupabaseJwtVerifier, "verify">;
 
@@ -28,6 +28,7 @@ export class SupabaseAuthProvider implements AuthProviderInterface {
       supabaseJwtVerifier?: Pick<SupabaseJwtVerifier, "verify">;
     } = {},
   ) {
+    super();
     this.jwtVerifier = dependencies.supabaseJwtVerifier ?? new SupabaseJwtVerifier({
       projectUrl: config.url,
     });
