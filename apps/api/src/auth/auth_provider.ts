@@ -67,7 +67,7 @@ export abstract class AuthProvider {
   abstract authenticateBearerToken(
     db: AuthProviderDatabase,
     token: string,
-    headers?: AuthenticateBearerTokenHeaders,
+    headers: AuthenticateBearerTokenHeaders,
   ): Promise<AuthSession>;
   abstract signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
   abstract signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;
