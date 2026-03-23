@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";

@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
@@ -282,8 +283,8 @@ class ClerkAuthProviderTestHarness {
 
 test("clerk auth provider provisions missing local user, company, and membership from JWT claims", async () => {
   const db = ClerkAuthProviderTestHarness.createMissingRecordsDatabaseMock();
-  const provider = new ClerkAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
+  const provider = ClerkAuthProvider.createForTest(
+    ClerkAuthProviderTestHarness.createConfigMock(),
     {
       appRuntimeDatabase: {
         async applyCompanyContext(_database, companyId) {
@@ -357,8 +358,8 @@ test("clerk auth provider provisions missing local user, company, and membership
 
 test("clerk auth provider reuses existing local user and company when already provisioned", async () => {
   const db = ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock();
-  const provider = new ClerkAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
+  const provider = ClerkAuthProvider.createForTest(
+    ClerkAuthProviderTestHarness.createConfigMock(),
     {
       appRuntimeDatabase: {
         async applyCompanyContext(_database, companyId) {
@@ -418,8 +419,8 @@ test("clerk auth provider reuses existing local user and company when already pr
 });
 
 test("clerk auth provider rejects unauthenticated request states from Clerk", async () => {
-  const provider = new ClerkAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
+  const provider = ClerkAuthProvider.createForTest(
+    ClerkAuthProviderTestHarness.createConfigMock(),
     {
       clerkClient: {
         async authenticateRequest() {
@@ -449,8 +450,8 @@ test("clerk auth provider rejects unauthenticated request states from Clerk", as
 
 test("clerk auth provider reuses existing local user matched by email when clerk_user_id is not populated yet", async () => {
   const db = ClerkAuthProviderTestHarness.createExistingEmailOnlyDatabaseMock();
-  const provider = new ClerkAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
+  const provider = ClerkAuthProvider.createForTest(
+    ClerkAuthProviderTestHarness.createConfigMock(),
     {
       appRuntimeDatabase: {
         async applyCompanyContext(_database, companyId) {

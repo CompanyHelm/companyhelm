@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { createClerkClient } from "@clerk/backend";
-import type { Config } from "../../config/schema.ts";
+import { inject, injectable } from "inversify";
+import { Config } from "../../config/schema.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import { companies, companyMembers, users } from "../../db/schema.ts";
 import {
@@ -39,31 +40,40 @@ type ClerkBackendUser = {
 /**
  * Verifies Clerk session tokens and lazily provisions local user, company, and membership records.
  */
+@injectable()
 export class ClerkAuthProvider extends AuthProvider {
   readonly name = "clerk" as const;
-  private readonly clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
-  private readonly jwtKeyLoader: Pick<ClerkJwtKeyLoader, "load">;
+  private clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
+  private jwtKeyLoader: Pick<ClerkJwtKeyLoader, "load">;
   private readonly config: NonNullable<Config["auth"]["clerk"]>;
-  private readonly database: Pick<AppRuntimeDatabase, "applyCompanyContext">;
+  private database: Pick<AppRuntimeDatabase, "applyCompanyContext">;
 
-  constructor(
-    config: NonNullable<Config["auth"]["clerk"]>,
+  constructor(@inject(Config) config: Config) {
+    super();
+    this.config = config.auth.clerk;
+    this.database = {
+      async applyCompanyContext() {},
+    };
+    this.clerkClient = createClerkClient({
+      secretKey: this.config.secret_key,
+      publishableKey: this.config.publishable_key,
+    });
+    this.jwtKeyLoader = new ClerkJwtKeyLoader(config);
+  }
+
+  static createForTest(
+    config: Config,
     dependencies: {
       appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
       clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
       jwtKeyLoader?: Pick<ClerkJwtKeyLoader, "load">;
     } = {},
-  ) {
-    super();
-    this.config = config;
-    this.database = dependencies.appRuntimeDatabase ?? {
-      async applyCompanyContext() {},
-    };
-    this.clerkClient = dependencies.clerkClient ?? createClerkClient({
-      secretKey: config.secret_key,
-      publishableKey: config.publishable_key,
-    });
-    this.jwtKeyLoader = dependencies.jwtKeyLoader ?? new ClerkJwtKeyLoader(config);
+  ): ClerkAuthProvider {
+    const provider = new ClerkAuthProvider(config);
+    provider.database = dependencies.appRuntimeDatabase ?? provider.database;
+    provider.clerkClient = dependencies.clerkClient ?? provider.clerkClient;
+    provider.jwtKeyLoader = dependencies.jwtKeyLoader ?? provider.jwtKeyLoader;
+    return provider;
   }
 
   async authenticateBearerToken(

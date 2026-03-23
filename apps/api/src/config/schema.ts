@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+/* eslint-disable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unsafe-declaration-merging */
+
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PositiveIntegerSchema = z.number().int().positive();
 

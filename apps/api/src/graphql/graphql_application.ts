@@ -1,6 +1,7 @@
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
-import { type Config } from "../config/schema.ts";
+import { inject, injectable } from "inversify";
+import { Config } from "../config/schema.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -11,6 +12,7 @@ import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provide
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
  */
+@injectable()
 export class GraphqlApplication {
   private readonly configDocument: Config;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
@@ -20,12 +22,12 @@ export class GraphqlApplication {
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
 
   constructor(
-    config: Config,
-    addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
-    graphqlRequestContextResolver: GraphqlRequestContextResolver,
-    healthQueryResolver: HealthQueryResolver,
-    meQueryResolver: MeQueryResolver,
-    modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver,
+    @inject(Config) config: Config,
+    @inject(AddModelProviderCredentialMutation) addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
+    @inject(GraphqlRequestContextResolver) graphqlRequestContextResolver: GraphqlRequestContextResolver,
+    @inject(HealthQueryResolver) healthQueryResolver: HealthQueryResolver,
+    @inject(MeQueryResolver) meQueryResolver: MeQueryResolver,
+    @inject(ModelProviderCredentialsQueryResolver) modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver,
   ) {
     this.configDocument = config;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;

@@ -1,12 +1,14 @@
 import fastifyCors from "@fastify/cors";
 import Fastify, { type FastifyServerOptions } from "fastify";
+import { inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
-import { type Config } from "../config/schema.ts";
+import { Config } from "../config/schema.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
  */
+@injectable()
 export class ApiServer {
   private readonly config: Config;
   private readonly database;
@@ -14,9 +16,9 @@ export class ApiServer {
   private readonly app;
 
   constructor(
-    config: Config,
-    database: AppRuntimeDatabase,
-    graphqlApplication: GraphqlApplication,
+    @inject(Config) config: Config,
+    @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
+    @inject(GraphqlApplication) graphqlApplication: GraphqlApplication,
   ) {
     this.config = config;
     this.database = database;

@@ -1,4 +1,5 @@
 import type { FastifyRequest } from "fastify";
+import { inject, injectable } from "inversify";
 import { AuthProvider, type AuthSession } from "../auth/auth_provider.ts";
 import { AuthProviderFactory } from "../auth/auth_provider_factory.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
@@ -10,13 +11,14 @@ export type GraphqlRequestContext = {
 /**
  * Resolves GraphQL request auth from the bearer token so downstream mutations can trust session data.
  */
+@injectable()
 export class GraphqlRequestContextResolver {
   private readonly authProvider: AuthProvider;
-  private readonly database: Pick<AppRuntimeDatabase, "getDatabase">;
+  private readonly database: AppRuntimeDatabase;
 
   constructor(
-    authProvider: AuthProvider,
-    database: Pick<AppRuntimeDatabase, "getDatabase">,
+    @inject(AuthProvider) authProvider: AuthProvider,
+    @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
   ) {
     this.authProvider = authProvider;
     this.database = database;

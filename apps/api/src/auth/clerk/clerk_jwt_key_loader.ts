@@ -1,5 +1,6 @@
 import { decodeProtectedHeader, exportSPKI, importJWK, type JWK } from "jose";
-import type { Config } from "../../config/schema.ts";
+import { inject, injectable } from "inversify";
+import { Config } from "../../config/schema.ts";
 
 type ClerkJwksDocument = {
   keys: JWK[];
@@ -8,11 +9,12 @@ type ClerkJwksDocument = {
 /**
  * Loads the active Clerk JWT verification key from the configured JWKS endpoint and converts it to PEM.
  */
+@injectable()
 export class ClerkJwtKeyLoader {
   private readonly jwksUrl: string;
 
-  constructor(config: NonNullable<Config["auth"]["clerk"]>) {
-    this.jwksUrl = config.jwks_url;
+  constructor(@inject(Config) config: Config) {
+    this.jwksUrl = config.auth.clerk.jwks_url;
   }
 
   async load(token: string): Promise<string> {
