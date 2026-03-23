@@ -113,6 +113,8 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
             modelProvider
             type
             refreshToken
+            createdAt
+            updatedAt
           }
         }
       `,
@@ -134,7 +136,17 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     modelProvider: "openai",
     type: "api_key",
     refreshToken: null,
+    createdAt: document.data.AddModelProviderCredential.createdAt,
+    updatedAt: document.data.AddModelProviderCredential.updatedAt,
   });
+  assert.match(
+    document.data.AddModelProviderCredential.createdAt,
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+  );
+  assert.match(
+    document.data.AddModelProviderCredential.updatedAt,
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+  );
   assert.equal(database.insertedValues.length, 1);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");

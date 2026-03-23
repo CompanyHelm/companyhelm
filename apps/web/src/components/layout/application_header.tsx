@@ -12,7 +12,7 @@ export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const pageTitle = pathname === "/model-provider-credentials" ? "Credentials" : "Dashboard";
+  const pageTitle = pathname === "/model-provider-credentials" ? "LLM Credentials" : "Dashboard";
 
   return (
     <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">
@@ -25,9 +25,6 @@ export function ApplicationHeader() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">
-            {pageTitle}
-          </h1>
         </div>
       </div>
 

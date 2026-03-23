@@ -22,6 +22,18 @@ type ModelProviderCredentialRecord = {
   updatedAt: Date;
 };
 
+type GraphqlModelProviderCredentialRecord = {
+  id: string;
+  companyId: string;
+  name: string;
+  modelProvider: "openai";
+  type: "api_key";
+  refreshToken: string | null;
+  refreshedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type InsertableDatabase = {
   insert(table: unknown): {
     values(value: Record<string, unknown>): {
@@ -36,7 +48,7 @@ type InsertableDatabase = {
 @injectable()
 export class AddModelProviderCredentialMutation extends Mutation<
   AddModelProviderCredentialMutationArguments,
-  ModelProviderCredentialRecord
+  GraphqlModelProviderCredentialRecord
 > {
   protected resolve = async (
     arguments_: AddModelProviderCredentialMutationArguments,
@@ -89,7 +101,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
       throw new Error("Failed to create model provider credential.");
     }
 
-    return credential;
+    return AddModelProviderCredentialMutation.serializeRecord(credential);
   };
 
   private static normalizeModelProvider(rawModelProvider: string): "openai" {
@@ -106,5 +118,16 @@ export class AddModelProviderCredentialMutation extends Mutation<
     }
 
     throw new Error("Unsupported model provider.");
+  }
+
+  private static serializeRecord(
+    credential: ModelProviderCredentialRecord,
+  ): GraphqlModelProviderCredentialRecord {
+    return {
+      ...credential,
+      refreshedAt: credential.refreshedAt?.toISOString() ?? null,
+      createdAt: credential.createdAt.toISOString(),
+      updatedAt: credential.updatedAt.toISOString(),
+    };
   }
 }

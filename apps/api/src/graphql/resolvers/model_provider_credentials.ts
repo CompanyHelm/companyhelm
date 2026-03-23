@@ -16,6 +16,18 @@ type ModelProviderCredentialRecord = {
   updatedAt: Date;
 };
 
+type GraphqlModelProviderCredentialRecord = {
+  id: string;
+  companyId: string;
+  name: string;
+  modelProvider: "openai";
+  type: "api_key";
+  refreshToken: string | null;
+  refreshedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -28,8 +40,8 @@ type SelectableDatabase = {
  * Lists model provider credentials for the authenticated company resolved from the bearer token.
  */
 @injectable()
-export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProviderCredentialRecord[]> {
-  protected resolve = async (context: GraphqlRequestContext): Promise<ModelProviderCredentialRecord[]> => {
+export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModelProviderCredentialRecord[]> {
+  protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlModelProviderCredentialRecord[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -39,7 +51,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProvide
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
-      return selectableDatabase
+      const credentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
@@ -53,6 +65,19 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProvide
         })
         .from(modelProviderCredentials)
         .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
+
+      return credentials.map((credential) => ModelProviderCredentialsQueryResolver.serializeRecord(credential));
     });
   };
+
+  private static serializeRecord(
+    credential: ModelProviderCredentialRecord,
+  ): GraphqlModelProviderCredentialRecord {
+    return {
+      ...credential,
+      refreshedAt: credential.refreshedAt?.toISOString() ?? null,
+      createdAt: credential.createdAt.toISOString(),
+      updatedAt: credential.updatedAt.toISOString(),
+    };
+  }
 }

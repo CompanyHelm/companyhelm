@@ -110,6 +110,8 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
             name
             modelProvider
             type
+            createdAt
+            updatedAt
           }
         }
       `,
@@ -124,6 +126,8 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     name: "OpenAI / Codex",
     modelProvider: "openai",
     type: "api_key",
+    createdAt: "2026-03-20T10:00:00.000Z",
+    updatedAt: "2026-03-20T10:00:00.000Z",
   }]);
   assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
