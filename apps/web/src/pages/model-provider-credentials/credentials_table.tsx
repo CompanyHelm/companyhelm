@@ -8,10 +8,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ModelProviderCredentialRecord } from "./model_provider_credentials_client";
+
+export type CredentialsTableRecord = {
+  id: string;
+  name: string;
+  modelProvider: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 interface CredentialsTableProps {
-  credentials: ModelProviderCredentialRecord[];
+  credentials: CredentialsTableRecord[];
   isLoading: boolean;
 }
 
@@ -30,7 +37,7 @@ function formatTimestamp(value: string): string {
   }).format(timestamp);
 }
 
-function formatProvider(value: ModelProviderCredentialRecord["modelProvider"]): string {
+function formatProvider(value: string): string {
   if (value === "openai") {
     return "OpenAI / Codex";
   }

@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app";
+import { AppRelayEnvironmentProvider } from "./components/relay_environment_provider";
 import { config } from "./config";
 import "./index.css";
 
@@ -14,7 +15,9 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <ClerkProvider publishableKey={config.clerkPublishableKey}>
-      <App />
+      <AppRelayEnvironmentProvider>
+        <App />
+      </AppRelayEnvironmentProvider>
     </ClerkProvider>
   </StrictMode>,
 );

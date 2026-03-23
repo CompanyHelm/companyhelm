@@ -1,62 +1,86 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useState } from "react";
 import { useAuth } from "@clerk/react";
 import { PlusIcon } from "lucide-react";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { GraphqlClient } from "@/lib/graphql_client";
 import { CreateCredentialDialog } from "./create_credential_dialog";
-import { CredentialsTable } from "./credentials_table";
-import {
-  ModelProviderCredentialsClient,
-  type ModelProviderCredentialRecord,
-} from "./model_provider_credentials_client";
+import { CredentialsTable, type CredentialsTableRecord } from "./credentials_table";
+import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
+import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
 
-export function ModelProviderCredentialsPage() {
-  const auth = useAuth();
-  const client = useMemo(() => {
-    return new ModelProviderCredentialsClient(new GraphqlClient());
-  }, []);
-  const [credentials, setCredentials] = useState<ModelProviderCredentialRecord[]>([]);
+const modelProviderCredentialsPageQueryNode = graphql`
+  query modelProviderCredentialsPageQuery {
+    ModelProviderCredentials {
+      id
+      name
+      modelProvider
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
+  mutation modelProviderCredentialsPageCreateCredentialMutation(
+    $input: AddModelProviderCredentialInput!
+  ) {
+    AddModelProviderCredential(input: $input) {
+      id
+      name
+      modelProvider
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+function ModelProviderCredentialsPageFallback() {
+  return (
+    <main className="flex flex-1 flex-col gap-6">
+      <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <CardHeader>
+          <div className="min-w-0">
+            <CardDescription>
+              Store company-level provider keys for agent model access.
+            </CardDescription>
+          </div>
+          <CardAction>
+            <Button disabled size="sm">
+              <PlusIcon />
+              Create credentials
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <CredentialsTable credentials={[]} isLoading />
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function ModelProviderCredentialsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
-  const [isLoading, setLoading] = useState(true);
-  const [isSaving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const loadCredentials = async () => {
-      try {
-        setLoading(true);
-        setErrorMessage(null);
-        const token = await auth.getToken();
-        if (!token) {
-          throw new Error("Authentication required.");
-        }
-
-        const nextCredentials = await client.loadCredentials(token);
-        if (isActive) {
-          setCredentials(nextCredentials);
-        }
-      } catch (error) {
-        if (isActive) {
-          setErrorMessage(error instanceof Error ? error.message : "Failed to load credentials.");
-        }
-      } finally {
-        if (isActive) {
-          setLoading(false);
-        }
-      }
-    };
-
-    if (auth.isLoaded && auth.isSignedIn) {
-      void loadCredentials();
-    }
-
-    return () => {
-      isActive = false;
-    };
-  }, [auth, client]);
+  const data = useLazyLoadQuery<modelProviderCredentialsPageQuery>(
+    modelProviderCredentialsPageQueryNode,
+    {},
+    {
+      fetchPolicy: "store-and-network",
+    },
+  );
+  const [commitCreateCredential, isCreateCredentialInFlight] =
+    useMutation<modelProviderCredentialsPageCreateCredentialMutation>(
+      modelProviderCredentialsPageCreateCredentialMutationNode,
+    );
+  const credentials: CredentialsTableRecord[] = data.ModelProviderCredentials.map((credential) => ({
+    id: credential.id,
+    name: credential.name,
+    modelProvider: credential.modelProvider,
+    createdAt: credential.createdAt,
+    updatedAt: credential.updatedAt,
+  }));
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -86,34 +110,61 @@ export function ModelProviderCredentialsPage() {
             </div>
           ) : null}
 
-          <CredentialsTable credentials={credentials} isLoading={isLoading} />
+          <CredentialsTable credentials={credentials} isLoading={false} />
         </CardContent>
       </Card>
 
       <CreateCredentialDialog
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         isOpen={isCreateDialogOpen}
-        isSaving={isSaving}
+        isSaving={isCreateCredentialInFlight}
         onCreate={async (input) => {
-          try {
-            setSaving(true);
-            setErrorMessage(null);
-            const token = await auth.getToken();
-            if (!token) {
-              throw new Error("Authentication required.");
-            }
+          setErrorMessage(null);
 
-            const credential = await client.createCredential(token, input);
-            setCredentials((currentCredentials) => [credential, ...currentCredentials]);
-            setCreateDialogOpen(false);
-          } catch (error) {
+          await new Promise<void>((resolve, reject) => {
+            commitCreateCredential({
+              variables: {
+                input,
+              },
+              updater: (store, response) => {
+                const newCredential = response?.AddModelProviderCredential;
+                if (!newCredential) {
+                  return;
+                }
+
+                const rootRecord = store.getRoot();
+                const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
+                rootRecord.setLinkedRecords(
+                  [newCredential, ...currentCredentials],
+                  "ModelProviderCredentials",
+                );
+              },
+              onCompleted: (_response, errors) => {
+                const errorMessage = String(errors?.[0]?.message || "").trim();
+                if (errorMessage) {
+                  reject(new Error(errorMessage));
+                  return;
+                }
+
+                setCreateDialogOpen(false);
+                resolve();
+              },
+              onError: reject,
+            });
+          }).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to create credential.");
-          } finally {
-            setSaving(false);
-          }
+          });
         }}
         onOpenChange={setCreateDialogOpen}
       />
     </main>
+  );
+}
+
+export function ModelProviderCredentialsPage() {
+  return (
+    <Suspense fallback={<ModelProviderCredentialsPageFallback />}>
+      <ModelProviderCredentialsPageContent />
+    </Suspense>
   );
 }
