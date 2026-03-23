@@ -1,12 +1,16 @@
-import { UserButton, useUser } from "@clerk/react";
+import { UserButton, useOrganization, useUser } from "@clerk/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ActivityIcon,
   FolderKanbanIcon,
   LayoutDashboardIcon,
+  MoonIcon,
   ShieldCheckIcon,
+  SunIcon,
 } from "lucide-react";
+import { useTheme } from "@/components/theme_provider";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -23,13 +27,20 @@ import {
 } from "@/components/ui/sidebar";
 
 export function ApplicationSidebar() {
+  const organizationState = useOrganization();
   const userState = useUser();
+  const themeState = useTheme();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const firstName = String(userState.user?.firstName || "").trim() || "Operator";
   const emailAddress = String(userState.user?.primaryEmailAddress?.emailAddress || "").trim()
     || "workspace@companyhelm.dev";
+  const organizationName = String(organizationState.organization?.name || "").trim()
+    || "Personal Workspace";
+  const organizationImageUrl = String(organizationState.organization?.imageUrl || "").trim();
+  const isDarkTheme = themeState.theme !== "light";
+  const ThemeIcon = isDarkTheme ? SunIcon : MoonIcon;
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -113,14 +124,49 @@ export function ApplicationSidebar() {
 
       <SidebarFooter>
         <SidebarSeparator />
-        <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/40 p-2">
-          <div className="shrink-0">
-            <UserButton />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/30 p-2">
+            {organizationImageUrl ? (
+              <img
+                alt=""
+                aria-hidden="true"
+                className="size-9 rounded-lg border border-sidebar-border/70 object-cover"
+                src={organizationImageUrl}
+              />
+            ) : (
+              <div className="flex size-9 items-center justify-center rounded-lg border border-sidebar-border/70 bg-sidebar-accent text-xs font-semibold text-sidebar-foreground">
+                {organizationName.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <p className="truncate text-xs font-medium text-sidebar-foreground">Organization</p>
+              <p className="truncate text-[11px] text-sidebar-foreground/70">{organizationName}</p>
+            </div>
           </div>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-xs font-medium text-sidebar-foreground">{firstName}</p>
-            <p className="truncate text-[11px] text-sidebar-foreground/70">{emailAddress}</p>
+
+          <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/40 p-2">
+            <div className="shrink-0">
+              <UserButton />
+            </div>
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <p className="truncate text-xs font-medium text-sidebar-foreground">{firstName}</p>
+              <p className="truncate text-[11px] text-sidebar-foreground/70">{emailAddress}</p>
+            </div>
           </div>
+
+          <Button
+            className="justify-start group-data-[collapsible=icon]:justify-center"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              themeState.setTheme(isDarkTheme ? "light" : "dark");
+            }}
+          >
+            <ThemeIcon />
+            <span className="group-data-[collapsible=icon]:hidden">
+              {isDarkTheme ? "Light theme" : "Dark theme"}
+            </span>
+          </Button>
         </div>
       </SidebarFooter>
       <SidebarRail />
