@@ -12,15 +12,15 @@ CREATE TABLE "model_provider_credentials" (
 	"updated_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "model_api_keys" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "model_oauth_tokens" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
-DROP TABLE "model_api_keys" CASCADE;--> statement-breakpoint
-DROP TABLE "model_oauth_tokens" CASCADE;--> statement-breakpoint
-ALTER TABLE "agents" DROP CONSTRAINT "agents_model_api_key_id_or_oauth_token_id_check";--> statement-breakpoint
-ALTER TABLE "agents" DROP CONSTRAINT "agents_model_api_key_id_model_api_keys_id_fk";
+ALTER TABLE IF EXISTS "model_api_keys" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE IF EXISTS "model_oauth_tokens" DISABLE ROW LEVEL SECURITY;--> statement-breakpoint
+DROP TABLE IF EXISTS "model_api_keys" CASCADE;--> statement-breakpoint
+DROP TABLE IF EXISTS "model_oauth_tokens" CASCADE;--> statement-breakpoint
+ALTER TABLE "agents" DROP CONSTRAINT IF EXISTS "agents_model_api_key_id_or_oauth_token_id_check";--> statement-breakpoint
+ALTER TABLE "agents" DROP CONSTRAINT IF EXISTS "agents_model_api_key_id_model_api_keys_id_fk";
 --> statement-breakpoint
-ALTER TABLE "agents" DROP CONSTRAINT "agents_model_oauth_token_id_model_oauth_tokens_id_fk";
+ALTER TABLE "agents" DROP CONSTRAINT IF EXISTS "agents_model_oauth_token_id_model_oauth_tokens_id_fk";
 --> statement-breakpoint
 ALTER TABLE "model_provider_credentials" ADD CONSTRAINT "model_provider_credentials_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agents" DROP COLUMN "model_api_key_id";--> statement-breakpoint
-ALTER TABLE "agents" DROP COLUMN "model_oauth_token_id";
+ALTER TABLE "agents" DROP COLUMN IF EXISTS "model_api_key_id";--> statement-breakpoint
+ALTER TABLE "agents" DROP COLUMN IF EXISTS "model_oauth_token_id";
