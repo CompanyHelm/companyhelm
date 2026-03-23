@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { ConfigDocument } from "../src/config/schema.ts";
-import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
+import { ClerkAuthProvider } from "../src/auth/clerk/clerk_auth_provider.ts";
 
 /**
  * Creates the minimal Clerk auth fixtures needed to exercise provisioning and session construction.
@@ -172,8 +172,8 @@ class ClerkAuthProviderTestHarness {
 }
 
 test("clerk auth provider provisions missing local user, company, and membership from JWT claims", async () => {
-  const provider = AuthProviderFactory.createAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock(),
+  const provider = new ClerkAuthProvider(
+    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
     {
       clerkClient: {
         async authenticateRequest() {
@@ -226,8 +226,8 @@ test("clerk auth provider provisions missing local user, company, and membership
 });
 
 test("clerk auth provider reuses existing local user and company when already provisioned", async () => {
-  const provider = AuthProviderFactory.createAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock(),
+  const provider = new ClerkAuthProvider(
+    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
     {
       clerkClient: {
         async authenticateRequest() {
@@ -276,8 +276,8 @@ test("clerk auth provider reuses existing local user and company when already pr
 });
 
 test("clerk auth provider rejects unauthenticated request states from Clerk", async () => {
-  const provider = AuthProviderFactory.createAuthProvider(
-    ClerkAuthProviderTestHarness.createConfigMock(),
+  const provider = new ClerkAuthProvider(
+    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
     {
       clerkClient: {
         async authenticateRequest() {

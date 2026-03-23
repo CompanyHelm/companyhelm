@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { decorate, inject, injectable } from "inversify";
 import postgres from "postgres";
 import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
-import { Config, type ConfigDocument } from "../config/schema.ts";
+import { ConfigDocument, type Config } from "../config/schema.ts";
 
 /**
  * Owns the runtime Postgres connection used by the API process.
@@ -12,7 +12,7 @@ export class AppRuntimeDatabase {
   private readonly sqlClient;
   private readonly database;
 
-  constructor(config: ConfigDocument) {
+  constructor(config: Config) {
     const runtimeRole = config.database.roles.app_runtime;
     this.sqlClient = postgres({
       host: config.database.host,
@@ -35,4 +35,4 @@ export class AppRuntimeDatabase {
   }
 }
 
-decorate(inject(Config), AppRuntimeDatabase, 0);
+decorate(inject(ConfigDocument), AppRuntimeDatabase, 0);

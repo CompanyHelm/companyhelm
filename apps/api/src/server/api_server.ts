@@ -3,20 +3,20 @@ import Fastify from "fastify";
 import { decorate, inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
-import { Config, type ConfigDocument } from "../config/schema.ts";
+import { ConfigDocument, type Config } from "../config/schema.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
  */
 @injectable("Singleton")
 export class ApiServer {
-  private readonly config: ConfigDocument;
+  private readonly config: Config;
   private readonly database;
   private readonly graphqlApplication;
   private readonly app;
 
   constructor(
-    config: ConfigDocument,
+    config: Config,
     database: AppRuntimeDatabase,
     graphqlApplication: GraphqlApplication,
   ) {
@@ -55,6 +55,6 @@ export class ApiServer {
   }
 }
 
-decorate(inject(Config), ApiServer, 0);
+decorate(inject(ConfigDocument), ApiServer, 0);
 decorate(inject(AppRuntimeDatabase), ApiServer, 1);
 decorate(inject(GraphqlApplication), ApiServer, 2);

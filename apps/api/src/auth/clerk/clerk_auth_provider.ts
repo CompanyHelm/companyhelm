@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { createClerkClient } from "@clerk/backend";
-import type { ConfigDocument } from "../../config/schema.ts";
+import type { Config } from "../../config/schema.ts";
 import { companies, companyMembers, users } from "../../db/schema.ts";
 import {
   AuthProvider,
@@ -32,10 +32,10 @@ type CompanyRecord = {
 export class ClerkAuthProvider extends AuthProvider {
   readonly name = "clerk" as const;
   private readonly clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
-  private readonly config: NonNullable<ConfigDocument["auth"]["clerk"]>;
+  private readonly config: NonNullable<Config["auth"]["clerk"]>;
 
   constructor(
-    config: NonNullable<ConfigDocument["auth"]["clerk"]>,
+    config: NonNullable<Config["auth"]["clerk"]>,
     dependencies: {
       clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
     } = {},

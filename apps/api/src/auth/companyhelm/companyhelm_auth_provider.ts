@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { ConfigDocument } from "../../config/schema.ts";
+import type { Config } from "../../config/schema.ts";
 import { companies, companyMembers, userAuths, users } from "../../db/schema.ts";
 import {
   AuthProvider,
@@ -31,10 +31,10 @@ type CompanyRecord = {
  */
 export class CompanyhelmAuthProvider extends AuthProvider {
   readonly name = "companyhelm" as const;
-  private readonly config: NonNullable<ConfigDocument["auth"]["companyhelm"]>;
+  private readonly config: NonNullable<Config["auth"]["companyhelm"]>;
   private readonly dummySignInPasswordRecord = PasswordService.createPasswordHash("CompanyHelm!1");
 
-  constructor(config: NonNullable<ConfigDocument["auth"]["companyhelm"]>) {
+  constructor(config: NonNullable<Config["auth"]["companyhelm"]>) {
     super();
     this.config = {
       ...config,

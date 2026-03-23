@@ -7,12 +7,7 @@ import { AuthProvider } from "./auth_provider.ts";
  * Centralizes auth-provider construction and header parsing so transport code keeps a tiny surface.
  */
 export class AuthProviderFactory {
-  static createAuthProvider(
-    config: Config,
-    dependencies: {
-      clerkClient?: ConstructorParameters<typeof ClerkAuthProvider>[1]["clerkClient"];
-    } = {},
-  ): AuthProvider {
+  static createAuthProvider(config: Config): AuthProvider {
     const authConfig = config.auth;
     if (authConfig.provider === "companyhelm") {
       const companyhelmConfig = authConfig.companyhelm;
@@ -28,7 +23,7 @@ export class AuthProviderFactory {
       throw new Error("Clerk auth provider requires auth.clerk configuration.");
     }
 
-    return new ClerkAuthProvider(clerkConfig, dependencies);
+    return new ClerkAuthProvider(clerkConfig);
   }
 
   static extractBearerToken(authorizationHeader: unknown): string | null {
