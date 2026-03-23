@@ -140,17 +140,11 @@ export class ClerkAuthProvider extends AuthProvider {
     transaction: AuthProviderDatabaseTransaction,
     providerSubject: string,
   ): Promise<UserRecord> {
-    const [existingUser] = await transaction
-      .select({
-        id: users.id,
-        clerk_user_id: users.clerkUserId,
-        email: users.email,
-        first_name: users.first_name,
-        last_name: users.last_name,
-      })
-      .from(users)
-      .where(eq(users.clerkUserId, providerSubject))
-      .limit(1) as UserRecord[];
+    const existingUser = await this.findUserByColumn(
+      transaction,
+      users.clerkUserId,
+      providerSubject,
+    );
     if (existingUser) {
       return existingUser;
     }
@@ -158,6 +152,15 @@ export class ClerkAuthProvider extends AuthProvider {
     const clerkUser = await this.clerkClient.users.getUser(providerSubject) as ClerkBackendUser;
     const email = this.resolveClerkUserEmail(clerkUser);
     const { firstName, lastName } = this.resolveClerkUserName(clerkUser, email);
+    const existingUserByEmail = await this.findUserByColumn(
+      transaction,
+      users.email,
+      email,
+    );
+    if (existingUserByEmail) {
+      return existingUserByEmail;
+    }
+
     const now = new Date();
     const [createdUser] = await transaction
       .insert(users)
@@ -181,6 +184,26 @@ export class ClerkAuthProvider extends AuthProvider {
     }
 
     return createdUser;
+  }
+
+  private async findUserByColumn(
+    transaction: AuthProviderDatabaseTransaction,
+    column: unknown,
+    value: string,
+  ): Promise<UserRecord | null> {
+    const [existingUser] = await transaction
+      .select({
+        id: users.id,
+        clerk_user_id: users.clerkUserId,
+        email: users.email,
+        first_name: users.first_name,
+        last_name: users.last_name,
+      })
+      .from(users)
+      .where(eq(column as never, value))
+      .limit(1) as UserRecord[];
+
+    return existingUser ?? null;
   }
 
   private async findOrCreateCompany(

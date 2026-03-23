@@ -33,7 +33,7 @@ class ClerkAuthProviderTestHarness {
       },
       select() {
         selectCallCount += 1;
-        if (selectCallCount <= 3) {
+        if (selectCallCount <= 4) {
           return {
             from() {
               return {
@@ -169,6 +169,105 @@ class ClerkAuthProviderTestHarness {
       },
       insert() {
         throw new Error("No inserts expected.");
+      },
+    };
+
+    return {
+      scopedCompanyIds,
+      async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
+        return callback(transaction);
+      },
+    };
+  }
+
+  static createExistingEmailOnlyDatabaseMock() {
+    const scopedCompanyIds: string[] = [];
+    let selectCallCount = 0;
+
+    const transaction = {
+      async execute() {
+        return [];
+      },
+      select() {
+        selectCallCount += 1;
+        if (selectCallCount === 1) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 2) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      id: "local-user-email",
+                      clerk_user_id: null,
+                      email: "existing@example.com",
+                      first_name: "Existing",
+                      last_name: "User",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 3) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      id: "local-company-9",
+                      clerk_organization_id: "org_clerk_9",
+                      name: "Existing Org",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 4) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        throw new Error("Unexpected select call.");
+      },
+      insert() {
+        return {
+          values() {
+            return {
+              async returning() {
+                return [];
+              },
+            };
+          },
+        };
       },
     };
 
@@ -346,4 +445,74 @@ test("clerk auth provider rejects unauthenticated request states from Clerk", as
     provider.authenticateBearerToken(ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock() as never, "clerk-token"),
     /Clerk bearer token is invalid\./,
   );
+});
+
+test("clerk auth provider reuses existing local user matched by email when clerk_user_id is not populated yet", async () => {
+  const db = ClerkAuthProviderTestHarness.createExistingEmailOnlyDatabaseMock();
+  const provider = new ClerkAuthProvider(
+    ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
+    {
+      appRuntimeDatabase: {
+        async applyCompanyContext(_database, companyId) {
+          db.scopedCompanyIds.push(companyId);
+        },
+      },
+      clerkClient: {
+        async authenticateRequest() {
+          return {
+            isAuthenticated: true,
+            toAuth() {
+              return {
+                isAuthenticated: true,
+                userId: "user_clerk_9",
+                orgId: "org_clerk_9",
+                sessionClaims: {
+                  o: {
+                    slg: "existing-org",
+                  },
+                },
+              };
+            },
+          };
+        },
+        users: {
+          async getUser() {
+            return {
+              firstName: "Existing",
+              lastName: "User",
+              primaryEmailAddressId: "email_9",
+              emailAddresses: [{
+                id: "email_9",
+                emailAddress: "existing@example.com",
+              }],
+            };
+          },
+        },
+      },
+      jwtKeyLoader: {
+        async load() {
+          return "clerk-jwt-key";
+        },
+      },
+    },
+  );
+
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
+
+  assert.deepEqual(session, {
+    token: "clerk-token",
+    user: {
+      id: "local-user-email",
+      email: "existing@example.com",
+      firstName: "Existing",
+      lastName: "User",
+      provider: "clerk",
+      providerSubject: "user_clerk_9",
+    },
+    company: {
+      id: "local-company-9",
+      name: "Existing Org",
+    },
+  });
+  assert.deepEqual(db.scopedCompanyIds, ["local-company-9"]);
 });
