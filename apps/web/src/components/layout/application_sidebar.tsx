@@ -1,11 +1,8 @@
 import { OrganizationSwitcher, UserButton, useUser } from "@clerk/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  ActivityIcon,
-  FolderKanbanIcon,
   LayoutDashboardIcon,
   MoonIcon,
-  ShieldCheckIcon,
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "@/components/theme_provider";
@@ -76,45 +73,6 @@ export function ApplicationSidebar() {
                 >
                   <LayoutDashboardIcon />
                   <span>Dashboard</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Active Boards</SidebarGroupLabel>
-          <SidebarGroupContent className="space-y-2 px-2 pb-2">
-            <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/40 p-3">
-              <div className="mb-2 flex items-center gap-2 text-sidebar-foreground">
-                <FolderKanbanIcon className="size-4" />
-                <span className="text-xs font-medium">Document Queue</span>
-              </div>
-              <p className="text-xs leading-5 text-sidebar-foreground/70">
-                12 sections are actively under review across outline and past performance.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/30 p-3">
-              <div className="mb-2 flex items-center gap-2 text-sidebar-foreground">
-                <ShieldCheckIcon className="size-4" />
-                <span className="text-xs font-medium">Compliance Watch</span>
-              </div>
-              <p className="text-xs leading-5 text-sidebar-foreground/70">
-                Risk posture is stable. Two policy checks are pending sign-off today.
-              </p>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Signals</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Activity feed">
-                  <ActivityIcon />
-                  <span>Agent Activity</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
