@@ -2,6 +2,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { OAuthCredentials } from "@mariozechner/pi-ai/oauth";
+import { ApiLogger } from "../src/log/api_logger.ts";
 import {
   LlmOauthRefreshWorker,
   type LlmOauthCredentialRow,
@@ -51,6 +52,27 @@ class LlmOauthRefreshWorkerTestHarness {
       },
     };
   }
+
+  static createLoggerMock(loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }>) {
+    return {
+      child(bindings: Record<string, unknown>) {
+        return {
+          info() {
+            return undefined;
+          },
+          debug() {
+            return undefined;
+          },
+          error(...arguments_: unknown[]) {
+            loggedErrors.push({
+              bindings,
+              arguments_,
+            });
+          },
+        };
+      },
+    } as ApiLogger;
+  }
 }
 
 class TestLlmOauthRefreshWorker extends LlmOauthRefreshWorker {
@@ -60,10 +82,11 @@ class TestLlmOauthRefreshWorker extends LlmOauthRefreshWorker {
 
   constructor(
     adminDatabase: unknown,
+    logger: ApiLogger,
     refreshedCredentialsById: Record<string, OAuthCredentials>,
     failingCredentialIds: string[] = [],
   ) {
-    super(adminDatabase as never);
+    super(adminDatabase as never, logger);
     this.refreshedCredentialsById = refreshedCredentialsById;
     this.failingCredentialIds = new Set(failingCredentialIds);
   }
@@ -92,6 +115,7 @@ class TestLlmOauthRefreshWorker extends LlmOauthRefreshWorker {
 }
 
 test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshed tokens", async () => {
+  const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
   const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock([{
     id: "credential-1",
     modelProvider: "openai",
@@ -99,7 +123,8 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
     refreshToken: "old-refresh-token",
     accessTokenExpiresAtMilliseconds: 1774254000000,
   }]);
-  const worker = new TestLlmOauthRefreshWorker(adminDatabase, {
+  const logger = LlmOauthRefreshWorkerTestHarness.createLoggerMock(loggedErrors);
+  const worker = new TestLlmOauthRefreshWorker(adminDatabase, logger, {
     "credential-1": {
       access: "new-access-token",
       refresh: "new-refresh-token",
@@ -122,9 +147,11 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
   assert.ok(adminDatabase.updateCalls[0]?.[3] instanceof Date);
   assert.ok(adminDatabase.updateCalls[0]?.[4] instanceof Date);
   assert.equal(adminDatabase.updateCalls[0]?.[5], "credential-1");
+  assert.equal(loggedErrors.length, 0);
 });
 
 test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fails", async () => {
+  const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
   const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock([
     {
       id: "credential-1",
@@ -141,8 +168,10 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
       accessTokenExpiresAtMilliseconds: 1774254300000,
     },
   ]);
+  const logger = LlmOauthRefreshWorkerTestHarness.createLoggerMock(loggedErrors);
   const worker = new TestLlmOauthRefreshWorker(
     adminDatabase,
+    logger,
     {
       "credential-2": {
         access: "new-access-token-2",
@@ -152,17 +181,7 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
     },
     ["credential-1"],
   );
-  const originalConsoleError = console.error;
-  const loggedMessages: string[] = [];
-  console.error = (message?: unknown) => {
-    loggedMessages.push(String(message));
-  };
-
-  try {
-    await worker.runNow();
-  } finally {
-    console.error = originalConsoleError;
-  }
+  await worker.runNow();
 
   assert.deepEqual(worker.refreshCalls, [
     {
@@ -176,6 +195,12 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
   ]);
   assert.equal(adminDatabase.updateCalls.length, 1);
   assert.equal(adminDatabase.updateCalls[0]?.[5], "credential-2");
-  assert.equal(loggedMessages.length, 1);
-  assert.match(loggedMessages[0] ?? "", /credential-1/);
+  assert.equal(loggedErrors.length, 1);
+  assert.deepEqual(loggedErrors[0]?.bindings, {
+    worker: "llm_oauth_refresh",
+  });
+  assert.deepEqual(loggedErrors[0]?.arguments_[0], {
+    credentialId: "credential-1",
+    error: "refresh failed for credential-1",
+  });
 });

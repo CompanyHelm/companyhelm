@@ -1,6 +1,7 @@
 import { getOAuthProvider, type OAuthCredentials, type OAuthProviderId } from "@mariozechner/pi-ai/oauth";
 import { inject, injectable } from "inversify";
 import { AdminDatabase } from "../db/admin_database.ts";
+import { ApiLogger } from "../log/api_logger.ts";
 import { WorkerBase } from "./worker_base.ts";
 
 export type LlmOauthCredentialRow = {
@@ -22,8 +23,11 @@ export class LlmOauthRefreshWorker extends WorkerBase {
   private static readonly LOCK_BATCH_SIZE = 20;
   private readonly adminDatabase: AdminDatabase;
 
-  constructor(@inject(AdminDatabase) adminDatabase: AdminDatabase) {
-    super("llm_oauth_refresh", LlmOauthRefreshWorker.INTERVAL_SECONDS);
+  constructor(
+    @inject(AdminDatabase) adminDatabase: AdminDatabase,
+    @inject(ApiLogger) logger: ApiLogger,
+  ) {
+    super("llm_oauth_refresh", LlmOauthRefreshWorker.INTERVAL_SECONDS, logger);
     this.adminDatabase = adminDatabase;
   }
 
@@ -63,7 +67,10 @@ export class LlmOauthRefreshWorker extends WorkerBase {
           `;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown OAuth refresh failure.";
-          console.error(`failed to refresh llm oauth credential ${credential.id}: ${message}`);
+          this.getLogger().error({
+            credentialId: credential.id,
+            error: message,
+          }, "failed to refresh llm oauth credential");
         }
       }
     });

@@ -5,6 +5,7 @@ import { Config } from "../config/schema.ts";
 import { AdminDatabase } from "../db/admin_database.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
+import { ApiLogger } from "../log/api_logger.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 
 /**
@@ -17,6 +18,7 @@ export class ApiServer {
   private readonly database: AppRuntimeDatabase;
   private readonly graphqlApplication: GraphqlApplication;
   private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
+  private readonly logger: ApiLogger;
   private readonly app;
 
   constructor(
@@ -24,15 +26,17 @@ export class ApiServer {
     @inject(AdminDatabase) adminDatabase: AdminDatabase,
     @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
     @inject(GraphqlApplication) graphqlApplication: GraphqlApplication,
+    @inject(ApiLogger) logger: ApiLogger,
     @inject(LlmOauthRefreshWorker) llmOauthRefreshWorker: LlmOauthRefreshWorker,
   ) {
     this.config = config;
     this.adminDatabase = adminDatabase;
     this.database = database;
     this.graphqlApplication = graphqlApplication;
+    this.logger = logger;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
     this.app = Fastify({
-      logger: ApiServer.createLoggerOptions(this.config),
+      loggerInstance: this.logger.getLogger(),
     });
   }
 
@@ -65,22 +69,6 @@ export class ApiServer {
   }
 
   static createLoggerOptions(config: Pick<Config, "log">): FastifyServerOptions["logger"] {
-    if (!config.log.json) {
-      return {
-        level: config.log.level,
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "SYS:standard",
-            ignore: "pid,hostname",
-          },
-        },
-      };
-    }
-
-    return {
-      level: config.log.level,
-    };
+    return ApiLogger.createOptions(config);
   }
 }
