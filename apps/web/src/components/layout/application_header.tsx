@@ -1,17 +1,28 @@
+import { PanelTopIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export function ApplicationHeader() {
   return (
-    <header className="app-header">
-      <div className="app-header__copy">
-        <p className="app-header__eyebrow">Home / Dashboard</p>
-        <h1 className="app-header__title">Documents</h1>
+    <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <SidebarTrigger className="shrink-0" />
+        <Separator orientation="vertical" className="h-4" />
+        <div className="min-w-0">
+          <p className="truncate text-[0.65rem] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+            Workspace / Dashboard
+          </p>
+          <h1 className="truncate text-sm font-semibold tracking-tight text-foreground">
+            Documents
+          </h1>
+        </div>
       </div>
 
-      <div className="app-header__actions">
+      <div className="flex items-center gap-2">
         <Button
-          className="app-header__github"
-          variant="ghost"
+          size="sm"
+          variant="outline"
           onClick={() => {
             window.open(
               "https://ui.shadcn.com/blocks?category=dashboard",
@@ -20,7 +31,8 @@ export function ApplicationHeader() {
             );
           }}
         >
-          GitHub
+          <PanelTopIcon />
+          Browse Blocks
         </Button>
       </div>
     </header>

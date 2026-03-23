@@ -1,0 +1,1 @@
+ALTER TABLE "model_oauth_tokens" ADD COLUMN "refreshed_at" timestamp with time zone;

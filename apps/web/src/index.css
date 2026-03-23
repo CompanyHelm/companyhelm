@@ -25,6 +25,9 @@
   --warning-bg: #fef3c7;
   --shadow-soft: 0 18px 60px rgba(24, 24, 27, 0.08);
   --shadow-panel: 0 20px 40px rgba(24, 24, 27, 0.06);
+  --body-glow: rgba(24, 24, 27, 0.04);
+  --body-gradient-start: #fafaf9;
+  --body-gradient-end: #f5f5f4;
   --radius-xl: 24px;
   --radius-lg: 18px;
   --radius-md: 14px;
@@ -74,8 +77,8 @@ body {
   color: var(--foreground);
   font-family: "Instrument Sans", sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(24, 24, 27, 0.04), transparent 20rem),
-    linear-gradient(180deg, #fafaf9 0%, #f5f5f4 100%);
+    radial-gradient(circle at top left, var(--body-glow), transparent 20rem),
+    linear-gradient(180deg, var(--body-gradient-start) 0%, var(--body-gradient-end) 100%);
 }
 
 a {
@@ -528,7 +531,11 @@ button {
   min-height: 24px;
   border-radius: 18px 18px 8px 8px;
   background:
-    linear-gradient(180deg, rgba(24, 24, 27, 0.88) 0%, rgba(24, 24, 27, 0.72) 100%);
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--primary) 82%, white 18%) 0%,
+      color-mix(in oklch, var(--primary) 78%, black 22%) 100%
+    );
 }
 
 .dashboard-visitors__bar-group span {
@@ -629,7 +636,7 @@ button {
 }
 
 .dashboard-table tbody tr:hover {
-  background: #fafaf9;
+  background: color-mix(in oklch, var(--muted) 76%, transparent);
 }
 
 .dashboard-table__footer {
@@ -654,15 +661,19 @@ button {
 .auth-shell__panel {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in oklch, var(--card) 90%, transparent);
   box-shadow: var(--shadow-soft);
 }
 
 .auth-shell__hero {
   padding: 40px;
   background:
-    radial-gradient(circle at top left, rgba(24, 24, 27, 0.08), transparent 18rem),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(250, 250, 249, 0.95));
+    radial-gradient(circle at top left, var(--body-glow), transparent 18rem),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--card) 94%, transparent),
+      color-mix(in oklch, var(--muted) 82%, var(--card) 18%)
+    );
 }
 
 .auth-shell__hero h1 {
@@ -795,8 +806,23 @@ button {
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
+  --background-elevated: oklch(0.205 0 0);
+  --background-muted: oklch(0.269 0 0);
   --foreground: oklch(0.985 0 0);
+  --foreground-muted: oklch(0.708 0 0);
+  --foreground-subtle: oklch(0.556 0 0);
+  --border-strong: oklch(1 0 0 / 16%);
+  --success: oklch(0.82 0.16 151);
+  --success-bg: oklch(0.28 0.07 151);
+  --warning: oklch(0.84 0.16 84);
+  --warning-bg: oklch(0.32 0.08 76);
+  --shadow-soft: 0 22px 80px rgba(0, 0, 0, 0.32);
+  --shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --body-glow: rgba(108, 72, 255, 0.18);
+  --body-gradient-start: #111113;
+  --body-gradient-end: #09090b;
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);

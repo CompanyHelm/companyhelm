@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 interface PageContainerProps {
   children: ReactNode;
@@ -8,12 +9,14 @@ interface PageContainerProps {
 
 export function PageContainer(props: PageContainerProps) {
   return (
-    <div className="app-shell">
+    <SidebarProvider defaultOpen>
       <ApplicationSidebar />
-      <div className="app-shell__main">
+      <SidebarInset className="min-h-svh bg-transparent">
         <ApplicationHeader />
-        <div className="app-shell__content">{props.children}</div>
-      </div>
-    </div>
+        <div className="flex flex-1 flex-col px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
+          {props.children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

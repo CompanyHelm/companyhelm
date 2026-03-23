@@ -112,6 +112,19 @@ export const threads = pgTable("threads", {
   companyIdIndex: index("threads_company_id_idx").on(table.companyId),
 }));
 
+export const messages = pgTable("model_provider_credentials", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  modelProvider: modelProviderEnum("model_provider").notNull(),
+  apiKey: text("api_key").notNull(),
+  oauthToken: text("oauth_token").notNull(),
+});
+
 export const modelApiKeys = pgTable("model_api_keys", {
   id: uuid("id")
     .primaryKey()
@@ -136,11 +149,13 @@ export const modelOauthTokens = pgTable("model_oauth_tokens", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
+  name: text("name").notNull(),
   modelProvider: modelProviderEnum("model_provider").notNull(),
   encryptedRefreshToken: text("encrypted_refresh_token").notNull(),
   encryptedAccessToken: text("encrypted_access_token").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({

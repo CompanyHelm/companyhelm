@@ -1,50 +1,129 @@
 import { UserButton, useUser } from "@clerk/react";
-import { Link } from "@tanstack/react-router";
-import { cn } from "@/lib/cn";
-
-function getInitials(firstName: string, emailAddress: string) {
-  const trimmedName = firstName.trim();
-
-  if (trimmedName) {
-    return trimmedName.slice(0, 2).toUpperCase();
-  }
-
-  return emailAddress.slice(0, 2).toUpperCase() || "CH";
-}
+import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  ActivityIcon,
+  FolderKanbanIcon,
+  LayoutDashboardIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 
 export function ApplicationSidebar() {
   const userState = useUser();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
   const firstName = String(userState.user?.firstName || "").trim() || "Operator";
   const emailAddress = String(userState.user?.primaryEmailAddress?.emailAddress || "").trim()
     || "workspace@companyhelm.dev";
-  const initials = getInitials(firstName, emailAddress);
 
   return (
-    <aside className="app-sidebar" aria-label="Primary">
-      <div className="app-sidebar__inner">
-        <Link className="app-sidebar__brand" to="/">
-          <img className="app-sidebar__brand-mark" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
-          <span>CompanyHelm</span>
-        </Link>
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="h-12"
+              render={<Link to="/" />}
+              size="lg"
+              tooltip="CompanyHelm"
+            >
+              <img className="size-7 rounded-md" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
+              <span className="flex flex-1 items-center justify-between gap-2">
+                <span className="truncate font-semibold tracking-tight">CompanyHelm</span>
+                <Badge variant="outline">Ops</Badge>
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-        <nav className="app-sidebar__nav app-sidebar__nav--primary">
-          <Link className={cn("app-sidebar__link", "app-sidebar__link--active")} to="/">
-            <span>Dashboard</span>
-            <span className="app-sidebar__dot" />
-          </Link>
-        </nav>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname === "/"}
+                  render={<Link to="/" />}
+                  tooltip="Dashboard"
+                >
+                  <LayoutDashboardIcon />
+                  <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-        <div className="app-sidebar__account">
-          <span className="app-sidebar__avatar">{initials}</span>
-          <span className="app-sidebar__account-copy">
-            <strong>{firstName}</strong>
-            <span>{emailAddress}</span>
-          </span>
-          <div className="app-sidebar__account-action">
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel>Active Boards</SidebarGroupLabel>
+          <SidebarGroupContent className="space-y-2 px-2 pb-2">
+            <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/40 p-3">
+              <div className="mb-2 flex items-center gap-2 text-sidebar-foreground">
+                <FolderKanbanIcon className="size-4" />
+                <span className="text-xs font-medium">Document Queue</span>
+              </div>
+              <p className="text-xs leading-5 text-sidebar-foreground/70">
+                12 sections are actively under review across outline and past performance.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/30 p-3">
+              <div className="mb-2 flex items-center gap-2 text-sidebar-foreground">
+                <ShieldCheckIcon className="size-4" />
+                <span className="text-xs font-medium">Compliance Watch</span>
+              </div>
+              <p className="text-xs leading-5 text-sidebar-foreground/70">
+                Risk posture is stable. Two policy checks are pending sign-off today.
+              </p>
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Signals</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Activity feed">
+                  <ActivityIcon />
+                  <span>Agent Activity</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarSeparator />
+        <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/40 p-2">
+          <div className="shrink-0">
             <UserButton />
           </div>
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <p className="truncate text-xs font-medium text-sidebar-foreground">{firstName}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/70">{emailAddress}</p>
+          </div>
         </div>
-      </div>
-    </aside>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }

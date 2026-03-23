@@ -1,0 +1,1 @@
+ALTER TABLE "model_oauth_tokens" ADD COLUMN "name" text NOT NULL;
