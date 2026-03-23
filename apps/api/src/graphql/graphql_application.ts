@@ -8,6 +8,7 @@ import { SignInMutation } from "./mutations/sign_in.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
+import { MeQueryResolver } from "./resolvers/me.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -18,6 +19,7 @@ export class GraphqlApplication {
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
+  private readonly meQueryResolver: MeQueryResolver;
   private readonly signInMutation: SignInMutation;
   private readonly signUpMutation: SignUpMutation;
 
@@ -28,6 +30,7 @@ export class GraphqlApplication {
     signUpMutation: SignUpMutation,
     graphqlRequestContextResolver: GraphqlRequestContextResolver,
     healthQueryResolver: HealthQueryResolver,
+    meQueryResolver: MeQueryResolver,
   ) {
     this.configDocument = config;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
@@ -35,6 +38,7 @@ export class GraphqlApplication {
     this.signUpMutation = signUpMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
     this.healthQueryResolver = healthQueryResolver;
+    this.meQueryResolver = meQueryResolver;
   }
 
   async register(app: FastifyInstance): Promise<void> {
@@ -44,6 +48,7 @@ export class GraphqlApplication {
       resolvers: {
         Query: {
           health: this.healthQueryResolver.execute,
+          Me: this.meQueryResolver.execute,
         },
         Mutation: {
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
@@ -63,3 +68,4 @@ decorate(inject(SignInMutation), GraphqlApplication, 2);
 decorate(inject(SignUpMutation), GraphqlApplication, 3);
 decorate(inject(GraphqlRequestContextResolver), GraphqlApplication, 4);
 decorate(inject(HealthQueryResolver), GraphqlApplication, 5);
+decorate(inject(MeQueryResolver), GraphqlApplication, 6);

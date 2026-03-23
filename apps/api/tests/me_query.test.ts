@@ -10,7 +10,7 @@ import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 
-class AddModelProviderCredentialMutationTestHarness {
+class MeQueryTestHarness {
   static createConfigMock(): ConfigDocument {
     return {
       graphql: {
@@ -24,44 +24,18 @@ class AddModelProviderCredentialMutationTestHarness {
   }
 
   static createDatabaseMock() {
-    const insertedValues: Array<Record<string, unknown>> = [];
-
     return {
-      insertedValues,
       getDatabase() {
-        return {
-          insert() {
-            return {
-              values(value: Record<string, unknown>) {
-                insertedValues.push(value);
-                return {
-                  async returning() {
-                    return [{
-                      id: "credential-1",
-                      companyId: String(value.companyId),
-                      name: String(value.name),
-                      modelProvider: value.modelProvider,
-                      type: value.type,
-                      refreshToken: value.refreshToken ?? null,
-                      refreshedAt: value.refreshedAt ?? null,
-                      createdAt: value.createdAt,
-                      updatedAt: value.updatedAt,
-                    }];
-                  },
-                };
-              },
-            };
-          },
-        } as never;
+        return {} as never;
       },
     };
   }
 }
 
-test("GraphQL AddModelProviderCredential mutation uses the authenticated company from the bearer token", async () => {
+test("GraphQL Me query returns the authenticated user and company", async () => {
   const app = Fastify();
-  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
-  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const config = MeQueryTestHarness.createConfigMock();
+  const database = MeQueryTestHarness.createDatabaseMock();
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -106,41 +80,92 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     },
     payload: {
       query: `
-        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
-          AddModelProviderCredential(input: $input) {
-            id
-            companyId
-            name
-            modelProvider
-            type
-            refreshToken
+        query Me {
+          Me {
+            user {
+              id
+              email
+              firstName
+              lastName
+              provider
+              providerSubject
+            }
+            company {
+              id
+              name
+            }
           }
         }
       `,
-      variables: {
-        input: {
-          name: "Primary OpenAI key",
-          modelProvider: "openai",
-          type: "api_key",
-          apiKey: "secret-value",
-        },
-      },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.AddModelProviderCredential, {
-    id: "credential-1",
-    companyId: "company-123",
-    name: "Primary OpenAI key",
-    modelProvider: "openai",
-    type: "api_key",
-    refreshToken: null,
+  assert.deepEqual(document.data.Me, {
+    user: {
+      id: "user-123",
+      email: "user@example.com",
+      firstName: "User",
+      lastName: "Example",
+      provider: "clerk",
+      providerSubject: "user_clerk_123",
+    },
+    company: {
+      id: "company-123",
+      name: "Example Org",
+    },
   });
-  assert.equal(database.insertedValues.length, 1);
-  assert.equal(database.insertedValues[0]?.companyId, "company-123");
-  assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
+
+  await app.close();
+});
+
+test("GraphQL Me query rejects unauthenticated requests", async () => {
+  const app = Fastify();
+  const config = MeQueryTestHarness.createConfigMock();
+  const database = MeQueryTestHarness.createDatabaseMock();
+  const authProvider = {
+    async authenticateBearerToken() {
+      throw new Error("unused");
+    },
+    async signIn() {
+      throw new Error("unused");
+    },
+    async signUp() {
+      throw new Error("unused");
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(database),
+    new SignInMutation(authProvider as never, database),
+    new SignUpMutation(authProvider as never, database),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    payload: {
+      query: `
+        query Me {
+          Me {
+            user {
+              id
+            }
+          }
+        }
+      `,
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.data, null);
+  assert.equal(document.errors?.[0]?.message, "Authentication required.");
 
   await app.close();
 });
