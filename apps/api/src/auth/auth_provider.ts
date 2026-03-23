@@ -30,9 +30,7 @@ export type SignUpInput = {
   password: string;
 };
 
-export type AuthenticateBearerTokenContext = {
-  companyIdHeader?: unknown;
-};
+export type AuthenticateBearerTokenHeaders = Record<string, unknown>;
 
 export type AuthProviderDatabaseTransaction = {
   select(selection: Record<string, unknown>): {
@@ -69,7 +67,7 @@ export abstract class AuthProvider {
   abstract authenticateBearerToken(
     db: AuthProviderDatabase,
     token: string,
-    context?: AuthenticateBearerTokenContext,
+    headers?: AuthenticateBearerTokenHeaders,
   ): Promise<AuthSession>;
   abstract signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
   abstract signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;

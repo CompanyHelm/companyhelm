@@ -6,7 +6,7 @@ import {
   AuthProvider,
   type AuthProviderDatabase,
   type AuthProviderDatabaseTransaction,
-  type AuthenticateBearerTokenContext,
+  type AuthenticateBearerTokenHeaders,
   type AuthSession,
   type SignInInput,
   type SignUpInput,
@@ -51,9 +51,9 @@ export class ClerkAuthProvider extends AuthProvider {
   async authenticateBearerToken(
     db: AuthProviderDatabase,
     token: string,
-    context: AuthenticateBearerTokenContext = {},
+    headers: AuthenticateBearerTokenHeaders = {},
   ): Promise<AuthSession> {
-    void context;
+    void headers;
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }

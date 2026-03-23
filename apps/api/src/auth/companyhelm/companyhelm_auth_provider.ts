@@ -3,7 +3,7 @@ import type { ConfigDocument } from "../../config/schema.ts";
 import { companies, companyMembers, userAuths, users } from "../../db/schema.ts";
 import {
   AuthProvider,
-  type AuthenticateBearerTokenContext,
+  type AuthenticateBearerTokenHeaders,
   type AuthenticatedUser,
   type AuthProviderDatabase,
   type AuthSession,
@@ -46,7 +46,7 @@ export class CompanyhelmAuthProvider extends AuthProvider {
   async authenticateBearerToken(
     db: AuthProviderDatabase,
     token: string,
-    context: AuthenticateBearerTokenContext = {},
+    headers: AuthenticateBearerTokenHeaders = {},
   ): Promise<AuthSession> {
     const payload = JwtService.verifyRs256Jwt({
       token,
@@ -62,7 +62,7 @@ export class CompanyhelmAuthProvider extends AuthProvider {
     if (!userId || !email || !firstName) {
       throw new Error("JWT payload is missing user claims.");
     }
-    const companyId = CompanyhelmAuthProvider.normalizeCompanyIdHeader(context.companyIdHeader);
+    const companyId = CompanyhelmAuthProvider.normalizeCompanyIdHeader(headers["x-company-id"]);
     const [company] = await db
       .select({
         id: companies.id,

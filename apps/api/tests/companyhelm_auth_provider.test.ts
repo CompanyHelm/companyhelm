@@ -205,7 +205,7 @@ test("companyhelm auth provider authenticates a valid bearer token", async () =>
   });
 
   const session = await provider.authenticateBearerToken(db as never, token, {
-    companyIdHeader: "company-1",
+    "x-company-id": "company-1",
   });
 
   assert.deepEqual(session, {
@@ -257,7 +257,7 @@ test("companyhelm auth provider rejects a bearer token when the user is not a co
 
   await assert.rejects(
     provider.authenticateBearerToken(db as never, token, {
-      companyIdHeader: "company-1",
+      "x-company-id": "company-1",
     }),
     /Authenticated user is not a member of the requested company\./,
   );
