@@ -146,8 +146,8 @@ ${authDocument}
 security:
   encryption:
     key: "companyhelm-local-encryption-key"
-log_level: "debug"
-log_pretty: true
+log:
+  level: "debug"
 `.trimStart();
   }
 }
@@ -181,11 +181,13 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   });
   assert.deepEqual({
     logger: {
-      level: document.log_level,
+      level: document.log.level,
+      json: document.log.json,
     },
   }, {
     logger: {
       level: "debug",
+      json: false,
     },
   });
   assert.deepEqual(document.redis, {
@@ -208,6 +210,7 @@ test("AppConfig loads Clerk auth settings from local.yaml", () => {
   assert.equal(document.auth.clerk?.publishable_key, "clerk-publishable-key");
   assert.equal(document.auth.clerk?.jwt_key, "clerk-jwt-key");
   assert.deepEqual(document.auth.clerk?.authorized_parties, ["http://localhost:5173"]);
+  assert.equal(document.log.json, false);
 });
 
 test("AppConfig explains how to provide missing environment variables", () => {

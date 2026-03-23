@@ -1,7 +1,7 @@
 import { decorate, inject, injectable } from "inversify";
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
-import { ConfigDocument, type Config } from "../config/schema.ts";
+import { Config, type ConfigDocument } from "../config/schema.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { SignInMutation } from "./mutations/sign_in.ts";
@@ -14,7 +14,7 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
  */
 @injectable("Singleton")
 export class GraphqlApplication {
-  private readonly configDocument;
+  private readonly configDocument: ConfigDocument;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
@@ -22,7 +22,7 @@ export class GraphqlApplication {
   private readonly signUpMutation: SignUpMutation;
 
   constructor(
-    config: Config,
+    config: ConfigDocument,
     addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
     signInMutation: SignInMutation,
     signUpMutation: SignUpMutation,
@@ -57,7 +57,7 @@ export class GraphqlApplication {
   }
 }
 
-decorate(inject(ConfigDocument), GraphqlApplication, 0);
+decorate(inject(Config), GraphqlApplication, 0);
 decorate(inject(AddModelProviderCredentialMutation), GraphqlApplication, 1);
 decorate(inject(SignInMutation), GraphqlApplication, 2);
 decorate(inject(SignUpMutation), GraphqlApplication, 3);

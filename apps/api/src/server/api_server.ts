@@ -1,22 +1,22 @@
 import fastifyCors from "@fastify/cors";
-import Fastify from "fastify";
+import Fastify, { type FastifyServerOptions } from "fastify";
 import { decorate, inject, injectable } from "inversify";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
-import { ConfigDocument, type Config } from "../config/schema.ts";
+import { Config, type ConfigDocument } from "../config/schema.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
  */
 @injectable("Singleton")
 export class ApiServer {
-  private readonly config: Config;
+  private readonly config: ConfigDocument;
   private readonly database;
   private readonly graphqlApplication;
   private readonly app;
 
   constructor(
-    config: Config,
+    config: ConfigDocument,
     database: AppRuntimeDatabase,
     graphqlApplication: GraphqlApplication,
   ) {
@@ -24,9 +24,7 @@ export class ApiServer {
     this.database = database;
     this.graphqlApplication = graphqlApplication;
     this.app = Fastify({
-      logger: {
-        level: this.config.log_level,
-      },
+      logger: ApiServer.createLoggerOptions(this.config),
     });
   }
 
@@ -53,8 +51,28 @@ export class ApiServer {
       port: this.config.port,
     });
   }
+
+  static createLoggerOptions(config: Pick<ConfigDocument, "log">): FastifyServerOptions["logger"] {
+    if (!config.log.json) {
+      return {
+        level: config.log.level,
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "SYS:standard",
+            ignore: "pid,hostname",
+          },
+        },
+      };
+    }
+
+    return {
+      level: config.log.level,
+    };
+  }
 }
 
-decorate(inject(ConfigDocument), ApiServer, 0);
+decorate(inject(Config), ApiServer, 0);
 decorate(inject(AppRuntimeDatabase), ApiServer, 1);
 decorate(inject(GraphqlApplication), ApiServer, 2);

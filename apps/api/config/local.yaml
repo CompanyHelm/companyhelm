@@ -45,5 +45,6 @@ auth:
 security:
   encryption:
     key: "companyhelm-local-encryption-key"
-log_level: "debug"
-log_pretty: true
+log:
+  level: "debug"
+  json: false

@@ -29,7 +29,7 @@ const ClerkAuthSchema = z.object({
   }),
 });
 
-export const ConfigDocument = z.object({
+export const Config = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
   cors: z.object({
@@ -73,8 +73,10 @@ export const ConfigDocument = z.object({
       key: NonEmptyStringSchema,
     }),
   }),
-  log_level: z.enum(["debug", "info", "warn", "error"]),
-  log_pretty: z.boolean(),
+  log: z.object({
+    level: z.enum(["debug", "info", "warn", "error"]),
+    json: z.boolean().default(false),
+  }),
 });
 
-export type Config = z.infer<typeof ConfigDocument>;
+export type ConfigDocument = z.infer<typeof Config>;
