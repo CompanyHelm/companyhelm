@@ -6,8 +6,8 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { AuthenticationRoute } from "./pages/auth/route";
-import { DashboardRoute } from "./pages/dashboard/route";
-import { ModelProviderCredentialsRoute } from "./pages/model-provider-credentials/route";
+import { DashboardPage } from "./pages/dashboard/dashboard_page";
+import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
 
@@ -38,13 +38,13 @@ const pageContainerRoute = createRoute({
 const rootIndexRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/",
-  component: DashboardRoute,
+  component: DashboardPage,
 });
 
 const modelProviderCredentialsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/model-provider-credentials",
-  component: ModelProviderCredentialsRoute,
+  component: ModelProviderCredentialsPage,
 });
 
 const signInRoute = createRoute({
