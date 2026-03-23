@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
-import type { ConfigDocument } from "../src/config/schema.ts";
+import type { Config } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlAppRuntimeDatabase } from "../src/graphql/graphql_app_runtime_database.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
@@ -11,7 +11,7 @@ import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 
 class ModelProviderCredentialsQueryTestHarness {
-  static createConfigMock(): ConfigDocument {
+  static createConfigMock(): Config {
     return {
       graphql: {
         endpoint: "/graphql",
@@ -20,7 +20,7 @@ class ModelProviderCredentialsQueryTestHarness {
       auth: {
         provider: "clerk",
       },
-    } as ConfigDocument;
+    } as Config;
   }
 
   static createDatabaseMock() {

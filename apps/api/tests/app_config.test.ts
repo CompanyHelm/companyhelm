@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "vitest";
 import { ConfigLoader } from "../src/config/config_loader.ts";
-import { Config } from "../src/config/schema.ts";
+import { ConfigDocument } from "../src/config/schema.ts";
 
 /**
  * Creates isolated config fixtures so the shared Config loader can be exercised with the API schema.
@@ -129,7 +129,7 @@ log:
 
 test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const document = ConfigLoader.load(fixture.configPath, Config);
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
 
   assert.deepEqual({
     host: document.host,
@@ -176,7 +176,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
 
 test("AppConfig loads Clerk auth settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
-  const document = ConfigLoader.load(fixture.configPath, Config);
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
 
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
@@ -194,7 +194,7 @@ test("AppConfig explains how to provide missing environment variables", () => {
 
   try {
     assert.throws(
-      () => ConfigLoader.load(fixture.configPath, Config),
+      () => ConfigLoader.load(fixture.configPath, ConfigDocument),
       /Missing environment variable "COMPANYHELM_TEST_GITHUB_CLIENT"\./,
     );
   } finally {

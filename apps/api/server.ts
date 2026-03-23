@@ -1,6 +1,6 @@
 import { ApiCli } from "./src/cli/api_cli.ts";
 import { ConfigLoader } from "./src/config/config_loader.ts";
-import { Config } from "./src/config/schema.ts";
+import { ConfigDocument } from "./src/config/schema.ts";
 import { Container } from "inversify";
 import { AuthProvider } from "./src/auth/auth_provider.ts";
 import { AuthProviderFactory } from "./src/auth/auth_provider_factory.ts";
@@ -10,13 +10,13 @@ import { DbBootstrap } from "./src/db/bootstrap.ts";
 
 try {
   const argumentsDocument = new ApiCli().parse(process.argv);
-  const config = ConfigLoader.load(argumentsDocument.configPath, Config);
+  const config = ConfigLoader.load(argumentsDocument.configPath, ConfigDocument);
   const container = new Container({
     autobind: true,
   });
-  container.bind(Config).toConstantValue(config);
+  container.bind(ConfigDocument).toConstantValue(config);
   container.bind(AuthProvider).toDynamicValue((context) => {
-    return AuthProviderFactory.createAuthProvider(context.get(Config), {
+    return AuthProviderFactory.createAuthProvider(context.get(ConfigDocument), {
       appRuntimeDatabase: context.get(AppRuntimeDatabase),
     });
   }).inSingletonScope();

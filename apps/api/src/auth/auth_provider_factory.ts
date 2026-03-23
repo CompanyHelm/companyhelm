@@ -1,4 +1,4 @@
-import type { ConfigDocument } from "../config/schema.ts";
+import type { Config } from "../config/schema.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { ClerkAuthProvider } from "./clerk/clerk_auth_provider.ts";
 import { AuthProvider } from "./auth_provider.ts";
@@ -8,7 +8,7 @@ import { AuthProvider } from "./auth_provider.ts";
  */
 export class AuthProviderFactory {
   static createAuthProvider(
-    config: ConfigDocument,
+    config: Config,
     dependencies: {
       appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
       clerkClient?: ConstructorParameters<typeof ClerkAuthProvider>[1]["clerkClient"];

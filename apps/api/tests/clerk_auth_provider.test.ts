@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import type { ConfigDocument } from "../src/config/schema.ts";
+import type { Config } from "../src/config/schema.ts";
 import { ClerkAuthProvider } from "../src/auth/clerk/clerk_auth_provider.ts";
 
 /**
  * Creates the minimal Clerk auth fixtures needed to exercise provisioning and session construction.
  */
 class ClerkAuthProviderTestHarness {
-  static createConfigMock(): ConfigDocument {
+  static createConfigMock(): Config {
     return {
       auth: {
         provider: "clerk",
@@ -18,7 +18,7 @@ class ClerkAuthProviderTestHarness {
           authorized_parties: ["http://localhost:5173"],
         },
       },
-    } as ConfigDocument;
+    } as Config;
   }
 
   static createMissingRecordsDatabaseMock() {

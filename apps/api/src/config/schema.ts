@@ -18,7 +18,7 @@ const ClerkAuthSchema = z.object({
   }),
 });
 
-export const Config = z.object({
+export const ConfigDocument = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
   cors: z.object({
@@ -67,4 +67,4 @@ export const Config = z.object({
   }),
 });
 
-export type ConfigDocument = z.infer<typeof Config>;
+export type Config = z.infer<typeof ConfigDocument>;
