@@ -89,7 +89,7 @@ export function ApplicationSidebar() {
         <SidebarSeparator />
         <div className="flex flex-col gap-4">
           <Button
-            className="h-5 justify-start px-1.5 text-[11px] font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            className="mb-2 h-5 justify-start px-1.5 text-[11px] font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
             size="xs"
             variant="ghost"
             onClick={() => {
