@@ -3,13 +3,19 @@ export type AuthenticatedUser = {
   email: string;
   firstName: string;
   lastName: string | null;
-  provider: "companyhelm" | "supabase";
+  provider: "companyhelm" | "clerk";
   providerSubject: string;
+};
+
+export type AuthenticatedCompany = {
+  id: string;
+  name: string;
 };
 
 export type AuthSession = {
   token: string;
   user: AuthenticatedUser;
+  company: AuthenticatedCompany | null;
 };
 
 export type SignInInput = {
@@ -55,11 +61,11 @@ export type AuthProviderDatabase = {
  * configured provider singleton.
  */
 export abstract class AuthProvider {
-  abstract readonly name: "companyhelm" | "supabase";
+  abstract readonly name: "companyhelm" | "clerk";
   abstract authenticateBearerToken(
     db: AuthProviderDatabase,
     token: string,
-  ): Promise<AuthenticatedUser>;
+  ): Promise<AuthSession>;
   abstract signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
   abstract signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;
 }

@@ -98,6 +98,7 @@ test("companyhelm auth provider signs in a matching local user", async () => {
 
   assert.equal(session?.user.id, "user-1");
   assert.equal(session?.user.provider, "companyhelm");
+  assert.equal(session?.company, null);
   assert.equal(typeof session?.token, "string");
 });
 
@@ -166,6 +167,7 @@ test("companyhelm auth provider signs up a new user and stores password credenti
   });
 
   assert.equal(session?.user.id, "user-2");
+  assert.equal(session?.company, null);
   assert.equal(insertedValues.length, 2);
 });
 
@@ -185,14 +187,18 @@ test("companyhelm auth provider authenticates a valid bearer token", async () =>
     expiresInSeconds: 3600,
   });
 
-  const authenticatedUser = await provider.authenticateBearerToken({} as never, token);
+  const session = await provider.authenticateBearerToken({} as never, token);
 
-  assert.deepEqual(authenticatedUser, {
-    id: "user-1",
-    email: "user@example.com",
-    firstName: "User",
-    lastName: "One",
-    provider: "companyhelm",
-    providerSubject: "user-1",
+  assert.deepEqual(session, {
+    token,
+    user: {
+      id: "user-1",
+      email: "user@example.com",
+      firstName: "User",
+      lastName: "One",
+      provider: "companyhelm",
+      providerSubject: "user-1",
+    },
+    company: null,
   });
 });

@@ -19,11 +19,13 @@ const CompanyhelmAuthSchema = z.object({
   }),
 });
 
-const SupabaseAuthSchema = z.object({
-  provider: z.literal("supabase"),
-  supabase: z.object({
-    url: NonEmptyStringSchema,
-    anon_key: NonEmptyStringSchema,
+const ClerkAuthSchema = z.object({
+  provider: z.literal("clerk"),
+  clerk: z.object({
+    secret_key: NonEmptyStringSchema,
+    publishable_key: NonEmptyStringSchema,
+    jwt_key: NonEmptyStringSchema,
+    authorized_parties: z.array(NonEmptyStringSchema).min(1),
   }),
 });
 
@@ -64,7 +66,7 @@ export const Config = z.object({
   }),
   auth: z.discriminatedUnion("provider", [
     CompanyhelmAuthSchema,
-    SupabaseAuthSchema,
+    ClerkAuthSchema,
   ]),
   security: z.object({
     encryption: z.object({

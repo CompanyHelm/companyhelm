@@ -1,4 +1,5 @@
 type AuthSession {
   token: String!
   user: AuthenticatedUser!
+  company: AuthenticatedCompany
 }

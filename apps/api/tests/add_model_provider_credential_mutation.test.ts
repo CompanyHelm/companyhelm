@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { test } from "vitest";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
 import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
@@ -56,16 +57,42 @@ class AddModelProviderCredentialMutationTestHarness {
   }
 }
 
-test("GraphQL AddModelProviderCredential mutation uses the x-company-id header", async () => {
+test("GraphQL AddModelProviderCredential mutation uses the authenticated company from the bearer token", async () => {
   const app = Fastify();
   const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
   const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+    async signIn() {
+      throw new Error("unused");
+    },
+    async signUp() {
+      throw new Error("unused");
+    },
+  };
 
   await new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(database),
-    new SignInMutation({ signIn() { throw new Error("unused"); } } as never, database),
-    new SignUpMutation({ signUp() { throw new Error("unused"); } } as never, database),
+    new SignInMutation(authProvider as never, database),
+    new SignUpMutation(authProvider as never, database),
+    new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
   ).register(app);
 
@@ -73,7 +100,7 @@ test("GraphQL AddModelProviderCredential mutation uses the x-company-id header",
     method: "POST",
     url: "/graphql",
     headers: {
-      "x-company-id": "company-123",
+      authorization: "Bearer jwt-token",
     },
     payload: {
       query: `

@@ -16,6 +16,7 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
 export class GraphqlApplication {
   private readonly configDocument;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
+  private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly signInMutation: SignInMutation;
   private readonly signUpMutation: SignUpMutation;
@@ -25,19 +26,21 @@ export class GraphqlApplication {
     addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
     signInMutation: SignInMutation,
     signUpMutation: SignUpMutation,
+    graphqlRequestContextResolver: GraphqlRequestContextResolver,
     healthQueryResolver: HealthQueryResolver,
   ) {
     this.configDocument = config;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.signInMutation = signInMutation;
     this.signUpMutation = signUpMutation;
+    this.graphqlRequestContextResolver = graphqlRequestContextResolver;
     this.healthQueryResolver = healthQueryResolver;
   }
 
   async register(app: FastifyInstance): Promise<void> {
     await app.register(mercurius, {
       schema: GraphqlSchema.getDocument(),
-      context: (request) => GraphqlRequestContextResolver.resolve(request),
+      context: (request) => this.graphqlRequestContextResolver.resolve(request),
       resolvers: {
         Query: {
           health: this.healthQueryResolver.execute,
@@ -58,4 +61,5 @@ decorate(inject(Config), GraphqlApplication, 0);
 decorate(inject(AddModelProviderCredentialMutation), GraphqlApplication, 1);
 decorate(inject(SignInMutation), GraphqlApplication, 2);
 decorate(inject(SignUpMutation), GraphqlApplication, 3);
-decorate(inject(HealthQueryResolver), GraphqlApplication, 4);
+decorate(inject(GraphqlRequestContextResolver), GraphqlApplication, 4);
+decorate(inject(HealthQueryResolver), GraphqlApplication, 5);

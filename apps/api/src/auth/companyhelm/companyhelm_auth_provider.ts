@@ -37,7 +37,7 @@ export class CompanyhelmAuthProvider extends AuthProvider {
     };
   }
 
-  async authenticateBearerToken(_db: AuthProviderDatabase, token: string): Promise<AuthenticatedUser> {
+  async authenticateBearerToken(_db: AuthProviderDatabase, token: string): Promise<AuthSession> {
     const payload = JwtService.verifyRs256Jwt({
       token,
       publicKeyPem: this.config.jwt_public_key_pem,
@@ -53,12 +53,16 @@ export class CompanyhelmAuthProvider extends AuthProvider {
       throw new Error("JWT payload is missing user claims.");
     }
 
-    return this.toAuthenticatedUser({
-      id: userId,
-      email,
-      first_name: firstName,
-      last_name: normalizedLastName || null,
-    }, userId);
+    return {
+      token,
+      user: this.toAuthenticatedUser({
+        id: userId,
+        email,
+        first_name: firstName,
+        last_name: normalizedLastName || null,
+      }, userId),
+      company: null,
+    };
   }
 
   async signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession> {
@@ -198,6 +202,7 @@ export class CompanyhelmAuthProvider extends AuthProvider {
     return {
       token,
       user: this.toAuthenticatedUser(user, user.id),
+      company: null,
     };
   }
 

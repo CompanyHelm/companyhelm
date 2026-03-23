@@ -35,7 +35,7 @@ type InsertableDatabase = {
 };
 
 /**
- * Creates a new model provider credential for the company identified by the x-company-id header.
+ * Creates a new model provider credential for the authenticated company resolved from the bearer token.
  */
 @injectable("Singleton")
 export class AddModelProviderCredentialMutation extends Mutation<
@@ -53,9 +53,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
     arguments_: AddModelProviderCredentialMutationArguments,
     context: GraphqlRequestContext,
   ) => {
-    const companyId = String(context.companyId || "").trim();
+    const companyId = String(context.authSession?.company?.id || "").trim();
     if (!companyId) {
-      throw new Error("Missing x-company-id header.");
+      throw new Error("Missing authenticated company.");
     }
 
     const normalizedName = String(arguments_.input.name || "").trim();

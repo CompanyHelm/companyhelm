@@ -1,6 +1,6 @@
-import type { ConfigDocument } from "../config/schema.ts";
+import { Config } from "../config/schema.ts";
 import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
-import { SupabaseAuthProvider } from "./supabase/supabase_auth_provider.ts";
+import { ClerkAuthProvider } from "./clerk/clerk_auth_provider.ts";
 import { AuthProvider } from "./auth_provider.ts";
 
 /**
@@ -8,9 +8,9 @@ import { AuthProvider } from "./auth_provider.ts";
  */
 export class AuthProviderFactory {
   static createAuthProvider(
-    config: ConfigDocument,
+    config: Config,
     dependencies: {
-      supabaseJwtVerifier?: ConstructorParameters<typeof SupabaseAuthProvider>[1]["supabaseJwtVerifier"];
+      clerkClient?: ConstructorParameters<typeof ClerkAuthProvider>[1]["clerkClient"];
     } = {},
   ): AuthProvider {
     const authConfig = config.auth;
@@ -23,12 +23,12 @@ export class AuthProviderFactory {
       return new CompanyhelmAuthProvider(companyhelmConfig);
     }
 
-    const supabaseConfig = authConfig.supabase;
-    if (!supabaseConfig) {
-      throw new Error("Supabase auth provider requires auth.supabase configuration.");
+    const clerkConfig = authConfig.clerk;
+    if (!clerkConfig) {
+      throw new Error("Clerk auth provider requires auth.clerk configuration.");
     }
 
-    return new SupabaseAuthProvider(supabaseConfig, dependencies);
+    return new ClerkAuthProvider(clerkConfig, dependencies);
   }
 
   static extractBearerToken(authorizationHeader: unknown): string | null {

@@ -10,10 +10,13 @@ import { Config } from "../src/config/schema.ts";
  * Creates isolated config fixtures so the shared Config loader can be exercised with the API schema.
  */
 class AppConfigTestHarness {
-  static createFixtureConfigPath(provider: "companyhelm" | "supabase" = "companyhelm"): {
+  static createFixtureConfigPath(provider: "companyhelm" | "clerk" = "companyhelm"): {
     configPath: string;
     privateKeyVariableName: string;
     publicKeyVariableName: string;
+    clerkSecretKeyVariableName: string;
+    clerkPublishableKeyVariableName: string;
+    clerkJwtKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
@@ -23,12 +26,18 @@ class AppConfigTestHarness {
     const configPath = join(configDirectoryPath, "local.yaml");
     const privateKeyVariableName = "COMPANYHELM_TEST_PRIVATE_KEY";
     const publicKeyVariableName = "COMPANYHELM_TEST_PUBLIC_KEY";
+    const clerkSecretKeyVariableName = "COMPANYHELM_TEST_CLERK_SECRET_KEY";
+    const clerkPublishableKeyVariableName = "COMPANYHELM_TEST_CLERK_PUBLISHABLE_KEY";
+    const clerkJwtKeyVariableName = "COMPANYHELM_TEST_CLERK_JWT_KEY";
     const githubClientVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
 
     process.env[privateKeyVariableName] = "private-key";
     process.env[publicKeyVariableName] = "public-key";
+    process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
+    process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
+    process.env[clerkJwtKeyVariableName] = "clerk-jwt-key";
     process.env[githubClientVariableName] = "client-id";
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
@@ -41,6 +50,9 @@ class AppConfigTestHarness {
         githubClientVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
+        clerkSecretKeyVariableName,
+        clerkPublishableKeyVariableName,
+        clerkJwtKeyVariableName,
         privateKeyVariableName,
         publicKeyVariableName,
       }),
@@ -51,6 +63,9 @@ class AppConfigTestHarness {
       configPath,
       privateKeyVariableName,
       publicKeyVariableName,
+      clerkSecretKeyVariableName,
+      clerkPublishableKeyVariableName,
+      clerkJwtKeyVariableName,
       githubClientVariableName,
       githubKeyVariableName,
       githubUrlVariableName,
@@ -58,10 +73,13 @@ class AppConfigTestHarness {
   }
 
   private static createConfigDocument(params: {
-    provider: "companyhelm" | "supabase";
+    provider: "companyhelm" | "clerk";
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
+    clerkSecretKeyVariableName: string;
+    clerkPublishableKeyVariableName: string;
+    clerkJwtKeyVariableName: string;
     privateKeyVariableName: string;
     publicKeyVariableName: string;
   }): string {
@@ -78,10 +96,13 @@ auth:
 `.trim()
       : `
 auth:
-  provider: "supabase"
-  supabase:
-    url: "https://example.supabase.co"
-    anon_key: "supabase-anon-key"
+  provider: "clerk"
+  clerk:
+    secret_key: "\${${params.clerkSecretKeyVariableName}}"
+    publishable_key: "\${${params.clerkPublishableKeyVariableName}}"
+    jwt_key: "\${${params.clerkJwtKeyVariableName}}"
+    authorized_parties:
+      - "http://localhost:5173"
 `.trim();
 
     return `
@@ -178,13 +199,15 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   );
 });
 
-test("AppConfig loads Supabase auth settings from local.yaml", () => {
-  const fixture = AppConfigTestHarness.createFixtureConfigPath("supabase");
+test("AppConfig loads Clerk auth settings from local.yaml", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath("clerk");
   const document = ConfigLoader.load(fixture.configPath, Config);
 
-  assert.equal(document.auth.provider, "supabase");
-  assert.equal(document.auth.supabase?.url, "https://example.supabase.co");
-  assert.equal(document.auth.supabase?.anon_key, "supabase-anon-key");
+  assert.equal(document.auth.provider, "clerk");
+  assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
+  assert.equal(document.auth.clerk?.publishable_key, "clerk-publishable-key");
+  assert.equal(document.auth.clerk?.jwt_key, "clerk-jwt-key");
+  assert.deepEqual(document.auth.clerk?.authorized_parties, ["http://localhost:5173"]);
 });
 
 test("AppConfig explains how to provide missing environment variables", () => {

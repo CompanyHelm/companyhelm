@@ -5,6 +5,7 @@ import { test } from "vitest";
 import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
 import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
@@ -104,6 +105,7 @@ test("GraphQL SignUp mutation creates a session when lastName is omitted", async
     new AddModelProviderCredentialMutation(database),
     new SignInMutation(authProvider, database),
     signUpMutation,
+    new GraphqlRequestContextResolver(authProvider, database),
     new HealthQueryResolver(),
   ).register(app);
 

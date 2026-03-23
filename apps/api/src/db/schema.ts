@@ -19,19 +19,24 @@ export const companies = pgTable("companies", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
+  clerkOrganizationId: text("clerk_organization_id"),
   name: text("name").notNull()
-});
+}, (table) => ({
+  clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
+}));
 
 export const users = pgTable("users", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
+  clerkUserId: text("clerk_user_id"),
   first_name: text("first_name").notNull(),
   last_name: text("last_name"),
   email: text("email").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull()
 }, (table) => ({
+  clerkUserIdUnique: uniqueIndex("users_clerk_user_id_uidx").on(table.clerkUserId),
   emailUnique: uniqueIndex("users_email_uidx").on(table.email),
   firstNameLengthCheck: check("users_first_name_length_check", sql`length(${table.first_name}) <= 255`),
   lastNameLengthCheck: check(
