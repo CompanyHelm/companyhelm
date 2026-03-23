@@ -1,9 +1,11 @@
 import fastifyCors from "@fastify/cors";
 import Fastify, { type FastifyServerOptions } from "fastify";
 import { inject, injectable } from "inversify";
+import { Config } from "../config/schema.ts";
+import { AdminDatabase } from "../db/admin_database.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
-import { Config } from "../config/schema.ts";
+import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
@@ -11,18 +13,24 @@ import { Config } from "../config/schema.ts";
 @injectable()
 export class ApiServer {
   private readonly config: Config;
-  private readonly database;
-  private readonly graphqlApplication;
+  private readonly adminDatabase: AdminDatabase;
+  private readonly database: AppRuntimeDatabase;
+  private readonly graphqlApplication: GraphqlApplication;
+  private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
   private readonly app;
 
   constructor(
     @inject(Config) config: Config,
+    @inject(AdminDatabase) adminDatabase: AdminDatabase,
     @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
     @inject(GraphqlApplication) graphqlApplication: GraphqlApplication,
+    @inject(LlmOauthRefreshWorker) llmOauthRefreshWorker: LlmOauthRefreshWorker,
   ) {
     this.config = config;
+    this.adminDatabase = adminDatabase;
     this.database = database;
     this.graphqlApplication = graphqlApplication;
+    this.llmOauthRefreshWorker = llmOauthRefreshWorker;
     this.app = Fastify({
       logger: ApiServer.createLoggerOptions(this.config),
     });
@@ -30,7 +38,9 @@ export class ApiServer {
 
   async start(): Promise<void> {
     this.app.addHook("onClose", async () => {
+      this.llmOauthRefreshWorker.stop();
       await this.database.close();
+      await this.adminDatabase.close();
     });
 
     await this.app.register(fastifyCors, {
@@ -50,6 +60,8 @@ export class ApiServer {
       host: this.config.host,
       port: this.config.port,
     });
+
+    this.llmOauthRefreshWorker.start();
   }
 
   static createLoggerOptions(config: Pick<Config, "log">): FastifyServerOptions["logger"] {

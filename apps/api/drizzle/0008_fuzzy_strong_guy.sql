@@ -1,0 +1,1 @@
+ALTER TABLE "model_provider_credentials" ADD COLUMN "access_token_expires_at" timestamp with time zone;

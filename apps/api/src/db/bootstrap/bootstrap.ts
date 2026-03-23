@@ -56,8 +56,6 @@ export class DbBootstrap {
           SELECT pg_advisory_unlock(${DB_BOOTSTRAP_LOCK_NAMESPACE}, ${DB_BOOTSTRAP_LOCK_ID})
         `;
       }
-
-      await this.adminDatabase.close();
     }
   }
 }

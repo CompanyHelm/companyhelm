@@ -103,6 +103,7 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   // this can also be an access token
   encryptedApiKey: text("encrypted_api_key").notNull(),
   refreshToken: text("refresh_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
