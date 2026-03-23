@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 export function ApplicationSidebar() {
@@ -37,21 +38,18 @@ export function ApplicationSidebar() {
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="h-12"
-              render={<Link to="/" />}
-              size="lg"
-              tooltip="CompanyHelm"
-            >
-              <img className="size-7 rounded-md" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
-              <span className="truncate font-semibold tracking-tight">CompanyHelm</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <div className="px-2 pt-2 group-data-[collapsible=icon]:px-0">
-          <div className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-2 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+            to="/"
+          >
+            <img className="size-7 rounded-md" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
+            <span className="truncate font-semibold tracking-tight">CompanyHelm</span>
+          </Link>
+          <SidebarTrigger className="shrink-0 self-start" />
+        </div>
+        <div className="px-2 pt-2 group-data-[collapsible=icon]:hidden">
+          <div>
             <OrganizationSwitcher />
           </div>
         </div>
