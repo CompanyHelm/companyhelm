@@ -3,9 +3,12 @@ import { inject, injectable } from "inversify";
 import { AuthProvider, type AuthSession } from "../auth/auth_provider.ts";
 import { AuthProviderFactory } from "../auth/auth_provider_factory.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
+import { AppRuntimeTransactionProvider } from "../db/app_runtime_transaction_provider.ts";
+import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 
 export type GraphqlRequestContext = {
   authSession: AuthSession | null;
+  app_runtime_transaction_provider: TransactionProviderInterface | null;
 };
 
 /**
@@ -29,15 +32,21 @@ export class GraphqlRequestContextResolver {
     if (!token) {
       return {
         authSession: null,
+        app_runtime_transaction_provider: null,
       };
     }
 
+    const authSession = await this.authProvider.authenticateBearerToken(
+      this.database,
+      token,
+      request.headers as Record<string, unknown>,
+    );
+
     return {
-      authSession: await this.authProvider.authenticateBearerToken(
-        this.database,
-        token,
-        request.headers as Record<string, unknown>,
-      ),
+      authSession,
+      app_runtime_transaction_provider: authSession.company
+        ? new AppRuntimeTransactionProvider(this.database, authSession.company.id)
+        : null,
     };
   }
 }

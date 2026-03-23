@@ -4,7 +4,6 @@ import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
-import { GraphqlAppRuntimeDatabase } from "../src/graphql/graphql_app_runtime_database.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
@@ -67,7 +66,6 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
   const app = Fastify();
   const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
   const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
-  const graphqlDatabase = new GraphqlAppRuntimeDatabase(database as never);
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -90,11 +88,11 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(graphqlDatabase),
+    new AddModelProviderCredentialMutation(),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(graphqlDatabase),
+    new ModelProviderCredentialsQueryResolver(),
   ).register(app);
 
   const response = await app.inject({
@@ -136,7 +134,6 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
   const app = Fastify();
   const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
   const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
-  const graphqlDatabase = new GraphqlAppRuntimeDatabase(database as never);
   const authProvider = {
     async authenticateBearerToken() {
       throw new Error("unused");
@@ -145,11 +142,11 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(graphqlDatabase),
+    new AddModelProviderCredentialMutation(),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(graphqlDatabase),
+    new ModelProviderCredentialsQueryResolver(),
   ).register(app);
 
   const response = await app.inject({

@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
-import { GraphqlAppRuntimeDatabase } from "../graphql_app_runtime_database.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -30,16 +29,16 @@ type SelectableDatabase = {
  */
 @injectable()
 export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProviderCredentialRecord[]> {
-  private readonly database: GraphqlAppRuntimeDatabase;
-
-  constructor(@inject(GraphqlAppRuntimeDatabase) database: GraphqlAppRuntimeDatabase) {
-    super();
-    this.database = database;
-  }
-
   protected resolve = async (context: GraphqlRequestContext): Promise<ModelProviderCredentialRecord[]> => {
-    return this.database.withContext(context, async ({ companyId, database }) => {
-      const selectableDatabase = database as SelectableDatabase;
+    if (!context.authSession?.company) {
+      throw new Error("Authentication required.");
+    }
+    if (!context.app_runtime_transaction_provider) {
+      throw new Error("Authentication required.");
+    }
+
+    return context.app_runtime_transaction_provider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
       return selectableDatabase
         .select({
           id: modelProviderCredentials.id,
@@ -53,7 +52,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProvide
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, companyId));
+        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
     });
   };
 }

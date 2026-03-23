@@ -1,6 +1,5 @@
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
-import { GraphqlAppRuntimeDatabase } from "../graphql_app_runtime_database.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -39,13 +38,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
   AddModelProviderCredentialMutationArguments,
   ModelProviderCredentialRecord
 > {
-  private readonly database: GraphqlAppRuntimeDatabase;
-
-  constructor(@inject(GraphqlAppRuntimeDatabase) database: GraphqlAppRuntimeDatabase) {
-    super();
-    this.database = database;
-  }
-
   protected resolve = async (
     arguments_: AddModelProviderCredentialMutationArguments,
     context: GraphqlRequestContext,
@@ -57,14 +49,20 @@ export class AddModelProviderCredentialMutation extends Mutation<
     if (!normalizedApiKey) {
       throw new Error("apiKey is required.");
     }
+    if (!context.authSession?.company) {
+      throw new Error("Authentication required.");
+    }
+    if (!context.app_runtime_transaction_provider) {
+      throw new Error("Authentication required.");
+    }
 
     const now = new Date();
-    const [credential] = await this.database.withContext(context, async ({ companyId, database }) => {
-      const insertableDatabase = database as InsertableDatabase;
+    const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
       return insertableDatabase
         .insert(modelProviderCredentials)
         .values({
-          companyId,
+          companyId: context.authSession.company.id,
           name: AddModelProviderCredentialMutation.resolveCredentialName(modelProvider),
           modelProvider,
           type: "api_key",
