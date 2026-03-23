@@ -1,12 +1,14 @@
 import { resolve } from "node:path";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { decorate, inject, injectable } from "inversify";
 import postgres from "postgres";
-import type { ConfigDocument } from "../config/schema.ts";
+import { Config, type ConfigDocument } from "../config/schema.ts";
 
 /**
  * Executes database bootstrap work that must finish before request handling begins.
  */
+@injectable("Singleton")
 export class DbBootstrap {
   private readonly config: ConfigDocument;
 
@@ -41,3 +43,5 @@ export class DbBootstrap {
     }
   }
 }
+
+decorate(inject(Config), DbBootstrap, 0);

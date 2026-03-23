@@ -11,7 +11,6 @@ import { DbBootstrap } from "./src/db/bootstrap.ts";
 try {
   const argumentsDocument = new ApiCli().parse(process.argv);
   const config = ConfigLoader.load(argumentsDocument.configPath, Config);
-  await new DbBootstrap(config).run();
   const container = new Container({
     autobind: true,
   });
@@ -21,6 +20,7 @@ try {
       appRuntimeDatabase: context.get(AppRuntimeDatabase),
     });
   }).inSingletonScope();
+  await container.get(DbBootstrap).run();
 
   await container.get(ApiServer).start();
 } catch (error) {
