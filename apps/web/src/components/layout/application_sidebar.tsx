@@ -6,7 +6,6 @@ import {
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "@/components/theme_provider";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -46,10 +45,7 @@ export function ApplicationSidebar() {
               tooltip="CompanyHelm"
             >
               <img className="size-7 rounded-md" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
-              <span className="flex flex-1 items-center justify-between gap-2">
-                <span className="truncate font-semibold tracking-tight">CompanyHelm</span>
-                <Badge variant="outline">Ops</Badge>
-              </span>
+              <span className="truncate font-semibold tracking-tight">CompanyHelm</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
