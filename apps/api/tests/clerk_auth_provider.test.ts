@@ -201,14 +201,26 @@ test("clerk auth provider provisions missing local user, company, and membership
                 userId: "user_clerk_1",
                 orgId: "org_clerk_1",
                 sessionClaims: {
-                  email: "user@example.com",
-                  first_name: "User",
-                  last_name: "Example",
-                  organization_name: "Example Org",
+                  o: {
+                    nam: "Example Org",
+                  },
                 },
               };
             },
           };
+        },
+        users: {
+          async getUser() {
+            return {
+              firstName: "User",
+              lastName: "Example",
+              primaryEmailAddressId: "email_1",
+              emailAddresses: [{
+                id: "email_1",
+                emailAddress: "user@example.com",
+              }],
+            };
+          },
         },
       },
       jwtKeyLoader: {
@@ -264,8 +276,6 @@ test("clerk auth provider reuses existing local user and company when already pr
                 userId: "user_clerk_9",
                 orgId: "org_clerk_9",
                 sessionClaims: {
-                  email: "existing@example.com",
-                  name: "Existing User",
                   o: {
                     slg: "existing-org",
                   },
@@ -273,6 +283,11 @@ test("clerk auth provider reuses existing local user and company when already pr
               };
             },
           };
+        },
+        users: {
+          async getUser() {
+            throw new Error("No Clerk user fetch expected.");
+          },
         },
       },
       jwtKeyLoader: {
@@ -312,6 +327,11 @@ test("clerk auth provider rejects unauthenticated request states from Clerk", as
           return {
             isAuthenticated: false,
           };
+        },
+        users: {
+          async getUser() {
+            throw new Error("No Clerk user fetch expected.");
+          },
         },
       },
       jwtKeyLoader: {

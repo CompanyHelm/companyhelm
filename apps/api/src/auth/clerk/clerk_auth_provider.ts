@@ -26,12 +26,22 @@ type CompanyRecord = {
   name: string;
 };
 
+type ClerkBackendUser = {
+  firstName: string | null;
+  lastName: string | null;
+  primaryEmailAddressId: string | null;
+  emailAddresses: Array<{
+    id: string;
+    emailAddress: string;
+  }>;
+};
+
 /**
  * Verifies Clerk session tokens and lazily provisions local user, company, and membership records.
  */
 export class ClerkAuthProvider extends AuthProvider {
   readonly name = "clerk" as const;
-  private readonly clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
+  private readonly clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
   private readonly jwtKeyLoader: Pick<ClerkJwtKeyLoader, "load">;
   private readonly config: NonNullable<Config["auth"]["clerk"]>;
   private readonly database: Pick<AppRuntimeDatabase, "applyCompanyContext">;
@@ -40,7 +50,7 @@ export class ClerkAuthProvider extends AuthProvider {
     config: NonNullable<Config["auth"]["clerk"]>,
     dependencies: {
       appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
-      clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
+      clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
       jwtKeyLoader?: Pick<ClerkJwtKeyLoader, "load">;
     } = {},
   ) {
@@ -86,8 +96,6 @@ export class ClerkAuthProvider extends AuthProvider {
     const claims = authenticatedRequest.sessionClaims;
     ClerkAuthProvider.verifyStatus(claims.sts);
     const providerSubject = this.requireClaim(authenticatedRequest.userId, "Clerk bearer token is missing a subject.");
-    const email = this.normalizeEmail(this.resolveEmail(claims));
-    const { firstName, lastName } = this.resolvePersonName(claims, email);
     const organizationSubject = this.resolveOrganizationSubject(claims, authenticatedRequest.orgId);
     if (!organizationSubject) {
       throw new Error("Clerk bearer token is missing an active organization claim.");
@@ -96,12 +104,7 @@ export class ClerkAuthProvider extends AuthProvider {
     const organizationName = this.resolveOrganizationName(claims, organizationSubject);
 
     return db.transaction(async (transaction) => {
-      const user = await this.findOrCreateUser(transaction, {
-        providerSubject,
-        email,
-        firstName,
-        lastName,
-      });
+      const user = await this.findOrCreateUser(transaction, providerSubject);
       const company = await this.findOrCreateCompany(transaction, {
         providerSubject: organizationSubject,
         name: organizationName,
@@ -135,12 +138,7 @@ export class ClerkAuthProvider extends AuthProvider {
 
   private async findOrCreateUser(
     transaction: AuthProviderDatabaseTransaction,
-    params: {
-      providerSubject: string;
-      email: string;
-      firstName: string;
-      lastName: string | null;
-    },
+    providerSubject: string,
   ): Promise<UserRecord> {
     const [existingUser] = await transaction
       .select({
@@ -151,20 +149,23 @@ export class ClerkAuthProvider extends AuthProvider {
         last_name: users.last_name,
       })
       .from(users)
-      .where(eq(users.clerkUserId, params.providerSubject))
+      .where(eq(users.clerkUserId, providerSubject))
       .limit(1) as UserRecord[];
     if (existingUser) {
       return existingUser;
     }
 
+    const clerkUser = await this.clerkClient.users.getUser(providerSubject) as ClerkBackendUser;
+    const email = this.resolveClerkUserEmail(clerkUser);
+    const { firstName, lastName } = this.resolveClerkUserName(clerkUser, email);
     const now = new Date();
     const [createdUser] = await transaction
       .insert(users)
       .values({
-        clerkUserId: params.providerSubject,
-        email: params.email,
-        first_name: params.firstName,
-        last_name: params.lastName,
+        clerkUserId: providerSubject,
+        email,
+        first_name: firstName,
+        last_name: lastName,
         created_at: now,
         updated_at: now,
       })
@@ -249,36 +250,34 @@ export class ClerkAuthProvider extends AuthProvider {
     });
   }
 
-  private resolveEmail(claims: Record<string, unknown>): string {
+  private resolveClerkUserEmail(clerkUser: ClerkBackendUser): string {
+    const primaryEmailAddressId = this.firstNonEmptyString([clerkUser.primaryEmailAddressId]);
+    const primaryEmailAddress = primaryEmailAddressId
+      ? clerkUser.emailAddresses.find((emailAddress) => emailAddress.id === primaryEmailAddressId)?.emailAddress
+      : null;
     const email = this.firstNonEmptyString([
-      claims.email,
-      claims.email_address,
-      claims.primary_email,
-      claims.primaryEmail,
+      primaryEmailAddress,
+      clerkUser.emailAddresses[0]?.emailAddress,
     ]);
     if (!email) {
-      throw new Error("Clerk bearer token is missing an email claim.");
+      throw new Error("Clerk user is missing an email address.");
     }
 
-    return email;
+    return this.normalizeEmail(email);
   }
 
-  private resolvePersonName(
-    claims: Record<string, unknown>,
+  private resolveClerkUserName(
+    clerkUser: ClerkBackendUser,
     email: string,
   ): {
     firstName: string;
     lastName: string | null;
   } {
     const firstNameClaim = this.firstNonEmptyString([
-      claims.first_name,
-      claims.firstName,
-      claims.given_name,
+      clerkUser.firstName,
     ]);
     const lastNameClaim = this.firstNonEmptyString([
-      claims.last_name,
-      claims.lastName,
-      claims.family_name,
+      clerkUser.lastName,
     ]);
 
     if (firstNameClaim) {
@@ -286,17 +285,6 @@ export class ClerkAuthProvider extends AuthProvider {
         firstName: firstNameClaim,
         lastName: lastNameClaim || null,
       };
-    }
-
-    const displayName = this.firstNonEmptyString([claims.name]);
-    if (displayName) {
-      const [firstName, ...rest] = displayName.split(/\s+/).filter(Boolean);
-      if (firstName) {
-        return {
-          firstName,
-          lastName: rest.length > 0 ? rest.join(" ") : null,
-        };
-      }
     }
 
     return {
