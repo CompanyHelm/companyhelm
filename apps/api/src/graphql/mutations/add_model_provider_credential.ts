@@ -1,6 +1,6 @@
 import { decorate, inject, injectable } from "inversify";
-import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import { modelProviderCredentials } from "../../db/schema.ts";
+import { GraphqlAppRuntimeDatabase } from "../graphql_app_runtime_database.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -39,9 +39,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
   AddModelProviderCredentialMutationArguments,
   ModelProviderCredentialRecord
 > {
-  private readonly database: Pick<AppRuntimeDatabase, "getDatabase">;
+  private readonly database: Pick<GraphqlAppRuntimeDatabase, "withContext">;
 
-  constructor(database: Pick<AppRuntimeDatabase, "getDatabase">) {
+  constructor(database: Pick<GraphqlAppRuntimeDatabase, "withContext">) {
     super();
     this.database = database;
   }
@@ -50,11 +50,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
     arguments_: AddModelProviderCredentialMutationArguments,
     context: GraphqlRequestContext,
   ) => {
-    const companyId = String(context.authSession?.company?.id || "").trim();
-    if (!companyId) {
-      throw new Error("Authentication required.");
-    }
-
     const modelProvider = AddModelProviderCredentialMutation.normalizeModelProvider(
       arguments_.input.modelProvider,
     );
@@ -64,31 +59,33 @@ export class AddModelProviderCredentialMutation extends Mutation<
     }
 
     const now = new Date();
-    const database = this.database.getDatabase() as InsertableDatabase;
-    const [credential] = await database
-      .insert(modelProviderCredentials)
-      .values({
-        companyId,
-        name: AddModelProviderCredentialMutation.resolveCredentialName(modelProvider),
-        modelProvider,
-        type: "api_key",
-        encryptedApiKey: normalizedApiKey,
-        refreshToken: null,
-        refreshedAt: null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning?.({
-        id: modelProviderCredentials.id,
-        companyId: modelProviderCredentials.companyId,
-        name: modelProviderCredentials.name,
-        modelProvider: modelProviderCredentials.modelProvider,
-        type: modelProviderCredentials.type,
-        refreshToken: modelProviderCredentials.refreshToken,
-        refreshedAt: modelProviderCredentials.refreshedAt,
-        createdAt: modelProviderCredentials.createdAt,
-        updatedAt: modelProviderCredentials.updatedAt,
-      }) as ModelProviderCredentialRecord[];
+    const [credential] = await this.database.withContext(context, async ({ companyId, database }) => {
+      const insertableDatabase = database as InsertableDatabase;
+      return insertableDatabase
+        .insert(modelProviderCredentials)
+        .values({
+          companyId,
+          name: AddModelProviderCredentialMutation.resolveCredentialName(modelProvider),
+          modelProvider,
+          type: "api_key",
+          encryptedApiKey: normalizedApiKey,
+          refreshToken: null,
+          refreshedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning?.({
+          id: modelProviderCredentials.id,
+          companyId: modelProviderCredentials.companyId,
+          name: modelProviderCredentials.name,
+          modelProvider: modelProviderCredentials.modelProvider,
+          type: modelProviderCredentials.type,
+          refreshToken: modelProviderCredentials.refreshToken,
+          refreshedAt: modelProviderCredentials.refreshedAt,
+          createdAt: modelProviderCredentials.createdAt,
+          updatedAt: modelProviderCredentials.updatedAt,
+        }) as Promise<ModelProviderCredentialRecord[]>;
+    });
 
     if (!credential) {
       throw new Error("Failed to create model provider credential.");
@@ -114,4 +111,4 @@ export class AddModelProviderCredentialMutation extends Mutation<
   }
 }
 
-decorate(inject(AppRuntimeDatabase), AddModelProviderCredentialMutation, 0);
+decorate(inject(GraphqlAppRuntimeDatabase), AddModelProviderCredentialMutation, 0);

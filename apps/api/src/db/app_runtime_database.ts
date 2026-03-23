@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { decorate, inject, injectable } from "inversify";
 import postgres from "postgres";
@@ -26,6 +27,24 @@ export class AppRuntimeDatabase {
 
   getDatabase() {
     return this.database as AuthProviderDatabase;
+  }
+
+  async withCompanyContext<T>(
+    companyId: string,
+    callback: (database: AuthProviderDatabase) => Promise<T>,
+  ): Promise<T> {
+    const normalizedCompanyId = String(companyId || "").trim();
+    if (!normalizedCompanyId) {
+      throw new Error("Company ID is required.");
+    }
+
+    return this.database.transaction(async (transaction) => {
+      await transaction.execute(
+        sql`select set_config('app.current_company_id', ${normalizedCompanyId}, true)`,
+      );
+
+      return callback(transaction as AuthProviderDatabase);
+    });
   }
 
   async close(): Promise<void> {

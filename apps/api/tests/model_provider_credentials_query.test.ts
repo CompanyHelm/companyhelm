@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { test } from "vitest";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { GraphqlAppRuntimeDatabase } from "../src/graphql/graphql_app_runtime_database.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
@@ -36,8 +37,10 @@ class ModelProviderCredentialsQueryTestHarness {
       createdAt: new Date("2026-03-20T10:00:00.000Z"),
       updatedAt: new Date("2026-03-20T10:00:00.000Z"),
     }];
+    const scopedCompanyIds: string[] = [];
 
     return {
+      scopedCompanyIds,
       getDatabase() {
         return {
           select() {
@@ -53,6 +56,10 @@ class ModelProviderCredentialsQueryTestHarness {
           },
         } as never;
       },
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        scopedCompanyIds.push(companyId);
+        return callback(this.getDatabase());
+      },
     };
   }
 }
@@ -61,6 +68,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
   const app = Fastify();
   const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
   const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
+  const graphqlDatabase = new GraphqlAppRuntimeDatabase(database as never);
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -89,13 +97,13 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(database),
+    new AddModelProviderCredentialMutation(graphqlDatabase),
     new SignInMutation(authProvider as never, database),
     new SignUpMutation(authProvider as never, database),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(database),
+    new ModelProviderCredentialsQueryResolver(graphqlDatabase),
   ).register(app);
 
   const response = await app.inject({
@@ -128,6 +136,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     modelProvider: "openai",
     type: "api_key",
   }]);
+  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();
 });
@@ -136,6 +145,7 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
   const app = Fastify();
   const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
   const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
+  const graphqlDatabase = new GraphqlAppRuntimeDatabase(database as never);
   const authProvider = {
     async authenticateBearerToken() {
       throw new Error("unused");
@@ -150,13 +160,13 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(database),
+    new AddModelProviderCredentialMutation(graphqlDatabase),
     new SignInMutation(authProvider as never, database),
     new SignUpMutation(authProvider as never, database),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(database),
+    new ModelProviderCredentialsQueryResolver(graphqlDatabase),
   ).register(app);
 
   const response = await app.inject({

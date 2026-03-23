@@ -6,6 +6,7 @@ import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
 import { PasswordService } from "../src/auth/companyhelm/password_service.ts";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { GraphqlAppRuntimeDatabase } from "../src/graphql/graphql_app_runtime_database.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
@@ -96,17 +97,21 @@ test("GraphQL SignIn mutation creates a session for a matching local user", asyn
     getDatabase() {
       return SignInMutationTestHarness.createDatabaseMock() as never;
     },
+    async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+      return callback(this.getDatabase());
+    },
   };
+  const graphqlDatabase = new GraphqlAppRuntimeDatabase(database as never);
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(database),
+    new AddModelProviderCredentialMutation(graphqlDatabase),
     new SignInMutation(authProvider, database),
     new SignUpMutation(authProvider, database),
     new GraphqlRequestContextResolver(authProvider, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(database),
+    new ModelProviderCredentialsQueryResolver(graphqlDatabase),
   ).register(app);
 
   const response = await app.inject({

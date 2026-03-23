@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { decorate, inject, injectable } from "inversify";
-import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import { modelProviderCredentials } from "../../db/schema.ts";
+import { GraphqlAppRuntimeDatabase } from "../graphql_app_runtime_database.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -30,35 +30,32 @@ type SelectableDatabase = {
  */
 @injectable("Singleton")
 export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProviderCredentialRecord[]> {
-  private readonly database: Pick<AppRuntimeDatabase, "getDatabase">;
+  private readonly database: Pick<GraphqlAppRuntimeDatabase, "withContext">;
 
-  constructor(database: Pick<AppRuntimeDatabase, "getDatabase">) {
+  constructor(database: Pick<GraphqlAppRuntimeDatabase, "withContext">) {
     super();
     this.database = database;
   }
 
   protected resolve = async (context: GraphqlRequestContext): Promise<ModelProviderCredentialRecord[]> => {
-    const companyId = String(context.authSession?.company?.id || "").trim();
-    if (!companyId) {
-      throw new Error("Authentication required.");
-    }
-
-    const database = this.database.getDatabase() as SelectableDatabase;
-    return database
-      .select({
-        id: modelProviderCredentials.id,
-        companyId: modelProviderCredentials.companyId,
-        name: modelProviderCredentials.name,
-        modelProvider: modelProviderCredentials.modelProvider,
-        type: modelProviderCredentials.type,
-        refreshToken: modelProviderCredentials.refreshToken,
-        refreshedAt: modelProviderCredentials.refreshedAt,
-        createdAt: modelProviderCredentials.createdAt,
-        updatedAt: modelProviderCredentials.updatedAt,
-      })
-      .from(modelProviderCredentials)
-      .where(eq(modelProviderCredentials.companyId, companyId));
+    return this.database.withContext(context, async ({ companyId, database }) => {
+      const selectableDatabase = database as SelectableDatabase;
+      return selectableDatabase
+        .select({
+          id: modelProviderCredentials.id,
+          companyId: modelProviderCredentials.companyId,
+          name: modelProviderCredentials.name,
+          modelProvider: modelProviderCredentials.modelProvider,
+          type: modelProviderCredentials.type,
+          refreshToken: modelProviderCredentials.refreshToken,
+          refreshedAt: modelProviderCredentials.refreshedAt,
+          createdAt: modelProviderCredentials.createdAt,
+          updatedAt: modelProviderCredentials.updatedAt,
+        })
+        .from(modelProviderCredentials)
+        .where(eq(modelProviderCredentials.companyId, companyId));
+    });
   };
 }
 
-decorate(inject(AppRuntimeDatabase), ModelProviderCredentialsQueryResolver, 0);
+decorate(inject(GraphqlAppRuntimeDatabase), ModelProviderCredentialsQueryResolver, 0);

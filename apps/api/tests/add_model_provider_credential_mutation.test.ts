@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { test } from "vitest";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { GraphqlAppRuntimeDatabase } from "../src/graphql/graphql_app_runtime_database.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
@@ -26,9 +27,11 @@ class AddModelProviderCredentialMutationTestHarness {
 
   static createDatabaseMock() {
     const insertedValues: Array<Record<string, unknown>> = [];
+    const scopedCompanyIds: string[] = [];
 
     return {
       insertedValues,
+      scopedCompanyIds,
       getDatabase() {
         return {
           insert() {
@@ -55,6 +58,10 @@ class AddModelProviderCredentialMutationTestHarness {
           },
         } as never;
       },
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        scopedCompanyIds.push(companyId);
+        return callback(this.getDatabase());
+      },
     };
   }
 }
@@ -63,6 +70,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   const app = Fastify();
   const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
   const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const graphqlDatabase = new GraphqlAppRuntimeDatabase(database as never);
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -91,13 +99,13 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(database),
+    new AddModelProviderCredentialMutation(graphqlDatabase),
     new SignInMutation(authProvider as never, database),
     new SignUpMutation(authProvider as never, database),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(database),
+    new ModelProviderCredentialsQueryResolver(graphqlDatabase),
   ).register(app);
 
   const response = await app.inject({
@@ -141,6 +149,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.equal(database.insertedValues.length, 1);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
+  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();
 });
