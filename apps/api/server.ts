@@ -6,10 +6,12 @@ import { AuthProvider } from "./src/auth/auth_provider.ts";
 import { AuthProviderFactory } from "./src/auth/auth_provider_factory.ts";
 import { ApiServer } from "./src/server/api_server.ts";
 import { AppRuntimeDatabase } from "./src/db/app_runtime_database.ts";
+import { DbBootstrap } from "./src/db/bootstrap.ts";
 
 try {
   const argumentsDocument = new ApiCli().parse(process.argv);
   const config = ConfigLoader.load(argumentsDocument.configPath, Config);
+  await new DbBootstrap(config).run();
   const container = new Container({
     autobind: true,
   });
