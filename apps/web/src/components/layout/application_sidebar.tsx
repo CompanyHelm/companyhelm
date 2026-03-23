@@ -88,16 +88,9 @@ export function ApplicationSidebar() {
       <SidebarFooter>
         <SidebarSeparator />
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <UserButton />
-            <span className="truncate text-[11px] text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
-              {emailAddress}
-            </span>
-          </div>
-
           <Button
-            className="justify-start group-data-[collapsible=icon]:justify-center"
-            size="sm"
+            className="h-5 justify-start px-1.5 text-[11px] font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            size="xs"
             variant="ghost"
             onClick={() => {
               themeState.setTheme(isDarkTheme ? "light" : "dark");
@@ -108,6 +101,13 @@ export function ApplicationSidebar() {
               {isDarkTheme ? "Light theme" : "Dark theme"}
             </span>
           </Button>
+
+          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+            <UserButton />
+            <span className="truncate text-[11px] text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+              {emailAddress}
+            </span>
+          </div>
         </div>
       </SidebarFooter>
       <SidebarRail />
