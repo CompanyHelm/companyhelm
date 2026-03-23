@@ -1,8 +1,0 @@
-type AuthenticatedUser {
-  id: ID!
-  email: String!
-  firstName: String!
-  lastName: String
-  provider: String!
-  providerSubject: String!
-}

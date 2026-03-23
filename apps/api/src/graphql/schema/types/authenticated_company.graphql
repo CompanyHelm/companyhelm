@@ -1,4 +1,0 @@
-type AuthenticatedCompany {
-  id: ID!
-  name: String!
-}

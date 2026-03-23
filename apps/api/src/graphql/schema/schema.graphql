@@ -1,0 +1,52 @@
+type Query {
+  health: String!
+  Me: Me!
+  ModelProviderCredentials: [ModelProviderCredential!]!
+}
+
+type Mutation {
+  AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
+}
+
+type AuthenticatedCompany {
+  id: ID!
+  name: String!
+}
+
+type AuthenticatedUser {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String
+  provider: String!
+  providerSubject: String!
+}
+
+type MeUser {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String
+}
+
+type Me {
+  user: MeUser!
+  company: AuthenticatedCompany!
+}
+
+type ModelProviderCredential {
+  id: ID!
+  companyId: ID!
+  name: String!
+  modelProvider: String!
+  type: String!
+  refreshToken: String
+  refreshedAt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+input AddModelProviderCredentialInput {
+  apiKey: String!
+  modelProvider: String!
+}

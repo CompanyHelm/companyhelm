@@ -1,4 +1,0 @@
-type Me {
-  user: MeUser!
-  company: AuthenticatedCompany
-}
