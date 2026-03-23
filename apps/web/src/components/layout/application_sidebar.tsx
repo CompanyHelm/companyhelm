@@ -1,4 +1,4 @@
-import { UserButton, useOrganization, useUser } from "@clerk/react";
+import { OrganizationSwitcher, UserButton, useOrganization, useUser } from "@clerk/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ActivityIcon,
@@ -167,6 +167,10 @@ export function ApplicationSidebar() {
               {isDarkTheme ? "Light theme" : "Dark theme"}
             </span>
           </Button>
+
+          <div className="flex justify-end group-data-[collapsible=icon]:justify-center">
+            <OrganizationSwitcher />
+          </div>
         </div>
       </SidebarFooter>
       <SidebarRail />
