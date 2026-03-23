@@ -5,6 +5,7 @@ import { Container } from "inversify";
 import { AuthProvider } from "./src/auth/auth_provider.ts";
 import { AuthProviderFactory } from "./src/auth/auth_provider_factory.ts";
 import { ApiServer } from "./src/server/api_server.ts";
+import { AppRuntimeDatabase } from "./src/db/app_runtime_database.ts";
 
 try {
   const argumentsDocument = new ApiCli().parse(process.argv);
@@ -14,7 +15,9 @@ try {
   });
   container.bind(Config).toConstantValue(config);
   container.bind(AuthProvider).toDynamicValue((context) => {
-    return AuthProviderFactory.createAuthProvider(context.get(Config));
+    return AuthProviderFactory.createAuthProvider(context.get(Config), {
+      appRuntimeDatabase: context.get(AppRuntimeDatabase),
+    });
   }).inSingletonScope();
 
   await container.get(ApiServer).start();

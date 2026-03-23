@@ -1,5 +1,5 @@
 import type { ConfigDocument } from "../config/schema.ts";
-import { CompanyhelmAuthProvider } from "./companyhelm/companyhelm_auth_provider.ts";
+import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { ClerkAuthProvider } from "./clerk/clerk_auth_provider.ts";
 import { AuthProvider } from "./auth_provider.ts";
 
@@ -7,23 +7,18 @@ import { AuthProvider } from "./auth_provider.ts";
  * Centralizes auth-provider construction and header parsing so transport code keeps a tiny surface.
  */
 export class AuthProviderFactory {
-  static createAuthProvider(config: ConfigDocument): AuthProvider {
-    const authConfig = config.auth;
-    if (authConfig.provider === "companyhelm") {
-      const companyhelmConfig = authConfig.companyhelm;
-      if (!companyhelmConfig) {
-        throw new Error("CompanyHelm auth provider requires auth.companyhelm configuration.");
-      }
-
-      return new CompanyhelmAuthProvider(companyhelmConfig);
-    }
-
-    const clerkConfig = authConfig.clerk;
-    if (!clerkConfig) {
-      throw new Error("Clerk auth provider requires auth.clerk configuration.");
-    }
-
-    return new ClerkAuthProvider(clerkConfig);
+  static createAuthProvider(
+    config: ConfigDocument,
+    dependencies: {
+      appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
+      clerkClient?: ConstructorParameters<typeof ClerkAuthProvider>[1]["clerkClient"];
+    } = {},
+  ): AuthProvider {
+    const clerkConfig = config.auth.clerk;
+    return new ClerkAuthProvider(clerkConfig, {
+      appRuntimeDatabase: dependencies.appRuntimeDatabase,
+      clerkClient: dependencies.clerkClient,
+    });
   }
 
   static extractBearerToken(authorizationHeader: unknown): string | null {

@@ -23,10 +23,14 @@ class ClerkAuthProviderTestHarness {
 
   static createMissingRecordsDatabaseMock() {
     const insertedValues: Array<Record<string, unknown>> = [];
+    const scopedCompanyIds: string[] = [];
     let selectCallCount = 0;
     let insertCallCount = 0;
 
     const transaction = {
+      async execute() {
+        return [];
+      },
       select() {
         selectCallCount += 1;
         if (selectCallCount <= 3) {
@@ -89,6 +93,7 @@ class ClerkAuthProviderTestHarness {
 
     return {
       insertedValues,
+      scopedCompanyIds,
       async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
         return callback(transaction);
       },
@@ -96,9 +101,13 @@ class ClerkAuthProviderTestHarness {
   }
 
   static createExistingRecordsDatabaseMock() {
+    const scopedCompanyIds: string[] = [];
     let selectCallCount = 0;
 
     const transaction = {
+      async execute() {
+        return [];
+      },
       select() {
         selectCallCount += 1;
         if (selectCallCount === 1) {
@@ -164,6 +173,7 @@ class ClerkAuthProviderTestHarness {
     };
 
     return {
+      scopedCompanyIds,
       async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
         return callback(transaction);
       },
@@ -172,9 +182,15 @@ class ClerkAuthProviderTestHarness {
 }
 
 test("clerk auth provider provisions missing local user, company, and membership from JWT claims", async () => {
+  const db = ClerkAuthProviderTestHarness.createMissingRecordsDatabaseMock();
   const provider = new ClerkAuthProvider(
     ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
     {
+      appRuntimeDatabase: {
+        async applyCompanyContext(_database, companyId) {
+          db.scopedCompanyIds.push(companyId);
+        },
+      },
       clerkClient: {
         async authenticateRequest() {
           return {
@@ -197,11 +213,8 @@ test("clerk auth provider provisions missing local user, company, and membership
       },
     },
   );
-  const db = ClerkAuthProviderTestHarness.createMissingRecordsDatabaseMock();
 
-  const session = await provider.authenticateBearerToken(db as never, "clerk-token", {
-    "x-company-id": "ignored-company-id",
-  });
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
 
   assert.deepEqual(session, {
     token: "clerk-token",
@@ -223,12 +236,19 @@ test("clerk auth provider provisions missing local user, company, and membership
   assert.equal(db.insertedValues[1]?.clerkOrganizationId, "org_clerk_1");
   assert.equal(db.insertedValues[2]?.companyId, "local-company-1");
   assert.equal(db.insertedValues[2]?.userId, "local-user-1");
+  assert.deepEqual(db.scopedCompanyIds, ["local-company-1"]);
 });
 
 test("clerk auth provider reuses existing local user and company when already provisioned", async () => {
+  const db = ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock();
   const provider = new ClerkAuthProvider(
     ClerkAuthProviderTestHarness.createConfigMock().auth.clerk!,
     {
+      appRuntimeDatabase: {
+        async applyCompanyContext(_database, companyId) {
+          db.scopedCompanyIds.push(companyId);
+        },
+      },
       clerkClient: {
         async authenticateRequest() {
           return {
@@ -252,11 +272,8 @@ test("clerk auth provider reuses existing local user and company when already pr
       },
     },
   );
-  const db = ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock();
 
-  const session = await provider.authenticateBearerToken(db as never, "clerk-token", {
-    "x-company-id": "ignored-company-id",
-  });
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
 
   assert.deepEqual(session, {
     token: "clerk-token",
@@ -273,6 +290,7 @@ test("clerk auth provider reuses existing local user and company when already pr
       name: "Existing Org",
     },
   });
+  assert.deepEqual(db.scopedCompanyIds, ["local-company-9"]);
 });
 
 test("clerk auth provider rejects unauthenticated request states from Clerk", async () => {
@@ -290,9 +308,7 @@ test("clerk auth provider rejects unauthenticated request states from Clerk", as
   );
 
   await assert.rejects(
-    provider.authenticateBearerToken(ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock() as never, "clerk-token", {
-      "x-company-id": "ignored-company-id",
-    }),
+    provider.authenticateBearerToken(ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock() as never, "clerk-token"),
     /Clerk bearer token is invalid\./,
   );
 });

@@ -6,8 +6,6 @@ import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlAppRuntimeDatabase } from "../src/graphql/graphql_app_runtime_database.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
-import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
-import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
@@ -20,7 +18,7 @@ class ModelProviderCredentialsQueryTestHarness {
         graphiql: false,
       },
       auth: {
-        provider: "companyhelm",
+        provider: "clerk",
       },
     } as ConfigDocument;
   }
@@ -87,19 +85,11 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
         },
       };
     },
-    async signIn() {
-      throw new Error("unused");
-    },
-    async signUp() {
-      throw new Error("unused");
-    },
   };
 
   await new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(graphqlDatabase),
-    new SignInMutation(authProvider as never, database),
-    new SignUpMutation(authProvider as never, database),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
@@ -150,19 +140,11 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
     async authenticateBearerToken() {
       throw new Error("unused");
     },
-    async signIn() {
-      throw new Error("unused");
-    },
-    async signUp() {
-      throw new Error("unused");
-    },
   };
 
   await new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(graphqlDatabase),
-    new SignInMutation(authProvider as never, database),
-    new SignUpMutation(authProvider as never, database),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),

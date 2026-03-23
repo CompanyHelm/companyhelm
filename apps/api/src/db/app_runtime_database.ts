@@ -29,20 +29,33 @@ export class AppRuntimeDatabase {
     return this.database as AuthProviderDatabase;
   }
 
-  async withCompanyContext<T>(
+  async applyCompanyContext(
+    database: AuthProviderDatabase,
     companyId: string,
-    callback: (database: AuthProviderDatabase) => Promise<T>,
-  ): Promise<T> {
+  ): Promise<void> {
     const normalizedCompanyId = String(companyId || "").trim();
     if (!normalizedCompanyId) {
       throw new Error("Company ID is required.");
     }
 
-    return this.database.transaction(async (transaction) => {
-      await transaction.execute(
-        sql`select set_config('app.current_company_id', ${normalizedCompanyId}, true)`,
-      );
+    const companyContextDatabase = database as AuthProviderDatabase & {
+      execute?(query: unknown): Promise<unknown>;
+    };
+    if (typeof companyContextDatabase.execute !== "function") {
+      throw new Error("Configured database does not support company context binding.");
+    }
 
+    await companyContextDatabase.execute(
+      sql`select set_config('app.current_company_id', ${normalizedCompanyId}, true)`,
+    );
+  }
+
+  async withCompanyContext<T>(
+    companyId: string,
+    callback: (database: AuthProviderDatabase) => Promise<T>,
+  ): Promise<T> {
+    return this.database.transaction(async (transaction) => {
+      await this.applyCompanyContext(transaction as AuthProviderDatabase, companyId);
       return callback(transaction as AuthProviderDatabase);
     });
   }

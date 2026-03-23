@@ -14,15 +14,12 @@ export class GraphqlSchema {
     return [
       "./query.graphql",
       "./mutation.graphql",
-      "./types/auth_session.graphql",
       "./types/authenticated_company.graphql",
       "./types/authenticated_user.graphql",
       "./types/me_user.graphql",
       "./types/me.graphql",
       "./types/model_provider_credential.graphql",
       "./inputs/add_model_provider_credential_input.graphql",
-      "./inputs/sign_in_input.graphql",
-      "./inputs/sign_up_input.graphql",
     ]
       .map((relativePath) => readFileSync(new URL(relativePath, import.meta.url), "utf8").trim())
       .join("\n\n");

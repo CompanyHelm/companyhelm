@@ -8,17 +8,6 @@ const DatabaseRoleSchema = z.object({
   password: NonEmptyStringSchema,
 });
 
-const CompanyhelmAuthSchema = z.object({
-  provider: z.literal("companyhelm"),
-  companyhelm: z.object({
-    jwt_private_key_pem: NonEmptyStringSchema,
-    jwt_public_key_pem: NonEmptyStringSchema,
-    jwt_issuer: NonEmptyStringSchema,
-    jwt_audience: NonEmptyStringSchema,
-    jwt_expiration_seconds: PositiveIntegerSchema,
-  }),
-});
-
 const ClerkAuthSchema = z.object({
   provider: z.literal("clerk"),
   clerk: z.object({
@@ -65,7 +54,6 @@ export const Config = z.object({
     app_link: NonEmptyStringSchema,
   }),
   auth: z.discriminatedUnion("provider", [
-    CompanyhelmAuthSchema,
     ClerkAuthSchema,
   ]),
   security: z.object({

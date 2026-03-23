@@ -3,7 +3,7 @@ export type AuthenticatedUser = {
   email: string;
   firstName: string;
   lastName: string | null;
-  provider: "companyhelm" | "clerk";
+  provider: "clerk";
   providerSubject: string;
 };
 
@@ -16,18 +16,6 @@ export type AuthSession = {
   token: string;
   user: AuthenticatedUser;
   company: AuthenticatedCompany | null;
-};
-
-export type SignInInput = {
-  email: string;
-  password: string;
-};
-
-export type SignUpInput = {
-  email: string;
-  firstName: string;
-  lastName?: string | null;
-  password: string;
 };
 
 export type AuthenticateBearerTokenHeaders = Record<string, unknown>;
@@ -45,6 +33,7 @@ export type AuthProviderDatabaseTransaction = {
       returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
     };
   };
+  execute?(query: unknown): Promise<unknown>;
 };
 
 export type AuthProviderDatabase = {
@@ -55,6 +44,7 @@ export type AuthProviderDatabase = {
       };
     };
   };
+  execute?(query: unknown): Promise<unknown>;
   transaction?<T>(callback: (transaction: AuthProviderDatabaseTransaction) => Promise<T>): Promise<T>;
 };
 
@@ -63,12 +53,10 @@ export type AuthProviderDatabase = {
  * configured provider singleton.
  */
 export abstract class AuthProvider {
-  abstract readonly name: "companyhelm" | "clerk";
+  abstract readonly name: "clerk";
   abstract authenticateBearerToken(
     db: AuthProviderDatabase,
     token: string,
     headers: AuthenticateBearerTokenHeaders,
   ): Promise<AuthSession>;
-  abstract signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession>;
-  abstract signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession>;
 }

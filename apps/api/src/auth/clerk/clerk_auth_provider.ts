@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { createClerkClient } from "@clerk/backend";
 import type { Config } from "../../config/schema.ts";
+import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import { companies, companyMembers, users } from "../../db/schema.ts";
 import {
   AuthProvider,
@@ -8,8 +9,6 @@ import {
   type AuthProviderDatabaseTransaction,
   type AuthenticateBearerTokenHeaders,
   type AuthSession,
-  type SignInInput,
-  type SignUpInput,
 } from "../auth_provider.ts";
 
 type UserRecord = {
@@ -33,15 +32,20 @@ export class ClerkAuthProvider extends AuthProvider {
   readonly name = "clerk" as const;
   private readonly clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
   private readonly config: NonNullable<Config["auth"]["clerk"]>;
+  private readonly database: Pick<AppRuntimeDatabase, "applyCompanyContext">;
 
   constructor(
     config: NonNullable<Config["auth"]["clerk"]>,
     dependencies: {
+      appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
       clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
     } = {},
   ) {
     super();
     this.config = config;
+    this.database = dependencies.appRuntimeDatabase ?? {
+      async applyCompanyContext() {},
+    };
     this.clerkClient = dependencies.clerkClient ?? createClerkClient({
       secretKey: config.secret_key,
       publishableKey: config.publishable_key,
@@ -97,6 +101,10 @@ export class ClerkAuthProvider extends AuthProvider {
         providerSubject: organizationSubject,
         name: organizationName,
       });
+      await this.database.applyCompanyContext(
+        transaction as AuthProviderDatabase,
+        company.id,
+      );
       await this.ensureMembership(transaction, {
         companyId: company.id,
         userId: user.id,
@@ -118,18 +126,6 @@ export class ClerkAuthProvider extends AuthProvider {
         },
       };
     });
-  }
-
-  async signUp(db: AuthProviderDatabase, input: SignUpInput): Promise<AuthSession> {
-    void db;
-    void input;
-    throw new Error("Clerk auth provider does not support sign up.");
-  }
-
-  async signIn(db: AuthProviderDatabase, input: SignInInput): Promise<AuthSession> {
-    void db;
-    void input;
-    throw new Error("Clerk auth provider does not support sign in.");
   }
 
   private async findOrCreateUser(

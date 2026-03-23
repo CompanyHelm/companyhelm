@@ -10,10 +10,8 @@ import { Config } from "../src/config/schema.ts";
  * Creates isolated config fixtures so the shared Config loader can be exercised with the API schema.
  */
 class AppConfigTestHarness {
-  static createFixtureConfigPath(provider: "companyhelm" | "clerk" = "companyhelm"): {
+  static createFixtureConfigPath(): {
     configPath: string;
-    privateKeyVariableName: string;
-    publicKeyVariableName: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
     clerkJwtKeyVariableName: string;
@@ -24,8 +22,6 @@ class AppConfigTestHarness {
     const fixturePath = mkdtempSync(join(tmpdir(), "companyhelm-config-"));
     const configDirectoryPath = join(fixturePath, "config");
     const configPath = join(configDirectoryPath, "local.yaml");
-    const privateKeyVariableName = "COMPANYHELM_TEST_PRIVATE_KEY";
-    const publicKeyVariableName = "COMPANYHELM_TEST_PUBLIC_KEY";
     const clerkSecretKeyVariableName = "COMPANYHELM_TEST_CLERK_SECRET_KEY";
     const clerkPublishableKeyVariableName = "COMPANYHELM_TEST_CLERK_PUBLISHABLE_KEY";
     const clerkJwtKeyVariableName = "COMPANYHELM_TEST_CLERK_JWT_KEY";
@@ -33,8 +29,6 @@ class AppConfigTestHarness {
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
 
-    process.env[privateKeyVariableName] = "private-key";
-    process.env[publicKeyVariableName] = "public-key";
     process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
     process.env[clerkJwtKeyVariableName] = "clerk-jwt-key";
@@ -46,23 +40,18 @@ class AppConfigTestHarness {
     writeFileSync(
       configPath,
       AppConfigTestHarness.createConfigDocument({
-        provider,
         githubClientVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
         clerkSecretKeyVariableName,
         clerkPublishableKeyVariableName,
         clerkJwtKeyVariableName,
-        privateKeyVariableName,
-        publicKeyVariableName,
       }),
       "utf8",
     );
 
     return {
       configPath,
-      privateKeyVariableName,
-      publicKeyVariableName,
       clerkSecretKeyVariableName,
       clerkPublishableKeyVariableName,
       clerkJwtKeyVariableName,
@@ -73,28 +62,14 @@ class AppConfigTestHarness {
   }
 
   private static createConfigDocument(params: {
-    provider: "companyhelm" | "clerk";
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
     clerkJwtKeyVariableName: string;
-    privateKeyVariableName: string;
-    publicKeyVariableName: string;
   }): string {
-    const authDocument = params.provider === "companyhelm"
-      ? `
-auth:
-  provider: "companyhelm"
-  companyhelm:
-    jwt_private_key_pem: "\${${params.privateKeyVariableName}}"
-    jwt_public_key_pem: "\${${params.publicKeyVariableName}}"
-    jwt_issuer: "companyhelm.local"
-    jwt_audience: "companyhelm-web"
-    jwt_expiration_seconds: 86400
-`.trim()
-      : `
+    const authDocument = `
 auth:
   provider: "clerk"
   clerk:
@@ -195,14 +170,12 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     port: 6379,
   });
   assert.equal(document.github.app_client_id, "client-id");
-  assert.equal(
-    document.auth.companyhelm?.jwt_private_key_pem,
-    "private-key",
-  );
+  assert.equal(document.auth.provider, "clerk");
+  assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
 });
 
 test("AppConfig loads Clerk auth settings from local.yaml", () => {
-  const fixture = AppConfigTestHarness.createFixtureConfigPath("clerk");
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const document = ConfigLoader.load(fixture.configPath, Config);
 
   assert.equal(document.auth.provider, "clerk");

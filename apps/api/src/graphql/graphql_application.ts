@@ -4,8 +4,6 @@ import type { FastifyInstance } from "fastify";
 import { Config, type ConfigDocument } from "../config/schema.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
-import { SignInMutation } from "./mutations/sign_in.ts";
-import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 import { MeQueryResolver } from "./resolvers/me.ts";
@@ -22,14 +20,10 @@ export class GraphqlApplication {
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
-  private readonly signInMutation: SignInMutation;
-  private readonly signUpMutation: SignUpMutation;
 
   constructor(
     config: ConfigDocument,
     addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
-    signInMutation: SignInMutation,
-    signUpMutation: SignUpMutation,
     graphqlRequestContextResolver: GraphqlRequestContextResolver,
     healthQueryResolver: HealthQueryResolver,
     meQueryResolver: MeQueryResolver,
@@ -37,8 +31,6 @@ export class GraphqlApplication {
   ) {
     this.configDocument = config;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
-    this.signInMutation = signInMutation;
-    this.signUpMutation = signUpMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
     this.healthQueryResolver = healthQueryResolver;
     this.meQueryResolver = meQueryResolver;
@@ -57,8 +49,6 @@ export class GraphqlApplication {
         },
         Mutation: {
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
-          SignIn: this.signInMutation.execute,
-          SignUp: this.signUpMutation.execute,
         },
       },
       path: this.configDocument.graphql.endpoint,
@@ -69,9 +59,7 @@ export class GraphqlApplication {
 
 decorate(inject(Config), GraphqlApplication, 0);
 decorate(inject(AddModelProviderCredentialMutation), GraphqlApplication, 1);
-decorate(inject(SignInMutation), GraphqlApplication, 2);
-decorate(inject(SignUpMutation), GraphqlApplication, 3);
-decorate(inject(GraphqlRequestContextResolver), GraphqlApplication, 4);
-decorate(inject(HealthQueryResolver), GraphqlApplication, 5);
-decorate(inject(MeQueryResolver), GraphqlApplication, 6);
-decorate(inject(ModelProviderCredentialsQueryResolver), GraphqlApplication, 7);
+decorate(inject(GraphqlRequestContextResolver), GraphqlApplication, 2);
+decorate(inject(HealthQueryResolver), GraphqlApplication, 3);
+decorate(inject(MeQueryResolver), GraphqlApplication, 4);
+decorate(inject(ModelProviderCredentialsQueryResolver), GraphqlApplication, 5);
