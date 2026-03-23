@@ -4,6 +4,7 @@ import type {
 } from "../../auth/auth_provider.ts";
 import { AuthProvider } from "../../auth/auth_provider.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
+import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type SignUpMutationArguments = {
@@ -32,7 +33,11 @@ export class SignUpMutation extends Mutation<SignUpMutationArguments, AuthSessio
     this.database = database;
   }
 
-  protected resolve = async (arguments_: SignUpMutationArguments) => {
+  protected resolve = async (
+    arguments_: SignUpMutationArguments,
+    _context: GraphqlRequestContext,
+  ) => {
+    void _context;
     return this.authProvider.signUp(this.database.getDatabase(), {
       email: arguments_.input.email,
       firstName: arguments_.input.firstName,

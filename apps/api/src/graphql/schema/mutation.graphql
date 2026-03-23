@@ -1,4 +1,5 @@
 type Mutation {
+  AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   SignIn(input: SignInInput!): AuthSession!
   SignUp(input: SignUpInput!): AuthSession!
 }

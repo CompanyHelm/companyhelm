@@ -2,6 +2,8 @@ import { decorate, inject, injectable } from "inversify";
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import { Config, type ConfigDocument } from "../config/schema.ts";
+import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
+import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { SignInMutation } from "./mutations/sign_in.ts";
 import { SignUpMutation } from "./mutations/sign_up.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -13,17 +15,20 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
 @injectable("Singleton")
 export class GraphqlApplication {
   private readonly configDocument;
+  private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly signInMutation: SignInMutation;
   private readonly signUpMutation: SignUpMutation;
 
   constructor(
     config: ConfigDocument,
+    addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
     signInMutation: SignInMutation,
     signUpMutation: SignUpMutation,
     healthQueryResolver: HealthQueryResolver,
   ) {
     this.configDocument = config;
+    this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.signInMutation = signInMutation;
     this.signUpMutation = signUpMutation;
     this.healthQueryResolver = healthQueryResolver;
@@ -32,11 +37,13 @@ export class GraphqlApplication {
   async register(app: FastifyInstance): Promise<void> {
     await app.register(mercurius, {
       schema: GraphqlSchema.getDocument(),
+      context: (request) => GraphqlRequestContextResolver.resolve(request),
       resolvers: {
         Query: {
           health: this.healthQueryResolver.execute,
         },
         Mutation: {
+          AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           SignIn: this.signInMutation.execute,
           SignUp: this.signUpMutation.execute,
         },
@@ -48,6 +55,7 @@ export class GraphqlApplication {
 }
 
 decorate(inject(Config), GraphqlApplication, 0);
-decorate(inject(SignInMutation), GraphqlApplication, 1);
-decorate(inject(SignUpMutation), GraphqlApplication, 2);
-decorate(inject(HealthQueryResolver), GraphqlApplication, 3);
+decorate(inject(AddModelProviderCredentialMutation), GraphqlApplication, 1);
+decorate(inject(SignInMutation), GraphqlApplication, 2);
+decorate(inject(SignUpMutation), GraphqlApplication, 3);
+decorate(inject(HealthQueryResolver), GraphqlApplication, 4);

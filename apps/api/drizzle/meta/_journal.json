@@ -29,6 +29,13 @@
       "when": 1774223628019,
       "tag": "0003_milky_maximus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774229368838,
+      "tag": "0004_opposite_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

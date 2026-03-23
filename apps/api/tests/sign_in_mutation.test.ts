@@ -6,6 +6,7 @@ import { AuthProviderFactory } from "../src/auth/auth_provider_factory.ts";
 import { PasswordService } from "../src/auth/companyhelm/password_service.ts";
 import type { ConfigDocument } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
 import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
@@ -96,6 +97,7 @@ test("GraphQL SignIn mutation creates a session for a matching local user", asyn
 
   await new GraphqlApplication(
     config,
+    new AddModelProviderCredentialMutation(database),
     new SignInMutation(authProvider, database),
     new SignUpMutation(authProvider, database),
     new HealthQueryResolver(),

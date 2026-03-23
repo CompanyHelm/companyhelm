@@ -2,6 +2,7 @@ import { decorate, inject, injectable } from "inversify";
 import type { AuthSession } from "../../auth/auth_provider.ts";
 import { AuthProvider } from "../../auth/auth_provider.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
+import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type SignInMutationArguments = {
@@ -28,7 +29,11 @@ export class SignInMutation extends Mutation<SignInMutationArguments, AuthSessio
     this.database = database;
   }
 
-  protected resolve = async (arguments_: SignInMutationArguments) => {
+  protected resolve = async (
+    arguments_: SignInMutationArguments,
+    _context: GraphqlRequestContext,
+  ) => {
+    void _context;
     return this.authProvider.signIn(this.database.getDatabase(), {
       email: arguments_.input.email,
       password: arguments_.input.password,
