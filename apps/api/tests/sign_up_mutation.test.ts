@@ -11,6 +11,7 @@ import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
 import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
+import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -109,6 +110,7 @@ test("GraphQL SignUp mutation creates a session when lastName is omitted", async
     new GraphqlRequestContextResolver(authProvider, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(database),
   ).register(app);
 
   const response = await app.inject({

@@ -8,9 +8,6 @@ type AddModelProviderCredentialMutationArguments = {
   input: {
     apiKey: string;
     modelProvider: string;
-    name: string;
-    refreshToken?: string | null;
-    type: string;
   };
 };
 
@@ -19,7 +16,7 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   name: string;
   modelProvider: "openai";
-  type: "api_key" | "oauth_token";
+  type: "api_key";
   refreshToken: string | null;
   refreshedAt: Date | null;
   createdAt: Date;
@@ -55,28 +52,15 @@ export class AddModelProviderCredentialMutation extends Mutation<
   ) => {
     const companyId = String(context.authSession?.company?.id || "").trim();
     if (!companyId) {
-      throw new Error("Missing authenticated company.");
-    }
-
-    const normalizedName = String(arguments_.input.name || "").trim();
-    if (!normalizedName) {
-      throw new Error("Credential name is required.");
+      throw new Error("Authentication required.");
     }
 
     const modelProvider = AddModelProviderCredentialMutation.normalizeModelProvider(
       arguments_.input.modelProvider,
     );
-    const credentialType = AddModelProviderCredentialMutation.normalizeCredentialType(
-      arguments_.input.type,
-    );
     const normalizedApiKey = String(arguments_.input.apiKey || "").trim();
     if (!normalizedApiKey) {
       throw new Error("apiKey is required.");
-    }
-
-    const normalizedRefreshToken = String(arguments_.input.refreshToken || "").trim() || null;
-    if (credentialType === "oauth_token" && !normalizedRefreshToken) {
-      throw new Error("refreshToken is required for oauth_token credentials.");
     }
 
     const now = new Date();
@@ -85,12 +69,12 @@ export class AddModelProviderCredentialMutation extends Mutation<
       .insert(modelProviderCredentials)
       .values({
         companyId,
-        name: normalizedName,
+        name: AddModelProviderCredentialMutation.resolveCredentialName(modelProvider),
         modelProvider,
-        type: credentialType,
+        type: "api_key",
         encryptedApiKey: normalizedApiKey,
-        refreshToken: normalizedRefreshToken,
-        refreshedAt: credentialType === "oauth_token" ? now : null,
+        refreshToken: null,
+        refreshedAt: null,
         createdAt: now,
         updatedAt: now,
       })
@@ -121,12 +105,12 @@ export class AddModelProviderCredentialMutation extends Mutation<
     return normalizedModelProvider;
   }
 
-  private static normalizeCredentialType(rawCredentialType: string): "api_key" | "oauth_token" {
-    const normalizedCredentialType = String(rawCredentialType || "").trim();
-    if (normalizedCredentialType !== "api_key" && normalizedCredentialType !== "oauth_token") {
-      throw new Error("Unsupported credential type.");
+  private static resolveCredentialName(modelProvider: "openai"): string {
+    if (modelProvider === "openai") {
+      return "OpenAI / Codex";
     }
-    return normalizedCredentialType;
+
+    throw new Error("Unsupported model provider.");
   }
 }
 

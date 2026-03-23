@@ -11,7 +11,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 
-class AddModelProviderCredentialMutationTestHarness {
+class ModelProviderCredentialsQueryTestHarness {
   static createConfigMock(): ConfigDocument {
     return {
       graphql: {
@@ -25,29 +25,27 @@ class AddModelProviderCredentialMutationTestHarness {
   }
 
   static createDatabaseMock() {
-    const insertedValues: Array<Record<string, unknown>> = [];
+    const rows = [{
+      id: "credential-1",
+      companyId: "company-123",
+      name: "OpenAI / Codex",
+      modelProvider: "openai",
+      type: "api_key",
+      refreshToken: null,
+      refreshedAt: null,
+      createdAt: new Date("2026-03-20T10:00:00.000Z"),
+      updatedAt: new Date("2026-03-20T10:00:00.000Z"),
+    }];
 
     return {
-      insertedValues,
       getDatabase() {
         return {
-          insert() {
+          select() {
             return {
-              values(value: Record<string, unknown>) {
-                insertedValues.push(value);
+              from() {
                 return {
-                  async returning() {
-                    return [{
-                      id: "credential-1",
-                      companyId: String(value.companyId),
-                      name: String(value.name),
-                      modelProvider: value.modelProvider,
-                      type: value.type,
-                      refreshToken: value.refreshToken ?? null,
-                      refreshedAt: value.refreshedAt ?? null,
-                      createdAt: value.createdAt,
-                      updatedAt: value.updatedAt,
-                    }];
+                  async where() {
+                    return rows;
                   },
                 };
               },
@@ -59,10 +57,10 @@ class AddModelProviderCredentialMutationTestHarness {
   }
 }
 
-test("GraphQL AddModelProviderCredential mutation uses the authenticated company from the bearer token", async () => {
+test("GraphQL ModelProviderCredentials query lists credentials for the authenticated company", async () => {
   const app = Fastify();
-  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
-  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
+  const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -108,39 +106,77 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     },
     payload: {
       query: `
-        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
-          AddModelProviderCredential(input: $input) {
+        query ModelProviderCredentials {
+          ModelProviderCredentials {
             id
             companyId
             name
             modelProvider
             type
-            refreshToken
           }
         }
       `,
-      variables: {
-        input: {
-          modelProvider: "openai",
-          apiKey: "secret-value",
-        },
-      },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.AddModelProviderCredential, {
+  assert.deepEqual(document.data.ModelProviderCredentials, [{
     id: "credential-1",
     companyId: "company-123",
     name: "OpenAI / Codex",
     modelProvider: "openai",
     type: "api_key",
-    refreshToken: null,
+  }]);
+
+  await app.close();
+});
+
+test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", async () => {
+  const app = Fastify();
+  const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
+  const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
+  const authProvider = {
+    async authenticateBearerToken() {
+      throw new Error("unused");
+    },
+    async signIn() {
+      throw new Error("unused");
+    },
+    async signUp() {
+      throw new Error("unused");
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(database),
+    new SignInMutation(authProvider as never, database),
+    new SignUpMutation(authProvider as never, database),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(database),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    payload: {
+      query: `
+        query ModelProviderCredentials {
+          ModelProviderCredentials {
+            id
+          }
+        }
+      `,
+    },
   });
-  assert.equal(database.insertedValues.length, 1);
-  assert.equal(database.insertedValues[0]?.companyId, "company-123");
-  assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.data, null);
+  assert.equal(document.errors?.[0]?.message, "Authentication required.");
 
   await app.close();
 });

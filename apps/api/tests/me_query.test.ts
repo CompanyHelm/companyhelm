@@ -9,6 +9,7 @@ import { SignInMutation } from "../src/graphql/mutations/sign_in.ts";
 import { SignUpMutation } from "../src/graphql/mutations/sign_up.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
+import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 
 class MeQueryTestHarness {
   static createConfigMock(): ConfigDocument {
@@ -70,6 +71,7 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(database),
   ).register(app);
 
   const response = await app.inject({
@@ -140,6 +142,7 @@ test("GraphQL Me query rejects unauthenticated requests", async () => {
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(database),
   ).register(app);
 
   const response = await app.inject({

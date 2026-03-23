@@ -8,6 +8,10 @@ export class Config {
         import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
         "",
       ),
+      graphqlUrl: Config.resolveStringValue(
+        import.meta.env.VITE_GRAPHQL_URL,
+        "http://localhost:4000/graphql",
+      ),
     };
   }
 

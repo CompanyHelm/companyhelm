@@ -1,4 +1,5 @@
 type Query {
   health: String!
   Me: Me!
+  ModelProviderCredentials: [ModelProviderCredential!]!
 }

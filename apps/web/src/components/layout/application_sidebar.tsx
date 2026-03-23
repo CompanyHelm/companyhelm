@@ -1,6 +1,7 @@
 import { OrganizationSwitcher, UserButton, useUser } from "@clerk/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  KeyRoundIcon,
   LayoutDashboardIcon,
   MoonIcon,
   SunIcon,
@@ -69,6 +70,16 @@ export function ApplicationSidebar() {
                 >
                   <LayoutDashboardIcon />
                   <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname === "/model-provider-credentials"}
+                  render={<Link to="/model-provider-credentials" />}
+                  tooltip="Credentials"
+                >
+                  <KeyRoundIcon />
+                  <span>Credentials</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
