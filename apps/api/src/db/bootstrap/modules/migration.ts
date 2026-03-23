@@ -9,7 +9,6 @@ export async function runMigrationBootstrapModule(params: {
 }): Promise<void> {
   const db = drizzle(params.sqlClient);
   await params.sqlClient`SET statement_timeout = 0`;
-  await params.sqlClient`SET lock_timeout = 0`;
   await params.sqlClient`
     SELECT set_config('app.runtime_role', ${params.runtimeRoleName}, false)
   `;
@@ -19,7 +18,6 @@ export async function runMigrationBootstrapModule(params: {
       migrationsFolder: params.migrationsFolder,
     });
   } finally {
-    await params.sqlClient`RESET lock_timeout`;
     await params.sqlClient`RESET statement_timeout`;
   }
 }
