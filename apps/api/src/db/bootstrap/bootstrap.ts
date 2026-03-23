@@ -1,9 +1,8 @@
-import { resolve } from "node:path";
 import { inject, injectable } from "inversify";
-import { Config } from "../config/schema.ts";
-import { AdminDatabase } from "./admin_database.ts";
-import { runAppRuntimeRoleBootstrapModule } from "./bootstrap/modules/app-runtime-role.ts";
-import { runMigrationBootstrapModule } from "./bootstrap/modules/migration.ts";
+import { AdminDatabase } from "../admin_database.ts";
+import type { BootstrapModuleInterface } from "./bootstrap_module_interface.ts";
+import { AppRuntimeRoleBootstrapModule } from "./modules/app-runtime-role.ts";
+import { MigrationBootstrapModule } from "./modules/migration.ts";
 
 const DB_BOOTSTRAP_LOCK_NAMESPACE = 23241;
 const DB_BOOTSTRAP_LOCK_ID = 1;
@@ -15,14 +14,17 @@ const DB_BOOTSTRAP_LOCK_ID = 1;
 @injectable()
 export class DbBootstrap {
   private readonly adminDatabase: AdminDatabase;
-  private readonly config: Config;
+  private readonly appRuntimeRoleBootstrapModule: BootstrapModuleInterface;
+  private readonly migrationBootstrapModule: BootstrapModuleInterface;
 
   constructor(
     @inject(AdminDatabase) adminDatabase: AdminDatabase,
-    @inject(Config) config: Config,
+    @inject(AppRuntimeRoleBootstrapModule) appRuntimeRoleBootstrapModule: BootstrapModuleInterface,
+    @inject(MigrationBootstrapModule) migrationBootstrapModule: BootstrapModuleInterface,
   ) {
     this.adminDatabase = adminDatabase;
-    this.config = config;
+    this.appRuntimeRoleBootstrapModule = appRuntimeRoleBootstrapModule;
+    this.migrationBootstrapModule = migrationBootstrapModule;
   }
 
   /**
@@ -30,7 +32,6 @@ export class DbBootstrap {
    * the same locked session.
    */
   async run(): Promise<void> {
-    const runtimeRole = this.config.database.roles.app_runtime;
     const sqlClient = this.adminDatabase.getSqlClient();
     let lockHeld = false;
 
@@ -47,17 +48,8 @@ export class DbBootstrap {
         lockHeld = true;
       }
 
-      await runAppRuntimeRoleBootstrapModule({
-        roleName: runtimeRole.username,
-        rolePassword: runtimeRole.password,
-        sqlClient,
-      });
-
-      await runMigrationBootstrapModule({
-        migrationsFolder: resolve(process.cwd(), "drizzle"),
-        runtimeRoleName: runtimeRole.username,
-        sqlClient,
-      });
+      await this.appRuntimeRoleBootstrapModule.run();
+      await this.migrationBootstrapModule.run();
     } finally {
       if (lockHeld) {
         await sqlClient`

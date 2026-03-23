@@ -4,7 +4,7 @@ import { ApiContainer } from "./src/api_container.ts";
 import { ConfigLoader } from "./src/config/config_loader.ts";
 import { Config, ConfigDocument } from "./src/config/schema.ts";
 import { ApiServer } from "./src/server/api_server.ts";
-import { DbBootstrap } from "./src/db/bootstrap.ts";
+import { DbBootstrap } from "./src/db/bootstrap/bootstrap.ts";
 
 try {
   const argumentsDocument = new ApiCli().parse(process.argv);
