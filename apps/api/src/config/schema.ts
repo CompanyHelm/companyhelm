@@ -13,7 +13,7 @@ const ClerkAuthSchema = z.object({
   clerk: z.object({
     secret_key: NonEmptyStringSchema,
     publishable_key: NonEmptyStringSchema,
-    jwt_key: NonEmptyStringSchema,
+    jwks_url: NonEmptyStringSchema,
     authorized_parties: z.array(NonEmptyStringSchema).min(1),
   }),
 });

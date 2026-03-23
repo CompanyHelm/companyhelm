@@ -14,7 +14,7 @@ class AppConfigTestHarness {
     configPath: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
-    clerkJwtKeyVariableName: string;
+    clerkJwksUrlVariableName: string;
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
@@ -24,14 +24,14 @@ class AppConfigTestHarness {
     const configPath = join(configDirectoryPath, "local.yaml");
     const clerkSecretKeyVariableName = "COMPANYHELM_TEST_CLERK_SECRET_KEY";
     const clerkPublishableKeyVariableName = "COMPANYHELM_TEST_CLERK_PUBLISHABLE_KEY";
-    const clerkJwtKeyVariableName = "COMPANYHELM_TEST_CLERK_JWT_KEY";
+    const clerkJwksUrlVariableName = "COMPANYHELM_TEST_CLERK_JWKS_URL";
     const githubClientVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
 
     process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
-    process.env[clerkJwtKeyVariableName] = "clerk-jwt-key";
+    process.env[clerkJwksUrlVariableName] = "https://clerk.example/.well-known/jwks.json";
     process.env[githubClientVariableName] = "client-id";
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
@@ -45,7 +45,7 @@ class AppConfigTestHarness {
         githubUrlVariableName,
         clerkSecretKeyVariableName,
         clerkPublishableKeyVariableName,
-        clerkJwtKeyVariableName,
+        clerkJwksUrlVariableName,
       }),
       "utf8",
     );
@@ -54,7 +54,7 @@ class AppConfigTestHarness {
       configPath,
       clerkSecretKeyVariableName,
       clerkPublishableKeyVariableName,
-      clerkJwtKeyVariableName,
+      clerkJwksUrlVariableName,
       githubClientVariableName,
       githubKeyVariableName,
       githubUrlVariableName,
@@ -67,7 +67,7 @@ class AppConfigTestHarness {
     githubUrlVariableName: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
-    clerkJwtKeyVariableName: string;
+    clerkJwksUrlVariableName: string;
   }): string {
     const authDocument = `
 auth:
@@ -75,7 +75,7 @@ auth:
   clerk:
     secret_key: "\${${params.clerkSecretKeyVariableName}}"
     publishable_key: "\${${params.clerkPublishableKeyVariableName}}"
-    jwt_key: "\${${params.clerkJwtKeyVariableName}}"
+    jwks_url: "\${${params.clerkJwksUrlVariableName}}"
     authorized_parties:
       - "http://localhost:5173"
 `.trim();
@@ -181,7 +181,7 @@ test("AppConfig loads Clerk auth settings from local.yaml", () => {
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
   assert.equal(document.auth.clerk?.publishable_key, "clerk-publishable-key");
-  assert.equal(document.auth.clerk?.jwt_key, "clerk-jwt-key");
+  assert.equal(document.auth.clerk?.jwks_url, "https://clerk.example/.well-known/jwks.json");
   assert.deepEqual(document.auth.clerk?.authorized_parties, ["http://localhost:5173"]);
   assert.equal(document.log.json, false);
 });

@@ -14,7 +14,7 @@ class ClerkAuthProviderTestHarness {
         clerk: {
           secret_key: "clerk-secret-key",
           publishable_key: "clerk-publishable-key",
-          jwt_key: "clerk-jwt-key",
+          jwks_url: "https://clerk.example/.well-known/jwks.json",
           authorized_parties: ["http://localhost:5173"],
         },
       },
@@ -211,6 +211,11 @@ test("clerk auth provider provisions missing local user, company, and membership
           };
         },
       },
+      jwtKeyLoader: {
+        async load() {
+          return "clerk-jwt-key";
+        },
+      },
     },
   );
 
@@ -270,6 +275,11 @@ test("clerk auth provider reuses existing local user and company when already pr
           };
         },
       },
+      jwtKeyLoader: {
+        async load() {
+          return "clerk-jwt-key";
+        },
+      },
     },
   );
 
@@ -302,6 +312,11 @@ test("clerk auth provider rejects unauthenticated request states from Clerk", as
           return {
             isAuthenticated: false,
           };
+        },
+      },
+      jwtKeyLoader: {
+        async load() {
+          return "clerk-jwt-key";
         },
       },
     },

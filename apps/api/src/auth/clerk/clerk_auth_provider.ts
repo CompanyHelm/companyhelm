@@ -10,6 +10,7 @@ import {
   type AuthenticateBearerTokenHeaders,
   type AuthSession,
 } from "../auth_provider.ts";
+import { ClerkJwtKeyLoader } from "./clerk_jwt_key_loader.ts";
 
 type UserRecord = {
   id: string;
@@ -31,6 +32,7 @@ type CompanyRecord = {
 export class ClerkAuthProvider extends AuthProvider {
   readonly name = "clerk" as const;
   private readonly clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
+  private readonly jwtKeyLoader: Pick<ClerkJwtKeyLoader, "load">;
   private readonly config: NonNullable<Config["auth"]["clerk"]>;
   private readonly database: Pick<AppRuntimeDatabase, "applyCompanyContext">;
 
@@ -39,6 +41,7 @@ export class ClerkAuthProvider extends AuthProvider {
     dependencies: {
       appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
       clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest">;
+      jwtKeyLoader?: Pick<ClerkJwtKeyLoader, "load">;
     } = {},
   ) {
     super();
@@ -50,6 +53,7 @@ export class ClerkAuthProvider extends AuthProvider {
       secretKey: config.secret_key,
       publishableKey: config.publishable_key,
     });
+    this.jwtKeyLoader = dependencies.jwtKeyLoader ?? new ClerkJwtKeyLoader(config);
   }
 
   async authenticateBearerToken(
@@ -62,11 +66,12 @@ export class ClerkAuthProvider extends AuthProvider {
       throw new Error("Configured database does not support transactions.");
     }
 
+    const jwtKey = await this.jwtKeyLoader.load(token);
     const requestState = await this.clerkClient.authenticateRequest(
       ClerkAuthProvider.createClerkRequest(token, this.config.authorized_parties[0]),
       {
         authorizedParties: this.config.authorized_parties,
-        jwtKey: this.config.jwt_key,
+        jwtKey,
       },
     );
     if (!requestState.isAuthenticated) {

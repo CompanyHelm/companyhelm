@@ -39,7 +39,7 @@ auth:
   clerk:
     secret_key: "${CLERK_SECRET_KEY}"
     publishable_key: "${CLERK_PUBLISHABLE_KEY}"
-    jwt_key: "${CLERK_JWT_KEY}"
+    jwks_url: "${CLERK_JWKS_URL}"
     authorized_parties:
       - "http://localhost:5173"
       - "http://localhost:4000"
