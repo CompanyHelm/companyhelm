@@ -3,7 +3,10 @@ import type { AuthSession } from "../../auth/auth_provider.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
-type MeQueryResult = Pick<AuthSession, "company" | "user">;
+type MeQueryResult = {
+  company: AuthSession["company"];
+  user: Omit<AuthSession["user"], "provider" | "providerSubject">;
+};
 
 /**
  * Resolves the authenticated user and company from the bearer-token-backed request context.
@@ -16,8 +19,8 @@ export class MeQueryResolver extends Resolver<MeQueryResult> {
     }
 
     return {
-      user: context.authSession.user,
       company: context.authSession.company,
+      user: context.authSession.user,
     };
   };
 }

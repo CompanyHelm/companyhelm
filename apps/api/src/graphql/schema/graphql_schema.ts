@@ -17,6 +17,7 @@ export class GraphqlSchema {
       "./types/auth_session.graphql",
       "./types/authenticated_company.graphql",
       "./types/authenticated_user.graphql",
+      "./types/me_user.graphql",
       "./types/me.graphql",
       "./types/model_provider_credential.graphql",
       "./inputs/add_model_provider_credential_input.graphql",

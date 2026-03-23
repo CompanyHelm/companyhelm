@@ -87,8 +87,6 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
               email
               firstName
               lastName
-              provider
-              providerSubject
             }
             company {
               id
@@ -108,8 +106,6 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
       email: "user@example.com",
       firstName: "User",
       lastName: "Example",
-      provider: "clerk",
-      providerSubject: "user_clerk_123",
     },
     company: {
       id: "company-123",
