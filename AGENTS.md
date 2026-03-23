@@ -17,13 +17,14 @@
 - there should be only a single class in every file, file name should be related to the class name (apart from casing)
 - class name should be related to the file path
 - do not use abstract classes unless the pattern really supports it, prefer interfaces. Or if you are binding an interface, prefer abstract class so type is present at runtime
+- every class should have non trivial comments to explain what is the class doing
 
 ## Interfaces
 
 - everything should have a as simple as possible interface, with non-trivial documentation
 - interfaces should be in their own file named {interface_name}_interface.ts
 - interfaces should have comment for each method, non trivial comments need to have depth to it
-- interfaces should be alongside the implemention files e.g. /auth/providers/interface.ts /auth/providers/companyehelm.ts
+- interfaces should be alongside the implemention files e.g. /auth/providers/provider_interface.ts /auth/providers/companyehelm.ts
 - omit interface file if there would be only 1 implementation of the interface, just keep the class (with comments)
 
 ## Tests

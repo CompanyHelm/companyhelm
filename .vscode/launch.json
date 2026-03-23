@@ -35,8 +35,8 @@
   ],
   "compounds": [
     {
-      "name": "Web (Dev + Brave)",
-      "configurations": ["Web Dev Server", "Web (Brave)"],
+      "name": "Web + API",
+      "configurations": ["Web Dev Server", "API"],
       "stopAll": true
     },
     {
