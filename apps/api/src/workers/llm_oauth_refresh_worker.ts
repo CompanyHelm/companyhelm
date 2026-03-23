@@ -1,4 +1,4 @@
-import { refreshOAuthToken, type OAuthCredentials, type OAuthProviderId } from "@mariozechner/pi-ai/oauth";
+import { getOAuthProvider, type OAuthCredentials, type OAuthProviderId } from "@mariozechner/pi-ai/oauth";
 import { inject, injectable } from "inversify";
 import { AdminDatabase } from "../db/admin_database.ts";
 import { WorkerBase } from "./worker_base.ts";
@@ -17,7 +17,7 @@ export type LlmOauthCredentialRow = {
  */
 @injectable()
 export class LlmOauthRefreshWorker extends WorkerBase {
-  private static readonly EXPIRY_WINDOW_MILLISECONDS = 10 * 60 * 1000;
+  private static readonly EXPIRY_WINDOW_MILLISECONDS = 20 * 60 * 1000;   // refresh tokens 20 minutes before they expire
   private static readonly INTERVAL_SECONDS = 60;
   private static readonly LOCK_BATCH_SIZE = 20;
   private readonly adminDatabase: AdminDatabase;
@@ -80,7 +80,12 @@ export class LlmOauthRefreshWorker extends WorkerBase {
       throw new Error("OAuth credential is missing a valid access token expiry.");
     }
 
-    return refreshOAuthToken(this.resolveOAuthProviderId(credential.modelProvider), {
+    const oauthProvider = getOAuthProvider(this.resolveOAuthProviderId(credential.modelProvider));
+    if (!oauthProvider) {
+      throw new Error(`OAuth provider is not registered for model provider ${credential.modelProvider}.`);
+    }
+
+    return oauthProvider.refreshToken({
       access: credential.encryptedApiKey,
       refresh: refreshToken,
       expires,
