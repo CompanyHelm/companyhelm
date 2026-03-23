@@ -33,7 +33,9 @@ export class GraphqlRequestContextResolver {
     }
 
     return {
-      authSession: await this.authProvider.authenticateBearerToken(this.database.getDatabase(), token),
+      authSession: await this.authProvider.authenticateBearerToken(this.database.getDatabase(), token, {
+        companyIdHeader: request.headers["x-company-id"],
+      }),
     };
   }
 }

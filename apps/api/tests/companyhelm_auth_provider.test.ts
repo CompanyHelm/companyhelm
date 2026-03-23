@@ -173,6 +173,23 @@ test("companyhelm auth provider signs up a new user and stores password credenti
 
 test("companyhelm auth provider authenticates a valid bearer token", async () => {
   const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
+  let selectCallCount = 0;
+  const db = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return CompanyhelmAuthProviderTestHarness.createMockSelectChain([{
+          id: "company-1",
+          name: "Example Company",
+        }]);
+      }
+
+      return CompanyhelmAuthProviderTestHarness.createMockSelectChain([{
+        companyId: "company-1",
+        userId: "user-1",
+      }]);
+    },
+  };
   const token = JwtService.signRs256Jwt({
     payload: {
       sub: "user-1",
@@ -187,7 +204,9 @@ test("companyhelm auth provider authenticates a valid bearer token", async () =>
     expiresInSeconds: 3600,
   });
 
-  const session = await provider.authenticateBearerToken({} as never, token);
+  const session = await provider.authenticateBearerToken(db as never, token, {
+    companyIdHeader: "company-1",
+  });
 
   assert.deepEqual(session, {
     token,
@@ -199,6 +218,47 @@ test("companyhelm auth provider authenticates a valid bearer token", async () =>
       provider: "companyhelm",
       providerSubject: "user-1",
     },
-    company: null,
+    company: {
+      id: "company-1",
+      name: "Example Company",
+    },
   });
+});
+
+test("companyhelm auth provider rejects a bearer token when the user is not a company member", async () => {
+  const provider = AuthProviderFactory.createAuthProvider(CompanyhelmAuthProviderTestHarness.createConfigMock());
+  let selectCallCount = 0;
+  const db = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return CompanyhelmAuthProviderTestHarness.createMockSelectChain([{
+          id: "company-1",
+          name: "Example Company",
+        }]);
+      }
+
+      return CompanyhelmAuthProviderTestHarness.createMockSelectChain([]);
+    },
+  };
+  const token = JwtService.signRs256Jwt({
+    payload: {
+      sub: "user-1",
+      email: "user@example.com",
+      first_name: "User",
+      last_name: "One",
+      provider: "companyhelm",
+    },
+    privateKeyPem: privateKey,
+    issuer: "companyhelm.local",
+    audience: "companyhelm-web",
+    expiresInSeconds: 3600,
+  });
+
+  await assert.rejects(
+    provider.authenticateBearerToken(db as never, token, {
+      companyIdHeader: "company-1",
+    }),
+    /Authenticated user is not a member of the requested company\./,
+  );
 });

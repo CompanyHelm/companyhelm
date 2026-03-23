@@ -199,7 +199,9 @@ test("clerk auth provider provisions missing local user, company, and membership
   );
   const db = ClerkAuthProviderTestHarness.createMissingRecordsDatabaseMock();
 
-  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token", {
+    companyIdHeader: "ignored-company-id",
+  });
 
   assert.deepEqual(session, {
     token: "clerk-token",
@@ -252,7 +254,9 @@ test("clerk auth provider reuses existing local user and company when already pr
   );
   const db = ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock();
 
-  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token", {
+    companyIdHeader: "ignored-company-id",
+  });
 
   assert.deepEqual(session, {
     token: "clerk-token",
@@ -286,7 +290,9 @@ test("clerk auth provider rejects unauthenticated request states from Clerk", as
   );
 
   await assert.rejects(
-    provider.authenticateBearerToken(ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock() as never, "clerk-token"),
+    provider.authenticateBearerToken(ClerkAuthProviderTestHarness.createExistingRecordsDatabaseMock() as never, "clerk-token", {
+      companyIdHeader: "ignored-company-id",
+    }),
     /Clerk bearer token is invalid\./,
   );
 });

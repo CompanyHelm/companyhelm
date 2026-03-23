@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { ConfigDocument } from "../../config/schema.ts";
-import { userAuths, users } from "../../db/schema.ts";
+import { companies, companyMembers, userAuths, users } from "../../db/schema.ts";
 import {
   AuthProvider,
+  type AuthenticateBearerTokenContext,
   type AuthenticatedUser,
   type AuthProviderDatabase,
   type AuthSession,
@@ -18,6 +19,11 @@ type UserRecord = {
   email: string;
   first_name: string;
   last_name: string | null;
+};
+
+type CompanyRecord = {
+  id: string;
+  name: string;
 };
 
 /**
@@ -37,7 +43,11 @@ export class CompanyhelmAuthProvider extends AuthProvider {
     };
   }
 
-  async authenticateBearerToken(_db: AuthProviderDatabase, token: string): Promise<AuthSession> {
+  async authenticateBearerToken(
+    db: AuthProviderDatabase,
+    token: string,
+    context: AuthenticateBearerTokenContext = {},
+  ): Promise<AuthSession> {
     const payload = JwtService.verifyRs256Jwt({
       token,
       publicKeyPem: this.config.jwt_public_key_pem,
@@ -52,6 +62,33 @@ export class CompanyhelmAuthProvider extends AuthProvider {
     if (!userId || !email || !firstName) {
       throw new Error("JWT payload is missing user claims.");
     }
+    const companyId = CompanyhelmAuthProvider.normalizeCompanyIdHeader(context.companyIdHeader);
+    const [company] = await db
+      .select({
+        id: companies.id,
+        name: companies.name,
+      })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .limit(1) as CompanyRecord[];
+    if (!company) {
+      throw new Error("Requested company was not found.");
+    }
+
+    const [membership] = await db
+      .select({
+        companyId: companyMembers.companyId,
+        userId: companyMembers.userId,
+      })
+      .from(companyMembers)
+      .where(and(
+        eq(companyMembers.companyId, companyId),
+        eq(companyMembers.userId, userId),
+      ))
+      .limit(1) as Array<{ companyId: string; userId: string }>;
+    if (!membership) {
+      throw new Error("Authenticated user is not a member of the requested company.");
+    }
 
     return {
       token,
@@ -61,7 +98,10 @@ export class CompanyhelmAuthProvider extends AuthProvider {
         first_name: firstName,
         last_name: normalizedLastName || null,
       }, userId),
-      company: null,
+      company: {
+        id: company.id,
+        name: company.name,
+      },
     };
   }
 
@@ -240,5 +280,16 @@ export class CompanyhelmAuthProvider extends AuthProvider {
 
   private static normalizePem(rawPem: string): string {
     return String(rawPem || "").trim().replace(/\\n/g, "\n");
+  }
+
+  private static normalizeCompanyIdHeader(rawCompanyIdHeader: unknown): string {
+    const normalizedCompanyIdHeader = String(
+      Array.isArray(rawCompanyIdHeader) ? rawCompanyIdHeader[0] : rawCompanyIdHeader,
+    ).trim();
+    if (!normalizedCompanyIdHeader) {
+      throw new Error("Missing x-company-id header.");
+    }
+
+    return normalizedCompanyIdHeader;
   }
 }
