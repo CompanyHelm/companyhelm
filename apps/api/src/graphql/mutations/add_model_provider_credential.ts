@@ -1,4 +1,3 @@
-import { decorate, inject, injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
 import { GraphqlAppRuntimeDatabase } from "../graphql_app_runtime_database.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -34,7 +33,6 @@ type InsertableDatabase = {
 /**
  * Creates a new model provider credential for the authenticated company resolved from the bearer token.
  */
-@injectable("Singleton")
 export class AddModelProviderCredentialMutation extends Mutation<
   AddModelProviderCredentialMutationArguments,
   ModelProviderCredentialRecord
@@ -110,5 +108,3 @@ export class AddModelProviderCredentialMutation extends Mutation<
     throw new Error("Unsupported model provider.");
   }
 }
-
-decorate(inject(GraphqlAppRuntimeDatabase), AddModelProviderCredentialMutation, 0);

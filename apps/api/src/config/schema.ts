@@ -67,4 +67,12 @@ export const ConfigDocument = z.object({
   }),
 });
 
-export type Config = z.infer<typeof ConfigDocument>;
+type ConfigShape = z.infer<typeof ConfigDocument>;
+
+export interface Config extends ConfigShape {}
+
+export class Config {
+  constructor(value: ConfigShape) {
+    Object.assign(this, value);
+  }
+}

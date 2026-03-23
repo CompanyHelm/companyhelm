@@ -1,5 +1,4 @@
 import { eq } from "drizzle-orm";
-import { decorate, inject, injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
 import { GraphqlAppRuntimeDatabase } from "../graphql_app_runtime_database.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -28,7 +27,6 @@ type SelectableDatabase = {
 /**
  * Lists model provider credentials for the authenticated company resolved from the bearer token.
  */
-@injectable("Singleton")
 export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProviderCredentialRecord[]> {
   private readonly database: Pick<GraphqlAppRuntimeDatabase, "withContext">;
 
@@ -57,5 +55,3 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<ModelProvide
     });
   };
 }
-
-decorate(inject(GraphqlAppRuntimeDatabase), ModelProviderCredentialsQueryResolver, 0);
