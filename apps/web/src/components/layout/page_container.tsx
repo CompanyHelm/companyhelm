@@ -11,7 +11,7 @@ export function PageContainer(props: PageContainerProps) {
   return (
     <SidebarProvider defaultOpen>
       <ApplicationSidebar />
-      <SidebarInset className="min-h-svh bg-transparent">
+      <SidebarInset className="min-h-svh">
         <ApplicationHeader />
         <div className="flex flex-1 flex-col px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
           {props.children}
