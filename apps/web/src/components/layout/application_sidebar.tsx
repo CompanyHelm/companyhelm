@@ -74,10 +74,10 @@ export function ApplicationSidebar() {
                 <SidebarMenuButton
                   isActive={pathname === "/model-provider-credentials"}
                   render={<Link to="/model-provider-credentials" />}
-                  tooltip="Credentials"
+                  tooltip="LLM credentials"
                 >
                   <KeyRoundIcon />
-                  <span>Credentials</span>
+                  <span>LLM credentials</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
