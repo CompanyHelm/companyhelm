@@ -1,4 +1,4 @@
-import { OrganizationSwitcher, UserButton } from "@clerk/react";
+import { OrganizationSwitcher, UserButton, useUser } from "@clerk/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ActivityIcon,
@@ -27,10 +27,13 @@ import {
 } from "@/components/ui/sidebar";
 
 export function ApplicationSidebar() {
+  const userState = useUser();
   const themeState = useTheme();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const emailAddress = String(userState.user?.primaryEmailAddress?.emailAddress || "").trim()
+    || "workspace@companyhelm.dev";
   const isDarkTheme = themeState.theme !== "light";
   const ThemeIcon = isDarkTheme ? SunIcon : MoonIcon;
 
@@ -121,9 +124,12 @@ export function ApplicationSidebar() {
 
       <SidebarFooter>
         <SidebarSeparator />
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-start group-data-[collapsible=icon]:justify-center">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
             <UserButton />
+            <span className="truncate text-[11px] text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+              {emailAddress}
+            </span>
           </div>
 
           <Button
