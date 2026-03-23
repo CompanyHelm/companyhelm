@@ -2,9 +2,11 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { inject, injectable } from "inversify";
 import postgres, { type Sql } from "postgres";
-import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
 import { Config } from "../config/schema.ts";
-import type { DatabaseInterface } from "./database_interface.ts";
+import type {
+  DatabaseClientInterface,
+  DatabaseInterface,
+} from "./database_interface.ts";
 
 /**
  * Owns the runtime Postgres connection used by the API process.
@@ -26,8 +28,8 @@ export class AppRuntimeDatabase implements DatabaseInterface {
     this.database = drizzle(this.sqlClient);
   }
 
-  getDatabase(): AuthProviderDatabase {
-    return this.database as AuthProviderDatabase;
+  getDatabase(): DatabaseClientInterface {
+    return this.database as DatabaseClientInterface;
   }
 
   getSqlClient(): Sql {
@@ -35,7 +37,7 @@ export class AppRuntimeDatabase implements DatabaseInterface {
   }
 
   async applyCompanyContext(
-    database: AuthProviderDatabase,
+    database: DatabaseClientInterface,
     companyId: string,
   ): Promise<void> {
     const normalizedCompanyId = String(companyId || "").trim();
@@ -43,7 +45,7 @@ export class AppRuntimeDatabase implements DatabaseInterface {
       throw new Error("Company ID is required.");
     }
 
-    const companyContextDatabase = database as AuthProviderDatabase & {
+    const companyContextDatabase = database as DatabaseClientInterface & {
       execute?(query: unknown): Promise<unknown>;
     };
     if (typeof companyContextDatabase.execute !== "function") {
@@ -57,11 +59,11 @@ export class AppRuntimeDatabase implements DatabaseInterface {
 
   async withCompanyContext<T>(
     companyId: string,
-    callback: (database: AuthProviderDatabase) => Promise<T>,
+    callback: (database: DatabaseClientInterface) => Promise<T>,
   ): Promise<T> {
     return this.database.transaction(async (transaction) => {
-      await this.applyCompanyContext(transaction as AuthProviderDatabase, companyId);
-      return callback(transaction as AuthProviderDatabase);
+      await this.applyCompanyContext(transaction as DatabaseClientInterface, companyId);
+      return callback(transaction as DatabaseClientInterface);
     });
   }
 

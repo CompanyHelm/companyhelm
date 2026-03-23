@@ -1,3 +1,5 @@
+import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
+
 export type AuthenticatedUser = {
   id: string;
   email: string;
@@ -20,34 +22,6 @@ export type AuthSession = {
 
 export type AuthenticateBearerTokenHeaders = Record<string, unknown>;
 
-export type AuthProviderDatabaseTransaction = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): {
-        limit(limit: number): Promise<unknown[]>;
-      };
-    };
-  };
-  insert(table: unknown): {
-    values(value: Record<string, unknown>): {
-      returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
-    };
-  };
-  execute?(query: unknown): Promise<unknown>;
-};
-
-export type AuthProviderDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): {
-        limit(limit: number): Promise<unknown[]>;
-      };
-    };
-  };
-  execute?(query: unknown): Promise<unknown>;
-  transaction?<T>(callback: (transaction: AuthProviderDatabaseTransaction) => Promise<T>): Promise<T>;
-};
-
 /**
  * Defines the minimal shared auth-provider surface and serves as the runtime DI token for the
  * configured provider singleton.
@@ -55,7 +29,7 @@ export type AuthProviderDatabase = {
 export abstract class AuthProvider {
   abstract readonly name: "clerk";
   abstract authenticateBearerToken(
-    db: AuthProviderDatabase,
+    database: AppRuntimeDatabase,
     token: string,
     headers: AuthenticateBearerTokenHeaders,
   ): Promise<AuthSession>;

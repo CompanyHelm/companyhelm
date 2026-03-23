@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
-import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
+import type { DatabaseClientInterface } from "../db/database_interface.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 
 /**
@@ -19,7 +19,7 @@ export class GraphqlAppRuntimeDatabase {
     context: GraphqlRequestContext,
     callback: (params: {
       companyId: string;
-      database: AuthProviderDatabase;
+      database: DatabaseClientInterface;
     }) => Promise<T>,
   ): Promise<T> {
     const companyId = String(context.authSession?.company?.id || "").trim();

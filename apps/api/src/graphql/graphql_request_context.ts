@@ -34,7 +34,7 @@ export class GraphqlRequestContextResolver {
 
     return {
       authSession: await this.authProvider.authenticateBearerToken(
-        this.database.getDatabase(),
+        this.database,
         token,
         request.headers as Record<string, unknown>,
       ),

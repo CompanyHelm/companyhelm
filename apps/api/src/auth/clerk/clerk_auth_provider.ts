@@ -3,11 +3,13 @@ import { createClerkClient } from "@clerk/backend";
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
+import type {
+  DatabaseClientInterface,
+  DatabaseTransactionInterface,
+} from "../../db/database_interface.ts";
 import { companies, companyMembers, users } from "../../db/schema.ts";
 import {
   AuthProvider,
-  type AuthProviderDatabase,
-  type AuthProviderDatabaseTransaction,
   type AuthenticateBearerTokenHeaders,
   type AuthSession,
 } from "../auth_provider.ts";
@@ -46,14 +48,10 @@ export class ClerkAuthProvider extends AuthProvider {
   private clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
   private jwtKeyLoader: Pick<ClerkJwtKeyLoader, "load">;
   private readonly config: NonNullable<Config["auth"]["clerk"]>;
-  private database: Pick<AppRuntimeDatabase, "applyCompanyContext">;
 
   constructor(@inject(Config) config: Config) {
     super();
     this.config = config.auth.clerk;
-    this.database = {
-      async applyCompanyContext() {},
-    };
     this.clerkClient = createClerkClient({
       secretKey: this.config.secret_key,
       publishableKey: this.config.publishable_key,
@@ -64,24 +62,23 @@ export class ClerkAuthProvider extends AuthProvider {
   static createForTest(
     config: Config,
     dependencies: {
-      appRuntimeDatabase?: Pick<AppRuntimeDatabase, "applyCompanyContext">;
       clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
       jwtKeyLoader?: Pick<ClerkJwtKeyLoader, "load">;
     } = {},
   ): ClerkAuthProvider {
     const provider = new ClerkAuthProvider(config);
-    provider.database = dependencies.appRuntimeDatabase ?? provider.database;
     provider.clerkClient = dependencies.clerkClient ?? provider.clerkClient;
     provider.jwtKeyLoader = dependencies.jwtKeyLoader ?? provider.jwtKeyLoader;
     return provider;
   }
 
   async authenticateBearerToken(
-    db: AuthProviderDatabase,
+    database: AppRuntimeDatabase,
     token: string,
     headers: AuthenticateBearerTokenHeaders = {},
   ): Promise<AuthSession> {
     void headers;
+    const db = database.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
@@ -119,8 +116,8 @@ export class ClerkAuthProvider extends AuthProvider {
         providerSubject: organizationSubject,
         name: organizationName,
       });
-      await this.database.applyCompanyContext(
-        transaction as AuthProviderDatabase,
+      await database.applyCompanyContext(
+        transaction as DatabaseClientInterface,
         company.id,
       );
       await this.ensureMembership(transaction, {
@@ -147,7 +144,7 @@ export class ClerkAuthProvider extends AuthProvider {
   }
 
   private async findOrCreateUser(
-    transaction: AuthProviderDatabaseTransaction,
+    transaction: DatabaseTransactionInterface,
     providerSubject: string,
   ): Promise<UserRecord> {
     const existingUser = await this.findUserByColumn(
@@ -197,7 +194,7 @@ export class ClerkAuthProvider extends AuthProvider {
   }
 
   private async findUserByColumn(
-    transaction: AuthProviderDatabaseTransaction,
+    transaction: DatabaseTransactionInterface,
     column: unknown,
     value: string,
   ): Promise<UserRecord | null> {
@@ -217,7 +214,7 @@ export class ClerkAuthProvider extends AuthProvider {
   }
 
   private async findOrCreateCompany(
-    transaction: AuthProviderDatabaseTransaction,
+    transaction: DatabaseTransactionInterface,
     params: {
       providerSubject: string;
       name: string;
@@ -255,7 +252,7 @@ export class ClerkAuthProvider extends AuthProvider {
   }
 
   private async ensureMembership(
-    transaction: AuthProviderDatabaseTransaction,
+    transaction: DatabaseTransactionInterface,
     params: {
       companyId: string;
       userId: string;

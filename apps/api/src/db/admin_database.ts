@@ -1,9 +1,8 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { inject, injectable } from "inversify";
 import postgres, { type Sql } from "postgres";
-import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
 import { Config } from "../config/schema.ts";
-import type { DatabaseInterface } from "./database_interface.ts";
+import type { DatabaseClientInterface, DatabaseInterface } from "./database_interface.ts";
 
 /**
  * Owns the admin-role Postgres connection used for startup-only schema and role management work.
@@ -26,8 +25,8 @@ export class AdminDatabase implements DatabaseInterface {
     this.database = drizzle(this.sqlClient);
   }
 
-  getDatabase(): AuthProviderDatabase {
-    return this.database as AuthProviderDatabase;
+  getDatabase(): DatabaseClientInterface {
+    return this.database as DatabaseClientInterface;
   }
 
   getSqlClient(): Sql {

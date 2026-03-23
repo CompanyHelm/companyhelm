@@ -92,13 +92,22 @@ class ClerkAuthProviderTestHarness {
       },
     };
 
-    return {
+    const database = {
       insertedValues,
       scopedCompanyIds,
-      async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
-        return callback(transaction);
+      getDatabase() {
+        return {
+          async transaction<T>(callback: (database_: typeof transaction) => Promise<T>) {
+            return callback(transaction);
+          },
+        };
+      },
+      async applyCompanyContext(_database: unknown, companyId: string) {
+        scopedCompanyIds.push(companyId);
       },
     };
+
+    return database;
   }
 
   static createExistingRecordsDatabaseMock() {
@@ -173,12 +182,21 @@ class ClerkAuthProviderTestHarness {
       },
     };
 
-    return {
+    const database = {
       scopedCompanyIds,
-      async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
-        return callback(transaction);
+      getDatabase() {
+        return {
+          async transaction<T>(callback: (database_: typeof transaction) => Promise<T>) {
+            return callback(transaction);
+          },
+        };
+      },
+      async applyCompanyContext(_database: unknown, companyId: string) {
+        scopedCompanyIds.push(companyId);
       },
     };
+
+    return database;
   }
 
   static createExistingEmailOnlyDatabaseMock() {
@@ -272,12 +290,21 @@ class ClerkAuthProviderTestHarness {
       },
     };
 
-    return {
+    const database = {
       scopedCompanyIds,
-      async transaction<T>(callback: (database: typeof transaction) => Promise<T>) {
-        return callback(transaction);
+      getDatabase() {
+        return {
+          async transaction<T>(callback: (database_: typeof transaction) => Promise<T>) {
+            return callback(transaction);
+          },
+        };
+      },
+      async applyCompanyContext(_database: unknown, companyId: string) {
+        scopedCompanyIds.push(companyId);
       },
     };
+
+    return database;
   }
 }
 
@@ -286,11 +313,6 @@ test("clerk auth provider provisions missing local user, company, and membership
   const provider = ClerkAuthProvider.createForTest(
     ClerkAuthProviderTestHarness.createConfigMock(),
     {
-      appRuntimeDatabase: {
-        async applyCompanyContext(_database, companyId) {
-          db.scopedCompanyIds.push(companyId);
-        },
-      },
       clerkClient: {
         async authenticateRequest() {
           return {
@@ -361,11 +383,6 @@ test("clerk auth provider reuses existing local user and company when already pr
   const provider = ClerkAuthProvider.createForTest(
     ClerkAuthProviderTestHarness.createConfigMock(),
     {
-      appRuntimeDatabase: {
-        async applyCompanyContext(_database, companyId) {
-          db.scopedCompanyIds.push(companyId);
-        },
-      },
       clerkClient: {
         async authenticateRequest() {
           return {
@@ -453,11 +470,6 @@ test("clerk auth provider reuses existing local user matched by email when clerk
   const provider = ClerkAuthProvider.createForTest(
     ClerkAuthProviderTestHarness.createConfigMock(),
     {
-      appRuntimeDatabase: {
-        async applyCompanyContext(_database, companyId) {
-          db.scopedCompanyIds.push(companyId);
-        },
-      },
       clerkClient: {
         async authenticateRequest() {
           return {

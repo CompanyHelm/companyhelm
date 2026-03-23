@@ -1,5 +1,32 @@
 import type { Sql } from "postgres";
-import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
+
+export type DatabaseTransactionInterface = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): {
+        limit(limit: number): Promise<unknown[]>;
+      };
+    };
+  };
+  insert(table: unknown): {
+    values(value: Record<string, unknown>): {
+      returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
+    };
+  };
+  execute?(query: unknown): Promise<unknown>;
+};
+
+export type DatabaseClientInterface = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): {
+        limit(limit: number): Promise<unknown[]>;
+      };
+    };
+  };
+  execute?(query: unknown): Promise<unknown>;
+  transaction?<T>(callback: (transaction: DatabaseTransactionInterface) => Promise<T>): Promise<T>;
+};
 
 /**
  * Defines the minimal shared database surface exposed by role-specific connection owners.
@@ -10,7 +37,7 @@ export interface DatabaseInterface {
    * Implementations may narrow the concrete driver type internally, but callers rely on this
    * shared query surface to avoid binding themselves to a specific role class.
    */
-  getDatabase(): AuthProviderDatabase;
+  getDatabase(): DatabaseClientInterface;
 
   /**
    * Returns the underlying postgres-js client for low-level operations that Drizzle does not model
