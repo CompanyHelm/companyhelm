@@ -8,6 +8,7 @@ import {
 import { AuthenticationRoute } from "./pages/auth/route";
 import { DashboardRoute } from "./pages/dashboard/route";
 import { ModelProviderCredentialsRoute } from "./pages/model-provider-credentials/route";
+import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
 
 function SignInRoute() {
@@ -22,8 +23,14 @@ const rootRoute = createRootRoute({
   component: Outlet,
 });
 
-const pageContainerRoute = createRoute({
+const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: "authenticated",
+  component: AuthenticatedRoute,
+});
+
+const pageContainerRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
   id: "page-container",
   component: PageContainerRoute,
 });
@@ -53,9 +60,11 @@ const signUpRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  pageContainerRoute.addChildren([
-    rootIndexRoute,
-    modelProviderCredentialsRoute,
+  authenticatedRoute.addChildren([
+    pageContainerRoute.addChildren([
+      rootIndexRoute,
+      modelProviderCredentialsRoute,
+    ]),
   ]),
   signInRoute,
   signUpRoute,
