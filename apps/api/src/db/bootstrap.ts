@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { inject, injectable } from "inversify";
-import postgres from "postgres";
 import { Config } from "../config/schema.ts";
+import { AdminDatabase } from "./admin_database.ts";
 import { runAppRuntimeRoleBootstrapModule } from "./bootstrap/modules/app-runtime-role.ts";
 import { runMigrationBootstrapModule } from "./bootstrap/modules/migration.ts";
 
@@ -14,9 +14,14 @@ const DB_BOOTSTRAP_LOCK_ID = 1;
  */
 @injectable()
 export class DbBootstrap {
+  private readonly adminDatabase: AdminDatabase;
   private readonly config: Config;
 
-  constructor(@inject(Config) config: Config) {
+  constructor(
+    @inject(AdminDatabase) adminDatabase: AdminDatabase,
+    @inject(Config) config: Config,
+  ) {
+    this.adminDatabase = adminDatabase;
     this.config = config;
   }
 
@@ -25,16 +30,8 @@ export class DbBootstrap {
    * the same locked session.
    */
   async run(): Promise<void> {
-    const adminRole = this.config.database.roles.admin;
     const runtimeRole = this.config.database.roles.app_runtime;
-    const sqlClient = postgres({
-      host: this.config.database.host,
-      port: this.config.database.port,
-      database: this.config.database.name,
-      username: adminRole.username,
-      password: adminRole.password,
-      max: 1,
-    });
+    const sqlClient = this.adminDatabase.getSqlClient();
     let lockHeld = false;
 
     try {
@@ -68,9 +65,7 @@ export class DbBootstrap {
         `;
       }
 
-      await sqlClient.end({
-        timeout: 5,
-      });
+      await this.adminDatabase.close();
     }
   }
 }

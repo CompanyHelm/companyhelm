@@ -1,16 +1,17 @@
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { inject, injectable } from "inversify";
-import postgres from "postgres";
+import postgres, { type Sql } from "postgres";
 import type { AuthProviderDatabase } from "../auth/auth_provider.ts";
 import { Config } from "../config/schema.ts";
+import type { DatabaseInterface } from "./database_interface.ts";
 
 /**
  * Owns the runtime Postgres connection used by the API process.
  */
 @injectable()
-export class AppRuntimeDatabase {
-  private readonly sqlClient;
+export class AppRuntimeDatabase implements DatabaseInterface {
+  private readonly sqlClient: Sql;
   private readonly database;
 
   constructor(@inject(Config) config: Config) {
@@ -25,8 +26,12 @@ export class AppRuntimeDatabase {
     this.database = drizzle(this.sqlClient);
   }
 
-  getDatabase() {
+  getDatabase(): AuthProviderDatabase {
     return this.database as AuthProviderDatabase;
+  }
+
+  getSqlClient(): Sql {
+    return this.sqlClient;
   }
 
   async applyCompanyContext(
