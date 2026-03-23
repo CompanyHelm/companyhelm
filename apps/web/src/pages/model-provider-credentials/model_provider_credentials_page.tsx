@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@clerk/react";
-import { KeyRoundIcon, PlusIcon } from "lucide-react";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlusIcon } from "lucide-react";
+import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { GraphqlClient } from "@/lib/graphql_client";
 import { CreateCredentialDialog } from "./create_credential_dialog";
@@ -62,16 +62,10 @@ export function ModelProviderCredentialsPage() {
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <KeyRoundIcon className="size-4" />
-            </div>
-            <div className="min-w-0">
-              <CardTitle>Model provider credentials</CardTitle>
-              <CardDescription>
-                Store company-level provider keys for agent model access.
-              </CardDescription>
-            </div>
+          <div className="min-w-0">
+            <CardDescription>
+              Store company-level provider keys for agent model access.
+            </CardDescription>
           </div>
           <CardAction>
             <Button
