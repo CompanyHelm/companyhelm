@@ -35,3 +35,6 @@
 
 - each resolver should be in its own file, under graphql/resolvers. Resolver file should not contain reduntant names like resolver since it is still part of directory.
 - each mutation should be in its own file, under grpahql/mutations. Mutation file should not contain reduntant names like mutation since it is still part of directory.
+
+## Packages
+- do not implement something that could be handled by a npm package, e.g. graphql calls do not implement a custom client, check what the best npm package is and propose adding it to the user
