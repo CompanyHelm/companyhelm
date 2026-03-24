@@ -64,6 +64,13 @@
       "when": 1774298442668,
       "tag": "0008_fuzzy_strong_guy",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774382905011,
+      "tag": "0009_perpetual_zaladane",
+      "breakpoints": true
     }
   ]
 }

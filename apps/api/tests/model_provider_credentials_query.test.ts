@@ -9,6 +9,7 @@ import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import type { ModelProviderModel } from "../src/model_manager.ts";
 
 class ModelProviderCredentialsQueryTestHarness {
   static createConfigMock(): Config {
@@ -66,6 +67,11 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
   const app = Fastify();
   const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
   const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -88,7 +94,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(),
+    new AddModelProviderCredentialMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
@@ -138,6 +144,11 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
   const app = Fastify();
   const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
   const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
   const authProvider = {
     async authenticateBearerToken() {
       throw new Error("unused");
@@ -146,7 +157,7 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(),
+    new AddModelProviderCredentialMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),

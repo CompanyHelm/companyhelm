@@ -115,3 +115,25 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
     sql`${table.type} <> 'oauth_token' OR ${table.refreshToken} IS NOT NULL`,
   ),
 }));
+
+// avaialbe models based on the model provider credential
+export const modelProviderCredentialModels = pgTable("model_provider_credential_models", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  modelProviderCredentialId: uuid("model_provider_credential_id")
+    .references(() => modelProviderCredentials.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  // null if the model does not support reasoning levels
+  reasoningLevels: text("reasoning_levels").array(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),
+  modelProviderCredentialIdIndex: index("model_provider_credential_models_model_provider_credential_id_idx").on(table.modelProviderCredentialId),
+}));

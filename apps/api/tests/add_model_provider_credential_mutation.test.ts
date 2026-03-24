@@ -9,6 +9,7 @@ import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import type { ModelProviderModel } from "../src/model_manager.ts";
 
 class AddModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {
@@ -34,20 +35,22 @@ class AddModelProviderCredentialMutationTestHarness {
         return {
           insert() {
             return {
-              values(value: Record<string, unknown>) {
-                insertedValues.push(value);
+              values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
+                const values = Array.isArray(value) ? value : [value];
+                insertedValues.push(...values);
                 return {
                   async returning() {
+                    const credentialValue = values[0] ?? {};
                     return [{
                       id: "credential-1",
-                      companyId: String(value.companyId),
-                      name: String(value.name),
-                      modelProvider: value.modelProvider,
-                      type: value.type,
-                      refreshToken: value.refreshToken ?? null,
-                      refreshedAt: value.refreshedAt ?? null,
-                      createdAt: value.createdAt,
-                      updatedAt: value.updatedAt,
+                      companyId: String(credentialValue.companyId),
+                      name: String(credentialValue.name),
+                      modelProvider: credentialValue.modelProvider,
+                      type: credentialValue.type,
+                      refreshToken: credentialValue.refreshToken ?? null,
+                      refreshedAt: credentialValue.refreshedAt ?? null,
+                      createdAt: credentialValue.createdAt,
+                      updatedAt: credentialValue.updatedAt,
                     }];
                   },
                 };
@@ -68,6 +71,19 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   const app = Fastify();
   const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
   const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    calls: [] as Array<{ provider: string; apiKey: string }>,
+    async fetchModels(provider: string, apiKey: string): Promise<ModelProviderModel[]> {
+      this.calls.push({
+        provider,
+        apiKey,
+      });
+      return [{
+        name: "gpt-test",
+        reasoningLevels: ["low", "medium"],
+      }];
+    },
+  };
   const authProvider = {
     async authenticateBearerToken() {
       return {
@@ -90,7 +106,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
 
   await new GraphqlApplication(
     config,
-    new AddModelProviderCredentialMutation(),
+    new AddModelProviderCredentialMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
@@ -147,9 +163,16 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     document.data.AddModelProviderCredential.updatedAt,
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
   );
-  assert.equal(database.insertedValues.length, 1);
+  assert.equal(database.insertedValues.length, 2);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
+  assert.equal(database.insertedValues[1]?.modelProviderCredentialId, "credential-1");
+  assert.equal(database.insertedValues[1]?.name, "gpt-test");
+  assert.deepEqual(database.insertedValues[1]?.reasoningLevels, ["low", "medium"]);
+  assert.deepEqual(modelManager.calls, [{
+    provider: "openai",
+    apiKey: "secret-value",
+  }]);
   assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();

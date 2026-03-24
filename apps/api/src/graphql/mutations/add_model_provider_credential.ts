@@ -1,5 +1,6 @@
-import { injectable } from "inversify";
-import { modelProviderCredentials } from "../../db/schema.ts";
+import { inject, injectable } from "inversify";
+import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { ModelManager, type ModelProviderModel } from "../../model_manager.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -36,7 +37,7 @@ type GraphqlModelProviderCredentialRecord = {
 
 type InsertableDatabase = {
   insert(table: unknown): {
-    values(value: Record<string, unknown>): {
+    values(value: Record<string, unknown> | Array<Record<string, unknown>>): {
       returning?(selection?: Record<string, unknown>): Promise<ModelProviderCredentialRecord[]>;
     };
   };
@@ -50,6 +51,13 @@ export class AddModelProviderCredentialMutation extends Mutation<
   AddModelProviderCredentialMutationArguments,
   GraphqlModelProviderCredentialRecord
 > {
+  private readonly modelManager: ModelManager;
+
+  constructor(@inject(ModelManager) modelManager: ModelManager) {
+    super();
+    this.modelManager = modelManager;
+  }
+
   protected resolve = async (
     arguments_: AddModelProviderCredentialMutationArguments,
     context: GraphqlRequestContext,
@@ -68,10 +76,11 @@ export class AddModelProviderCredentialMutation extends Mutation<
       throw new Error("Authentication required.");
     }
 
+    const models = await this.modelManager.fetchModels(modelProvider, normalizedApiKey);
     const now = new Date();
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
-      return insertableDatabase
+      const createdCredentials = await insertableDatabase
         .insert(modelProviderCredentials)
         .values({
           companyId: context.authSession.company.id,
@@ -95,6 +104,25 @@ export class AddModelProviderCredentialMutation extends Mutation<
           createdAt: modelProviderCredentials.createdAt,
           updatedAt: modelProviderCredentials.updatedAt,
         }) as Promise<ModelProviderCredentialRecord[]>;
+
+      const createdCredential = createdCredentials?.[0];
+      if (!createdCredential) {
+        return [];
+      }
+
+      if (models.length > 0) {
+        await insertableDatabase
+          .insert(modelProviderCredentialModels)
+          .values(models.map((model) => AddModelProviderCredentialMutation.toModelInsertInput({
+            model,
+            companyId: context.authSession.company.id,
+            modelProviderCredentialId: createdCredential.id,
+            createdAt: now,
+            updatedAt: now,
+          })));
+      }
+
+      return [createdCredential];
     });
 
     if (!credential) {
@@ -103,6 +131,23 @@ export class AddModelProviderCredentialMutation extends Mutation<
 
     return AddModelProviderCredentialMutation.serializeRecord(credential);
   };
+
+  private static toModelInsertInput(input: {
+    model: ModelProviderModel;
+    companyId: string;
+    modelProviderCredentialId: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Record<string, unknown> {
+    return {
+      companyId: input.companyId,
+      modelProviderCredentialId: input.modelProviderCredentialId,
+      name: input.model.name,
+      reasoningLevels: input.model.reasoningLevels,
+      createdAt: input.createdAt,
+      updatedAt: input.updatedAt,
+    };
+  }
 
   private static normalizeModelProvider(rawModelProvider: string): "openai" {
     const normalizedModelProvider = String(rawModelProvider || "").trim();
