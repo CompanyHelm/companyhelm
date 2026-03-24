@@ -1,6 +1,7 @@
 type Query {
   health: String!
   Me: Me!
+  ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
 }
 
@@ -42,6 +43,15 @@ type ModelProviderCredential {
   type: String!
   refreshToken: String
   refreshedAt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type ModelProviderCredentialModel {
+  id: ID!
+  modelProviderCredentialId: ID!
+  name: String!
+  reasoningLevels: [String!]!
   createdAt: String!
   updatedAt: String!
 }

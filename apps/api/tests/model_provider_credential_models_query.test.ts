@@ -12,7 +12,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/model_manager.ts";
 
-class MeQueryTestHarness {
+class ModelProviderCredentialModelsQueryTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -26,21 +26,45 @@ class MeQueryTestHarness {
   }
 
   static createDatabaseMock() {
+    const rows = [{
+      id: "model-1",
+      modelProviderCredentialId: "credential-1",
+      name: "gpt-test",
+      reasoningLevels: ["low", "medium"],
+      createdAt: new Date("2026-03-23T10:00:00.000Z"),
+      updatedAt: new Date("2026-03-23T10:00:00.000Z"),
+    }];
+    const scopedCompanyIds: string[] = [];
+
     return {
+      scopedCompanyIds,
       getDatabase() {
-        return {} as never;
+        return {
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return rows;
+                  },
+                };
+              },
+            };
+          },
+        } as never;
       },
-      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        scopedCompanyIds.push(companyId);
         return callback(this.getDatabase());
       },
     };
   }
 }
 
-test("GraphQL Me query returns the authenticated user and company", async () => {
+test("GraphQL ModelProviderCredentialModels query lists models for the credential", async () => {
   const app = Fastify();
-  const config = MeQueryTestHarness.createConfigMock();
-  const database = MeQueryTestHarness.createDatabaseMock();
+  const config = ModelProviderCredentialModelsQueryTestHarness.createConfigMock();
+  const database = ModelProviderCredentialModelsQueryTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -84,46 +108,42 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
     },
     payload: {
       query: `
-        query Me {
-          Me {
-            user {
-              id
-              email
-              firstName
-              lastName
-            }
-            company {
-              id
-              name
-            }
+        query CredentialModels($credentialId: ID!) {
+          ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
+            id
+            modelProviderCredentialId
+            name
+            reasoningLevels
+            createdAt
+            updatedAt
           }
         }
       `,
+      variables: {
+        credentialId: "credential-1",
+      },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.Me, {
-    user: {
-      id: "user-123",
-      email: "user@example.com",
-      firstName: "User",
-      lastName: "Example",
-    },
-    company: {
-      id: "company-123",
-      name: "Example Org",
-    },
-  });
+  assert.deepEqual(document.data.ModelProviderCredentialModels, [{
+    id: "model-1",
+    modelProviderCredentialId: "credential-1",
+    name: "gpt-test",
+    reasoningLevels: ["low", "medium"],
+    createdAt: "2026-03-23T10:00:00.000Z",
+    updatedAt: "2026-03-23T10:00:00.000Z",
+  }]);
+  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();
 });
 
-test("GraphQL Me query rejects unauthenticated requests", async () => {
+test("GraphQL ModelProviderCredentialModels query rejects unauthenticated requests", async () => {
   const app = Fastify();
-  const config = MeQueryTestHarness.createConfigMock();
-  const database = MeQueryTestHarness.createDatabaseMock();
+  const config = ModelProviderCredentialModelsQueryTestHarness.createConfigMock();
+  const database = ModelProviderCredentialModelsQueryTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -150,14 +170,15 @@ test("GraphQL Me query rejects unauthenticated requests", async () => {
     url: "/graphql",
     payload: {
       query: `
-        query Me {
-          Me {
-            user {
-              id
-            }
+        query CredentialModels($credentialId: ID!) {
+          ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
+            id
           }
         }
       `,
+      variables: {
+        credentialId: "credential-1",
+      },
     },
   });
 

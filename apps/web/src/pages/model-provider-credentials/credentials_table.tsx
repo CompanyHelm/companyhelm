@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Table,
   TableBody,
@@ -46,6 +47,8 @@ function formatProvider(value: string): string {
 }
 
 export function CredentialsTable(props: CredentialsTableProps) {
+  const navigate = useNavigate();
+
   if (props.isLoading) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
@@ -78,7 +81,18 @@ export function CredentialsTable(props: CredentialsTableProps) {
       </TableHeader>
       <TableBody>
         {props.credentials.map((credential) => (
-          <TableRow key={credential.id}>
+          <TableRow
+            key={credential.id}
+            className="cursor-pointer transition hover:bg-muted/40"
+            onClick={() => {
+              void navigate({
+                to: "/model-provider-credentials/$credentialId",
+                params: {
+                  credentialId: credential.id,
+                },
+              });
+            }}
+          >
             <TableCell className="font-medium text-foreground">{credential.name}</TableCell>
             <TableCell>
               <Badge variant="outline">{formatProvider(credential.modelProvider)}</Badge>

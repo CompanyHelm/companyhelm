@@ -8,8 +8,9 @@ import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_co
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
+import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import type { ModelProviderModel } from "../src/services/model_service.js";
+import type { ModelProviderModel } from "../src/model_manager.ts";
 
 class AddModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {
@@ -110,6 +111,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
   ).register(app);
 
