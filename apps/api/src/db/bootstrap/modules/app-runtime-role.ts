@@ -21,8 +21,8 @@ export class AppRuntimeRoleBootstrapModule implements BootstrapModuleInterface {
 
   async run(): Promise<void> {
     const roleName = this.normalizeRoleName(this.config.database.roles.app_runtime.username);
-    const rolePassword = String(this.config.database.roles.app_runtime.password || "").trim();
-    if (!rolePassword) {
+    const rolePassword = this.config.database.roles.app_runtime.password.trim();
+    if (rolePassword.length === 0) {
       throw new Error("Role password cannot be empty.");
     }
 
@@ -40,8 +40,8 @@ export class AppRuntimeRoleBootstrapModule implements BootstrapModuleInterface {
   }
 
   private normalizeRoleName(roleName: string): string {
-    const normalizedRoleName = String(roleName || "").trim();
-    if (!normalizedRoleName) {
+    const normalizedRoleName = roleName.trim();
+    if (normalizedRoleName.length === 0) {
       throw new Error("Role name cannot be empty.");
     }
 

@@ -2,6 +2,8 @@
 
 ## Language
 - only use typescript, no javascript
+- do not normalize strings unless strictly necessary
+- do not check for null if the method/constructor argument is non-null in TS
 
 ## file structure
 

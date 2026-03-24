@@ -67,7 +67,6 @@ export function CredentialsTable(props: CredentialsTableProps) {
 
   return (
     <Table>
-      <TableCaption>Company-scoped model provider credentials.</TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
