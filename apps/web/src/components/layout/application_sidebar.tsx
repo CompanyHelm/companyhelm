@@ -6,6 +6,7 @@ import {
   MoonIcon,
   SunIcon,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,20 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
+interface NavigationItem {
+  icon: LucideIcon;
+  label: string;
+  to: string;
+}
+
+function isNavigationItemActive(pathname: string, itemPath: string): boolean {
+  if (itemPath === "/") {
+    return pathname === itemPath;
+  }
+
+  return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+}
+
 export function ApplicationSidebar() {
   const userState = useUser();
   const themeState = useTheme();
@@ -34,6 +49,18 @@ export function ApplicationSidebar() {
     || "workspace@companyhelm.dev";
   const isDarkTheme = themeState.theme !== "light";
   const ThemeIcon = isDarkTheme ? SunIcon : MoonIcon;
+  const navigationItems: NavigationItem[] = [
+    {
+      icon: LayoutDashboardIcon,
+      label: "Dashboard",
+      to: "/",
+    },
+    {
+      icon: KeyRoundIcon,
+      label: "LLM Credentials",
+      to: "/model-provider-credentials",
+    },
+  ];
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -60,26 +87,22 @@ export function ApplicationSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={pathname === "/"}
-                  render={<Link to="/" />}
-                  tooltip="Dashboard"
-                >
-                  <LayoutDashboardIcon />
-                  <span>Dashboard</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={pathname === "/model-provider-credentials"}
-                  render={<Link to="/model-provider-credentials" />}
-                  tooltip="LLM Credentials"
-                >
-                  <KeyRoundIcon />
-                  <span>LLM Credentials</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {navigationItems.map((item) => {
+                const ItemIcon = item.icon;
+
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      isActive={isNavigationItemActive(pathname, item.to)}
+                      render={<Link to={item.to} />}
+                      tooltip={item.label}
+                    >
+                      <ItemIcon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
