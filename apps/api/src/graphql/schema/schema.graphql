@@ -59,6 +59,7 @@ type ModelProviderCredentialModel {
 
 input AddModelProviderCredentialInput {
   apiKey: String!
+  name: String
   modelProvider: String!
 }
 

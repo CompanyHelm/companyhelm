@@ -7,6 +7,7 @@ import { Mutation } from "./mutation.ts";
 type AddModelProviderCredentialMutationArguments = {
   input: {
     apiKey: string;
+    name?: string | null;
     modelProvider: string;
   };
 };
@@ -65,6 +66,10 @@ export class AddModelProviderCredentialMutation extends Mutation<
     const modelProvider = AddModelProviderCredentialMutation.normalizeModelProvider(
       arguments_.input.modelProvider,
     );
+    const credentialName = AddModelProviderCredentialMutation.resolveCredentialName(
+      arguments_.input.name,
+      modelProvider,
+    );
     const normalizedApiKey = String(arguments_.input.apiKey || "").trim();
     if (!normalizedApiKey) {
       throw new Error("apiKey is required.");
@@ -84,7 +89,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
         .insert(modelProviderCredentials)
         .values({
           companyId: context.authSession.company.id,
-          name: AddModelProviderCredentialMutation.resolveCredentialName(modelProvider),
+          name: credentialName,
           modelProvider,
           type: "api_key",
           encryptedApiKey: normalizedApiKey,
@@ -157,7 +162,15 @@ export class AddModelProviderCredentialMutation extends Mutation<
     return normalizedModelProvider;
   }
 
-  private static resolveCredentialName(modelProvider: "openai"): string {
+  private static resolveCredentialName(
+    rawCredentialName: string | null | undefined,
+    modelProvider: "openai",
+  ): string {
+    const normalizedCredentialName = String(rawCredentialName || "").trim();
+    if (normalizedCredentialName) {
+      return normalizedCredentialName;
+    }
+
     if (modelProvider === "openai") {
       return "OpenAI / Codex";
     }

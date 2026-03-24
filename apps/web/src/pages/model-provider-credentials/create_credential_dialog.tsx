@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatProviderLabel } from "./provider_label";
 
 interface CreateCredentialDialogProps {
   errorMessage: string | null;
@@ -23,6 +24,7 @@ interface CreateCredentialDialogProps {
   isSaving: boolean;
   onCreate(input: {
     apiKey: string;
+    name?: string;
     modelProvider: "openai";
   }): Promise<void>;
   onOpenChange(open: boolean): void;
@@ -30,11 +32,13 @@ interface CreateCredentialDialogProps {
 
 export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const [apiKey, setApiKey] = useState("");
+  const [name, setName] = useState("");
   const [modelProvider, setModelProvider] = useState<"openai">("openai");
 
   useEffect(() => {
     if (!props.isOpen) {
       setApiKey("");
+      setName("");
       setModelProvider("openai");
     }
   }, [props.isOpen]);
@@ -68,6 +72,24 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                 <SelectItem value="openai">OpenAI / Codex</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="credential-name">
+              Credential name
+            </label>
+            <Input
+              autoComplete="off"
+              id="credential-name"
+              onChange={(event) => {
+                setName(event.target.value);
+              }}
+              placeholder={formatProviderLabel(modelProvider)}
+              value={name}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Optional. Defaults to the provider name.
+            </p>
           </div>
 
           <div className="grid gap-2">
@@ -108,6 +130,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             onClick={async () => {
               await props.onCreate({
                 apiKey,
+                name,
                 modelProvider,
               });
             }}

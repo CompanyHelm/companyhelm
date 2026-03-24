@@ -181,3 +181,76 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
 
   await app.close();
 });
+
+test("GraphQL AddModelProviderCredential mutation stores the provided credential name when present", async () => {
+  const app = Fastify();
+  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
+  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
+          AddModelProviderCredential(input: $input) {
+            id
+            name
+          }
+        }
+      `,
+      variables: {
+        input: {
+          modelProvider: "openai",
+          name: "Primary OpenAI Key",
+          apiKey: "secret-value",
+        },
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.data.AddModelProviderCredential.name, "Primary OpenAI Key");
+  assert.equal(database.insertedValues[0]?.name, "Primary OpenAI Key");
+
+  await app.close();
+});
