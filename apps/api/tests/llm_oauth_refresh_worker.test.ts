@@ -139,13 +139,14 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
     modelProvider: "openai",
   }]);
   assert.match(adminDatabase.queryCalls[0]?.query ?? "", /FOR UPDATE SKIP LOCKED/);
+  assert.equal(typeof adminDatabase.queryCalls[0]?.values[0], "string");
   assert.equal(adminDatabase.queryCalls[0]?.values[1], 20);
   assert.equal(adminDatabase.updateCalls.length, 1);
   assert.equal(adminDatabase.updateCalls[0]?.[0], "new-access-token");
   assert.equal(adminDatabase.updateCalls[0]?.[1], "new-refresh-token");
-  assert.ok(adminDatabase.updateCalls[0]?.[2] instanceof Date);
-  assert.ok(adminDatabase.updateCalls[0]?.[3] instanceof Date);
-  assert.ok(adminDatabase.updateCalls[0]?.[4] instanceof Date);
+  assert.equal(typeof adminDatabase.updateCalls[0]?.[2], "string");
+  assert.equal(typeof adminDatabase.updateCalls[0]?.[3], "string");
+  assert.equal(typeof adminDatabase.updateCalls[0]?.[4], "string");
   assert.equal(adminDatabase.updateCalls[0]?.[5], "credential-1");
   assert.equal(loggedErrors.length, 0);
 });

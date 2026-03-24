@@ -36,7 +36,7 @@ export abstract class WorkerBase {
     this.logger.info("starting worker");
     this.intervalHandle = setInterval(() => {
       this.logger.debug("running worker");
-      void this.run();
+      void this.runSafely();
     }, this.intervalMilliseconds);
   }
 
@@ -52,6 +52,17 @@ export abstract class WorkerBase {
 
   protected getLogger(): PinoLogger {
     return this.logger;
+  }
+
+  private async runSafely(): Promise<void> {
+    try {
+      await this.run();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown worker failure.";
+      this.logger.error({
+        error: message,
+      }, "worker run failed");
+    }
   }
 
   protected abstract run(): Promise<void> | void;

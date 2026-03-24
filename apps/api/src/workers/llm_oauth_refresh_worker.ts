@@ -32,7 +32,9 @@ export class LlmOauthRefreshWorker extends WorkerBase {
   }
 
   protected async run(): Promise<void> {
-    const refreshCutoff = new Date(Date.now() + LlmOauthRefreshWorker.EXPIRY_WINDOW_MILLISECONDS);
+    const refreshCutoff = LlmOauthRefreshWorker.serializeTimestamp(
+      new Date(Date.now() + LlmOauthRefreshWorker.EXPIRY_WINDOW_MILLISECONDS),
+    );
 
     await this.adminDatabase.getSqlClient().begin(async (transactionSql) => {
       const credentials = await transactionSql<LlmOauthCredentialRow[]>`
@@ -54,13 +56,15 @@ export class LlmOauthRefreshWorker extends WorkerBase {
       for (const credential of credentials) {
         try {
           const refreshedCredential = await this.refreshCredential(credential);
-          const refreshedAt = new Date();
+          const refreshedAt = LlmOauthRefreshWorker.serializeTimestamp(new Date());
           await transactionSql`
             UPDATE "model_provider_credentials"
             SET
               "encrypted_api_key" = ${refreshedCredential.access},
               "refresh_token" = ${refreshedCredential.refresh},
-              "access_token_expires_at" = ${new Date(refreshedCredential.expires)},
+              "access_token_expires_at" = ${LlmOauthRefreshWorker.serializeTimestamp(
+                new Date(refreshedCredential.expires),
+              )},
               "refreshed_at" = ${refreshedAt},
               "updated_at" = ${refreshedAt}
             WHERE "id" = ${credential.id}
@@ -105,5 +109,9 @@ export class LlmOauthRefreshWorker extends WorkerBase {
     }
 
     throw new Error(`Unsupported OAuth model provider: ${modelProvider}`);
+  }
+
+  private static serializeTimestamp(value: Date): string {
+    return value.toISOString();
   }
 }
