@@ -9,7 +9,7 @@ import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import type { ModelProviderModel } from "../src/model_manager.ts";
+import type { ModelProviderModel } from "../src/services/model_service.js";
 
 class AddModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {

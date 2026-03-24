@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
-import { ModelManager, type ModelProviderModel } from "../../model_manager.ts";
+import { ModelService, type ModelProviderModel } from "../../services/model_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -51,9 +51,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
   AddModelProviderCredentialMutationArguments,
   GraphqlModelProviderCredentialRecord
 > {
-  private readonly modelManager: ModelManager;
+  private readonly modelManager: ModelService;
 
-  constructor(@inject(ModelManager) modelManager: ModelManager) {
+  constructor(@inject(ModelService) modelManager: ModelService) {
     super();
     this.modelManager = modelManager;
   }

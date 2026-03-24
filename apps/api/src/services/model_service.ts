@@ -18,7 +18,7 @@ type OpenAiModelsResponse = {
  * Fetches model metadata for supported providers using their public APIs.
  */
 @injectable()
-export class ModelManager {
+export class ModelService {
   private readonly providerUrls = new Map<string, string>([
     ["openai", "https://api.openai.com/v1/models"],
   ]);
