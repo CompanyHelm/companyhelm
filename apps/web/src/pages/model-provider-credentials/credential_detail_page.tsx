@@ -59,7 +59,7 @@ function formatTimestamp(value: string): string {
 
 function ModelProviderCredentialDetailPageContent() {
   const { credentialId } = useParams({
-    from: "/model-provider-credentials/$credentialId",
+    from: "model-provider-credential-detail",
   });
   const data = useLazyLoadQuery<credentialDetailPageQuery>(
     modelProviderCredentialDetailPageQueryNode,
