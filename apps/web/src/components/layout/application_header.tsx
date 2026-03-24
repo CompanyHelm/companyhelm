@@ -1,7 +1,5 @@
-import { PanelTopIcon } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
-import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -48,22 +46,6 @@ export function ApplicationHeader() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            window.open(
-              "https://ui.shadcn.com/blocks?category=dashboard",
-              "_blank",
-              "noopener,noreferrer",
-            );
-          }}
-        >
-          <PanelTopIcon />
-          Browse Blocks
-        </Button>
-      </div>
     </header>
   );
 }
