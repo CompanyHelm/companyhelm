@@ -150,16 +150,17 @@ function ModelProviderCredentialsPageContent() {
                       id: credentialId,
                     },
                   },
-                  updater: (store, response) => {
-                    const deletedCredential = response?.DeleteModelProviderCredential;
+                  updater: (store) => {
+                    const deletedCredential = store.getRootField("DeleteModelProviderCredential");
                     if (!deletedCredential) {
                       return;
                     }
 
+                    const deletedId = deletedCredential.getDataID();
                     const rootRecord = store.getRoot();
                     const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
                     rootRecord.setLinkedRecords(
-                      currentCredentials.filter((record) => record.getDataID() !== deletedCredential.id),
+                      currentCredentials.filter((record) => record && record.getDataID() !== deletedId),
                       "ModelProviderCredentials",
                     );
                   },
@@ -196,8 +197,8 @@ function ModelProviderCredentialsPageContent() {
               variables: {
                 input,
               },
-              updater: (store, response) => {
-                const newCredential = response?.AddModelProviderCredential;
+              updater: (store) => {
+                const newCredential = store.getRootField("AddModelProviderCredential");
                 if (!newCredential) {
                   return;
                 }
