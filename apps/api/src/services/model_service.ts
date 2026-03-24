@@ -1,17 +1,11 @@
 import { injectable } from "inversify";
+import { AnthropicModelAdapter } from "./providers/models-adapters/anthropic_model_adapter.ts";
+import type { ModelAdapterInterface } from "./providers/models-adapters/model_adapter_interface.ts";
+import { OpenAiModelAdapter } from "./providers/models-adapters/openai_model_adapter.ts";
 
 export type ModelProviderModel = {
   name: string;
   reasoningLevels: string[] | null;
-};
-
-type OpenAiModelsResponse = {
-  data?: Array<{
-    id?: string;
-    reasoning?: {
-      levels?: string[];
-    };
-  }>;
 };
 
 /**
@@ -21,6 +15,11 @@ type OpenAiModelsResponse = {
 export class ModelService {
   private readonly providerUrls = new Map<string, string>([
     ["openai", "https://api.openai.com/v1/models"],
+    ["anthropic", "https://api.anthropic.com/v1/models"],
+  ]);
+  private readonly providerAdapters = new Map<string, ModelAdapterInterface>([
+    ["openai", new OpenAiModelAdapter()],
+    ["anthropic", new AnthropicModelAdapter()],
   ]);
 
   async fetchModels(modelProvider: string, apiKey: string): Promise<ModelProviderModel[]> {
@@ -35,13 +34,14 @@ export class ModelService {
     }
 
     const url = this.providerUrls.get(normalizedProvider);
-    if (!url) {
+    const adapter = this.providerAdapters.get(normalizedProvider);
+    if (!url || !adapter) {
       throw new Error(`Unsupported model provider: ${normalizedProvider}`);
     }
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${normalizedApiKey}`,
+        ...this.resolveHeaders(normalizedProvider, normalizedApiKey),
       },
     });
 
@@ -50,25 +50,25 @@ export class ModelService {
       throw new Error(`Failed to fetch models for ${normalizedProvider}: ${response.status} ${body}`);
     }
 
-    const payload = (await response.json()) as OpenAiModelsResponse;
-    if (!payload?.data || !Array.isArray(payload.data)) {
-      throw new Error(`Invalid model list response for ${normalizedProvider}.`);
+    const payload = (await response.json()) as unknown;
+
+    return adapter.adapt(payload);
+  }
+
+  private resolveHeaders(modelProvider: string, apiKey: string): Record<string, string> {
+    if (modelProvider === "openai") {
+      return {
+        Authorization: `Bearer ${apiKey}`,
+      };
     }
 
-    return payload.data.map((model) => {
-      const modelName = String(model.id || "").trim();
-      if (!modelName) {
-        throw new Error(`Model list response for ${normalizedProvider} is missing model ids.`);
-      }
-
-      const reasoningLevels = Array.isArray(model.reasoning?.levels)
-        ? model.reasoning?.levels.map((level) => String(level))
-        : null;
-
+    if (modelProvider === "anthropic") {
       return {
-        name: modelName,
-        reasoningLevels: reasoningLevels && reasoningLevels.length > 0 ? reasoningLevels : null,
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
       };
-    });
+    }
+
+    throw new Error(`Unsupported model provider: ${modelProvider}`);
   }
 }
