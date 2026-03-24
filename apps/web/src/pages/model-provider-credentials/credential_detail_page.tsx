@@ -58,13 +58,15 @@ function formatTimestamp(value: string): string {
 }
 
 function ModelProviderCredentialDetailPageContent() {
-  const { credentialId } = useParams({
-    from: "model-provider-credential-detail",
-  });
+  const { credentialId } = useParams({ strict: false });
+  const normalizedCredentialId = String(credentialId || "").trim();
+  if (!normalizedCredentialId) {
+    throw new Error("Credential ID is required.");
+  }
   const data = useLazyLoadQuery<credentialDetailPageQuery>(
     modelProviderCredentialDetailPageQueryNode,
     {
-      credentialId,
+      credentialId: normalizedCredentialId,
     },
     {
       fetchPolicy: "store-and-network",

@@ -50,7 +50,6 @@ const modelProviderCredentialsRoute = createRoute({
 
 const modelProviderCredentialDetailRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
-  id: "model-provider-credential-detail",
   path: "/model-provider-credentials/$credentialId",
   component: ModelProviderCredentialDetailPage,
 });
