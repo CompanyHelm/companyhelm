@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CreateCredentialDialog } from "./create_credential_dialog";
 import { CredentialsTable, type CredentialsTableRecord } from "./credentials_table";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
+import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
 import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
 
 const modelProviderCredentialsPageQueryNode = graphql`
@@ -35,6 +36,16 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
   }
 `;
 
+const modelProviderCredentialsPageDeleteCredentialMutationNode = graphql`
+  mutation modelProviderCredentialsPageDeleteCredentialMutation(
+    $input: DeleteModelProviderCredentialInput!
+  ) {
+    DeleteModelProviderCredential(input: $input) {
+      id
+    }
+  }
+`;
+
 function ModelProviderCredentialsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -53,7 +64,12 @@ function ModelProviderCredentialsPageFallback() {
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <CredentialsTable credentials={[]} isLoading />
+          <CredentialsTable
+            credentials={[]}
+            isLoading
+            deletingCredentialId={null}
+            onDelete={async () => undefined}
+          />
         </CardContent>
       </Card>
     </main>
@@ -63,6 +79,7 @@ function ModelProviderCredentialsPageFallback() {
 function ModelProviderCredentialsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deletingCredentialId, setDeletingCredentialId] = useState<string | null>(null);
   const data = useLazyLoadQuery<modelProviderCredentialsPageQuery>(
     modelProviderCredentialsPageQueryNode,
     {},
@@ -73,6 +90,10 @@ function ModelProviderCredentialsPageContent() {
   const [commitCreateCredential, isCreateCredentialInFlight] =
     useMutation<modelProviderCredentialsPageCreateCredentialMutation>(
       modelProviderCredentialsPageCreateCredentialMutationNode,
+    );
+  const [commitDeleteCredential, isDeleteCredentialInFlight] =
+    useMutation<modelProviderCredentialsPageDeleteCredentialMutation>(
+      modelProviderCredentialsPageDeleteCredentialMutationNode,
     );
   const credentials: CredentialsTableRecord[] = data.ModelProviderCredentials.map((credential) => ({
     id: credential.id,
@@ -110,7 +131,56 @@ function ModelProviderCredentialsPageContent() {
             </div>
           ) : null}
 
-          <CredentialsTable credentials={credentials} isLoading={false} />
+          <CredentialsTable
+            credentials={credentials}
+            isLoading={false}
+            deletingCredentialId={deletingCredentialId}
+            onDelete={async (credentialId) => {
+              if (isDeleteCredentialInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setDeletingCredentialId(credentialId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitDeleteCredential({
+                  variables: {
+                    input: {
+                      id: credentialId,
+                    },
+                  },
+                  updater: (store, response) => {
+                    const deletedCredential = response?.DeleteModelProviderCredential;
+                    if (!deletedCredential) {
+                      return;
+                    }
+
+                    const rootRecord = store.getRoot();
+                    const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
+                    rootRecord.setLinkedRecords(
+                      currentCredentials.filter((record) => record.getDataID() !== deletedCredential.id),
+                      "ModelProviderCredentials",
+                    );
+                  },
+                  onCompleted: (_response, errors) => {
+                    const errorMessage = String(errors?.[0]?.message || "").trim();
+                    if (errorMessage) {
+                      reject(new Error(errorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to delete credential.");
+              });
+
+              setDeletingCredentialId(null);
+            }}
+          />
         </CardContent>
       </Card>
 

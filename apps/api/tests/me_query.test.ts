@@ -6,6 +6,7 @@ import type { Config } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
+import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
@@ -69,6 +70,7 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
   await new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
@@ -138,6 +140,7 @@ test("GraphQL Me query rejects unauthenticated requests", async () => {
   await new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),

@@ -13,7 +13,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/model_manager.ts";
 
-class ModelProviderCredentialsQueryTestHarness {
+class DeleteModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -27,29 +27,30 @@ class ModelProviderCredentialsQueryTestHarness {
   }
 
   static createDatabaseMock() {
-    const rows = [{
-      id: "credential-1",
-      companyId: "company-123",
-      name: "OpenAI / Codex",
-      modelProvider: "openai",
-      type: "api_key",
-      refreshToken: null,
-      refreshedAt: null,
-      createdAt: new Date("2026-03-20T10:00:00.000Z"),
-      updatedAt: new Date("2026-03-20T10:00:00.000Z"),
-    }];
-    const scopedCompanyIds: string[] = [];
+    const deletedRows: Array<Record<string, unknown>> = [];
 
     return {
-      scopedCompanyIds,
+      deletedRows,
       getDatabase() {
         return {
-          select() {
+          delete() {
             return {
-              from() {
+              where() {
                 return {
-                  async where() {
-                    return rows;
+                  async returning() {
+                    const deleted = {
+                      id: "credential-1",
+                      companyId: "company-123",
+                      name: "OpenAI / Codex",
+                      modelProvider: "openai",
+                      type: "api_key",
+                      refreshToken: null,
+                      refreshedAt: null,
+                      createdAt: new Date("2026-03-20T10:00:00.000Z"),
+                      updatedAt: new Date("2026-03-20T10:00:00.000Z"),
+                    };
+                    deletedRows.push(deleted);
+                    return [deleted];
                   },
                 };
               },
@@ -57,18 +58,17 @@ class ModelProviderCredentialsQueryTestHarness {
           },
         } as never;
       },
-      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
-        scopedCompanyIds.push(companyId);
+      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
         return callback(this.getDatabase());
       },
     };
   }
 }
 
-test("GraphQL ModelProviderCredentials query lists credentials for the authenticated company", async () => {
+test("GraphQL DeleteModelProviderCredential mutation deletes a credential", async () => {
   const app = Fastify();
-  const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
-  const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
+  const config = DeleteModelProviderCredentialMutationTestHarness.createConfigMock();
+  const database = DeleteModelProviderCredentialMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -113,81 +113,30 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     },
     payload: {
       query: `
-        query ModelProviderCredentials {
-          ModelProviderCredentials {
+        mutation DeleteModelProviderCredential($input: DeleteModelProviderCredentialInput!) {
+          DeleteModelProviderCredential(input: $input) {
             id
             companyId
             name
-            modelProvider
-            type
-            createdAt
-            updatedAt
           }
         }
       `,
+      variables: {
+        input: {
+          id: "credential-1",
+        },
+      },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.ModelProviderCredentials, [{
+  assert.deepEqual(document.data.DeleteModelProviderCredential, {
     id: "credential-1",
     companyId: "company-123",
     name: "OpenAI / Codex",
-    modelProvider: "openai",
-    type: "api_key",
-    createdAt: "2026-03-20T10:00:00.000Z",
-    updatedAt: "2026-03-20T10:00:00.000Z",
-  }]);
-  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
-
-  await app.close();
-});
-
-test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", async () => {
-  const app = Fastify();
-  const config = ModelProviderCredentialsQueryTestHarness.createConfigMock();
-  const database = ModelProviderCredentialsQueryTestHarness.createDatabaseMock();
-  const modelManager = {
-    async fetchModels(): Promise<ModelProviderModel[]> {
-      return [];
-    },
-  };
-  const authProvider = {
-    async authenticateBearerToken() {
-      throw new Error("unused");
-    },
-  };
-
-  await new GraphqlApplication(
-    config,
-    new AddModelProviderCredentialMutation(modelManager as never),
-    new DeleteModelProviderCredentialMutation(),
-    new GraphqlRequestContextResolver(authProvider as never, database),
-    new HealthQueryResolver(),
-    new MeQueryResolver(),
-    new ModelProviderCredentialModelsQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(),
-  ).register(app);
-
-  const response = await app.inject({
-    method: "POST",
-    url: "/graphql",
-    payload: {
-      query: `
-        query ModelProviderCredentials {
-          ModelProviderCredentials {
-            id
-          }
-        }
-      `,
-    },
   });
-
-  assert.equal(response.statusCode, 200);
-  const document = response.json();
-  assert.equal(document.data, null);
-  assert.equal(document.errors?.[0]?.message, "Authentication required.");
+  assert.equal(database.deletedRows.length, 1);
 
   await app.close();
 });

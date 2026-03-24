@@ -1,5 +1,20 @@
-import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "@tanstack/react-router";
+import { Trash2Icon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogCancelAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -21,6 +36,8 @@ export type CredentialsTableRecord = {
 interface CredentialsTableProps {
   credentials: CredentialsTableRecord[];
   isLoading: boolean;
+  onDelete: (credentialId: string) => Promise<void>;
+  deletingCredentialId: string | null;
 }
 
 function formatTimestamp(value: string): string {
@@ -77,6 +94,7 @@ export function CredentialsTable(props: CredentialsTableProps) {
           <TableHead>Type</TableHead>
           <TableHead>Created</TableHead>
           <TableHead>Updated</TableHead>
+          <TableHead className="w-16 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -100,6 +118,52 @@ export function CredentialsTable(props: CredentialsTableProps) {
             <TableCell>API key</TableCell>
             <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
             <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
+            <TableCell className="text-right">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={props.deletingCredentialId === credential.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
+                >
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete credential</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the credential and its stored models. This action
+                      cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancelAction asChild>
+                      <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
+                    </AlertDialogCancelAction>
+                    <AlertDialogPrimaryAction asChild>
+                      <AlertDialogActionButton
+                        variant="destructive"
+                        disabled={props.deletingCredentialId === credential.id}
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          await props.onDelete(credential.id);
+                        }}
+                      >
+                        Delete
+                      </AlertDialogActionButton>
+                    </AlertDialogPrimaryAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
