@@ -8,6 +8,9 @@ type Query {
 type Mutation {
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  RefreshModelProviderCredentialModels(
+    input: RefreshModelProviderCredentialModelsInput!
+  ): [ModelProviderCredentialModel!]!
 }
 
 type AuthenticatedCompany {
@@ -65,4 +68,8 @@ input AddModelProviderCredentialInput {
 
 input DeleteModelProviderCredentialInput {
   id: ID!
+}
+
+input RefreshModelProviderCredentialModelsInput {
+  modelProviderCredentialId: ID!
 }

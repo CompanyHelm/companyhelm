@@ -7,6 +7,7 @@ import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
+import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
@@ -110,6 +111,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
@@ -215,6 +217,7 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),

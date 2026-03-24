@@ -4,6 +4,7 @@ import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
@@ -19,6 +20,7 @@ export class GraphqlApplication {
   private readonly configDocument: Config;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
@@ -30,6 +32,8 @@ export class GraphqlApplication {
     @inject(AddModelProviderCredentialMutation) addModelProviderCredentialMutation: AddModelProviderCredentialMutation,
     @inject(DeleteModelProviderCredentialMutation)
     deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation,
+    @inject(RefreshModelProviderCredentialModelsMutation)
+    refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation,
     @inject(GraphqlRequestContextResolver) graphqlRequestContextResolver: GraphqlRequestContextResolver,
     @inject(HealthQueryResolver) healthQueryResolver: HealthQueryResolver,
     @inject(MeQueryResolver) meQueryResolver: MeQueryResolver,
@@ -40,6 +44,7 @@ export class GraphqlApplication {
     this.configDocument = config;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
     this.healthQueryResolver = healthQueryResolver;
     this.meQueryResolver = meQueryResolver;
@@ -61,6 +66,7 @@ export class GraphqlApplication {
         Mutation: {
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
         },
       },
       path: this.configDocument.graphql.endpoint,
