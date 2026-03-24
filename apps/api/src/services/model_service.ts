@@ -41,7 +41,7 @@ export class ModelService {
 
     const response = await fetch(url, {
       headers: {
-        ...this.resolveHeaders(normalizedProvider, normalizedApiKey),
+        ...adapter.requestHeaders(normalizedApiKey),
       },
     });
 
@@ -55,20 +55,4 @@ export class ModelService {
     return adapter.adapt(payload);
   }
 
-  private resolveHeaders(modelProvider: string, apiKey: string): Record<string, string> {
-    if (modelProvider === "openai") {
-      return {
-        Authorization: `Bearer ${apiKey}`,
-      };
-    }
-
-    if (modelProvider === "anthropic") {
-      return {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      };
-    }
-
-    throw new Error(`Unsupported model provider: ${modelProvider}`);
-  }
 }

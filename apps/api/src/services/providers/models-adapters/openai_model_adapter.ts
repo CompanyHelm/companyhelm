@@ -14,6 +14,12 @@ type OpenAiModelsResponse = {
  * Adapts OpenAI v1/models responses into model metadata used by the API.
  */
 export class OpenAiModelAdapter implements ModelAdapterInterface {
+  requestHeaders(apiKey: string): Record<string, string> {
+    return {
+      Authorization: `Bearer ${apiKey}`,
+    };
+  }
+
   adapt(payload: unknown): ModelProviderModel[] {
     const response = payload as OpenAiModelsResponse;
     if (!response?.data || !Array.isArray(response.data)) {

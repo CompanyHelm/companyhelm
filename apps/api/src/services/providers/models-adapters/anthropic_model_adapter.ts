@@ -12,6 +12,13 @@ type AnthropicModelsResponse = {
  * Adapts Anthropic v1/models responses into model metadata used by the API.
  */
 export class AnthropicModelAdapter implements ModelAdapterInterface {
+  requestHeaders(apiKey: string): Record<string, string> {
+    return {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    };
+  }
+
   adapt(payload: unknown): ModelProviderModel[] {
     const response = payload as AnthropicModelsResponse;
     if (!response?.data || !Array.isArray(response.data)) {
