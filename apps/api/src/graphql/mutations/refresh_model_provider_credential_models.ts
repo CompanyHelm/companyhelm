@@ -14,7 +14,7 @@ type RefreshModelProviderCredentialModelsMutationArguments = {
 type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
-  modelProvider: "openai";
+  modelProvider: "openai" | "anthropic";
   encryptedApiKey: string;
 };
 

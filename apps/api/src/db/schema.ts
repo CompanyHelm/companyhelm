@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-export const modelProviderEnum = pgEnum("model_provider", ["openai"]);
+export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic"]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
 
 export const companies = pgTable("companies", {

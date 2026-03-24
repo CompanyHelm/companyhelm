@@ -1,0 +1,1 @@
+ALTER TYPE "public"."model_provider" ADD VALUE 'anthropic';

@@ -25,7 +25,7 @@ interface CreateCredentialDialogProps {
   onCreate(input: {
     apiKey: string;
     name?: string;
-    modelProvider: "openai";
+    modelProvider: "openai" | "anthropic";
   }): Promise<void>;
   onOpenChange(open: boolean): void;
 }
@@ -33,7 +33,7 @@ interface CreateCredentialDialogProps {
 export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const [apiKey, setApiKey] = useState("");
   const [name, setName] = useState("");
-  const [modelProvider, setModelProvider] = useState<"openai">("openai");
+  const [modelProvider, setModelProvider] = useState<"openai" | "anthropic">("openai");
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -59,9 +59,12 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               Provider
             </label>
             <Select
-              items={[{ label: "OpenAI / Codex", value: "openai" }]}
+              items={[
+                { label: "OpenAI / Codex", value: "openai" },
+                { label: "Anthropic", value: "anthropic" },
+              ]}
               onValueChange={(value) => {
-                setModelProvider(value as "openai");
+                setModelProvider(value as "openai" | "anthropic");
               }}
               value={modelProvider}
             >
@@ -70,6 +73,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="openai">OpenAI / Codex</SelectItem>
+                <SelectItem value="anthropic">Anthropic</SelectItem>
               </SelectContent>
             </Select>
           </div>

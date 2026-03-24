@@ -71,6 +71,13 @@
       "when": 1774382905011,
       "tag": "0009_perpetual_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774390128335,
+      "tag": "0010_bizarre_puck",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@ type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   name: string;
-  modelProvider: "openai";
+  modelProvider: "openai" | "anthropic";
   type: "api_key";
   refreshToken: string | null;
   refreshedAt: Date | null;
@@ -20,7 +20,7 @@ type GraphqlModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   name: string;
-  modelProvider: "openai";
+  modelProvider: "openai" | "anthropic";
   type: "api_key";
   refreshToken: string | null;
   refreshedAt: string | null;

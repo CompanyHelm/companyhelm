@@ -257,3 +257,88 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
 
   await app.close();
 });
+
+test("GraphQL AddModelProviderCredential mutation supports anthropic credentials", async () => {
+  const app = Fastify();
+  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
+  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    calls: [] as Array<{ provider: string; apiKey: string }>,
+    async fetchModels(provider: string, apiKey: string): Promise<ModelProviderModel[]> {
+      this.calls.push({
+        provider,
+        apiKey,
+      });
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
+          AddModelProviderCredential(input: $input) {
+            id
+            name
+            modelProvider
+          }
+        }
+      `,
+      variables: {
+        input: {
+          modelProvider: "anthropic",
+          apiKey: "anthropic-secret",
+        },
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.data.AddModelProviderCredential.name, "Anthropic");
+  assert.equal(document.data.AddModelProviderCredential.modelProvider, "anthropic");
+  assert.equal(database.insertedValues[0]?.modelProvider, "anthropic");
+  assert.equal(database.insertedValues[0]?.name, "Anthropic");
+  assert.deepEqual(modelManager.calls, [{
+    provider: "anthropic",
+    apiKey: "anthropic-secret",
+  }]);
+
+  await app.close();
+});

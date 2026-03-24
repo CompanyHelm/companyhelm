@@ -16,7 +16,7 @@ type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   name: string;
-  modelProvider: "openai";
+  modelProvider: "openai" | "anthropic";
   type: "api_key";
   refreshToken: string | null;
   refreshedAt: Date | null;
@@ -28,7 +28,7 @@ type GraphqlModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   name: string;
-  modelProvider: "openai";
+  modelProvider: "openai" | "anthropic";
   type: "api_key";
   refreshToken: string | null;
   refreshedAt: string | null;
@@ -154,9 +154,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
     };
   }
 
-  private static normalizeModelProvider(rawModelProvider: string): "openai" {
+  private static normalizeModelProvider(rawModelProvider: string): "openai" | "anthropic" {
     const normalizedModelProvider = String(rawModelProvider || "").trim();
-    if (normalizedModelProvider !== "openai") {
+    if (normalizedModelProvider !== "openai" && normalizedModelProvider !== "anthropic") {
       throw new Error("Unsupported model provider.");
     }
     return normalizedModelProvider;
@@ -164,7 +164,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
 
   private static resolveCredentialName(
     rawCredentialName: string | null | undefined,
-    modelProvider: "openai",
+    modelProvider: "openai" | "anthropic",
   ): string {
     const normalizedCredentialName = String(rawCredentialName || "").trim();
     if (normalizedCredentialName) {
@@ -173,6 +173,10 @@ export class AddModelProviderCredentialMutation extends Mutation<
 
     if (modelProvider === "openai") {
       return "OpenAI / Codex";
+    }
+
+    if (modelProvider === "anthropic") {
+      return "Anthropic";
     }
 
     throw new Error("Unsupported model provider.");
