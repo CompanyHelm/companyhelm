@@ -1,12 +1,18 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
+import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
+import { formatProviderLabel } from "./provider_label";
 
 const modelProviderCredentialDetailPageQueryNode = graphql`
   query credentialDetailPageQuery($credentialId: ID!) {
+    ModelProviderCredentials {
+      id
+      modelProvider
+    }
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
       name
@@ -59,6 +65,7 @@ function formatTimestamp(value: string): string {
 
 function ModelProviderCredentialDetailPageContent() {
   const { credentialId } = useParams({ strict: false });
+  const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedCredentialId = String(credentialId || "").trim();
   if (!normalizedCredentialId) {
     throw new Error("Credential ID is required.");
@@ -72,6 +79,17 @@ function ModelProviderCredentialDetailPageContent() {
       fetchPolicy: "store-and-network",
     },
   );
+  const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
+  const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim())
+    || "Credential";
+
+  useEffect(() => {
+    setDetailLabel(providerLabel);
+
+    return () => {
+      setDetailLabel(null);
+    };
+  }, [providerLabel, setDetailLabel]);
 
   return (
     <main className="flex flex-1 flex-col gap-6">

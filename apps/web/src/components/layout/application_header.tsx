@@ -1,20 +1,23 @@
 import { PanelTopIcon } from "lucide-react";
-import { useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
 export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const pageTitle = pathname.startsWith("/model-provider-credentials")
-    ? "LLM Credentials"
-    : "Dashboard";
+  const { detailLabel } = useApplicationBreadcrumb();
+  const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
+  const pageTitle = pathname.startsWith("/model-provider-credentials") ? "LLM Credentials" : "Dashboard";
+  const detailPageTitle = String(detailLabel || "").trim() || "Credential";
 
   return (
     <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">
@@ -23,8 +26,23 @@ export function ApplicationHeader() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+                {isCredentialDetailPage ? (
+                  <Link
+                    className="font-medium text-muted-foreground transition hover:text-foreground"
+                    to="/model-provider-credentials"
+                  >
+                    {pageTitle}
+                  </Link>
+                ) : (
+                  <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+                )}
               </BreadcrumbItem>
+              {isCredentialDetailPage ? <BreadcrumbSeparator /> : null}
+              {isCredentialDetailPage ? (
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{detailPageTitle}</BreadcrumbPage>
+                </BreadcrumbItem>
+              ) : null}
             </BreadcrumbList>
           </Breadcrumb>
         </div>

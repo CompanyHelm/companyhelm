@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatProviderLabel } from "./provider_label";
 
 export type CredentialsTableRecord = {
   id: string;
@@ -53,14 +54,6 @@ function formatTimestamp(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
-}
-
-function formatProvider(value: string): string {
-  if (value === "openai") {
-    return "OpenAI / Codex";
-  }
-
-  return value;
 }
 
 export function CredentialsTable(props: CredentialsTableProps) {
@@ -113,7 +106,7 @@ export function CredentialsTable(props: CredentialsTableProps) {
           >
             <TableCell className="font-medium text-foreground">{credential.name}</TableCell>
             <TableCell>
-              <Badge variant="outline">{formatProvider(credential.modelProvider)}</Badge>
+              <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
             </TableCell>
             <TableCell>API key</TableCell>
             <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
