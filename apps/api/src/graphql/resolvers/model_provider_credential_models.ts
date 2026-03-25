@@ -12,9 +12,8 @@ type ModelProviderCredentialModelRecord = {
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
+  description: string;
   reasoningLevels: string[] | null;
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 type GraphqlModelProviderCredentialModelRecord = {
@@ -22,9 +21,8 @@ type GraphqlModelProviderCredentialModelRecord = {
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
+  description: string;
   reasoningLevels: string[];
-  createdAt: string;
-  updatedAt: string;
 };
 
 type SelectableDatabase = {
@@ -65,9 +63,8 @@ export class ModelProviderCredentialModelsQueryResolver {
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
+          description: modelProviderCredentialModels.description,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
-          createdAt: modelProviderCredentialModels.createdAt,
-          updatedAt: modelProviderCredentialModels.updatedAt,
         })
         .from(modelProviderCredentialModels)
         .where(and(
@@ -78,8 +75,6 @@ export class ModelProviderCredentialModelsQueryResolver {
       return models.map((model) => ({
         ...model,
         reasoningLevels: model.reasoningLevels ?? [],
-        createdAt: model.createdAt.toISOString(),
-        updatedAt: model.updatedAt.toISOString(),
       }));
     });
   };

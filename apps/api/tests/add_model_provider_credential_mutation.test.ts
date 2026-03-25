@@ -82,8 +82,10 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
         apiKey,
       });
       return [{
+        provider: "openai",
         modelId: "gpt-5.4",
-        name: "gpt-test",
+        name: "GPT-5.4",
+        description: "Latest frontier agentic coding model.",
         reasoningLevels: ["low", "medium"],
       }];
     },
@@ -175,7 +177,8 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
   assert.equal(database.insertedValues[1]?.modelProviderCredentialId, "credential-1");
   assert.equal(database.insertedValues[1]?.modelId, "gpt-5.4");
-  assert.equal(database.insertedValues[1]?.name, "gpt-test");
+  assert.equal(database.insertedValues[1]?.name, "GPT-5.4");
+  assert.equal(database.insertedValues[1]?.description, "Latest frontier agentic coding model.");
   assert.deepEqual(database.insertedValues[1]?.reasoningLevels, ["low", "medium"]);
   assert.deepEqual(modelManager.calls, [{
     provider: "openai",

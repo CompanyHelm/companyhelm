@@ -65,6 +65,7 @@ type AgentCreateModelOption {
   id: ID!
   modelId: String!
   name: String!
+  description: String!
   reasoningLevels: [String!]!
 }
 
@@ -85,9 +86,8 @@ type ModelProviderCredentialModel {
   modelProviderCredentialId: ID!
   modelId: String!
   name: String!
+  description: String!
   reasoningLevels: [String!]!
-  createdAt: String!
-  updatedAt: String!
 }
 
 input AddModelProviderCredentialInput {

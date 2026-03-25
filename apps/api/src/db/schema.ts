@@ -130,10 +130,9 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
     .notNull(),
   modelId: text("model_id").notNull(),
   name: text("name").notNull(),
+  description: text("description").notNull(),
   // null if the model does not support reasoning levels
   reasoningLevels: text("reasoning_levels").array(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
   companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),

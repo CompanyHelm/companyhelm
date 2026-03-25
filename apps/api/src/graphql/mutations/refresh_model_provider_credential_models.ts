@@ -23,9 +23,8 @@ type ModelProviderCredentialModelRecord = {
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
+  description: string;
   reasoningLevels: string[] | null;
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 type GraphqlModelProviderCredentialModelRecord = {
@@ -33,9 +32,8 @@ type GraphqlModelProviderCredentialModelRecord = {
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
+  description: string;
   reasoningLevels: string[];
-  createdAt: string;
-  updatedAt: string;
 };
 
 type SelectableDatabase = {
@@ -120,8 +118,6 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     }
 
     const models = await this.modelService.fetchModels(credential.modelProvider, credential.encryptedApiKey);
-    const now = new Date();
-
     const updatedModels = await context.app_runtime_transaction_provider.transaction(async (tx) => {
       const deletableDatabase = tx as DeletableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
@@ -140,8 +136,6 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
             model,
             companyId: context.authSession.company.id,
             modelProviderCredentialId: credential.id,
-            createdAt: now,
-            updatedAt: now,
           })));
       }
 
@@ -151,9 +145,8 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
+          description: modelProviderCredentialModels.description,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
-          createdAt: modelProviderCredentialModels.createdAt,
-          updatedAt: modelProviderCredentialModels.updatedAt,
         })
         .from(modelProviderCredentialModels)
         .where(and(
@@ -165,8 +158,6 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     return updatedModels.map((model) => ({
       ...model,
       reasoningLevels: model.reasoningLevels ?? [],
-      createdAt: model.createdAt.toISOString(),
-      updatedAt: model.updatedAt.toISOString(),
     }));
   };
 
@@ -174,17 +165,14 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     model: ModelProviderModel;
     companyId: string;
     modelProviderCredentialId: string;
-    createdAt: Date;
-    updatedAt: Date;
   }): Record<string, unknown> {
     return {
       companyId: input.companyId,
       modelProviderCredentialId: input.modelProviderCredentialId,
       modelId: input.model.modelId,
       name: input.model.name,
+      description: input.model.description,
       reasoningLevels: input.model.reasoningLevels,
-      createdAt: input.createdAt,
-      updatedAt: input.updatedAt,
     };
   }
 }

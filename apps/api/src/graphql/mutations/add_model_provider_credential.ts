@@ -122,8 +122,6 @@ export class AddModelProviderCredentialMutation extends Mutation<
             model,
             companyId: context.authSession.company.id,
             modelProviderCredentialId: createdCredential.id,
-            createdAt: now,
-            updatedAt: now,
           })));
       }
 
@@ -141,17 +139,14 @@ export class AddModelProviderCredentialMutation extends Mutation<
     model: ModelProviderModel;
     companyId: string;
     modelProviderCredentialId: string;
-    createdAt: Date;
-    updatedAt: Date;
   }): Record<string, unknown> {
     return {
       companyId: input.companyId,
       modelProviderCredentialId: input.modelProviderCredentialId,
       modelId: input.model.modelId,
       name: input.model.name,
+      description: input.model.description,
       reasoningLevels: input.model.reasoningLevels,
-      createdAt: input.createdAt,
-      updatedAt: input.updatedAt,
     };
   }
 

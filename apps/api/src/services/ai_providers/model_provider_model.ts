@@ -6,17 +6,20 @@ export class ModelProviderModel {
   readonly provider: string;
   readonly modelId: string;
   readonly name: string;
+  readonly description: string;
   readonly reasoningLevels: string[] | null;
 
   constructor(input: {
     provider: string;
     modelId: string;
     name: string;
+    description: string;
     reasoningLevels?: string[] | null;
   }) {
     const normalizedProvider = String(input.provider || "").trim();
     const normalizedModelId = String(input.modelId || "").trim();
     const normalizedName = String(input.name || "").trim();
+    const normalizedDescription = String(input.description || "").trim();
     if (!normalizedProvider) {
       throw new Error("Model provider is required.");
     }
@@ -26,10 +29,14 @@ export class ModelProviderModel {
     if (!normalizedName) {
       throw new Error("Model name is required.");
     }
+    if (!normalizedDescription) {
+      throw new Error("Model description is required.");
+    }
 
     this.provider = normalizedProvider;
     this.modelId = normalizedModelId;
     this.name = normalizedName;
+    this.description = normalizedDescription;
     this.reasoningLevels = Array.isArray(input.reasoningLevels) && input.reasoningLevels.length > 0
       ? input.reasoningLevels.map((level) => String(level || "").trim()).filter((level) => level.length > 0)
       : null;

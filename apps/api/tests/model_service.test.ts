@@ -27,9 +27,21 @@ test("ModelService returns only OpenAI models that exist in both the provider re
   const modelService = new ModelService(new ModelRegistry());
   const models = await modelService.fetchModels("openai", "openai-api-key");
 
-  assert.deepEqual(models.map((model) => ({ modelId: model.modelId, name: model.name })), [
-    { modelId: "gpt-5.4", name: "GPT-5.4" },
-    { modelId: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
+  assert.deepEqual(models.map((model) => ({
+    modelId: model.modelId,
+    name: model.name,
+    description: model.description,
+  })), [
+    {
+      modelId: "gpt-5.4",
+      name: "GPT-5.4",
+      description: "Latest frontier agentic coding model.",
+    },
+    {
+      modelId: "gpt-5.3-codex",
+      name: "GPT-5.3 Codex",
+      description: "Frontier Codex-optimized agentic coding model.",
+    },
   ]);
   assert.deepEqual(models[0]?.reasoningLevels, ["low", "medium", "high", "xhigh"]);
   assert.deepEqual(models[1]?.reasoningLevels, ["low", "medium", "high", "xhigh"]);
@@ -52,9 +64,21 @@ test("ModelService returns only Anthropic models that exist in both the provider
   const modelService = new ModelService(new ModelRegistry());
   const models = await modelService.fetchModels("anthropic", "anthropic-api-key");
 
-  assert.deepEqual(models.map((model) => ({ modelId: model.modelId, name: model.name })), [
-    { modelId: "claude-opus-4-6", name: "Claude Opus 4.6" },
-    { modelId: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
+  assert.deepEqual(models.map((model) => ({
+    modelId: model.modelId,
+    name: model.name,
+    description: model.description,
+  })), [
+    {
+      modelId: "claude-opus-4-6",
+      name: "Claude Opus 4.6",
+      description: "Opus 4.6 · Most capable for complex work",
+    },
+    {
+      modelId: "claude-haiku-4-5",
+      name: "Claude Haiku 4.5",
+      description: "Haiku 4.5 · Fastest for quick answers",
+    },
   ]);
   assert.equal(models[0]?.reasoningLevels, null);
   assert.equal(models[1]?.reasoningLevels, null);

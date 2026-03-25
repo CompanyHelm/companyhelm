@@ -32,10 +32,9 @@ class ModelProviderCredentialModelsQueryTestHarness {
       id: "model-1",
       modelProviderCredentialId: "credential-1",
       modelId: "gpt-5.4",
-      name: "gpt-test",
+      name: "GPT-5.4",
+      description: "Latest frontier agentic coding model.",
       reasoningLevels: ["low", "medium"],
-      createdAt: new Date("2026-03-23T10:00:00.000Z"),
-      updatedAt: new Date("2026-03-23T10:00:00.000Z"),
     }];
     const scopedCompanyIds: string[] = [];
 
@@ -119,9 +118,8 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
             modelProviderCredentialId
             modelId
             name
+            description
             reasoningLevels
-            createdAt
-            updatedAt
           }
         }
       `,
@@ -137,10 +135,9 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
     id: "model-1",
     modelProviderCredentialId: "credential-1",
     modelId: "gpt-5.4",
-    name: "gpt-test",
+    name: "GPT-5.4",
+    description: "Latest frontier agentic coding model.",
     reasoningLevels: ["low", "medium"],
-    createdAt: "2026-03-23T10:00:00.000Z",
-    updatedAt: "2026-03-23T10:00:00.000Z",
   }]);
   assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 

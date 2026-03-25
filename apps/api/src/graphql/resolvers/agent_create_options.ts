@@ -15,6 +15,7 @@ type ModelRecord = {
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
+  description: string;
   reasoningLevels: string[] | null;
 };
 
@@ -22,6 +23,7 @@ type GraphqlAgentCreateModelOption = {
   id: string;
   modelId: string;
   name: string;
+  description: string;
   reasoningLevels: string[];
 };
 
@@ -71,6 +73,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
+          description: modelProviderCredentialModels.description,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -84,6 +87,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
               id: modelRecord.id,
               modelId: modelRecord.modelId,
               name: modelRecord.name,
+              description: modelRecord.description,
               reasoningLevels: modelRecord.reasoningLevels ?? [],
             }));
 
