@@ -90,7 +90,7 @@ export class ModelRegistry {
     }),
     new ModelProviderModel({
       provider: "anthropic",
-      modelId: "claude-haiku-4-5",
+      modelId: "claude-haiku-4-5-20251001",
       name: "Claude Haiku 4.5",
       description: "Haiku 4.5 · Fastest for quick answers",
     }),
