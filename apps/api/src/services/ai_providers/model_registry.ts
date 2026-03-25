@@ -9,6 +9,16 @@ import { ModelProviderModel } from "./model_provider_model.js";
 export class ModelRegistry {
   private static readonly OPENAI_REASONING_LEVELS = ["low", "medium", "high", "xhigh"];
 
+  private static defaultModels: Record<string, string> = {
+    openai: "gpt-5.4",
+    anthropic: "claude-opus-4-6",
+  };
+
+  private static defaultReasoningLevels: Record<string, string> = {
+    openai: "high",
+  };
+
+
   private readonly models: ModelProviderModel[] = [
     new ModelProviderModel({
       provider: "openai",
@@ -97,5 +107,13 @@ export class ModelRegistry {
     }
 
     return this.models.filter((model) => model.provider === normalizedProvider);
+  }
+
+  getDefaultModelForProvider(provider: string): string | null {
+    return ModelRegistry.defaultModels[provider] ?? null;
+  }
+
+  getDefaultReasoningLevelForProvider(provider: string): string | null {
+    return ModelRegistry.defaultReasoningLevels[provider] ?? null;
   }
 }

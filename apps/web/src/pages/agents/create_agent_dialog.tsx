@@ -21,6 +21,8 @@ export type AgentCreateProviderOption = {
   id: string;
   label: string;
   modelProvider: string;
+  defaultModelId: string | null;
+  defaultReasoningLevel: string | null;
   models: Array<{
     id: string;
     modelId: string;
@@ -73,11 +75,20 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   }, [props.isOpen]);
 
   useEffect(() => {
-    if (selectedProviderOption?.models.some((modelOption) => modelOption.id === modelOptionId)) {
+    if (!selectedProviderOption) {
+      setModelOptionId("");
+      setReasoningLevel("");
       return;
     }
 
-    setModelOptionId("");
+    if (selectedProviderOption.models.some((modelOption) => modelOption.id === modelOptionId)) {
+      return;
+    }
+
+    const defaultModelOption = selectedProviderOption.models.find(
+      (modelOption) => modelOption.modelId === selectedProviderOption.defaultModelId,
+    );
+    setModelOptionId(defaultModelOption?.id ?? selectedProviderOption.models[0]?.id ?? "");
     setReasoningLevel("");
   }, [modelOptionId, selectedProviderOption]);
 
@@ -88,9 +99,14 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     }
 
     if (!selectedReasoningLevels.includes(reasoningLevel)) {
-      setReasoningLevel(selectedReasoningLevels[0] ?? "");
+      const defaultReasoningLevel = selectedProviderOption?.defaultReasoningLevel;
+      setReasoningLevel(
+        defaultReasoningLevel && selectedReasoningLevels.includes(defaultReasoningLevel)
+          ? defaultReasoningLevel
+          : (selectedReasoningLevels[0] ?? ""),
+      );
     }
-  }, [reasoningLevel, selectedReasoningLevels]);
+  }, [reasoningLevel, selectedProviderOption?.defaultReasoningLevel, selectedReasoningLevels]);
 
   const isReasoningLevelRequired = selectedReasoningLevels.length > 0;
   const isCreateDisabled = agentName.length === 0

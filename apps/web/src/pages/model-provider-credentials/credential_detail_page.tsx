@@ -19,9 +19,8 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
       name
+      description
       reasoningLevels
-      createdAt
-      updatedAt
     }
   }
 `;
@@ -33,10 +32,10 @@ const modelProviderCredentialDetailPageRefreshModelsMutationNode = graphql`
     RefreshModelProviderCredentialModels(input: $input) {
       id
       modelProviderCredentialId
+      modelId
       name
+      description
       reasoningLevels
-      createdAt
-      updatedAt
     }
   }
 `;
@@ -64,21 +63,6 @@ function formatReasoningLevels(levels: string[]): string {
   }
 
   return levels.join(", ");
-}
-
-function formatTimestamp(value: string): string {
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) {
-    return "Unknown";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(timestamp);
 }
 
 function ModelProviderCredentialDetailPageContent() {
@@ -179,18 +163,16 @@ function ModelProviderCredentialDetailPageContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead>Reasoning levels</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.ModelProviderCredentialModels.map((model) => (
                   <TableRow key={model.id}>
                     <TableCell className="font-medium text-foreground">{model.name}</TableCell>
+                    <TableCell>{model.description}</TableCell>
                     <TableCell>{formatReasoningLevels(model.reasoningLevels)}</TableCell>
-                    <TableCell>{formatTimestamp(model.createdAt)}</TableCell>
-                    <TableCell>{formatTimestamp(model.updatedAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

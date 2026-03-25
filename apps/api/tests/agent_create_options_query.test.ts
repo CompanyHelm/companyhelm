@@ -135,6 +135,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
             id
             label
             modelProvider
+            defaultModelId
+            defaultReasoningLevel
             models {
               id
               modelId
@@ -154,6 +156,8 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
     id: "credential-1",
     label: "OpenAI / Codex",
     modelProvider: "openai",
+    defaultModelId: "gpt-5.4",
+    defaultReasoningLevel: "high",
     models: [{
       id: "model-row-1",
       modelId: "gpt-5.4",

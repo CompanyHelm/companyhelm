@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
+import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -21,6 +22,8 @@ type GraphqlModelProviderCredentialRecord = {
   companyId: string;
   name: string;
   modelProvider: "openai" | "anthropic";
+  defaultModelId: string | null;
+  defaultReasoningLevel: string | null;
   type: "api_key";
   refreshToken: string | null;
   refreshedAt: string | null;
@@ -41,6 +44,13 @@ type SelectableDatabase = {
  */
 @injectable()
 export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModelProviderCredentialRecord[]> {
+  private readonly modelRegistry: ModelRegistry;
+
+  constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry()) {
+    super();
+    this.modelRegistry = modelRegistry;
+  }
+
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlModelProviderCredentialRecord[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
@@ -66,15 +76,20 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
         .from(modelProviderCredentials)
         .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
 
-      return credentials.map((credential) => ModelProviderCredentialsQueryResolver.serializeRecord(credential));
+      return credentials.map((credential) =>
+        ModelProviderCredentialsQueryResolver.serializeRecord(this.modelRegistry, credential)
+      );
     });
   };
 
   private static serializeRecord(
+    modelRegistry: ModelRegistry,
     credential: ModelProviderCredentialRecord,
   ): GraphqlModelProviderCredentialRecord {
     return {
       ...credential,
+      defaultModelId: modelRegistry.getDefaultModelForProvider(credential.modelProvider),
+      defaultReasoningLevel: modelRegistry.getDefaultReasoningLevelForProvider(credential.modelProvider),
       refreshedAt: credential.refreshedAt?.toISOString() ?? null,
       createdAt: credential.createdAt.toISOString(),
       updatedAt: credential.updatedAt.toISOString(),

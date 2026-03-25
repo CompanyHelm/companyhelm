@@ -121,6 +121,8 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
             companyId
             name
             modelProvider
+            defaultModelId
+            defaultReasoningLevel
             type
             createdAt
             updatedAt
@@ -137,6 +139,8 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     companyId: "company-123",
     name: "OpenAI / Codex",
     modelProvider: "openai",
+    defaultModelId: "gpt-5.4",
+    defaultReasoningLevel: "high",
     type: "api_key",
     createdAt: "2026-03-20T10:00:00.000Z",
     updatedAt: "2026-03-20T10:00:00.000Z",

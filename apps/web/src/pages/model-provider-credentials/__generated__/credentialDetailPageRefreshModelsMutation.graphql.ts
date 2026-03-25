@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ce3f14e46bb15936483251d5a4a2c8db>>
+ * @generated SignedSource<<ae69deaf97840a2edff28430f27c6276>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,12 +17,12 @@ export type credentialDetailPageRefreshModelsMutation$variables = {
 };
 export type credentialDetailPageRefreshModelsMutation$data = {
   readonly RefreshModelProviderCredentialModels: ReadonlyArray<{
-    readonly createdAt: string;
+    readonly description: string;
     readonly id: string;
+    readonly modelId: string;
     readonly modelProviderCredentialId: string;
     readonly name: string;
     readonly reasoningLevels: ReadonlyArray<string>;
-    readonly updatedAt: string;
   }>;
 };
 export type credentialDetailPageRefreshModelsMutation = {
@@ -71,6 +71,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "modelId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "name",
         "storageKey": null
       },
@@ -78,21 +85,14 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "description",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevels",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "updatedAt",
         "storageKey": null
       }
     ],
@@ -117,16 +117,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "ef92db9d4f6f872f58446def7488c6c9",
+    "cacheID": "d88159fa1d7dbdccbf7ef34ab98f7a23",
     "id": null,
     "metadata": {},
     "name": "credentialDetailPageRefreshModelsMutation",
     "operationKind": "mutation",
-    "text": "mutation credentialDetailPageRefreshModelsMutation(\n  $input: RefreshModelProviderCredentialModelsInput!\n) {\n  RefreshModelProviderCredentialModels(input: $input) {\n    id\n    modelProviderCredentialId\n    name\n    reasoningLevels\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation credentialDetailPageRefreshModelsMutation(\n  $input: RefreshModelProviderCredentialModelsInput!\n) {\n  RefreshModelProviderCredentialModels(input: $input) {\n    id\n    modelProviderCredentialId\n    modelId\n    name\n    description\n    reasoningLevels\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d49d8c41701fbe2b4d3405be6fbcb8f7";
+(node as any).hash = "18930b66e2ccef90a069f1d1d254a470";
 
 export default node;

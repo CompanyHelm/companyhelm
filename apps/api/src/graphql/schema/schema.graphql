@@ -58,6 +58,8 @@ type AgentCreateProviderOption {
   id: ID!
   label: String!
   modelProvider: String!
+  defaultModelId: String
+  defaultReasoningLevel: String
   models: [AgentCreateModelOption!]!
 }
 
@@ -74,6 +76,8 @@ type ModelProviderCredential {
   companyId: ID!
   name: String!
   modelProvider: String!
+  defaultModelId: String
+  defaultReasoningLevel: String
   type: String!
   refreshToken: String
   refreshedAt: String

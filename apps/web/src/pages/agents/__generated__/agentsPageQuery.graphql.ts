@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0d178979e46d7d873abef63ebea4bef1>>
+ * @generated SignedSource<<c1f21bd8317be9e82fa513f664225dae>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,8 @@ import { ConcreteRequest } from 'relay-runtime';
 export type agentsPageQuery$variables = Record<PropertyKey, never>;
 export type agentsPageQuery$data = {
   readonly AgentCreateOptions: ReadonlyArray<{
+    readonly defaultModelId: string | null | undefined;
+    readonly defaultReasoningLevel: string | null | undefined;
     readonly id: string;
     readonly label: string;
     readonly modelProvider: string;
@@ -130,6 +132,20 @@ v3 = [
       {
         "alias": null,
         "args": null,
+        "kind": "ScalarField",
+        "name": "defaultModelId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultReasoningLevel",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
         "concreteType": "AgentCreateModelOption",
         "kind": "LinkedField",
         "name": "models",
@@ -176,16 +192,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "933dee7a587036e51e084ad00f3d943b",
+    "cacheID": "a663e5a5697c2e4b4517e20f8c54f689",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4d908c01931d589feba7af66cb73346d";
+(node as any).hash = "7331c0c573f1ddfa1ce5e5254678399b";
 
 export default node;

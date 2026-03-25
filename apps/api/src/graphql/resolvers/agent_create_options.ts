@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -31,6 +32,8 @@ type GraphqlAgentCreateProviderOption = {
   id: string;
   label: string;
   modelProvider: "openai" | "anthropic";
+  defaultModelId: string | null;
+  defaultReasoningLevel: string | null;
   models: GraphqlAgentCreateModelOption[];
 };
 
@@ -48,6 +51,13 @@ type SelectableDatabase = {
  */
 @injectable()
 export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreateProviderOption[]> {
+  private readonly modelRegistry: ModelRegistry;
+
+  constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry()) {
+    super();
+    this.modelRegistry = modelRegistry;
+  }
+
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlAgentCreateProviderOption[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
@@ -95,6 +105,10 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
             id: credentialRecord.id,
             label: AgentCreateOptionsQueryResolver.resolveProviderLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
+            defaultModelId: this.modelRegistry.getDefaultModelForProvider(credentialRecord.modelProvider),
+            defaultReasoningLevel: this.modelRegistry.getDefaultReasoningLevelForProvider(
+              credentialRecord.modelProvider,
+            ),
             models: credentialModels,
           };
         })

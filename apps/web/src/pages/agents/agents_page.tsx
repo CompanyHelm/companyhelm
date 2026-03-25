@@ -27,6 +27,8 @@ const agentsPageQueryNode = graphql`
       id
       label
       modelProvider
+      defaultModelId
+      defaultReasoningLevel
       models {
         id
         modelId
@@ -103,6 +105,8 @@ function AgentsPageContent() {
     id: providerOption.id,
     label: providerOption.label,
     modelProvider: providerOption.modelProvider,
+    defaultModelId: providerOption.defaultModelId,
+    defaultReasoningLevel: providerOption.defaultReasoningLevel,
     models: providerOption.models.map((modelOption) => ({
       id: modelOption.id,
       modelId: modelOption.modelId,
