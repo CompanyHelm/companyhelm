@@ -1,4 +1,5 @@
-import type { ModelProviderModel } from "../../model_service.ts";
+import { ModelRegistry } from "../../model_registry.ts";
+import type { ModelProviderModel } from "../../model_provider_model.ts";
 import type { ModelAdapterInterface } from "./model_adapter_interface.ts";
 
 type AnthropicModelsResponse = {
@@ -9,32 +10,44 @@ type AnthropicModelsResponse = {
 };
 
 /**
- * Adapts Anthropic v1/models responses into model metadata used by the API.
+ * Validates Anthropic credentials against the provider models endpoint, then keeps only the models
+ * that are both provider-visible and present in the local registry.
  */
 export class AnthropicModelAdapter implements ModelAdapterInterface {
-  requestHeaders(apiKey: string): Record<string, string> {
-    return {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    };
+  private readonly modelRegistry: ModelRegistry;
+
+  constructor(modelRegistry: ModelRegistry) {
+    this.modelRegistry = modelRegistry;
   }
 
-  adapt(payload: unknown): ModelProviderModel[] {
-    const response = payload as AnthropicModelsResponse;
-    if (!response?.data || !Array.isArray(response.data)) {
+  async fetchModels(apiKey: string): Promise<ModelProviderModel[]> {
+    const normalizedApiKey = String(apiKey || "").trim();
+    if (!normalizedApiKey) {
+      throw new Error("Model provider API key is required.");
+    }
+
+    const response = await fetch("https://api.anthropic.com/v1/models", {
+      headers: {
+        "x-api-key": normalizedApiKey,
+        "anthropic-version": "2023-06-01",
+      },
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Failed to fetch models for anthropic: ${response.status} ${body}`);
+    }
+
+    const payload = await response.json() as AnthropicModelsResponse;
+    if (!Array.isArray(payload.data)) {
       throw new Error("Invalid model list response for anthropic.");
     }
 
-    return response.data.map((model) => {
-      const modelName = String(model.id || model.name || "").trim();
-      if (!modelName) {
-        throw new Error("Model list response for anthropic is missing model ids.");
-      }
+    const availableModelNames = new Set(
+      payload.data.map((model) => String(model.id || model.name || "").trim()).filter((modelName) => modelName.length > 0),
+    );
 
-      return {
-        name: modelName,
-        reasoningLevels: null,
-      };
-    });
+    return this.modelRegistry
+      .getModelsForProvider("anthropic")
+      .filter((model) => availableModelNames.has(model.name));
   }
 }
