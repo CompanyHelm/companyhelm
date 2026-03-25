@@ -143,16 +143,16 @@ export function ApplicationSidebar() {
         <SidebarSeparator />
         <div className="flex flex-col gap-4">
           <Button
-            className="mb-2 h-5 justify-start px-1.5 text-[11px] font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-            size="xs"
+            className="mb-2 h-6 justify-start gap-2 px-2 text-[11px] font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 [&_svg]:size-3.5"
+            size="sm"
             variant="ghost"
             onClick={() => {
               themeState.setTheme(isDarkTheme ? "light" : "dark");
             }}
           >
             <ThemeIcon />
-            <span className="group-data-[collapsible=icon]:hidden">
-              {isDarkTheme ? "Light theme" : "Dark theme"}
+            <span className="leading-none group-data-[collapsible=icon]:hidden">
+              {isDarkTheme ? "Dark theme" : "Light theme"}
             </span>
           </Button>
 
