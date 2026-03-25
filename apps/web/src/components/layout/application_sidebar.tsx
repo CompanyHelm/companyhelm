@@ -60,8 +60,8 @@ function ApplicationSidebarVersion() {
   );
 
   return (
-    <div className="flex justify-end group-data-[collapsible=icon]:hidden">
-      <span className="text-[10px] text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
+    <div className="flex justify-center group-data-[collapsible=icon]:hidden">
+      <span className="text-[12px] text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
     </div>
   );
 }
