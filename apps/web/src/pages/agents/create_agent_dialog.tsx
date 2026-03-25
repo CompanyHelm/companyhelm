@@ -224,7 +224,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="agent-system-prompt">
-              System prompt
+              System prompt (optional)
             </label>
             <textarea
               id="agent-system-prompt"
