@@ -1,11 +1,14 @@
 type Query {
   health: String!
   Me: Me!
+  Agents: [Agent!]!
+  AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
 }
 
 type Mutation {
+  AddAgent(input: AddAgentInput!): Agent!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   RefreshModelProviderCredentialModels(
@@ -37,6 +40,32 @@ type MeUser {
 type Me {
   user: MeUser!
   company: AuthenticatedCompany!
+  serverVersion: String!
+}
+
+type Agent {
+  id: ID!
+  name: String!
+  modelProvider: String
+  modelName: String
+  reasoningLevel: String
+  systemPrompt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type AgentCreateProviderOption {
+  id: ID!
+  label: String!
+  modelProvider: String!
+  models: [AgentCreateModelOption!]!
+}
+
+type AgentCreateModelOption {
+  id: ID!
+  modelId: String!
+  name: String!
+  reasoningLevels: [String!]!
 }
 
 type ModelProviderCredential {
@@ -65,6 +94,14 @@ input AddModelProviderCredentialInput {
   apiKey: String!
   name: String
   modelProvider: String!
+}
+
+input AddAgentInput {
+  name: String!
+  modelProviderCredentialId: ID!
+  modelProviderCredentialModelId: ID!
+  reasoningLevel: String
+  systemPrompt: String
 }
 
 input DeleteModelProviderCredentialInput {

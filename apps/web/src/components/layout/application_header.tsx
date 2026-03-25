@@ -14,8 +14,12 @@ export function ApplicationHeader() {
   });
   const { detailLabel } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
-  const pageTitle = pathname.startsWith("/model-provider-credentials") ? "LLM Credentials" : "Dashboard";
-  const detailPageTitle = String(detailLabel || "").trim() || "Credential";
+  const pageTitle = pathname.startsWith("/model-provider-credentials")
+    ? "LLM Credentials"
+    : pathname.startsWith("/agents")
+      ? "Agents"
+      : "Dashboard";
+  const detailPageTitle = detailLabel || "Credential";
 
   return (
     <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">
@@ -45,7 +49,6 @@ export function ApplicationHeader() {
           </Breadcrumb>
         </div>
       </div>
-
     </header>
   );
 }

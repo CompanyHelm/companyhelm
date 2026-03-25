@@ -1,6 +1,9 @@
 import { OrganizationSwitcher, UserButton, useUser } from "@clerk/react";
+import { Suspense } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { graphql, useLazyLoadQuery } from "react-relay";
 import {
+  BotIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   MoonIcon,
@@ -31,6 +34,14 @@ interface NavigationItem {
   to: string;
 }
 
+const applicationSidebarVersionQueryNode = graphql`
+  query applicationSidebarVersionQuery {
+    Me {
+      serverVersion
+    }
+  }
+`;
+
 function isNavigationItemActive(pathname: string, itemPath: string): boolean {
   if (itemPath === "/") {
     return pathname === itemPath;
@@ -39,14 +50,29 @@ function isNavigationItemActive(pathname: string, itemPath: string): boolean {
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
 }
 
+function ApplicationSidebarVersion() {
+  const data = useLazyLoadQuery(
+    applicationSidebarVersionQueryNode,
+    {},
+    {
+      fetchPolicy: "store-or-network",
+    },
+  );
+
+  return (
+    <div className="flex justify-end group-data-[collapsible=icon]:hidden">
+      <span className="text-[10px] text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
+    </div>
+  );
+}
+
 export function ApplicationSidebar() {
   const userState = useUser();
   const themeState = useTheme();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const emailAddress = String(userState.user?.primaryEmailAddress?.emailAddress || "").trim()
-    || "workspace@companyhelm.dev";
+  const emailAddress = userState.user?.primaryEmailAddress?.emailAddress || "workspace@companyhelm.dev";
   const isDarkTheme = themeState.theme !== "light";
   const ThemeIcon = isDarkTheme ? SunIcon : MoonIcon;
   const navigationItems: NavigationItem[] = [
@@ -59,6 +85,11 @@ export function ApplicationSidebar() {
       icon: KeyRoundIcon,
       label: "LLM Credentials",
       to: "/model-provider-credentials",
+    },
+    {
+      icon: BotIcon,
+      label: "Agents",
+      to: "/agents",
     },
   ];
 
@@ -131,6 +162,9 @@ export function ApplicationSidebar() {
               {emailAddress}
             </span>
           </div>
+          <Suspense fallback={null}>
+            <ApplicationSidebarVersion />
+          </Suspense>
         </div>
       </SidebarFooter>
       <SidebarRail />

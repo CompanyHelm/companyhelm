@@ -2,11 +2,14 @@ import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
+import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
+import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
+import { AgentsQueryResolver } from "./resolvers/agents.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
@@ -18,7 +21,10 @@ import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provide
 @injectable()
 export class GraphqlApplication {
   private readonly configDocument: Config;
+  private readonly addAgentMutation: AddAgentMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
+  private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
+  private readonly agentsQueryResolver: AgentsQueryResolver;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
@@ -40,9 +46,16 @@ export class GraphqlApplication {
     @inject(ModelProviderCredentialModelsQueryResolver)
     modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver,
     @inject(ModelProviderCredentialsQueryResolver) modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver,
+    @inject(AddAgentMutation) addAgentMutation: AddAgentMutation = new AddAgentMutation(),
+    @inject(AgentCreateOptionsQueryResolver)
+    agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver = new AgentCreateOptionsQueryResolver(),
+    @inject(AgentsQueryResolver) agentsQueryResolver: AgentsQueryResolver = new AgentsQueryResolver(),
   ) {
     this.configDocument = config;
+    this.addAgentMutation = addAgentMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
+    this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
+    this.agentsQueryResolver = agentsQueryResolver;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
@@ -58,12 +71,15 @@ export class GraphqlApplication {
       context: (request) => this.graphqlRequestContextResolver.resolve(request),
       resolvers: {
         Query: {
+          AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
+          Agents: this.agentsQueryResolver.execute,
           health: this.healthQueryResolver.execute,
           Me: this.meQueryResolver.execute,
           ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
         },
         Mutation: {
+          AddAgent: this.addAgentMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,

@@ -14,7 +14,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class MeQueryTestHarness {
+class AgentsQueryTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -28,21 +28,82 @@ class MeQueryTestHarness {
   }
 
   static createDatabaseMock() {
+    const scopedCompanyIds: string[] = [];
+    let selectCallCount = 0;
+
     return {
+      scopedCompanyIds,
       getDatabase() {
-        return {} as never;
+        return {
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "agent-1",
+                        name: "Research Agent",
+                        defaultModelProviderCredentialModelId: "model-row-1",
+                        defaultReasoningLevel: "high",
+                        systemPrompt: "You are concise.",
+                        createdAt: new Date("2026-03-24T09:00:00.000Z"),
+                        updatedAt: new Date("2026-03-24T09:10:00.000Z"),
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "model-row-1",
+                        modelProviderCredentialId: "credential-1",
+                        name: "GPT-5.4",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "credential-1",
+                        modelProvider: "openai",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
+          },
+        } as never;
       },
-      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        scopedCompanyIds.push(companyId);
         return callback(this.getDatabase());
       },
     };
   }
 }
 
-test("GraphQL Me query returns the authenticated user and company", async () => {
+test("GraphQL Agents query lists agents for the authenticated company", async () => {
   const app = Fastify();
-  const config = MeQueryTestHarness.createConfigMock();
-  const database = MeQueryTestHarness.createDatabaseMock();
+  const config = AgentsQueryTestHarness.createConfigMock();
+  const database = AgentsQueryTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -88,19 +149,16 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
     },
     payload: {
       query: `
-        query Me {
-          Me {
-            user {
-              id
-              email
-              firstName
-              lastName
-            }
-            company {
-              id
-              name
-            }
-            serverVersion
+        query Agents {
+          Agents {
+            id
+            name
+            modelProvider
+            modelName
+            reasoningLevel
+            systemPrompt
+            createdAt
+            updatedAt
           }
         }
       `,
@@ -109,70 +167,17 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.Me, {
-    user: {
-      id: "user-123",
-      email: "user@example.com",
-      firstName: "User",
-      lastName: "Example",
-    },
-    company: {
-      id: "company-123",
-      name: "Example Org",
-    },
-    serverVersion: "0.1.0",
-  });
-
-  await app.close();
-});
-
-test("GraphQL Me query rejects unauthenticated requests", async () => {
-  const app = Fastify();
-  const config = MeQueryTestHarness.createConfigMock();
-  const database = MeQueryTestHarness.createDatabaseMock();
-  const modelManager = {
-    async fetchModels(): Promise<ModelProviderModel[]> {
-      return [];
-    },
-  };
-  const authProvider = {
-    async authenticateBearerToken() {
-      throw new Error("unused");
-    },
-  };
-
-  await new GraphqlApplication(
-    config,
-    new AddModelProviderCredentialMutation(modelManager as never),
-    new DeleteModelProviderCredentialMutation(),
-    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
-    new GraphqlRequestContextResolver(authProvider as never, database),
-    new HealthQueryResolver(),
-    new MeQueryResolver(),
-    new ModelProviderCredentialModelsQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(),
-  ).register(app);
-
-  const response = await app.inject({
-    method: "POST",
-    url: "/graphql",
-    payload: {
-      query: `
-        query Me {
-          Me {
-            user {
-              id
-            }
-          }
-        }
-      `,
-    },
-  });
-
-  assert.equal(response.statusCode, 200);
-  const document = response.json();
-  assert.equal(document.data, null);
-  assert.equal(document.errors?.[0]?.message, "Authentication required.");
+  assert.deepEqual(document.data.Agents, [{
+    id: "agent-1",
+    name: "Research Agent",
+    modelProvider: "openai",
+    modelName: "GPT-5.4",
+    reasoningLevel: "high",
+    systemPrompt: "You are concise.",
+    createdAt: "2026-03-24T09:00:00.000Z",
+    updatedAt: "2026-03-24T09:10:00.000Z",
+  }]);
+  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();
 });
