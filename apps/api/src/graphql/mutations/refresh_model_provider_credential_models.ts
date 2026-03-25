@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
-import { ModelService, type ModelProviderModel } from "../../services/ai_providers/model_service.js";
+import { modelProviderCredentials } from "../../db/schema.ts";
+import { ModelService } from "../../services/ai_providers/model_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -16,15 +16,6 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   modelProvider: "openai" | "anthropic";
   encryptedApiKey: string;
-};
-
-type ModelProviderCredentialModelRecord = {
-  id: string;
-  modelProviderCredentialId: string;
-  modelId: string;
-  name: string;
-  description: string;
-  reasoningLevels: string[] | null;
 };
 
 type GraphqlModelProviderCredentialModelRecord = {
@@ -42,26 +33,6 @@ type SelectableDatabase = {
       where(condition: unknown): {
         limit(limit: number): Promise<ModelProviderCredentialRecord[]>;
       };
-    };
-  };
-};
-
-type InsertableDatabase = {
-  insert(table: unknown): {
-    values(value: Record<string, unknown> | Array<Record<string, unknown>>): Promise<void>;
-  };
-};
-
-type DeletableDatabase = {
-  delete(table: unknown): {
-    where(condition: unknown): Promise<void>;
-  };
-};
-
-type ModelsSelectableDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): Promise<ModelProviderCredentialModelRecord[]>;
     };
   };
 };
@@ -117,42 +88,12 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
       throw new Error("Credential not found.");
     }
 
-    const models = await this.modelService.fetchModels(credential.modelProvider, credential.encryptedApiKey);
-    const updatedModels = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const deletableDatabase = tx as DeletableDatabase;
-      const insertableDatabase = tx as InsertableDatabase;
-      const modelsSelectableDatabase = tx as ModelsSelectableDatabase;
-      await deletableDatabase
-        .delete(modelProviderCredentialModels)
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
-          eq(modelProviderCredentialModels.modelProviderCredentialId, credential.id),
-        ));
-
-      if (models.length > 0) {
-        await insertableDatabase
-          .insert(modelProviderCredentialModels)
-          .values(models.map((model) => RefreshModelProviderCredentialModelsMutation.toModelInsertInput({
-            model,
-            companyId: context.authSession.company.id,
-            modelProviderCredentialId: credential.id,
-          })));
-      }
-
-      return modelsSelectableDatabase
-        .select({
-          id: modelProviderCredentialModels.id,
-          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
-          modelId: modelProviderCredentialModels.modelId,
-          name: modelProviderCredentialModels.name,
-          description: modelProviderCredentialModels.description,
-          reasoningLevels: modelProviderCredentialModels.reasoningLevels,
-        })
-        .from(modelProviderCredentialModels)
-        .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
-          eq(modelProviderCredentialModels.modelProviderCredentialId, credential.id),
-        ));
+    const updatedModels = await this.modelService.refreshStoredModels({
+      apiKey: credential.encryptedApiKey,
+      companyId: context.authSession.company.id,
+      modelProvider: credential.modelProvider,
+      modelProviderCredentialId: credential.id,
+      transactionProvider: context.app_runtime_transaction_provider,
     });
 
     return updatedModels.map((model) => ({
@@ -160,19 +101,4 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
       reasoningLevels: model.reasoningLevels ?? [],
     }));
   };
-
-  private static toModelInsertInput(input: {
-    model: ModelProviderModel;
-    companyId: string;
-    modelProviderCredentialId: string;
-  }): Record<string, unknown> {
-    return {
-      companyId: input.companyId,
-      modelProviderCredentialId: input.modelProviderCredentialId,
-      modelId: input.model.modelId,
-      name: input.model.name,
-      description: input.model.description,
-      reasoningLevels: input.model.reasoningLevels,
-    };
-  }
 }
