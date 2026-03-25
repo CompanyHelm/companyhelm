@@ -1,8 +1,11 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
 import { agents, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { Resolver } from "./resolver.ts";
+
+type AgentQueryArguments = {
+  id: string;
+};
 
 type AgentRecord = {
   id: string;
@@ -47,22 +50,29 @@ type SelectableDatabase = {
 };
 
 /**
- * Lists company-scoped agents together with the provider and model metadata backing each default
- * model selection.
+ * Loads one company-scoped agent together with the provider credential and model currently backing
+ * that agent so the detail page can edit the persisted configuration directly.
  */
 @injectable()
-export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
-  protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlAgentRecord[]> => {
+export class AgentQueryResolver {
+  execute = async (
+    _root: unknown,
+    arguments_: AgentQueryArguments,
+    context: GraphqlRequestContext,
+  ): Promise<GraphqlAgentRecord> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    if (arguments_.id.length === 0) {
+      throw new Error("id is required.");
+    }
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
-      const agentRecords = await selectableDatabase
+      const [agentRecord] = await selectableDatabase
         .select({
           id: agents.id,
           name: agents.name,
@@ -73,49 +83,41 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           updatedAt: agents.updated_at,
         })
         .from(agents)
-        .where(eq(agents.companyId, context.authSession.company.id)) as AgentRecord[];
-
-      const modelIds = agentRecords
-        .map((agentRecord) => agentRecord.defaultModelProviderCredentialModelId)
-        .filter((value): value is string => typeof value === "string");
-      if (modelIds.length === 0) {
-        return agentRecords.map((agentRecord) => AgentsQueryResolver.serializeRecord(agentRecord, null, null));
+        .where(and(
+          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.id, arguments_.id),
+        )) as AgentRecord[];
+      if (!agentRecord) {
+        throw new Error("Agent not found.");
       }
 
-      const modelRecords = await selectableDatabase
+      if (!agentRecord.defaultModelProviderCredentialModelId) {
+        return AgentQueryResolver.serializeRecord(agentRecord, null, null);
+      }
+
+      const [modelRecord] = await selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           name: modelProviderCredentialModels.name,
         })
         .from(modelProviderCredentialModels)
-        .where(inArray(modelProviderCredentialModels.id, modelIds)) as ModelRecord[];
-      const credentialIds = modelRecords.map((modelRecord) => modelRecord.modelProviderCredentialId);
-      const credentialRecords = credentialIds.length === 0
-        ? []
-        : await selectableDatabase
+        .where(eq(
+          modelProviderCredentialModels.id,
+          agentRecord.defaultModelProviderCredentialModelId,
+        )) as ModelRecord[];
+
+      const [credentialRecord] = modelRecord
+        ? await selectableDatabase
           .select({
             id: modelProviderCredentials.id,
             modelProvider: modelProviderCredentials.modelProvider,
           })
           .from(modelProviderCredentials)
-          .where(inArray(modelProviderCredentials.id, credentialIds)) as CredentialRecord[];
+          .where(eq(modelProviderCredentials.id, modelRecord.modelProviderCredentialId)) as CredentialRecord[]
+        : [];
 
-      const modelById = new Map(modelRecords.map((modelRecord) => [modelRecord.id, modelRecord]));
-      const credentialById = new Map(
-        credentialRecords.map((credentialRecord) => [credentialRecord.id, credentialRecord]),
-      );
-
-      return agentRecords.map((agentRecord) => {
-        const modelRecord = agentRecord.defaultModelProviderCredentialModelId
-          ? modelById.get(agentRecord.defaultModelProviderCredentialModelId) ?? null
-          : null;
-        const credentialRecord = modelRecord
-          ? credentialById.get(modelRecord.modelProviderCredentialId) ?? null
-          : null;
-
-        return AgentsQueryResolver.serializeRecord(agentRecord, modelRecord, credentialRecord);
-      });
+      return AgentQueryResolver.serializeRecord(agentRecord, modelRecord ?? null, credentialRecord ?? null);
     });
   };
 

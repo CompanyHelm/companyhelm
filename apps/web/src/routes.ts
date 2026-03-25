@@ -5,6 +5,7 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
@@ -55,6 +56,12 @@ const agentsRoute = createRoute({
   component: AgentsPage,
 });
 
+const agentDetailRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/agents/$agentId",
+  component: AgentDetailPage,
+});
+
 const modelProviderCredentialDetailRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/model-provider-credentials/$credentialId",
@@ -78,6 +85,7 @@ const routeTree = rootRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
       agentsRoute,
+      agentDetailRoute,
       modelProviderCredentialsRoute,
       modelProviderCredentialDetailRoute,
     ]),

@@ -9,6 +9,7 @@ import {
   type AgentCreateProviderOption,
 } from "./create_agent_dialog";
 import type { agentsPageAddAgentMutation } from "./__generated__/agentsPageAddAgentMutation.graphql";
+import type { agentsPageDeleteAgentMutation } from "./__generated__/agentsPageDeleteAgentMutation.graphql";
 import type { agentsPageQuery } from "./__generated__/agentsPageQuery.graphql";
 
 const agentsPageQueryNode = graphql`
@@ -54,6 +55,14 @@ const agentsPageAddAgentMutationNode = graphql`
   }
 `;
 
+const agentsPageDeleteAgentMutationNode = graphql`
+  mutation agentsPageDeleteAgentMutation($input: DeleteAgentInput!) {
+    DeleteAgent(input: $input) {
+      id
+    }
+  }
+`;
+
 function AgentsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -72,7 +81,12 @@ function AgentsPageFallback() {
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <AgentsTable agents={[]} isLoading />
+          <AgentsTable
+            agents={[]}
+            deletingAgentId={null}
+            isLoading
+            onDelete={async () => undefined}
+          />
         </CardContent>
       </Card>
     </main>
@@ -82,6 +96,7 @@ function AgentsPageFallback() {
 function AgentsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [deletingAgentId, setDeletingAgentId] = useState<string | null>(null);
   const data = useLazyLoadQuery<agentsPageQuery>(
     agentsPageQueryNode,
     {},
@@ -91,6 +106,9 @@ function AgentsPageContent() {
   );
   const [commitAddAgent, isCreateAgentInFlight] = useMutation<agentsPageAddAgentMutation>(
     agentsPageAddAgentMutationNode,
+  );
+  const [commitDeleteAgent, isDeleteAgentInFlight] = useMutation<agentsPageDeleteAgentMutation>(
+    agentsPageDeleteAgentMutationNode,
   );
   const agents: AgentsTableRecord[] = data.Agents.map((agent) => ({
     id: agent.id,
@@ -153,7 +171,57 @@ function AgentsPageContent() {
             </div>
           ) : null}
 
-          {providerOptions.length > 0 ? <AgentsTable agents={agents} isLoading={false} /> : null}
+          <AgentsTable
+            agents={agents}
+            deletingAgentId={deletingAgentId}
+            isLoading={false}
+            onDelete={async (agentId) => {
+              if (isDeleteAgentInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setDeletingAgentId(agentId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitDeleteAgent({
+                  variables: {
+                    input: {
+                      id: agentId,
+                    },
+                  },
+                  updater: (store) => {
+                    const deletedAgent = store.getRootField("DeleteAgent");
+                    if (!deletedAgent) {
+                      return;
+                    }
+
+                    const deletedId = deletedAgent.getDataID();
+                    const rootRecord = store.getRoot();
+                    const currentAgents = rootRecord.getLinkedRecords("Agents") || [];
+                    rootRecord.setLinkedRecords(
+                      currentAgents.filter((record) => record && record.getDataID() !== deletedId),
+                      "Agents",
+                    );
+                  },
+                  onCompleted: (_response, errors) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to delete agent.");
+              });
+
+              setDeletingAgentId(null);
+            }}
+          />
         </CardContent>
       </Card>
 

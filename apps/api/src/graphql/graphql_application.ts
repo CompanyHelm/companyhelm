@@ -4,10 +4,13 @@ import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
 import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
+import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
+import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
+import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
@@ -23,8 +26,10 @@ export class GraphqlApplication {
   private readonly configDocument: Config;
   private readonly addAgentMutation: AddAgentMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
+  private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
+  private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
@@ -32,6 +37,7 @@ export class GraphqlApplication {
   private readonly meQueryResolver: MeQueryResolver;
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
+  private readonly updateAgentMutation: UpdateAgentMutation;
 
   constructor(
     @inject(Config) config: Config,
@@ -47,15 +53,20 @@ export class GraphqlApplication {
     modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver,
     @inject(ModelProviderCredentialsQueryResolver) modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver,
     @inject(AddAgentMutation) addAgentMutation: AddAgentMutation = new AddAgentMutation(),
+    @inject(AgentQueryResolver) agentQueryResolver: AgentQueryResolver = new AgentQueryResolver(),
     @inject(AgentCreateOptionsQueryResolver)
     agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver = new AgentCreateOptionsQueryResolver(),
     @inject(AgentsQueryResolver) agentsQueryResolver: AgentsQueryResolver = new AgentsQueryResolver(),
+    @inject(DeleteAgentMutation) deleteAgentMutation: DeleteAgentMutation = new DeleteAgentMutation(),
+    @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
+    this.agentQueryResolver = agentQueryResolver;
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentsQueryResolver = agentsQueryResolver;
+    this.deleteAgentMutation = deleteAgentMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
@@ -63,6 +74,7 @@ export class GraphqlApplication {
     this.meQueryResolver = meQueryResolver;
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
+    this.updateAgentMutation = updateAgentMutation;
   }
 
   async register(app: FastifyInstance): Promise<void> {
@@ -71,6 +83,7 @@ export class GraphqlApplication {
       context: (request) => this.graphqlRequestContextResolver.resolve(request),
       resolvers: {
         Query: {
+          Agent: this.agentQueryResolver.execute,
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,
           health: this.healthQueryResolver.execute,
@@ -81,8 +94,10 @@ export class GraphqlApplication {
         Mutation: {
           AddAgent: this.addAgentMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
+          DeleteAgent: this.deleteAgentMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
+          UpdateAgent: this.updateAgentMutation.execute,
         },
       },
       path: this.configDocument.graphql.endpoint,

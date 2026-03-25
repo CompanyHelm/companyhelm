@@ -1,4 +1,20 @@
+import { Link } from "@tanstack/react-router";
+import { Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogCancelAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -21,7 +37,9 @@ export type AgentsTableRecord = {
 
 interface AgentsTableProps {
   agents: AgentsTableRecord[];
+  deletingAgentId: string | null;
   isLoading: boolean;
+  onDelete: (agentId: string) => Promise<void>;
 }
 
 function formatTimestamp(value: string): string {
@@ -73,12 +91,23 @@ export function AgentsTable(props: AgentsTableProps) {
           <TableHead>Reasoning</TableHead>
           <TableHead>Created</TableHead>
           <TableHead>Updated</TableHead>
+          <TableHead className="w-16 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {props.agents.map((agent) => (
           <TableRow key={agent.id}>
-            <TableCell className="font-medium text-foreground">{agent.name}</TableCell>
+            <TableCell className="font-medium text-foreground">
+              <Link
+                className="transition hover:text-primary hover:underline"
+                params={{
+                  agentId: agent.id,
+                }}
+                to="/agents/$agentId"
+              >
+                {agent.name}
+              </Link>
+            </TableCell>
             <TableCell>
               {agent.modelProvider ? (
                 <Badge variant="outline">{formatProviderLabel(agent.modelProvider)}</Badge>
@@ -90,6 +119,44 @@ export function AgentsTable(props: AgentsTableProps) {
             <TableCell>{agent.reasoningLevel ?? "—"}</TableCell>
             <TableCell>{formatTimestamp(agent.createdAt)}</TableCell>
             <TableCell>{formatTimestamp(agent.updatedAt)}</TableCell>
+            <TableCell className="text-right">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={props.deletingAgentId === agent.id}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete agent</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the agent configuration. This action cannot be
+                      undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancelAction asChild>
+                      <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
+                    </AlertDialogCancelAction>
+                    <AlertDialogPrimaryAction asChild>
+                      <AlertDialogActionButton
+                        variant="destructive"
+                        disabled={props.deletingAgentId === agent.id}
+                        onClick={async () => {
+                          await props.onDelete(agent.id);
+                        }}
+                      >
+                        Delete
+                      </AlertDialogActionButton>
+                    </AlertDialogPrimaryAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

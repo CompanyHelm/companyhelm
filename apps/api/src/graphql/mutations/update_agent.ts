@@ -4,11 +4,12 @@ import { agents, modelProviderCredentialModels, modelProviderCredentials } from 
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
-type AddAgentMutationArguments = {
+type UpdateAgentMutationArguments = {
   input: {
+    id: string;
+    name: string;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
-    name: string;
     reasoningLevel?: string | null;
     systemPrompt?: string | null;
   };
@@ -36,6 +37,10 @@ type CredentialRecord = {
   modelProvider: "openai" | "anthropic";
 };
 
+type ExistingAgentRecord = {
+  id: string;
+};
+
 type GraphqlAgentRecord = {
   id: string;
   name: string;
@@ -50,26 +55,28 @@ type GraphqlAgentRecord = {
 };
 
 type DatabaseTransaction = {
-  insert(table: unknown): {
-    values(value: Record<string, unknown>): {
-      returning?(selection?: Record<string, unknown>): Promise<AgentRecord[]>;
-    };
-  };
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): Promise<Array<Record<string, unknown>>>;
     };
   };
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): {
+        returning?(selection?: Record<string, unknown>): Promise<AgentRecord[]>;
+      };
+    };
+  };
 };
 
 /**
- * Creates a company-scoped agent bound to one provider credential model and validates that the
- * selected reasoning level is compatible with that model.
+ * Rewrites one persisted agent configuration after validating that the selected credential, model,
+ * and reasoning level are compatible for the authenticated company.
  */
 @injectable()
-export class AddAgentMutation extends Mutation<AddAgentMutationArguments, GraphqlAgentRecord> {
+export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, GraphqlAgentRecord> {
   protected resolve = async (
-    arguments_: AddAgentMutationArguments,
+    arguments_: UpdateAgentMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlAgentRecord> => {
     if (!context.authSession?.company) {
@@ -77,6 +84,9 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     }
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
+    }
+    if (arguments_.input.id.length === 0) {
+      throw new Error("id is required.");
     }
     if (arguments_.input.name.length === 0) {
       throw new Error("name is required.");
@@ -90,6 +100,19 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
+      const [existingAgent] = await databaseTransaction
+        .select({
+          id: agents.id,
+        })
+        .from(agents)
+        .where(and(
+          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.id, arguments_.input.id),
+        )) as ExistingAgentRecord[];
+      if (!existingAgent) {
+        throw new Error("Agent not found.");
+      }
+
       const [credentialRecord] = await databaseTransaction
         .select({
           id: modelProviderCredentials.id,
@@ -123,22 +146,23 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         throw new Error("Provider model does not belong to the selected credential.");
       }
 
-      const reasoningLevel = AddAgentMutation.resolveReasoningLevel(
+      const reasoningLevel = UpdateAgentMutation.resolveReasoningLevel(
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
       );
-      const now = new Date();
       const [agentRecord] = await databaseTransaction
-        .insert(agents)
-        .values({
-          companyId: context.authSession.company.id,
+        .update(agents)
+        .set({
           name: arguments_.input.name,
           defaultModelProviderCredentialModelId: modelRecord.id,
           default_reasoning_level: reasoningLevel,
-          system_prompt: AddAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
-          created_at: now,
-          updated_at: now,
+          system_prompt: UpdateAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
+          updated_at: new Date(),
         })
+        .where(and(
+          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.id, existingAgent.id),
+        ))
         .returning?.({
           id: agents.id,
           name: agents.name,
@@ -149,10 +173,10 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           updatedAt: agents.updated_at,
         }) as Promise<AgentRecord[]>;
       if (!agentRecord) {
-        throw new Error("Failed to create agent.");
+        throw new Error("Failed to update agent.");
       }
 
-      return AddAgentMutation.serializeRecord(agentRecord, modelRecord, credentialRecord);
+      return UpdateAgentMutation.serializeRecord(agentRecord, modelRecord, credentialRecord);
     });
   };
 
