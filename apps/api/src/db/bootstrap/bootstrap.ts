@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
 import { AdminDatabase } from "../admin_database.ts";
+import { ApiLogger } from "../../log/api_logger.ts";
 import type { BootstrapModuleInterface } from "./bootstrap_module_interface.ts";
 import { AppRuntimeRoleBootstrapModule } from "./modules/app-runtime-role.ts";
 import { MigrationBootstrapModule } from "./modules/migration.ts";
@@ -16,15 +17,20 @@ export class DbBootstrap {
   private readonly adminDatabase: AdminDatabase;
   private readonly appRuntimeRoleBootstrapModule: BootstrapModuleInterface;
   private readonly migrationBootstrapModule: BootstrapModuleInterface;
+  private readonly logger;
 
   constructor(
     @inject(AdminDatabase) adminDatabase: AdminDatabase,
     @inject(AppRuntimeRoleBootstrapModule) appRuntimeRoleBootstrapModule: BootstrapModuleInterface,
     @inject(MigrationBootstrapModule) migrationBootstrapModule: BootstrapModuleInterface,
+    @inject(ApiLogger) logger: ApiLogger,
   ) {
     this.adminDatabase = adminDatabase;
     this.appRuntimeRoleBootstrapModule = appRuntimeRoleBootstrapModule;
     this.migrationBootstrapModule = migrationBootstrapModule;
+    this.logger = logger.child({
+      component: "db_bootstrap",
+    });
   }
 
   /**
@@ -48,8 +54,8 @@ export class DbBootstrap {
         lockHeld = true;
       }
 
-      await this.appRuntimeRoleBootstrapModule.run();
-      await this.migrationBootstrapModule.run();
+      await this.runModule("app_runtime_role", this.appRuntimeRoleBootstrapModule);
+      await this.runModule("migration", this.migrationBootstrapModule);
     } finally {
       if (lockHeld) {
         await sqlClient`
@@ -57,5 +63,18 @@ export class DbBootstrap {
         `;
       }
     }
+  }
+
+  private async runModule(moduleName: string, module: BootstrapModuleInterface): Promise<void> {
+    this.logger.info({
+      module: moduleName,
+    }, "starting db bootstrap module");
+    this.logger.info({
+      module: moduleName,
+    }, "running db bootstrap module");
+    await module.run();
+    this.logger.info({
+      module: moduleName,
+    }, "completed db bootstrap module");
   }
 }
