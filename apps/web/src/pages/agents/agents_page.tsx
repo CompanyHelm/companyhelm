@@ -132,6 +132,16 @@ function AgentsPageContent() {
       reasoningLevels: [...modelOption.reasoningLevels],
     })),
   }));
+  const filterStoreRecords = (
+    records: ReadonlyArray<unknown>,
+  ): Array<{ getDataID(): string }> => {
+    return records.filter((record): record is { getDataID(): string } => {
+      return typeof record === "object"
+        && record !== null
+        && "getDataID" in record
+        && typeof record.getDataID === "function";
+    });
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -198,9 +208,9 @@ function AgentsPageContent() {
 
                     const deletedId = deletedAgent.getDataID();
                     const rootRecord = store.getRoot();
-                    const currentAgents = rootRecord.getLinkedRecords("Agents") || [];
+                    const currentAgents = filterStoreRecords(rootRecord.getLinkedRecords("Agents") || []);
                     rootRecord.setLinkedRecords(
-                      currentAgents.filter((record) => record && record.getDataID() !== deletedId),
+                      currentAgents.filter((record) => record.getDataID() !== deletedId),
                       "Agents",
                     );
                   },
@@ -238,14 +248,14 @@ function AgentsPageContent() {
               variables: {
                 input,
               },
-              updater: (store, response) => {
-                const newAgent = response?.AddAgent;
+              updater: (store) => {
+                const newAgent = store.getRootField("AddAgent");
                 if (!newAgent) {
                   return;
                 }
 
                 const rootRecord = store.getRoot();
-                const currentAgents = rootRecord.getLinkedRecords("Agents") || [];
+                const currentAgents = filterStoreRecords(rootRecord.getLinkedRecords("Agents") || []);
                 rootRecord.setLinkedRecords([newAgent, ...currentAgents], "Agents");
               },
               onCompleted: (_response, errors) => {
