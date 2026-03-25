@@ -85,6 +85,13 @@
       "when": 1774410600000,
       "tag": "0011_add_model_id_to_credential_models",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774414200000,
+      "tag": "0012_agents_default_model_provider_credential_model_id",
+      "breakpoints": true
     }
   ]
 }
