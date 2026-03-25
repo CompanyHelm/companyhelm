@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
-import { ModelService, type ModelProviderModel } from "../../services/model_service.ts";
+import { ModelService, type ModelProviderModel } from "../../services/ai_providers/model_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -147,6 +147,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
     return {
       companyId: input.companyId,
       modelProviderCredentialId: input.modelProviderCredentialId,
+      modelId: input.model.modelId,
       name: input.model.name,
       reasoningLevels: input.model.reasoningLevels,
       createdAt: input.createdAt,

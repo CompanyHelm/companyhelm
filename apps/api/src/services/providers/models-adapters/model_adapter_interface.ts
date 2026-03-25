@@ -1,4 +1,4 @@
-import type { ModelProviderModel } from "../../model_provider_model.ts";
+import type { ModelProviderModel } from "../../ai_providers/model_provider_model.js";
 
 /**
  * Defines how one provider validates access and returns the normalized models that the rest of the

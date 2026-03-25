@@ -54,6 +54,7 @@ type ModelProviderCredential {
 type ModelProviderCredentialModel {
   id: ID!
   modelProviderCredentialId: ID!
+  modelId: String!
   name: String!
   reasoningLevels: [String!]!
   createdAt: String!

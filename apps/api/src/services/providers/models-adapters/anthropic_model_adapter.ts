@@ -1,5 +1,5 @@
-import { ModelRegistry } from "../../model_registry.ts";
-import type { ModelProviderModel } from "../../model_provider_model.ts";
+import { ModelRegistry } from "../../ai_providers/model_registry.js";
+import type { ModelProviderModel } from "../../ai_providers/model_provider_model.js";
 import type { ModelAdapterInterface } from "./model_adapter_interface.ts";
 
 type AnthropicModelsResponse = {
@@ -42,12 +42,12 @@ export class AnthropicModelAdapter implements ModelAdapterInterface {
       throw new Error("Invalid model list response for anthropic.");
     }
 
-    const availableModelNames = new Set(
-      payload.data.map((model) => String(model.id || model.name || "").trim()).filter((modelName) => modelName.length > 0),
+    const availableModelIds = new Set(
+      payload.data.map((model) => String(model.id || model.name || "").trim()).filter((modelId) => modelId.length > 0),
     );
 
     return this.modelRegistry
       .getModelsForProvider("anthropic")
-      .filter((model) => availableModelNames.has(model.name));
+      .filter((model) => availableModelIds.has(model.modelId));
   }
 }

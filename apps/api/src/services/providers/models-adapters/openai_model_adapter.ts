@@ -1,5 +1,5 @@
-import { ModelRegistry } from "../../model_registry.ts";
-import type { ModelProviderModel } from "../../model_provider_model.ts";
+import { ModelRegistry } from "../../ai_providers/model_registry.js";
+import type { ModelProviderModel } from "../../ai_providers/model_provider_model.js";
 import type { ModelAdapterInterface } from "./model_adapter_interface.ts";
 
 type OpenAiModelsResponse = {
@@ -40,12 +40,12 @@ export class OpenAiModelAdapter implements ModelAdapterInterface {
       throw new Error("Invalid model list response for openai.");
     }
 
-    const availableModelNames = new Set(
-      payload.data.map((model) => String(model.id || "").trim()).filter((modelName) => modelName.length > 0),
+    const availableModelIds = new Set(
+      payload.data.map((model) => String(model.id || "").trim()).filter((modelId) => modelId.length > 0),
     );
 
     return this.modelRegistry
       .getModelsForProvider("openai")
-      .filter((model) => availableModelNames.has(model.name));
+      .filter((model) => availableModelIds.has(model.modelId));
   }
 }

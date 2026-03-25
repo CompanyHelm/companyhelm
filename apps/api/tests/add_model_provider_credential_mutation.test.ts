@@ -12,7 +12,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import type { ModelProviderModel } from "../src/services/model_service.ts";
+import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class AddModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {
@@ -82,6 +82,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
         apiKey,
       });
       return [{
+        modelId: "gpt-5.4",
         name: "gpt-test",
         reasoningLevels: ["low", "medium"],
       }];
@@ -173,6 +174,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
   assert.equal(database.insertedValues[1]?.modelProviderCredentialId, "credential-1");
+  assert.equal(database.insertedValues[1]?.modelId, "gpt-5.4");
   assert.equal(database.insertedValues[1]?.name, "gpt-test");
   assert.deepEqual(database.insertedValues[1]?.reasoningLevels, ["low", "medium"]);
   assert.deepEqual(modelManager.calls, [{

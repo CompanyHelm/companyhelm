@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
-import { ModelService, type ModelProviderModel } from "../../services/model_service.ts";
+import { ModelService, type ModelProviderModel } from "../../services/ai_providers/model_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -21,6 +21,7 @@ type ModelProviderCredentialRecord = {
 type ModelProviderCredentialModelRecord = {
   id: string;
   modelProviderCredentialId: string;
+  modelId: string;
   name: string;
   reasoningLevels: string[] | null;
   createdAt: Date;
@@ -30,6 +31,7 @@ type ModelProviderCredentialModelRecord = {
 type GraphqlModelProviderCredentialModelRecord = {
   id: string;
   modelProviderCredentialId: string;
+  modelId: string;
   name: string;
   reasoningLevels: string[];
   createdAt: string;
@@ -147,6 +149,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
         .select({
           id: modelProviderCredentialModels.id,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+          modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
           createdAt: modelProviderCredentialModels.createdAt,
@@ -177,6 +180,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     return {
       companyId: input.companyId,
       modelProviderCredentialId: input.modelProviderCredentialId,
+      modelId: input.model.modelId,
       name: input.model.name,
       reasoningLevels: input.model.reasoningLevels,
       createdAt: input.createdAt,

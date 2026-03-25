@@ -1,5 +1,5 @@
 import { injectable } from "inversify";
-import { ModelProviderModel } from "./model_provider_model.ts";
+import { ModelProviderModel } from "./model_provider_model.js";
 
 /**
  * Owns the curated catalog of provider models the product recognizes so reasoning metadata and
@@ -12,45 +12,54 @@ export class ModelRegistry {
   private readonly models: ModelProviderModel[] = [
     new ModelProviderModel({
       provider: "openai",
-      name: "gpt-5.4",
+      modelId: "gpt-5.4",
+      name: "GPT-5.4",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
     }),
     new ModelProviderModel({
       provider: "openai",
-      name: "gpt-5.4-codex",
+      modelId: "gpt-5-codex",
+      name: "GPT-5 Codex",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
     }),
     new ModelProviderModel({
       provider: "openai",
-      name: "gpt-5.4-codex-spark",
+      modelId: "gpt-5.2-codex",
+      name: "GPT-5.2 Codex",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
     }),
     new ModelProviderModel({
       provider: "openai",
-      name: "gpt-5.3",
+      modelId: "gpt-5.1-codex",
+      name: "GPT-5.1 Codex",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
     }),
     new ModelProviderModel({
       provider: "openai",
-      name: "gpt-5.3-codex",
+      modelId: "gpt-5.3-codex",
+      name: "GPT-5.3 Codex",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
     }),
     new ModelProviderModel({
       provider: "openai",
-      name: "gpt-5.3-codex-spark",
+      modelId: "gpt-5.1-codex-max",
+      name: "GPT-5.1 Codex Max",
       reasoningLevels: ModelRegistry.OPENAI_REASONING_LEVELS,
     }),
     new ModelProviderModel({
       provider: "anthropic",
-      name: "claude-opus-4-6",
+      modelId: "claude-opus-4-6",
+      name: "Claude Opus 4.6",
     }),
     new ModelProviderModel({
       provider: "anthropic",
-      name: "claude-sonnet-4-6",
+      modelId: "claude-sonnet-4-6",
+      name: "Claude Sonnet 4.6",
     }),
     new ModelProviderModel({
       provider: "anthropic",
-      name: "claude-haiku-4-5",
+      modelId: "claude-haiku-4-5",
+      name: "Claude Haiku 4.5",
     }),
   ];
 

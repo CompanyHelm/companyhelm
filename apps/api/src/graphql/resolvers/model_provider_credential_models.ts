@@ -10,6 +10,7 @@ type ModelProviderCredentialModelsArguments = {
 type ModelProviderCredentialModelRecord = {
   id: string;
   modelProviderCredentialId: string;
+  modelId: string;
   name: string;
   reasoningLevels: string[] | null;
   createdAt: Date;
@@ -19,6 +20,7 @@ type ModelProviderCredentialModelRecord = {
 type GraphqlModelProviderCredentialModelRecord = {
   id: string;
   modelProviderCredentialId: string;
+  modelId: string;
   name: string;
   reasoningLevels: string[];
   createdAt: string;
@@ -61,6 +63,7 @@ export class ModelProviderCredentialModelsQueryResolver {
         .select({
           id: modelProviderCredentialModels.id,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+          modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
           createdAt: modelProviderCredentialModels.createdAt,

@@ -68,7 +68,8 @@ export const agents = pgTable("agents", {
     .notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
-  default_model_name: text("default_model_name").notNull(),
+  defaultModelProviderCredentialModelId: uuid("default_model_provider_credential_model_id")
+    .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
   default_reasoning_level: text("default_reasoning_level"),
   system_prompt: text("system_prompt"),
 },
@@ -127,6 +128,7 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
   modelProviderCredentialId: uuid("model_provider_credential_id")
     .references(() => modelProviderCredentials.id, { onDelete: "cascade" })
     .notNull(),
+  modelId: text("model_id").notNull(),
   name: text("name").notNull(),
   // null if the model does not support reasoning levels
   reasoningLevels: text("reasoning_levels").array(),

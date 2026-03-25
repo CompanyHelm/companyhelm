@@ -12,7 +12,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import type { ModelProviderModel } from "../src/services/model_service.ts";
+import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class ModelProviderCredentialModelsQueryTestHarness {
   static createConfigMock(): Config {
@@ -31,6 +31,7 @@ class ModelProviderCredentialModelsQueryTestHarness {
     const rows = [{
       id: "model-1",
       modelProviderCredentialId: "credential-1",
+      modelId: "gpt-5.4",
       name: "gpt-test",
       reasoningLevels: ["low", "medium"],
       createdAt: new Date("2026-03-23T10:00:00.000Z"),
@@ -116,6 +117,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
           ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
             id
             modelProviderCredentialId
+            modelId
             name
             reasoningLevels
             createdAt
@@ -134,6 +136,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
   assert.deepEqual(document.data.ModelProviderCredentialModels, [{
     id: "model-1",
     modelProviderCredentialId: "credential-1",
+    modelId: "gpt-5.4",
     name: "gpt-test",
     reasoningLevels: ["low", "medium"],
     createdAt: "2026-03-23T10:00:00.000Z",

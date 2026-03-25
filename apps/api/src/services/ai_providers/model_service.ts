@@ -1,9 +1,9 @@
 import { inject, injectable } from "inversify";
-import { ModelRegistry } from "./model_registry.ts";
-import { ModelProviderModel } from "./model_provider_model.ts";
-import { AnthropicModelAdapter } from "./providers/models-adapters/anthropic_model_adapter.ts";
-import type { ModelAdapterInterface } from "./providers/models-adapters/model_adapter_interface.ts";
-import { OpenAiModelAdapter } from "./providers/models-adapters/openai_model_adapter.ts";
+import { ModelRegistry } from "./model_registry.js";
+import { ModelProviderModel } from "./model_provider_model.js";
+import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_model_adapter.js";
+import type { ModelAdapterInterface } from "../providers/models-adapters/model_adapter_interface.js";
+import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
 
 /**
  * Resolves one provider adapter and delegates credential validation plus model lookup to that
@@ -40,4 +40,4 @@ export class ModelService {
   }
 }
 
-export { ModelProviderModel } from "./model_provider_model.ts";
+export { ModelProviderModel } from "./model_provider_model.js";

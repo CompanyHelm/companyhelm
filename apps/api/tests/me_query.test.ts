@@ -12,7 +12,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import type { ModelProviderModel } from "../src/services/model_service.ts";
+import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class MeQueryTestHarness {
   static createConfigMock(): Config {
