@@ -114,6 +114,8 @@ database:
 redis:
   host: "127.0.0.1"
   port: 6379
+  username: ""
+  password: ""
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
@@ -169,6 +171,8 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   assert.deepEqual(document.redis, {
     host: "127.0.0.1",
     port: 6379,
+    username: "",
+    password: "",
   });
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.auth.provider, "clerk");

@@ -30,6 +30,8 @@ database:
 redis:
   host: "127.0.0.1"
   port: 6379
+  username: ""
+  password: ""
 github:
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"

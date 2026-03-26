@@ -49,6 +49,8 @@ export const ConfigDocument = z.object({
   redis: z.object({
     host: NonEmptyStringSchema,
     port: PositiveIntegerSchema,
+    username: z.string(),
+    password: z.string(),
   }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,

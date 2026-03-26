@@ -1,0 +1,79 @@
+import "reflect-metadata";
+import assert from "node:assert/strict";
+import { afterEach, test, vi } from "vitest";
+import type { Config } from "../src/config/schema.ts";
+import { RedisCompanyScopedService } from "../src/services/redis/company_scoped_service.ts";
+import { RedisService } from "../src/services/redis/service.ts";
+
+const { createClientMock } = vi.hoisted(() => ({
+  createClientMock: vi.fn(),
+}));
+
+vi.mock("redis", () => ({
+  createClient: createClientMock,
+}));
+
+afterEach(() => {
+  createClientMock.mockReset();
+});
+
+test("RedisService creates one client from config and reuses it after connect", async () => {
+  const client = {
+    connect: vi.fn(async () => {
+      client.isOpen = true;
+    }),
+    isOpen: false,
+  };
+  createClientMock.mockReturnValue(client);
+
+  const service = new RedisService({
+    redis: {
+      host: "127.0.0.1",
+      port: 6379,
+      username: "redis-user",
+      password: "redis-password",
+    },
+  } as Config);
+
+  const connectedClient = await service.getClient();
+  const reusedClient = await service.getClient();
+
+  assert.equal(connectedClient, client);
+  assert.equal(reusedClient, client);
+  assert.equal(createClientMock.mock.calls.length, 1);
+  assert.equal(client.connect.mock.calls.length, 1);
+  assert.deepEqual(createClientMock.mock.calls[0]?.[0], {
+    socket: {
+      host: "127.0.0.1",
+      port: 6379,
+    },
+    username: "redis-user",
+    password: "redis-password",
+  });
+});
+
+test("RedisCompanyScopedService subscribes on the company-prefixed key", async () => {
+  const subscribe = vi.fn(async () => undefined);
+  const subscriber = {
+    connect: vi.fn(async () => undefined),
+    subscribe,
+  };
+  const baseClient = {
+    duplicate: vi.fn(() => subscriber),
+  };
+  const redisService = {
+    getClient: vi.fn(async () => baseClient),
+  };
+  const service = new RedisCompanyScopedService("company-123", redisService as never);
+  const listener = vi.fn();
+
+  await service.subscribe("events", listener);
+
+  assert.equal(redisService.getClient.mock.calls.length, 1);
+  assert.equal(baseClient.duplicate.mock.calls.length, 1);
+  assert.equal(subscriber.connect.mock.calls.length, 1);
+  assert.deepEqual(subscribe.mock.calls[0], [
+    "company:company-123:events",
+    listener,
+  ]);
+});
