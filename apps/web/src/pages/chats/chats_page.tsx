@@ -804,21 +804,6 @@ function ChatsPageContent() {
               session={selectedSession}
               sessionMessages={selectedSessionMessages}
             />
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-xl bg-card/50 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Status</p>
-                <p className="mt-3 text-sm text-foreground">{selectedSession.status}</p>
-              </div>
-              <div className="rounded-xl bg-card/50 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Created</p>
-                <p className="mt-3 text-sm text-foreground">{formatTimestamp(selectedSession.createdAt)}</p>
-              </div>
-              <div className="rounded-xl bg-card/50 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Updated</p>
-                <p className="mt-3 text-sm text-foreground">{formatTimestamp(selectedSession.updatedAt)}</p>
-              </div>
-            </div>
           </CardContent>
         ) : null}
       </Card>
