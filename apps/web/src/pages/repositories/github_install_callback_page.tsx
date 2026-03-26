@@ -84,7 +84,7 @@ function GithubInstallCallbackPageFallback() {
 
 function GithubInstallCallbackPageContent() {
   const navigate = useNavigate();
-  const search = useSearch({ from: "/github/install" });
+  const search = useSearch({ strict: false });
   const callbackHandledRef = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const data = useLazyLoadQuery<githubInstallCallbackPageQuery>(
