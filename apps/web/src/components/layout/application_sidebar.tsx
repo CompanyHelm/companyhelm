@@ -64,7 +64,7 @@ function ApplicationSidebarVersion() {
   );
 
   return (
-    <div className="flex justify-center group-data-[collapsible=icon]:hidden">
+    <div className="flex h-8 items-center justify-center group-data-[collapsible=icon]:hidden">
       <span className="app-shell-sidebar__meta text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
     </div>
   );
@@ -160,10 +160,10 @@ export function ApplicationSidebar() {
 
       <SidebarFooter>
         <SidebarSeparator />
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <Button
-            className="app-shell-sidebar__meta mb-2 h-6 justify-start gap-2 px-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 [&_svg]:size-3.5"
-            size="sm"
+            className="app-shell-sidebar__meta h-8 justify-start gap-2 px-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 [&_svg]:size-3.5"
+            size="default"
             variant="ghost"
             onClick={() => {
               themeState.setTheme(isDarkTheme ? "light" : "dark");
@@ -188,7 +188,7 @@ export function ApplicationSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+          <div className="flex h-8 items-center gap-3 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <UserButton />
             <span className="app-shell-sidebar__meta truncate text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
               {emailAddress}
