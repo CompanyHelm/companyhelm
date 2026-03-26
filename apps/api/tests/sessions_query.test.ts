@@ -45,6 +45,7 @@ class SessionsQueryTestHarness {
                         agentId: "agent-1",
                         currentModelId: "gpt-5.4",
                         currentReasoningLevel: "medium",
+                        status: "running",
                         userMessage: "Summarize the latest support tickets.",
                         createdAt: new Date("2026-03-24T08:00:00.000Z"),
                         updatedAt: new Date("2026-03-24T08:05:00.000Z"),
@@ -54,6 +55,7 @@ class SessionsQueryTestHarness {
                         agentId: "agent-2",
                         currentModelId: "claude-3.7-sonnet",
                         currentReasoningLevel: "high",
+                        status: "archived",
                         userMessage: "Draft the customer rollout plan.",
                         createdAt: new Date("2026-03-24T09:00:00.000Z"),
                         updatedAt: new Date("2026-03-24T09:30:00.000Z"),
@@ -129,6 +131,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
             agentId
             modelId
             reasoningLevel
+            status
             userMessage
             createdAt
             updatedAt
@@ -146,6 +149,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       agentId: "agent-2",
       modelId: "claude-3.7-sonnet",
       reasoningLevel: "high",
+      status: "archived",
       userMessage: "Draft the customer rollout plan.",
       createdAt: "2026-03-24T09:00:00.000Z",
       updatedAt: "2026-03-24T09:30:00.000Z",
@@ -155,6 +159,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       agentId: "agent-1",
       modelId: "gpt-5.4",
       reasoningLevel: "medium",
+      status: "running",
       userMessage: "Summarize the latest support tickets.",
       createdAt: "2026-03-24T08:00:00.000Z",
       updatedAt: "2026-03-24T08:05:00.000Z",

@@ -1,9 +1,10 @@
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { MessageSquarePlusIcon, SendHorizonalIcon } from "lucide-react";
+import { ArchiveIcon, MessageSquarePlusIcon, SendHorizonalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 
@@ -21,6 +22,7 @@ const chatsPageQueryNode = graphql`
       agentId
       modelId
       reasoningLevel
+      status
       userMessage
       createdAt
       updatedAt
@@ -35,6 +37,22 @@ const chatsPageCreateSessionMutationNode = graphql`
       agentId
       modelId
       reasoningLevel
+      status
+      userMessage
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const chatsPageArchiveSessionMutationNode = graphql`
+  mutation chatsPageArchiveSessionMutation($input: ArchiveSessionInput!) {
+    ArchiveSession(input: $input) {
+      id
+      agentId
+      modelId
+      reasoningLevel
+      status
       userMessage
       createdAt
       updatedAt
@@ -81,6 +99,10 @@ function formatSessionTitle(userMessage: string): string {
   return `${firstLine.slice(0, 69).trimEnd()}...`;
 }
 
+function isArchivedSession(session: Pick<SessionRecord, "status">): boolean {
+  return session.status.trim().toLowerCase() === "archived";
+}
+
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
   return records.filter((record): record is { getDataID(): string } => {
     return typeof record === "object"
@@ -120,6 +142,7 @@ function ChatsPageContent() {
   const search = useSearch({ strict: false });
   const [draftMessage, setDraftMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
   const data = useLazyLoadQuery<chatsPageQuery>(
     chatsPageQueryNode,
     {},
@@ -130,14 +153,20 @@ function ChatsPageContent() {
   const [commitCreateSession, isCreateSessionInFlight] = useMutation<chatsPageCreateSessionMutation>(
     chatsPageCreateSessionMutationNode,
   );
+  const [commitArchiveSession, isArchiveSessionInFlight] = useMutation<chatsPageArchiveSessionMutation>(
+    chatsPageArchiveSessionMutationNode,
+  );
 
   const sortedAgents = useMemo(() => {
     return [...data.Agents].sort((leftAgent, rightAgent) => leftAgent.name.localeCompare(rightAgent.name));
   }, [data.Agents]);
+  const activeSessions = useMemo(() => {
+    return data.Sessions.filter((session) => !isArchivedSession(session));
+  }, [data.Sessions]);
   const sessionsByAgentId = useMemo(() => {
     const nextMap = new Map<string, SessionRecord[]>();
 
-    for (const session of data.Sessions) {
+    for (const session of activeSessions) {
       const existingSessions = nextMap.get(session.agentId) ?? [];
       existingSessions.push(session);
       nextMap.set(session.agentId, existingSessions);
@@ -150,10 +179,10 @@ function ChatsPageContent() {
     }
 
     return nextMap;
-  }, [data.Sessions]);
+  }, [activeSessions]);
   const sessionById = useMemo(() => {
-    return new Map(data.Sessions.map((session) => [session.id, session]));
-  }, [data.Sessions]);
+    return new Map(activeSessions.map((session) => [session.id, session]));
+  }, [activeSessions]);
 
   const resolvedSelectedSession = search.sessionId ? sessionById.get(search.sessionId) ?? null : null;
   const resolvedSelectedAgentId = search.agentId ?? resolvedSelectedSession?.agentId ?? "";
@@ -162,6 +191,20 @@ function ChatsPageContent() {
     ? resolvedSelectedSession
     : null;
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isCreateSessionInFlight;
+
+  useEffect(() => {
+    if (!search.agentId || !search.sessionId || selectedSession) {
+      return;
+    }
+
+    void navigate({
+      replace: true,
+      to: "/chats",
+      search: {
+        agentId: search.agentId,
+      },
+    });
+  }, [navigate, search.agentId, search.sessionId, selectedSession]);
 
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
@@ -256,6 +299,35 @@ function ChatsPageContent() {
     });
   };
 
+  const archiveSession = async (session: SessionRecord) => {
+    setErrorMessage(null);
+    setArchivingSessionId(session.id);
+
+    await new Promise<void>((resolve, reject) => {
+      commitArchiveSession({
+        variables: {
+          input: {
+            id: session.id,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to archive chat session.");
+    }).finally(() => {
+      setArchivingSessionId(null);
+    });
+  };
+
   return (
     <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:flex-row">
       <Card className="rounded-2xl border border-border/60 shadow-sm lg:w-[22rem] lg:shrink-0">
@@ -315,27 +387,47 @@ function ChatsPageContent() {
                     <ul className="mt-3 grid gap-2 border-t border-border/60 pt-3" role="list" aria-label={`${agent.name} sessions`}>
                       {agentSessions.map((session) => {
                         const isSessionSelected = selectedSession?.id === session.id;
+                        const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
 
                         return (
                           <li key={session.id}>
-                            <button
-                              className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                            <div
+                              className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
                                 isSessionSelected
                                   ? "border-primary/60 bg-primary/10"
                                   : "border-border/60 bg-background hover:bg-muted/40"
                               }`}
-                              onClick={() => {
-                                void openSession(agent.id, session.id);
-                              }}
-                              type="button"
                             >
-                              <p className="truncate text-xs font-medium text-foreground">
-                                {formatSessionTitle(session.userMessage)}
-                              </p>
-                              <p className="mt-1 text-[0.7rem] text-muted-foreground">
-                                {formatTimestamp(session.updatedAt)}
-                              </p>
-                            </button>
+                              <button
+                                className="min-w-0 flex-1 text-left"
+                                disabled={isSessionArchiving}
+                                onClick={() => {
+                                  void openSession(agent.id, session.id);
+                                }}
+                                type="button"
+                              >
+                                <p className="truncate text-xs font-medium text-foreground">
+                                  {formatSessionTitle(session.userMessage)}
+                                </p>
+                                <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                                  {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
+                                </p>
+                              </button>
+                              <button
+                                aria-label={`Archive ${formatSessionTitle(session.userMessage)}`}
+                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={isSessionArchiving}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  void archiveSession(session);
+                                }}
+                                title={isSessionArchiving ? "Archiving..." : "Archive chat"}
+                                type="button"
+                              >
+                                <ArchiveIcon className="size-4" />
+                              </button>
+                            </div>
                           </li>
                         );
                       })}
@@ -453,6 +545,10 @@ function ChatsPageContent() {
                 <p className="mt-3 text-sm text-foreground">
                   {selectedSession.reasoningLevel.length > 0 ? selectedSession.reasoningLevel : "Default"}
                 </p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Status</p>
+                <p className="mt-3 text-sm text-foreground">{selectedSession.status}</p>
               </div>
               <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Created</p>

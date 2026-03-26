@@ -4,6 +4,7 @@ import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
 import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
+import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
@@ -32,6 +33,7 @@ export class GraphqlApplication {
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
+  private readonly archiveSessionMutation: ArchiveSessionMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
@@ -73,6 +75,12 @@ export class GraphqlApplication {
     @inject(ModelProvidersQueryResolver) modelProvidersQueryResolver: ModelProvidersQueryResolver = new ModelProvidersQueryResolver(),
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(SessionsQueryResolver) sessionsQueryResolver: SessionsQueryResolver = new SessionsQueryResolver(),
+    @inject(ArchiveSessionMutation)
+    archiveSessionMutation: ArchiveSessionMutation = new ArchiveSessionMutation({
+      async archiveSession() {
+        throw new Error("ArchiveSession mutation is not configured.");
+      },
+    } as never),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
@@ -80,6 +88,7 @@ export class GraphqlApplication {
     this.agentQueryResolver = agentQueryResolver;
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentsQueryResolver = agentsQueryResolver;
+    this.archiveSessionMutation = archiveSessionMutation;
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
@@ -113,6 +122,7 @@ export class GraphqlApplication {
         Mutation: {
           AddAgent: this.addAgentMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
+          ArchiveSession: this.archiveSessionMutation.execute,
           CreateSession: this.createSessionMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,

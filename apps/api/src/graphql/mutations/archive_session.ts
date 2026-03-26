@@ -1,14 +1,11 @@
 import { inject, injectable } from "inversify";
+import { SessionManagerService } from "../../services/agent/session/session_manager_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
-import { SessionManagerService } from "../../services/agent/session/session_manager_service.ts";
 
-type CreateSessionMutationArguments = {
+type ArchiveSessionMutationArguments = {
   input: {
-    agentId: string;
-    modelId?: string | null;
-    reasoningLevel?: string | null;
-    userMessage: string;
+    id: string;
   };
 };
 
@@ -34,12 +31,8 @@ type ServiceSessionRecord = {
   updatedAt: Date;
 };
 
-/**
- * Creates one persisted agent session for the authenticated company so the first user prompt and
- * the resolved runtime model settings are captured together from the start of the conversation.
- */
 @injectable()
-export class CreateSessionMutation extends Mutation<CreateSessionMutationArguments, GraphqlSessionRecord> {
+export class ArchiveSessionMutation extends Mutation<ArchiveSessionMutationArguments, GraphqlSessionRecord> {
   private readonly sessionManagerService: SessionManagerService;
 
   constructor(@inject(SessionManagerService) sessionManagerService: SessionManagerService) {
@@ -48,7 +41,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
   }
 
   protected resolve = async (
-    arguments_: CreateSessionMutationArguments,
+    arguments_: ArchiveSessionMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlSessionRecord> => {
     if (!context.authSession?.company) {
@@ -57,23 +50,17 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
-    if (arguments_.input.agentId.length === 0) {
-      throw new Error("agentId is required.");
-    }
-    if (arguments_.input.userMessage.length === 0) {
-      throw new Error("userMessage is required.");
+    if (arguments_.input.id.length === 0) {
+      throw new Error("id is required.");
     }
 
-    const sessionRecord = await this.sessionManagerService.createSession(
+    const sessionRecord = await this.sessionManagerService.archiveSession(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
-      arguments_.input.agentId,
-      arguments_.input.userMessage,
-      arguments_.input.modelId,
-      arguments_.input.reasoningLevel,
+      arguments_.input.id,
     );
 
-    return CreateSessionMutation.serializeRecord(sessionRecord);
+    return ArchiveSessionMutation.serializeRecord(sessionRecord);
   };
 
   private static serializeRecord(sessionRecord: ServiceSessionRecord): GraphqlSessionRecord {

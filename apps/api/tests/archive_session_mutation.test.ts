@@ -5,23 +5,17 @@ import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
-import { AddAgentMutation } from "../src/graphql/mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
-import { CreateSessionMutation } from "../src/graphql/mutations/create_session.ts";
-import { DeleteAgentMutation } from "../src/graphql/mutations/delete_agent.ts";
+import { ArchiveSessionMutation } from "../src/graphql/mutations/archive_session.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
-import { UpdateAgentMutation } from "../src/graphql/mutations/update_agent.ts";
-import { AgentCreateOptionsQueryResolver } from "../src/graphql/resolvers/agent_create_options.ts";
-import { AgentQueryResolver } from "../src/graphql/resolvers/agent.ts";
-import { AgentsQueryResolver } from "../src/graphql/resolvers/agents.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class CreateSessionMutationTestHarness {
+class ArchiveSessionMutationTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -46,10 +40,10 @@ class CreateSessionMutationTestHarness {
   }
 }
 
-test("GraphQL CreateSession mutation creates a session and returns the persisted session data", async () => {
+test("GraphQL ArchiveSession mutation archives a session and returns the updated session data", async () => {
   const app = Fastify();
-  const config = CreateSessionMutationTestHarness.createConfigMock();
-  const database = CreateSessionMutationTestHarness.createDatabaseMock();
+  const config = ArchiveSessionMutationTestHarness.createConfigMock();
+  const database = ArchiveSessionMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -75,30 +69,20 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     },
   };
   const sessionManagerService = {
-    async createSession(
-      transactionProvider: unknown,
-      companyId: string,
-      agentId: string,
-      userMessage: string,
-      modelId?: string | null,
-      reasoningLevel?: string | null,
-    ) {
+    async archiveSession(transactionProvider: unknown, companyId: string, sessionId: string) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
-      assert.equal(agentId, "agent-1");
-      assert.equal(userMessage, "Draft the onboarding email.");
-      assert.equal(modelId, "gpt-5.4");
-      assert.equal(reasoningLevel, "high");
+      assert.equal(sessionId, "session-1");
 
       return {
-        id: "session-1",
-        agentId,
+        id: sessionId,
+        agentId: "agent-1",
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
-        status: "running",
-        userMessage,
+        status: "archived",
+        userMessage: "Draft the onboarding email.",
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
-        updatedAt: new Date("2026-03-25T12:00:00.000Z"),
+        updatedAt: new Date("2026-03-25T12:05:00.000Z"),
       };
     },
   };
@@ -113,13 +97,16 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
-    new AddAgentMutation(),
-    new CreateSessionMutation(sessionManagerService as never),
-    new AgentQueryResolver(),
-    new AgentCreateOptionsQueryResolver(),
-    new AgentsQueryResolver(),
-    new DeleteAgentMutation(),
-    new UpdateAgentMutation(),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    new ArchiveSessionMutation(sessionManagerService as never),
   ).register(app);
 
   const response = await app.inject({
@@ -130,8 +117,8 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     },
     payload: {
       query: `
-        mutation CreateSession($input: CreateSessionInput!) {
-          CreateSession(input: $input) {
+        mutation ArchiveSession($input: ArchiveSessionInput!) {
+          ArchiveSession(input: $input) {
             id
             agentId
             modelId
@@ -145,10 +132,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       `,
       variables: {
         input: {
-          agentId: "agent-1",
-          modelId: "gpt-5.4",
-          reasoningLevel: "high",
-          userMessage: "Draft the onboarding email.",
+          id: "session-1",
         },
       },
     },
@@ -156,15 +140,15 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.CreateSession, {
+  assert.deepEqual(document.data.ArchiveSession, {
     id: "session-1",
     agentId: "agent-1",
     modelId: "gpt-5.4",
     reasoningLevel: "high",
-    status: "running",
+    status: "archived",
     userMessage: "Draft the onboarding email.",
     createdAt: "2026-03-25T12:00:00.000Z",
-    updatedAt: "2026-03-25T12:00:00.000Z",
+    updatedAt: "2026-03-25T12:05:00.000Z",
   });
 
   await app.close();

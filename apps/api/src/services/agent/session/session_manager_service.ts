@@ -21,6 +21,7 @@ type SessionRecord = {
   agentId: string;
   currentModelId: string;
   currentReasoningLevel: string;
+  status: string;
   userMessage: string;
   createdAt: Date;
   updatedAt: Date;
@@ -38,6 +39,16 @@ type InsertableDatabase = {
   insert(table: unknown): {
     values(value: Record<string, unknown>): {
       returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
+type UpdatableDatabase = {
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): {
+        returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+      };
     };
   };
 };
@@ -98,7 +109,7 @@ export class SessionManagerService {
           agentId,
           currentModelId: resolvedModelId,
           currentReasoningLevel: resolvedReasoningLevel,
-          isRunning: false,
+          status: "running",
           user_message: userMessage,
           created_at: now,
           updated_at: now,
@@ -108,6 +119,7 @@ export class SessionManagerService {
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          status: agentSessions.status,
           userMessage: agentSessions.user_message,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
@@ -123,6 +135,50 @@ export class SessionManagerService {
         reasoningLevel: resolvedReasoningLevel,
         sessionId: sessionRecord.id,
       }, "created agent session");
+
+      return sessionRecord;
+    });
+
+    return sessionRecord;
+  }
+
+  async archiveSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<SessionRecord> {
+    const sessionRecord = await transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      const now = new Date();
+      const [sessionRecord] = await updatableDatabase
+        .update(agentSessions)
+        .set({
+          status: "archived",
+          updated_at: now,
+        })
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        ))
+        .returning?.({
+          id: agentSessions.id,
+          agentId: agentSessions.agentId,
+          currentModelId: agentSessions.currentModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          status: agentSessions.status,
+          userMessage: agentSessions.user_message,
+          createdAt: agentSessions.created_at,
+          updatedAt: agentSessions.updated_at,
+        }) as SessionRecord[];
+
+      if (!sessionRecord) {
+        throw new Error("Session not found.");
+      }
+
+      this.logger.info({
+        companyId,
+        sessionId,
+      }, "archived agent session");
 
       return sessionRecord;
     });

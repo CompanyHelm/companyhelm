@@ -80,6 +80,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
                 agentId: "agent-1",
                 currentModelId: "gpt-5.4",
                 currentReasoningLevel: "high",
+                status: "running",
                 userMessage: "Write the launch email.",
                 createdAt: new Date("2026-03-25T01:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T01:00:00.000Z"),
@@ -105,7 +106,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   assert.equal(insertedValues[0]?.agentId, "agent-1");
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
-  assert.equal(insertedValues[0]?.isRunning, false);
+  assert.equal(insertedValues[0]?.status, "running");
   assert.equal(insertedValues[0]?.user_message, "Write the launch email.");
   assert.equal(logs.length, 1);
   assert.deepEqual(logs[0], {
@@ -153,6 +154,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
                 agentId: "agent-1",
                 currentModelId: "gpt-5.4-mini",
                 currentReasoningLevel: "low",
+                status: "running",
                 userMessage: "Summarize the open issues.",
                 createdAt: new Date("2026-03-25T02:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T02:00:00.000Z"),
@@ -178,10 +180,63 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
-  assert.equal(insertedValues[0]?.isRunning, false);
+  assert.equal(insertedValues[0]?.status, "running");
   assert.equal(insertedValues[0]?.user_message, "Summarize the open issues.");
   assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");
+});
+
+test("SessionManagerService archiveSession updates the session status", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  const transaction = {
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
+          return {
+            where() {
+              return {
+                async returning() {
+                  return [{
+                    id: "session-1",
+                    agentId: "agent-1",
+                    currentModelId: "gpt-5.4",
+                    currentReasoningLevel: "high",
+                    status: "archived",
+                    userMessage: "Write the launch email.",
+                    createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                    updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                  }];
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(SessionManagerServiceTestHarness.createLoggerMock(logs) as never);
+
+  const sessionRecord = await service.archiveSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.equal(sessionRecord.status, "archived");
+  assert.equal(updatedValues[0]?.status, "archived");
+  assert.ok(updatedValues[0]?.updated_at instanceof Date);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "archived agent session",
+    payload: {
+      companyId: "company-1",
+      sessionId: "session-1",
+    },
+  }]);
 });
 
 test("SessionManagerService prompt logs the session request", async () => {

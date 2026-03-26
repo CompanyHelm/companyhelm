@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9aa2490243ee32cb5297b53334797d58>>
+ * @generated SignedSource<<7c6cff7c9efbc53d0fc0f83e64da28b7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,17 +9,14 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CreateSessionInput = {
-  agentId: string;
-  modelId?: string | null | undefined;
-  reasoningLevel?: string | null | undefined;
-  userMessage: string;
+export type ArchiveSessionInput = {
+  id: string;
 };
-export type chatsPageCreateSessionMutation$variables = {
-  input: CreateSessionInput;
+export type chatsPageArchiveSessionMutation$variables = {
+  input: ArchiveSessionInput;
 };
-export type chatsPageCreateSessionMutation$data = {
-  readonly CreateSession: {
+export type chatsPageArchiveSessionMutation$data = {
+  readonly ArchiveSession: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly id: string;
@@ -30,9 +27,9 @@ export type chatsPageCreateSessionMutation$data = {
     readonly userMessage: string;
   };
 };
-export type chatsPageCreateSessionMutation = {
-  response: chatsPageCreateSessionMutation$data;
-  variables: chatsPageCreateSessionMutation$variables;
+export type chatsPageArchiveSessionMutation = {
+  response: chatsPageArchiveSessionMutation$data;
+  variables: chatsPageArchiveSessionMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -55,7 +52,7 @@ v1 = [
     ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "CreateSession",
+    "name": "ArchiveSession",
     "plural": false,
     "selections": [
       {
@@ -123,7 +120,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageCreateSessionMutation",
+    "name": "chatsPageArchiveSessionMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -132,20 +129,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageCreateSessionMutation",
+    "name": "chatsPageArchiveSessionMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "de9905c82891b67b0eb58634427129f1",
+    "cacheID": "61a771cbf9bcddac26c5fc0aafbda639",
     "id": null,
     "metadata": {},
-    "name": "chatsPageCreateSessionMutation",
+    "name": "chatsPageArchiveSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageCreateSessionMutation(\n  $input: CreateSessionInput!\n) {\n  CreateSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    userMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    userMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7df143e32eadd9a1a084e3655f0c8f3a";
+(node as any).hash = "65702d73db31b9ed0bf9db0552e55271";
 
 export default node;

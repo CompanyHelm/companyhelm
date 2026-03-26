@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5d9b2ebeebb7cd7e49b7db9fa3a794da>>
+ * @generated SignedSource<<1da516611fcd695e47c516b1d857fb4b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type chatsPageQuery$data = {
     readonly id: string;
     readonly modelId: string;
     readonly reasoningLevel: string;
+    readonly status: string;
     readonly updatedAt: string;
     readonly userMessage: string;
   }>;
@@ -111,6 +112,13 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "userMessage",
         "storageKey": null
       },
@@ -150,16 +158,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "8739ccb3d9469b0dd3291b4c2fef6bcd",
+    "cacheID": "fa48497888cd8ceb80ffe896e08f3a1d",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    userMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    userMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0ee2f342cc902d4e94a1a064a17e9600";
+(node as any).hash = "ddb9b7947ebfd719ff154a89f0299680";
 
 export default node;
