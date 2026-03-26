@@ -20,6 +20,9 @@ export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "a
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["running", "stopped", "archived"]);
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
+// it will be deleted on completion of the message, so no completed or failed statuses
+// processing means the message got sent to the session using the session SDK e.g. pi mono
+export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
 
 
 export const companies = pgTable("companies", {
@@ -152,6 +155,46 @@ export const messageContents = pgTable("message_contents", {
 (table) => ({
   companyIdIndex: index("message_contents_company_id_idx").on(table.companyId),
   sessionIdIndex: index("message_contents_message_id_idx").on(table.messageId),
+}));
+
+export const sessionQueuedMessages = pgTable("session_queued_messages", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  text: text("text").notNull(),
+  status: sessionQueuedMessageStatusEnum("status").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("session_queued_messages_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("session_queued_messages_session_id_idx").on(table.sessionId),
+}));
+
+export const sessionQueuedMessageImages = pgTable("session_queued_message_images", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionQueuedMessageId: uuid("session_queued_message_id")
+    .references(() => sessionQueuedMessages.id, { onDelete: "cascade" })
+    .notNull(),
+  base64EncodedImage: text("base64_encoded_image").notNull(),
+  mimeType: text("mime_type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("session_queued_message_images_company_id_idx").on(table.companyId),
+  sessionQueuedMessageIdIndex: index("session_queued_message_images_session_queued_message_id_idx").on(table.sessionQueuedMessageId),
 }));
 
 export const modelProviderCredentials = pgTable("model_provider_credentials", {

@@ -176,6 +176,13 @@
       "when": 1774504598354,
       "tag": "0024_thin_agent_zero",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1774559694002,
+      "tag": "0025_nice_snowbird",
+      "breakpoints": true
     }
   ]
 }
