@@ -147,6 +147,7 @@ export class SessionManagerService {
       }
 
       await this.piMonoSessionManagerService.create(
+        transactionProvider,
         sessionRecord.id,
         credentialRecord.encryptedApiKey,
         credentialRecord.modelProvider,

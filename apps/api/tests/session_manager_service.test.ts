@@ -34,6 +34,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
   const piCreateCalls: Array<{
+    transactionProvider: unknown;
     sessionId: string;
     apiKey: string;
     providerId: string;
@@ -121,6 +122,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
       async create(
+        transactionProvider: unknown,
         sessionId: string,
         apiKey: string,
         providerId: string,
@@ -128,6 +130,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
         reasoningLevel?: string | null,
       ) {
         piCreateCalls.push({
+          transactionProvider,
           sessionId,
           apiKey,
           providerId,
@@ -144,9 +147,10 @@ test("SessionManagerService createSession falls back to the agent defaults and l
       },
     } as PiMonoSessionManagerService,
   );
+  const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
 
   const sessionId = await service.createSession(
-    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    transactionProvider as never,
     "company-1",
     "agent-1",
     "Write the launch email.",
@@ -162,6 +166,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   assert.equal(insertedValues[0]?.user_message, "Write the launch email.");
   assert.deepEqual(piCreateCalls, [{
     sessionId: "session-1",
+    transactionProvider,
     apiKey: "sk-openai",
     providerId: "openai",
     modelId: "gpt-5.4",
@@ -191,6 +196,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
   const piCreateCalls: Array<{
+    transactionProvider: unknown;
     sessionId: string;
     apiKey: string;
     providerId: string;
@@ -278,6 +284,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
       async create(
+        transactionProvider: unknown,
         sessionId: string,
         apiKey: string,
         providerId: string,
@@ -285,6 +292,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
         reasoningLevel?: string | null,
       ) {
         piCreateCalls.push({
+          transactionProvider,
           sessionId,
           apiKey,
           providerId,
@@ -302,8 +310,9 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
     } as PiMonoSessionManagerService,
   );
 
+  const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
   const sessionId = await service.createSession(
-    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    transactionProvider as never,
     "company-1",
     "agent-1",
     "Summarize the open issues.",
@@ -319,6 +328,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(insertedValues[0]?.user_message, "Summarize the open issues.");
   assert.deepEqual(piCreateCalls, [{
     sessionId: "session-2",
+    transactionProvider,
     apiKey: "oauth-access-token",
     providerId: "openai-codex",
     modelId: "gpt-5.4-mini",

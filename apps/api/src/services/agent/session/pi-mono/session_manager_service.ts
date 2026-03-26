@@ -7,6 +7,7 @@ import {
   ModelRegistry,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
+import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 
 /**
@@ -19,6 +20,7 @@ export class PiMonoSessionManagerService {
   private readonly sessionsById = new Map<string, AgentSession>();
 
   async create(
+    transactionProvider: TransactionProviderInterface,
     sessionId: string,
     apiKey: string,
     providerId: string,
@@ -50,10 +52,10 @@ export class PiMonoSessionManagerService {
       model,
       thinkingLevel: this.resolveThinkingLevel(reasoningLevel),
     });
-    const sessionEventHandler = new PiMonoSessionEventHandler(sessionId);
+    const sessionEventHandler = new PiMonoSessionEventHandler(transactionProvider, sessionId);
 
     session.subscribe((event) => {
-      sessionEventHandler.handle(event);
+      void sessionEventHandler.handle(event);
     });
 
     this.sessionsById.set(sessionId, session);

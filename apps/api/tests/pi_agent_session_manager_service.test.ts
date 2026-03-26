@@ -83,7 +83,7 @@ test("PiMonoSessionManagerService creates and stores an in-memory PI session", a
   });
   const service = new PiMonoSessionManagerService();
 
-  const session = await service.create("session-1", "sk-test", "openai", "gpt-5.4", "high");
+  const session = await service.create({ transaction: async () => undefined } as never, "session-1", "sk-test", "openai", "gpt-5.4", "high");
 
   assert.equal(session, createdSession);
   assert.equal(service.get("session-1"), createdSession);
@@ -133,8 +133,8 @@ test("PiMonoSessionManagerService replaces an existing session for the same id",
     });
   const service = new PiMonoSessionManagerService();
 
-  await service.create("session-1", "sk-first", "openai", "gpt-5.4", "medium");
-  const replacedSession = await service.create("session-1", "sk-second", "anthropic", "claude-sonnet-4-5", "low");
+  await service.create({ transaction: async () => undefined } as never, "session-1", "sk-first", "openai", "gpt-5.4", "medium");
+  const replacedSession = await service.create({ transaction: async () => undefined } as never, "session-1", "sk-second", "anthropic", "claude-sonnet-4-5", "low");
 
   assert.equal(replacedSession, secondSession);
   assert.equal(service.get("session-1"), secondSession);
