@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, MessageSquarePlusIcon, SendHorizonalIcon } from "lucide-react";
+import { ArchiveIcon, Loader2Icon, MessageSquarePlusIcon, SendHorizonalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +101,10 @@ function formatSessionTitle(userMessage: string): string {
 
 function isArchivedSession(session: Pick<SessionRecord, "status">): boolean {
   return session.status.trim().toLowerCase() === "archived";
+}
+
+function isRunningSession(session: Pick<SessionRecord, "status">): boolean {
+  return session.status.trim().toLowerCase() === "running";
 }
 
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
@@ -388,6 +392,7 @@ function ChatsPageContent() {
                       {agentSessions.map((session) => {
                         const isSessionSelected = selectedSession?.id === session.id;
                         const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
+                        const isSessionRunning = isRunningSession(session);
 
                         return (
                           <li key={session.id}>
@@ -410,23 +415,36 @@ function ChatsPageContent() {
                                   {formatSessionTitle(session.userMessage)}
                                 </p>
                                 <p className="mt-1 text-[0.7rem] text-muted-foreground">
-                                  {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
+                                  {isSessionArchiving
+                                    ? "Archiving..."
+                                    : isSessionRunning
+                                      ? `Running • ${formatTimestamp(session.updatedAt)}`
+                                      : formatTimestamp(session.updatedAt)}
                                 </p>
                               </button>
-                              <button
-                                aria-label={`Archive ${formatSessionTitle(session.userMessage)}`}
-                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                                disabled={isSessionArchiving}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  void archiveSession(session);
-                                }}
-                                title={isSessionArchiving ? "Archiving..." : "Archive chat"}
-                                type="button"
-                              >
-                                <ArchiveIcon className="size-4" />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  aria-label={`Archive ${formatSessionTitle(session.userMessage)}`}
+                                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                  disabled={isSessionArchiving}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    void archiveSession(session);
+                                  }}
+                                  title={isSessionArchiving ? "Archiving..." : "Archive chat"}
+                                  type="button"
+                                >
+                                  <ArchiveIcon className="size-4" />
+                                </button>
+                                {isSessionRunning ? (
+                                  <Loader2Icon
+                                    aria-label="Session running"
+                                    className="size-4 shrink-0 animate-spin text-muted-foreground"
+                                    title="Session running"
+                                  />
+                                ) : null}
+                              </div>
                             </div>
                           </li>
                         );
