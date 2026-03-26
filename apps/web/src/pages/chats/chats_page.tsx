@@ -10,7 +10,6 @@ import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCr
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
-import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
 const chatsPageQueryNode = graphql`
   query chatsPageQuery {
@@ -31,21 +30,6 @@ const chatsPageQueryNode = graphql`
       updatedAt
     }
     SessionMessages {
-      id
-      sessionId
-      role
-      status
-      text
-      isError
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-const chatsPageTranscriptQueryNode = graphql`
-  query chatsPageTranscriptQuery($sessionId: ID!) {
-    SessionTranscriptMessages(sessionId: $sessionId) {
       id
       sessionId
       role
@@ -118,7 +102,6 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 type SessionMessageRecord = chatsPageQuery["response"]["SessionMessages"][number];
-type TranscriptMessageRecord = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"][number];
 
 const CHAT_LIST_MIN_WIDTH = 280;
 const CHAT_LIST_MAX_WIDTH = 520;
@@ -276,16 +259,7 @@ function ChatsTranscript(
   { session, sessionMessages }:
     { session: SessionRecord; sessionMessages: ReadonlyArray<SessionMessageRecord> },
 ) {
-  const transcriptData = useLazyLoadQuery<chatsPageTranscriptQuery>(
-    chatsPageTranscriptQueryNode,
-    {
-      sessionId: session.id,
-    },
-    {
-      fetchPolicy: "store-and-network",
-    },
-  );
-  const visibleTranscriptMessages = transcriptData.SessionTranscriptMessages.filter((message) => {
+  const visibleTranscriptMessages = sessionMessages.filter((message) => {
     return (message.role === "user" || message.role === "assistant") && message.text.trim().length > 0;
   });
   const fallbackTitle = formatSessionTitle(sessionMessages);
@@ -309,7 +283,7 @@ function ChatsTranscript(
 
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
-      {visibleTranscriptMessages.map((message: TranscriptMessageRecord) => {
+      {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
 
         return (
@@ -465,7 +439,7 @@ function ChatsPageContent() {
       document.body.style.userSelect = "";
     };
 
-    document.body.style.cursor = "col-resize";
+    document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
@@ -559,7 +533,6 @@ function ChatsPageContent() {
       variables: subscriptionVariables,
       updater: (store) => {
         upsertRootLinkedRecord(store, "SessionMessages", "SessionMessageUpdated");
-        upsertRootLinkedRecord(store, "SessionTranscriptMessages", "SessionMessageUpdated", subscriptionVariables);
       },
       onError: (error) => {
         setErrorMessage((currentMessage) => currentMessage ?? error.message);
@@ -861,7 +834,7 @@ function ChatsPageContent() {
         </Card>
         <button
           aria-label="Resize chats list"
-          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-col-resize ${
+          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-ew-resize ${
             isResizingChatList ? "bg-muted/30" : ""
           }`}
           onPointerDown={startChatListResize}
