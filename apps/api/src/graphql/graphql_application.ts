@@ -18,6 +18,7 @@ import { HealthQueryResolver } from "./resolvers/health.ts";
 import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
+import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -39,6 +40,7 @@ export class GraphqlApplication {
   private readonly meQueryResolver: MeQueryResolver;
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
+  private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
 
   constructor(
@@ -67,6 +69,7 @@ export class GraphqlApplication {
     @inject(AgentsQueryResolver) agentsQueryResolver: AgentsQueryResolver = new AgentsQueryResolver(),
     @inject(DeleteAgentMutation) deleteAgentMutation: DeleteAgentMutation = new DeleteAgentMutation(),
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
+    @inject(SessionsQueryResolver) sessionsQueryResolver: SessionsQueryResolver = new SessionsQueryResolver(),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
@@ -83,6 +86,7 @@ export class GraphqlApplication {
     this.meQueryResolver = meQueryResolver;
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
+    this.sessionsQueryResolver = sessionsQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
   }
 
@@ -99,6 +103,7 @@ export class GraphqlApplication {
           Me: this.meQueryResolver.execute,
           ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
+          Sessions: this.sessionsQueryResolver.execute,
         },
         Mutation: {
           AddAgent: this.addAgentMutation.execute,

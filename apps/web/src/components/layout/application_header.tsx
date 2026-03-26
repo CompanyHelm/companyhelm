@@ -17,6 +17,8 @@ export function ApplicationHeader() {
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
   const pageTitle = pathname.startsWith("/model-provider-credentials")
     ? "LLM Credentials"
+    : pathname.startsWith("/chats")
+      ? "Chats"
     : pathname.startsWith("/agents")
       ? "Agents"
       : "Dashboard";

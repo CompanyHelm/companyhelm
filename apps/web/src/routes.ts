@@ -8,11 +8,28 @@ import {
 import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AuthenticationRoute } from "./pages/auth/route";
+import { ChatsPage } from "./pages/chats/chats_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
+
+type ChatsRouteSearch = {
+  agentId?: string;
+  sessionId?: string;
+};
+
+function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
+  return {
+    agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
+      ? search.agentId.trim()
+      : undefined,
+    sessionId: typeof search.sessionId === "string" && search.sessionId.trim().length > 0
+      ? search.sessionId.trim()
+      : undefined,
+  };
+}
 
 function SignInRoute() {
   return createElement(AuthenticationRoute, { mode: "signIn" });
@@ -56,6 +73,13 @@ const agentsRoute = createRoute({
   component: AgentsPage,
 });
 
+const chatsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/chats",
+  validateSearch: validateChatsRouteSearch,
+  component: ChatsPage,
+});
+
 const agentDetailRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/agents/$agentId",
@@ -85,6 +109,7 @@ const routeTree = rootRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
       agentsRoute,
+      chatsRoute,
       agentDetailRoute,
       modelProviderCredentialsRoute,
       modelProviderCredentialDetailRoute,

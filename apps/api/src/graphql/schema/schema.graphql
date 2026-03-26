@@ -3,6 +3,7 @@ type Query {
   Me: Me!
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
+  Sessions: [Session!]!
   AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!

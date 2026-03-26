@@ -6,6 +6,7 @@ import {
   BotIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  MessageSquareIcon,
   MoonIcon,
   SunIcon,
 } from "lucide-react";
@@ -90,6 +91,11 @@ export function ApplicationSidebar() {
       icon: BotIcon,
       label: "Agents",
       to: "/agents",
+    },
+    {
+      icon: MessageSquareIcon,
+      label: "Chats",
+      to: "/chats",
     },
   ];
 
