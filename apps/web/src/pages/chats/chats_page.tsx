@@ -776,7 +776,7 @@ function ChatsPageContent() {
                                   }`}
                                 >
                                   <button
-                                    className="min-w-0 flex-1 text-left"
+                                    className="min-w-0 flex-1 overflow-hidden text-left"
                                     disabled={isSessionArchiving}
                                     onClick={() => {
                                       void openSession(agent.id, session.id);
@@ -786,7 +786,7 @@ function ChatsPageContent() {
                                     <p className="truncate text-xs font-medium text-foreground">
                                       {formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}
                                     </p>
-                                    <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                                    <p className="mt-1 truncate text-[0.7rem] text-muted-foreground">
                                       {isSessionArchiving
                                         ? "Archiving..."
                                         : isSessionRunning
@@ -794,7 +794,7 @@ function ChatsPageContent() {
                                           : formatTimestamp(session.updatedAt)}
                                     </p>
                                   </button>
-                                  <div className="flex items-center gap-2">
+                                  <div className="shrink-0 flex items-center gap-2">
                                     {isSessionRunning ? (
                                       <Loader2Icon
                                         aria-label="Session running"
