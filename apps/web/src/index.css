@@ -58,6 +58,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-font-family: "Instrument Sans", sans-serif;
+  --sidebar-font-size: 0.75rem;
+  --sidebar-font-line-height: 1rem;
+  --sidebar-font-weight: 500;
 }
 
 *,
@@ -852,6 +856,20 @@ button {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+.app-shell-sidebar [data-slot="sidebar-group-label"],
+.app-shell-sidebar [data-slot="sidebar-menu-button"],
+.app-shell-sidebar__meta {
+  font-family: var(--sidebar-font-family);
+  font-size: var(--sidebar-font-size);
+  line-height: var(--sidebar-font-line-height);
+  letter-spacing: -0.01em;
+}
+
+.app-shell-sidebar [data-slot="sidebar-menu-button"],
+.app-shell-sidebar__meta {
+  font-weight: var(--sidebar-font-weight);
 }
 
 @layer base {

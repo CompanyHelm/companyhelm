@@ -65,7 +65,7 @@ function ApplicationSidebarVersion() {
 
   return (
     <div className="flex justify-center group-data-[collapsible=icon]:hidden">
-      <span className="text-[12px] text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
+      <span className="app-shell-sidebar__meta text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
     </div>
   );
 }
@@ -113,7 +113,7 @@ export function ApplicationSidebar() {
   ];
 
   return (
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar className="app-shell-sidebar" collapsible="icon" variant="inset">
       <SidebarHeader>
         <div className="flex items-center justify-between gap-2">
           <Link
@@ -162,7 +162,7 @@ export function ApplicationSidebar() {
         <SidebarSeparator />
         <div className="flex flex-col gap-4">
           <Button
-            className="mb-2 h-6 justify-start gap-2 px-2 text-[11px] font-medium text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 [&_svg]:size-3.5"
+            className="app-shell-sidebar__meta mb-2 h-6 justify-start gap-2 px-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 [&_svg]:size-3.5"
             size="sm"
             variant="ghost"
             onClick={() => {
@@ -190,7 +190,7 @@ export function ApplicationSidebar() {
 
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
             <UserButton />
-            <span className="truncate text-[11px] text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+            <span className="app-shell-sidebar__meta truncate text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
               {emailAddress}
             </span>
           </div>
