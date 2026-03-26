@@ -310,22 +310,36 @@ function ChatsTranscript(
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
       {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
+        const assistantParagraphs = isUserMessage
+          ? []
+          : message.text
+            .split(/\n{2,}/)
+            .map((paragraph) => paragraph.replace(/\s*\n\s*/g, " ").trim())
+            .filter((paragraph) => paragraph.length > 0);
 
         return (
           <div
             key={message.id}
-            className="w-full"
+            className={`w-full ${isUserMessage ? "flex justify-end" : ""}`}
           >
             <div
               className={`${
                 isUserMessage
-                  ? "ml-auto w-full rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground md:w-[80%]"
+                  ? "w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
                   : "w-full px-0 py-0 text-foreground"
               }`}
             >
-              <p className={`whitespace-pre-wrap text-sm ${isUserMessage ? "text-right" : "block w-full"}`}>
-                {message.text}
-              </p>
+              {isUserMessage ? (
+                <p className="whitespace-pre-wrap text-right text-sm">{message.text}</p>
+              ) : (
+                <div className="grid w-full gap-4">
+                  {assistantParagraphs.map((paragraph, index) => (
+                    <p key={`${message.id}-${index}`} className="block w-full text-left text-sm leading-7 text-pretty">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -749,11 +763,7 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className={`rounded-xl px-3 py-3 transition ${
-                      isAgentSelected
-                        ? "bg-primary/5"
-                        : "bg-card/60"
-                    }`}
+                    className="px-1 py-2"
                   >
                     <div className="flex items-start gap-3">
                       <button
@@ -764,17 +774,17 @@ function ChatsPageContent() {
                         type="button"
                       >
                         <p className="truncate text-sm font-medium text-foreground">{agent.name}</p>
-                        <p className="mt-1 text-xs/relaxed text-muted-foreground">{formatAgentMeta(agent)}</p>
+                        <p className="mt-1 text-xs/relaxed text-muted-foreground/85">{formatAgentMeta(agent)}</p>
                       </button>
                     </div>
 
-                    <div className="mt-3 pt-3">
+                    <div className="mt-3">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
                         className={`flex w-full items-center justify-center rounded-lg px-3 py-3 text-sm font-medium transition ${
                           isAgentSelected && !selectedSession
-                            ? "bg-primary/10 text-primary"
-                            : "bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                            ? "bg-primary/12 text-primary"
+                            : "bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                         }`}
                         onClick={() => {
                           void openDraftForAgent(agent.id);
@@ -796,8 +806,8 @@ function ChatsPageContent() {
                                 <div
                                   className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-3 py-2 transition ${
                                     isSessionSelected
-                                      ? "bg-primary/10"
-                                      : "bg-background hover:bg-muted/40"
+                                      ? "bg-muted/45"
+                                      : "bg-transparent hover:bg-muted/30"
                                   }`}
                                 >
                                   <button
@@ -808,28 +818,26 @@ function ChatsPageContent() {
                                     }}
                                     type="button"
                                   >
-                                    <p className="block w-full truncate text-xs font-medium text-foreground">
-                                      {resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}
-                                    </p>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className="block min-w-0 flex-1 truncate text-xs font-medium text-foreground">
+                                        {resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}
+                                      </p>
+                                      {isSessionRunning ? (
+                                        <Loader2Icon
+                                          aria-label="Session running"
+                                          className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted-foreground"
+                                          title="Session running"
+                                        />
+                                      ) : null}
+                                    </div>
                                     <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
-                                      {isSessionArchiving
-                                        ? "Archiving..."
-                                        : isSessionRunning
-                                          ? `Running • ${formatTimestamp(session.updatedAt)}`
-                                          : formatTimestamp(session.updatedAt)}
+                                      {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
                                     </p>
                                   </button>
-                                  <div className="flex shrink-0 items-center gap-2">
-                                    {isSessionRunning ? (
-                                      <Loader2Icon
-                                        aria-label="Session running"
-                                        className="size-4 shrink-0 animate-spin text-muted-foreground"
-                                        title="Session running"
-                                      />
-                                    ) : null}
+                                  <div className="flex shrink-0 items-start gap-2">
                                     <button
                                       aria-label={`Archive ${resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}`}
-                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                       disabled={isSessionArchiving}
                                       onClick={(event) => {
                                         event.preventDefault();
