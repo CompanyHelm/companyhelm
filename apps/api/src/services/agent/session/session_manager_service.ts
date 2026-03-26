@@ -4,7 +4,7 @@ import type { Logger as PinoLogger } from "pino";
 import { ApiLogger } from "../../../log/api_logger.ts";
 import { agents, agentSessions, modelProviderCredentialModels, modelProviderCredentials } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import { PiAgentSessionManagerService } from "./pi_agent_session_manager_service.ts";
+import { PiMonoSessionManagerService } from "./pi-mono/session_manager_service.ts";
 
 type AgentRecord = {
   id: string;
@@ -69,16 +69,16 @@ type UpdatableDatabase = {
 @injectable()
 export class SessionManagerService {
   private readonly logger: PinoLogger;
-  private readonly piAgentSessionManagerService: PiAgentSessionManagerService;
+  private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
-    @inject(PiAgentSessionManagerService) piAgentSessionManagerService: PiAgentSessionManagerService,
+    @inject(PiMonoSessionManagerService) piMonoSessionManagerService: PiMonoSessionManagerService,
   ) {
     this.logger = logger.child({
       component: "session_manager_service",
     });
-    this.piAgentSessionManagerService = piAgentSessionManagerService;
+    this.piMonoSessionManagerService = piMonoSessionManagerService;
   }
 
   async createSession(
@@ -146,14 +146,14 @@ export class SessionManagerService {
         throw new Error("Failed to create session.");
       }
 
-      await this.piAgentSessionManagerService.create(
+      await this.piMonoSessionManagerService.create(
         sessionRecord.id,
         credentialRecord.encryptedApiKey,
         credentialRecord.modelProvider,
         resolvedModelId,
         resolvedReasoningLevel,
       );
-      await this.piAgentSessionManagerService.prompt(sessionRecord.id, userMessage);
+      await this.piMonoSessionManagerService.prompt(sessionRecord.id, userMessage);
 
       this.logger.info({
         agentId,

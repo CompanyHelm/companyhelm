@@ -7,14 +7,15 @@ import {
   ModelRegistry,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
+import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 
 /**
- * Owns the in-memory lifecycle of PI SDK sessions for this process. Its scope is limited to
- * translating a CompanyHelm session id plus provider credentials into one live PI agent session
- * instance and keeping that mapping available while the API process is running.
+ * Owns the in-memory lifecycle of PI Mono SDK sessions for this process. Its scope is limited to
+ * turning one CompanyHelm session id plus provider credentials into one live PI Mono session and
+ * keeping that session reachable while the API process is running.
  */
 @injectable()
-export class PiAgentSessionManagerService {
+export class PiMonoSessionManagerService {
   private readonly sessionsById = new Map<string, AgentSession>();
 
   async create(
@@ -49,9 +50,10 @@ export class PiAgentSessionManagerService {
       model,
       thinkingLevel: this.resolveThinkingLevel(reasoningLevel),
     });
+    const sessionEventHandler = new PiMonoSessionEventHandler(sessionId);
 
     session.subscribe((event) => {
-      console.log(event);
+      sessionEventHandler.handle(event);
     });
 
     this.sessionsById.set(sessionId, session);

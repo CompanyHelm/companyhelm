@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { PiAgentSessionManagerService } from "../src/services/agent/session/pi_agent_session_manager_service.ts";
+import { PiMonoSessionManagerService } from "../src/services/agent/session/pi-mono/session_manager_service.ts";
 import { SessionManagerService } from "../src/services/agent/session/session_manager_service.ts";
 
 class SessionManagerServiceTestHarness {
@@ -142,7 +142,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
           message,
         });
       },
-    } as PiAgentSessionManagerService,
+    } as PiMonoSessionManagerService,
   );
 
   const sessionId = await service.createSession(
@@ -299,7 +299,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
           message,
         });
       },
-    } as PiAgentSessionManagerService,
+    } as PiMonoSessionManagerService,
   );
 
   const sessionId = await service.createSession(
@@ -368,7 +368,7 @@ test("SessionManagerService archiveSession updates the session status", async ()
       async create() {
         throw new Error("Pi create should not be called while archiving.");
       },
-    } as PiAgentSessionManagerService,
+    } as PiMonoSessionManagerService,
   );
 
   const sessionRecord = await service.archiveSession(
@@ -400,7 +400,7 @@ test("SessionManagerService prompt logs the session request", async () => {
       async create() {
         throw new Error("Pi create should not be called while prompting.");
       },
-    } as PiAgentSessionManagerService,
+    } as PiMonoSessionManagerService,
   );
 
   await service.prompt(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import { PiAgentSessionManagerService } from "../src/services/agent/session/pi_agent_session_manager_service.ts";
+import { PiMonoSessionManagerService } from "../src/services/agent/session/pi-mono/session_manager_service.ts";
 
 const piAgentMocks = vi.hoisted(() => {
   return {
@@ -67,7 +67,7 @@ beforeEach(() => {
   piAgentMocks.sessionManagerInstances.length = 0;
 });
 
-test("PiAgentSessionManagerService creates and stores an in-memory PI session", async () => {
+test("PiMonoSessionManagerService creates and stores an in-memory PI session", async () => {
   const model = {
     id: "gpt-5.4",
     provider: "openai",
@@ -81,7 +81,7 @@ test("PiAgentSessionManagerService creates and stores an in-memory PI session", 
   piAgentMocks.createAgentSessionMock.mockResolvedValue({
     session: createdSession,
   });
-  const service = new PiAgentSessionManagerService();
+  const service = new PiMonoSessionManagerService();
 
   const session = await service.create("session-1", "sk-test", "openai", "gpt-5.4", "high");
 
@@ -102,7 +102,7 @@ test("PiAgentSessionManagerService creates and stores an in-memory PI session", 
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0]?.thinkingLevel, "high");
 });
 
-test("PiAgentSessionManagerService replaces an existing session for the same id", async () => {
+test("PiMonoSessionManagerService replaces an existing session for the same id", async () => {
   const firstModel = {
     id: "gpt-5.4",
     provider: "openai",
@@ -131,7 +131,7 @@ test("PiAgentSessionManagerService replaces an existing session for the same id"
     .mockResolvedValueOnce({
       session: secondSession,
     });
-  const service = new PiAgentSessionManagerService();
+  const service = new PiMonoSessionManagerService();
 
   await service.create("session-1", "sk-first", "openai", "gpt-5.4", "medium");
   const replacedSession = await service.create("session-1", "sk-second", "anthropic", "claude-sonnet-4-5", "low");
