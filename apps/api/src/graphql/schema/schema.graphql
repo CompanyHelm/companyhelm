@@ -5,6 +5,7 @@ type Query {
   Agents: [Agent!]!
   Sessions: [Session!]!
   SessionMessages: [SessionMessage!]!
+  SessionTranscriptMessages(sessionId: ID!): [SessionMessage!]!
   AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!

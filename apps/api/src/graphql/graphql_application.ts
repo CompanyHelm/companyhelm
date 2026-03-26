@@ -21,6 +21,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_pr
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
+import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 
 /**
@@ -46,6 +47,7 @@ export class GraphqlApplication {
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
+  private readonly sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver;
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
 
@@ -78,6 +80,9 @@ export class GraphqlApplication {
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(SessionMessagesQueryResolver)
     sessionMessagesQueryResolver: SessionMessagesQueryResolver = new SessionMessagesQueryResolver(),
+    @inject(SessionTranscriptMessagesQueryResolver)
+    sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver =
+      new SessionTranscriptMessagesQueryResolver(),
     @inject(SessionsQueryResolver) sessionsQueryResolver: SessionsQueryResolver = new SessionsQueryResolver(),
     @inject(ArchiveSessionMutation)
     archiveSessionMutation: ArchiveSessionMutation = new ArchiveSessionMutation({
@@ -104,6 +109,7 @@ export class GraphqlApplication {
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
+    this.sessionTranscriptMessagesQueryResolver = sessionTranscriptMessagesQueryResolver;
     this.sessionsQueryResolver = sessionsQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
   }
@@ -123,6 +129,7 @@ export class GraphqlApplication {
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
           ModelProviders: this.modelProvidersQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,
+          SessionTranscriptMessages: this.sessionTranscriptMessagesQueryResolver.execute,
           Sessions: this.sessionsQueryResolver.execute,
         },
         Mutation: {

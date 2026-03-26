@@ -106,6 +106,7 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     undefined,
     undefined,
     undefined,
+    undefined,
     new ArchiveSessionMutation(sessionManagerService as never),
   ).register(app);
 

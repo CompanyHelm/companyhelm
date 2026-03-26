@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
+import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
 const chatsPageQueryNode = graphql`
   query chatsPageQuery {
@@ -28,6 +29,21 @@ const chatsPageQueryNode = graphql`
       updatedAt
     }
     SessionMessages {
+      id
+      sessionId
+      role
+      status
+      text
+      isError
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const chatsPageTranscriptQueryNode = graphql`
+  query chatsPageTranscriptQuery($sessionId: ID!) {
+    SessionTranscriptMessages(sessionId: $sessionId) {
       id
       sessionId
       role
@@ -71,6 +87,7 @@ const chatsPageArchiveSessionMutationNode = graphql`
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 type SessionMessageRecord = chatsPageQuery["response"]["SessionMessages"][number];
+type TranscriptMessageRecord = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"][number];
 
 const CHAT_LIST_MIN_WIDTH = 280;
 const CHAT_LIST_MAX_WIDTH = 520;
@@ -194,6 +211,70 @@ function ChatsPageFallback() {
   );
 }
 
+function ChatsTranscript(
+  { fetchKey, session, sessionMessages }:
+    { fetchKey: number; session: SessionRecord; sessionMessages: ReadonlyArray<SessionMessageRecord> },
+) {
+  const transcriptData = useLazyLoadQuery<chatsPageTranscriptQuery>(
+    chatsPageTranscriptQueryNode,
+    {
+      sessionId: session.id,
+    },
+    {
+      fetchKey,
+      fetchPolicy: "store-and-network",
+    },
+  );
+  const visibleTranscriptMessages = transcriptData.SessionTranscriptMessages.filter((message) => {
+    return (message.role === "user" || message.role === "assistant") && message.text.trim().length > 0;
+  });
+  const fallbackTitle = formatSessionTitle(sessionMessages);
+
+  if (visibleTranscriptMessages.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
+          </p>
+          <p className="mt-2 text-xs/relaxed text-muted-foreground">
+            {isRunningSession(session)
+              ? "The session is running, but the user and assistant transcript has not been persisted yet."
+              : `No transcript messages have been persisted for ${fallbackTitle}.`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+      {visibleTranscriptMessages.map((message: TranscriptMessageRecord) => {
+        const isUserMessage = message.role === "user";
+
+        return (
+          <div
+            key={message.id}
+            className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+              isUserMessage
+                ? "ml-auto bg-primary text-primary-foreground"
+                : "mr-auto bg-muted/50 text-foreground"
+            }`}
+          >
+            <p className={`text-[0.7rem] font-semibold uppercase tracking-[0.18em] ${
+              isUserMessage ? "text-primary-foreground/70" : "text-muted-foreground"
+            }`}
+            >
+              {message.role}
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm">{message.text}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ChatsPageContent() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
@@ -271,9 +352,6 @@ function ChatsPageContent() {
     ? resolvedSelectedSession
     : null;
   const selectedSessionMessages = selectedSession ? sessionMessagesBySessionId.get(selectedSession.id) ?? [] : [];
-  const visibleSelectedSessionMessages = selectedSessionMessages.filter((message) => {
-    return message.text.trim().length > 0;
-  });
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isCreateSessionInFlight;
   const chatListPanelStyle: CSSProperties = {
     "--chats-list-width": `${chatListWidth}px`,
@@ -316,7 +394,7 @@ function ChatsPageContent() {
       document.body.style.userSelect = "";
     };
 
-    document.body.style.cursor = "ew-resize";
+    document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
@@ -611,7 +689,7 @@ function ChatsPageContent() {
         </Card>
         <button
           aria-label="Resize chats list"
-          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-ew-resize ${
+          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-col-resize ${
             isResizingChatList ? "bg-muted/30" : ""
           }`}
           onPointerDown={startChatListResize}
@@ -721,48 +799,11 @@ function ChatsPageContent() {
 
         {selectedAgent && selectedSession ? (
           <CardContent className="flex flex-1 flex-col gap-6 p-6">
-            <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
-              {visibleSelectedSessionMessages.length > 0 ? (
-                visibleSelectedSessionMessages.map((message) => {
-                  const isUserMessage = message.role === "user";
-                  const isToolResultMessage = message.role === "toolResult";
-
-                  return (
-                    <div
-                      key={message.id}
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                        isUserMessage
-                          ? "ml-auto bg-primary text-primary-foreground"
-                          : isToolResultMessage
-                            ? "mr-auto border border-border/60 bg-background"
-                            : "mr-auto bg-muted/50 text-foreground"
-                      }`}
-                    >
-                      <p className={`text-[0.7rem] font-semibold uppercase tracking-[0.18em] ${
-                        isUserMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-                      }`}
-                      >
-                        {message.role}
-                      </p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm">{message.text}</p>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {isRunningSession(selectedSession) ? "Waiting for transcript..." : "No messages yet"}
-                    </p>
-                    <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                      {isRunningSession(selectedSession)
-                        ? "The session has started, but the transcript has not been persisted yet."
-                        : "This session does not have any persisted transcript messages yet."}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ChatsTranscript
+              fetchKey={queryRefreshKey}
+              session={selectedSession}
+              sessionMessages={selectedSessionMessages}
+            />
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-xl border border-border/60 bg-card/50 p-4">
