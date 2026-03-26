@@ -4,11 +4,20 @@ import postgres, { type Sql } from "postgres";
 import { Config } from "../config/schema.ts";
 import type { DatabaseClientInterface, DatabaseInterface } from "./database_interface.ts";
 
+type PostgresNotice = {
+  code?: string;
+};
+
 /**
  * Owns the admin-role Postgres connection used for startup-only schema and role management work.
  */
 @injectable()
 export class AdminDatabase implements DatabaseInterface {
+  private static readonly ignoredNoticeCodes = new Set([
+    "42P06",
+    "42P07",
+  ]);
+
   private readonly sqlClient: Sql;
   private readonly database;
 
@@ -21,6 +30,13 @@ export class AdminDatabase implements DatabaseInterface {
       username: adminRole.username,
       password: adminRole.password,
       max: 1,
+      onnotice: (notice: PostgresNotice) => {
+        if (AdminDatabase.ignoredNoticeCodes.has(notice.code || "")) {
+          return;
+        }
+
+        console.log(notice);
+      },
     });
     this.database = drizzle(this.sqlClient);
   }
