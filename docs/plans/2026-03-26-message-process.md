@@ -32,7 +32,7 @@ This is the main constraint that shapes the queue design.
 
 ## Recommended Approach
 
-Use BullMQ for wake jobs, Postgres for durable pending inputs, and Redis for ephemeral coordination.
+Use BullMQ for wake jobs, Postgres for durable queued messages, and Redis for ephemeral coordination.
 Do not let the BullMQ job itself be the source of truth for message data.
 
 The important adjustment from the initial idea is this:
@@ -95,10 +95,18 @@ work:
 - `kind` enum: `user`, `steer`
 - either terminal statuses `completed`, `failed` or a deliberate policy that processed rows are
   deleted instead of retained
-- optionally `claimedAt` for debugging and recovery visibility
+- if `processing` is kept as a persisted state, add `claimedAt` and ideally `leaseOwner` so stale
+  rows can be recovered after worker crashes
 
 The `kind` field is the most important missing piece. Without it, the worker cannot tell whether a
 queued row should become `session.prompt(...)` or `session.steer(...)`.
+
+Recommended addition to `sessionQueuedMessageImages`:
+
+- `position` integer if message image order matters
+
+Without an explicit ordering column, multiple images are only ordered by insertion timing, which is
+usually fine but not as deliberate as a persisted position.
 
 Also add a new `queued` value to `agent_sessions.status`.
 
@@ -186,8 +194,8 @@ Responsibilities:
 - orchestrate one leased session end to end
 - ensure a runtime session exists for the leased session
 - subscribe to `session:{id}:steer`
-- drain pending `user` inputs from Postgres
-- react to steer wake events by reloading pending steer inputs from Postgres
+- drain pending queued user messages from Postgres
+- react to steer wake events by reloading pending queued steer messages from Postgres
 - re-enqueue a wake job if more pending work exists before lease release
 
 This is the central workflow coordinator.
