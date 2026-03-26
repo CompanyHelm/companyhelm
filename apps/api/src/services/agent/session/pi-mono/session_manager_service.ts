@@ -1,4 +1,4 @@
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
 import {
   type AgentSession,
@@ -8,6 +8,7 @@ import {
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { RedisService } from "../../../redis/service.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 
 /**
@@ -18,6 +19,11 @@ import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 @injectable()
 export class PiMonoSessionManagerService {
   private readonly sessionsById = new Map<string, AgentSession>();
+  private readonly redisService: RedisService;
+
+  constructor(@inject(RedisService) redisService: RedisService) {
+    this.redisService = redisService;
+  }
 
   async create(
     transactionProvider: TransactionProviderInterface,
@@ -52,7 +58,11 @@ export class PiMonoSessionManagerService {
       model,
       thinkingLevel: this.resolveThinkingLevel(reasoningLevel),
     });
-    const sessionEventHandler = new PiMonoSessionEventHandler(transactionProvider, sessionId);
+    const sessionEventHandler = new PiMonoSessionEventHandler(
+      transactionProvider,
+      sessionId,
+      this.redisService,
+    );
 
     session.subscribe((event) => {
       void sessionEventHandler.handle(event);

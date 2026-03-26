@@ -81,7 +81,15 @@ test("PiMonoSessionManagerService creates and stores an in-memory PI session", a
   piAgentMocks.createAgentSessionMock.mockResolvedValue({
     session: createdSession,
   });
-  const service = new PiMonoSessionManagerService();
+  const service = new PiMonoSessionManagerService({
+    async getClient() {
+      return {
+        async publish() {
+          return 1;
+        },
+      };
+    },
+  } as never);
 
   const session = await service.create({ transaction: async () => undefined } as never, "session-1", "sk-test", "openai", "gpt-5.4", "high");
 
@@ -131,7 +139,15 @@ test("PiMonoSessionManagerService replaces an existing session for the same id",
     .mockResolvedValueOnce({
       session: secondSession,
     });
-  const service = new PiMonoSessionManagerService();
+  const service = new PiMonoSessionManagerService({
+    async getClient() {
+      return {
+        async publish() {
+          return 1;
+        },
+      };
+    },
+  } as never);
 
   await service.create({ transaction: async () => undefined } as never, "session-1", "sk-first", "openai", "gpt-5.4", "medium");
   const replacedSession = await service.create({ transaction: async () => undefined } as never, "session-1", "sk-second", "anthropic", "claude-sonnet-4-5", "low");

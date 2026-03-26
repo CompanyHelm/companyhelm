@@ -21,6 +21,7 @@ class PiMonoSessionEventHandlerTestHarness {
     const sessionStatusUpdates: Array<Record<string, unknown>> = [];
     const sessionMessageRecords = new Map<string, SessionMessageRecord>();
     const messageContentRecordsByMessageId = new Map<string, MessageContentRecord[]>();
+    const publishCalls: Array<{ channel: string; message: string }> = [];
     const infoLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
     const originalInfo = console.info;
@@ -37,6 +38,20 @@ class PiMonoSessionEventHandlerTestHarness {
       errorLogs,
       infoLogs,
       messageContentRecordsByMessageId,
+      publishCalls,
+      redisService: {
+        async getClient() {
+          return {
+            async publish(channel: string, message: string) {
+              publishCalls.push({
+                channel,
+                message,
+              });
+              return 1;
+            },
+          };
+        },
+      },
       sessionMessageRecords,
       sessionStatusUpdates,
       transactionProvider: {
@@ -182,6 +197,7 @@ test("PiMonoSessionEventHandler marks the session running on agent start", async
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
+    harness.redisService as never,
   );
 
   try {
@@ -195,6 +211,10 @@ test("PiMonoSessionEventHandler marks the session running on agent start", async
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "running");
   assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.deepEqual(harness.publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }]);
 });
 
 test("PiMonoSessionEventHandler marks the session stopped on agent end", async () => {
@@ -202,6 +222,7 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
+    harness.redisService as never,
   );
 
   try {
@@ -215,6 +236,10 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "stopped");
   assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.deepEqual(harness.publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }]);
 });
 
 test("PiMonoSessionEventHandler persists assistant messages across start update and end", async () => {
@@ -222,6 +247,7 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
+    harness.redisService as never,
   );
 
   try {
@@ -277,6 +303,12 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.sessionMessageRecords.size, 1);
+  assert.equal(harness.publishCalls.length, 1);
+  assert.match(
+    harness.publishCalls[0]?.channel ?? "",
+    /^company:company-1:session:session-1:message:[^:]+:update$/,
+  );
+  assert.equal(harness.publishCalls[0]?.message, "");
 
   const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
   assert.equal(messageRecord?.companyId, "company-1");
@@ -327,6 +359,7 @@ test("PiMonoSessionEventHandler stores user messages only when message end arriv
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
+    harness.redisService as never,
   );
 
   try {
@@ -351,6 +384,12 @@ test("PiMonoSessionEventHandler stores user messages only when message end arriv
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.sessionMessageRecords.size, 1);
+  assert.equal(harness.publishCalls.length, 1);
+  assert.match(
+    harness.publishCalls[0]?.channel ?? "",
+    /^company:company-1:session:session-1:message:[^:]+:update$/,
+  );
+  assert.equal(harness.publishCalls[0]?.message, "");
 
   const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
   assert.equal(messageRecord?.role, "user");
@@ -378,6 +417,7 @@ test("PiMonoSessionEventHandler error logs unhandled message roles", async () =>
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
+    harness.redisService as never,
   );
 
   try {

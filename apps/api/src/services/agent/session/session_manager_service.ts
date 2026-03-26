@@ -4,6 +4,8 @@ import type { Logger as PinoLogger } from "pino";
 import { ApiLogger } from "../../../log/api_logger.ts";
 import { agents, agentSessions, modelProviderCredentialModels, modelProviderCredentials } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
+import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
+import { RedisService } from "../../redis/service.ts";
 import { PiMonoSessionManagerService } from "./pi-mono/session_manager_service.ts";
 
 type AgentRecord = {
@@ -69,15 +71,18 @@ type UpdatableDatabase = {
 export class SessionManagerService {
   private readonly logger: PinoLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
+  private readonly redisService: RedisService;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
     @inject(PiMonoSessionManagerService) piMonoSessionManagerService: PiMonoSessionManagerService,
+    @inject(RedisService) redisService: RedisService,
   ) {
     this.logger = logger.child({
       component: "session_manager_service",
     });
     this.piMonoSessionManagerService = piMonoSessionManagerService;
+    this.redisService = redisService;
   }
 
   async createSession(
@@ -152,6 +157,7 @@ export class SessionManagerService {
         resolvedReasoningLevel,
       );
       await this.piMonoSessionManagerService.prompt(sessionRecord.id, userMessage);
+      await this.publishSessionUpdate(companyId, sessionRecord.id);
 
       this.logger.info({
         agentId,
@@ -198,6 +204,8 @@ export class SessionManagerService {
       if (!sessionRecord) {
         throw new Error("Session not found.");
       }
+
+      await this.publishSessionUpdate(companyId, sessionRecord.id);
 
       this.logger.info({
         companyId,
@@ -288,5 +296,10 @@ export class SessionManagerService {
     }
 
     return agentRecord.defaultReasoningLevel ?? "";
+  }
+
+  private async publishSessionUpdate(companyId: string, sessionId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(`session:${sessionId}:update`);
   }
 }

@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { agentSessions, messageContents, sessionMessages } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
+import { RedisService } from "../../../redis/service.ts";
 
 type InsertableDatabase = {
   insert(table: unknown): {
@@ -71,6 +73,7 @@ type SessionEvent = {
  * and make unsupported event shapes noisy in logs so persistence work can expand deliberately.
  */
 export class PiMonoSessionEventHandler {
+  private readonly redisService: RedisService;
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
   private readonly messageIdByEventKey = new Map<string, string>();
@@ -78,7 +81,12 @@ export class PiMonoSessionEventHandler {
   private readonly persistedMessageIds = new Set<string>();
   private companyId?: string;
 
-  constructor(transactionProvider: TransactionProviderInterface, sessionId: string) {
+  constructor(
+    transactionProvider: TransactionProviderInterface,
+    sessionId: string,
+    redisService: RedisService,
+  ) {
+    this.redisService = redisService;
     this.transactionProvider = transactionProvider;
     this.sessionId = sessionId;
   }
@@ -132,6 +140,8 @@ export class PiMonoSessionEventHandler {
         })
         .where(eq(agentSessions.id, this.sessionId));
     });
+
+    await this.publishSessionUpdate();
   }
 
   private async handleAgentStart(sessionEvent: SessionEvent): Promise<void> {
@@ -145,6 +155,15 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
+    const eventMessage = sessionEvent.message;
+    if (!eventMessage?.role) {
+      this.logError("unhandled pi mono message_start event", sessionEvent);
+      return;
+    }
+
+    const messageId = await this.resolveMessageId(sessionEvent);
+    await this.publishMessageUpdate(messageId);
+
     switch (sessionEvent.message?.role) {
       case "user":
         this.logInfo("ignoring pi mono user message start", sessionEvent);
@@ -511,5 +530,17 @@ export class PiMonoSessionEventHandler {
       logMessage,
       sessionId: this.sessionId,
     });
+  }
+
+  private async publishMessageUpdate(messageId: string): Promise<void> {
+    const companyId = await this.resolveCompanyId();
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(`session:${this.sessionId}:message:${messageId}:update`);
+  }
+
+  private async publishSessionUpdate(): Promise<void> {
+    const companyId = await this.resolveCompanyId();
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(`session:${this.sessionId}:update`);
   }
 }

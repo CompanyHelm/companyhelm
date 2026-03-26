@@ -77,3 +77,22 @@ test("RedisCompanyScopedService subscribes on the company-prefixed key", async (
     listener,
   ]);
 });
+
+test("RedisCompanyScopedService publishes on the company-prefixed key with an empty payload", async () => {
+  const publish = vi.fn(async () => 1);
+  const baseClient = {
+    publish,
+  };
+  const redisService = {
+    getClient: vi.fn(async () => baseClient),
+  };
+  const service = new RedisCompanyScopedService("company-123", redisService as never);
+
+  await service.publish("session:session-1:update");
+
+  assert.equal(redisService.getClient.mock.calls.length, 1);
+  assert.deepEqual(publish.mock.calls[0], [
+    "company:company-123:session:session-1:update",
+    "",
+  ]);
+});

@@ -42,6 +42,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
     reasoningLevel: string | null | undefined;
   }> = [];
   const piPromptCalls: Array<{ sessionId: string; message: string }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
   const transaction = {
     select() {
@@ -145,6 +146,19 @@ test("SessionManagerService createSession falls back to the agent defaults and l
         });
       },
     } as PiMonoSessionManagerService,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
   );
   const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
 
@@ -174,6 +188,10 @@ test("SessionManagerService createSession falls back to the agent defaults and l
     sessionId: "session-1",
     message: "Write the launch email.",
   }]);
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }]);
   assert.equal(logs.length, 1);
   assert.deepEqual(logs[0], {
     bindings: {
@@ -202,6 +220,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
     reasoningLevel: string | null | undefined;
   }> = [];
   const piPromptCalls: Array<{ sessionId: string; message: string }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
   const transaction = {
     select() {
@@ -305,6 +324,19 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
         });
       },
     } as PiMonoSessionManagerService,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
   );
 
   const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
@@ -334,6 +366,10 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
     sessionId: "session-2",
     message: "Summarize the open issues.",
   }]);
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-2:update",
+    message: "",
+  }]);
   assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");
 });
@@ -341,6 +377,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
 test("SessionManagerService archiveSession updates the session status", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
   const transaction = {
     update() {
       return {
@@ -374,6 +411,19 @@ test("SessionManagerService archiveSession updates the session status", async ()
         throw new Error("Pi create should not be called while archiving.");
       },
     } as PiMonoSessionManagerService,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
   );
 
   const sessionRecord = await service.archiveSession(
@@ -385,6 +435,10 @@ test("SessionManagerService archiveSession updates the session status", async ()
   assert.equal(sessionRecord.status, "archived");
   assert.equal(updatedValues[0]?.status, "archived");
   assert.ok(updatedValues[0]?.updated_at instanceof Date);
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }]);
   assert.deepEqual(logs, [{
     bindings: {
       component: "session_manager_service",
@@ -406,6 +460,11 @@ test("SessionManagerService prompt logs the session request", async () => {
         throw new Error("Pi create should not be called while prompting.");
       },
     } as PiMonoSessionManagerService,
+    {
+      async getClient() {
+        throw new Error("Redis publish should not be called while prompting.");
+      },
+    } as never,
   );
 
   await service.prompt(
