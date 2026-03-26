@@ -55,30 +55,50 @@ Redis should answer:
 
 ## Data Model
 
-Add a new table for inbound work instead of reusing `session_messages`.
+Use the new queued-message tables for inbound work instead of reusing `session_messages`.
 
-Suggested table: `session_inputs`
+Current implemented tables:
 
-Columns:
+- `sessionQueuedMessages` / `session_queued_messages`
+- `sessionQueuedMessageImages` / `session_queued_message_images`
+
+Current `sessionQueuedMessages` columns:
 
 - `id`
-- `company_id`
-- `session_id`
-- `kind` enum: `user`, `steer`
+- `companyId`
+- `sessionId`
 - `text`
-- `status` enum: `pending`, `processing`, `completed`, `failed`
-- `lease_owner`
-- `claimed_at`
-- `completed_at`
-- `created_at`
-- `updated_at`
+- `status` enum: `pending`, `processing`
+- `createdAt`
+- `updatedAt`
 
-Why a separate table:
+Current `sessionQueuedMessageImages` columns:
 
-- `session_messages` currently represents transcript/output state persisted from PI Mono events.
-- API-side inbound messages are different from transcript messages.
-- Reusing `session_messages` would create awkward duplication with PI Mono's later `message_end`
-  persistence for the same user prompt.
+- `id`
+- `companyId`
+- `sessionQueuedMessageId`
+- `base64EncodedImage`
+- `mimeType`
+- `createdAt`
+- `updatedAt`
+
+Why use these tables:
+
+- `session_messages` represents transcript/output state persisted from PI Mono events.
+- queued inbound work is a different concern from transcript state
+- keeping them separate avoids mixing "message waiting to be processed" with "message emitted by the
+  agent runtime"
+
+Recommended additions to `sessionQueuedMessages` if it becomes the full source of truth for inbound
+work:
+
+- `kind` enum: `user`, `steer`
+- either terminal statuses `completed`, `failed` or a deliberate policy that processed rows are
+  deleted instead of retained
+- optionally `claimedAt` for debugging and recovery visibility
+
+The `kind` field is the most important missing piece. Without it, the worker cannot tell whether a
+queued row should become `session.prompt(...)` or `session.steer(...)`.
 
 Also add a new `queued` value to `agent_sessions.status`.
 
@@ -91,18 +111,18 @@ That gives the lifecycle:
 
 ## Class Layout
 
-### `apps/api/src/services/agent/session/input/service.ts`
+### `apps/api/src/services/agent/session/queued-message/service.ts`
 
-Class: `SessionInputService`
+Class: `SessionQueuedMessageService`
 
 Responsibilities:
 
-- persist inbound session inputs into `session_inputs`
-- create the first input row when a session is created
+- persist inbound queued work into `sessionQueuedMessages`
+- create the first queued row when a session is created
 - append later user messages
 - append steer messages
 - mark rows `processing`, `completed`, or `failed`
-- load pending inputs ordered by `created_at`
+- load pending queued rows ordered by `createdAt`
 - combine multiple pending steer rows into one effective steer payload
 
 This class owns the Postgres-side source of truth for inbound work.
@@ -203,20 +223,20 @@ This should not extend the current polling `WorkerBase`. BullMQ already provides
 ### Create Session
 
 1. API creates the `agent_sessions` row with status `queued`.
-2. API inserts one `session_inputs` row of kind `user`.
+2. API inserts one `sessionQueuedMessages` row for the first user message.
 3. API enqueues the BullMQ wake job for the session.
 4. API publishes `session:{id}:update`.
 5. API returns immediately.
 
 ### Send Message
 
-1. API inserts a new `session_inputs` row of kind `user`.
+1. API inserts a new `sessionQueuedMessages` row for the user message.
 2. API enqueues the BullMQ wake job for the session.
 3. API publishes `session:{id}:update` only if session-level metadata changed.
 
 ### Send Steer
 
-1. API inserts a new `session_inputs` row of kind `steer`.
+1. API inserts a new `sessionQueuedMessages` row for the steer message.
 2. API enqueues the BullMQ wake job for the session.
 3. API publishes `session:{id}:steer`.
 
@@ -233,7 +253,7 @@ The Redis publish is only a low-latency nudge. The actual steer content still co
    - heartbeat the lease
    - ensure the PI Mono runtime session exists
    - subscribe to `session:{id}:steer`
-   - load pending inputs from Postgres
+   - load pending queued messages from Postgres
    - send the next pending `user` prompt
    - while the turn is active, if a steer pub/sub signal arrives, reload pending steer rows,
      combine them, and send one steer call
@@ -279,7 +299,7 @@ If the worker dies:
 
 - the lease heartbeat stops
 - the lease expires
-- pending `session_inputs` rows remain in Postgres
+- pending `sessionQueuedMessages` rows remain in Postgres
 
 However, with the current PI Mono integration, the runtime session itself is still process-local.
 That means a different worker instance cannot safely continue the exact same live PI Mono session
@@ -338,15 +358,15 @@ migration is not safe yet.
 So the recommended implementation is:
 
 - BullMQ wake queue
-- Postgres `session_inputs`
+- Postgres `sessionQueuedMessages`
 - Redis session-scoped lease + steer nudge
 - one active worker owner per live runtime session
 
 ## Suggested Implementation Order
 
 1. Add `bullmq` and `ioredis`.
-2. Add `session_inputs` table and enums.
-3. Implement `SessionInputService`.
+2. Extend `sessionQueuedMessages` with the missing fields needed for steering and completion.
+3. Implement `SessionQueuedMessageService`.
 4. Implement `SessionQueueService`.
 5. Implement `SessionLeaseService`.
 6. Refactor session creation so API only persists input + enqueues wake.
@@ -354,4 +374,3 @@ So the recommended implementation is:
 8. Introduce `SessionExecutionService`.
 9. Move PI runtime prompting out of the request path.
 10. Add tests for lease contention, duplicate wake jobs, steer coalescing, and crash recovery.
-

@@ -183,6 +183,13 @@
       "when": 1774559694002,
       "tag": "0025_nice_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1774559804174,
+      "tag": "0026_many_king_cobra",
+      "breakpoints": true
     }
   ]
 }
