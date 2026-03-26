@@ -294,7 +294,7 @@ function ChatsTranscript(
             <div
               className={`${
                 isUserMessage
-                  ? "mr-0 rounded-2xl bg-primary px-4 py-3 text-primary-foreground md:mr-[20%]"
+                  ? "ml-auto w-full rounded-2xl bg-primary px-4 py-3 text-primary-foreground md:w-[80%]"
                   : "w-full px-0 py-0 text-foreground"
               }`}
             >
