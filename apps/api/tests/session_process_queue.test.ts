@@ -44,7 +44,7 @@ afterEach(() => {
   ioRedisMocks.instances.length = 0;
 });
 
-test("SessionProcessQueueService enqueues one deterministic wake job per session", async () => {
+test("SessionProcessQueueService enqueues wake jobs without BullMQ deduplication", async () => {
   const service = new SessionProcessQueueService({
     redis: {
       host: "127.0.0.1",
@@ -64,7 +64,6 @@ test("SessionProcessQueueService enqueues one deterministic wake job per session
       sessionId: "session-1",
     },
     {
-      jobId: "company__company-1__session__session-1__wake",
       removeOnComplete: true,
       removeOnFail: true,
     },

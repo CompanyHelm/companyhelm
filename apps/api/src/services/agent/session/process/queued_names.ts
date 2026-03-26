@@ -15,10 +15,6 @@ export class SessionProcessQueuedNames {
     return "wake";
   }
 
-  getWakeJobId(companyId: string, sessionId: string): string {
-    return `company__${companyId}__session__${sessionId}__wake`;
-  }
-
   getSessionSteerChannel(sessionId: string): string {
     return `session:${sessionId}:steer`;
   }

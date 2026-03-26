@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
 import IORedis from "ioredis";
-import { Queue, type JobsOptions } from "bullmq";
+import { Queue } from "bullmq";
 import { Config } from "../../../../config/schema.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
 
@@ -10,8 +10,10 @@ export type SessionWakeJobPayload = {
 };
 
 /**
- * Owns the BullMQ queue used to wake session-processing workers. Its scope is queue configuration,
- * deterministic wake job ids, and graceful queue shutdown for the API process.
+ * Owns the BullMQ queue used to wake session-processing workers. Its scope is queue configuration
+ * and graceful queue shutdown for the API process. Wake jobs intentionally do not use a
+ * deterministic job id because a running wake job may need to enqueue a follow-up wake before the
+ * current BullMQ job completes.
  */
 @injectable()
 export class SessionProcessQueueService {
@@ -37,19 +39,16 @@ export class SessionProcessQueueService {
   }
 
   async enqueueSessionWake(companyId: string, sessionId: string): Promise<void> {
-    const jobsOptions: JobsOptions = {
-      jobId: this.names.getWakeJobId(companyId, sessionId),
-      removeOnComplete: true,
-      removeOnFail: true,
-    };
-
     await this.queue.add(
       this.names.getWakeJobName(),
       {
         companyId,
         sessionId,
       },
-      jobsOptions,
+      {
+      removeOnComplete: true,
+      removeOnFail: true,
+      },
     );
   }
 
