@@ -19,10 +19,12 @@ export function ApplicationHeader() {
     ? "LLM Credentials"
     : pathname.startsWith("/chats")
       ? "Chats"
-      : pathname.startsWith("/tasks")
-        ? "Tasks"
-        : pathname.startsWith("/settings")
-          ? "Settings"
+      : pathname.startsWith("/repositories")
+        ? "Repositories"
+        : pathname.startsWith("/tasks")
+          ? "Tasks"
+          : pathname.startsWith("/settings")
+            ? "Settings"
       : pathname.startsWith("/agents")
         ? "Agents"
         : "Dashboard";

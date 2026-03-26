@@ -12,6 +12,7 @@ import { ChatsPage } from "./pages/chats/chats_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
+import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SettingsPage } from "./pages/settings/settings_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
@@ -82,6 +83,12 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const repositoriesRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/repositories",
+  component: RepositoriesPage,
+});
+
 const tasksRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/tasks",
@@ -124,6 +131,7 @@ const routeTree = rootRoute.addChildren([
       rootIndexRoute,
       agentsRoute,
       chatsRoute,
+      repositoriesRoute,
       tasksRoute,
       settingsRoute,
       agentDetailRoute,

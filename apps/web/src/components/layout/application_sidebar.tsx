@@ -4,6 +4,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import {
   BotIcon,
+  FolderGit2Icon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   MessageSquareIcon,
@@ -98,6 +99,11 @@ export function ApplicationSidebar() {
       icon: MessageSquareIcon,
       label: "Chats",
       to: "/chats",
+    },
+    {
+      icon: FolderGit2Icon,
+      label: "Repositories",
+      to: "/repositories",
     },
     {
       icon: WorkflowIcon,

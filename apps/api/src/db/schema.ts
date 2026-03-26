@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   check,
+  bigint,
   pgTable,
   text,
   pgEnum,
@@ -252,6 +253,44 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
 (table) => ({
   companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),
   modelProviderCredentialIdIndex: index("model_provider_credential_models_model_provider_credential_id_idx").on(table.modelProviderCredentialId),
+}));
+
+export const companyGithubInstallations = pgTable("company_github_installations", {
+  installationId: bigint("installation_id", { mode: "number" }).primaryKey(),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("company_github_installations_company_id_idx").on(table.companyId),
+}));
+
+export const githubRepositories = pgTable("github_repositories", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  installationId: bigint("installation_id", { mode: "number" })
+    .references(() => companyGithubInstallations.installationId, { onDelete: "cascade" })
+    .notNull(),
+  externalId: text("external_id").notNull(),
+  name: text("name").notNull(),
+  fullName: text("full_name").notNull(),
+  htmlUrl: text("html_url"),
+  isPrivate: boolean("is_private").notNull(),
+  defaultBranch: text("default_branch"),
+  archived: boolean("archived").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("github_repositories_company_id_idx").on(table.companyId),
+  installationIdIndex: index("github_repositories_installation_id_idx").on(table.installationId),
+  uniqueInstallationRepository: uniqueIndex("github_repositories_company_installation_external_uidx")
+    .on(table.companyId, table.installationId, table.externalId),
 }));
 
 export const taskCategories = pgTable("task_categories", {

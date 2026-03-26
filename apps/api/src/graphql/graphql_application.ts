@@ -2,25 +2,33 @@ import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
+import { GithubClient } from "../github/client.ts";
 import { RedisService } from "../services/redis/service.ts";
 import { RedisCompanyScopedService } from "../services/redis/company_scoped_service.ts";
 import { AddAgentMutation } from "./mutations/add_agent.ts";
+import { AddGithubInstallationMutation } from "./mutations/add_github_installation.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
+import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
+import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
+import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
+import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
+import { GithubInstallationsQueryResolver } from "./resolvers/github_installations.ts";
+import { GithubRepositoriesQueryResolver } from "./resolvers/github_repositories.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
@@ -41,6 +49,7 @@ import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.
 export class GraphqlApplication {
   private readonly configDocument: Config;
   private readonly addAgentMutation: AddAgentMutation;
+  private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
@@ -50,11 +59,16 @@ export class GraphqlApplication {
   private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
+  private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
+  private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
+  private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
+  private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
+  private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
@@ -128,9 +142,25 @@ export class GraphqlApplication {
     @inject(TaskCategoriesQueryResolver)
     taskCategoriesQueryResolver: TaskCategoriesQueryResolver = new TaskCategoriesQueryResolver(),
     @inject(TasksQueryResolver) tasksQueryResolver: TasksQueryResolver = new TasksQueryResolver(),
+    @inject(GithubAppConfigQueryResolver)
+    githubAppConfigQueryResolver: GithubAppConfigQueryResolver =
+      new GithubAppConfigQueryResolver(new GithubClient(config)),
+    @inject(GithubInstallationsQueryResolver)
+    githubInstallationsQueryResolver: GithubInstallationsQueryResolver = new GithubInstallationsQueryResolver(),
+    @inject(GithubRepositoriesQueryResolver)
+    githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver = new GithubRepositoriesQueryResolver(),
+    @inject(AddGithubInstallationMutation)
+    addGithubInstallationMutation: AddGithubInstallationMutation =
+      new AddGithubInstallationMutation(new GithubClient(config)),
+    @inject(DeleteGithubInstallationMutation)
+    deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
+    @inject(RefreshGithubInstallationRepositoriesMutation)
+    refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
+      new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
+    this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.agentQueryResolver = agentQueryResolver;
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
@@ -140,11 +170,16 @@ export class GraphqlApplication {
     this.createTaskMutation = createTaskMutation;
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
+    this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.promptSessionMutation = promptSessionMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
+    this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
     this.healthQueryResolver = healthQueryResolver;
+    this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
+    this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
+    this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
     this.meQueryResolver = meQueryResolver;
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
@@ -207,6 +242,9 @@ export class GraphqlApplication {
           Agent: this.agentQueryResolver.execute,
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,
+          GithubAppConfig: this.githubAppConfigQueryResolver.execute,
+          GithubInstallations: this.githubInstallationsQueryResolver.execute,
+          GithubRepositories: this.githubRepositoriesQueryResolver.execute,
           health: this.healthQueryResolver.execute,
           Me: this.meQueryResolver.execute,
           ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
@@ -220,13 +258,16 @@ export class GraphqlApplication {
         },
         Mutation: {
           AddAgent: this.addAgentMutation.execute,
+          AddGithubInstallation: this.addGithubInstallationMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
           CreateTask: this.createTaskMutation.execute,
           CreateTaskCategory: this.createTaskCategoryMutation.execute,
           CreateSession: this.createSessionMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
+          DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,

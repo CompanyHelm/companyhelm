@@ -218,6 +218,13 @@
       "when": 1774563327275,
       "tag": "0030_abandoned_lilith",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1774567800000,
+      "tag": "0031_github_installations",
+      "breakpoints": true
     }
   ]
 }

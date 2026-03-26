@@ -3,6 +3,9 @@ type Query {
   Me: Me!
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
+  GithubAppConfig: GithubAppConfig!
+  GithubInstallations: [GithubInstallation!]!
+  GithubRepositories(installationId: ID): [GithubRepository!]!
   Sessions: [Session!]!
   SessionMessages: [SessionMessage!]!
   SessionTranscriptMessages(sessionId: ID!): [SessionMessage!]!
@@ -16,12 +19,17 @@ type Query {
 
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
+  AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   ArchiveSession(input: ArchiveSessionInput!): Session!
   CreateSession(input: CreateSessionInput!): Session!
   DeleteAgent(input: DeleteAgentInput!): Agent!
+  DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   PromptSession(input: PromptSessionInput!): Session!
+  RefreshGithubInstallationRepositories(
+    input: RefreshGithubInstallationRepositoriesInput!
+  ): RefreshGithubInstallationRepositoriesPayload!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
@@ -39,6 +47,44 @@ type Subscription {
 type AuthenticatedCompany {
   id: ID!
   name: String!
+}
+
+type GithubAppConfig {
+  appClientId: String!
+  appLink: String!
+}
+
+type GithubInstallation {
+  id: ID!
+  installationId: ID!
+  createdAt: String!
+}
+
+type GithubRepository {
+  id: ID!
+  githubInstallationId: ID!
+  externalId: String!
+  name: String!
+  fullName: String!
+  htmlUrl: String
+  isPrivate: Boolean!
+  defaultBranch: String
+  archived: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type AddGithubInstallationPayload {
+  githubInstallation: GithubInstallation!
+  repositories: [GithubRepository!]!
+}
+
+type DeleteGithubInstallationPayload {
+  deletedInstallationId: ID!
+}
+
+type RefreshGithubInstallationRepositoriesPayload {
+  repositories: [GithubRepository!]!
 }
 
 type AuthenticatedUser {
@@ -174,6 +220,11 @@ input AddModelProviderCredentialInput {
   refreshToken: String
 }
 
+input AddGithubInstallationInput {
+  installationId: ID!
+  setupAction: String
+}
+
 input AddAgentInput {
   name: String!
   modelProviderCredentialId: ID!
@@ -197,6 +248,10 @@ input DeleteModelProviderCredentialInput {
 
 input DeleteAgentInput {
   id: ID!
+}
+
+input DeleteGithubInstallationInput {
+  installationId: ID!
 }
 
 input ArchiveSessionInput {
@@ -235,4 +290,8 @@ input CreateTaskInput {
 input SetTaskCategoryInput {
   taskId: ID!
   taskCategoryId: ID
+}
+
+input RefreshGithubInstallationRepositoriesInput {
+  installationId: ID!
 }
