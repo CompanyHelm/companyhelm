@@ -116,8 +116,8 @@ function ChatsPageFallback() {
 }
 
 function ChatsPageContent() {
-  const navigate = useNavigate({ from: "/chats" });
-  const search = useSearch({ from: "/chats" });
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false });
   const [draftMessage, setDraftMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const data = useLazyLoadQuery<chatsPageQuery>(
@@ -158,7 +158,6 @@ function ChatsPageContent() {
   const resolvedSelectedSession = search.sessionId ? sessionById.get(search.sessionId) ?? null : null;
   const resolvedSelectedAgentId = search.agentId ?? resolvedSelectedSession?.agentId ?? "";
   const selectedAgent = sortedAgents.find((agent) => agent.id === resolvedSelectedAgentId) ?? null;
-  const selectedSessions = selectedAgent ? sessionsByAgentId.get(selectedAgent.id) ?? [] : [];
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
