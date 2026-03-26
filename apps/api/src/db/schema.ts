@@ -9,14 +9,17 @@ import {
   index,
   uniqueIndex,
   uuid,
-  boolean
+  boolean,
+  json,
+  jsonb
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic"]);
+export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic", "openai-codex"]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
-export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image"]);
+export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall"]);
+
 
 export const companies = pgTable("companies", {
   id: uuid("id")
@@ -89,6 +92,7 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   currentModelId: text("current_model_id").notNull(),
   currentReasoningLevel: text("current_reasoning_level").notNull(),
+  isRunning: boolean("is_running").notNull(),
   user_message: text("user_message").notNull(),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
@@ -114,6 +118,8 @@ export const sessionMessages = pgTable("session_messages", {
   toolCallId: text("tool_call_id"),
   toolName: text("tool_name"),
   isError: boolean("is_error").notNull(),
+  isThinking: boolean("is_thinking").notNull(),
+  thinkingText: text("thinking_text"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
@@ -136,6 +142,9 @@ export const messageContents = pgTable("message_contents", {
   text: text("text"),
   data: text("data"),
   mimeType: text("mime_type"),
+  toolCallId: text("tool_call_id"),
+  toolName: text("tool_name"),
+  arguments: jsonb("arguments"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },

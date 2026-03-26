@@ -1,0 +1,1 @@
+ALTER TABLE "agent_sessions" ADD COLUMN "is_running" boolean NOT NULL;
