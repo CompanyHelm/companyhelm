@@ -232,7 +232,7 @@ function ChatsTranscript(
 
   if (visibleTranscriptMessages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+      <div className="flex flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
         <div>
           <p className="text-sm font-medium text-foreground">
             {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
@@ -579,10 +579,10 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className={`rounded-xl border px-3 py-3 transition ${
+                    className={`rounded-xl px-3 py-3 transition ${
                       isAgentSelected
-                        ? "border-primary/50 bg-primary/5"
-                        : "border-border/60 bg-card/60"
+                        ? "bg-primary/5"
+                        : "bg-card/60"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -598,13 +598,13 @@ function ChatsPageContent() {
                       </button>
                     </div>
 
-                    <div className="mt-3 border-t border-border/60 pt-3">
+                    <div className="mt-3 pt-3">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
-                        className={`flex w-full items-center justify-center rounded-lg border px-3 py-3 text-sm font-medium transition ${
+                        className={`flex w-full items-center justify-center rounded-lg px-3 py-3 text-sm font-medium transition ${
                           isAgentSelected && !selectedSession
-                            ? "border-primary/60 bg-primary/10 text-primary"
-                            : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                         }`}
                         onClick={() => {
                           void openDraftForAgent(agent.id);
@@ -624,10 +624,10 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+                                  className={`flex items-start gap-2 rounded-lg px-3 py-2 transition ${
                                     isSessionSelected
-                                      ? "border-primary/60 bg-primary/10"
-                                      : "border-border/60 bg-background hover:bg-muted/40"
+                                      ? "bg-primary/10"
+                                      : "bg-background hover:bg-muted/40"
                                   }`}
                                 >
                                   <button
@@ -652,7 +652,7 @@ function ChatsPageContent() {
                                   <div className="flex items-center gap-2">
                                     <button
                                       aria-label={`Archive ${formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}`}
-                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                       disabled={isSessionArchiving}
                                       onClick={(event) => {
                                         event.preventDefault();
@@ -806,15 +806,15 @@ function ChatsPageContent() {
             />
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+              <div className="rounded-xl bg-card/50 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Status</p>
                 <p className="mt-3 text-sm text-foreground">{selectedSession.status}</p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+              <div className="rounded-xl bg-card/50 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Created</p>
                 <p className="mt-3 text-sm text-foreground">{formatTimestamp(selectedSession.createdAt)}</p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+              <div className="rounded-xl bg-card/50 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Updated</p>
                 <p className="mt-3 text-sm text-foreground">{formatTimestamp(selectedSession.updatedAt)}</p>
               </div>
