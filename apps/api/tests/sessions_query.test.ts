@@ -45,18 +45,22 @@ class SessionsQueryTestHarness {
                         agentId: "agent-1",
                         currentModelId: "gpt-5.4",
                         currentReasoningLevel: "medium",
+                        inferredTitle: "Inferred older title",
                         status: "running",
                         createdAt: new Date("2026-03-24T08:00:00.000Z"),
                         updatedAt: new Date("2026-03-24T08:05:00.000Z"),
+                        userSetTitle: null,
                       },
                       {
                         id: "session-newer",
                         agentId: "agent-2",
                         currentModelId: "claude-3.7-sonnet",
                         currentReasoningLevel: "high",
+                        inferredTitle: null,
                         status: "archived",
                         createdAt: new Date("2026-03-24T09:00:00.000Z"),
                         updatedAt: new Date("2026-03-24T09:30:00.000Z"),
+                        userSetTitle: "Fallback user title",
                       },
                     ];
                   },
@@ -129,9 +133,11 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
             agentId
             modelId
             reasoningLevel
+            inferredTitle
             status
             createdAt
             updatedAt
+            userSetTitle
           }
         }
       `,
@@ -146,18 +152,22 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       agentId: "agent-2",
       modelId: "claude-3.7-sonnet",
       reasoningLevel: "high",
+      inferredTitle: null,
       status: "archived",
       createdAt: "2026-03-24T09:00:00.000Z",
       updatedAt: "2026-03-24T09:30:00.000Z",
+      userSetTitle: "Fallback user title",
     },
     {
       id: "session-older",
       agentId: "agent-1",
       modelId: "gpt-5.4",
       reasoningLevel: "medium",
+      inferredTitle: "Inferred older title",
       status: "running",
       createdAt: "2026-03-24T08:00:00.000Z",
       updatedAt: "2026-03-24T08:05:00.000Z",
+      userSetTitle: null,
     },
   ]);
   assert.deepEqual(database.scopedCompanyIds, ["company-123"]);

@@ -95,9 +95,11 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
         agentId,
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
+        inferredTitle: "Draft the onboarding email.",
         status: "running",
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
         updatedAt: new Date("2026-03-25T12:00:00.000Z"),
+        userSetTitle: null,
       };
     },
   };
@@ -135,9 +137,11 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
             agentId
             modelId
             reasoningLevel
+            inferredTitle
             status
             createdAt
             updatedAt
+            userSetTitle
           }
         }
       `,
@@ -159,9 +163,11 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     agentId: "agent-1",
     modelId: "gpt-5.4",
     reasoningLevel: "high",
+    inferredTitle: "Draft the onboarding email.",
     status: "running",
     createdAt: "2026-03-25T12:00:00.000Z",
     updatedAt: "2026-03-25T12:00:00.000Z",
+    userSetTitle: null,
   });
 
   await app.close();

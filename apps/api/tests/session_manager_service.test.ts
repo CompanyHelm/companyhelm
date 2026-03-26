@@ -31,6 +31,7 @@ class SessionManagerServiceTestHarness {
 }
 
 test("SessionManagerService createSession falls back to the agent defaults and logs creation", async () => {
+  const userMessage = "Write the launch email and include rollout steps for the onboarding sequence.";
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
   const piCreateCalls: Array<{
@@ -108,9 +109,11 @@ test("SessionManagerService createSession falls back to the agent defaults and l
                 agentId: "agent-1",
                 currentModelId: "gpt-5.4",
                 currentReasoningLevel: "high",
+                inferredTitle: userMessage.slice(0, 50),
                 status: "running",
                 createdAt: new Date("2026-03-25T01:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T01:00:00.000Z"),
+                userSetTitle: null,
               }];
             },
           };
@@ -166,7 +169,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
     transactionProvider as never,
     "company-1",
     "agent-1",
-    "Write the launch email.",
+    userMessage,
   );
 
   assert.equal(sessionId.id, "session-1");
@@ -175,6 +178,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   assert.equal(insertedValues[0]?.agentId, "agent-1");
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
+  assert.equal(insertedValues[0]?.inferredTitle, userMessage.slice(0, 50));
   assert.equal(insertedValues[0]?.status, "running");
   assert.deepEqual(piCreateCalls, [{
     sessionId: "session-1",
@@ -186,7 +190,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   }]);
   assert.deepEqual(piPromptCalls, [{
     sessionId: "session-1",
-    message: "Write the launch email.",
+    message: userMessage,
   }]);
   assert.deepEqual(publishCalls, [{
     channel: "company:company-1:session:session-1:update",
@@ -286,9 +290,11 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
                 agentId: "agent-1",
                 currentModelId: "gpt-5.4-mini",
                 currentReasoningLevel: "low",
+                inferredTitle: "Summarize the open issues.",
                 status: "running",
                 createdAt: new Date("2026-03-25T02:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                userSetTitle: null,
               }];
             },
           };
@@ -353,6 +359,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
+  assert.equal(insertedValues[0]?.inferredTitle, "Summarize the open issues.");
   assert.equal(insertedValues[0]?.status, "running");
   assert.deepEqual(piCreateCalls, [{
     sessionId: "session-2",
@@ -441,9 +448,11 @@ test("SessionManagerService createSession persists a caller-provided session id"
                 agentId: "agent-1",
                 currentModelId: "gpt-5.4",
                 currentReasoningLevel: "high",
+                inferredTitle: "Write the launch email.",
                 status: "running",
                 createdAt: new Date("2026-03-25T01:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T01:00:00.000Z"),
+                userSetTitle: null,
               }];
             },
           };
@@ -482,6 +491,7 @@ test("SessionManagerService createSession persists a caller-provided session id"
   );
 
   assert.equal(insertedValues[0]?.id, "session-client-1");
+  assert.equal(insertedValues[0]?.inferredTitle, "Write the launch email.");
 });
 
 test("SessionManagerService archiveSession updates the session status", async () => {
@@ -502,9 +512,11 @@ test("SessionManagerService archiveSession updates the session status", async ()
                     agentId: "agent-1",
                     currentModelId: "gpt-5.4",
                     currentReasoningLevel: "high",
+                    inferredTitle: "Existing title",
                     status: "archived",
                     createdAt: new Date("2026-03-25T01:00:00.000Z"),
                     updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                    userSetTitle: null,
                   }];
                 },
               };

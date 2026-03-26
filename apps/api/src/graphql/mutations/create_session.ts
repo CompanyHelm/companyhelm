@@ -18,9 +18,11 @@ type GraphqlSessionRecord = {
   agentId: string;
   modelId: string;
   reasoningLevel: string;
+  inferredTitle: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
+  userSetTitle: string | null;
 };
 
 type ServiceSessionRecord = {
@@ -28,9 +30,11 @@ type ServiceSessionRecord = {
   agentId: string;
   currentModelId: string;
   currentReasoningLevel: string;
+  inferredTitle: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  userSetTitle: string | null;
 };
 
 /**
@@ -82,9 +86,11 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       agentId: sessionRecord.agentId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
+      inferredTitle: sessionRecord.inferredTitle,
       status: sessionRecord.status,
       createdAt: sessionRecord.createdAt.toISOString(),
       updatedAt: sessionRecord.updatedAt.toISOString(),
+      userSetTitle: sessionRecord.userSetTitle,
     };
   }
 }

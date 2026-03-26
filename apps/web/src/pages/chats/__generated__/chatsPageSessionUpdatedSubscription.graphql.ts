@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cf8a69e0a8f72c6eafd87bf3201ff87d>>
+ * @generated SignedSource<<5cb0c62dbff31f261c84ab9b6b411727>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,10 +15,12 @@ export type chatsPageSessionUpdatedSubscription$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly id: string;
+    readonly inferredTitle: string | null | undefined;
     readonly modelId: string;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly updatedAt: string;
+    readonly userSetTitle: string | null | undefined;
   };
 };
 export type chatsPageSessionUpdatedSubscription = {
@@ -68,6 +70,13 @@ var v0 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "inferredTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "status",
         "storageKey": null
       },
@@ -83,6 +92,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "updatedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userSetTitle",
         "storageKey": null
       }
     ],
@@ -107,16 +123,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "57b7be799162d69be41094a06ad2cdcd",
+    "cacheID": "7744289ed002d697f50bbf75fab0735a",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    status\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "34da47d1b04a70cab142253a378d0c95";
+(node as any).hash = "f16ffe273c525e46d2f2df975b091a75";
 
 export default node;

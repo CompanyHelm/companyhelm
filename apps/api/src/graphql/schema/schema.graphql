@@ -92,9 +92,11 @@ type Session {
   agentId: ID!
   modelId: String!
   reasoningLevel: String!
+  inferredTitle: String
   status: String!
   createdAt: String!
   updatedAt: String!
+  userSetTitle: String
 }
 
 type SessionMessage {

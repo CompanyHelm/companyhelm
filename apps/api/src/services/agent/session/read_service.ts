@@ -8,9 +8,11 @@ type SessionRow = {
   agentId: string;
   currentModelId: string;
   currentReasoningLevel: string;
+  inferredTitle: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  userSetTitle: string | null;
 };
 
 type SessionMessageRow = {
@@ -43,9 +45,11 @@ export type SessionGraphqlRecord = {
   agentId: string;
   modelId: string;
   reasoningLevel: string;
+  inferredTitle: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
+  userSetTitle: string | null;
 };
 
 export type SessionMessageGraphqlRecord = {
@@ -78,9 +82,11 @@ export class SessionReadService {
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          inferredTitle: agentSessions.inferredTitle,
           status: agentSessions.status,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
+          userSetTitle: agentSessions.userSetTitle,
         })
         .from(agentSessions)
         .where(eq(agentSessions.companyId, companyId)) as SessionRow[];
@@ -104,9 +110,11 @@ export class SessionReadService {
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          inferredTitle: agentSessions.inferredTitle,
           status: agentSessions.status,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
+          userSetTitle: agentSessions.userSetTitle,
         })
         .from(agentSessions)
         .where(and(
@@ -252,9 +260,11 @@ export class SessionReadService {
       agentId: sessionRow.agentId,
       modelId: sessionRow.currentModelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
+      inferredTitle: sessionRow.inferredTitle,
       status: sessionRow.status,
       createdAt: sessionRow.createdAt.toISOString(),
       updatedAt: sessionRow.updatedAt.toISOString(),
+      userSetTitle: sessionRow.userSetTitle,
     };
   }
 

@@ -25,9 +25,11 @@ const chatsPageQueryNode = graphql`
       agentId
       modelId
       reasoningLevel
+      inferredTitle
       status
       createdAt
       updatedAt
+      userSetTitle
     }
     SessionMessages {
       id
@@ -49,9 +51,11 @@ const chatsPageCreateSessionMutationNode = graphql`
       agentId
       modelId
       reasoningLevel
+      inferredTitle
       status
       createdAt
       updatedAt
+      userSetTitle
     }
   }
 `;
@@ -77,9 +81,11 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
       agentId
       modelId
       reasoningLevel
+      inferredTitle
       status
       createdAt
       updatedAt
+      userSetTitle
     }
   }
 `;
@@ -179,6 +185,25 @@ function formatSessionTitle(messages: ReadonlyArray<Pick<SessionMessageRecord, "
   return `${firstLine.slice(0, 69).trimEnd()}...`;
 }
 
+function resolvePersistedSessionTitle(session: Pick<SessionRecord, "inferredTitle" | "userSetTitle">): string | null {
+  if (typeof session.inferredTitle === "string" && session.inferredTitle.length > 0) {
+    return session.inferredTitle;
+  }
+
+  if (typeof session.userSetTitle === "string" && session.userSetTitle.length > 0) {
+    return session.userSetTitle;
+  }
+
+  return null;
+}
+
+function resolveSessionTitle(
+  session: Pick<SessionRecord, "inferredTitle" | "userSetTitle">,
+  messages: ReadonlyArray<Pick<SessionMessageRecord, "role" | "text">>,
+): string {
+  return resolvePersistedSessionTitle(session) ?? formatSessionTitle(messages);
+}
+
 function isArchivedSession(session: Pick<SessionRecord, "status">): boolean {
   return session.status.trim().toLowerCase() === "archived";
 }
@@ -262,7 +287,7 @@ function ChatsTranscript(
   const visibleTranscriptMessages = sessionMessages.filter((message) => {
     return (message.role === "user" || message.role === "assistant") && message.text.trim().length > 0;
   });
-  const fallbackTitle = formatSessionTitle(sessionMessages);
+  const fallbackTitle = resolveSessionTitle(session, sessionMessages);
 
   if (visibleTranscriptMessages.length === 0) {
     return (
@@ -294,11 +319,13 @@ function ChatsTranscript(
             <div
               className={`${
                 isUserMessage
-                  ? "ml-auto w-full rounded-2xl bg-primary px-4 py-3 text-primary-foreground md:w-[80%]"
+                  ? "ml-auto w-full rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground md:w-[80%]"
                   : "w-full px-0 py-0 text-foreground"
               }`}
             >
-              <p className="whitespace-pre-wrap text-sm">{message.text}</p>
+              <p className={`whitespace-pre-wrap text-sm ${isUserMessage ? "text-right" : "block w-full"}`}>
+                {message.text}
+              </p>
             </div>
           </div>
         );
@@ -782,7 +809,7 @@ function ChatsPageContent() {
                                     type="button"
                                   >
                                     <p className="block w-full truncate text-xs font-medium text-foreground">
-                                      {formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}
+                                      {resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}
                                     </p>
                                     <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
                                       {isSessionArchiving
@@ -801,7 +828,7 @@ function ChatsPageContent() {
                                       />
                                     ) : null}
                                     <button
-                                      aria-label={`Archive ${formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}`}
+                                      aria-label={`Archive ${resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}`}
                                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                       disabled={isSessionArchiving}
                                       onClick={(event) => {
@@ -845,7 +872,13 @@ function ChatsPageContent() {
       <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
         <CardHeader>
           <div className="flex flex-col gap-1">
-            <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
+            <CardTitle>
+              {selectedSession
+                ? resolveSessionTitle(selectedSession, selectedSessionMessages)
+                : selectedAgent
+                  ? selectedAgent.name
+                  : "Chat"}
+            </CardTitle>
             <CardDescription>
               {selectedSession
                 ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`

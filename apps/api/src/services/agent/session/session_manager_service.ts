@@ -31,9 +31,11 @@ type SessionRecord = {
   agentId: string;
   currentModelId: string;
   currentReasoningLevel: string;
+  inferredTitle: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  userSetTitle: string | null;
 };
 
 type SelectableDatabase = {
@@ -124,6 +126,7 @@ export class SessionManagerService {
         companyId,
         defaultModelRecord.modelProviderCredentialId,
       );
+      const inferredTitle = this.inferTitle(userMessage);
       const resolvedSessionId = String(sessionId || "").trim();
       const now = new Date();
       const [sessionRecord] = await insertableDatabase
@@ -134,6 +137,7 @@ export class SessionManagerService {
           agentId,
           currentModelId: resolvedModelId,
           currentReasoningLevel: resolvedReasoningLevel,
+          inferredTitle,
           status: "running",
           created_at: now,
           updated_at: now,
@@ -143,9 +147,11 @@ export class SessionManagerService {
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          inferredTitle: agentSessions.inferredTitle,
           status: agentSessions.status,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
+          userSetTitle: agentSessions.userSetTitle,
         }) as SessionRecord[];
       if (!sessionRecord) {
         throw new Error("Failed to create session.");
@@ -199,9 +205,11 @@ export class SessionManagerService {
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          inferredTitle: agentSessions.inferredTitle,
           status: agentSessions.status,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
+          userSetTitle: agentSessions.userSetTitle,
         }) as SessionRecord[];
 
       if (!sessionRecord) {
@@ -299,6 +307,15 @@ export class SessionManagerService {
     }
 
     return agentRecord.defaultReasoningLevel ?? "";
+  }
+
+  private inferTitle(userMessage: string): string | null {
+    const trimmedMessage = userMessage.trim();
+    if (trimmedMessage.length === 0) {
+      return null;
+    }
+
+    return trimmedMessage.slice(0, 50);
   }
 
   private async publishSessionUpdate(companyId: string, sessionId: string): Promise<void> {

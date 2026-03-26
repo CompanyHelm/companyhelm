@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6e16cd65d7e842357291ee05a9203f80>>
+ * @generated SignedSource<<883a94109bcd99574cf5cd95e8efdd7c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,10 +32,12 @@ export type chatsPageQuery$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly id: string;
+    readonly inferredTitle: string | null | undefined;
     readonly modelId: string;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly updatedAt: string;
+    readonly userSetTitle: string | null | undefined;
   }>;
 };
 export type chatsPageQuery = {
@@ -138,9 +140,23 @@ v5 = [
         "storageKey": null
       },
       (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "inferredTitle",
+        "storageKey": null
+      },
       (v2/*: any*/),
       (v3/*: any*/),
-      (v4/*: any*/)
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userSetTitle",
+        "storageKey": null
+      }
     ],
     "storageKey": null
   },
@@ -206,16 +222,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "5450e23d12b3502132a05bc4bb38ded9",
+    "cacheID": "3fdff86197723a675fe5d20a33dca550",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    createdAt\n    updatedAt\n  }\n  SessionMessages {\n    id\n    sessionId\n    role\n    status\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    status\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n  SessionMessages {\n    id\n    sessionId\n    role\n    status\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1ec9216d55d85b4f3c69c803d9930b7a";
+(node as any).hash = "34334d7dcb8efe0d88856ffa63c9d247";
 
 export default node;
