@@ -8,8 +8,9 @@ import {
 } from "@mariozechner/pi-coding-agent";
 
 /**
- * Creates and keeps PI agent sessions entirely in memory so callers can bind an externally managed
- * CompanyHelm session id to the live PI SDK session object without touching disk-backed state.
+ * Owns the in-memory lifecycle of PI SDK sessions for this process. Its scope is limited to
+ * translating a CompanyHelm session id plus provider credentials into one live PI agent session
+ * instance and keeping that mapping available while the API process is running.
  */
 @injectable()
 export class PiAgentSessionManagerService {

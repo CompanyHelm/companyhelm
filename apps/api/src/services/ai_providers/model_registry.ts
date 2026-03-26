@@ -2,8 +2,9 @@ import { injectable } from "inversify";
 import { ModelProviderModel } from "./model_provider_model.js";
 
 /**
- * Owns the curated catalog of provider models the product recognizes so reasoning metadata and
- * naming stay stable even when upstream provider payloads are inconsistent or sparse.
+ * Owns the curated model catalog that CompanyHelm recognizes across providers. Its scope is
+ * keeping model names, descriptions, reasoning metadata, and provider defaults stable even when
+ * upstream provider APIs return inconsistent or incomplete model payloads.
  */
 @injectable()
 export class ModelRegistry {

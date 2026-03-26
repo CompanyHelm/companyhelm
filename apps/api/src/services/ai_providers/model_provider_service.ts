@@ -13,8 +13,9 @@ export type ModelProviderDefinition = {
 };
 
 /**
- * Centralizes provider-specific authorization metadata so GraphQL and UI flows can resolve
- * the expected credential type and any provider-specific setup instructions from one place.
+ * Defines the product-facing catalog of supported model providers. Its scope is exposing stable
+ * provider metadata such as display names, authorization modes, and setup instructions so the API
+ * and UI can drive provider onboarding without duplicating that policy in multiple layers.
  */
 @injectable()
 export class ModelProviderService {

@@ -46,8 +46,9 @@ type DeletableDatabase = {
 };
 
 /**
- * Resolves one provider adapter and delegates credential validation plus model lookup to that
- * implementation so provider-specific HTTP behavior stays out of GraphQL mutations.
+ * Owns provider-backed model discovery and persistence. Its scope is selecting the right provider
+ * adapter to fetch remote models, then reconciling those remote results with CompanyHelm's stored
+ * credential-model rows so higher layers do not need to know how model refresh is performed.
  */
 @injectable()
 export class ModelService {

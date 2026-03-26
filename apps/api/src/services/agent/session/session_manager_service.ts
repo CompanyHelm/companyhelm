@@ -43,9 +43,9 @@ type InsertableDatabase = {
 };
 
 /**
- * Creates and traces company-scoped agent sessions so later prompt execution can always start from
- * one persisted model/reasoning selection, even when callers omit those values and rely on agent
- * defaults.
+ * Owns persisted agent-session creation for the CompanyHelm domain. Its scope is deciding which
+ * agent defaults become part of a new session record, storing that session in the company-scoped
+ * database, and exposing the entry point that later runtime execution can build on.
  */
 @injectable()
 export class SessionManagerService {
