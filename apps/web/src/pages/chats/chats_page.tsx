@@ -124,6 +124,20 @@ const CHAT_LIST_MIN_WIDTH = 280;
 const CHAT_LIST_MAX_WIDTH = 520;
 const CHAT_LIST_DEFAULT_WIDTH = 352;
 const CHAT_LIST_WIDTH_STORAGE_KEY = "companyhelm.chats.listWidth";
+const CHAT_DRAFT_MIN_LINES = 3;
+const CHAT_DRAFT_MAX_LINES = 10;
+
+function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
+  const computedStyle = window.getComputedStyle(textarea);
+  const lineHeight = Number.parseFloat(computedStyle.lineHeight) || 20;
+  const paddingTop = Number.parseFloat(computedStyle.paddingTop) || 0;
+  const paddingBottom = Number.parseFloat(computedStyle.paddingBottom) || 0;
+
+  return {
+    maxHeight: lineHeight * CHAT_DRAFT_MAX_LINES + paddingTop + paddingBottom,
+    minHeight: lineHeight * CHAT_DRAFT_MIN_LINES + paddingTop + paddingBottom,
+  };
+}
 
 function clampChatListWidth(width: number): number {
   return Math.min(CHAT_LIST_MAX_WIDTH, Math.max(CHAT_LIST_MIN_WIDTH, width));
@@ -159,24 +173,6 @@ function formatTimestamp(value: string): string {
 
 function formatAgentMeta(agent: Pick<AgentRecord, "modelProvider" | "modelName" | "reasoningLevel">): string {
   const segments = [agent.modelProvider, agent.modelName, agent.reasoningLevel].filter(
-    (value): value is string => typeof value === "string" && value.trim().length > 0,
-  );
-  return segments.length > 0 ? segments.join(" • ") : "No default model configured";
-}
-
-function formatReasoningLabel(reasoningLevel: string): string {
-  return reasoningLevel.trim().length > 0 ? reasoningLevel : "Default reasoning";
-}
-
-function formatSessionMeta(session: Pick<SessionRecord, "modelId" | "reasoningLevel">): string {
-  const segments = [session.modelId, formatReasoningLabel(session.reasoningLevel)].filter(
-    (value): value is string => typeof value === "string" && value.trim().length > 0,
-  );
-  return segments.length > 0 ? segments.join(" • ") : "No session model selected";
-}
-
-function formatDraftMeta(agent: Pick<AgentRecord, "modelName" | "reasoningLevel">): string {
-  const segments = [agent.modelName, agent.reasoningLevel].filter(
     (value): value is string => typeof value === "string" && value.trim().length > 0,
   );
   return segments.length > 0 ? segments.join(" • ") : "No default model configured";
@@ -277,8 +273,8 @@ function ChatsPageFallback() {
 }
 
 function ChatsTranscript(
-  { fetchKey, session, sessionMessages }:
-    { fetchKey: number; session: SessionRecord; sessionMessages: ReadonlyArray<SessionMessageRecord> },
+  { session, sessionMessages }:
+    { session: SessionRecord; sessionMessages: ReadonlyArray<SessionMessageRecord> },
 ) {
   const transcriptData = useLazyLoadQuery<chatsPageTranscriptQuery>(
     chatsPageTranscriptQueryNode,
@@ -286,7 +282,6 @@ function ChatsTranscript(
       sessionId: session.id,
     },
     {
-      fetchKey,
       fetchPolicy: "store-and-network",
     },
   );
@@ -350,14 +345,17 @@ function ChatsPageContent() {
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
-  const [queryRefreshKey, setQueryRefreshKey] = useState(0);
+  const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
+  const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
+  const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const draftTextareaResizeStartHeightRef = useRef(0);
+  const draftTextareaResizeStartYRef = useRef(0);
   const data = useLazyLoadQuery<chatsPageQuery>(
     chatsPageQueryNode,
     {},
     {
-      fetchKey: queryRefreshKey,
       fetchPolicy: "store-and-network",
     },
   );
@@ -479,6 +477,59 @@ function ChatsPageContent() {
       window.removeEventListener("pointerup", handlePointerUp);
     };
   }, [isResizingChatList]);
+
+  useEffect(() => {
+    if (!isResizingDraftTextarea) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const textarea = draftTextareaRef.current;
+      if (!textarea) {
+        return;
+      }
+
+      const { maxHeight, minHeight } = resolveDraftTextareaHeightBounds(textarea);
+      const delta = draftTextareaResizeStartYRef.current - event.clientY;
+      const nextHeight = Math.min(maxHeight, Math.max(minHeight, draftTextareaResizeStartHeightRef.current + delta));
+
+      setDraftTextareaHeight(nextHeight);
+    };
+    const handlePointerUp = () => {
+      setIsResizingDraftTextarea(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isResizingDraftTextarea]);
+
+  useEffect(() => {
+    const textarea = draftTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "auto";
+    const { maxHeight, minHeight } = resolveDraftTextareaHeightBounds(textarea);
+    const nextHeight = Math.min(
+      Math.max(textarea.scrollHeight, draftTextareaHeight ?? minHeight, minHeight),
+      maxHeight,
+    );
+
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > nextHeight ? "auto" : "hidden";
+  }, [draftMessage, draftTextareaHeight, selectedAgent?.id, selectedSession?.id]);
 
   useEffect(() => {
     const disposable = requestSubscription<chatsPageSessionUpdatedSubscription>(environment, {
@@ -606,7 +657,6 @@ function ChatsPageContent() {
 
           try {
             setPendingCreatedSessionId(null);
-            setQueryRefreshKey((currentKey) => currentKey + 1);
             if (search.sessionId !== createdSession.id || search.agentId !== createdSession.agentId) {
               await navigate({
                 to: "/chats",
@@ -662,6 +712,18 @@ function ChatsPageContent() {
     resizeStartXRef.current = event.clientX;
     resizeStartWidthRef.current = chatListWidth;
     setIsResizingChatList(true);
+  };
+
+  const startDraftTextareaResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const textarea = draftTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    event.preventDefault();
+    draftTextareaResizeStartYRef.current = event.clientY;
+    draftTextareaResizeStartHeightRef.current = textarea.getBoundingClientRect().height;
+    setIsResizingDraftTextarea(true);
   };
 
   return (
@@ -816,20 +878,13 @@ function ChatsPageContent() {
       <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader>
           <div className="flex flex-col gap-1">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
-              {selectedSession ? (
-                <p className="text-xs font-medium text-muted-foreground/80">{formatSessionMeta(selectedSession)}</p>
-              ) : selectedAgent ? (
-                <p className="text-xs font-medium text-muted-foreground/80">{formatDraftMeta(selectedAgent)}</p>
-              ) : null}
-            </div>
+            <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
             <CardDescription>
               {selectedSession
                 ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
-                : selectedAgent
-                  ? "New chat draft"
-                  : "Choose an agent from the sidebar to start a chat."}
+                : !selectedAgent
+                  ? "Choose an agent from the sidebar to start a chat."
+                  : null}
             </CardDescription>
           </div>
         </CardHeader>
@@ -870,14 +925,18 @@ function ChatsPageContent() {
             </CardContent>
 
             <div className="border-t border-border/60 p-4 md:p-6">
-              <div className="grid gap-3">
-                <label className="text-xs font-medium text-foreground" htmlFor="chat-draft-message">
-                  Message
-                </label>
-                <div className="flex items-end gap-3">
+              <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+                <div className="relative">
+                  <button
+                    aria-label="Resize message input"
+                    className="absolute inset-x-4 top-0 z-10 h-3 cursor-ns-resize"
+                    onPointerDown={startDraftTextareaResize}
+                    type="button"
+                  />
                   <textarea
                     id="chat-draft-message"
-                    className="min-h-32 flex-1 rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                    ref={draftTextareaRef}
+                    className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-4 pt-5 pb-3 pr-14 text-sm outline-none"
                     onChange={(event) => {
                       setDraftMessage(event.target.value);
                     }}
@@ -890,20 +949,29 @@ function ChatsPageContent() {
                       void startSession();
                     }}
                     placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
-                    rows={6}
+                    rows={CHAT_DRAFT_MIN_LINES}
                     value={draftMessage}
                   />
+                </div>
+                <div className="flex items-center justify-between gap-3 px-3 py-3">
+                  <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full bg-background/60 px-3 py-1.5">
+                      {selectedAgent.modelName || "Default model"}
+                    </span>
+                    <span className="rounded-full bg-background/60 px-3 py-1.5">
+                      {selectedAgent.reasoningLevel || "Default reasoning"}
+                    </span>
+                  </div>
                   <Button
-                    className="shrink-0"
+                    aria-label={isCreateSessionInFlight ? "Creating chat" : "Start chat"}
+                    className="h-10 w-10 shrink-0 rounded-full px-0"
                     disabled={!canSubmitDraft}
                     onClick={() => {
                       void startSession();
                     }}
-                    size="lg"
                     type="button"
                   >
-                    <SendHorizonalIcon />
-                    {isCreateSessionInFlight ? "Creating chat..." : "Start chat"}
+                    <SendHorizonalIcon className="size-4" />
                   </Button>
                 </div>
               </div>
@@ -914,7 +982,6 @@ function ChatsPageContent() {
         {selectedAgent && selectedSession ? (
           <CardContent className="flex flex-1 flex-col gap-6 p-6">
             <ChatsTranscript
-              fetchKey={queryRefreshKey}
               session={selectedSession}
               sessionMessages={selectedSessionMessages}
             />
