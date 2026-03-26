@@ -281,7 +281,7 @@ function ChatsPageContent() {
       document.body.style.userSelect = "";
     };
 
-    document.body.style.cursor = "col-resize";
+    document.body.style.cursor = "ew-resize";
     document.body.style.userSelect = "none";
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
@@ -561,7 +561,7 @@ function ChatsPageContent() {
         </Card>
         <button
           aria-label="Resize chats list"
-          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-col-resize ${
+          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-ew-resize ${
             isResizingChatList ? "bg-muted/30" : ""
           }`}
           onPointerDown={startChatListResize}
