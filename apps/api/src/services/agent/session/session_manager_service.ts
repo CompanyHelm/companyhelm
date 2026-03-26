@@ -92,6 +92,7 @@ export class SessionManagerService {
     userMessage: string,
     modelId?: string | null,
     reasoningLevel?: string | null,
+    sessionId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -123,10 +124,12 @@ export class SessionManagerService {
         companyId,
         defaultModelRecord.modelProviderCredentialId,
       );
+      const resolvedSessionId = String(sessionId || "").trim();
       const now = new Date();
       const [sessionRecord] = await insertableDatabase
         .insert(agentSessions)
         .values({
+          ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
           companyId,
           agentId,
           currentModelId: resolvedModelId,

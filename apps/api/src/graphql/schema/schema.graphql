@@ -180,6 +180,7 @@ input CreateSessionInput {
   agentId: ID!
   modelId: String
   reasoningLevel: String
+  sessionId: ID
   userMessage: String!
 }
 

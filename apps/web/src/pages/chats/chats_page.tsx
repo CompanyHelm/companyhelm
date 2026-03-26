@@ -347,6 +347,7 @@ function ChatsPageContent() {
   const [draftMessage, setDraftMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
+  const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [queryRefreshKey, setQueryRefreshKey] = useState(0);
@@ -433,6 +434,12 @@ function ChatsPageContent() {
 
   useEffect(() => {
     if (!search.agentId || !search.sessionId || selectedSession) {
+      if (selectedSession && pendingCreatedSessionId === selectedSession.id) {
+        setPendingCreatedSessionId(null);
+      }
+      return;
+    }
+    if (pendingCreatedSessionId && search.sessionId === pendingCreatedSessionId) {
       return;
     }
 
@@ -443,7 +450,7 @@ function ChatsPageContent() {
         agentId: search.agentId,
       },
     });
-  }, [navigate, search.agentId, search.sessionId, selectedSession]);
+  }, [navigate, pendingCreatedSessionId, search.agentId, search.sessionId, selectedSession]);
 
   useEffect(() => {
     if (!isResizingChatList) {
@@ -544,14 +551,25 @@ function ChatsPageContent() {
     if (userMessage.length === 0) {
       return;
     }
+    const nextSessionId = globalThis.crypto.randomUUID();
 
     setErrorMessage(null);
+    setPendingCreatedSessionId(nextSessionId);
+
+    await navigate({
+      to: "/chats",
+      search: {
+        agentId: selectedAgent.id,
+        sessionId: nextSessionId,
+      },
+    });
 
     await new Promise<void>((resolve, reject) => {
       commitCreateSession({
         variables: {
           input: {
             agentId: selectedAgent.id,
+            sessionId: nextSessionId,
             userMessage,
           },
         },
@@ -587,14 +605,17 @@ function ChatsPageContent() {
           setDraftMessage("");
 
           try {
+            setPendingCreatedSessionId(null);
             setQueryRefreshKey((currentKey) => currentKey + 1);
-            await navigate({
-              to: "/chats",
-              search: {
-                agentId: createdSession.agentId,
-                sessionId: createdSession.id,
-              },
-            });
+            if (search.sessionId !== createdSession.id || search.agentId !== createdSession.agentId) {
+              await navigate({
+                to: "/chats",
+                search: {
+                  agentId: createdSession.agentId,
+                  sessionId: createdSession.id,
+                },
+              });
+            }
             resolve();
           } catch (error) {
             reject(error);
@@ -603,6 +624,7 @@ function ChatsPageContent() {
         onError: reject,
       });
     }).catch((error: unknown) => {
+      setPendingCreatedSessionId(null);
       setErrorMessage(error instanceof Error ? error.message : "Failed to create chat session.");
     });
   };

@@ -8,6 +8,7 @@ type CreateSessionMutationArguments = {
     agentId: string;
     modelId?: string | null;
     reasoningLevel?: string | null;
+    sessionId?: string | null;
     userMessage: string;
   };
 };
@@ -69,6 +70,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       arguments_.input.userMessage,
       arguments_.input.modelId,
       arguments_.input.reasoningLevel,
+      arguments_.input.sessionId,
     );
 
     return CreateSessionMutation.serializeRecord(sessionRecord);

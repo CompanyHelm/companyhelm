@@ -374,6 +374,116 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");
 });
 
+test("SessionManagerService createSession persists a caller-provided session id", async () => {
+  const insertedValues: Array<Record<string, unknown>> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "agent-1",
+                  defaultModelProviderCredentialModelId: "model-row-1",
+                  defaultReasoningLevel: "high",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "credential-1",
+                  modelProvider: "openai",
+                  encryptedApiKey: "sk-openai",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    insert() {
+      return {
+        values(value: Record<string, unknown>) {
+          insertedValues.push(value);
+          return {
+            async returning() {
+              return [{
+                id: "session-client-1",
+                agentId: "agent-1",
+                currentModelId: "gpt-5.4",
+                currentReasoningLevel: "high",
+                status: "running",
+                createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                updatedAt: new Date("2026-03-25T01:00:00.000Z"),
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async create() {
+        return {} as never;
+      },
+      async prompt() {},
+    } as PiMonoSessionManagerService,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+  );
+  const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
+
+  await service.createSession(
+    transactionProvider as never,
+    "company-1",
+    "agent-1",
+    "Write the launch email.",
+    undefined,
+    undefined,
+    "session-client-1",
+  );
+
+  assert.equal(insertedValues[0]?.id, "session-client-1");
+});
+
 test("SessionManagerService archiveSession updates the session status", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];

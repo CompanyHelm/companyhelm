@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5c4a86856f85a22dcf2643b3f58c5457>>
+ * @generated SignedSource<<e3046457a6a6a148e5b4a06e5f44bb72>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type CreateSessionInput = {
   agentId: string;
   modelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
+  sessionId?: string | null | undefined;
   userMessage: string;
 };
 export type chatsPageCreateSessionMutation$variables = {
