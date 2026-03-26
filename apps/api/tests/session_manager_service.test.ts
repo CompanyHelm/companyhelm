@@ -33,7 +33,14 @@ class SessionManagerServiceTestHarness {
 test("SessionManagerService createSession falls back to the agent defaults and logs creation", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
-  const piCreateCalls: Array<{ sessionId: string; apiKey: string; providerId: string }> = [];
+  const piCreateCalls: Array<{
+    sessionId: string;
+    apiKey: string;
+    providerId: string;
+    modelId: string;
+    reasoningLevel: string | null | undefined;
+  }> = [];
+  const piPromptCalls: Array<{ sessionId: string; message: string }> = [];
   let selectCallCount = 0;
   const transaction = {
     select() {
@@ -113,13 +120,27 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   const service = new SessionManagerService(
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
-      async create(sessionId: string, apiKey: string, providerId: string) {
+      async create(
+        sessionId: string,
+        apiKey: string,
+        providerId: string,
+        modelId: string,
+        reasoningLevel?: string | null,
+      ) {
         piCreateCalls.push({
           sessionId,
           apiKey,
           providerId,
+          modelId,
+          reasoningLevel,
         });
         return {} as never;
+      },
+      async prompt(sessionId: string, message: string) {
+        piPromptCalls.push({
+          sessionId,
+          message,
+        });
       },
     } as PiAgentSessionManagerService,
   );
@@ -143,6 +164,12 @@ test("SessionManagerService createSession falls back to the agent defaults and l
     sessionId: "session-1",
     apiKey: "sk-openai",
     providerId: "openai",
+    modelId: "gpt-5.4",
+    reasoningLevel: "high",
+  }]);
+  assert.deepEqual(piPromptCalls, [{
+    sessionId: "session-1",
+    message: "Write the launch email.",
   }]);
   assert.equal(logs.length, 1);
   assert.deepEqual(logs[0], {
@@ -163,7 +190,14 @@ test("SessionManagerService createSession falls back to the agent defaults and l
 test("SessionManagerService createSession prefers explicit model and reasoning values", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
-  const piCreateCalls: Array<{ sessionId: string; apiKey: string; providerId: string }> = [];
+  const piCreateCalls: Array<{
+    sessionId: string;
+    apiKey: string;
+    providerId: string;
+    modelId: string;
+    reasoningLevel: string | null | undefined;
+  }> = [];
+  const piPromptCalls: Array<{ sessionId: string; message: string }> = [];
   let selectCallCount = 0;
   const transaction = {
     select() {
@@ -243,13 +277,27 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   const service = new SessionManagerService(
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
-      async create(sessionId: string, apiKey: string, providerId: string) {
+      async create(
+        sessionId: string,
+        apiKey: string,
+        providerId: string,
+        modelId: string,
+        reasoningLevel?: string | null,
+      ) {
         piCreateCalls.push({
           sessionId,
           apiKey,
           providerId,
+          modelId,
+          reasoningLevel,
         });
         return {} as never;
+      },
+      async prompt(sessionId: string, message: string) {
+        piPromptCalls.push({
+          sessionId,
+          message,
+        });
       },
     } as PiAgentSessionManagerService,
   );
@@ -273,6 +321,12 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
     sessionId: "session-2",
     apiKey: "oauth-access-token",
     providerId: "openai-codex",
+    modelId: "gpt-5.4-mini",
+    reasoningLevel: "low",
+  }]);
+  assert.deepEqual(piPromptCalls, [{
+    sessionId: "session-2",
+    message: "Summarize the open issues.",
   }]);
   assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");

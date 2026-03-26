@@ -150,7 +150,10 @@ export class SessionManagerService {
         sessionRecord.id,
         credentialRecord.encryptedApiKey,
         credentialRecord.modelProvider,
+        resolvedModelId,
+        resolvedReasoningLevel,
       );
+      await this.piAgentSessionManagerService.prompt(sessionRecord.id, userMessage);
 
       this.logger.info({
         agentId,
