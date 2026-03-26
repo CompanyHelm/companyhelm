@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,8 @@ function formatTimestamp(value: string): string {
  * agent management feels consistent with the rest of the settings UI.
  */
 export function AgentsTable(props: AgentsTableProps) {
+  const navigate = useNavigate();
+
   if (props.isLoading) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
@@ -96,18 +98,19 @@ export function AgentsTable(props: AgentsTableProps) {
       </TableHeader>
       <TableBody>
         {props.agents.map((agent) => (
-          <TableRow key={agent.id}>
-            <TableCell className="font-medium text-foreground">
-              <Link
-                className="transition hover:text-primary hover:underline"
-                params={{
+          <TableRow
+            key={agent.id}
+            className="cursor-pointer transition hover:bg-muted/40"
+            onClick={() => {
+              void navigate({
+                to: "/agents/$agentId",
+                params: {
                   agentId: agent.id,
-                }}
-                to="/agents/$agentId"
-              >
-                {agent.name}
-              </Link>
-            </TableCell>
+                },
+              });
+            }}
+          >
+            <TableCell className="font-medium text-foreground">{agent.name}</TableCell>
             <TableCell>
               {agent.modelProvider ? (
                 <Badge variant="outline">{formatProviderLabel(agent.modelProvider)}</Badge>
@@ -126,11 +129,18 @@ export function AgentsTable(props: AgentsTableProps) {
                     variant="ghost"
                     size="icon"
                     disabled={props.deletingAgentId === agent.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
                   >
                     <Trash2Icon className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
+                >
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete agent</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -146,7 +156,8 @@ export function AgentsTable(props: AgentsTableProps) {
                       <AlertDialogActionButton
                         variant="destructive"
                         disabled={props.deletingAgentId === agent.id}
-                        onClick={async () => {
+                        onClick={async (event) => {
+                          event.stopPropagation();
                           await props.onDelete(agent.id);
                         }}
                       >
