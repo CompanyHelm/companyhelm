@@ -91,7 +91,7 @@ export const agentSessions = pgTable("agent_sessions", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
-  companyIdIndex: index("threads_company_id_idx").on(table.companyId),
+  companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
 }));
 
 export const modelProviderCredentials = pgTable("model_provider_credentials", {
