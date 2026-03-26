@@ -95,6 +95,9 @@ export const agentSessions = pgTable("agent_sessions", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   currentModelId: text("current_model_id").notNull(),
+  currentModelProviderCredentialId: uuid("current_model_provider_credential_id")
+    .references(() => modelProviderCredentials.id, { onDelete: "restrict" })
+    .notNull(),
   // inferred from first message or based on LLM generated title
   inferredTitle: text("inferred_title"),
   // user explicitly set title, it should take precedence over the inferred title

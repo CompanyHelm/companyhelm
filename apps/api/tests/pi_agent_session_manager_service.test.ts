@@ -4,11 +4,14 @@ import { PiMonoSessionManagerService } from "../src/services/agent/session/pi-mo
 
 const piAgentMocks = vi.hoisted(() => {
   return {
-    setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
-    findModelMock: vi.fn<(providerId: string, modelId: string) => unknown>(),
-    newSessionMock: vi.fn<(options: { id?: string }) => void>(),
+    abortMock: vi.fn(async () => undefined),
     createAgentSessionMock: vi.fn(),
     disposeMock: vi.fn(),
+    findModelMock: vi.fn<(providerId: string, modelId: string) => unknown>(),
+    newSessionMock: vi.fn<(options: { id?: string }) => void>(),
+    promptMock: vi.fn(async () => undefined),
+    setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
+    steerMock: vi.fn(async () => undefined),
     subscribeMock: vi.fn(),
     authStorageInstances: [] as Array<{ setRuntimeApiKey: ReturnType<typeof vi.fn> }>,
     modelRegistryInstances: [] as Array<{ authStorage: unknown; find: ReturnType<typeof vi.fn> }>,
@@ -56,25 +59,30 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
 });
 
 beforeEach(() => {
-  piAgentMocks.setRuntimeApiKeyMock.mockReset();
-  piAgentMocks.findModelMock.mockReset();
-  piAgentMocks.newSessionMock.mockReset();
+  piAgentMocks.abortMock.mockReset();
   piAgentMocks.createAgentSessionMock.mockReset();
   piAgentMocks.disposeMock.mockReset();
+  piAgentMocks.findModelMock.mockReset();
+  piAgentMocks.newSessionMock.mockReset();
+  piAgentMocks.promptMock.mockReset();
+  piAgentMocks.setRuntimeApiKeyMock.mockReset();
+  piAgentMocks.steerMock.mockReset();
   piAgentMocks.subscribeMock.mockReset();
   piAgentMocks.authStorageInstances.length = 0;
   piAgentMocks.modelRegistryInstances.length = 0;
   piAgentMocks.sessionManagerInstances.length = 0;
 });
 
-test("PiMonoSessionManagerService creates and stores an in-memory PI session", async () => {
+test("PiMonoSessionManagerService creates one runtime session and routes prompt plus steer calls through it", async () => {
   const model = {
     id: "gpt-5.4",
     provider: "openai",
   };
   const createdSession = {
+    abort: piAgentMocks.abortMock,
     dispose: piAgentMocks.disposeMock,
-    marker: "first-session",
+    prompt: piAgentMocks.promptMock,
+    steer: piAgentMocks.steerMock,
     subscribe: piAgentMocks.subscribeMock,
   };
   piAgentMocks.findModelMock.mockReturnValue(model);
@@ -91,54 +99,47 @@ test("PiMonoSessionManagerService creates and stores an in-memory PI session", a
     },
   } as never);
 
-  const session = await service.create({ transaction: async () => undefined } as never, "session-1", "sk-test", "openai", "gpt-5.4", "high");
+  const session = await service.ensureSession(
+    { transaction: async () => undefined } as never,
+    "session-1",
+    {
+      apiKey: "sk-test",
+      modelId: "gpt-5.4",
+      providerId: "openai",
+      reasoningLevel: "high",
+    },
+  );
+
+  await service.prompt("session-1", "Draft the migration.");
+  await service.steer("session-1", "Focus on the failed migration.");
+  await service.abort("session-1");
 
   assert.equal(session, createdSession);
   assert.equal(service.get("session-1"), createdSession);
-  assert.equal(piAgentMocks.authStorageInstances.length, 1);
-  assert.equal(piAgentMocks.sessionManagerInstances.length, 1);
-  assert.equal(piAgentMocks.modelRegistryInstances.length, 1);
-  assert.equal(piAgentMocks.modelRegistryInstances[0]?.authStorage, piAgentMocks.authStorageInstances[0]);
   assert.deepEqual(piAgentMocks.findModelMock.mock.calls, [["openai", "gpt-5.4"]]);
   assert.deepEqual(piAgentMocks.setRuntimeApiKeyMock.mock.calls, [["openai", "sk-test"]]);
   assert.deepEqual(piAgentMocks.newSessionMock.mock.calls, [[{ id: "session-1" }]]);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
-  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0]?.authStorage, piAgentMocks.authStorageInstances[0]);
-  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0]?.modelRegistry, piAgentMocks.modelRegistryInstances[0]);
-  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0]?.sessionManager, piAgentMocks.sessionManagerInstances[0]);
-  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0]?.model, model);
-  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0]?.thinkingLevel, "high");
+  assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
+  assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
+  assert.equal(piAgentMocks.abortMock.mock.calls.length, 1);
 });
 
-test("PiMonoSessionManagerService replaces an existing session for the same id", async () => {
-  const firstModel = {
-    id: "gpt-5.4",
-    provider: "openai",
-  };
-  const secondModel = {
-    id: "claude-sonnet-4-5",
-    provider: "anthropic",
-  };
-  const firstSession = {
+test("PiMonoSessionManagerService reuses the live runtime session for repeated ensureSession calls", async () => {
+  const createdSession = {
+    abort: piAgentMocks.abortMock,
     dispose: piAgentMocks.disposeMock,
-    marker: "first-session",
+    prompt: piAgentMocks.promptMock,
+    steer: piAgentMocks.steerMock,
     subscribe: piAgentMocks.subscribeMock,
   };
-  const secondSession = {
-    dispose: vi.fn(),
-    marker: "second-session",
-    subscribe: vi.fn(),
-  };
-  piAgentMocks.findModelMock
-    .mockReturnValueOnce(firstModel)
-    .mockReturnValueOnce(secondModel);
-  piAgentMocks.createAgentSessionMock
-    .mockResolvedValueOnce({
-      session: firstSession,
-    })
-    .mockResolvedValueOnce({
-      session: secondSession,
-    });
+  piAgentMocks.findModelMock.mockReturnValue({
+    id: "gpt-5.4",
+    provider: "openai",
+  });
+  piAgentMocks.createAgentSessionMock.mockResolvedValue({
+    session: createdSession,
+  });
   const service = new PiMonoSessionManagerService({
     async getClient() {
       return {
@@ -149,18 +150,29 @@ test("PiMonoSessionManagerService replaces an existing session for the same id",
     },
   } as never);
 
-  await service.create({ transaction: async () => undefined } as never, "session-1", "sk-first", "openai", "gpt-5.4", "medium");
-  const replacedSession = await service.create({ transaction: async () => undefined } as never, "session-1", "sk-second", "anthropic", "claude-sonnet-4-5", "low");
+  const first = await service.ensureSession(
+    { transaction: async () => undefined } as never,
+    "session-1",
+    {
+      apiKey: "sk-test",
+      modelId: "gpt-5.4",
+      providerId: "openai",
+      reasoningLevel: "medium",
+    },
+  );
+  const second = await service.ensureSession(
+    { transaction: async () => undefined } as never,
+    "session-1",
+    {
+      apiKey: "sk-test-2",
+      modelId: "gpt-5.4",
+      providerId: "openai",
+      reasoningLevel: "low",
+    },
+  );
 
-  assert.equal(replacedSession, secondSession);
-  assert.equal(service.get("session-1"), secondSession);
-  assert.equal(piAgentMocks.disposeMock.mock.calls.length, 1);
-  assert.deepEqual(piAgentMocks.findModelMock.mock.calls, [
-    ["openai", "gpt-5.4"],
-    ["anthropic", "claude-sonnet-4-5"],
-  ]);
-  assert.deepEqual(piAgentMocks.setRuntimeApiKeyMock.mock.calls, [
-    ["openai", "sk-first"],
-    ["anthropic", "sk-second"],
-  ]);
+  assert.equal(first, createdSession);
+  assert.equal(second, createdSession);
+  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
+  assert.equal(piAgentMocks.disposeMock.mock.calls.length, 0);
 });

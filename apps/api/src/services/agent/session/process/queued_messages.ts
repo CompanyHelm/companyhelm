@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   sessionQueuedMessageImages,
@@ -89,39 +89,59 @@ export class SessionQueuedMessageService {
       text: string;
     },
   ): Promise<{ id: string }> {
+    return transactionProvider.transaction(async (tx) => {
+      return this.enqueueInTransaction(tx as InsertableDatabase, input);
+    });
+  }
+
+  async enqueueInTransaction(
+    insertableDatabase: InsertableDatabase,
+    input: {
+      companyId: string;
+      images?: Array<{ base64EncodedImage: string; mimeType: string }>;
+      sessionId: string;
+      shouldSteer: boolean;
+      text: string;
+    },
+  ): Promise<{ id: string }> {
     const queuedMessageId = crypto.randomUUID();
     const timestamp = new Date();
 
-    await transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
-      await insertableDatabase.insert(sessionQueuedMessages).values({
-        companyId: input.companyId,
-        createdAt: timestamp,
-        id: queuedMessageId,
-        sessionId: input.sessionId,
-        shouldSteer: input.shouldSteer,
-        status: "pending",
-        text: input.text,
-        updatedAt: timestamp,
-      });
-
-      const imageRecords = (input.images ?? []).map((image) => ({
-        base64EncodedImage: image.base64EncodedImage,
-        companyId: input.companyId,
-        createdAt: timestamp,
-        id: crypto.randomUUID(),
-        mimeType: image.mimeType,
-        sessionQueuedMessageId: queuedMessageId,
-        updatedAt: timestamp,
-      }));
-      if (imageRecords.length > 0) {
-        await insertableDatabase.insert(sessionQueuedMessageImages).values(imageRecords);
-      }
+    await insertableDatabase.insert(sessionQueuedMessages).values({
+      companyId: input.companyId,
+      createdAt: timestamp,
+      id: queuedMessageId,
+      sessionId: input.sessionId,
+      shouldSteer: input.shouldSteer,
+      status: "pending",
+      text: input.text,
+      updatedAt: timestamp,
     });
+
+    const imageRecords = (input.images ?? []).map((image) => ({
+      base64EncodedImage: image.base64EncodedImage,
+      companyId: input.companyId,
+      createdAt: timestamp,
+      id: crypto.randomUUID(),
+      mimeType: image.mimeType,
+      sessionQueuedMessageId: queuedMessageId,
+      updatedAt: timestamp,
+    }));
+    if (imageRecords.length > 0) {
+      await insertableDatabase.insert(sessionQueuedMessageImages).values(imageRecords);
+    }
 
     return {
       id: queuedMessageId,
     };
+  }
+
+  async listProcessable(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<QueuedSessionMessageRecord[]> {
+    return this.listForFilter(transactionProvider, companyId, sessionId, ["pending", "processing"]);
   }
 
   async listPending(
@@ -129,7 +149,7 @@ export class SessionQueuedMessageService {
     companyId: string,
     sessionId: string,
   ): Promise<QueuedSessionMessageRecord[]> {
-    return this.listForFilter(transactionProvider, companyId, sessionId);
+    return this.listForFilter(transactionProvider, companyId, sessionId, ["pending"]);
   }
 
   async listPendingSteer(
@@ -137,8 +157,32 @@ export class SessionQueuedMessageService {
     companyId: string,
     sessionId: string,
   ): Promise<QueuedSessionMessageRecord[]> {
-    const queuedMessages = await this.listForFilter(transactionProvider, companyId, sessionId);
+    const queuedMessages = await this.listForFilter(transactionProvider, companyId, sessionId, ["pending"]);
     return queuedMessages.filter((queuedMessage) => queuedMessage.shouldSteer);
+  }
+
+  async markPending(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    ids: string[],
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    await transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(sessionQueuedMessages)
+        .set({
+          status: "pending",
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          inArray(sessionQueuedMessages.id, ids),
+        ));
+    });
   }
 
   async markProcessing(
@@ -190,7 +234,7 @@ export class SessionQueuedMessageService {
     companyId: string,
     sessionId: string,
   ): Promise<boolean> {
-    const queuedMessages = await this.listPending(transactionProvider, companyId, sessionId);
+    const queuedMessages = await this.listProcessable(transactionProvider, companyId, sessionId);
     return queuedMessages.length > 0;
   }
 
@@ -198,6 +242,7 @@ export class SessionQueuedMessageService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    statuses: string[],
   ): Promise<QueuedSessionMessageRecord[]> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -216,7 +261,9 @@ export class SessionQueuedMessageService {
         .where(and(
           eq(sessionQueuedMessages.companyId, companyId),
           eq(sessionQueuedMessages.sessionId, sessionId),
-          eq(sessionQueuedMessages.status, "pending"),
+          statuses.length === 1
+            ? eq(sessionQueuedMessages.status, statuses[0]!)
+            : or(...statuses.map((status) => eq(sessionQueuedMessages.status, status))),
         )) as QueuedMessageRow[];
       if (queuedMessages.length === 0) {
         return [];

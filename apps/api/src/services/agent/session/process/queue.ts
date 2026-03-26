@@ -40,7 +40,7 @@ export class SessionProcessQueueService {
     const jobsOptions: JobsOptions = {
       jobId: this.names.getWakeJobId(companyId, sessionId),
       removeOnComplete: true,
-      removeOnFail: 100,
+      removeOnFail: true,
     };
 
     await this.queue.add(

@@ -19,6 +19,7 @@ type Mutation {
   CreateSession(input: CreateSessionInput!): Session!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  PromptSession(input: PromptSessionInput!): Session!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
@@ -183,6 +184,12 @@ input CreateSessionInput {
   modelId: String
   reasoningLevel: String
   sessionId: ID
+  userMessage: String!
+}
+
+input PromptSessionInput {
+  id: ID!
+  shouldSteer: Boolean
   userMessage: String!
 }
 

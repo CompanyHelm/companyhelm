@@ -204,6 +204,13 @@
       "when": 1774561359858,
       "tag": "0028_unknown_lily_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1774563013800,
+      "tag": "0029_light_rafael_vega",
+      "breakpoints": true
     }
   ]
 }

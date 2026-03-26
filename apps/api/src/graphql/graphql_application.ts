@@ -10,6 +10,7 @@ import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
@@ -43,6 +44,7 @@ export class GraphqlApplication {
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private readonly promptSessionMutation: PromptSessionMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
@@ -102,6 +104,12 @@ export class GraphqlApplication {
       new SessionMessageUpdatedSubscriptionResolver(),
     @inject(SessionUpdatedSubscriptionResolver)
     sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver = new SessionUpdatedSubscriptionResolver(),
+    @inject(PromptSessionMutation)
+    promptSessionMutation: PromptSessionMutation = new PromptSessionMutation({
+      async prompt() {
+        throw new Error("PromptSession mutation is not configured.");
+      },
+    } as never),
     @inject(RedisService) redisService: RedisService = new RedisService(config),
   ) {
     this.configDocument = config;
@@ -114,6 +122,7 @@ export class GraphqlApplication {
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.promptSessionMutation = promptSessionMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
     this.healthQueryResolver = healthQueryResolver;
@@ -192,6 +201,7 @@ export class GraphqlApplication {
           CreateSession: this.createSessionMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          PromptSession: this.promptSessionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
         },

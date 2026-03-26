@@ -7,6 +7,7 @@ import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
+import { SessionProcessWorker } from "../workers/session_process.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
@@ -19,6 +20,7 @@ export class ApiServer {
   private readonly graphqlApplication: GraphqlApplication;
   private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
   private readonly logger: ApiLogger;
+  private readonly sessionProcessWorker: SessionProcessWorker;
   private readonly app;
 
   constructor(
@@ -28,6 +30,7 @@ export class ApiServer {
     @inject(GraphqlApplication) graphqlApplication: GraphqlApplication,
     @inject(ApiLogger) logger: ApiLogger,
     @inject(LlmOauthRefreshWorker) llmOauthRefreshWorker: LlmOauthRefreshWorker,
+    @inject(SessionProcessWorker) sessionProcessWorker: SessionProcessWorker,
   ) {
     this.config = config;
     this.adminDatabase = adminDatabase;
@@ -35,6 +38,7 @@ export class ApiServer {
     this.graphqlApplication = graphqlApplication;
     this.logger = logger;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
+    this.sessionProcessWorker = sessionProcessWorker;
     this.app = Fastify({
       loggerInstance: this.logger.getLogger(),
     });
@@ -43,6 +47,7 @@ export class ApiServer {
   async start(): Promise<void> {
     this.app.addHook("onClose", async () => {
       this.llmOauthRefreshWorker.stop();
+      await this.sessionProcessWorker.stop();
       await this.database.close();
       await this.adminDatabase.close();
     });
@@ -66,6 +71,7 @@ export class ApiServer {
     });
 
     this.llmOauthRefreshWorker.start();
+    this.sessionProcessWorker.start();
   }
 
   static createLoggerOptions(config: Pick<Config, "log">): FastifyServerOptions["logger"] {

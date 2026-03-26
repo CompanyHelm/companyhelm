@@ -1,8 +1,11 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { PiMonoSessionManagerService } from "../src/services/agent/session/pi-mono/session_manager_service.ts";
+import { SessionProcessPubSubNames } from "../src/services/agent/session/process/pub_sub_names.ts";
 import { SessionManagerService } from "../src/services/agent/session/session_manager_service.ts";
+import { SessionProcessQueueService } from "../src/services/agent/session/process/queue.ts";
+import { SessionProcessQueuedNames } from "../src/services/agent/session/process/queued_names.ts";
+import { SessionQueuedMessageService } from "../src/services/agent/session/process/queued_messages.ts";
 
 class SessionManagerServiceTestHarness {
   static createLoggerMock(logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }>) {
@@ -30,19 +33,12 @@ class SessionManagerServiceTestHarness {
   }
 }
 
-test("SessionManagerService createSession falls back to the agent defaults and logs creation", async () => {
+test("SessionManagerService createSession persists a queued session, stores the first message, and enqueues a wake job", async () => {
   const userMessage = "Write the launch email and include rollout steps for the onboarding sequence.";
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
-  const piCreateCalls: Array<{
-    transactionProvider: unknown;
-    sessionId: string;
-    apiKey: string;
-    providerId: string;
-    modelId: string;
-    reasoningLevel: string | null | undefined;
-  }> = [];
-  const piPromptCalls: Array<{ sessionId: string; message: string }> = [];
+  const queuedMessages: Array<Record<string, unknown>> = [];
+  const wakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
   const transaction = {
@@ -80,22 +76,6 @@ test("SessionManagerService createSession falls back to the agent defaults and l
         };
       }
 
-      if (selectCallCount === 3) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  id: "credential-1",
-                  modelProvider: "openai",
-                  encryptedApiKey: "sk-openai",
-                }];
-              },
-            };
-          },
-        };
-      }
-
       throw new Error("Unexpected select call.");
     },
     insert() {
@@ -110,7 +90,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
                 currentModelId: "gpt-5.4",
                 currentReasoningLevel: "high",
                 inferredTitle: userMessage.slice(0, 50),
-                status: "running",
+                status: "queued",
                 createdAt: new Date("2026-03-25T01:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T01:00:00.000Z"),
                 userSetTitle: null,
@@ -124,32 +104,6 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   const service = new SessionManagerService(
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
-      async create(
-        transactionProvider: unknown,
-        sessionId: string,
-        apiKey: string,
-        providerId: string,
-        modelId: string,
-        reasoningLevel?: string | null,
-      ) {
-        piCreateCalls.push({
-          transactionProvider,
-          sessionId,
-          apiKey,
-          providerId,
-          modelId,
-          reasoningLevel,
-        });
-        return {} as never;
-      },
-      async prompt(sessionId: string, message: string) {
-        piPromptCalls.push({
-          sessionId,
-          message,
-        });
-      },
-    } as PiMonoSessionManagerService,
-    {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -162,42 +116,57 @@ test("SessionManagerService createSession falls back to the agent defaults and l
         };
       },
     } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake(companyId: string, sessionId: string) {
+        wakeCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
+        queuedMessages.push(input);
+        return {
+          id: "queued-1",
+        };
+      },
+    } as SessionQueuedMessageService,
   );
-  const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
 
-  const sessionId = await service.createSession(
-    transactionProvider as never,
+  const sessionRecord = await service.createSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "agent-1",
     userMessage,
   );
 
-  assert.equal(sessionId.id, "session-1");
+  assert.equal(sessionRecord.id, "session-1");
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.companyId, "company-1");
   assert.equal(insertedValues[0]?.agentId, "agent-1");
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
+  assert.equal(insertedValues[0]?.currentModelProviderCredentialId, "credential-1");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
   assert.equal(insertedValues[0]?.inferredTitle, userMessage.slice(0, 50));
-  assert.equal(insertedValues[0]?.status, "running");
-  assert.deepEqual(piCreateCalls, [{
+  assert.equal(insertedValues[0]?.status, "queued");
+  assert.deepEqual(queuedMessages, [{
+    companyId: "company-1",
     sessionId: "session-1",
-    transactionProvider,
-    apiKey: "sk-openai",
-    providerId: "openai",
-    modelId: "gpt-5.4",
-    reasoningLevel: "high",
-  }]);
-  assert.deepEqual(piPromptCalls, [{
-    sessionId: "session-1",
-    message: userMessage,
+    shouldSteer: false,
+    text: userMessage,
   }]);
   assert.deepEqual(publishCalls, [{
     channel: "company:company-1:session:session-1:update",
     message: "",
   }]);
-  assert.equal(logs.length, 1);
-  assert.deepEqual(logs[0], {
+  assert.deepEqual(wakeCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(logs, [{
     bindings: {
       component: "session_manager_service",
     },
@@ -209,22 +178,11 @@ test("SessionManagerService createSession falls back to the agent defaults and l
       reasoningLevel: "high",
       sessionId: "session-1",
     },
-  });
+  }]);
 });
 
-test("SessionManagerService createSession prefers explicit model and reasoning values", async () => {
-  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+test("SessionManagerService createSession persists explicit model, reasoning, and session ids", async () => {
   const insertedValues: Array<Record<string, unknown>> = [];
-  const piCreateCalls: Array<{
-    transactionProvider: unknown;
-    sessionId: string;
-    apiKey: string;
-    providerId: string;
-    modelId: string;
-    reasoningLevel: string | null | undefined;
-  }> = [];
-  const piPromptCalls: Array<{ sessionId: string; message: string }> = [];
-  const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
   const transaction = {
     select() {
@@ -261,180 +219,6 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
         };
       }
 
-      if (selectCallCount === 3) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  id: "credential-2",
-                  modelProvider: "openai-codex",
-                  encryptedApiKey: "oauth-access-token",
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      throw new Error("Unexpected select call.");
-    },
-    insert() {
-      return {
-        values(value: Record<string, unknown>) {
-          insertedValues.push(value);
-          return {
-            async returning() {
-              return [{
-                id: "session-2",
-                agentId: "agent-1",
-                currentModelId: "gpt-5.4-mini",
-                currentReasoningLevel: "low",
-                inferredTitle: "Summarize the open issues.",
-                status: "running",
-                createdAt: new Date("2026-03-25T02:00:00.000Z"),
-                updatedAt: new Date("2026-03-25T02:00:00.000Z"),
-                userSetTitle: null,
-              }];
-            },
-          };
-        },
-      };
-    },
-  };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
-      async create(
-        transactionProvider: unknown,
-        sessionId: string,
-        apiKey: string,
-        providerId: string,
-        modelId: string,
-        reasoningLevel?: string | null,
-      ) {
-        piCreateCalls.push({
-          transactionProvider,
-          sessionId,
-          apiKey,
-          providerId,
-          modelId,
-          reasoningLevel,
-        });
-        return {} as never;
-      },
-      async prompt(sessionId: string, message: string) {
-        piPromptCalls.push({
-          sessionId,
-          message,
-        });
-      },
-    } as PiMonoSessionManagerService,
-    {
-      async getClient() {
-        return {
-          async publish(channel: string, message: string) {
-            publishCalls.push({
-              channel,
-              message,
-            });
-            return 1;
-          },
-        };
-      },
-    } as never,
-  );
-
-  const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
-  const sessionId = await service.createSession(
-    transactionProvider as never,
-    "company-1",
-    "agent-1",
-    "Summarize the open issues.",
-    "gpt-5.4-mini",
-    "low",
-  );
-
-  assert.equal(sessionId.id, "session-2");
-  assert.equal(insertedValues.length, 1);
-  assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
-  assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
-  assert.equal(insertedValues[0]?.inferredTitle, "Summarize the open issues.");
-  assert.equal(insertedValues[0]?.status, "running");
-  assert.deepEqual(piCreateCalls, [{
-    sessionId: "session-2",
-    transactionProvider,
-    apiKey: "oauth-access-token",
-    providerId: "openai-codex",
-    modelId: "gpt-5.4-mini",
-    reasoningLevel: "low",
-  }]);
-  assert.deepEqual(piPromptCalls, [{
-    sessionId: "session-2",
-    message: "Summarize the open issues.",
-  }]);
-  assert.deepEqual(publishCalls, [{
-    channel: "company:company-1:session:session-2:update",
-    message: "",
-  }]);
-  assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
-  assert.equal(logs[0]?.payload?.reasoningLevel, "low");
-});
-
-test("SessionManagerService createSession persists a caller-provided session id", async () => {
-  const insertedValues: Array<Record<string, unknown>> = [];
-  let selectCallCount = 0;
-  const transaction = {
-    select() {
-      selectCallCount += 1;
-      if (selectCallCount === 1) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  id: "agent-1",
-                  defaultModelProviderCredentialModelId: "model-row-1",
-                  defaultReasoningLevel: "high",
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 2) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  id: "model-row-1",
-                  modelId: "gpt-5.4",
-                  modelProviderCredentialId: "credential-1",
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 3) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  id: "credential-1",
-                  modelProvider: "openai",
-                  encryptedApiKey: "sk-openai",
-                }];
-              },
-            };
-          },
-        };
-      }
-
       throw new Error("Unexpected select call.");
     },
     insert() {
@@ -446,12 +230,12 @@ test("SessionManagerService createSession persists a caller-provided session id"
               return [{
                 id: "session-client-1",
                 agentId: "agent-1",
-                currentModelId: "gpt-5.4",
-                currentReasoningLevel: "high",
-                inferredTitle: "Write the launch email.",
-                status: "running",
-                createdAt: new Date("2026-03-25T01:00:00.000Z"),
-                updatedAt: new Date("2026-03-25T01:00:00.000Z"),
+                currentModelId: "gpt-5.4-mini",
+                currentReasoningLevel: "low",
+                inferredTitle: "Summarize the open issues.",
+                status: "queued",
+                createdAt: new Date("2026-03-25T02:00:00.000Z"),
+                updatedAt: new Date("2026-03-25T02:00:00.000Z"),
                 userSetTitle: null,
               }];
             },
@@ -463,12 +247,6 @@ test("SessionManagerService createSession persists a caller-provided session id"
   const service = new SessionManagerService(
     SessionManagerServiceTestHarness.createLoggerMock([]) as never,
     {
-      async create() {
-        return {} as never;
-      },
-      async prompt() {},
-    } as PiMonoSessionManagerService,
-    {
       async getClient() {
         return {
           async publish() {
@@ -477,24 +255,37 @@ test("SessionManagerService createSession persists a caller-provided session id"
         };
       },
     } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {},
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction() {
+        return {
+          id: "queued-1",
+        };
+      },
+    } as SessionQueuedMessageService,
   );
-  const transactionProvider = SessionManagerServiceTestHarness.createTransactionProviderMock(transaction);
 
   await service.createSession(
-    transactionProvider as never,
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "agent-1",
-    "Write the launch email.",
-    undefined,
-    undefined,
+    "Summarize the open issues.",
+    "gpt-5.4-mini",
+    "low",
     "session-client-1",
   );
 
   assert.equal(insertedValues[0]?.id, "session-client-1");
-  assert.equal(insertedValues[0]?.inferredTitle, "Write the launch email.");
+  assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
+  assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
+  assert.equal(insertedValues[0]?.currentModelProviderCredentialId, "credential-2");
 });
 
-test("SessionManagerService archiveSession updates the session status", async () => {
+test("SessionManagerService archiveSession updates the session status and publishes the session update", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
@@ -529,11 +320,6 @@ test("SessionManagerService archiveSession updates the session status", async ()
   const service = new SessionManagerService(
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
-      async create() {
-        throw new Error("Pi create should not be called while archiving.");
-      },
-    } as PiMonoSessionManagerService,
-    {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -546,6 +332,14 @@ test("SessionManagerService archiveSession updates the session status", async ()
         };
       },
     } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while archiving.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    new SessionQueuedMessageService(),
   );
 
   const sessionRecord = await service.archiveSession(
@@ -573,36 +367,134 @@ test("SessionManagerService archiveSession updates the session status", async ()
   }]);
 });
 
-test("SessionManagerService prompt logs the session request", async () => {
+test("SessionManagerService prompt queues the message, publishes session updates, and nudges steering when requested", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const queuedMessages: Array<Record<string, unknown>> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  const wakeCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "session-1",
+                  status: "running",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
+          return {
+            where() {
+              return {
+                async returning() {
+                  return [{
+                    id: "session-1",
+                    agentId: "agent-1",
+                    currentModelId: "gpt-5.4",
+                    currentReasoningLevel: "high",
+                    inferredTitle: "Existing title",
+                    status: "running",
+                    createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                    updatedAt: new Date("2026-03-25T03:00:00.000Z"),
+                    userSetTitle: null,
+                  }];
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
   const service = new SessionManagerService(
     SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
     {
-      async create() {
-        throw new Error("Pi create should not be called while prompting.");
-      },
-    } as PiMonoSessionManagerService,
-    {
       async getClient() {
-        throw new Error("Redis publish should not be called while prompting.");
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
       },
     } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake(companyId: string, sessionId: string) {
+        wakeCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
+        queuedMessages.push(input);
+        return {
+          id: "queued-2",
+        };
+      },
+    } as SessionQueuedMessageService,
   );
 
-  await service.prompt(
-    SessionManagerServiceTestHarness.createTransactionProviderMock({}) as never,
+  const sessionRecord = await service.prompt(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "session-1",
+    "Focus on the failed deploy.",
+    true,
   );
 
+  assert.equal(sessionRecord.id, "session-1");
+  assert.equal(updatedValues[0]?.status, "running");
+  assert.deepEqual(queuedMessages, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: true,
+    text: "Focus on the failed deploy.",
+  }]);
+  assert.deepEqual(wakeCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:steer",
+      message: "",
+    },
+  ]);
   assert.deepEqual(logs, [{
     bindings: {
       component: "session_manager_service",
     },
-    message: "prompt requested for agent session",
+    message: "queued session prompt",
     payload: {
       companyId: "company-1",
       sessionId: "session-1",
+      shouldSteer: true,
     },
   }]);
 });

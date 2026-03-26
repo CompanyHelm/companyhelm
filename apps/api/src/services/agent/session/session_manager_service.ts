@@ -2,17 +2,24 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { ApiLogger } from "../../../log/api_logger.ts";
-import { agents, agentSessions, modelProviderCredentialModels, modelProviderCredentials } from "../../../db/schema.ts";
+import { agents, agentSessions, modelProviderCredentialModels } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
-import { PiMonoSessionManagerService } from "./pi-mono/session_manager_service.ts";
+import { SessionProcessQueueService } from "./process/queue.ts";
+import { SessionQueuedMessageService } from "./process/queued_messages.ts";
+import { SessionProcessQueuedNames } from "./process/queued_names.ts";
 
 type AgentRecord = {
-  id: string;
   defaultModelProviderCredentialModelId: string | null;
   defaultReasoningLevel: string | null;
+  id: string;
+};
+
+type ExistingSessionRow = {
+  id: string;
+  status: string;
 };
 
 type ModelRecord = {
@@ -21,20 +28,14 @@ type ModelRecord = {
   modelProviderCredentialId: string;
 };
 
-type CredentialRecord = {
-  id: string;
-  modelProvider: string;
-  encryptedApiKey: string;
-};
-
 type SessionRecord = {
-  id: string;
   agentId: string;
+  createdAt: Date;
   currentModelId: string;
   currentReasoningLevel: string;
+  id: string;
   inferredTitle: string | null;
   status: string;
-  createdAt: Date;
   updatedAt: Date;
   userSetTitle: string | null;
 };
@@ -66,29 +67,35 @@ type UpdatableDatabase = {
 };
 
 /**
- * Owns persisted agent-session creation for the CompanyHelm domain. Its scope is deciding which
- * agent defaults become part of a new session record, storing that session in the company-scoped
- * database, and exposing the entry point that later runtime execution can build on.
+ * Owns the persisted ingress for agent-session work. Its scope is resolving the session defaults,
+ * storing session rows and queued user messages in Postgres, and nudging the BullMQ wake queue plus
+ * Redis session-update channels after the transaction commits.
  */
 @injectable()
 export class SessionManagerService {
   private readonly logger: PinoLogger;
-  private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
   private readonly redisService: RedisService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
+  private readonly sessionProcessQueueService: SessionProcessQueueService;
+  private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
+  private readonly sessionQueuedMessageService: SessionQueuedMessageService;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
-    @inject(PiMonoSessionManagerService) piMonoSessionManagerService: PiMonoSessionManagerService,
     @inject(RedisService) redisService: RedisService,
     @inject(SessionProcessPubSubNames) sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+    @inject(SessionProcessQueueService) sessionProcessQueueService: SessionProcessQueueService,
+    @inject(SessionProcessQueuedNames) sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
+    @inject(SessionQueuedMessageService) sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
   ) {
     this.logger = logger.child({
       component: "session_manager_service",
     });
-    this.piMonoSessionManagerService = piMonoSessionManagerService;
     this.redisService = redisService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
+    this.sessionProcessQueueService = sessionProcessQueueService;
+    this.sessionProcessQueuedNames = sessionProcessQueuedNames;
+    this.sessionQueuedMessageService = sessionQueuedMessageService;
   }
 
   async createSession(
@@ -125,63 +132,48 @@ export class SessionManagerService {
       );
       const resolvedModelId = this.resolveModelId(defaultModelRecord, modelId);
       const resolvedReasoningLevel = this.resolveReasoningLevel(agentRecord, reasoningLevel);
-      const credentialRecord = await this.resolveCredentialRecord(
-        selectableDatabase,
-        companyId,
-        defaultModelRecord.modelProviderCredentialId,
-      );
       const inferredTitle = this.inferTitle(userMessage);
       const resolvedSessionId = String(sessionId || "").trim();
       const now = new Date();
-      const [sessionRecord] = await insertableDatabase
+      const [createdSessionRecord] = await insertableDatabase
         .insert(agentSessions)
         .values({
           ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
           companyId,
           agentId,
           currentModelId: resolvedModelId,
+          currentModelProviderCredentialId: defaultModelRecord.modelProviderCredentialId,
           currentReasoningLevel: resolvedReasoningLevel,
           inferredTitle,
-          status: "running",
+          status: "queued",
           created_at: now,
           updated_at: now,
         })
-        .returning?.({
-          id: agentSessions.id,
-          agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentReasoningLevel: agentSessions.currentReasoningLevel,
-          inferredTitle: agentSessions.inferredTitle,
-          status: agentSessions.status,
-          createdAt: agentSessions.created_at,
-          updatedAt: agentSessions.updated_at,
-          userSetTitle: agentSessions.userSetTitle,
-        }) as SessionRecord[];
-      if (!sessionRecord) {
+        .returning?.(this.sessionSelection()) as SessionRecord[];
+      if (!createdSessionRecord) {
         throw new Error("Failed to create session.");
       }
 
-      await this.piMonoSessionManagerService.create(
-        transactionProvider,
-        sessionRecord.id,
-        credentialRecord.encryptedApiKey,
-        credentialRecord.modelProvider,
-        resolvedModelId,
-        resolvedReasoningLevel,
-      );
-      await this.piMonoSessionManagerService.prompt(sessionRecord.id, userMessage);
-      await this.publishSessionUpdate(companyId, sessionRecord.id);
-
-      this.logger.info({
-        agentId,
+      await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
         companyId,
-        modelId: resolvedModelId,
-        reasoningLevel: resolvedReasoningLevel,
-        sessionId: sessionRecord.id,
-      }, "created agent session");
+        sessionId: createdSessionRecord.id,
+        shouldSteer: false,
+        text: userMessage,
+      });
 
-      return sessionRecord;
+      return createdSessionRecord;
     });
+
+    await this.publishSessionUpdate(companyId, sessionRecord.id);
+    await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionRecord.id);
+
+    this.logger.info({
+      agentId,
+      companyId,
+      modelId: sessionRecord.currentModelId,
+      reasoningLevel: sessionRecord.currentReasoningLevel,
+      sessionId: sessionRecord.id,
+    }, "created agent session");
 
     return sessionRecord;
   }
@@ -194,7 +186,7 @@ export class SessionManagerService {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       const updatableDatabase = tx as UpdatableDatabase;
       const now = new Date();
-      const [sessionRecord] = await updatableDatabase
+      const [updatedSessionRecord] = await updatableDatabase
         .update(agentSessions)
         .set({
           status: "archived",
@@ -204,44 +196,92 @@ export class SessionManagerService {
           eq(agentSessions.companyId, companyId),
           eq(agentSessions.id, sessionId),
         ))
-        .returning?.({
-          id: agentSessions.id,
-          agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentReasoningLevel: agentSessions.currentReasoningLevel,
-          inferredTitle: agentSessions.inferredTitle,
-          status: agentSessions.status,
-          createdAt: agentSessions.created_at,
-          updatedAt: agentSessions.updated_at,
-          userSetTitle: agentSessions.userSetTitle,
-        }) as SessionRecord[];
+        .returning?.(this.sessionSelection()) as SessionRecord[];
 
-      if (!sessionRecord) {
+      if (!updatedSessionRecord) {
         throw new Error("Session not found.");
       }
 
-      await this.publishSessionUpdate(companyId, sessionRecord.id);
-
-      this.logger.info({
-        companyId,
-        sessionId,
-      }, "archived agent session");
-
-      return sessionRecord;
+      return updatedSessionRecord;
     });
+
+    await this.publishSessionUpdate(companyId, sessionRecord.id);
+
+    this.logger.info({
+      companyId,
+      sessionId,
+    }, "archived agent session");
 
     return sessionRecord;
   }
 
   async prompt(
-    _transactionProvider: TransactionProviderInterface,
+    transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
-  ): Promise<void> {
+    userMessage: string,
+    shouldSteer = false,
+  ): Promise<SessionRecord> {
+    const sessionRecord = await transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const [existingSession] = await selectableDatabase
+        .select({
+          id: agentSessions.id,
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!existingSession) {
+        throw new Error("Session not found.");
+      }
+      if (existingSession.status === "archived") {
+        throw new Error("Archived sessions cannot receive new messages.");
+      }
+
+      const now = new Date();
+      const [updatedSessionRecord] = await updatableDatabase
+        .update(agentSessions)
+        .set({
+          status: existingSession.status === "running" ? "running" : "queued",
+          updated_at: now,
+        })
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        ))
+        .returning?.(this.sessionSelection()) as SessionRecord[];
+      if (!updatedSessionRecord) {
+        throw new Error("Failed to update session.");
+      }
+
+      await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+        companyId,
+        sessionId,
+        shouldSteer,
+        text: userMessage,
+      });
+
+      return updatedSessionRecord;
+    });
+
+    await this.publishSessionUpdate(companyId, sessionId);
+    await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
+    if (shouldSteer) {
+      await this.publishSteer(companyId, sessionId);
+    }
+
     this.logger.info({
       companyId,
       sessionId,
-    }, "prompt requested for agent session");
+      shouldSteer,
+    }, "queued session prompt");
+
+    return sessionRecord;
   }
 
   private async resolveDefaultModelRecord(
@@ -279,29 +319,6 @@ export class SessionManagerService {
     return defaultModelRecord.modelId;
   }
 
-  private async resolveCredentialRecord(
-    selectableDatabase: SelectableDatabase,
-    companyId: string,
-    modelProviderCredentialId: string,
-  ): Promise<CredentialRecord> {
-    const [credentialRecord] = await selectableDatabase
-      .select({
-        id: modelProviderCredentials.id,
-        modelProvider: modelProviderCredentials.modelProvider,
-        encryptedApiKey: modelProviderCredentials.encryptedApiKey,
-      })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.id, modelProviderCredentialId),
-      )) as CredentialRecord[];
-    if (!credentialRecord) {
-      throw new Error("Agent model provider credential not found.");
-    }
-
-    return credentialRecord;
-  }
-
   private resolveReasoningLevel(
     agentRecord: AgentRecord,
     reasoningLevel?: string | null,
@@ -320,6 +337,25 @@ export class SessionManagerService {
     }
 
     return trimmedMessage.slice(0, 50);
+  }
+
+  private sessionSelection(): Record<string, unknown> {
+    return {
+      id: agentSessions.id,
+      agentId: agentSessions.agentId,
+      currentModelId: agentSessions.currentModelId,
+      currentReasoningLevel: agentSessions.currentReasoningLevel,
+      inferredTitle: agentSessions.inferredTitle,
+      status: agentSessions.status,
+      createdAt: agentSessions.created_at,
+      updatedAt: agentSessions.updated_at,
+      userSetTitle: agentSessions.userSetTitle,
+    };
+  }
+
+  private async publishSteer(companyId: string, sessionId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.sessionProcessQueuedNames.getSessionSteerChannel(sessionId));
   }
 
   private async publishSessionUpdate(companyId: string, sessionId: string): Promise<void> {

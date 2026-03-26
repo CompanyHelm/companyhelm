@@ -1,0 +1,330 @@
+import { and, eq } from "drizzle-orm";
+import { inject, injectable } from "inversify";
+import type { ImageContent } from "@mariozechner/pi-ai";
+import type { Logger as PinoLogger } from "pino";
+import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
+import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
+import { agentSessions, modelProviderCredentials } from "../../../../db/schema.ts";
+import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { ApiLogger } from "../../../../log/api_logger.ts";
+import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
+import { RedisSubscriptionHandle } from "../../../redis/subscription_handle.ts";
+import { RedisService } from "../../../redis/service.ts";
+import { PiMonoSessionManagerService } from "../pi-mono/session_manager_service.ts";
+import type { QueuedSessionMessageRecord } from "./queued_messages.ts";
+import { SessionQueuedMessageService } from "./queued_messages.ts";
+import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
+import { SessionProcessQueueService } from "./queue.ts";
+import { SessionProcessQueuedNames } from "./queued_names.ts";
+
+type SessionRuntimeRow = {
+  currentModelId: string;
+  currentModelProviderCredentialId: string;
+  currentReasoningLevel: string;
+  status: string;
+};
+
+type CredentialRow = {
+  encryptedApiKey: string;
+  modelProvider: string;
+};
+
+type SelectableDatabase = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
+/**
+ * Owns one wake-job execution pass for a session. Its scope is acquiring the Redis lease, sending
+ * exactly one queued turn into PI Mono, handling steer nudges while that turn is active, and
+ * re-enqueueing a fresh wake job if Postgres still has queued work after the lease is released.
+ */
+@injectable()
+export class SessionProcessExecutionService {
+  private readonly appRuntimeDatabase: AppRuntimeDatabase;
+  private readonly logger: PinoLogger;
+  private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
+  private readonly redisService: RedisService;
+  private readonly sessionLeaseService: SessionLeaseService;
+  private readonly sessionProcessQueueService: SessionProcessQueueService;
+  private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
+  private readonly sessionQueuedMessageService: SessionQueuedMessageService;
+
+  constructor(
+    @inject(AppRuntimeDatabase) appRuntimeDatabase: AppRuntimeDatabase,
+    @inject(ApiLogger) logger: ApiLogger,
+    @inject(PiMonoSessionManagerService) piMonoSessionManagerService: PiMonoSessionManagerService,
+    @inject(RedisService) redisService: RedisService,
+    @inject(SessionLeaseService) sessionLeaseService: SessionLeaseService,
+    @inject(SessionProcessQueueService) sessionProcessQueueService: SessionProcessQueueService,
+    @inject(SessionProcessQueuedNames)
+    sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
+    @inject(SessionQueuedMessageService)
+    sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
+  ) {
+    this.appRuntimeDatabase = appRuntimeDatabase;
+    this.logger = logger.child({
+      component: "session_process_execution_service",
+    });
+    this.piMonoSessionManagerService = piMonoSessionManagerService;
+    this.redisService = redisService;
+    this.sessionLeaseService = sessionLeaseService;
+    this.sessionProcessQueueService = sessionProcessQueueService;
+    this.sessionProcessQueuedNames = sessionProcessQueuedNames;
+    this.sessionQueuedMessageService = sessionQueuedMessageService;
+  }
+
+  async execute(companyId: string, sessionId: string): Promise<void> {
+    const lease = await this.sessionLeaseService.acquire(companyId, sessionId);
+    if (!lease) {
+      this.logger.debug({
+        companyId,
+        sessionId,
+      }, "skipping wake because another worker owns the lease");
+      return;
+    }
+
+    const transactionProvider = new AppRuntimeTransactionProvider(this.appRuntimeDatabase, companyId);
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
+    let leaseLossError: Error | null = null;
+    let steeringSubscription: RedisSubscriptionHandle | null = null;
+    let steeringDeliveryPromise = Promise.resolve();
+
+    try {
+      const processableMessages = await this.sessionQueuedMessageService.listProcessable(
+        transactionProvider,
+        companyId,
+        sessionId,
+      );
+      const primaryBatch = this.selectPrimaryBatch(processableMessages);
+      if (primaryBatch.length === 0) {
+        return;
+      }
+
+      const runtimeConfig = await this.loadRuntimeConfig(transactionProvider, companyId, sessionId);
+      await this.piMonoSessionManagerService.ensureSession(
+        transactionProvider,
+        sessionId,
+        runtimeConfig,
+      );
+
+      heartbeatHandle = this.startLeaseHeartbeat(lease, async (error) => {
+        leaseLossError = error;
+        await this.piMonoSessionManagerService.abort(sessionId);
+      });
+
+      steeringSubscription = await redisCompanyScopedService.subscribe(
+        this.sessionProcessQueuedNames.getSessionSteerChannel(sessionId),
+        () => {
+          steeringDeliveryPromise = steeringDeliveryPromise.then(async () => {
+            try {
+              await this.deliverPendingSteerMessages(transactionProvider, companyId, sessionId);
+            } catch (error) {
+              this.logger.error({
+                companyId,
+                error,
+                sessionId,
+              }, "failed to deliver steering messages");
+            }
+          });
+        },
+      );
+
+      const primaryMessageIds = primaryBatch.map((queuedMessage) => queuedMessage.id);
+      await this.sessionQueuedMessageService.markProcessing(
+        transactionProvider,
+        companyId,
+        primaryMessageIds,
+      );
+
+      try {
+        await this.piMonoSessionManagerService.prompt(
+          sessionId,
+          this.combineQueuedTexts(primaryBatch),
+          this.toImageContents(primaryBatch),
+        );
+        await steeringDeliveryPromise;
+        if (leaseLossError) {
+          throw leaseLossError;
+        }
+        await this.sessionQueuedMessageService.deleteProcessed(
+          transactionProvider,
+          companyId,
+          primaryMessageIds,
+        );
+      } catch (error) {
+        await this.sessionQueuedMessageService.markPending(
+          transactionProvider,
+          companyId,
+          primaryMessageIds,
+        );
+        throw error;
+      }
+    } finally {
+      if (steeringSubscription) {
+        await steeringSubscription.unsubscribe();
+      }
+      if (heartbeatHandle) {
+        clearInterval(heartbeatHandle);
+      }
+
+      await this.sessionLeaseService.release(lease);
+      await redisCompanyScopedService.disconnect();
+
+      if (await this.sessionQueuedMessageService.hasPendingMessages(transactionProvider, companyId, sessionId)) {
+        await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
+      }
+    }
+  }
+
+  private async deliverPendingSteerMessages(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const steerMessages = await this.sessionQueuedMessageService.listPendingSteer(
+      transactionProvider,
+      companyId,
+      sessionId,
+    );
+    if (steerMessages.length === 0) {
+      return;
+    }
+
+    const steerMessageIds = steerMessages.map((queuedMessage) => queuedMessage.id);
+    await this.sessionQueuedMessageService.markProcessing(transactionProvider, companyId, steerMessageIds);
+
+    try {
+      await this.piMonoSessionManagerService.steer(
+        sessionId,
+        this.combineQueuedTexts(steerMessages),
+        this.toImageContents(steerMessages),
+      );
+      await this.sessionQueuedMessageService.deleteProcessed(transactionProvider, companyId, steerMessageIds);
+    } catch (error) {
+      await this.sessionQueuedMessageService.markPending(transactionProvider, companyId, steerMessageIds);
+      throw error;
+    }
+  }
+
+  private async loadRuntimeConfig(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<{
+    apiKey: string;
+    modelId: string;
+    providerId: string;
+    reasoningLevel: string;
+  }> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const [sessionRow] = await selectableDatabase
+        .select({
+          currentModelId: agentSessions.currentModelId,
+          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as SessionRuntimeRow[];
+      if (!sessionRow) {
+        throw new Error("Session not found.");
+      }
+      if (sessionRow.status === "archived") {
+        throw new Error("Archived sessions cannot be processed.");
+      }
+
+      const [credentialRow] = await selectableDatabase
+        .select({
+          encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+          modelProvider: modelProviderCredentials.modelProvider,
+        })
+        .from(modelProviderCredentials)
+        .where(and(
+          eq(modelProviderCredentials.companyId, companyId),
+          eq(modelProviderCredentials.id, sessionRow.currentModelProviderCredentialId),
+        )) as CredentialRow[];
+      if (!credentialRow) {
+        throw new Error("Session credential not found.");
+      }
+
+      return {
+        apiKey: credentialRow.encryptedApiKey,
+        modelId: sessionRow.currentModelId,
+        providerId: credentialRow.modelProvider,
+        reasoningLevel: sessionRow.currentReasoningLevel,
+      };
+    });
+  }
+
+  private selectPrimaryBatch(
+    queuedMessages: QueuedSessionMessageRecord[],
+  ): QueuedSessionMessageRecord[] {
+    const [firstQueuedMessage] = queuedMessages;
+    if (!firstQueuedMessage) {
+      return [];
+    }
+    if (!firstQueuedMessage.shouldSteer) {
+      return [firstQueuedMessage];
+    }
+
+    const batchedSteerMessages: QueuedSessionMessageRecord[] = [];
+    for (const queuedMessage of queuedMessages) {
+      if (!queuedMessage.shouldSteer) {
+        break;
+      }
+
+      batchedSteerMessages.push(queuedMessage);
+    }
+
+    return batchedSteerMessages;
+  }
+
+  private combineQueuedTexts(queuedMessages: QueuedSessionMessageRecord[]): string {
+    return queuedMessages.map((queuedMessage) => queuedMessage.text).join("\n\n");
+  }
+
+  private toImageContents(queuedMessages: QueuedSessionMessageRecord[]): ImageContent[] {
+    return queuedMessages.flatMap((queuedMessage) => {
+      return queuedMessage.images.map((image) => ({
+        data: image.base64EncodedImage,
+        mimeType: image.mimeType,
+        type: "image" as const,
+      }));
+    });
+  }
+
+  private startLeaseHeartbeat(
+    lease: SessionLeaseHandle,
+    onLeaseLost: (error: Error) => Promise<void>,
+  ): ReturnType<typeof setInterval> {
+    let isHeartbeatRunning = false;
+
+    return setInterval(() => {
+      if (isHeartbeatRunning) {
+        return;
+      }
+
+      isHeartbeatRunning = true;
+      void this.sessionLeaseService.heartbeat(lease).then(async (hasLease) => {
+        if (hasLease) {
+          return;
+        }
+
+        await onLeaseLost(new Error("Lost session lease while processing the turn."));
+      }).catch(async (error) => {
+        await onLeaseLost(error instanceof Error ? error : new Error("Failed to heartbeat session lease."));
+      }).finally(() => {
+        isHeartbeatRunning = false;
+      });
+    }, Math.floor(SessionLeaseService.LEASE_TTL_MILLISECONDS / 3));
+  }
+}

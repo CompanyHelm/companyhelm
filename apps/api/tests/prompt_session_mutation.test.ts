@@ -10,6 +10,7 @@ import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add
 import { CreateSessionMutation } from "../src/graphql/mutations/create_session.ts";
 import { DeleteAgentMutation } from "../src/graphql/mutations/delete_agent.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
+import { PromptSessionMutation } from "../src/graphql/mutations/prompt_session.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
 import { UpdateAgentMutation } from "../src/graphql/mutations/update_agent.ts";
 import { AgentCreateOptionsQueryResolver } from "../src/graphql/resolvers/agent_create_options.ts";
@@ -22,7 +23,7 @@ import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/
 import { ModelProvidersQueryResolver } from "../src/graphql/resolvers/model_providers.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class CreateSessionMutationTestHarness {
+class PromptSessionMutationTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -47,10 +48,10 @@ class CreateSessionMutationTestHarness {
   }
 }
 
-test("GraphQL CreateSession mutation creates a session and returns the persisted session data", async () => {
+test("GraphQL PromptSession mutation queues a new session message and returns the updated session", async () => {
   const app = Fastify();
-  const config = CreateSessionMutationTestHarness.createConfigMock();
-  const database = CreateSessionMutationTestHarness.createDatabaseMock();
+  const config = PromptSessionMutationTestHarness.createConfigMock();
+  const database = PromptSessionMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -76,30 +77,28 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     },
   };
   const sessionManagerService = {
-    async createSession(
+    async prompt(
       transactionProvider: unknown,
       companyId: string,
-      agentId: string,
+      sessionId: string,
       userMessage: string,
-      modelId?: string | null,
-      reasoningLevel?: string | null,
+      shouldSteer: boolean,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
-      assert.equal(agentId, "agent-1");
-      assert.equal(userMessage, "Draft the onboarding email.");
-      assert.equal(modelId, "gpt-5.4");
-      assert.equal(reasoningLevel, "high");
+      assert.equal(sessionId, "session-1");
+      assert.equal(userMessage, "Focus on the failed deploy.");
+      assert.equal(shouldSteer, true);
 
       return {
         id: "session-1",
-        agentId,
+        agentId: "agent-1",
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
-        inferredTitle: "Draft the onboarding email.",
-        status: "queued",
+        inferredTitle: "Existing title",
+        status: "running",
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
-        updatedAt: new Date("2026-03-25T12:00:00.000Z"),
+        updatedAt: new Date("2026-03-25T12:05:00.000Z"),
         userSetTitle: null,
       };
     },
@@ -116,13 +115,24 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
     new AddAgentMutation(),
-    new CreateSessionMutation(sessionManagerService as never),
+    new CreateSessionMutation({
+      async createSession() {
+        throw new Error("CreateSession should not be called.");
+      },
+    } as never),
     new AgentQueryResolver(),
     new AgentCreateOptionsQueryResolver(),
     new AgentsQueryResolver(),
     new DeleteAgentMutation(),
     new ModelProvidersQueryResolver(),
     new UpdateAgentMutation(),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    new PromptSessionMutation(sessionManagerService as never),
   ).register(app);
 
   const response = await app.inject({
@@ -133,8 +143,8 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     },
     payload: {
       query: `
-        mutation CreateSession($input: CreateSessionInput!) {
-          CreateSession(input: $input) {
+        mutation PromptSession($input: PromptSessionInput!) {
+          PromptSession(input: $input) {
             id
             agentId
             modelId
@@ -149,10 +159,9 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       `,
       variables: {
         input: {
-          agentId: "agent-1",
-          modelId: "gpt-5.4",
-          reasoningLevel: "high",
-          userMessage: "Draft the onboarding email.",
+          id: "session-1",
+          shouldSteer: true,
+          userMessage: "Focus on the failed deploy.",
         },
       },
     },
@@ -160,15 +169,15 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.CreateSession, {
+  assert.deepEqual(document.data.PromptSession, {
     id: "session-1",
     agentId: "agent-1",
     modelId: "gpt-5.4",
     reasoningLevel: "high",
-    inferredTitle: "Draft the onboarding email.",
-    status: "queued",
+    inferredTitle: "Existing title",
+    status: "running",
     createdAt: "2026-03-25T12:00:00.000Z",
-    updatedAt: "2026-03-25T12:00:00.000Z",
+    updatedAt: "2026-03-25T12:05:00.000Z",
     userSetTitle: null,
   });
 
