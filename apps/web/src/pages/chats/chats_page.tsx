@@ -767,24 +767,24 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`flex items-start gap-2 rounded-lg px-3 py-2 transition ${
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-3 py-2 transition ${
                                     isSessionSelected
                                       ? "bg-primary/10"
                                       : "bg-background hover:bg-muted/40"
                                   }`}
                                 >
                                   <button
-                                    className="min-w-0 flex-1 overflow-hidden text-left"
+                                    className="min-w-0 overflow-hidden text-left"
                                     disabled={isSessionArchiving}
                                     onClick={() => {
                                       void openSession(agent.id, session.id);
                                     }}
                                     type="button"
                                   >
-                                    <p className="truncate text-xs font-medium text-foreground">
+                                    <p className="block w-full truncate text-xs font-medium text-foreground">
                                       {formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}
                                     </p>
-                                    <p className="mt-1 truncate text-[0.7rem] text-muted-foreground">
+                                    <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
                                       {isSessionArchiving
                                         ? "Archiving..."
                                         : isSessionRunning
@@ -792,7 +792,7 @@ function ChatsPageContent() {
                                           : formatTimestamp(session.updatedAt)}
                                     </p>
                                   </button>
-                                  <div className="shrink-0 flex items-center gap-2">
+                                  <div className="flex shrink-0 items-center gap-2">
                                     {isSessionRunning ? (
                                       <Loader2Icon
                                         aria-label="Session running"
