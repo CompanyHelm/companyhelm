@@ -494,6 +494,79 @@ test("PiMonoSessionEventHandler removes stale content rows when a later snapshot
   );
 });
 
+test("PiMonoSessionEventHandler serializes concurrent assistant updates for the same message", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const originalTransaction = harness.transactionProvider.transaction;
+  harness.transactionProvider.transaction = async (callback: (tx: unknown) => Promise<unknown>) => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return originalTransaction(callback);
+  };
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 4000,
+      },
+      type: "message_start",
+    });
+    await Promise.all([
+      handler.handle({
+        message: {
+          content: [
+            {
+              text: "READY",
+              type: "text",
+            },
+          ],
+          role: "assistant",
+          timestamp: 4000,
+        },
+        type: "message_update",
+      }),
+      handler.handle({
+        message: {
+          content: [
+            {
+              text: "READY",
+              type: "text",
+            },
+          ],
+          role: "assistant",
+          timestamp: 4000,
+        },
+        type: "message_end",
+      }),
+    ]);
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "READY",
+        type: "text",
+      },
+    ],
+  );
+});
+
 test("PiMonoSessionEventHandler error logs unhandled message roles", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(

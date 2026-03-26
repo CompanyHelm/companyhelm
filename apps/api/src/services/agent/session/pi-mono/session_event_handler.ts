@@ -87,6 +87,7 @@ export class PiMonoSessionEventHandler {
   private readonly messageIdByEventKey = new Map<string, string>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
+  private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
 
   constructor(
@@ -102,6 +103,14 @@ export class PiMonoSessionEventHandler {
   }
 
   async handle(event: unknown): Promise<void> {
+    const queuedEvent = this.eventChain.then(async () => {
+      await this.handleEvent(event);
+    });
+    this.eventChain = queuedEvent.catch(() => {});
+    return queuedEvent;
+  }
+
+  private async handleEvent(event: unknown): Promise<void> {
     const sessionEvent = event as SessionEvent;
     switch (sessionEvent.type) {
       case "agent_start":
