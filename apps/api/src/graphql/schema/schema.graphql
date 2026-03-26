@@ -7,6 +7,7 @@ type Query {
   AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
+  ModelProviders: [ModelProvider!]!
 }
 
 type Mutation {
@@ -109,6 +110,13 @@ type ModelProviderCredentialModel {
   name: String!
   description: String!
   reasoningLevels: [String!]!
+}
+
+type ModelProvider {
+  id: ID!
+  name: String!
+  type: String!
+  authorizationInstructionsMarkdown: String
 }
 
 input AddModelProviderCredentialInput {
