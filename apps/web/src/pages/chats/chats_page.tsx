@@ -494,24 +494,27 @@ function ChatsPageContent() {
                 <label className="text-xs font-medium text-foreground" htmlFor="chat-draft-message">
                   First message
                 </label>
-                <textarea
-                  id="chat-draft-message"
-                  className="min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                  onChange={(event) => {
-                    setDraftMessage(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                <div className="flex items-end gap-3">
+                  <textarea
+                    id="chat-draft-message"
+                    className="min-h-32 flex-1 rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                    onChange={(event) => {
+                      setDraftMessage(event.target.value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+                        return;
+                      }
+
                       event.preventDefault();
                       void startSession();
-                    }
-                  }}
-                  placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
-                  rows={6}
-                  value={draftMessage}
-                />
-                <div className="flex justify-end">
+                    }}
+                    placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
+                    rows={6}
+                    value={draftMessage}
+                  />
                   <Button
+                    className="shrink-0"
                     disabled={!canSubmitDraft}
                     onClick={() => {
                       void startSession();
