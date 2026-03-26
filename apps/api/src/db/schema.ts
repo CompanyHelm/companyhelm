@@ -10,7 +10,6 @@ import {
   uniqueIndex,
   uuid,
   boolean,
-  json,
   jsonb
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
@@ -19,6 +18,7 @@ export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic"
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall"]);
+export const agentSessionStatusEnum = pgEnum("agent_session_status", ["running", "stopped", "archived"]);
 
 
 export const companies = pgTable("companies", {
@@ -92,7 +92,7 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   currentModelId: text("current_model_id").notNull(),
   currentReasoningLevel: text("current_reasoning_level").notNull(),
-  isRunning: boolean("is_running").notNull(),
+  status: agentSessionStatusEnum("status").notNull(),
   user_message: text("user_message").notNull(),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
