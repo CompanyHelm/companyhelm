@@ -36,16 +36,16 @@ export class PiMonoSessionEventHandler {
 
     const sessionEvent = event as SessionEvent;
     if (sessionEvent.type === "turn_start") {
-      await this.updateStatus("running");
+      await this.updateSessionStatus("running");
       return;
     }
 
     if (sessionEvent.type === "turn_end") {
-      await this.updateStatus("stopped");
+      await this.updateSessionStatus("stopped");
     }
   }
 
-  private async updateStatus(status: "running" | "stopped"): Promise<void> {
+  private async updateSessionStatus(status: "running" | "stopped"): Promise<void> {
     await this.transactionProvider.transaction(async (tx) => {
       const updatableDatabase = tx as UpdatableDatabase;
       await updatableDatabase

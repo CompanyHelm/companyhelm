@@ -19,6 +19,7 @@ export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["running", "stopped", "archived"]);
+export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
 
 
 export const companies = pgTable("companies", {
@@ -115,6 +116,7 @@ export const sessionMessages = pgTable("session_messages", {
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
   role: sessionMessageRoleEnum("role").notNull(),
+  status: sessionMessageStatusEnum("status").notNull(),
   toolCallId: text("tool_call_id"),
   toolName: text("tool_name"),
   isError: boolean("is_error").notNull(),
