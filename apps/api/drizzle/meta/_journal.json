@@ -190,6 +190,13 @@
       "when": 1774559804174,
       "tag": "0026_many_king_cobra",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1774559956530,
+      "tag": "0027_dry_pandemic",
+      "breakpoints": true
     }
   ]
 }

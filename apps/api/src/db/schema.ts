@@ -172,6 +172,7 @@ export const sessionQueuedMessages = pgTable("session_queued_messages", {
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
   text: text("text").notNull(),
+  shouldSteer: boolean("should_steer").notNull(),
   status: sessionQueuedMessageStatusEnum("status").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
