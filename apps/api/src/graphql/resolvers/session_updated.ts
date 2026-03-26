@@ -5,6 +5,7 @@ import {
   SessionReadService,
   type SessionGraphqlRecord,
 } from "../../services/agent/session/read_service.ts";
+import { SessionProcessPubSubNames } from "../../services/agent/session/process/pub_sub_names.ts";
 
 /**
  * Streams session-level change notifications for the authenticated company. Redis only provides the
@@ -14,9 +15,14 @@ import {
 @injectable()
 export class SessionUpdatedSubscriptionResolver {
   private readonly sessionReadService: SessionReadService;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
 
-  constructor(@inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService()) {
+  constructor(
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
+    @inject(SessionProcessPubSubNames) sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+  ) {
     this.sessionReadService = sessionReadService;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
   }
 
   subscribe = (
@@ -47,7 +53,7 @@ export class SessionUpdatedSubscriptionResolver {
 
     const iterator = new RedisPatternAsyncIterator(
       requestContext.redisCompanyScopedService,
-      "session:*:update",
+      this.sessionProcessPubSubNames.getSessionUpdatePattern(),
     );
 
     try {

@@ -5,6 +5,7 @@ import {
   SessionReadService,
   type SessionMessageGraphqlRecord,
 } from "../../services/agent/session/read_service.ts";
+import { SessionProcessPubSubNames } from "../../services/agent/session/process/pub_sub_names.ts";
 
 type SessionMessageUpdatedArguments = {
   sessionId: string;
@@ -18,9 +19,14 @@ type SessionMessageUpdatedArguments = {
 @injectable()
 export class SessionMessageUpdatedSubscriptionResolver {
   private readonly sessionReadService: SessionReadService;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
 
-  constructor(@inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService()) {
+  constructor(
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
+    @inject(SessionProcessPubSubNames) sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+  ) {
     this.sessionReadService = sessionReadService;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
   }
 
   subscribe = (
@@ -57,7 +63,7 @@ export class SessionMessageUpdatedSubscriptionResolver {
 
     const iterator = new RedisPatternAsyncIterator(
       requestContext.redisCompanyScopedService,
-      `session:${sessionId}:message:*:update`,
+      this.sessionProcessPubSubNames.getSessionMessageUpdatePattern(sessionId),
     );
 
     try {

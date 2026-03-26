@@ -4,6 +4,7 @@ import { agentSessions, messageContents, sessionMessages } from "../../../../db/
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
+import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
 
 type InsertableDatabase = {
   insert(table: unknown): {
@@ -82,6 +83,7 @@ export class PiMonoSessionEventHandler {
   private readonly redisService: RedisService;
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly messageIdByEventKey = new Map<string, string>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
@@ -91,10 +93,12 @@ export class PiMonoSessionEventHandler {
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     redisService: RedisService,
+    sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
   ) {
     this.redisService = redisService;
     this.transactionProvider = transactionProvider;
     this.sessionId = sessionId;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
   }
 
   async handle(event: unknown): Promise<void> {
@@ -541,12 +545,14 @@ export class PiMonoSessionEventHandler {
   private async publishMessageUpdate(messageId: string): Promise<void> {
     const companyId = await this.resolveCompanyId();
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
-    await redisCompanyScopedService.publish(`session:${this.sessionId}:message:${messageId}:update`);
+    await redisCompanyScopedService.publish(
+      this.sessionProcessPubSubNames.getSessionMessageUpdateChannel(this.sessionId, messageId),
+    );
   }
 
   private async publishSessionUpdate(): Promise<void> {
     const companyId = await this.resolveCompanyId();
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
-    await redisCompanyScopedService.publish(`session:${this.sessionId}:update`);
+    await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionUpdateChannel(this.sessionId));
   }
 }

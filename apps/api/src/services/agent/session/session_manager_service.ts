@@ -6,6 +6,7 @@ import { agents, agentSessions, modelProviderCredentialModels, modelProviderCred
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
+import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { PiMonoSessionManagerService } from "./pi-mono/session_manager_service.ts";
 
 type AgentRecord = {
@@ -74,17 +75,20 @@ export class SessionManagerService {
   private readonly logger: PinoLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
   private readonly redisService: RedisService;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
     @inject(PiMonoSessionManagerService) piMonoSessionManagerService: PiMonoSessionManagerService,
     @inject(RedisService) redisService: RedisService,
+    @inject(SessionProcessPubSubNames) sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
   ) {
     this.logger = logger.child({
       component: "session_manager_service",
     });
     this.piMonoSessionManagerService = piMonoSessionManagerService;
     this.redisService = redisService;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
   }
 
   async createSession(
@@ -320,6 +324,6 @@ export class SessionManagerService {
 
   private async publishSessionUpdate(companyId: string, sessionId: string): Promise<void> {
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
-    await redisCompanyScopedService.publish(`session:${sessionId}:update`);
+    await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionUpdateChannel(sessionId));
   }
 }
