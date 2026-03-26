@@ -109,6 +109,9 @@ export const agentSessions = pgTable("agent_sessions", {
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
+  // the session context messages from pi mono session.agent.state.messages
+  // it is used to reload messages into context when resuming the session
+  context_messages: jsonb("context_messages"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
