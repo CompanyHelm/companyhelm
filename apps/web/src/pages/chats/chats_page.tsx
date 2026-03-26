@@ -795,6 +795,13 @@ function ChatsPageContent() {
                                     </p>
                                   </button>
                                   <div className="flex items-center gap-2">
+                                    {isSessionRunning ? (
+                                      <Loader2Icon
+                                        aria-label="Session running"
+                                        className="size-4 shrink-0 animate-spin text-muted-foreground"
+                                        title="Session running"
+                                      />
+                                    ) : null}
                                     <button
                                       aria-label={`Archive ${formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}`}
                                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
@@ -809,13 +816,6 @@ function ChatsPageContent() {
                                     >
                                       <ArchiveIcon className="size-4" />
                                     </button>
-                                    {isSessionRunning ? (
-                                      <Loader2Icon
-                                        aria-label="Session running"
-                                        className="size-4 shrink-0 animate-spin text-muted-foreground"
-                                        title="Session running"
-                                      />
-                                    ) : null}
                                   </div>
                                 </div>
                               </li>
