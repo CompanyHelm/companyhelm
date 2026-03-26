@@ -98,6 +98,7 @@ export class SessionManagerService {
           agentId,
           currentModelId: resolvedModelId,
           currentReasoningLevel: resolvedReasoningLevel,
+          isRunning: false,
           user_message: userMessage,
           created_at: now,
           updated_at: now,

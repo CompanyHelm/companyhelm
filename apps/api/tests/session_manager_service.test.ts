@@ -105,6 +105,7 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   assert.equal(insertedValues[0]?.agentId, "agent-1");
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
+  assert.equal(insertedValues[0]?.isRunning, false);
   assert.equal(insertedValues[0]?.user_message, "Write the launch email.");
   assert.equal(logs.length, 1);
   assert.deepEqual(logs[0], {
@@ -177,6 +178,7 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
+  assert.equal(insertedValues[0]?.isRunning, false);
   assert.equal(insertedValues[0]?.user_message, "Summarize the open issues.");
   assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");
