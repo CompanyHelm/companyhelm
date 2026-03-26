@@ -25,6 +25,11 @@ type Mutation {
   ): [ModelProviderCredentialModel!]!
 }
 
+type Subscription {
+  SessionUpdated: Session!
+  SessionMessageUpdated(sessionId: ID!): SessionMessage!
+}
+
 type AuthenticatedCompany {
   id: ID!
   name: String!

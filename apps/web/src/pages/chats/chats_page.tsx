@@ -2,12 +2,14 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, Loader2Icon, PlusIcon, SendHorizonalIcon } from "lucide-react";
-import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
+import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
+import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
 import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
 const chatsPageQueryNode = graphql`
@@ -78,6 +80,35 @@ const chatsPageArchiveSessionMutationNode = graphql`
       modelId
       reasoningLevel
       status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const chatsPageSessionUpdatedSubscriptionNode = graphql`
+  subscription chatsPageSessionUpdatedSubscription {
+    SessionUpdated {
+      id
+      agentId
+      modelId
+      reasoningLevel
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
+  subscription chatsPageSessionMessageUpdatedSubscription($sessionId: ID!) {
+    SessionMessageUpdated(sessionId: $sessionId) {
+      id
+      sessionId
+      role
+      status
+      text
+      isError
       createdAt
       updatedAt
     }
@@ -186,6 +217,40 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
   });
 }
 
+function upsertRootLinkedRecord(
+  store: {
+    getRoot(): {
+      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
+      setLinkedRecords(
+        records: ReadonlyArray<{ getDataID(): string }>,
+        name: string,
+        args?: Record<string, unknown>,
+      ): void;
+    };
+    getRootField(name: string): { getDataID(): string } | null;
+  },
+  fieldName: string,
+  rootFieldName: string,
+  args?: Record<string, unknown>,
+): void {
+  const rootRecord = store.getRoot();
+  const nextRecord = store.getRootField(rootFieldName);
+  if (!nextRecord) {
+    return;
+  }
+
+  const currentRecords = filterStoreRecords(rootRecord.getLinkedRecords(fieldName, args) || []);
+  const existingIndex = currentRecords.findIndex((record) => record.getDataID() === nextRecord.getDataID());
+  if (existingIndex >= 0) {
+    const nextRecords = [...currentRecords];
+    nextRecords.splice(existingIndex, 1, nextRecord);
+    rootRecord.setLinkedRecords(nextRecords, fieldName, args);
+    return;
+  }
+
+  rootRecord.setLinkedRecords([...currentRecords, nextRecord], fieldName, args);
+}
+
 function ChatsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
@@ -277,6 +342,7 @@ function ChatsTranscript(
 
 function ChatsPageContent() {
   const navigate = useNavigate();
+  const environment = useRelayEnvironment();
   const search = useSearch({ strict: false });
   const [draftMessage, setDraftMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -408,18 +474,44 @@ function ChatsPageContent() {
   }, [isResizingChatList]);
 
   useEffect(() => {
-    if (!selectedSession || !isRunningSession(selectedSession)) {
+    const disposable = requestSubscription<chatsPageSessionUpdatedSubscription>(environment, {
+      subscription: chatsPageSessionUpdatedSubscriptionNode,
+      variables: {},
+      updater: (store) => {
+        upsertRootLinkedRecord(store, "Sessions", "SessionUpdated");
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [environment]);
+
+  useEffect(() => {
+    if (!selectedSession) {
       return;
     }
 
-    const interval = window.setInterval(() => {
-      setQueryRefreshKey((currentKey) => currentKey + 1);
-    }, 1500);
+    const subscriptionVariables = { sessionId: selectedSession.id };
+    const disposable = requestSubscription<chatsPageSessionMessageUpdatedSubscription>(environment, {
+      subscription: chatsPageSessionMessageUpdatedSubscriptionNode,
+      variables: subscriptionVariables,
+      updater: (store) => {
+        upsertRootLinkedRecord(store, "SessionMessages", "SessionMessageUpdated");
+        upsertRootLinkedRecord(store, "SessionTranscriptMessages", "SessionMessageUpdated", subscriptionVariables);
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
 
     return () => {
-      window.clearInterval(interval);
+      disposable.dispose();
     };
-  }, [selectedSession]);
+  }, [environment, selectedSession?.id]);
 
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);

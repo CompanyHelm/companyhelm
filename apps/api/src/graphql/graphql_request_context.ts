@@ -5,10 +5,12 @@ import { AuthProviderFactory } from "../auth/auth_provider_factory.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../db/app_runtime_transaction_provider.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
+import type { RedisCompanyScopedService } from "../services/redis/company_scoped_service.ts";
 
 export type GraphqlRequestContext = {
   authSession: AuthSession | null;
   app_runtime_transaction_provider: TransactionProviderInterface | null;
+  redisCompanyScopedService?: RedisCompanyScopedService | null;
 };
 
 /**
@@ -47,6 +49,7 @@ export class GraphqlRequestContextResolver {
       app_runtime_transaction_provider: authSession.company
         ? new AppRuntimeTransactionProvider(this.database, authSession.company.id)
         : null,
+      redisCompanyScopedService: null,
     };
   }
 }

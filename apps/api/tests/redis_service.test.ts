@@ -54,9 +54,11 @@ test("RedisService creates one client from config and reuses it after connect", 
 
 test("RedisCompanyScopedService subscribes on the company-prefixed key", async () => {
   const subscribe = vi.fn(async () => undefined);
+  const unsubscribe = vi.fn(async () => undefined);
   const subscriber = {
     connect: vi.fn(async () => undefined),
     subscribe,
+    unsubscribe,
   };
   const baseClient = {
     duplicate: vi.fn(() => subscriber),
@@ -67,15 +69,16 @@ test("RedisCompanyScopedService subscribes on the company-prefixed key", async (
   const service = new RedisCompanyScopedService("company-123", redisService as never);
   const listener = vi.fn();
 
-  await service.subscribe("events", listener);
+  const subscriptionHandle = await service.subscribe("events", listener);
 
   assert.equal(redisService.getClient.mock.calls.length, 1);
   assert.equal(baseClient.duplicate.mock.calls.length, 1);
   assert.equal(subscriber.connect.mock.calls.length, 1);
-  assert.deepEqual(subscribe.mock.calls[0], [
-    "company:company-123:events",
-    listener,
-  ]);
+  assert.equal(subscribe.mock.calls[0]?.[0], "company:company-123:events");
+
+  await subscriptionHandle.unsubscribe();
+
+  assert.equal(unsubscribe.mock.calls[0]?.[0], "company:company-123:events");
 });
 
 test("RedisCompanyScopedService publishes on the company-prefixed key with an empty payload", async () => {
@@ -95,4 +98,40 @@ test("RedisCompanyScopedService publishes on the company-prefixed key with an em
     "company:company-123:session:session-1:update",
     "",
   ]);
+});
+
+test("RedisCompanyScopedService reuses one subscriber client across multiple subscriptions", async () => {
+  const subscribe = vi.fn(async () => undefined);
+  const pSubscribe = vi.fn(async () => undefined);
+  const pUnsubscribe = vi.fn(async () => undefined);
+  const subscriber = {
+    connect: vi.fn(async () => {
+      subscriber.isOpen = true;
+    }),
+    isOpen: false,
+    pSubscribe,
+    pUnsubscribe,
+    subscribe,
+    unsubscribe: vi.fn(async () => undefined),
+  };
+  const baseClient = {
+    duplicate: vi.fn(() => subscriber),
+  };
+  const redisService = {
+    getClient: vi.fn(async () => baseClient),
+  };
+  const service = new RedisCompanyScopedService("company-123", redisService as never);
+
+  const firstHandle = await service.subscribe("events", vi.fn());
+  const secondHandle = await service.subscribePattern("session:*:update", vi.fn());
+
+  assert.equal(baseClient.duplicate.mock.calls.length, 1);
+  assert.equal(subscriber.connect.mock.calls.length, 1);
+  assert.equal(subscribe.mock.calls[0]?.[0], "company:company-123:events");
+  assert.equal(pSubscribe.mock.calls[0]?.[0], "company:company-123:session:*:update");
+
+  await firstHandle.unsubscribe();
+  await secondHandle.unsubscribe();
+
+  assert.equal(pUnsubscribe.mock.calls[0]?.[0], "company:company-123:session:*:update");
 });

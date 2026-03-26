@@ -1,44 +1,25 @@
-import { eq } from "drizzle-orm";
-import { injectable } from "inversify";
-import { agentSessions } from "../../db/schema.ts";
+import { inject, injectable } from "inversify";
+import {
+  SessionReadService,
+  type SessionGraphqlRecord,
+} from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
-
-type SessionRecord = {
-  id: string;
-  agentId: string;
-  currentModelId: string;
-  currentReasoningLevel: string;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type GraphqlSessionRecord = {
-  id: string;
-  agentId: string;
-  modelId: string;
-  reasoningLevel: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type SelectableDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
-    };
-  };
-};
 
 /**
  * Lists the persisted sessions for the authenticated company so the web app can build the chat
  * sidebar without needing a separate session lookup per agent.
  */
 @injectable()
-export class SessionsQueryResolver extends Resolver<GraphqlSessionRecord[]> {
-  protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlSessionRecord[]> => {
+export class SessionsQueryResolver extends Resolver<SessionGraphqlRecord[]> {
+  private readonly sessionReadService: SessionReadService;
+
+  constructor(@inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService()) {
+    super();
+    this.sessionReadService = sessionReadService;
+  }
+
+  protected resolve = async (context: GraphqlRequestContext): Promise<SessionGraphqlRecord[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -46,36 +27,9 @@ export class SessionsQueryResolver extends Resolver<GraphqlSessionRecord[]> {
       throw new Error("Authentication required.");
     }
 
-    return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const sessionRecords = await selectableDatabase
-        .select({
-          id: agentSessions.id,
-          agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentReasoningLevel: agentSessions.currentReasoningLevel,
-          status: agentSessions.status,
-          createdAt: agentSessions.created_at,
-          updatedAt: agentSessions.updated_at,
-        })
-        .from(agentSessions)
-        .where(eq(agentSessions.companyId, context.authSession.company.id)) as SessionRecord[];
-
-      return [...sessionRecords]
-        .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
-        .map((sessionRecord) => SessionsQueryResolver.serializeRecord(sessionRecord));
-    });
+    return this.sessionReadService.listSessions(
+      context.app_runtime_transaction_provider,
+      context.authSession.company.id,
+    );
   };
-
-  private static serializeRecord(sessionRecord: SessionRecord): GraphqlSessionRecord {
-    return {
-      id: sessionRecord.id,
-      agentId: sessionRecord.agentId,
-      modelId: sessionRecord.currentModelId,
-      reasoningLevel: sessionRecord.currentReasoningLevel,
-      status: sessionRecord.status,
-      createdAt: sessionRecord.createdAt.toISOString(),
-      updatedAt: sessionRecord.updatedAt.toISOString(),
-    };
-  }
 }

@@ -2,6 +2,8 @@ import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
+import { RedisService } from "../services/redis/service.ts";
+import { RedisCompanyScopedService } from "../services/redis/company_scoped_service.ts";
 import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
@@ -21,8 +23,10 @@ import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_pr
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
+import { SessionMessageUpdatedSubscriptionResolver } from "./resolvers/session_message_updated.ts";
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
+import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -47,9 +51,12 @@ export class GraphqlApplication {
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
+  private readonly sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver;
   private readonly sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver;
   private readonly sessionsQueryResolver: SessionsQueryResolver;
+  private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
+  private readonly redisService: RedisService;
 
   constructor(
     @inject(Config) config: Config,
@@ -90,6 +97,12 @@ export class GraphqlApplication {
         throw new Error("ArchiveSession mutation is not configured.");
       },
     } as never),
+    @inject(SessionMessageUpdatedSubscriptionResolver)
+    sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver =
+      new SessionMessageUpdatedSubscriptionResolver(),
+    @inject(SessionUpdatedSubscriptionResolver)
+    sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver = new SessionUpdatedSubscriptionResolver(),
+    @inject(RedisService) redisService: RedisService = new RedisService(config),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
@@ -109,15 +122,35 @@ export class GraphqlApplication {
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
+    this.sessionMessageUpdatedSubscriptionResolver = sessionMessageUpdatedSubscriptionResolver;
     this.sessionTranscriptMessagesQueryResolver = sessionTranscriptMessagesQueryResolver;
     this.sessionsQueryResolver = sessionsQueryResolver;
+    this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
     this.updateAgentMutation = updateAgentMutation;
+    this.redisService = redisService;
   }
 
   async register(app: FastifyInstance): Promise<void> {
     await app.register(mercurius, {
       schema: GraphqlSchema.getDocument(),
       context: (request) => this.graphqlRequestContextResolver.resolve(request),
+      subscription: {
+        context: async (_socket, request) => {
+          const baseContext = await this.graphqlRequestContextResolver.resolve(request);
+          if (!baseContext.authSession?.company) {
+            return baseContext;
+          }
+
+          return {
+            ...baseContext,
+            redisCompanyScopedService: new RedisCompanyScopedService(baseContext.authSession.company.id, this.redisService),
+          };
+        },
+        onConnect: () => true,
+        onDisconnect: async (context) => {
+          await context.redisCompanyScopedService?.disconnect();
+        },
+      },
       resolvers: {
         Query: {
           Agent: this.agentQueryResolver.execute,
@@ -141,6 +174,16 @@ export class GraphqlApplication {
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
+        },
+        Subscription: {
+          SessionMessageUpdated: {
+            subscribe: this.sessionMessageUpdatedSubscriptionResolver.subscribe,
+            resolve: this.sessionMessageUpdatedSubscriptionResolver.resolve,
+          },
+          SessionUpdated: {
+            subscribe: this.sessionUpdatedSubscriptionResolver.subscribe,
+            resolve: this.sessionUpdatedSubscriptionResolver.resolve,
+          },
         },
       },
       path: this.configDocument.graphql.endpoint,
