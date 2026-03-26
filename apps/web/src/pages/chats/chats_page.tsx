@@ -259,11 +259,11 @@ function ChatsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
       <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
-        <CardHeader className="px-2 md:px-3">
+        <CardHeader className="pl-1 pr-3 md:pl-1.5 md:pr-3">
           <CardTitle>Chats</CardTitle>
           <CardDescription>Loading agents and sessions…</CardDescription>
         </CardHeader>
-        <CardContent className="px-2 md:px-3">
+        <CardContent className="pl-1 pr-3 md:pl-1.5 md:pr-3">
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
             Loading chats…
           </div>
@@ -745,7 +745,7 @@ function ChatsPageContent() {
         style={chatListPanelStyle}
       >
         <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-          <CardContent className="flex-1 overflow-y-auto px-2 md:px-3">
+          <CardContent className="flex-1 overflow-y-auto pl-0.5 pr-3 md:pl-1 md:pr-3">
             {sortedAgents.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">No agents yet</p>
