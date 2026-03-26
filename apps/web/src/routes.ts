@@ -83,6 +83,12 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const githubInstallRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/github/install",
+  component: RepositoriesPage,
+});
+
 const repositoriesRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/repositories",
@@ -131,6 +137,7 @@ const routeTree = rootRoute.addChildren([
       rootIndexRoute,
       agentsRoute,
       chatsRoute,
+      githubInstallRoute,
       repositoriesRoute,
       tasksRoute,
       settingsRoute,
