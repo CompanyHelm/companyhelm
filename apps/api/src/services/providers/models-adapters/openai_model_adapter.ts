@@ -9,18 +9,15 @@ type OpenAiModelsResponse = {
 };
 
 /**
- * Validates OpenAI credentials against the public models endpoint, then keeps only the models that
- * are both provider-visible and present in the local registry that carries reasoning metadata.
+ * Validates standard OpenAI API credentials against the public `/v1/models` endpoint, then keeps
+ * only the models that are both provider-visible and present in the local registry that carries
+ * reasoning metadata.
  */
 export class OpenAiModelAdapter implements ModelAdapterInterface {
-  private readonly providerId: string;
-  private readonly modelRegistryProviderId: string;
   private readonly modelRegistry: ModelRegistry;
 
-  constructor(modelRegistry: ModelRegistry, providerId: string, modelRegistryProviderId: string = providerId) {
+  constructor(modelRegistry: ModelRegistry) {
     this.modelRegistry = modelRegistry;
-    this.providerId = providerId;
-    this.modelRegistryProviderId = modelRegistryProviderId;
   }
 
   async fetchModels(apiKey: string): Promise<ModelProviderModel[]> {
@@ -36,12 +33,12 @@ export class OpenAiModelAdapter implements ModelAdapterInterface {
     });
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`Failed to fetch models for ${this.providerId}: ${response.status} ${body}`);
+      throw new Error(`Failed to fetch models for openai: ${response.status} ${body}`);
     }
 
     const payload = await response.json() as OpenAiModelsResponse;
     if (!Array.isArray(payload.data)) {
-      throw new Error(`Invalid model list response for ${this.providerId}.`);
+      throw new Error("Invalid model list response for openai.");
     }
 
     const availableModelIds = new Set(
@@ -49,7 +46,7 @@ export class OpenAiModelAdapter implements ModelAdapterInterface {
     );
 
     return this.modelRegistry
-      .getModelsForProvider(this.modelRegistryProviderId)
+      .getModelsForProvider("openai")
       .filter((model) => availableModelIds.has(model.modelId));
   }
 }

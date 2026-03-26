@@ -6,6 +6,7 @@ import { ModelRegistry } from "./model_registry.js";
 import { ModelProviderModel } from "./model_provider_model.js";
 import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_model_adapter.js";
 import type { ModelAdapterInterface } from "../providers/models-adapters/model_adapter_interface.js";
+import { OpenAiCodexModelAdapter } from "../providers/models-adapters/openai_codex_model_adapter.js";
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
 
 type StoredModelRecord = {
@@ -56,8 +57,8 @@ export class ModelService {
 
   constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry) {
     this.providerAdapters = new Map<string, ModelAdapterInterface>([
-      ["openai", new OpenAiModelAdapter(modelRegistry, "openai")],
-      ["openai-codex", new OpenAiModelAdapter(modelRegistry, "openai-codex", "openai")],
+      ["openai", new OpenAiModelAdapter(modelRegistry)],
+      ["openai-codex", new OpenAiCodexModelAdapter(modelRegistry)],
       ["anthropic", new AnthropicModelAdapter(modelRegistry)],
     ]);
   }

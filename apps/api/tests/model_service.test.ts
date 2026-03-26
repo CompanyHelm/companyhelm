@@ -166,3 +166,24 @@ test("ModelService refreshStoredModels preserves ids and applies only the diff",
   assert.deepEqual(transactionProvider.insertedIds, ["inserted-1"]);
   assert.deepEqual(transactionProvider.deletedIds, ["removed-model-row"]);
 });
+
+test("ModelService fetchModels uses the dedicated openai-codex adapter", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCallCount = 0;
+  globalThis.fetch = (async () => {
+    fetchCallCount += 1;
+    throw new Error("openai-codex should not call the OpenAI models API");
+  }) as typeof fetch;
+
+  try {
+    const modelService = new ModelService(new ModelRegistry());
+
+    const models = await modelService.fetchModels("openai-codex", "oauth-access-token");
+
+    assert.equal(fetchCallCount, 0);
+    assert.equal(models[0]?.provider, "openai-codex");
+    assert.ok(models.some((model) => model.modelId === "gpt-5.4"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
