@@ -1,6 +1,7 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, Loader2Icon, MessageSquarePlusIcon, SendHorizonalIcon } from "lucide-react";
+import { ArchiveIcon, Loader2Icon, PlusIcon, SendHorizonalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +64,28 @@ const chatsPageArchiveSessionMutationNode = graphql`
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 
+const CHAT_LIST_MIN_WIDTH = 280;
+const CHAT_LIST_MAX_WIDTH = 520;
+const CHAT_LIST_DEFAULT_WIDTH = 352;
+const CHAT_LIST_WIDTH_STORAGE_KEY = "companyhelm.chats.listWidth";
+
+function clampChatListWidth(width: number): number {
+  return Math.min(CHAT_LIST_MAX_WIDTH, Math.max(CHAT_LIST_MIN_WIDTH, width));
+}
+
+function loadChatListWidth(): number {
+  if (typeof window === "undefined") {
+    return CHAT_LIST_DEFAULT_WIDTH;
+  }
+
+  const storedWidth = Number(window.localStorage.getItem(CHAT_LIST_WIDTH_STORAGE_KEY));
+  if (!Number.isFinite(storedWidth)) {
+    return CHAT_LIST_DEFAULT_WIDTH;
+  }
+
+  return clampChatListWidth(storedWidth);
+}
+
 function formatTimestamp(value: string): string {
   const timestamp = new Date(value);
   if (Number.isNaN(timestamp.getTime())) {
@@ -118,8 +141,8 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 
 function ChatsPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:flex-row">
-      <Card className="rounded-2xl border border-border/60 shadow-sm lg:w-[22rem] lg:shrink-0">
+    <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none lg:w-[22rem] lg:shrink-0">
         <CardHeader>
           <CardTitle>Chats</CardTitle>
           <CardDescription>Loading agents and sessions…</CardDescription>
@@ -131,7 +154,7 @@ function ChatsPageFallback() {
         </CardContent>
       </Card>
 
-      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
+      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader>
           <CardTitle>Chat</CardTitle>
           <CardDescription>Loading selected chat…</CardDescription>
@@ -147,6 +170,10 @@ function ChatsPageContent() {
   const [draftMessage, setDraftMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
+  const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
+  const [isResizingChatList, setIsResizingChatList] = useState(false);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
   const data = useLazyLoadQuery<chatsPageQuery>(
     chatsPageQueryNode,
     {},
@@ -195,6 +222,17 @@ function ChatsPageContent() {
     ? resolvedSelectedSession
     : null;
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isCreateSessionInFlight;
+  const chatListPanelStyle: CSSProperties = {
+    "--chats-list-width": `${chatListWidth}px`,
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(CHAT_LIST_WIDTH_STORAGE_KEY, String(chatListWidth));
+  }, [chatListWidth]);
 
   useEffect(() => {
     if (!search.agentId || !search.sessionId || selectedSession) {
@@ -209,6 +247,34 @@ function ChatsPageContent() {
       },
     });
   }, [navigate, search.agentId, search.sessionId, selectedSession]);
+
+  useEffect(() => {
+    if (!isResizingChatList) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const delta = event.clientX - resizeStartXRef.current;
+      setChatListWidth(clampChatListWidth(resizeStartWidthRef.current + delta));
+    };
+    const handlePointerUp = () => {
+      setIsResizingChatList(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [isResizingChatList]);
 
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
@@ -332,136 +398,163 @@ function ChatsPageContent() {
     });
   };
 
+  const startChatListResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    resizeStartXRef.current = event.clientX;
+    resizeStartWidthRef.current = chatListWidth;
+    setIsResizingChatList(true);
+  };
+
   return (
-    <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:flex-row">
-      <Card className="rounded-2xl border border-border/60 shadow-sm lg:w-[22rem] lg:shrink-0">
-        <CardHeader>
-          <CardTitle>Chats</CardTitle>
-          <CardDescription>Select an agent, start a new chat, or reopen an existing session.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {sortedAgents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
-              <p className="text-sm font-medium text-foreground">No agents yet</p>
-              <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                Create an agent first from the <Link className="text-primary hover:underline" to="/agents">Agents</Link> page.
-              </p>
-            </div>
-          ) : null}
+    <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
+      <div
+        className="relative w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
+        style={chatListPanelStyle}
+      >
+        <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none">
+          <CardHeader>
+            <CardTitle>Chats</CardTitle>
+            <CardDescription>Select an agent, start a new chat, or reopen an existing session.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-y-auto">
+            {sortedAgents.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                <p className="text-sm font-medium text-foreground">No agents yet</p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                  Create an agent first from the <Link className="text-primary hover:underline" to="/agents">Agents</Link> page.
+                </p>
+              </div>
+            ) : null}
 
-          <ul className="grid gap-3" role="list" aria-label="Agents">
-            {sortedAgents.map((agent) => {
-              const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
-              const isAgentSelected = selectedAgent?.id === agent.id;
+            <ul className="grid gap-3" role="list" aria-label="Agents">
+              {sortedAgents.map((agent) => {
+                const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
+                const isAgentSelected = selectedAgent?.id === agent.id;
 
-              return (
-                <li
-                  key={agent.id}
-                  className={`rounded-xl border px-3 py-3 transition ${
-                    isAgentSelected
-                      ? "border-primary/50 bg-primary/5"
-                      : "border-border/60 bg-card/60"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <button
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => {
-                        void openDraftForAgent(agent.id);
-                      }}
-                      type="button"
-                    >
-                      <p className="truncate text-sm font-medium text-foreground">{agent.name}</p>
-                      <p className="mt-1 text-xs/relaxed text-muted-foreground">{formatAgentMeta(agent)}</p>
-                    </button>
-                    <Button
-                      onClick={() => {
-                        void openDraftForAgent(agent.id);
-                      }}
-                      size="sm"
-                      type="button"
-                      variant={isAgentSelected && !selectedSession ? "default" : "outline"}
-                    >
-                      <MessageSquarePlusIcon />
-                      Create chat
-                    </Button>
-                  </div>
+                return (
+                  <li
+                    key={agent.id}
+                    className={`rounded-xl border px-3 py-3 transition ${
+                      isAgentSelected
+                        ? "border-primary/50 bg-primary/5"
+                        : "border-border/60 bg-card/60"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <button
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() => {
+                          void openDraftForAgent(agent.id);
+                        }}
+                        type="button"
+                      >
+                        <p className="truncate text-sm font-medium text-foreground">{agent.name}</p>
+                        <p className="mt-1 text-xs/relaxed text-muted-foreground">{formatAgentMeta(agent)}</p>
+                      </button>
+                    </div>
 
-                  {agentSessions.length > 0 ? (
-                    <ul className="mt-3 grid gap-2 border-t border-border/60 pt-3" role="list" aria-label={`${agent.name} sessions`}>
-                      {agentSessions.map((session) => {
-                        const isSessionSelected = selectedSession?.id === session.id;
-                        const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
-                        const isSessionRunning = isRunningSession(session);
+                    <div className="mt-3 border-t border-border/60 pt-3">
+                      <button
+                        aria-label={`Create chat for ${agent.name}`}
+                        className={`flex w-full items-center justify-center rounded-lg border px-3 py-3 text-sm font-medium transition ${
+                          isAgentSelected && !selectedSession
+                            ? "border-primary/60 bg-primary/10 text-primary"
+                            : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                        }`}
+                        onClick={() => {
+                          void openDraftForAgent(agent.id);
+                        }}
+                        type="button"
+                      >
+                        <PlusIcon className="size-5" />
+                      </button>
 
-                        return (
-                          <li key={session.id}>
-                            <div
-                              className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
-                                isSessionSelected
-                                  ? "border-primary/60 bg-primary/10"
-                                  : "border-border/60 bg-background hover:bg-muted/40"
-                              }`}
-                            >
-                              <button
-                                className="min-w-0 flex-1 text-left"
-                                disabled={isSessionArchiving}
-                                onClick={() => {
-                                  void openSession(agent.id, session.id);
-                                }}
-                                type="button"
-                              >
-                                <p className="truncate text-xs font-medium text-foreground">
-                                  {formatSessionTitle(session.userMessage)}
-                                </p>
-                                <p className="mt-1 text-[0.7rem] text-muted-foreground">
-                                  {isSessionArchiving
-                                    ? "Archiving..."
-                                    : isSessionRunning
-                                      ? `Running • ${formatTimestamp(session.updatedAt)}`
-                                      : formatTimestamp(session.updatedAt)}
-                                </p>
-                              </button>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  aria-label={`Archive ${formatSessionTitle(session.userMessage)}`}
-                                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                                  disabled={isSessionArchiving}
-                                  onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    void archiveSession(session);
-                                  }}
-                                  title={isSessionArchiving ? "Archiving..." : "Archive chat"}
-                                  type="button"
+                      {agentSessions.length > 0 ? (
+                        <ul className="mt-2 grid gap-2" role="list" aria-label={`${agent.name} sessions`}>
+                          {agentSessions.map((session) => {
+                            const isSessionSelected = selectedSession?.id === session.id;
+                            const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
+                            const isSessionRunning = isRunningSession(session);
+
+                            return (
+                              <li key={session.id}>
+                                <div
+                                  className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+                                    isSessionSelected
+                                      ? "border-primary/60 bg-primary/10"
+                                      : "border-border/60 bg-background hover:bg-muted/40"
+                                  }`}
                                 >
-                                  <ArchiveIcon className="size-4" />
-                                </button>
-                                {isSessionRunning ? (
-                                  <Loader2Icon
-                                    aria-label="Session running"
-                                    className="size-4 shrink-0 animate-spin text-muted-foreground"
-                                    title="Session running"
-                                  />
-                                ) : null}
-                              </div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="mt-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">No chats yet.</p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </CardContent>
-      </Card>
+                                  <button
+                                    className="min-w-0 flex-1 text-left"
+                                    disabled={isSessionArchiving}
+                                    onClick={() => {
+                                      void openSession(agent.id, session.id);
+                                    }}
+                                    type="button"
+                                  >
+                                    <p className="truncate text-xs font-medium text-foreground">
+                                      {formatSessionTitle(session.userMessage)}
+                                    </p>
+                                    <p className="mt-1 text-[0.7rem] text-muted-foreground">
+                                      {isSessionArchiving
+                                        ? "Archiving..."
+                                        : isSessionRunning
+                                          ? `Running • ${formatTimestamp(session.updatedAt)}`
+                                          : formatTimestamp(session.updatedAt)}
+                                    </p>
+                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      aria-label={`Archive ${formatSessionTitle(session.userMessage)}`}
+                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                      disabled={isSessionArchiving}
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        void archiveSession(session);
+                                      }}
+                                      title={isSessionArchiving ? "Archiving..." : "Archive chat"}
+                                      type="button"
+                                    >
+                                      <ArchiveIcon className="size-4" />
+                                    </button>
+                                    {isSessionRunning ? (
+                                      <Loader2Icon
+                                        aria-label="Session running"
+                                        className="size-4 shrink-0 animate-spin text-muted-foreground"
+                                        title="Session running"
+                                      />
+                                    ) : null}
+                                  </div>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-xs text-muted-foreground">No chats yet.</p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+        <button
+          aria-label="Resize chats list"
+          className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center lg:flex lg:cursor-col-resize ${
+            isResizingChatList ? "bg-muted/30" : ""
+          }`}
+          onPointerDown={startChatListResize}
+          type="button"
+        >
+          <span className="h-full w-px bg-border/70" />
+        </button>
+      </div>
 
-      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader className="border-b border-border/60">
+      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none">
+        <CardHeader>
           <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
           <CardDescription>
             {selectedSession
