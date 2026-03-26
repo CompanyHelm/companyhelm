@@ -289,10 +289,10 @@ function ChatsTranscript(
         return (
           <div
             key={message.id}
-            className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+            className={`${
               isUserMessage
-                ? "ml-auto bg-primary text-primary-foreground"
-                : "mr-auto bg-muted/50 text-foreground"
+                ? "ml-auto max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-primary-foreground"
+                : "w-full px-0 py-0 text-foreground"
             }`}
           >
             <p className={`text-[0.7rem] font-semibold uppercase tracking-[0.18em] ${
