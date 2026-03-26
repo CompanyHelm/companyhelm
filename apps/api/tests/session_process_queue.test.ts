@@ -64,7 +64,7 @@ test("SessionProcessQueueService enqueues one deterministic wake job per session
       sessionId: "session-1",
     },
     {
-      jobId: "company:company-1:session:session-1:wake",
+      jobId: "company__company-1__session__session-1__wake",
       removeOnComplete: true,
       removeOnFail: true,
     },

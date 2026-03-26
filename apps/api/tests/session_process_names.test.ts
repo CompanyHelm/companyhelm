@@ -10,7 +10,7 @@ test("SessionProcessQueuedNames returns the queue and worker coordination names"
   assert.equal(names.getWakeJobName(), "wake");
   assert.equal(
     names.getWakeJobId("company-1", "session-1"),
-    "company:company-1:session:session-1:wake",
+    "company__company-1__session__session-1__wake",
   );
   assert.equal(names.getSessionSteerChannel("session-1"), "session:session-1:steer");
   assert.equal(names.getSessionLeaseKey("session-1"), "session:session-1:lease");
