@@ -77,6 +77,12 @@ test("SessionManagerService createSession falls back to the agent defaults and l
             async returning() {
               return [{
                 id: "session-1",
+                agentId: "agent-1",
+                currentModelId: "gpt-5.4",
+                currentReasoningLevel: "high",
+                userMessage: "Write the launch email.",
+                createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                updatedAt: new Date("2026-03-25T01:00:00.000Z"),
               }];
             },
           };
@@ -90,14 +96,16 @@ test("SessionManagerService createSession falls back to the agent defaults and l
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "agent-1",
+    "Write the launch email.",
   );
 
-  assert.equal(sessionId, "session-1");
+  assert.equal(sessionId.id, "session-1");
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.companyId, "company-1");
   assert.equal(insertedValues[0]?.agentId, "agent-1");
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
+  assert.equal(insertedValues[0]?.user_message, "Write the launch email.");
   assert.equal(logs.length, 1);
   assert.deepEqual(logs[0], {
     bindings: {
@@ -141,6 +149,12 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
             async returning() {
               return [{
                 id: "session-2",
+                agentId: "agent-1",
+                currentModelId: "gpt-5.4-mini",
+                currentReasoningLevel: "low",
+                userMessage: "Summarize the open issues.",
+                createdAt: new Date("2026-03-25T02:00:00.000Z"),
+                updatedAt: new Date("2026-03-25T02:00:00.000Z"),
               }];
             },
           };
@@ -154,14 +168,16 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "agent-1",
+    "Summarize the open issues.",
     "gpt-5.4-mini",
     "low",
   );
 
-  assert.equal(sessionId, "session-2");
+  assert.equal(sessionId.id, "session-2");
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
+  assert.equal(insertedValues[0]?.user_message, "Summarize the open issues.");
   assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");
 });

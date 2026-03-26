@@ -11,6 +11,7 @@ type Query {
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
+  CreateSession(input: CreateSessionInput!): Session!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   UpdateAgent(input: UpdateAgentInput!): Agent!
@@ -76,6 +77,16 @@ type AgentCreateModelOption {
   reasoningLevels: [String!]!
 }
 
+type Session {
+  id: ID!
+  agentId: ID!
+  modelId: String!
+  reasoningLevel: String!
+  userMessage: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type ModelProviderCredential {
   id: ID!
   companyId: ID!
@@ -128,6 +139,13 @@ input DeleteModelProviderCredentialInput {
 
 input DeleteAgentInput {
   id: ID!
+}
+
+input CreateSessionInput {
+  agentId: ID!
+  modelId: String
+  reasoningLevel: String
+  userMessage: String!
 }
 
 input RefreshModelProviderCredentialModelsInput {

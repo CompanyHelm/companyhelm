@@ -86,6 +86,7 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   currentModelId: text("current_model_id").notNull(),
   currentReasoningLevel: text("current_reasoning_level").notNull(),
+  user_message: text("user_message").notNull(),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),

@@ -16,6 +16,16 @@ type ModelRecord = {
   modelId: string;
 };
 
+type SessionRecord = {
+  id: string;
+  agentId: string;
+  currentModelId: string;
+  currentReasoningLevel: string;
+  userMessage: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -51,10 +61,11 @@ export class SessionManagerService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     agentId: string,
+    userMessage: string,
     modelId?: string | null,
     reasoningLevel?: string | null,
-  ): Promise<string> {
-    const sessionId = await transactionProvider.transaction(async (tx) => {
+  ): Promise<SessionRecord> {
+    const sessionRecord = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
       const [agentRecord] = await selectableDatabase
@@ -87,12 +98,19 @@ export class SessionManagerService {
           agentId,
           currentModelId: resolvedModelId,
           currentReasoningLevel: resolvedReasoningLevel,
+          user_message: userMessage,
           created_at: now,
           updated_at: now,
         })
         .returning?.({
           id: agentSessions.id,
-        }) as Array<{ id: string }>;
+          agentId: agentSessions.agentId,
+          currentModelId: agentSessions.currentModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          userMessage: agentSessions.user_message,
+          createdAt: agentSessions.created_at,
+          updatedAt: agentSessions.updated_at,
+        }) as SessionRecord[];
       if (!sessionRecord) {
         throw new Error("Failed to create session.");
       }
@@ -105,10 +123,10 @@ export class SessionManagerService {
         sessionId: sessionRecord.id,
       }, "created agent session");
 
-      return sessionRecord.id;
+      return sessionRecord;
     });
 
-    return sessionId;
+    return sessionRecord;
   }
 
   async prompt(
