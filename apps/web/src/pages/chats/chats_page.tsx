@@ -108,6 +108,24 @@ function formatAgentMeta(agent: Pick<AgentRecord, "modelProvider" | "modelName" 
   return segments.length > 0 ? segments.join(" • ") : "No default model configured";
 }
 
+function formatReasoningLabel(reasoningLevel: string): string {
+  return reasoningLevel.trim().length > 0 ? reasoningLevel : "Default reasoning";
+}
+
+function formatSessionMeta(session: Pick<SessionRecord, "modelId" | "reasoningLevel">): string {
+  const segments = [session.modelId, formatReasoningLabel(session.reasoningLevel)].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
+  return segments.length > 0 ? segments.join(" • ") : "No session model selected";
+}
+
+function formatDraftMeta(agent: Pick<AgentRecord, "modelName" | "reasoningLevel">): string {
+  const segments = [agent.modelName, agent.reasoningLevel].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
+  return segments.length > 0 ? segments.join(" • ") : "No default model configured";
+}
+
 function formatSessionTitle(userMessage: string): string {
   const normalizedMessage = userMessage.trim();
   if (normalizedMessage.length === 0) {
@@ -555,14 +573,23 @@ function ChatsPageContent() {
 
       <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none">
         <CardHeader>
-          <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
-          <CardDescription>
-            {selectedSession
-              ? `Session ${selectedSession.id}`
-              : selectedAgent
-                ? "New chat draft"
-                : "Choose an agent from the sidebar to start a chat."}
-          </CardDescription>
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
+              {selectedSession ? (
+                <p className="text-xs font-medium text-muted-foreground/80">{formatSessionMeta(selectedSession)}</p>
+              ) : selectedAgent ? (
+                <p className="text-xs font-medium text-muted-foreground/80">{formatDraftMeta(selectedAgent)}</p>
+              ) : null}
+            </div>
+            <CardDescription>
+              {selectedSession
+                ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
+                : selectedAgent
+                  ? "New chat draft"
+                  : "Choose an agent from the sidebar to start a chat."}
+            </CardDescription>
+          </div>
         </CardHeader>
 
         {errorMessage ? (
@@ -649,17 +676,7 @@ function ChatsPageContent() {
               <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{selectedSession.userMessage}</p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Model</p>
-                <p className="mt-3 text-sm text-foreground">{selectedSession.modelId}</p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Reasoning</p>
-                <p className="mt-3 text-sm text-foreground">
-                  {selectedSession.reasoningLevel.length > 0 ? selectedSession.reasoningLevel : "Default"}
-                </p>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Status</p>
                 <p className="mt-3 text-sm text-foreground">{selectedSession.status}</p>
