@@ -23,6 +23,7 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 // it will be deleted on completion of the message, so no completed or failed statuses
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
+export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
 
 
 export const companies = pgTable("companies", {
@@ -251,4 +252,43 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
 (table) => ({
   companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),
   modelProviderCredentialIdIndex: index("model_provider_credential_models_model_provider_credential_id_idx").on(table.modelProviderCredentialId),
+}));
+
+export const taskCategories = pgTable("task_categories", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("task_categories_company_id_idx").on(table.companyId),
+  companyCreatedAtIndex: index("task_categories_company_created_at_idx").on(table.companyId, table.createdAt),
+  companyNameLowerUnique: uniqueIndex("task_categories_company_id_name_lower_uidx")
+    .on(table.companyId, sql`lower(${table.name})`),
+}));
+
+export const tasks = pgTable("tasks", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  taskCategoryId: uuid("task_category_id")
+    .references(() => taskCategories.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: taskStatusEnum("status").notNull().default("draft"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("tasks_company_id_idx").on(table.companyId),
+  companyTaskCategoryIdIndex: index("tasks_company_task_category_id_idx").on(table.companyId, table.taskCategoryId),
+  companyStatusCreatedAtIndex: index("tasks_company_status_created_at_idx").on(table.companyId, table.status, table.createdAt),
 }));

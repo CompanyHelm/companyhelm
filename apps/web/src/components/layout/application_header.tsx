@@ -19,9 +19,13 @@ export function ApplicationHeader() {
     ? "LLM Credentials"
     : pathname.startsWith("/chats")
       ? "Chats"
-    : pathname.startsWith("/agents")
-      ? "Agents"
-      : "Dashboard";
+      : pathname.startsWith("/tasks")
+        ? "Tasks"
+        : pathname.startsWith("/settings")
+          ? "Settings"
+      : pathname.startsWith("/agents")
+        ? "Agents"
+        : "Dashboard";
   const detailPageTitle = detailLabel || (isAgentDetailPage ? "Agent" : "Credential");
   const detailPageHref = isCredentialDetailPage
     ? "/model-provider-credentials"

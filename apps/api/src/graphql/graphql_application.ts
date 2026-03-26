@@ -7,11 +7,14 @@ import { RedisCompanyScopedService } from "../services/redis/company_scoped_serv
 import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
+import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
+import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
+import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -23,6 +26,8 @@ import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
+import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
+import { TasksQueryResolver } from "./resolvers/tasks.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "./resolvers/session_message_updated.ts";
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
@@ -41,6 +46,8 @@ export class GraphqlApplication {
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
   private readonly archiveSessionMutation: ArchiveSessionMutation;
+  private readonly createTaskCategoryMutation: CreateTaskCategoryMutation;
+  private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
@@ -57,6 +64,9 @@ export class GraphqlApplication {
   private readonly sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver;
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
+  private readonly setTaskCategoryMutation: SetTaskCategoryMutation;
+  private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
+  private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
   private readonly redisService: RedisService;
 
@@ -111,6 +121,13 @@ export class GraphqlApplication {
       },
     } as never),
     @inject(RedisService) redisService: RedisService = new RedisService(config),
+    @inject(CreateTaskMutation) createTaskMutation: CreateTaskMutation = new CreateTaskMutation(),
+    @inject(CreateTaskCategoryMutation)
+    createTaskCategoryMutation: CreateTaskCategoryMutation = new CreateTaskCategoryMutation(),
+    @inject(SetTaskCategoryMutation) setTaskCategoryMutation: SetTaskCategoryMutation = new SetTaskCategoryMutation(),
+    @inject(TaskCategoriesQueryResolver)
+    taskCategoriesQueryResolver: TaskCategoriesQueryResolver = new TaskCategoriesQueryResolver(),
+    @inject(TasksQueryResolver) tasksQueryResolver: TasksQueryResolver = new TasksQueryResolver(),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
@@ -119,6 +136,8 @@ export class GraphqlApplication {
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentsQueryResolver = agentsQueryResolver;
     this.archiveSessionMutation = archiveSessionMutation;
+    this.createTaskCategoryMutation = createTaskCategoryMutation;
+    this.createTaskMutation = createTaskMutation;
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
@@ -135,6 +154,9 @@ export class GraphqlApplication {
     this.sessionTranscriptMessagesQueryResolver = sessionTranscriptMessagesQueryResolver;
     this.sessionsQueryResolver = sessionsQueryResolver;
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
+    this.setTaskCategoryMutation = setTaskCategoryMutation;
+    this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
+    this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
     this.redisService = redisService;
   }
@@ -190,6 +212,8 @@ export class GraphqlApplication {
           ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
           ModelProviders: this.modelProvidersQueryResolver.execute,
+          TaskCategories: this.taskCategoriesQueryResolver.execute,
+          Tasks: this.tasksQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,
           SessionTranscriptMessages: this.sessionTranscriptMessagesQueryResolver.execute,
           Sessions: this.sessionsQueryResolver.execute,
@@ -198,11 +222,14 @@ export class GraphqlApplication {
           AddAgent: this.addAgentMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
+          CreateTask: this.createTaskMutation.execute,
+          CreateTaskCategory: this.createTaskCategoryMutation.execute,
           CreateSession: this.createSessionMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           PromptSession: this.promptSessionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
+          SetTaskCategory: this.setTaskCategoryMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
         },
         Subscription: {

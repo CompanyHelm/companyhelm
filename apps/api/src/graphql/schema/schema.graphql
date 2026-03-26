@@ -10,6 +10,8 @@ type Query {
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
   ModelProviders: [ModelProvider!]!
+  TaskCategories: [TaskCategory!]!
+  Tasks: [Task!]!
 }
 
 type Mutation {
@@ -21,9 +23,12 @@ type Mutation {
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   PromptSession(input: PromptSessionInput!): Session!
   UpdateAgent(input: UpdateAgentInput!): Agent!
+  CreateTask(input: CreateTaskInput!): Task!
+  CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
+  SetTaskCategory(input: SetTaskCategoryInput!): Task!
 }
 
 type Subscription {
@@ -141,6 +146,25 @@ type ModelProvider {
   authorizationInstructionsMarkdown: String
 }
 
+type TaskCategory {
+  id: ID!
+  name: String!
+  taskCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Task {
+  id: ID!
+  name: String!
+  description: String
+  status: String!
+  taskCategoryId: ID
+  taskCategoryName: String
+  createdAt: String!
+  updatedAt: String!
+}
+
 input AddModelProviderCredentialInput {
   accessToken: String
   accessTokenExpiresAtMilliseconds: String
@@ -195,4 +219,20 @@ input PromptSessionInput {
 
 input RefreshModelProviderCredentialModelsInput {
   modelProviderCredentialId: ID!
+}
+
+input CreateTaskCategoryInput {
+  name: String!
+}
+
+input CreateTaskInput {
+  name: String!
+  description: String
+  status: String
+  taskCategoryId: ID
+}
+
+input SetTaskCategoryInput {
+  taskId: ID!
+  taskCategoryId: ID
 }

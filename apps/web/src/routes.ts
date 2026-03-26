@@ -12,6 +12,8 @@ import { ChatsPage } from "./pages/chats/chats_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
+import { SettingsPage } from "./pages/settings/settings_page";
+import { TasksPage } from "./pages/tasks/tasks_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
 
@@ -80,6 +82,18 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const tasksRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/tasks",
+  component: TasksPage,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
 const agentDetailRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/agents/$agentId",
@@ -110,6 +124,8 @@ const routeTree = rootRoute.addChildren([
       rootIndexRoute,
       agentsRoute,
       chatsRoute,
+      tasksRoute,
+      settingsRoute,
       agentDetailRoute,
       modelProviderCredentialsRoute,
       modelProviderCredentialDetailRoute,

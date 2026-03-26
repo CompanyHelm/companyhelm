@@ -211,6 +211,13 @@
       "when": 1774563013800,
       "tag": "0029_light_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1774563327275,
+      "tag": "0030_abandoned_lilith",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,9 @@ import {
   LayoutDashboardIcon,
   MessageSquareIcon,
   MoonIcon,
+  Settings2Icon,
   SunIcon,
+  WorkflowIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useTheme } from "@/components/theme_provider";
@@ -97,6 +99,11 @@ export function ApplicationSidebar() {
       label: "Chats",
       to: "/chats",
     },
+    {
+      icon: WorkflowIcon,
+      label: "Tasks",
+      to: "/tasks",
+    },
   ];
 
   return (
@@ -161,6 +168,19 @@ export function ApplicationSidebar() {
               {isDarkTheme ? "Dark theme" : "Light theme"}
             </span>
           </Button>
+
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isNavigationItemActive(pathname, "/settings")}
+                render={<Link to="/settings" />}
+                tooltip="Settings"
+              >
+                <Settings2Icon />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
 
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
             <UserButton />
