@@ -259,11 +259,11 @@ function ChatsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
       <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
-        <CardHeader>
+        <CardHeader className="px-2 md:px-3">
           <CardTitle>Chats</CardTitle>
           <CardDescription>Loading agents and sessions…</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 md:px-3">
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
             Loading chats…
           </div>
@@ -271,7 +271,7 @@ function ChatsPageFallback() {
       </Card>
 
       <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardHeader>
+        <CardHeader className="px-2 md:px-3">
           <CardTitle>Chat</CardTitle>
           <CardDescription>Loading selected chat…</CardDescription>
         </CardHeader>
@@ -745,7 +745,7 @@ function ChatsPageContent() {
         style={chatListPanelStyle}
       >
         <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent className="flex-1 overflow-y-auto px-2 md:px-3">
             {sortedAgents.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">No agents yet</p>
@@ -763,7 +763,7 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className="px-1 py-2"
+                    className="px-0.5 py-2"
                   >
                     <div className="flex items-start gap-3">
                       <button
@@ -781,7 +781,7 @@ function ChatsPageContent() {
                     <div className="mt-3">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
-                        className={`flex w-full items-center justify-center rounded-lg px-3 py-3 text-sm font-medium transition ${
+                        className={`flex w-full items-center justify-center rounded-lg px-2 py-3 text-sm font-medium transition ${
                           isAgentSelected && !selectedSession
                             ? "bg-primary/12 text-primary"
                             : "bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
@@ -804,7 +804,7 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-3 py-2 transition ${
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-2 py-2 transition ${
                                     isSessionSelected
                                       ? "bg-muted/45"
                                       : "bg-transparent hover:bg-muted/30"
@@ -878,7 +878,7 @@ function ChatsPageContent() {
       </div>
 
       <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardHeader>
+        <CardHeader className="px-2 md:px-3">
           <div className="flex flex-col gap-1">
             <CardTitle>
               {selectedSession
@@ -898,7 +898,7 @@ function ChatsPageContent() {
         </CardHeader>
 
         {errorMessage ? (
-          <div className="px-6 pt-6">
+          <div className="px-2 pt-4 md:px-3 md:pt-5">
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}
             </div>
@@ -906,7 +906,7 @@ function ChatsPageContent() {
         ) : null}
 
         {!selectedAgent ? (
-          <CardContent className="flex flex-1 items-center justify-center">
+          <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
             <div className="max-w-sm text-center">
               <p className="text-sm font-medium text-foreground">Pick an agent to begin</p>
               <p className="mt-2 text-sm/relaxed text-muted-foreground">
@@ -918,7 +918,7 @@ function ChatsPageContent() {
 
         {selectedAgent && !selectedSession ? (
           <>
-            <CardContent className="flex flex-1 items-center justify-center">
+            <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
               <div className="max-w-xl text-center">
                 <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
                 <p className="mt-2 text-sm/relaxed text-muted-foreground">
@@ -932,7 +932,7 @@ function ChatsPageContent() {
               </div>
             </CardContent>
 
-            <div className="border-t border-border/60 p-4 md:p-6">
+            <div className="border-t border-border/60 p-3 md:p-4">
               <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
                 <div className="relative">
                   <button
@@ -946,7 +946,7 @@ function ChatsPageContent() {
                   <textarea
                     id="chat-draft-message"
                     ref={draftTextareaRef}
-                    className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-4 pt-6 pb-3 pr-14 text-sm outline-none"
+                    className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-6 pb-3 pr-14 text-sm outline-none"
                     onChange={(event) => {
                       setDraftMessage(event.target.value);
                     }}
@@ -963,7 +963,7 @@ function ChatsPageContent() {
                     value={draftMessage}
                   />
                 </div>
-                <div className="flex items-center justify-between gap-3 px-3 py-3">
+                <div className="flex items-center justify-between gap-3 px-2.5 py-3">
                   <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                     <span className="rounded-full bg-background/60 px-3 py-1.5">
                       {selectedAgent.modelName || "Default model"}
@@ -990,7 +990,7 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex flex-1 flex-col gap-6 p-6">
+          <CardContent className="flex flex-1 flex-col gap-6 p-3 md:p-4">
             <ChatsTranscript
               session={selectedSession}
               sessionMessages={selectedSessionMessages}
