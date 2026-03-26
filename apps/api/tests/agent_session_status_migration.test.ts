@@ -27,6 +27,6 @@ test("agent session status migration backfills existing rows before enforcing no
   assert.equal(addColumnIndex < backfillIndex, true);
   assert.equal(backfillIndex < notNullIndex, true);
   assert.equal(notNullIndex < dropColumnIndex, true);
-  assert.match(migrationSql, /WHEN "is_running" THEN 'running'/);
-  assert.match(migrationSql, /ELSE 'stopped'/);
+  assert.match(migrationSql, /WHEN "is_running" THEN 'running'::"agent_session_status"/);
+  assert.match(migrationSql, /ELSE 'stopped'::"agent_session_status"/);
 });
