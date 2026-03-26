@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
-import type { ThinkingLevel } from "@mariozechner/pi-agent-core";
+import { eq } from "drizzle-orm";
+import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
 import {
   type AgentSession,
@@ -8,6 +9,7 @@ import {
   ModelRegistry,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
+import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
@@ -17,6 +19,22 @@ type SessionRuntimeConfig = {
   modelId: string;
   providerId: string;
   reasoningLevel?: string | null;
+};
+
+type SelectableDatabase = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
+type UpdatableDatabase = {
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): Promise<void>;
+    };
+  };
 };
 
 /**
@@ -55,6 +73,7 @@ export class PiMonoSessionManagerService {
     sessionManager.newSession({
       id: sessionId,
     });
+    const storedContextMessages = await this.loadStoredContextMessages(transactionProvider, sessionId);
 
     const { session } = await createAgentSession({
       authStorage,
@@ -63,6 +82,7 @@ export class PiMonoSessionManagerService {
       model,
       thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
     });
+    session.agent.replaceMessages(storedContextMessages);
     const sessionEventHandler = new PiMonoSessionEventHandler(
       transactionProvider,
       sessionId,
@@ -78,21 +98,25 @@ export class PiMonoSessionManagerService {
   }
 
   async prompt(
+    transactionProvider: TransactionProviderInterface,
     sessionId: string,
     message: string,
     images?: ImageContent[],
   ): Promise<void> {
     const session = this.getRequiredSession(sessionId);
     await session.prompt(message, images && images.length > 0 ? { images } : undefined);
+    await this.persistContextMessages(transactionProvider, sessionId, session.agent.state.messages);
   }
 
   async steer(
+    transactionProvider: TransactionProviderInterface,
     sessionId: string,
     message: string,
     images?: ImageContent[],
   ): Promise<void> {
     const session = this.getRequiredSession(sessionId);
     await session.steer(message, images);
+    await this.persistContextMessages(transactionProvider, sessionId, session.agent.state.messages);
   }
 
   async abort(sessionId: string): Promise<void> {
@@ -133,5 +157,42 @@ export class PiMonoSessionManagerService {
     }
 
     return reasoningLevel as ThinkingLevel;
+  }
+
+  private async loadStoredContextMessages(
+    transactionProvider: TransactionProviderInterface,
+    sessionId: string,
+  ): Promise<AgentMessage[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const [sessionRecord] = await selectableDatabase
+        .select({
+          contextMessages: agentSessions.context_messages,
+        })
+        .from(agentSessions)
+        .where(eq(agentSessions.id, sessionId));
+      if (!Array.isArray(sessionRecord?.contextMessages)) {
+        return [];
+      }
+
+      return sessionRecord.contextMessages as AgentMessage[];
+    });
+  }
+
+  private async persistContextMessages(
+    transactionProvider: TransactionProviderInterface,
+    sessionId: string,
+    messages: AgentMessage[],
+  ): Promise<void> {
+    await transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(agentSessions)
+        .set({
+          context_messages: messages,
+          updated_at: new Date(),
+        })
+        .where(eq(agentSessions.id, sessionId));
+    });
   }
 }

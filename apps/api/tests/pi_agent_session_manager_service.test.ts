@@ -10,6 +10,7 @@ const piAgentMocks = vi.hoisted(() => {
     findModelMock: vi.fn<(providerId: string, modelId: string) => unknown>(),
     newSessionMock: vi.fn<(options: { id?: string }) => void>(),
     promptMock: vi.fn(async () => undefined),
+    replaceMessagesMock: vi.fn<(messages: unknown[]) => void>(),
     setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
     steerMock: vi.fn(async () => undefined),
     subscribeMock: vi.fn(),
@@ -65,6 +66,7 @@ beforeEach(() => {
   piAgentMocks.findModelMock.mockReset();
   piAgentMocks.newSessionMock.mockReset();
   piAgentMocks.promptMock.mockReset();
+  piAgentMocks.replaceMessagesMock.mockReset();
   piAgentMocks.setRuntimeApiKeyMock.mockReset();
   piAgentMocks.steerMock.mockReset();
   piAgentMocks.subscribeMock.mockReset();
@@ -74,12 +76,28 @@ beforeEach(() => {
 });
 
 test("PiMonoSessionManagerService creates one runtime session and routes prompt plus steer calls through it", async () => {
+  const storedMessages = [{
+    content: "Earlier context",
+    role: "user",
+    timestamp: 1234,
+  }];
+  const persistedContextUpdates: Array<Record<string, unknown>> = [];
   const model = {
     id: "gpt-5.4",
     provider: "openai",
   };
   const createdSession = {
     abort: piAgentMocks.abortMock,
+    agent: {
+      replaceMessages: piAgentMocks.replaceMessagesMock,
+      state: {
+        messages: [{
+          content: "Updated context",
+          role: "assistant",
+          timestamp: 5678,
+        }],
+      },
+    },
     dispose: piAgentMocks.disposeMock,
     prompt: piAgentMocks.promptMock,
     steer: piAgentMocks.steerMock,
@@ -100,7 +118,37 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   } as never);
 
   const session = await service.ensureSession(
-    { transaction: async () => undefined } as never,
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      contextMessages: storedMessages,
+                    }];
+                  },
+                };
+              },
+            };
+          },
+          update() {
+            return {
+              set(value: Record<string, unknown>) {
+                persistedContextUpdates.push(value);
+                return {
+                  async where() {
+                    return undefined;
+                  },
+                };
+              },
+            };
+          },
+        });
+      },
+    } as never,
     "session-1",
     {
       apiKey: "sk-test",
@@ -110,8 +158,42 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     },
   );
 
-  await service.prompt("session-1", "Draft the migration.");
-  await service.steer("session-1", "Focus on the failed migration.");
+  await service.prompt({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
+      return callback({
+        update() {
+          return {
+            set(value: Record<string, unknown>) {
+              persistedContextUpdates.push(value);
+              return {
+                async where() {
+                  return undefined;
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  } as never, "session-1", "Draft the migration.");
+  await service.steer({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
+      return callback({
+        update() {
+          return {
+            set(value: Record<string, unknown>) {
+              persistedContextUpdates.push(value);
+              return {
+                async where() {
+                  return undefined;
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  } as never, "session-1", "Focus on the failed migration.");
   await service.abort("session-1");
 
   assert.equal(session, createdSession);
@@ -119,15 +201,27 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.findModelMock.mock.calls, [["openai", "gpt-5.4"]]);
   assert.deepEqual(piAgentMocks.setRuntimeApiKeyMock.mock.calls, [["openai", "sk-test"]]);
   assert.deepEqual(piAgentMocks.newSessionMock.mock.calls, [[{ id: "session-1" }]]);
+  assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[storedMessages]]);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
   assert.equal(piAgentMocks.abortMock.mock.calls.length, 1);
+  assert.equal(persistedContextUpdates.length, 2);
+  assert.deepEqual(
+    persistedContextUpdates.map((value) => value.context_messages),
+    [createdSession.agent.state.messages, createdSession.agent.state.messages],
+  );
 });
 
 test("PiMonoSessionManagerService reuses the live runtime session for repeated ensureSession calls", async () => {
   const createdSession = {
     abort: piAgentMocks.abortMock,
+    agent: {
+      replaceMessages: piAgentMocks.replaceMessagesMock,
+      state: {
+        messages: [],
+      },
+    },
     dispose: piAgentMocks.disposeMock,
     prompt: piAgentMocks.promptMock,
     steer: piAgentMocks.steerMock,
@@ -151,7 +245,25 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   } as never);
 
   const first = await service.ensureSession(
-    { transaction: async () => undefined } as never,
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      contextMessages: [],
+                    }];
+                  },
+                };
+              },
+            };
+          },
+        });
+      },
+    } as never,
     "session-1",
     {
       apiKey: "sk-test",
@@ -161,7 +273,29 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     },
   );
   const second = await service.ensureSession(
-    { transaction: async () => undefined } as never,
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      contextMessages: [{
+                        content: "ignored on reuse",
+                        role: "user",
+                        timestamp: 1,
+                      }],
+                    }];
+                  },
+                };
+              },
+            };
+          },
+        });
+      },
+    } as never,
     "session-1",
     {
       apiKey: "sk-test-2",
@@ -175,4 +309,5 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.equal(second, createdSession);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   assert.equal(piAgentMocks.disposeMock.mock.calls.length, 0);
+  assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[[]]]);
 });

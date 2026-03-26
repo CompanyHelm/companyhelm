@@ -143,6 +143,7 @@ export class SessionProcessExecutionService {
 
       try {
         await this.piMonoSessionManagerService.prompt(
+          transactionProvider,
           sessionId,
           this.combineQueuedTexts(primaryBatch),
           this.toImageContents(primaryBatch),
@@ -172,6 +173,7 @@ export class SessionProcessExecutionService {
         clearInterval(heartbeatHandle);
       }
 
+      this.piMonoSessionManagerService.dispose(sessionId);
       await this.sessionLeaseService.release(lease);
       await redisCompanyScopedService.disconnect();
 
@@ -200,6 +202,7 @@ export class SessionProcessExecutionService {
 
     try {
       await this.piMonoSessionManagerService.steer(
+        transactionProvider,
         sessionId,
         this.combineQueuedTexts(steerMessages),
         this.toImageContents(steerMessages),
