@@ -11,6 +11,7 @@ export type GraphqlRequestContext = {
   authSession: AuthSession | null;
   app_runtime_transaction_provider: TransactionProviderInterface | null;
   redisCompanyScopedService?: RedisCompanyScopedService | null;
+  resolveSubscriptionContext?: (() => Promise<GraphqlRequestContext>) | null;
 };
 
 /**
@@ -35,6 +36,7 @@ export class GraphqlRequestContextResolver {
       return {
         authSession: null,
         app_runtime_transaction_provider: null,
+        resolveSubscriptionContext: null,
       };
     }
 
@@ -50,6 +52,7 @@ export class GraphqlRequestContextResolver {
         ? new AppRuntimeTransactionProvider(this.database, authSession.company.id)
         : null,
       redisCompanyScopedService: null,
+      resolveSubscriptionContext: null,
     };
   }
 }

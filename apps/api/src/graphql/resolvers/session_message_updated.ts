@@ -29,13 +29,14 @@ export class SessionMessageUpdatedSubscriptionResolver {
     arguments_: SessionMessageUpdatedArguments,
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionMessageUpdated: SessionMessageGraphqlRecord }> {
-    if (!context.authSession?.company) {
+    const requestContext = await this.resolveRequestContext(context);
+    if (!requestContext.authSession?.company) {
       throw new Error("Authentication required.");
     }
-    if (!context.app_runtime_transaction_provider) {
+    if (!requestContext.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
-    if (!context.redisCompanyScopedService) {
+    if (!requestContext.redisCompanyScopedService) {
       throw new Error("Subscription transport is not configured.");
     }
 
@@ -45,7 +46,7 @@ export class SessionMessageUpdatedSubscriptionResolver {
     }
 
     const iterator = new RedisPatternAsyncIterator(
-      context.redisCompanyScopedService,
+      requestContext.redisCompanyScopedService,
       `session:${sessionId}:message:*:update`,
     );
 
@@ -57,8 +58,8 @@ export class SessionMessageUpdatedSubscriptionResolver {
         }
 
         const messageRecord = await this.sessionReadService.getMessage(
-          context.app_runtime_transaction_provider,
-          context.authSession.company.id,
+          requestContext.app_runtime_transaction_provider,
+          requestContext.authSession.company.id,
           messageId,
         );
         if (!messageRecord || messageRecord.sessionId !== sessionId) {
@@ -81,5 +82,13 @@ export class SessionMessageUpdatedSubscriptionResolver {
   private parseMessageId(channel: string): string | null {
     const segments = channel.split(":");
     return segments.length >= 7 ? segments[5] ?? null : null;
+  }
+
+  private async resolveRequestContext(context: GraphqlRequestContext): Promise<GraphqlRequestContext> {
+    if (context.authSession?.company && context.app_runtime_transaction_provider && context.redisCompanyScopedService) {
+      return context;
+    }
+
+    return await context.resolveSubscriptionContext?.() ?? context;
   }
 }

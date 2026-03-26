@@ -136,19 +136,39 @@ export class GraphqlApplication {
       context: (request) => this.graphqlRequestContextResolver.resolve(request),
       subscription: {
         context: async (_socket, request) => {
-          const baseContext = await this.graphqlRequestContextResolver.resolve(request);
-          if (!baseContext.authSession?.company) {
-            return baseContext;
-          }
+          let resolvedContextPromise: Promise<GraphqlRequestContext> | null = null;
 
           return {
-            ...baseContext,
-            redisCompanyScopedService: new RedisCompanyScopedService(baseContext.authSession.company.id, this.redisService),
+            authSession: null,
+            app_runtime_transaction_provider: null,
+            redisCompanyScopedService: null,
+            resolveSubscriptionContext: async () => {
+              if (resolvedContextPromise) {
+                return resolvedContextPromise;
+              }
+
+              resolvedContextPromise = this.graphqlRequestContextResolver.resolve(request).then((baseContext) => {
+                if (!baseContext.authSession?.company) {
+                  return baseContext;
+                }
+
+                return {
+                  ...baseContext,
+                  redisCompanyScopedService: new RedisCompanyScopedService(
+                    baseContext.authSession.company.id,
+                    this.redisService,
+                  ),
+                };
+              });
+
+              return resolvedContextPromise;
+            },
           };
         },
         onConnect: () => true,
         onDisconnect: async (context) => {
-          await context.redisCompanyScopedService?.disconnect();
+          const resolvedContext = await context.resolveSubscriptionContext?.();
+          await resolvedContext?.redisCompanyScopedService?.disconnect();
         },
       },
       resolvers: {

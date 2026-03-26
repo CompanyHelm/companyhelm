@@ -25,18 +25,19 @@ export class SessionUpdatedSubscriptionResolver {
     _arguments: Record<string, never>,
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionUpdated: SessionGraphqlRecord }> {
-    if (!context.authSession?.company) {
+    const requestContext = await this.resolveRequestContext(context);
+    if (!requestContext.authSession?.company) {
       throw new Error("Authentication required.");
     }
-    if (!context.app_runtime_transaction_provider) {
+    if (!requestContext.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
-    if (!context.redisCompanyScopedService) {
+    if (!requestContext.redisCompanyScopedService) {
       throw new Error("Subscription transport is not configured.");
     }
 
     const iterator = new RedisPatternAsyncIterator(
-      context.redisCompanyScopedService,
+      requestContext.redisCompanyScopedService,
       "session:*:update",
     );
 
@@ -48,8 +49,8 @@ export class SessionUpdatedSubscriptionResolver {
         }
 
         const sessionRecord = await this.sessionReadService.getSession(
-          context.app_runtime_transaction_provider,
-          context.authSession.company.id,
+          requestContext.app_runtime_transaction_provider,
+          requestContext.authSession.company.id,
           sessionId,
         );
         if (!sessionRecord) {
@@ -72,5 +73,13 @@ export class SessionUpdatedSubscriptionResolver {
   private parseSessionId(channel: string): string | null {
     const segments = channel.split(":");
     return segments.length >= 5 ? segments[3] ?? null : null;
+  }
+
+  private async resolveRequestContext(context: GraphqlRequestContext): Promise<GraphqlRequestContext> {
+    if (context.authSession?.company && context.app_runtime_transaction_provider && context.redisCompanyScopedService) {
+      return context;
+    }
+
+    return await context.resolveSubscriptionContext?.() ?? context;
   }
 }
