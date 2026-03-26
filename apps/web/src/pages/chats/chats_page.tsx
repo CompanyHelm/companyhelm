@@ -733,10 +733,6 @@ function ChatsPageContent() {
         style={chatListPanelStyle}
       >
         <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-          <CardHeader>
-            <CardTitle>Chats</CardTitle>
-            <CardDescription>Select an agent, start a new chat, or reopen an existing session.</CardDescription>
-          </CardHeader>
           <CardContent className="flex-1 overflow-y-auto">
             {sortedAgents.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
