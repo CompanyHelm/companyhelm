@@ -1,6 +1,5 @@
 import type { FormEvent } from "react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Suspense, useMemo, useState } from "react";
 import {
   ExternalLinkIcon,
   FolderGit2Icon,
@@ -159,10 +158,6 @@ type StoreRecord = {
   getValue(name: string): unknown;
 };
 
-function normalizeSearchValue(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
 function formatTimestamp(value: string): string {
   const parsedDate = new Date(value);
   if (Number.isNaN(parsedDate.getTime())) {
@@ -232,13 +227,9 @@ function RepositoriesPageFallback() {
 }
 
 function RepositoriesPageContent() {
-  const navigate = useNavigate();
-  const search = useSearch({ strict: false });
-  const callbackHandledRef = useRef<string | null>(null);
   const [manualInstallationId, setManualInstallationId] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
-  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const [deletingInstallationId, setDeletingInstallationId] = useState<string | null>(null);
   const [refreshingInstallationId, setRefreshingInstallationId] = useState<string | null>(null);
   const data = useLazyLoadQuery<repositoriesPageQuery>(
@@ -303,14 +294,6 @@ function RepositoriesPageContent() {
   const githubInstallUrl = useMemo(() => {
     return buildGithubInstallationUrl(data.GithubAppConfig.appLink, data.Me.company.id);
   }, [data.GithubAppConfig.appLink, data.Me.company.id]);
-
-  const clearCallbackSearch = async () => {
-    await navigate({
-      to: "/repositories",
-      search: {},
-      replace: true,
-    });
-  };
 
   const updateRepositoriesStore = (
     store: {
@@ -403,54 +386,6 @@ function RepositoriesPageContent() {
     });
   };
 
-  useEffect(() => {
-    const callbackInstallationId = normalizeSearchValue(search.installation_id);
-    const callbackSetupAction = normalizeSearchValue(search.setup_action);
-    const callbackState = normalizeSearchValue(search.state);
-    const callbackKey = [callbackInstallationId, callbackSetupAction, callbackState].join("|");
-
-    if (!callbackKey.replace(/\|/g, "")) {
-      callbackHandledRef.current = null;
-      return;
-    }
-    if (callbackHandledRef.current === callbackKey) {
-      return;
-    }
-
-    callbackHandledRef.current = callbackKey;
-
-    if (!callbackInstallationId) {
-      setErrorMessage("GitHub install callback is missing installation_id.");
-      void clearCallbackSearch();
-      return;
-    }
-    if (callbackState && callbackState !== data.Me.company.id) {
-      setErrorMessage(`GitHub callback belongs to company ${callbackState}, not the current company.`);
-      void clearCallbackSearch();
-      return;
-    }
-
-    let isCancelled = false;
-    setIsProcessingCallback(true);
-
-    void linkInstallation({
-      installationId: callbackInstallationId,
-      setupAction: callbackSetupAction || null,
-      successMessage: `Linked GitHub installation ${callbackInstallationId}.`,
-    }).finally(() => {
-      if (isCancelled) {
-        return;
-      }
-
-      setIsProcessingCallback(false);
-      void clearCallbackSearch();
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [data.Me.company.id, search.installation_id, search.setup_action, search.state]);
-
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -463,7 +398,7 @@ function RepositoriesPageContent() {
           </div>
           <CardAction>
             <Button
-              disabled={!githubInstallUrl || isProcessingCallback}
+              disabled={!githubInstallUrl}
               onClick={() => {
                 window.location.assign(githubInstallUrl);
               }}
@@ -483,11 +418,6 @@ function RepositoriesPageContent() {
           {errorMessage ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}
-            </div>
-          ) : null}
-          {isProcessingCallback ? (
-            <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              Linking GitHub installation from the callback…
             </div>
           ) : null}
 

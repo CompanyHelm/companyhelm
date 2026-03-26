@@ -12,6 +12,7 @@ import { ChatsPage } from "./pages/chats/chats_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
+import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SettingsPage } from "./pages/settings/settings_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
@@ -23,6 +24,12 @@ type ChatsRouteSearch = {
   sessionId?: string;
 };
 
+type GithubInstallRouteSearch = {
+  installation_id?: string;
+  setup_action?: string;
+  state?: string;
+};
+
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -30,6 +37,20 @@ function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSe
       : undefined,
     sessionId: typeof search.sessionId === "string" && search.sessionId.trim().length > 0
       ? search.sessionId.trim()
+      : undefined,
+  };
+}
+
+function validateGithubInstallRouteSearch(search: Record<string, unknown>): GithubInstallRouteSearch {
+  return {
+    installation_id: typeof search.installation_id === "string" && search.installation_id.trim().length > 0
+      ? search.installation_id.trim()
+      : undefined,
+    setup_action: typeof search.setup_action === "string" && search.setup_action.trim().length > 0
+      ? search.setup_action.trim()
+      : undefined,
+    state: typeof search.state === "string" && search.state.trim().length > 0
+      ? search.state.trim()
       : undefined,
   };
 }
@@ -86,7 +107,8 @@ const chatsRoute = createRoute({
 const githubInstallRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/github/install",
-  component: RepositoriesPage,
+  validateSearch: validateGithubInstallRouteSearch,
+  component: GithubInstallCallbackPage,
 });
 
 const repositoriesRoute = createRoute({
