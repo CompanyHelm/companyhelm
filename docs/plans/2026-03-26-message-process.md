@@ -68,6 +68,7 @@ Current `sessionQueuedMessages` columns:
 - `companyId`
 - `sessionId`
 - `text`
+- `shouldSteer`
 - `status` enum: `pending`, `processing`
 - `createdAt`
 - `updatedAt`
@@ -89,24 +90,24 @@ Why use these tables:
 - keeping them separate avoids mixing "message waiting to be processed" with "message emitted by the
   agent runtime"
 
-Recommended additions to `sessionQueuedMessages` if it becomes the full source of truth for inbound
-work:
+With the current schema, all queued rows are user-authored messages and `shouldSteer` determines
+whether the worker delivers them with `session.prompt(...)` or `session.steer(...)`.
 
-- `kind` enum: `user`, `steer`
-- either terminal statuses `completed`, `failed` or a deliberate policy that processed rows are
-  deleted instead of retained
-- if `processing` is kept as a persisted state, add `claimedAt` and ideally `leaseOwner` so stale
-  rows can be recovered after worker crashes
+Chosen policy for processed queued rows:
 
-The `kind` field is the most important missing piece. Without it, the worker cannot tell whether a
-queued row should become `session.prompt(...)` or `session.steer(...)`.
+- keep only live queue state in `sessionQueuedMessages`
+- delete processed rows instead of persisting `completed` / `failed` terminal states
 
-Recommended addition to `sessionQueuedMessageImages`:
+Because ownership is session-scoped, lease metadata belongs on `agentSessions`, not on individual
+queued rows. The current `agentSessions` table does not yet have lease columns, so if you want
+durable lease visibility beyond Redis, add them there instead:
 
-- `position` integer if message image order matters
+- `leaseOwner`
+- `leaseExpiresAt`
+- optionally `leasedAt`
 
-Without an explicit ordering column, multiple images are only ordered by insertion timing, which is
-usually fine but not as deliberate as a persisted position.
+If you keep the lease purely in Redis, then no additional queued-message fields are needed for
+ownership tracking.
 
 Also add a new `queued` value to `agent_sessions.status`.
 
@@ -129,7 +130,8 @@ Responsibilities:
 - create the first queued row when a session is created
 - append later user messages
 - append steer messages
-- mark rows `processing`, `completed`, or `failed`
+- mark rows `processing`
+- delete processed rows after successful delivery
 - load pending queued rows ordered by `createdAt`
 - combine multiple pending steer rows into one effective steer payload
 
@@ -231,20 +233,20 @@ This should not extend the current polling `WorkerBase`. BullMQ already provides
 ### Create Session
 
 1. API creates the `agent_sessions` row with status `queued`.
-2. API inserts one `sessionQueuedMessages` row for the first user message.
+2. API inserts one `sessionQueuedMessages` row for the first user message with `shouldSteer = false`.
 3. API enqueues the BullMQ wake job for the session.
 4. API publishes `session:{id}:update`.
 5. API returns immediately.
 
 ### Send Message
 
-1. API inserts a new `sessionQueuedMessages` row for the user message.
+1. API inserts a new `sessionQueuedMessages` row for the user message with `shouldSteer = false`.
 2. API enqueues the BullMQ wake job for the session.
 3. API publishes `session:{id}:update` only if session-level metadata changed.
 
 ### Send Steer
 
-1. API inserts a new `sessionQueuedMessages` row for the steer message.
+1. API inserts a new `sessionQueuedMessages` row for the steer message with `shouldSteer = true`.
 2. API enqueues the BullMQ wake job for the session.
 3. API publishes `session:{id}:steer`.
 
@@ -262,10 +264,11 @@ The Redis publish is only a low-latency nudge. The actual steer content still co
    - ensure the PI Mono runtime session exists
    - subscribe to `session:{id}:steer`
    - load pending queued messages from Postgres
-   - send the next pending `user` prompt
-   - while the turn is active, if a steer pub/sub signal arrives, reload pending steer rows,
+   - send the next pending queued row with `shouldSteer = false` as a prompt
+   - while the turn is active, if a steer pub/sub signal arrives, reload pending queued rows with
+     `shouldSteer = true`,
      combine them, and send one steer call
-   - mark processed rows completed
+   - delete processed queued rows
    - on idle, recheck Postgres for pending work
    - if pending work remains, enqueue one more wake job before releasing the lease
    - unsubscribe steer
@@ -335,7 +338,7 @@ If many steer rows arrive while a turn is active:
 - load all pending steer rows
 - combine them into one steer text payload
 - send one `session.steer(...)`
-- mark those steer rows completed together
+- delete those steer rows after delivery
 
 This avoids one Redis event turning into many steer API calls.
 
