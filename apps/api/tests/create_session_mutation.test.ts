@@ -96,7 +96,6 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
         status: "running",
-        userMessage,
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
         updatedAt: new Date("2026-03-25T12:00:00.000Z"),
       };
@@ -137,7 +136,6 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
             modelId
             reasoningLevel
             status
-            userMessage
             createdAt
             updatedAt
           }
@@ -162,7 +160,6 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     modelId: "gpt-5.4",
     reasoningLevel: "high",
     status: "running",
-    userMessage: "Draft the onboarding email.",
     createdAt: "2026-03-25T12:00:00.000Z",
     updatedAt: "2026-03-25T12:00:00.000Z",
   });

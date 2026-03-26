@@ -1,35 +1,26 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { agentSessions, messageContents, sessionMessages } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
+type SessionMessageRecord = Record<string, unknown> & {
+  id: string;
+  role: string;
+  sessionId: string;
+  status: string;
+};
+
+type MessageContentRecord = Record<string, unknown> & {
+  id: string;
+  messageId: string;
+  type: string;
+};
+
 class PiMonoSessionEventHandlerTestHarness {
-  static createTransactionProviderMock() {
-    const updates: Array<Record<string, unknown>> = [];
-
-    return {
-      updates,
-      transactionProvider: {
-        async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
-          return callback({
-            update() {
-              return {
-                set(value: Record<string, unknown>) {
-                  updates.push(value);
-                  return {
-                    async where() {
-                      return undefined;
-                    },
-                  };
-                },
-              };
-            },
-          });
-        },
-      },
-    };
-  }
-
-  static captureConsole() {
+  static create() {
+    const sessionStatusUpdates: Array<Record<string, unknown>> = [];
+    const sessionMessageRecords = new Map<string, SessionMessageRecord>();
+    const messageContentRecordsByMessageId = new Map<string, MessageContentRecord[]>();
     const infoLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
     const originalInfo = console.info;
@@ -45,6 +36,139 @@ class PiMonoSessionEventHandlerTestHarness {
     return {
       errorLogs,
       infoLogs,
+      messageContentRecordsByMessageId,
+      sessionMessageRecords,
+      sessionStatusUpdates,
+      transactionProvider: {
+        async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+          return callback({
+            insert(table: unknown) {
+              return {
+                async values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
+                  if (table === sessionMessages) {
+                    const sessionMessageRecord = value as SessionMessageRecord;
+                    sessionMessageRecords.set(sessionMessageRecord.id, sessionMessageRecord);
+                    return undefined;
+                  }
+
+                  if (table === messageContents) {
+                    const contentRecords = Array.isArray(value)
+                      ? value as MessageContentRecord[]
+                      : [value as MessageContentRecord];
+                    const messageId = contentRecords[0]?.messageId;
+                    if (!messageId) {
+                      return undefined;
+                    }
+
+                    const existingRecords = messageContentRecordsByMessageId.get(messageId) ?? [];
+                    messageContentRecordsByMessageId.set(messageId, [
+                      ...existingRecords,
+                      ...contentRecords,
+                    ]);
+                    return undefined;
+                  }
+
+                  throw new Error("Unexpected insert table.");
+                },
+              };
+            },
+            select() {
+              return {
+                from(table: unknown) {
+                  if (table !== agentSessions) {
+                    throw new Error("Unexpected select table.");
+                  }
+
+                  return {
+                    async where() {
+                      return [{
+                        companyId: "company-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            },
+            update(table: unknown) {
+              if (table === agentSessions) {
+                return {
+                  set(value: Record<string, unknown>) {
+                    sessionStatusUpdates.push(value);
+                    return {
+                      async where() {
+                        return undefined;
+                      },
+                    };
+                  },
+                };
+              }
+
+              if (table === sessionMessages) {
+                return {
+                  set(value: Record<string, unknown>) {
+                    return {
+                      async where() {
+                        const [messageId] = Array.from(sessionMessageRecords.keys()).slice(-1);
+                        if (!messageId) {
+                          return undefined;
+                        }
+
+                        const existingMessageRecord = sessionMessageRecords.get(messageId);
+                        if (!existingMessageRecord) {
+                          return undefined;
+                        }
+
+                        sessionMessageRecords.set(messageId, {
+                          ...existingMessageRecord,
+                          ...value,
+                        });
+                      },
+                    };
+                  },
+                };
+              }
+
+              if (table === messageContents) {
+                return {
+                  set(value: Record<string, unknown>) {
+                    return {
+                      async where() {
+                        const [messageId] = Array.from(messageContentRecordsByMessageId.keys()).slice(-1);
+                        if (!messageId) {
+                          return undefined;
+                        }
+
+                        const existingRecords = messageContentRecordsByMessageId.get(messageId) ?? [];
+                        const nextType = String(value.type ?? "");
+                        let hasUpdatedRecord = false;
+                        messageContentRecordsByMessageId.set(
+                          messageId,
+                          existingRecords.map((record) => {
+                            if (hasUpdatedRecord) {
+                              return record;
+                            }
+                            if (nextType.length > 0 && record.type !== nextType) {
+                              return record;
+                            }
+
+                            hasUpdatedRecord = true;
+                            return {
+                              ...record,
+                              ...value,
+                            };
+                          }),
+                        );
+                      },
+                    };
+                  },
+                };
+              }
+
+              throw new Error("Unexpected update table.");
+            },
+          });
+        },
+      },
       restore() {
         console.info = originalInfo;
         console.error = originalError;
@@ -54,117 +178,224 @@ class PiMonoSessionEventHandlerTestHarness {
 }
 
 test("PiMonoSessionEventHandler marks the session running on agent start", async () => {
-  const transactionProvider = PiMonoSessionEventHandlerTestHarness.createTransactionProviderMock();
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(
-    transactionProvider.transactionProvider as never,
+    harness.transactionProvider as never,
     "session-1",
   );
-
-  await handler.handle({
-    type: "agent_start",
-  });
-
-  assert.equal(transactionProvider.updates.length, 1);
-  assert.equal(transactionProvider.updates[0]?.status, "running");
-  assert.ok(transactionProvider.updates[0]?.updated_at instanceof Date);
-});
-
-test("PiMonoSessionEventHandler marks the session stopped on agent end", async () => {
-  const transactionProvider = PiMonoSessionEventHandlerTestHarness.createTransactionProviderMock();
-  const handler = new PiMonoSessionEventHandler(
-    transactionProvider.transactionProvider as never,
-    "session-1",
-  );
-
-  await handler.handle({
-    type: "agent_end",
-  });
-
-  assert.equal(transactionProvider.updates.length, 1);
-  assert.equal(transactionProvider.updates[0]?.status, "stopped");
-  assert.ok(transactionProvider.updates[0]?.updated_at instanceof Date);
-});
-
-test("PiMonoSessionEventHandler ignores user message start and logs user message end", async () => {
-  const transactionProvider = PiMonoSessionEventHandlerTestHarness.createTransactionProviderMock();
-  const handler = new PiMonoSessionEventHandler(
-    transactionProvider.transactionProvider as never,
-    "session-1",
-  );
-  const consoleCapture = PiMonoSessionEventHandlerTestHarness.captureConsole();
 
   try {
     await handler.handle({
-      type: "message_start",
-      message: {
-        role: "user",
-      },
-    });
-    await handler.handle({
-      type: "message_end",
-      message: {
-        role: "user",
-      },
+      type: "agent_start",
     });
   } finally {
-    consoleCapture.restore();
+    harness.restore();
   }
 
-  assert.equal(transactionProvider.updates.length, 0);
-  assert.equal(consoleCapture.errorLogs.length, 0);
-  assert.equal(consoleCapture.infoLogs.length, 2);
-  assert.deepEqual(
-    (consoleCapture.infoLogs[0] as unknown[])[0],
-    {
-      event: {
-        message: {
-          role: "user",
-        },
-        type: "message_start",
-      },
-      logMessage: "ignoring pi mono user message start",
-      sessionId: "session-1",
-    },
+  assert.equal(harness.sessionStatusUpdates.length, 1);
+  assert.equal(harness.sessionStatusUpdates[0]?.status, "running");
+  assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+});
+
+test("PiMonoSessionEventHandler marks the session stopped on agent end", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
   );
-  assert.deepEqual(
-    (consoleCapture.infoLogs[1] as unknown[])[0],
-    {
-      event: {
-        message: {
-          role: "user",
-        },
-        type: "message_end",
+
+  try {
+    await handler.handle({
+      type: "agent_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionStatusUpdates.length, 1);
+  assert.equal(harness.sessionStatusUpdates[0]?.status, "stopped");
+  assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+});
+
+test("PiMonoSessionEventHandler persists assistant messages across start update and end", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1000,
       },
-      logMessage: "pi mono user message completed",
-      sessionId: "session-1",
-    },
+      type: "message_start",
+    });
+    await handler.handle({
+      message: {
+        content: [
+          {
+            text: "Drafting",
+            type: "text",
+          },
+          {
+            thinking: "checking context",
+            type: "thinking",
+          },
+        ],
+        role: "assistant",
+        timestamp: 1000,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      message: {
+        content: [
+          {
+            text: "Drafting complete",
+            type: "text",
+          },
+          {
+            arguments: {
+              path: "README.md",
+            },
+            id: "tool-call-1",
+            name: "read_file",
+            type: "toolCall",
+          },
+        ],
+        role: "assistant",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.companyId, "company-1");
+  assert.equal(messageRecord?.role, "assistant");
+  assert.equal(messageRecord?.sessionId, "session-1");
+  assert.equal(messageRecord?.status, "completed");
+  assert.equal(messageRecord?.isThinking, false);
+  assert.equal(messageRecord?.thinkingText, null);
+  assert.equal(messageRecord?.toolCallId, "tool-call-1");
+  assert.equal(messageRecord?.toolName, "read_file");
+  assert.ok(messageRecord?.updatedAt instanceof Date);
+
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.equal(messageContentRecords?.length, 2);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        arguments: record.arguments,
+        text: record.text,
+        toolCallId: record.toolCallId,
+        toolName: record.toolName,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        arguments: undefined,
+        text: "Drafting complete",
+        toolCallId: undefined,
+        toolName: undefined,
+        type: "text",
+      },
+      {
+        arguments: {
+          path: "README.md",
+        },
+        text: undefined,
+        toolCallId: "tool-call-1",
+        toolName: "read_file",
+        type: "toolCall",
+      },
+    ],
+  );
+});
+
+test("PiMonoSessionEventHandler stores user messages only when message end arrives", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        role: "user",
+        timestamp: 2000,
+      },
+      type: "message_start",
+    });
+    await handler.handle({
+      message: {
+        content: "Write the launch email.",
+        role: "user",
+        timestamp: 2000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.role, "user");
+  assert.equal(messageRecord?.status, "completed");
+
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "Write the launch email.",
+        type: "text",
+      },
+    ],
   );
 });
 
 test("PiMonoSessionEventHandler error logs unhandled message roles", async () => {
-  const transactionProvider = PiMonoSessionEventHandlerTestHarness.createTransactionProviderMock();
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(
-    transactionProvider.transactionProvider as never,
+    harness.transactionProvider as never,
     "session-1",
   );
-  const consoleCapture = PiMonoSessionEventHandlerTestHarness.captureConsole();
 
   try {
     await handler.handle({
-      type: "message_end",
       message: {
         role: "custom",
       },
+      type: "message_end",
     });
   } finally {
-    consoleCapture.restore();
+    harness.restore();
   }
 
-  assert.equal(transactionProvider.updates.length, 0);
-  assert.equal(consoleCapture.infoLogs.length, 0);
-  assert.equal(consoleCapture.errorLogs.length, 1);
+  assert.equal(harness.sessionMessageRecords.size, 0);
+  assert.equal(harness.infoLogs.length, 0);
+  assert.equal(harness.errorLogs.length, 1);
   assert.deepEqual(
-    (consoleCapture.errorLogs[0] as unknown[])[0],
+    (harness.errorLogs[0] as unknown[])[0],
     {
       event: {
         message: {

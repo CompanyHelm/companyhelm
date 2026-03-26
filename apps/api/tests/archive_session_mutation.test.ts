@@ -80,7 +80,6 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
         status: "archived",
-        userMessage: "Draft the onboarding email.",
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
         updatedAt: new Date("2026-03-25T12:05:00.000Z"),
       };
@@ -97,6 +96,7 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
+    undefined,
     undefined,
     undefined,
     undefined,
@@ -124,7 +124,6 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
             modelId
             reasoningLevel
             status
-            userMessage
             createdAt
             updatedAt
           }
@@ -146,7 +145,6 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     modelId: "gpt-5.4",
     reasoningLevel: "high",
     status: "archived",
-    userMessage: "Draft the onboarding email.",
     createdAt: "2026-03-25T12:00:00.000Z",
     updatedAt: "2026-03-25T12:05:00.000Z",
   });

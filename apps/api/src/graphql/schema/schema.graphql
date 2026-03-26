@@ -4,6 +4,7 @@ type Query {
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
   Sessions: [Session!]!
+  SessionMessages: [SessionMessage!]!
   AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
@@ -86,7 +87,17 @@ type Session {
   modelId: String!
   reasoningLevel: String!
   status: String!
-  userMessage: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SessionMessage {
+  id: ID!
+  sessionId: ID!
+  role: String!
+  status: String!
+  text: String!
+  isError: Boolean!
   createdAt: String!
   updatedAt: String!
 }

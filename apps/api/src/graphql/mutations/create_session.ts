@@ -18,7 +18,6 @@ type GraphqlSessionRecord = {
   modelId: string;
   reasoningLevel: string;
   status: string;
-  userMessage: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -29,7 +28,6 @@ type ServiceSessionRecord = {
   currentModelId: string;
   currentReasoningLevel: string;
   status: string;
-  userMessage: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -83,7 +81,6 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       status: sessionRecord.status,
-      userMessage: sessionRecord.userMessage,
       createdAt: sessionRecord.createdAt.toISOString(),
       updatedAt: sessionRecord.updatedAt.toISOString(),
     };

@@ -10,7 +10,6 @@ type SessionRecord = {
   currentModelId: string;
   currentReasoningLevel: string;
   status: string;
-  userMessage: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -21,7 +20,6 @@ type GraphqlSessionRecord = {
   modelId: string;
   reasoningLevel: string;
   status: string;
-  userMessage: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -57,7 +55,6 @@ export class SessionsQueryResolver extends Resolver<GraphqlSessionRecord[]> {
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           status: agentSessions.status,
-          userMessage: agentSessions.user_message,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
         })
@@ -77,7 +74,6 @@ export class SessionsQueryResolver extends Resolver<GraphqlSessionRecord[]> {
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       status: sessionRecord.status,
-      userMessage: sessionRecord.userMessage,
       createdAt: sessionRecord.createdAt.toISOString(),
       updatedAt: sessionRecord.updatedAt.toISOString(),
     };

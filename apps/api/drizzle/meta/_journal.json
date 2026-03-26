@@ -169,6 +169,13 @@
       "when": 1774503719270,
       "tag": "0023_spotty_penance",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774504598354,
+      "tag": "0024_thin_agent_zero",
+      "breakpoints": true
     }
   ]
 }

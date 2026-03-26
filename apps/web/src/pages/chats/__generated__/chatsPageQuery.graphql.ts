@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1da516611fcd695e47c516b1d857fb4b>>
+ * @generated SignedSource<<6e16cd65d7e842357291ee05a9203f80>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,16 @@ export type chatsPageQuery$data = {
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
   }>;
+  readonly SessionMessages: ReadonlyArray<{
+    readonly createdAt: string;
+    readonly id: string;
+    readonly isError: boolean;
+    readonly role: string;
+    readonly sessionId: string;
+    readonly status: string;
+    readonly text: string;
+    readonly updatedAt: string;
+  }>;
   readonly Sessions: ReadonlyArray<{
     readonly agentId: string;
     readonly createdAt: string;
@@ -26,7 +36,6 @@ export type chatsPageQuery$data = {
     readonly reasoningLevel: string;
     readonly status: string;
     readonly updatedAt: string;
-    readonly userMessage: string;
   }>;
 };
 export type chatsPageQuery = {
@@ -49,7 +58,28 @@ v1 = {
   "name": "reasoningLevel",
   "storageKey": null
 },
-v2 = [
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "updatedAt",
+  "storageKey": null
+},
+v5 = [
   {
     "alias": null,
     "args": null,
@@ -108,34 +138,52 @@ v2 = [
         "storageKey": null
       },
       (v1/*: any*/),
+      (v2/*: any*/),
+      (v3/*: any*/),
+      (v4/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "SessionMessage",
+    "kind": "LinkedField",
+    "name": "SessionMessages",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "status",
+        "name": "sessionId",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "userMessage",
+        "name": "role",
+        "storageKey": null
+      },
+      (v2/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "text",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "createdAt",
+        "name": "isError",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "updatedAt",
-        "storageKey": null
-      }
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "storageKey": null
   }
@@ -146,7 +194,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -155,19 +203,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "fa48497888cd8ceb80ffe896e08f3a1d",
+    "cacheID": "5450e23d12b3502132a05bc4bb38ded9",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    userMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    createdAt\n    updatedAt\n  }\n  SessionMessages {\n    id\n    sessionId\n    role\n    status\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ddb9b7947ebfd719ff154a89f0299680";
+(node as any).hash = "1ec9216d55d85b4f3c69c803d9930b7a";
 
 export default node;

@@ -108,7 +108,6 @@ test("SessionManagerService createSession falls back to the agent defaults and l
                 currentModelId: "gpt-5.4",
                 currentReasoningLevel: "high",
                 status: "running",
-                userMessage: "Write the launch email.",
                 createdAt: new Date("2026-03-25T01:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T01:00:00.000Z"),
               }];
@@ -163,7 +162,6 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
   assert.equal(insertedValues[0]?.status, "running");
-  assert.equal(insertedValues[0]?.user_message, "Write the launch email.");
   assert.deepEqual(piCreateCalls, [{
     sessionId: "session-1",
     transactionProvider,
@@ -270,7 +268,6 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
                 currentModelId: "gpt-5.4-mini",
                 currentReasoningLevel: "low",
                 status: "running",
-                userMessage: "Summarize the open issues.",
                 createdAt: new Date("2026-03-25T02:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T02:00:00.000Z"),
               }];
@@ -325,7 +322,6 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
   assert.equal(insertedValues[0]?.status, "running");
-  assert.equal(insertedValues[0]?.user_message, "Summarize the open issues.");
   assert.deepEqual(piCreateCalls, [{
     sessionId: "session-2",
     transactionProvider,
@@ -360,7 +356,6 @@ test("SessionManagerService archiveSession updates the session status", async ()
                     currentModelId: "gpt-5.4",
                     currentReasoningLevel: "high",
                     status: "archived",
-                    userMessage: "Write the launch email.",
                     createdAt: new Date("2026-03-25T01:00:00.000Z"),
                     updatedAt: new Date("2026-03-25T02:00:00.000Z"),
                   }];

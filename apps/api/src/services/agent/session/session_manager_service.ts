@@ -30,7 +30,6 @@ type SessionRecord = {
   currentModelId: string;
   currentReasoningLevel: string;
   status: string;
-  userMessage: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -128,7 +127,6 @@ export class SessionManagerService {
           currentModelId: resolvedModelId,
           currentReasoningLevel: resolvedReasoningLevel,
           status: "running",
-          user_message: userMessage,
           created_at: now,
           updated_at: now,
         })
@@ -138,7 +136,6 @@ export class SessionManagerService {
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           status: agentSessions.status,
-          userMessage: agentSessions.user_message,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
         }) as SessionRecord[];
@@ -194,7 +191,6 @@ export class SessionManagerService {
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           status: agentSessions.status,
-          userMessage: agentSessions.user_message,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
         }) as SessionRecord[];

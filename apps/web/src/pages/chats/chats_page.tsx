@@ -24,7 +24,16 @@ const chatsPageQueryNode = graphql`
       modelId
       reasoningLevel
       status
-      userMessage
+      createdAt
+      updatedAt
+    }
+    SessionMessages {
+      id
+      sessionId
+      role
+      status
+      text
+      isError
       createdAt
       updatedAt
     }
@@ -39,7 +48,6 @@ const chatsPageCreateSessionMutationNode = graphql`
       modelId
       reasoningLevel
       status
-      userMessage
       createdAt
       updatedAt
     }
@@ -54,7 +62,6 @@ const chatsPageArchiveSessionMutationNode = graphql`
       modelId
       reasoningLevel
       status
-      userMessage
       createdAt
       updatedAt
     }
@@ -63,6 +70,7 @@ const chatsPageArchiveSessionMutationNode = graphql`
 
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
+type SessionMessageRecord = chatsPageQuery["response"]["SessionMessages"][number];
 
 const CHAT_LIST_MIN_WIDTH = 280;
 const CHAT_LIST_MAX_WIDTH = 520;
@@ -126,8 +134,12 @@ function formatDraftMeta(agent: Pick<AgentRecord, "modelName" | "reasoningLevel"
   return segments.length > 0 ? segments.join(" • ") : "No default model configured";
 }
 
-function formatSessionTitle(userMessage: string): string {
-  const normalizedMessage = userMessage.trim();
+function formatSessionTitle(messages: ReadonlyArray<Pick<SessionMessageRecord, "role" | "text">>): string {
+  const normalizedMessage = (
+    messages.find((message) => message.role === "user" && message.text.trim().length > 0)?.text
+    ?? messages.find((message) => message.text.trim().length > 0)?.text
+    ?? ""
+  ).trim();
   if (normalizedMessage.length === 0) {
     return "Untitled chat";
   }
@@ -190,12 +202,14 @@ function ChatsPageContent() {
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
+  const [queryRefreshKey, setQueryRefreshKey] = useState(0);
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
   const data = useLazyLoadQuery<chatsPageQuery>(
     chatsPageQueryNode,
     {},
     {
+      fetchKey: queryRefreshKey,
       fetchPolicy: "store-and-network",
     },
   );
@@ -232,6 +246,23 @@ function ChatsPageContent() {
   const sessionById = useMemo(() => {
     return new Map(activeSessions.map((session) => [session.id, session]));
   }, [activeSessions]);
+  const sessionMessagesBySessionId = useMemo(() => {
+    const nextMap = new Map<string, SessionMessageRecord[]>();
+
+    for (const message of data.SessionMessages) {
+      const existingMessages = nextMap.get(message.sessionId) ?? [];
+      existingMessages.push(message);
+      nextMap.set(message.sessionId, existingMessages);
+    }
+
+    for (const messages of nextMap.values()) {
+      messages.sort((leftMessage, rightMessage) => {
+        return new Date(leftMessage.createdAt).getTime() - new Date(rightMessage.createdAt).getTime();
+      });
+    }
+
+    return nextMap;
+  }, [data.SessionMessages]);
 
   const resolvedSelectedSession = search.sessionId ? sessionById.get(search.sessionId) ?? null : null;
   const resolvedSelectedAgentId = search.agentId ?? resolvedSelectedSession?.agentId ?? "";
@@ -239,6 +270,10 @@ function ChatsPageContent() {
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
+  const selectedSessionMessages = selectedSession ? sessionMessagesBySessionId.get(selectedSession.id) ?? [] : [];
+  const visibleSelectedSessionMessages = selectedSessionMessages.filter((message) => {
+    return message.text.trim().length > 0;
+  });
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isCreateSessionInFlight;
   const chatListPanelStyle: CSSProperties = {
     "--chats-list-width": `${chatListWidth}px`,
@@ -293,6 +328,20 @@ function ChatsPageContent() {
       window.removeEventListener("pointerup", handlePointerUp);
     };
   }, [isResizingChatList]);
+
+  useEffect(() => {
+    if (!selectedSession || !isRunningSession(selectedSession)) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setQueryRefreshKey((currentKey) => currentKey + 1);
+    }, 1500);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [selectedSession]);
 
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
@@ -368,6 +417,7 @@ function ChatsPageContent() {
           setDraftMessage("");
 
           try {
+            setQueryRefreshKey((currentKey) => currentKey + 1);
             await navigate({
               to: "/chats",
               search: {
@@ -511,7 +561,7 @@ function ChatsPageContent() {
                                     type="button"
                                   >
                                     <p className="truncate text-xs font-medium text-foreground">
-                                      {formatSessionTitle(session.userMessage)}
+                                      {formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}
                                     </p>
                                     <p className="mt-1 text-[0.7rem] text-muted-foreground">
                                       {isSessionArchiving
@@ -523,7 +573,7 @@ function ChatsPageContent() {
                                   </button>
                                   <div className="flex items-center gap-2">
                                     <button
-                                      aria-label={`Archive ${formatSessionTitle(session.userMessage)}`}
+                                      aria-label={`Archive ${formatSessionTitle(sessionMessagesBySessionId.get(session.id) ?? [])}`}
                                       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background text-muted-foreground transition hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                       disabled={isSessionArchiving}
                                       onClick={(event) => {
@@ -617,7 +667,7 @@ function ChatsPageContent() {
               <div className="max-w-xl text-center">
                 <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
                 <p className="mt-2 text-sm/relaxed text-muted-foreground">
-                  The first message creates the session and moves this page to the session URL.
+                  Sending this message creates the session and moves this page to the session URL.
                 </p>
                 <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
@@ -630,7 +680,7 @@ function ChatsPageContent() {
             <div className="border-t border-border/60 p-4 md:p-6">
               <div className="grid gap-3">
                 <label className="text-xs font-medium text-foreground" htmlFor="chat-draft-message">
-                  First message
+                  Message
                 </label>
                 <div className="flex items-end gap-3">
                   <textarea
@@ -671,9 +721,47 @@ function ChatsPageContent() {
 
         {selectedAgent && selectedSession ? (
           <CardContent className="flex flex-1 flex-col gap-6 p-6">
-            <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">First message</p>
-              <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">{selectedSession.userMessage}</p>
+            <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+              {visibleSelectedSessionMessages.length > 0 ? (
+                visibleSelectedSessionMessages.map((message) => {
+                  const isUserMessage = message.role === "user";
+                  const isToolResultMessage = message.role === "toolResult";
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                        isUserMessage
+                          ? "ml-auto bg-primary text-primary-foreground"
+                          : isToolResultMessage
+                            ? "mr-auto border border-border/60 bg-background"
+                            : "mr-auto bg-muted/50 text-foreground"
+                      }`}
+                    >
+                      <p className={`text-[0.7rem] font-semibold uppercase tracking-[0.18em] ${
+                        isUserMessage ? "text-primary-foreground/70" : "text-muted-foreground"
+                      }`}
+                      >
+                        {message.role}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{message.text}</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {isRunningSession(selectedSession) ? "Waiting for transcript..." : "No messages yet"}
+                    </p>
+                    <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                      {isRunningSession(selectedSession)
+                        ? "The session has started, but the transcript has not been persisted yet."
+                        : "This session does not have any persisted transcript messages yet."}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

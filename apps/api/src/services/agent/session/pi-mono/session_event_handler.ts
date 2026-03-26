@@ -1,6 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { agentSessions } from "../../../../db/schema.ts";
+import { agentSessions, messageContents, sessionMessages } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+
+type InsertableDatabase = {
+  insert(table: unknown): {
+    values(value: Record<string, unknown> | Array<Record<string, unknown>>): Promise<unknown>;
+  };
+};
 
 type UpdatableDatabase = {
   update(table: unknown): {
@@ -10,11 +17,44 @@ type UpdatableDatabase = {
   };
 };
 
+type TextContent = {
+  type?: string;
+  text?: string;
+};
+
+type ImageContent = {
+  type?: string;
+  data?: string;
+  mimeType?: string;
+};
+
+type ThinkingContent = {
+  type?: string;
+  thinking?: string;
+};
+
+type ToolCallContent = {
+  type?: string;
+  arguments?: unknown;
+  id?: string;
+  name?: string;
+};
+
+type MessageContent = TextContent | ImageContent | ThinkingContent | ToolCallContent;
+
 type SessionMessage = {
+  content?: string | MessageContent[];
+  errorMessage?: string;
+  isError?: boolean;
   role?: string;
+  stopReason?: string;
+  timestamp?: number;
+  toolCallId?: string;
+  toolName?: string;
 };
 
 type SessionEvent = {
+  isError?: boolean;
   type?: string;
   args?: unknown;
   message?: SessionMessage;
@@ -33,6 +73,10 @@ type SessionEvent = {
 export class PiMonoSessionEventHandler {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
+  private readonly messageIdByEventKey = new Map<string, string>();
+  private readonly contentIdsByMessageId = new Map<string, string[]>();
+  private readonly persistedMessageIds = new Set<string>();
+  private companyId?: string;
 
   constructor(transactionProvider: TransactionProviderInterface, sessionId: string) {
     this.transactionProvider = transactionProvider;
@@ -55,13 +99,13 @@ export class PiMonoSessionEventHandler {
         this.logInfo("pi mono turn ended", sessionEvent);
         return;
       case "message_start":
-        this.handleMessageStart(sessionEvent);
+        await this.handleMessageStart(sessionEvent);
         return;
       case "message_update":
-        this.handleMessageUpdate(sessionEvent);
+        await this.handleMessageUpdate(sessionEvent);
         return;
       case "message_end":
-        this.handleMessageEnd(sessionEvent);
+        await this.handleMessageEnd(sessionEvent);
         return;
       case "tool_execution_start":
         this.logInfo("pi mono tool execution started", sessionEvent);
@@ -100,15 +144,17 @@ export class PiMonoSessionEventHandler {
     await this.updateSessionStatus("stopped");
   }
 
-  private handleMessageStart(sessionEvent: SessionEvent): void {
+  private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
     switch (sessionEvent.message?.role) {
       case "user":
         this.logInfo("ignoring pi mono user message start", sessionEvent);
         return;
       case "assistant":
+        await this.upsertSessionMessage("running", sessionEvent);
         this.logInfo("pi mono assistant message started", sessionEvent);
         return;
       case "toolResult":
+        await this.upsertSessionMessage("running", sessionEvent);
         this.logInfo("pi mono tool result message started", sessionEvent);
         return;
       default:
@@ -116,8 +162,9 @@ export class PiMonoSessionEventHandler {
     }
   }
 
-  private handleMessageUpdate(sessionEvent: SessionEvent): void {
+  private async handleMessageUpdate(sessionEvent: SessionEvent): Promise<void> {
     if (sessionEvent.message?.role === "assistant") {
+      await this.upsertSessionMessage("running", sessionEvent);
       this.logInfo("pi mono assistant message updated", sessionEvent);
       return;
     }
@@ -125,20 +172,329 @@ export class PiMonoSessionEventHandler {
     this.logError("unhandled pi mono message_update event", sessionEvent);
   }
 
-  private handleMessageEnd(sessionEvent: SessionEvent): void {
+  private async handleMessageEnd(sessionEvent: SessionEvent): Promise<void> {
     switch (sessionEvent.message?.role) {
       case "user":
+        await this.upsertSessionMessage("completed", sessionEvent);
         this.logInfo("pi mono user message completed", sessionEvent);
         return;
       case "assistant":
+        await this.upsertSessionMessage("completed", sessionEvent);
         this.logInfo("pi mono assistant message completed", sessionEvent);
         return;
       case "toolResult":
+        await this.upsertSessionMessage("completed", sessionEvent);
         this.logInfo("pi mono tool result message completed", sessionEvent);
         return;
       default:
         this.logError("unhandled pi mono message_end event", sessionEvent);
     }
+  }
+
+  private async upsertSessionMessage(
+    status: "running" | "completed",
+    sessionEvent: SessionEvent,
+  ): Promise<void> {
+    const eventMessage = sessionEvent.message;
+    if (!eventMessage?.role) {
+      this.logError("cannot persist pi mono message without role", sessionEvent);
+      return;
+    }
+
+    const messageId = await this.resolveMessageId(sessionEvent);
+    const timestamp = this.resolveMessageTimestamp(eventMessage.timestamp);
+    const companyId = await this.resolveCompanyId();
+    const messageRecord = this.buildSessionMessageRecord(
+      companyId,
+      messageId,
+      status,
+      eventMessage,
+      timestamp,
+    );
+
+    await this.transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+
+      if (this.persistedMessageIds.has(messageId)) {
+        await updatableDatabase
+          .update(sessionMessages)
+          .set({
+            isError: messageRecord.isError,
+            isThinking: messageRecord.isThinking,
+            thinkingText: messageRecord.thinkingText,
+            status: messageRecord.status,
+            toolCallId: messageRecord.toolCallId,
+            toolName: messageRecord.toolName,
+            updatedAt: messageRecord.updatedAt,
+          })
+          .where(eq(sessionMessages.id, messageId));
+      } else {
+        await insertableDatabase.insert(sessionMessages).values(messageRecord);
+        this.persistedMessageIds.add(messageId);
+      }
+    });
+
+    await this.upsertMessageContents(companyId, messageId, eventMessage, timestamp);
+
+    if (status === "completed") {
+      this.messageIdByEventKey.delete(this.createEventKey(eventMessage));
+      this.contentIdsByMessageId.delete(messageId);
+      this.persistedMessageIds.delete(messageId);
+    }
+  }
+
+  private async upsertMessageContents(
+    companyId: string,
+    messageId: string,
+    message: SessionMessage,
+    timestamp: Date,
+  ): Promise<void> {
+    const contentRecords = this.buildMessageContentRecords(companyId, messageId, message, timestamp);
+    if (contentRecords.length === 0) {
+      return;
+    }
+
+    await this.transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const trackedContentIds = [...(this.contentIdsByMessageId.get(messageId) ?? [])];
+
+      for (const [contentIndex, contentRecord] of contentRecords.entries()) {
+        const existingContentId = trackedContentIds[contentIndex];
+        if (existingContentId) {
+          await updatableDatabase
+            .update(messageContents)
+            .set({
+              arguments: contentRecord.arguments,
+              data: contentRecord.data,
+              mimeType: contentRecord.mimeType,
+              text: contentRecord.text,
+              toolCallId: contentRecord.toolCallId,
+              toolName: contentRecord.toolName,
+              type: contentRecord.type,
+              updatedAt: contentRecord.updatedAt,
+            })
+            .where(eq(messageContents.id, existingContentId));
+          continue;
+        }
+
+        await insertableDatabase.insert(messageContents).values(contentRecord);
+        trackedContentIds.push(String(contentRecord.id));
+      }
+
+      this.contentIdsByMessageId.set(messageId, trackedContentIds);
+    });
+  }
+
+  private buildSessionMessageRecord(
+    companyId: string,
+    messageId: string,
+    status: "running" | "completed",
+    message: SessionMessage,
+    timestamp: Date,
+  ): Record<string, unknown> {
+    const thinkingText = this.extractThinkingText(message);
+
+    return {
+      companyId,
+      createdAt: timestamp,
+      id: messageId,
+      isError: this.resolveIsError(message),
+      isThinking: thinkingText.length > 0,
+      role: message.role,
+      sessionId: this.sessionId,
+      status,
+      thinkingText: thinkingText.length > 0 ? thinkingText : null,
+      toolCallId: this.resolveMessageToolCallId(message),
+      toolName: this.resolveMessageToolName(message),
+      updatedAt: timestamp,
+    };
+  }
+
+  private buildMessageContentRecords(
+    companyId: string,
+    messageId: string,
+    message: SessionMessage,
+    timestamp: Date,
+  ): Array<Record<string, unknown>> {
+    const messageContent = this.normalizeMessageContent(message.content);
+
+    return messageContent
+      .flatMap((contentBlock) => {
+        if (contentBlock.type === "text") {
+          return [{
+            companyId,
+            createdAt: timestamp,
+            id: randomUUID(),
+            messageId,
+            text: contentBlock.text,
+            type: "text",
+            updatedAt: timestamp,
+          }];
+        }
+
+        if (contentBlock.type === "image") {
+          return [{
+            companyId,
+            createdAt: timestamp,
+            data: contentBlock.data,
+            id: randomUUID(),
+            messageId,
+            mimeType: contentBlock.mimeType,
+            type: "image",
+            updatedAt: timestamp,
+          }];
+        }
+
+        if (contentBlock.type === "toolCall") {
+          return [{
+            arguments: contentBlock.arguments,
+            companyId,
+            createdAt: timestamp,
+            id: randomUUID(),
+            messageId,
+            toolCallId: contentBlock.id,
+            toolName: contentBlock.name,
+            type: "toolCall",
+            updatedAt: timestamp,
+          }];
+        }
+
+        return [];
+      });
+  }
+
+  private extractThinkingText(message: SessionMessage): string {
+    return this.normalizeMessageContent(message.content)
+      .flatMap((contentBlock) => {
+        if (contentBlock.type !== "thinking") {
+          return [];
+        }
+
+        return [contentBlock.thinking ?? ""];
+      })
+      .join("\n");
+  }
+
+  private normalizeMessageContent(content: SessionMessage["content"]): MessageContent[] {
+    if (typeof content === "string") {
+      return [{
+        text: content,
+        type: "text",
+      }];
+    }
+
+    if (Array.isArray(content)) {
+      return content;
+    }
+
+    return [];
+  }
+
+  private resolveIsError(message: SessionMessage): boolean {
+    if (message.role === "toolResult") {
+      return message.isError === true;
+    }
+
+    return message.stopReason === "error" || message.stopReason === "aborted" || typeof message.errorMessage === "string";
+  }
+
+  private resolveMessageToolCallId(message: SessionMessage): string | null {
+    if (message.role === "toolResult") {
+      return message.toolCallId ?? null;
+    }
+
+    const [toolCallContent] = this.normalizeMessageContent(message.content).filter((contentBlock) => {
+      return contentBlock.type === "toolCall";
+    });
+
+    if (toolCallContent?.type === "toolCall") {
+      return toolCallContent.id ?? null;
+    }
+
+    return null;
+  }
+
+  private resolveMessageToolName(message: SessionMessage): string | null {
+    if (message.role === "toolResult") {
+      return message.toolName ?? null;
+    }
+
+    const [toolCallContent] = this.normalizeMessageContent(message.content).filter((contentBlock) => {
+      return contentBlock.type === "toolCall";
+    });
+
+    if (toolCallContent?.type === "toolCall") {
+      return toolCallContent.name ?? null;
+    }
+
+    return null;
+  }
+
+  private resolveMessageTimestamp(timestamp?: number): Date {
+    if (typeof timestamp === "number") {
+      return new Date(timestamp);
+    }
+
+    return new Date();
+  }
+
+  private async resolveCompanyId(): Promise<string> {
+    if (this.companyId) {
+      return this.companyId;
+    }
+
+    const companyId = await this.transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as {
+        select(selection: Record<string, unknown>): {
+          from(table: unknown): {
+            where(condition: unknown): Promise<Array<Record<string, unknown>>>;
+          };
+        };
+      };
+      const [sessionRecord] = await selectableDatabase
+        .select({
+          companyId: agentSessions.companyId,
+        })
+        .from(agentSessions)
+        .where(eq(agentSessions.id, this.sessionId));
+
+      return sessionRecord?.companyId;
+    });
+
+    if (typeof companyId !== "string") {
+      throw new Error("Session company not found.");
+    }
+
+    this.companyId = companyId;
+    return companyId;
+  }
+
+  private async resolveMessageId(sessionEvent: SessionEvent): Promise<string> {
+    const eventMessage = sessionEvent.message;
+    if (!eventMessage?.role) {
+      throw new Error("Message role is required.");
+    }
+
+    const eventKey = this.createEventKey(eventMessage);
+    const existingMessageId = this.messageIdByEventKey.get(eventKey);
+    if (existingMessageId) {
+      return existingMessageId;
+    }
+
+    const messageId = randomUUID();
+    this.messageIdByEventKey.set(eventKey, messageId);
+    return messageId;
+  }
+
+  private createEventKey(message: SessionMessage): string {
+    return [
+      message.role ?? "unknown",
+      typeof message.timestamp === "number" ? String(message.timestamp) : "no-timestamp",
+      message.toolCallId ?? "",
+      message.toolName ?? "",
+    ].join(":");
   }
 
   private logInfo(logMessage: string, event: SessionEvent): void {

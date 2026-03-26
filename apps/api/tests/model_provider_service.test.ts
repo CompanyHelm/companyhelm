@@ -11,17 +11,17 @@ test("ModelProviderService returns provider metadata for API key providers", () 
 
   assert.deepEqual(service.get("openai"), {
     id: "openai",
-    name: "OpenAI API Key",
+    name: "OpenAI",
     type: ModelProviderAuthorizationType.ApiKey,
     authorizationInstructionsMarkdown:
-      "Create an API key in the [OpenAI Platform](https://platform.openai.com/api-keys).",
+      "Create an API key in the [OpenAI API quickstart](https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key).",
   });
   assert.deepEqual(service.get("anthropic"), {
     id: "anthropic",
     name: "Anthropic",
     type: ModelProviderAuthorizationType.ApiKey,
     authorizationInstructionsMarkdown:
-      "Create an API key in the [Anthropic Platform](https://platform.claude.com/settings/keys).",
+      "Create an API key in the [Anthropic API getting started guide](https://docs.anthropic.com/en/api/getting-started).",
   });
 });
 
@@ -30,14 +30,13 @@ test("ModelProviderService returns oauth instructions for openai-codex", () => {
 
   assert.deepEqual(service.get("openai-codex"), {
     id: "openai-codex",
-    name: "OpenAI Codex OAuth",
+    name: "OpenAI Codex",
     type: ModelProviderAuthorizationType.Oauth,
     authorizationInstructionsMarkdown: [
       "run this command",
       "```",
-      "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy",
+      "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json and paste below",
       "```",
-      "Paste the full auth JSON file below.",
     ].join("\n"),
   });
 });

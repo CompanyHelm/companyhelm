@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7c6cff7c9efbc53d0fc0f83e64da28b7>>
+ * @generated SignedSource<<69e5a32474f0add52a7cd0a3abf753e3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,7 +24,6 @@ export type chatsPageArchiveSessionMutation$data = {
     readonly reasoningLevel: string;
     readonly status: string;
     readonly updatedAt: string;
-    readonly userMessage: string;
   };
 };
 export type chatsPageArchiveSessionMutation = {
@@ -94,13 +93,6 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "userMessage",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -133,16 +125,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "61a771cbf9bcddac26c5fc0aafbda639",
+    "cacheID": "44e837de962f421031300b82006a4a2a",
     "id": null,
     "metadata": {},
     "name": "chatsPageArchiveSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    userMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "65702d73db31b9ed0bf9db0552e55271";
+(node as any).hash = "249d5d11225fa221702f221f881aa01b";
 
 export default node;
