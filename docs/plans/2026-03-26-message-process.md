@@ -98,16 +98,8 @@ Chosen policy for processed queued rows:
 - keep only live queue state in `sessionQueuedMessages`
 - delete processed rows instead of persisting `completed` / `failed` terminal states
 
-Because ownership is session-scoped, lease metadata belongs on `agentSessions`, not on individual
-queued rows. The current `agentSessions` table does not yet have lease columns, so if you want
-durable lease visibility beyond Redis, add them there instead:
-
-- `leaseOwner`
-- `leaseExpiresAt`
-- optionally `leasedAt`
-
-If you keep the lease purely in Redis, then no additional queued-message fields are needed for
-ownership tracking.
+Lease ownership stays entirely in Redis. `sessionQueuedMessages` and `agentSessions` do not need
+lease metadata columns for this design.
 
 Also add a new `queued` value to `agent_sessions.status`.
 
