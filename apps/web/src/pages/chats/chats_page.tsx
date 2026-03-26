@@ -250,7 +250,7 @@ function upsertRootLinkedRecord(
 function ChatsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
-      <Card className="rounded-2xl border-0 bg-transparent shadow-none lg:w-[22rem] lg:shrink-0">
+      <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
         <CardHeader>
           <CardTitle>Chats</CardTitle>
           <CardDescription>Loading agents and sessions…</CardDescription>
@@ -262,7 +262,7 @@ function ChatsPageFallback() {
         </CardContent>
       </Card>
 
-      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none">
+      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
         <CardHeader>
           <CardTitle>Chat</CardTitle>
           <CardDescription>Loading selected chat…</CardDescription>
@@ -732,7 +732,7 @@ function ChatsPageContent() {
         className="relative w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
         style={chatListPanelStyle}
       >
-        <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none">
+        <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
           <CardHeader>
             <CardTitle>Chats</CardTitle>
             <CardDescription>Select an agent, start a new chat, or reopen an existing session.</CardDescription>
@@ -875,7 +875,7 @@ function ChatsPageContent() {
         </button>
       </div>
 
-      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none">
+      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
         <CardHeader>
           <div className="flex flex-col gap-1">
             <CardTitle>{selectedAgent ? selectedAgent.name : "Chat"}</CardTitle>
