@@ -2,8 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { ApiLogger } from "../../../log/api_logger.ts";
-import { agents, agentSessions, modelProviderCredentialModels } from "../../../db/schema.ts";
+import { agents, agentSessions, modelProviderCredentialModels, modelProviderCredentials } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
+import { PiAgentSessionManagerService } from "./pi_agent_session_manager_service.ts";
 
 type AgentRecord = {
   id: string;
@@ -14,6 +15,13 @@ type AgentRecord = {
 type ModelRecord = {
   id: string;
   modelId: string;
+  modelProviderCredentialId: string;
+};
+
+type CredentialRecord = {
+  id: string;
+  modelProvider: string;
+  encryptedApiKey: string;
 };
 
 type SessionRecord = {
@@ -61,11 +69,16 @@ type UpdatableDatabase = {
 @injectable()
 export class SessionManagerService {
   private readonly logger: PinoLogger;
+  private readonly piAgentSessionManagerService: PiAgentSessionManagerService;
 
-  constructor(@inject(ApiLogger) logger: ApiLogger) {
+  constructor(
+    @inject(ApiLogger) logger: ApiLogger,
+    @inject(PiAgentSessionManagerService) piAgentSessionManagerService: PiAgentSessionManagerService,
+  ) {
     this.logger = logger.child({
       component: "session_manager_service",
     });
+    this.piAgentSessionManagerService = piAgentSessionManagerService;
   }
 
   async createSession(
@@ -94,13 +107,18 @@ export class SessionManagerService {
         throw new Error("Agent not found.");
       }
 
-      const resolvedModelId = await this.resolveModelId(
+      const defaultModelRecord = await this.resolveDefaultModelRecord(
         selectableDatabase,
         companyId,
         agentRecord,
-        modelId,
       );
+      const resolvedModelId = this.resolveModelId(defaultModelRecord, modelId);
       const resolvedReasoningLevel = this.resolveReasoningLevel(agentRecord, reasoningLevel);
+      const credentialRecord = await this.resolveCredentialRecord(
+        selectableDatabase,
+        companyId,
+        defaultModelRecord.modelProviderCredentialId,
+      );
       const now = new Date();
       const [sessionRecord] = await insertableDatabase
         .insert(agentSessions)
@@ -127,6 +145,12 @@ export class SessionManagerService {
       if (!sessionRecord) {
         throw new Error("Failed to create session.");
       }
+
+      await this.piAgentSessionManagerService.create(
+        sessionRecord.id,
+        credentialRecord.encryptedApiKey,
+        credentialRecord.modelProvider,
+      );
 
       this.logger.info({
         agentId,
@@ -197,15 +221,11 @@ export class SessionManagerService {
     }, "prompt requested for agent session");
   }
 
-  private async resolveModelId(
+  private async resolveDefaultModelRecord(
     selectableDatabase: SelectableDatabase,
     companyId: string,
     agentRecord: AgentRecord,
-    modelId?: string | null,
-  ): Promise<string> {
-    if (modelId) {
-      return modelId;
-    }
+  ): Promise<ModelRecord> {
     if (!agentRecord.defaultModelProviderCredentialModelId) {
       throw new Error("Agent default model is required.");
     }
@@ -214,6 +234,7 @@ export class SessionManagerService {
       .select({
         id: modelProviderCredentialModels.id,
         modelId: modelProviderCredentialModels.modelId,
+        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
       })
       .from(modelProviderCredentialModels)
       .where(and(
@@ -224,7 +245,38 @@ export class SessionManagerService {
       throw new Error("Agent default model not found.");
     }
 
-    return modelRecord.modelId;
+    return modelRecord;
+  }
+
+  private resolveModelId(defaultModelRecord: ModelRecord, modelId?: string | null): string {
+    if (modelId) {
+      return modelId;
+    }
+
+    return defaultModelRecord.modelId;
+  }
+
+  private async resolveCredentialRecord(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    modelProviderCredentialId: string,
+  ): Promise<CredentialRecord> {
+    const [credentialRecord] = await selectableDatabase
+      .select({
+        id: modelProviderCredentials.id,
+        modelProvider: modelProviderCredentials.modelProvider,
+        encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.id, modelProviderCredentialId),
+      )) as CredentialRecord[];
+    if (!credentialRecord) {
+      throw new Error("Agent model provider credential not found.");
+    }
+
+    return credentialRecord;
   }
 
   private resolveReasoningLevel(

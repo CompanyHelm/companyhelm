@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { PiAgentSessionManagerService } from "../src/services/agent/session/pi_agent_session_manager_service.ts";
 import { SessionManagerService } from "../src/services/agent/session/session_manager_service.ts";
 
 class SessionManagerServiceTestHarness {
@@ -32,6 +33,7 @@ class SessionManagerServiceTestHarness {
 test("SessionManagerService createSession falls back to the agent defaults and logs creation", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
+  const piCreateCalls: Array<{ sessionId: string; apiKey: string; providerId: string }> = [];
   let selectCallCount = 0;
   const transaction = {
     select() {
@@ -60,6 +62,23 @@ test("SessionManagerService createSession falls back to the agent defaults and l
                 return [{
                   id: "model-row-1",
                   modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "credential-1",
+                  modelProvider: "openai",
+                  encryptedApiKey: "sk-openai",
                 }];
               },
             };
@@ -91,7 +110,19 @@ test("SessionManagerService createSession falls back to the agent defaults and l
       };
     },
   };
-  const service = new SessionManagerService(SessionManagerServiceTestHarness.createLoggerMock(logs) as never);
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async create(sessionId: string, apiKey: string, providerId: string) {
+        piCreateCalls.push({
+          sessionId,
+          apiKey,
+          providerId,
+        });
+        return {} as never;
+      },
+    } as PiAgentSessionManagerService,
+  );
 
   const sessionId = await service.createSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -108,6 +139,11 @@ test("SessionManagerService createSession falls back to the agent defaults and l
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
   assert.equal(insertedValues[0]?.status, "running");
   assert.equal(insertedValues[0]?.user_message, "Write the launch email.");
+  assert.deepEqual(piCreateCalls, [{
+    sessionId: "session-1",
+    apiKey: "sk-openai",
+    providerId: "openai",
+  }]);
   assert.equal(logs.length, 1);
   assert.deepEqual(logs[0], {
     bindings: {
@@ -127,21 +163,60 @@ test("SessionManagerService createSession falls back to the agent defaults and l
 test("SessionManagerService createSession prefers explicit model and reasoning values", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const insertedValues: Array<Record<string, unknown>> = [];
+  const piCreateCalls: Array<{ sessionId: string; apiKey: string; providerId: string }> = [];
+  let selectCallCount = 0;
   const transaction = {
     select() {
-      return {
-        from() {
-          return {
-            async where() {
-              return [{
-                id: "agent-1",
-                defaultModelProviderCredentialModelId: "model-row-1",
-                defaultReasoningLevel: "medium",
-              }];
-            },
-          };
-        },
-      };
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "agent-1",
+                  defaultModelProviderCredentialModelId: "model-row-1",
+                  defaultReasoningLevel: "medium",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-2",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "credential-2",
+                  modelProvider: "openai-codex",
+                  encryptedApiKey: "oauth-access-token",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
     },
     insert() {
       return {
@@ -165,7 +240,19 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
       };
     },
   };
-  const service = new SessionManagerService(SessionManagerServiceTestHarness.createLoggerMock(logs) as never);
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async create(sessionId: string, apiKey: string, providerId: string) {
+        piCreateCalls.push({
+          sessionId,
+          apiKey,
+          providerId,
+        });
+        return {} as never;
+      },
+    } as PiAgentSessionManagerService,
+  );
 
   const sessionId = await service.createSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -182,6 +269,11 @@ test("SessionManagerService createSession prefers explicit model and reasoning v
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
   assert.equal(insertedValues[0]?.status, "running");
   assert.equal(insertedValues[0]?.user_message, "Summarize the open issues.");
+  assert.deepEqual(piCreateCalls, [{
+    sessionId: "session-2",
+    apiKey: "oauth-access-token",
+    providerId: "openai-codex",
+  }]);
   assert.equal(logs[0]?.payload?.modelId, "gpt-5.4-mini");
   assert.equal(logs[0]?.payload?.reasoningLevel, "low");
 });
@@ -216,7 +308,14 @@ test("SessionManagerService archiveSession updates the session status", async ()
       };
     },
   };
-  const service = new SessionManagerService(SessionManagerServiceTestHarness.createLoggerMock(logs) as never);
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async create() {
+        throw new Error("Pi create should not be called while archiving.");
+      },
+    } as PiAgentSessionManagerService,
+  );
 
   const sessionRecord = await service.archiveSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -241,7 +340,14 @@ test("SessionManagerService archiveSession updates the session status", async ()
 
 test("SessionManagerService prompt logs the session request", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
-  const service = new SessionManagerService(SessionManagerServiceTestHarness.createLoggerMock(logs) as never);
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async create() {
+        throw new Error("Pi create should not be called while prompting.");
+      },
+    } as PiAgentSessionManagerService,
+  );
 
   await service.prompt(
     SessionManagerServiceTestHarness.createTransactionProviderMock({}) as never,

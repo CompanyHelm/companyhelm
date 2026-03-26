@@ -36,10 +36,6 @@ export class PiAgentSessionManagerService {
       sessionManager,
     });
 
-    session.subscribe((event) => {
-      console.log(event);
-    });
-
     this.sessionsById.set(sessionId, session);
     return session;
   }
