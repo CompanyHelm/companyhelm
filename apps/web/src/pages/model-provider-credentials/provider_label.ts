@@ -1,6 +1,10 @@
 export function formatProviderLabel(value: string): string {
   if (value === "openai") {
-    return "OpenAI / Codex";
+    return "OpenAI";
+  }
+
+  if (value === "openai-codex") {
+    return "OpenAI Codex";
   }
 
   if (value === "anthropic") {

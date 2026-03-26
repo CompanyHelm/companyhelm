@@ -1,14 +1,21 @@
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  ModelProviderAuthorizationType,
+  ModelProviderService,
+} from "../../services/ai_providers/model_provider_service.js";
 import { ModelService, type ModelProviderModel } from "../../services/ai_providers/model_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type AddModelProviderCredentialMutationArguments = {
   input: {
-    apiKey: string;
+    accessToken?: string | null;
+    accessTokenExpiresAtMilliseconds?: string | null;
+    apiKey?: string | null;
     name?: string | null;
     modelProvider: string;
+    refreshToken?: string | null;
   };
 };
 
@@ -16,8 +23,8 @@ type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   name: string;
-  modelProvider: "openai" | "anthropic";
-  type: "api_key";
+  modelProvider: string;
+  type: "api_key" | "oauth_token";
   refreshToken: string | null;
   refreshedAt: Date | null;
   createdAt: Date;
@@ -28,8 +35,8 @@ type GraphqlModelProviderCredentialRecord = {
   id: string;
   companyId: string;
   name: string;
-  modelProvider: "openai" | "anthropic";
-  type: "api_key";
+  modelProvider: string;
+  type: "api_key" | "oauth_token";
   refreshToken: string | null;
   refreshedAt: string | null;
   createdAt: string;
@@ -53,27 +60,27 @@ export class AddModelProviderCredentialMutation extends Mutation<
   GraphqlModelProviderCredentialRecord
 > {
   private readonly modelManager: ModelService;
+  private readonly modelProviderService: ModelProviderService;
 
-  constructor(@inject(ModelService) modelManager: ModelService) {
+  constructor(
+    @inject(ModelService) modelManager: ModelService,
+    @inject(ModelProviderService) modelProviderService: ModelProviderService = new ModelProviderService(),
+  ) {
     super();
     this.modelManager = modelManager;
+    this.modelProviderService = modelProviderService;
   }
 
   protected resolve = async (
     arguments_: AddModelProviderCredentialMutationArguments,
     context: GraphqlRequestContext,
   ) => {
-    const modelProvider = AddModelProviderCredentialMutation.normalizeModelProvider(
-      arguments_.input.modelProvider,
-    );
+    const modelProvider = String(arguments_.input.modelProvider || "").trim();
+    const providerDefinition = this.modelProviderService.get(modelProvider);
     const credentialName = AddModelProviderCredentialMutation.resolveCredentialName(
       arguments_.input.name,
-      modelProvider,
+      providerDefinition,
     );
-    const normalizedApiKey = String(arguments_.input.apiKey || "").trim();
-    if (!normalizedApiKey) {
-      throw new Error("apiKey is required.");
-    }
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -81,7 +88,11 @@ export class AddModelProviderCredentialMutation extends Mutation<
       throw new Error("Authentication required.");
     }
 
-    const models = await this.modelManager.fetchModels(modelProvider, normalizedApiKey);
+    const credentialPayload = AddModelProviderCredentialMutation.resolveCredentialPayload(
+      arguments_.input,
+      providerDefinition.type,
+    );
+    const models = await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken);
     const now = new Date();
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
@@ -91,10 +102,11 @@ export class AddModelProviderCredentialMutation extends Mutation<
           companyId: context.authSession.company.id,
           name: credentialName,
           modelProvider,
-          type: "api_key",
-          encryptedApiKey: normalizedApiKey,
-          refreshToken: null,
-          refreshedAt: null,
+          type: credentialPayload.type,
+          encryptedApiKey: credentialPayload.accessToken,
+          refreshToken: credentialPayload.refreshToken,
+          accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
+          refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
           createdAt: now,
           updatedAt: now,
         })
@@ -150,32 +162,66 @@ export class AddModelProviderCredentialMutation extends Mutation<
     };
   }
 
-  private static normalizeModelProvider(rawModelProvider: string): "openai" | "anthropic" {
-    const normalizedModelProvider = String(rawModelProvider || "").trim();
-    if (normalizedModelProvider !== "openai" && normalizedModelProvider !== "anthropic") {
-      throw new Error("Unsupported model provider.");
+  private static resolveCredentialPayload(
+    input: AddModelProviderCredentialMutationArguments["input"],
+    authorizationType: ModelProviderAuthorizationType,
+  ): {
+    accessToken: string;
+    accessTokenExpiresAt: Date | null;
+    refreshToken: string | null;
+    type: "api_key" | "oauth_token";
+  } {
+    if (authorizationType === ModelProviderAuthorizationType.ApiKey) {
+      const normalizedApiKey = String(input.apiKey || "").trim();
+      if (!normalizedApiKey) {
+        throw new Error("apiKey is required.");
+      }
+
+      return {
+        accessToken: normalizedApiKey,
+        accessTokenExpiresAt: null,
+        refreshToken: null,
+        type: "api_key",
+      };
     }
-    return normalizedModelProvider;
+
+    if (authorizationType === ModelProviderAuthorizationType.Oauth) {
+      const normalizedAccessToken = String(input.accessToken || "").trim();
+      if (!normalizedAccessToken) {
+        throw new Error("accessToken is required.");
+      }
+
+      const normalizedRefreshToken = String(input.refreshToken || "").trim();
+      if (!normalizedRefreshToken) {
+        throw new Error("refreshToken is required.");
+      }
+
+      const expiresAtMilliseconds = Number(String(input.accessTokenExpiresAtMilliseconds || "").trim());
+      if (!Number.isFinite(expiresAtMilliseconds) || expiresAtMilliseconds <= 0) {
+        throw new Error("accessTokenExpiresAtMilliseconds must be a valid Unix timestamp in milliseconds.");
+      }
+
+      return {
+        accessToken: normalizedAccessToken,
+        accessTokenExpiresAt: new Date(expiresAtMilliseconds),
+        refreshToken: normalizedRefreshToken,
+        type: "oauth_token",
+      };
+    }
+
+    throw new Error("Unsupported authorization type.");
   }
 
   private static resolveCredentialName(
     rawCredentialName: string | null | undefined,
-    modelProvider: "openai" | "anthropic",
+    providerDefinition: { name: string },
   ): string {
     const normalizedCredentialName = String(rawCredentialName || "").trim();
     if (normalizedCredentialName) {
       return normalizedCredentialName;
     }
 
-    if (modelProvider === "openai") {
-      return "OpenAI / Codex";
-    }
-
-    if (modelProvider === "anthropic") {
-      return "Anthropic";
-    }
-
-    throw new Error("Unsupported model provider.");
+    return providerDefinition.name;
   }
 
   private static serializeRecord(

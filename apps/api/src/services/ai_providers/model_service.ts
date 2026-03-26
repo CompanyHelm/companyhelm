@@ -56,7 +56,8 @@ export class ModelService {
 
   constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry) {
     this.providerAdapters = new Map<string, ModelAdapterInterface>([
-      ["openai", new OpenAiModelAdapter(modelRegistry)],
+      ["openai", new OpenAiModelAdapter(modelRegistry, "openai")],
+      ["openai-codex", new OpenAiModelAdapter(modelRegistry, "openai-codex", "openai")],
       ["anthropic", new AnthropicModelAdapter(modelRegistry)],
     ]);
   }

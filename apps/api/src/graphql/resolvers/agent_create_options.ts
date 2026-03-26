@@ -2,12 +2,13 @@ import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
+import { ModelProviderService } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
 type CredentialRecord = {
   id: string;
-  modelProvider: "openai" | "anthropic";
+  modelProvider: string;
   name: string;
 };
 
@@ -31,7 +32,7 @@ type GraphqlAgentCreateModelOption = {
 type GraphqlAgentCreateProviderOption = {
   id: string;
   label: string;
-  modelProvider: "openai" | "anthropic";
+  modelProvider: string;
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   models: GraphqlAgentCreateModelOption[];
@@ -52,10 +53,15 @@ type SelectableDatabase = {
 @injectable()
 export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreateProviderOption[]> {
   private readonly modelRegistry: ModelRegistry;
+  private readonly modelProviderService: ModelProviderService;
 
-  constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry()) {
+  constructor(
+    @inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry(),
+    @inject(ModelProviderService) modelProviderService: ModelProviderService = new ModelProviderService(),
+  ) {
     super();
     this.modelRegistry = modelRegistry;
+    this.modelProviderService = modelProviderService;
   }
 
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlAgentCreateProviderOption[]> => {
@@ -103,7 +109,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
 
           return {
             id: credentialRecord.id,
-            label: AgentCreateOptionsQueryResolver.resolveProviderLabel(credentialRecord),
+            label: this.resolveProviderLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
             defaultModelId: this.modelRegistry.getDefaultModelForProvider(credentialRecord.modelProvider),
             defaultReasoningLevel: this.modelRegistry.getDefaultReasoningLevelForProvider(
@@ -116,13 +122,14 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     });
   };
 
-  private static resolveProviderLabel(credentialRecord: CredentialRecord): string {
-    if (credentialRecord.modelProvider === "openai" && credentialRecord.name === "OpenAI / Codex") {
-      return "OpenAI / Codex";
+  private resolveProviderLabel(credentialRecord: CredentialRecord): string {
+    const providerDefinition = this.modelProviderService.get(credentialRecord.modelProvider);
+    if (credentialRecord.name === providerDefinition.name) {
+      return providerDefinition.name;
     }
 
-    if (credentialRecord.modelProvider === "anthropic" && credentialRecord.name === "Anthropic") {
-      return "Anthropic";
+    if (credentialRecord.modelProvider === "openai" && credentialRecord.name === "OpenAI / Codex") {
+      return "OpenAI / Codex";
     }
 
     return `${credentialRecord.name} (${credentialRecord.modelProvider})`;

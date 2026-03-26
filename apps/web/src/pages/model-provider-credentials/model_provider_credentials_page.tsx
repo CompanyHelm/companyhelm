@@ -1,5 +1,4 @@
 import { Suspense, useState } from "react";
-import { useAuth } from "@clerk/react";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -12,6 +11,12 @@ import type { modelProviderCredentialsPageQuery } from "./__generated__/modelPro
 
 const modelProviderCredentialsPageQueryNode = graphql`
   query modelProviderCredentialsPageQuery {
+    ModelProviders {
+      id
+      name
+      type
+      authorizationInstructionsMarkdown
+    }
     ModelProviderCredentials {
       id
       name
@@ -102,6 +107,12 @@ function ModelProviderCredentialsPageContent() {
     createdAt: credential.createdAt,
     updatedAt: credential.updatedAt,
   }));
+  const providers = data.ModelProviders.map((provider) => ({
+    authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown,
+    id: provider.id,
+    name: provider.name,
+    type: provider.type as "api_key" | "oauth",
+  }));
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -189,6 +200,7 @@ function ModelProviderCredentialsPageContent() {
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateCredentialInFlight}
+        providers={providers}
         onCreate={async (input) => {
           setErrorMessage(null);
 

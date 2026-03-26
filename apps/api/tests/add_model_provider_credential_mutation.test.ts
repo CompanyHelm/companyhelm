@@ -157,7 +157,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.deepEqual(document.data.AddModelProviderCredential, {
     id: "credential-1",
     companyId: "company-123",
-    name: "OpenAI / Codex",
+    name: "OpenAI",
     modelProvider: "openai",
     type: "api_key",
     refreshToken: null,
@@ -343,6 +343,103 @@ test("GraphQL AddModelProviderCredential mutation supports anthropic credentials
   assert.deepEqual(modelManager.calls, [{
     provider: "anthropic",
     apiKey: "anthropic-secret",
+  }]);
+
+  await app.close();
+});
+
+test("GraphQL AddModelProviderCredential mutation supports openai-codex oauth credentials", async () => {
+  const app = Fastify();
+  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
+  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    calls: [] as Array<{ provider: string; apiKey: string }>,
+    async fetchModels(provider: string, apiKey: string): Promise<ModelProviderModel[]> {
+      this.calls.push({
+        provider,
+        apiKey,
+      });
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
+          AddModelProviderCredential(input: $input) {
+            id
+            name
+            modelProvider
+            type
+            refreshToken
+          }
+        }
+      `,
+      variables: {
+        input: {
+          modelProvider: "openai-codex",
+          accessToken: "oauth-access-token",
+          refreshToken: "oauth-refresh-token",
+          accessTokenExpiresAtMilliseconds: "1775358352922",
+        },
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.AddModelProviderCredential, {
+    id: "credential-1",
+    name: "OpenAI Codex",
+    modelProvider: "openai-codex",
+    type: "oauth_token",
+    refreshToken: "oauth-refresh-token",
+  });
+  assert.equal(database.insertedValues[0]?.modelProvider, "openai-codex");
+  assert.equal(database.insertedValues[0]?.type, "oauth_token");
+  assert.equal(database.insertedValues[0]?.encryptedApiKey, "oauth-access-token");
+  assert.equal(database.insertedValues[0]?.refreshToken, "oauth-refresh-token");
+  assert.ok(database.insertedValues[0]?.accessTokenExpiresAt instanceof Date);
+  assert.deepEqual(modelManager.calls, [{
+    provider: "openai-codex",
+    apiKey: "oauth-access-token",
   }]);
 
   await app.close();

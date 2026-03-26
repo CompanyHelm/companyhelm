@@ -12,11 +12,13 @@ export class ModelRegistry {
 
   private static defaultModels: Record<string, string> = {
     openai: "gpt-5.4",
+    "openai-codex": "gpt-5.4",
     anthropic: "claude-opus-4-6",
   };
 
   private static defaultReasoningLevels: Record<string, string> = {
     openai: "high",
+    "openai-codex": "high",
   };
 
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7c4b51d477033c45443c565d84d57546>>
+ * @generated SignedSource<<966becd76d45f4c5784664a0efd66200>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,12 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly name: string;
     readonly updatedAt: string;
   }>;
+  readonly ModelProviders: ReadonlyArray<{
+    readonly authorizationInstructionsMarkdown: string | null | undefined;
+    readonly id: string;
+    readonly name: string;
+    readonly type: string;
+  }>;
 };
 export type modelProviderCredentialsPageQuery = {
   response: modelProviderCredentialsPageQuery$data;
@@ -25,7 +31,48 @@ export type modelProviderCredentialsPageQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v2 = [
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "ModelProvider",
+    "kind": "LinkedField",
+    "name": "ModelProviders",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "type",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "authorizationInstructionsMarkdown",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
   {
     "alias": null,
     "args": null,
@@ -34,20 +81,8 @@ var v0 = [
     "name": "ModelProviderCredentials",
     "plural": true,
     "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "name",
-        "storageKey": null
-      },
+      (v0/*: any*/),
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -79,7 +114,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "modelProviderCredentialsPageQuery",
-    "selections": (v0/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -88,19 +123,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "modelProviderCredentialsPageQuery",
-    "selections": (v0/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "ae91684cdda067339d90e5ed16ebf486",
+    "cacheID": "643457ac59f85713a1165eb6e466db1a",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "15db921ac2c40a7fccf951a200e988f3";
+(node as any).hash = "ebcbfa836d68ff64c0e459ef590923ef";
 
 export default node;

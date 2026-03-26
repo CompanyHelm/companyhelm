@@ -118,7 +118,7 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
   const loggedErrors: Array<{ bindings: Record<string, unknown>; arguments_: unknown[] }> = [];
   const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock([{
     id: "credential-1",
-    modelProvider: "openai",
+    modelProvider: "openai-codex",
     encryptedApiKey: "old-access-token",
     refreshToken: "old-refresh-token",
     accessTokenExpiresAtMilliseconds: 1774254000000,
@@ -136,7 +136,7 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
 
   assert.deepEqual(worker.refreshCalls, [{
     id: "credential-1",
-    modelProvider: "openai",
+    modelProvider: "openai-codex",
   }]);
   assert.match(adminDatabase.queryCalls[0]?.query ?? "", /FOR UPDATE SKIP LOCKED/);
   assert.equal(typeof adminDatabase.queryCalls[0]?.values[0], "string");
@@ -156,14 +156,14 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
   const adminDatabase = LlmOauthRefreshWorkerTestHarness.createAdminDatabaseMock([
     {
       id: "credential-1",
-      modelProvider: "openai",
+      modelProvider: "openai-codex",
       encryptedApiKey: "old-access-token-1",
       refreshToken: "old-refresh-token-1",
       accessTokenExpiresAtMilliseconds: 1774254000000,
     },
     {
       id: "credential-2",
-      modelProvider: "openai",
+      modelProvider: "openai-codex",
       encryptedApiKey: "old-access-token-2",
       refreshToken: "old-refresh-token-2",
       accessTokenExpiresAtMilliseconds: 1774254300000,
@@ -187,11 +187,11 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
   assert.deepEqual(worker.refreshCalls, [
     {
       id: "credential-1",
-      modelProvider: "openai",
+      modelProvider: "openai-codex",
     },
     {
       id: "credential-2",
-      modelProvider: "openai",
+      modelProvider: "openai-codex",
     },
   ]);
   assert.equal(adminDatabase.updateCalls.length, 1);

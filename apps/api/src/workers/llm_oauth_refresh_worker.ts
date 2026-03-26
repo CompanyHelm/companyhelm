@@ -6,7 +6,7 @@ import { WorkerBase } from "./worker_base.ts";
 
 export type LlmOauthCredentialRow = {
   id: string;
-  modelProvider: "openai";
+  modelProvider: "openai-codex";
   encryptedApiKey: string;
   refreshToken: string | null;
   accessTokenExpiresAtMilliseconds: number | string;
@@ -104,7 +104,7 @@ export class LlmOauthRefreshWorker extends WorkerBase {
   }
 
   private resolveOAuthProviderId(modelProvider: LlmOauthCredentialRow["modelProvider"]): OAuthProviderId {
-    if (modelProvider === "openai") {
+    if (modelProvider === "openai-codex") {
       return "openai-codex";
     }
 

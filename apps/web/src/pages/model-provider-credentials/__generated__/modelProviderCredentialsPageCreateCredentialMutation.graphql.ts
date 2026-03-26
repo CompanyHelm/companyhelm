@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<96d5c128927369fdfefaade7e43c77a3>>
+ * @generated SignedSource<<55b24fe318792ba119efaa48f48e9912>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,9 +10,12 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type AddModelProviderCredentialInput = {
-  apiKey: string;
+  accessToken?: string | null | undefined;
+  accessTokenExpiresAtMilliseconds?: string | null | undefined;
+  apiKey?: string | null | undefined;
   modelProvider: string;
   name?: string | null | undefined;
+  refreshToken?: string | null | undefined;
 };
 export type modelProviderCredentialsPageCreateCredentialMutation$variables = {
   input: AddModelProviderCredentialInput;

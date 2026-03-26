@@ -120,9 +120,12 @@ type ModelProvider {
 }
 
 input AddModelProviderCredentialInput {
-  apiKey: String!
+  accessToken: String
+  accessTokenExpiresAtMilliseconds: String
+  apiKey: String
   name: String
   modelProvider: String!
+  refreshToken: String
 }
 
 input AddAgentInput {
