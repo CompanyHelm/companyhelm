@@ -289,19 +289,17 @@ function ChatsTranscript(
         return (
           <div
             key={message.id}
-            className={`${
-              isUserMessage
-                ? "ml-auto max-w-[85%] rounded-2xl bg-primary px-4 py-3 text-primary-foreground"
-                : "w-full px-0 py-0 text-foreground"
-            }`}
+            className="w-full"
           >
-            <p className={`text-[0.7rem] font-semibold uppercase tracking-[0.18em] ${
-              isUserMessage ? "text-primary-foreground/70" : "text-muted-foreground"
-            }`}
+            <div
+              className={`${
+                isUserMessage
+                  ? "mr-0 rounded-2xl bg-primary px-4 py-3 text-primary-foreground md:mr-[20%]"
+                  : "w-full px-0 py-0 text-foreground"
+              }`}
             >
-              {message.role}
-            </p>
-            <p className="mt-2 whitespace-pre-wrap text-sm">{message.text}</p>
+              <p className="whitespace-pre-wrap text-sm">{message.text}</p>
+            </div>
           </div>
         );
       })}
