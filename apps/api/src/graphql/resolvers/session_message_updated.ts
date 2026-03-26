@@ -23,9 +23,19 @@ export class SessionMessageUpdatedSubscriptionResolver {
     this.sessionReadService = sessionReadService;
   }
 
-  subscribe = async function* (
-    this: SessionMessageUpdatedSubscriptionResolver,
+  subscribe = (
     _root: unknown,
+    arguments_: SessionMessageUpdatedArguments,
+    context: GraphqlRequestContext,
+  ): AsyncIterableIterator<{ SessionMessageUpdated: SessionMessageGraphqlRecord }> => {
+    return this.subscribeInternal(arguments_, context);
+  };
+
+  resolve(payload: { SessionMessageUpdated: SessionMessageGraphqlRecord }): SessionMessageGraphqlRecord {
+    return payload.SessionMessageUpdated;
+  }
+
+  private async *subscribeInternal(
     arguments_: SessionMessageUpdatedArguments,
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionMessageUpdated: SessionMessageGraphqlRecord }> {
@@ -73,10 +83,6 @@ export class SessionMessageUpdatedSubscriptionResolver {
     } finally {
       await iterator.return();
     }
-  };
-
-  resolve(payload: { SessionMessageUpdated: SessionMessageGraphqlRecord }): SessionMessageGraphqlRecord {
-    return payload.SessionMessageUpdated;
   }
 
   private parseMessageId(channel: string): string | null {
