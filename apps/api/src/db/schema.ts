@@ -8,12 +8,15 @@ import {
   primaryKey,
   index,
   uniqueIndex,
-  uuid
+  uuid,
+  boolean
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
 export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic"]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
+export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
+export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image"]);
 
 export const companies = pgTable("companies", {
   id: uuid("id")
@@ -95,6 +98,50 @@ export const agentSessions = pgTable("agent_sessions", {
 },
 (table) => ({
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
+}));
+
+export const sessionMessages = pgTable("session_messages", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  role: sessionMessageRoleEnum("role").notNull(),
+  toolCallId: text("tool_call_id"),
+  toolName: text("tool_name"),
+  isError: boolean("is_error").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("session_messages_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("session_messages_session_id_idx").on(table.sessionId),
+}));
+
+export const messageContents = pgTable("message_contents", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  messageId: uuid("message_id")
+    .references(() => sessionMessages.id, { onDelete: "cascade" })
+    .notNull(),
+  type: messageContentTypeEnum("type").notNull(),
+  text: text("text"),
+  data: text("data"),
+  mimeType: text("mime_type"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("message_contents_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("message_contents_message_id_idx").on(table.messageId),
 }));
 
 export const modelProviderCredentials = pgTable("model_provider_credentials", {
