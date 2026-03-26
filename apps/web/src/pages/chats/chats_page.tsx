@@ -439,6 +439,7 @@ function ChatsPageContent() {
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
+  const isSelectedSessionRunning = Boolean(selectedSession && isRunningSession(selectedSession));
   const selectedSessionMessages = selectedSession ? sessionMessagesBySessionId.get(selectedSession.id) ?? [] : [];
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isCreateSessionInFlight;
   const chatListPanelStyle: CSSProperties = {
@@ -938,14 +939,26 @@ function ChatsPageContent() {
             ) : null}
 
             <div className="flex flex-col gap-1">
-              <CardTitle>
-                {selectedSession
-                  ? resolveSessionTitle(selectedSession, selectedSessionMessages)
-                  : selectedAgent
-                    ? selectedAgent.name
-                    : "Chat"}
-              </CardTitle>
-              <CardDescription>
+              <div className="flex items-center gap-2">
+                {selectedSession ? (
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                    <Loader2Icon
+                      aria-hidden={!isSelectedSessionRunning}
+                      className={`size-3.5 text-muted-foreground ${isSelectedSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
+                    />
+                  </span>
+                ) : null}
+
+                <CardTitle>
+                  {selectedSession
+                    ? resolveSessionTitle(selectedSession, selectedSessionMessages)
+                    : selectedAgent
+                      ? selectedAgent.name
+                      : "Chat"}
+                </CardTitle>
+              </div>
+
+              <CardDescription className={selectedSession ? "pl-6" : undefined}>
                 {selectedSession
                   ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
                   : !selectedAgent
