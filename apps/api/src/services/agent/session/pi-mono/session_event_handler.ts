@@ -19,6 +19,12 @@ type UpdatableDatabase = {
   };
 };
 
+type DeletableDatabase = {
+  delete(table: unknown): {
+    where(condition: unknown): Promise<void>;
+  };
+};
+
 type TextContent = {
   type?: string;
   text?: string;
@@ -155,15 +161,6 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
-    const eventMessage = sessionEvent.message;
-    if (!eventMessage?.role) {
-      this.logError("unhandled pi mono message_start event", sessionEvent);
-      return;
-    }
-
-    const messageId = await this.resolveMessageId(sessionEvent);
-    await this.publishMessageUpdate(messageId);
-
     switch (sessionEvent.message?.role) {
       case "user":
         this.logInfo("ignoring pi mono user message start", sessionEvent);
@@ -255,6 +252,7 @@ export class PiMonoSessionEventHandler {
     });
 
     await this.upsertMessageContents(companyId, messageId, eventMessage, timestamp);
+    await this.publishMessageUpdate(messageId);
 
     if (status === "completed") {
       this.messageIdByEventKey.delete(this.createEventKey(eventMessage));
@@ -270,13 +268,10 @@ export class PiMonoSessionEventHandler {
     timestamp: Date,
   ): Promise<void> {
     const contentRecords = this.buildMessageContentRecords(companyId, messageId, message, timestamp);
-    if (contentRecords.length === 0) {
-      return;
-    }
-
     await this.transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
       const trackedContentIds = [...(this.contentIdsByMessageId.get(messageId) ?? [])];
 
       for (const [contentIndex, contentRecord] of contentRecords.entries()) {
@@ -302,7 +297,18 @@ export class PiMonoSessionEventHandler {
         trackedContentIds.push(String(contentRecord.id));
       }
 
-      this.contentIdsByMessageId.set(messageId, trackedContentIds);
+      const staleContentIds = trackedContentIds.slice(contentRecords.length);
+      for (const staleContentId of staleContentIds) {
+        await deletableDatabase.delete(messageContents).where(eq(messageContents.id, staleContentId));
+      }
+
+      const nextTrackedContentIds = trackedContentIds.slice(0, contentRecords.length);
+      if (nextTrackedContentIds.length === 0) {
+        this.contentIdsByMessageId.delete(messageId);
+        return;
+      }
+
+      this.contentIdsByMessageId.set(messageId, nextTrackedContentIds);
     });
   }
 

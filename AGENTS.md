@@ -41,3 +41,7 @@
 
 ## Packages
 - do not implement something that could be handled by a npm package, e.g. graphql calls do not implement a custom client, check what the best npm package is and propose adding it to the user
+
+# Application specific instructions
+- read the apps/*/AGENTS.md when making changes to the specific apps e.g. web or api and follow the instructions in the specific AGENTS.md
+- app specific instructions are additonal from this AGENTS.md

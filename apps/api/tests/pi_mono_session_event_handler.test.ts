@@ -181,6 +181,28 @@ class PiMonoSessionEventHandlerTestHarness {
 
               throw new Error("Unexpected update table.");
             },
+            delete(table: unknown) {
+              if (table === messageContents) {
+                return {
+                  async where() {
+                    const [messageId] = Array.from(messageContentRecordsByMessageId.keys()).slice(-1);
+                    if (!messageId) {
+                      return undefined;
+                    }
+
+                    const existingRecords = messageContentRecordsByMessageId.get(messageId) ?? [];
+                    if (existingRecords.length === 0) {
+                      return undefined;
+                    }
+
+                    messageContentRecordsByMessageId.set(messageId, existingRecords.slice(0, -1));
+                    return undefined;
+                  },
+                };
+              }
+
+              throw new Error("Unexpected delete table.");
+            },
           });
         },
       },
@@ -303,12 +325,13 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.sessionMessageRecords.size, 1);
-  assert.equal(harness.publishCalls.length, 1);
-  assert.match(
-    harness.publishCalls[0]?.channel ?? "",
-    /^company:company-1:session:session-1:message:[^:]+:update$/,
-  );
+  assert.equal(harness.publishCalls.length, 3);
+  assert.match(harness.publishCalls[0]?.channel ?? "", /^company:company-1:session:session-1:message:[^:]+:update$/);
   assert.equal(harness.publishCalls[0]?.message, "");
+  assert.equal(harness.publishCalls[1]?.channel, harness.publishCalls[0]?.channel);
+  assert.equal(harness.publishCalls[1]?.message, "");
+  assert.equal(harness.publishCalls[2]?.channel, harness.publishCalls[0]?.channel);
+  assert.equal(harness.publishCalls[2]?.message, "");
 
   const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
   assert.equal(messageRecord?.companyId, "company-1");
@@ -385,10 +408,7 @@ test("PiMonoSessionEventHandler stores user messages only when message end arriv
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.sessionMessageRecords.size, 1);
   assert.equal(harness.publishCalls.length, 1);
-  assert.match(
-    harness.publishCalls[0]?.channel ?? "",
-    /^company:company-1:session:session-1:message:[^:]+:update$/,
-  );
+  assert.match(harness.publishCalls[0]?.channel ?? "", /^company:company-1:session:session-1:message:[^:]+:update$/);
   assert.equal(harness.publishCalls[0]?.message, "");
 
   const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
@@ -406,6 +426,68 @@ test("PiMonoSessionEventHandler stores user messages only when message end arriv
     [
       {
         text: "Write the launch email.",
+        type: "text",
+      },
+    ],
+  );
+});
+
+test("PiMonoSessionEventHandler removes stale content rows when a later snapshot shrinks", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [
+          {
+            text: "First half",
+            type: "text",
+          },
+          {
+            text: "Second half",
+            type: "text",
+          },
+        ],
+        role: "assistant",
+        timestamp: 3000,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      message: {
+        content: [
+          {
+            text: "First half\nSecond half",
+            type: "text",
+          },
+        ],
+        role: "assistant",
+        timestamp: 3000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "First half\nSecond half",
         type: "text",
       },
     ],
