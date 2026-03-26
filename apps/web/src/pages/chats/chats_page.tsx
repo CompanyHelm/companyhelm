@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, Loader2Icon, PlusIcon, SendHorizonalIcon } from "lucide-react";
+import { ArchiveIcon, ArrowUpDownIcon, Loader2Icon, PlusIcon, SendHorizonalIcon } from "lucide-react";
 import { graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -896,14 +896,16 @@ function ChatsPageContent() {
                 <div className="relative">
                   <button
                     aria-label="Resize message input"
-                    className="absolute inset-x-4 top-0 z-10 h-3 cursor-ns-resize"
+                    className="absolute inset-x-4 top-0 z-10 flex h-5 cursor-ns-resize items-start justify-center pt-1 text-muted-foreground/70 transition hover:text-foreground/80"
                     onPointerDown={startDraftTextareaResize}
                     type="button"
-                  />
+                  >
+                    <ArrowUpDownIcon className="size-3.5" />
+                  </button>
                   <textarea
                     id="chat-draft-message"
                     ref={draftTextareaRef}
-                    className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-4 pt-5 pb-3 pr-14 text-sm outline-none"
+                    className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-4 pt-6 pb-3 pr-14 text-sm outline-none"
                     onChange={(event) => {
                       setDraftMessage(event.target.value);
                     }}
