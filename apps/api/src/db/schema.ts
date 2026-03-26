@@ -77,12 +77,15 @@ export const agents = pgTable("agents", {
   companyIdIndex: index("agents_company_id_idx").on(table.companyId),
 }));
 
-export const threads = pgTable("threads", {
+export const agentSessions = pgTable("agent_sessions", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),

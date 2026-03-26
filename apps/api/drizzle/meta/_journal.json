@@ -99,6 +99,13 @@
       "when": 1774417800000,
       "tag": "0013_add_description_to_credential_models",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1774489935262,
+      "tag": "0014_glamorous_oracle",
+      "breakpoints": true
     }
   ]
 }
