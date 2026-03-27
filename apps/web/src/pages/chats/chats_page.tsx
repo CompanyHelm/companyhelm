@@ -158,6 +158,7 @@ const CHAT_DRAFT_MAX_LINES = 10;
 const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
 const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
 const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
+const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
 const CHAT_LIST_SESSION_TEXT_GUTTER_CLASS = "pl-4";
 const CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS = "pl-10";
@@ -353,11 +354,11 @@ function ChatsPageFallback() {
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
-        <CardHeader className="pl-0 pr-3 md:pl-0 md:pr-3">
+        <CardHeader className={`${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
           <CardTitle>Chats</CardTitle>
           <CardDescription>Loading agents and sessions…</CardDescription>
         </CardHeader>
-        <CardContent className="pl-0 pr-3 md:pl-0 md:pr-3">
+        <CardContent className={`${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
             Loading chats…
           </div>
@@ -1190,7 +1191,7 @@ function ChatsPageContent() {
           style={chatListPanelStyle}
         >
           <Card className="flex h-full min-h-0 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-            <CardContent className="flex-1 overflow-y-auto pl-0 pr-3 md:pl-0 md:pr-3">
+            <CardContent className={`flex-1 overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
               <div className="mb-2 flex items-center justify-end pr-1">
                 <Button
                   aria-label="Hide chats list"
