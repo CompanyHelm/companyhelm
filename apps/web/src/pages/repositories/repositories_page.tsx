@@ -198,6 +198,7 @@ function RepositoriesPageFallback() {
 function RepositoriesPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+  const [refreshedInstallationId, setRefreshedInstallationId] = useState<string | null>(null);
   const [deletingInstallationId, setDeletingInstallationId] = useState<string | null>(null);
   const [refreshingInstallationId, setRefreshingInstallationId] = useState<string | null>(null);
   const data = useLazyLoadQuery<repositoriesPageQuery>(
@@ -357,11 +358,19 @@ function RepositoriesPageContent() {
                   const cachedRepositories = repositoriesByInstallationId.get(installation.installationId) ?? [];
                   const isRefreshing = refreshingInstallationId === installation.installationId;
                   const isDeleting = deletingInstallationId === installation.installationId;
+                  const showRefreshNotice = refreshedInstallationId === installation.installationId;
 
                   return (
                     <TableRow key={installation.id}>
                       <TableCell className="font-medium text-foreground">
-                        Installation #{installation.installationId}
+                        <div className="flex items-center gap-2">
+                          <span>Installation #{installation.installationId}</span>
+                          {showRefreshNotice ? (
+                            <span className="text-xs font-normal text-emerald-700 dark:text-emerald-300">
+                              Repositories refreshed
+                            </span>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell>{formatTimestamp(installation.createdAt)}</TableCell>
                       <TableCell>
@@ -380,6 +389,7 @@ function RepositoriesPageContent() {
 
                               setErrorMessage(null);
                               setNoticeMessage(null);
+                              setRefreshedInstallationId(null);
                               setRefreshingInstallationId(installation.installationId);
 
                               await new Promise<void>((resolve, reject) => {
@@ -403,12 +413,13 @@ function RepositoriesPageContent() {
                                       return;
                                     }
 
-                                    setNoticeMessage(`Refreshed repositories for installation ${installation.installationId}.`);
+                                    setRefreshedInstallationId(installation.installationId);
                                     resolve();
                                   },
                                   onError: reject,
                                 });
                               }).catch((error: unknown) => {
+                                setRefreshedInstallationId(null);
                                 setErrorMessage(
                                   error instanceof Error
                                     ? error.message
@@ -454,6 +465,7 @@ function RepositoriesPageContent() {
 
                                       setErrorMessage(null);
                                       setNoticeMessage(null);
+                                      setRefreshedInstallationId(null);
                                       setDeletingInstallationId(installation.installationId);
 
                                       await new Promise<void>((resolve, reject) => {
