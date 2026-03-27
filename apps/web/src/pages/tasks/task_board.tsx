@@ -11,6 +11,7 @@ export type TaskBoardTask = {
   status: TaskStatus;
   taskCategoryId: string | null;
   taskCategoryName: string | null;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -68,6 +69,13 @@ function resolveTaskStatusVariant(status: TaskStatus): "outline" | "secondary" |
   return "outline";
 }
 
+function formatTaskTimestamp(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
 /**
  * Renders the minimal kanban experience for the first `-ng` tasks slice, with persisted lanes and
  * drag-and-drop moves backed by the `SetTaskCategory` mutation.
@@ -89,21 +97,21 @@ export function TaskBoard(props: TaskBoardProps) {
   }
 
   return (
-    <div className="overflow-x-auto pb-2">
-      <div className="flex min-w-full gap-4">
+    <div className="flex h-full min-h-0 overflow-x-auto pb-1">
+      <div className="flex min-h-0 h-full min-w-full gap-4">
         {columns.map((column) => (
           <Card
             key={column.key}
-            className="w-80 shrink-0 border border-border/60 bg-card/80 shadow-sm"
+            className="flex h-full min-h-0 w-80 shrink-0 flex-col border border-border/60 bg-card/80 shadow-sm"
           >
-            <CardHeader className="border-b border-border/60">
+            <CardHeader className="shrink-0 border-b border-border/60 px-4 py-3">
               <div className="flex items-center justify-between gap-3">
-                <CardTitle>{column.label}</CardTitle>
+                <CardTitle className="text-sm font-semibold">{column.label}</CardTitle>
                 <Badge variant="outline">{column.tasks.length}</Badge>
               </div>
             </CardHeader>
             <CardContent
-              className={`grid min-h-72 gap-3 pt-4 ${dropTargetKey === column.key ? "rounded-b-lg bg-accent/30" : ""}`}
+              className={`no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 ${dropTargetKey === column.key ? "rounded-b-lg bg-accent/30" : ""}`}
               onDragLeave={() => {
                 setDropTargetKey((currentKey) => currentKey === column.key ? "" : currentKey);
               }}
@@ -114,7 +122,7 @@ export function TaskBoard(props: TaskBoardProps) {
               onDrop={(event) => void handleDrop(event, column.taskCategoryId, column.key)}
             >
               {column.tasks.length === 0 ? (
-                <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 text-center text-xs text-muted-foreground">
+                <div className="flex min-h-32 shrink-0 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 text-center text-xs text-muted-foreground">
                   Drop tasks here.
                 </div>
               ) : null}
@@ -122,27 +130,31 @@ export function TaskBoard(props: TaskBoardProps) {
               {column.tasks.map((task) => (
                 <article
                   key={task.id}
-                  className="cursor-grab rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing"
+                  className="h-32 shrink-0 cursor-grab rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing"
                   draggable
                   onDragStart={(event) => {
                     event.dataTransfer.effectAllowed = "move";
                     event.dataTransfer.setData("text/task-id", task.id);
                   }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-semibold text-foreground">{task.name}</h3>
-                      {task.description ? (
-                        <p className="mt-2 text-xs/relaxed text-muted-foreground">{task.description}</p>
-                      ) : null}
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-foreground">{task.name}</h3>
+                      </div>
+                      <Badge variant={resolveTaskStatusVariant(task.status)}>
+                        {formatTaskStatus(task.status)}
+                      </Badge>
                     </div>
-                    <Badge variant={resolveTaskStatusVariant(task.status)}>
-                      {formatTaskStatus(task.status)}
-                    </Badge>
+                    {task.description ? (
+                      <p className="mt-2 overflow-hidden text-xs/relaxed text-muted-foreground">{task.description}</p>
+                    ) : (
+                      <div className="mt-2 flex-1" />
+                    )}
+                    <p className="mt-auto text-[0.625rem] uppercase tracking-[0.18em] text-muted-foreground/80">
+                      Created {formatTaskTimestamp(task.createdAt)}
+                    </p>
                   </div>
-                  <p className="mt-3 text-[0.625rem] uppercase tracking-[0.18em] text-muted-foreground/80">
-                    Updated {new Date(task.updatedAt).toLocaleDateString()}
-                  </p>
                 </article>
               ))}
             </CardContent>

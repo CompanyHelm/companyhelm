@@ -2,7 +2,6 @@ import { Suspense, useState } from "react";
 import { LayoutGridIcon, PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateTaskDialog } from "./create_task_dialog";
 import { TaskBoard } from "./task_board";
 import type { tasksPageCreateTaskMutation } from "./__generated__/tasksPageCreateTaskMutation.graphql";
@@ -72,28 +71,28 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 
 function TasksPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle>Tasks</CardTitle>
-            <CardDescription>
-              Capture work, organize it into lanes, and move tasks across the board as plans evolve.
-            </CardDescription>
-          </div>
-          <CardAction>
-            <Button disabled size="sm">
-              <PlusIcon />
-              Create task
-            </Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <div className="flex min-h-72 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
-            Loading tasks...
-          </div>
-        </CardContent>
-      </Card>
+    <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
+      <div className="flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <LayoutGridIcon className="size-4" />
+            Tasks
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Capture work, organize it into lanes, and move tasks across the board as plans evolve.
+          </p>
+        </div>
+        <Button disabled size="sm">
+          <PlusIcon />
+          Create task
+        </Button>
+      </div>
+
+      <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
+          Loading tasks...
+        </div>
+      </div>
     </main>
   );
 }
@@ -116,80 +115,78 @@ function TasksPageContent() {
   );
 
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle className="flex items-center gap-2">
-              <LayoutGridIcon className="size-4" />
-              Tasks
-            </CardTitle>
-            <CardDescription>
-              Create tasks, sort them into persisted kanban lanes, and drag them across the board as priorities shift.
-            </CardDescription>
-          </div>
-          <CardAction>
-            <Button
-              onClick={() => {
-                setCreateDialogOpen(true);
-              }}
-              size="sm"
-            >
-              <PlusIcon />
-              Create task
-            </Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {errorMessage ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {errorMessage}
-            </div>
-          ) : null}
+    <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
+      <div className="flex shrink-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <LayoutGridIcon className="size-4" />
+            Tasks
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create tasks, sort them into persisted kanban lanes, and drag them across the board as priorities shift.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setCreateDialogOpen(true);
+          }}
+          size="sm"
+        >
+          <PlusIcon />
+          Create task
+        </Button>
+      </div>
 
-          <TaskBoard
-            categories={data.TaskCategories.map((category) => ({
-              id: category.id,
-              name: category.name,
-            }))}
-            tasks={data.Tasks.map((task) => ({
-              id: task.id,
-              name: task.name,
-              description: task.description,
-              status: task.status as "draft" | "pending" | "in_progress" | "completed",
-              taskCategoryId: task.taskCategoryId,
-              taskCategoryName: task.taskCategoryName,
-              updatedAt: task.updatedAt,
-            }))}
-            onMoveTask={async (taskId, taskCategoryId) => {
-              setErrorMessage(null);
+      {errorMessage ? (
+        <div className="shrink-0 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {errorMessage}
+        </div>
+      ) : null}
 
-              await new Promise<void>((resolve, reject) => {
-                commitSetTaskCategory({
-                  variables: {
-                    input: {
-                      taskId,
-                      taskCategoryId,
-                    },
+      <div className="min-h-0 flex-1">
+        <TaskBoard
+          categories={data.TaskCategories.map((category) => ({
+            id: category.id,
+            name: category.name,
+          }))}
+          tasks={data.Tasks.map((task) => ({
+            id: task.id,
+            name: task.name,
+            description: task.description,
+            status: task.status as "draft" | "pending" | "in_progress" | "completed",
+            taskCategoryId: task.taskCategoryId,
+            taskCategoryName: task.taskCategoryName,
+            createdAt: task.createdAt,
+            updatedAt: task.updatedAt,
+          }))}
+          onMoveTask={async (taskId, taskCategoryId) => {
+            setErrorMessage(null);
+
+            await new Promise<void>((resolve, reject) => {
+              commitSetTaskCategory({
+                variables: {
+                  input: {
+                    taskId,
+                    taskCategoryId,
                   },
-                  onCompleted: (_response, errors) => {
-                    const nextErrorMessage = errors?.[0]?.message;
-                    if (nextErrorMessage) {
-                      reject(new Error(nextErrorMessage));
-                      return;
-                    }
+                },
+                onCompleted: (_response, errors) => {
+                  const nextErrorMessage = errors?.[0]?.message;
+                  if (nextErrorMessage) {
+                    reject(new Error(nextErrorMessage));
+                    return;
+                  }
 
-                    resolve();
-                  },
-                  onError: reject,
-                });
-              }).catch((error: unknown) => {
-                setErrorMessage(error instanceof Error ? error.message : "Failed to move task.");
+                  resolve();
+                },
+                onError: reject,
               });
-            }}
-          />
-        </CardContent>
-      </Card>
+            }).catch((error: unknown) => {
+              setErrorMessage(error instanceof Error ? error.message : "Failed to move task.");
+            });
+          }}
+        />
+      </div>
 
       <CreateTaskDialog
         categories={data.TaskCategories.map((category) => ({
