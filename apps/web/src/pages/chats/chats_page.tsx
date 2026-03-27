@@ -1094,11 +1094,11 @@ function ChatsPageContent() {
 
         {selectedAgent ? (
           <div className="border-t border-border/60 p-3 md:p-4">
-            <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+            <div className="group rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
               <div className="relative">
                 <button
                   aria-label="Resize message input"
-                  className="absolute inset-x-4 top-0 z-10 flex h-5 cursor-ns-resize items-start justify-center pt-1 text-muted-foreground/70 transition hover:text-foreground/80"
+                  className="absolute top-3 right-3 z-10 flex h-6 w-6 cursor-ns-resize items-center justify-center rounded-full text-muted-foreground/70 opacity-0 transition hover:text-foreground/80 group-hover:opacity-100 group-focus-within:opacity-100"
                   onPointerDown={startDraftTextareaResize}
                   type="button"
                 >
@@ -1107,7 +1107,7 @@ function ChatsPageContent() {
                 <textarea
                   id="chat-draft-message"
                   ref={draftTextareaRef}
-                  className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-6 pb-3 pr-14 text-sm outline-none"
+                  className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-3 pb-3 pr-14 text-sm outline-none"
                   onChange={(event) => {
                     setDraftMessage(event.target.value);
                   }}
