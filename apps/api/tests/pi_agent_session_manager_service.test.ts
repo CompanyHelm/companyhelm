@@ -5,6 +5,7 @@ import { PiMonoSessionManagerService } from "../src/services/agent/session/pi-mo
 const piAgentMocks = vi.hoisted(() => {
   return {
     abortMock: vi.fn(async () => undefined),
+    createExtensionRuntimeMock: vi.fn(() => ({})),
     createAgentSessionMock: vi.fn(),
     disposeMock: vi.fn(),
     findModelMock: vi.fn<(providerId: string, modelId: string) => unknown>(),
@@ -56,12 +57,14 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
     AuthStorage: MockAuthStorage,
     ModelRegistry: MockModelRegistry,
     SessionManager: MockSessionManager,
+    createExtensionRuntime: piAgentMocks.createExtensionRuntimeMock,
     createAgentSession: piAgentMocks.createAgentSessionMock,
   };
 });
 
 beforeEach(() => {
   piAgentMocks.abortMock.mockReset();
+  piAgentMocks.createExtensionRuntimeMock.mockClear();
   piAgentMocks.createAgentSessionMock.mockReset();
   piAgentMocks.disposeMock.mockReset();
   piAgentMocks.findModelMock.mockReset();
@@ -210,11 +213,29 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
     tools?: Array<{ name: string }>;
     customTools?: Array<{ name: string }>;
+    resourceLoader?: {
+      getAgentsFiles(): {
+        agentsFiles: Array<{
+          content: string;
+          path: string;
+        }>;
+      };
+      getAppendSystemPrompt(): string[];
+      getSystemPrompt(): string | undefined;
+    };
   };
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
     ["bash", "edit", "read", "write"],
+  );
+  assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
+    agentsFiles: [],
+  });
+  assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt(), []);
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getSystemPrompt() ?? "",
+    /do not have local filesystem access/i,
   );
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,

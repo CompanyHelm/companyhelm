@@ -12,6 +12,7 @@ import {
 import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisService } from "../../../redis/service.ts";
+import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 import { PiMonoToolsService } from "./tools/service.ts";
 
@@ -86,12 +87,15 @@ export class PiMonoSessionManagerService {
       id: sessionId,
     });
     const storedContextMessages = await this.loadStoredContextMessages(transactionProvider, sessionId);
+    const resourceLoader = new CompanyHelmResourceLoader();
+    await resourceLoader.reload();
 
     const { session } = await createAgentSession({
       authStorage,
       modelRegistry,
       sessionManager,
       model,
+      resourceLoader,
       // Keep the built-in active set empty at startup and register our CompanyHelm tools through
       // `customTools`, because the PI SDK only treats `tools` as an active-name selector.
       tools: [],
