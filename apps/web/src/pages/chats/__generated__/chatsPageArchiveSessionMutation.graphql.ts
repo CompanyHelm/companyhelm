@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<69e5a32474f0add52a7cd0a3abf753e3>>
+ * @generated SignedSource<<6220e7a3e1bf63e18e5de1665ebe0cbd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,9 +20,11 @@ export type chatsPageArchiveSessionMutation$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly id: string;
+    readonly isThinking: boolean;
     readonly modelId: string;
     readonly reasoningLevel: string;
     readonly status: string;
+    readonly thinkingText: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -86,7 +88,21 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isThinking",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "thinkingText",
         "storageKey": null
       },
       {
@@ -125,16 +141,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "44e837de962f421031300b82006a4a2a",
+    "cacheID": "cc2430971ce1ab94535bc483b219bb8c",
     "id": null,
     "metadata": {},
     "name": "chatsPageArchiveSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "249d5d11225fa221702f221f881aa01b";
+(node as any).hash = "a6306e5b0279f468e1d2934f25a4294b";
 
 export default node;

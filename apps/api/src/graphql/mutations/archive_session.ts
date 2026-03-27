@@ -14,7 +14,9 @@ type GraphqlSessionRecord = {
   agentId: string;
   modelId: string;
   reasoningLevel: string;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -24,7 +26,9 @@ type ServiceSessionRecord = {
   agentId: string;
   currentModelId: string;
   currentReasoningLevel: string;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -67,7 +71,9 @@ export class ArchiveSessionMutation extends Mutation<ArchiveSessionMutationArgum
       agentId: sessionRecord.agentId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
+      isThinking: sessionRecord.isThinking,
       status: sessionRecord.status,
+      thinkingText: sessionRecord.thinkingText,
       createdAt: sessionRecord.createdAt.toISOString(),
       updatedAt: sessionRecord.updatedAt.toISOString(),
     };

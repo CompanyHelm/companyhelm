@@ -63,6 +63,12 @@ type SessionMessage = {
 };
 
 type SessionEvent = {
+  assistantMessageEvent?: {
+    content?: string;
+    contentIndex?: number;
+    delta?: string;
+    type?: string;
+  };
   isError?: boolean;
   type?: string;
   args?: unknown;
@@ -89,6 +95,8 @@ export class PiMonoSessionEventHandler {
   private readonly persistedMessageIds = new Set<string>();
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
+  private isThinking = false;
+  private thinkingText = "";
 
   constructor(
     transactionProvider: TransactionProviderInterface,
@@ -154,12 +162,16 @@ export class PiMonoSessionEventHandler {
       await updatableDatabase
         .update(agentSessions)
         .set({
+          isThinking: false,
           status,
+          thinkingText: null,
           updated_at: new Date(),
         })
         .where(eq(agentSessions.id, this.sessionId));
     });
 
+    this.isThinking = false;
+    this.thinkingText = "";
     await this.publishSessionUpdate();
   }
 
@@ -193,6 +205,7 @@ export class PiMonoSessionEventHandler {
 
   private async handleMessageUpdate(sessionEvent: SessionEvent): Promise<void> {
     if (sessionEvent.message?.role === "assistant") {
+      await this.processAssistantThinkingEvent(sessionEvent);
       await this.upsertSessionMessage("running", sessionEvent);
       this.logInfo("pi mono assistant message updated", sessionEvent);
       return;
@@ -208,6 +221,7 @@ export class PiMonoSessionEventHandler {
         this.logInfo("pi mono user message completed", sessionEvent);
         return;
       case "assistant":
+        await this.clearThinkingState(true);
         await this.upsertSessionMessage("completed", sessionEvent);
         this.logInfo("pi mono assistant message completed", sessionEvent);
         return;
@@ -250,8 +264,6 @@ export class PiMonoSessionEventHandler {
           .update(sessionMessages)
           .set({
             isError: messageRecord.isError,
-            isThinking: messageRecord.isThinking,
-            thinkingText: messageRecord.thinkingText,
             status: messageRecord.status,
             toolCallId: messageRecord.toolCallId,
             toolName: messageRecord.toolName,
@@ -332,18 +344,14 @@ export class PiMonoSessionEventHandler {
     message: SessionMessage,
     timestamp: Date,
   ): Record<string, unknown> {
-    const thinkingText = this.extractThinkingText(message);
-
     return {
       companyId,
       createdAt: timestamp,
       id: messageId,
       isError: this.resolveIsError(message),
-      isThinking: thinkingText.length > 0,
       role: message.role,
       sessionId: this.sessionId,
       status,
-      thinkingText: thinkingText.length > 0 ? thinkingText : null,
       toolCallId: this.resolveMessageToolCallId(message),
       toolName: this.resolveMessageToolName(message),
       updatedAt: timestamp,
@@ -403,18 +411,6 @@ export class PiMonoSessionEventHandler {
       });
   }
 
-  private extractThinkingText(message: SessionMessage): string {
-    return this.normalizeMessageContent(message.content)
-      .flatMap((contentBlock) => {
-        if (contentBlock.type !== "thinking") {
-          return [];
-        }
-
-        return [contentBlock.thinking ?? ""];
-      })
-      .join("\n");
-  }
-
   private normalizeMessageContent(content: SessionMessage["content"]): MessageContent[] {
     if (typeof content === "string") {
       return [{
@@ -428,6 +424,62 @@ export class PiMonoSessionEventHandler {
     }
 
     return [];
+  }
+
+  private async processAssistantThinkingEvent(sessionEvent: SessionEvent): Promise<void> {
+    switch (sessionEvent.assistantMessageEvent?.type) {
+      case "thinking_start":
+        this.isThinking = true;
+        this.thinkingText = "";
+        await this.updateThinkingState(true, null);
+        return;
+      case "thinking_delta": {
+        const nextThinkingDelta = String(sessionEvent.assistantMessageEvent.delta ?? "");
+        this.isThinking = true;
+        this.thinkingText = `${this.thinkingText}${nextThinkingDelta}`;
+        await this.updateThinkingState(
+          true,
+          this.thinkingText.trim().length > 0 ? this.thinkingText : null,
+        );
+        return;
+      }
+      case "thinking_end":
+        await this.clearThinkingState(true);
+        return;
+      default:
+        return;
+    }
+  }
+
+  private async clearThinkingState(publishUpdate: boolean): Promise<void> {
+    const hadThinkingState = this.isThinking || this.thinkingText.length > 0;
+    this.isThinking = false;
+    this.thinkingText = "";
+    if (!hadThinkingState) {
+      return;
+    }
+    await this.updateThinkingState(false, null, publishUpdate);
+  }
+
+  private async updateThinkingState(
+    isThinking: boolean,
+    thinkingText: string | null,
+    publishUpdate = true,
+  ): Promise<void> {
+    await this.transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(agentSessions)
+        .set({
+          isThinking,
+          thinkingText,
+        })
+        .where(eq(agentSessions.id, this.sessionId));
+    });
+
+    if (publishUpdate) {
+      await this.publishSessionUpdate();
+    }
   }
 
   private resolveIsError(message: SessionMessage): boolean {

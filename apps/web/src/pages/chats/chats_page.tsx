@@ -29,7 +29,9 @@ const chatsPageQueryNode = graphql`
       modelId
       reasoningLevel
       inferredTitle
+      isThinking
       status
+      thinkingText
       createdAt
       updatedAt
       userSetTitle
@@ -69,7 +71,9 @@ const chatsPageCreateSessionMutationNode = graphql`
       modelId
       reasoningLevel
       inferredTitle
+      isThinking
       status
+      thinkingText
       createdAt
       updatedAt
       userSetTitle
@@ -84,7 +88,9 @@ const chatsPageArchiveSessionMutationNode = graphql`
       agentId
       modelId
       reasoningLevel
+      isThinking
       status
+      thinkingText
       createdAt
       updatedAt
     }
@@ -99,7 +105,9 @@ const chatsPagePromptSessionMutationNode = graphql`
       modelId
       reasoningLevel
       inferredTitle
+      isThinking
       status
+      thinkingText
       createdAt
       updatedAt
       userSetTitle
@@ -115,7 +123,9 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
       modelId
       reasoningLevel
       inferredTitle
+      isThinking
       status
+      thinkingText
       createdAt
       updatedAt
       userSetTitle
@@ -162,6 +172,16 @@ const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
 const CHAT_LIST_SESSION_TEXT_GUTTER_CLASS = "pl-4";
 const CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS = "pl-10";
+const CHATS_THINKING_GRADIENT_KEYFRAMES = `
+@keyframes chats-thinking-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+`;
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
@@ -418,6 +438,30 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
     >
       {text}
     </ReactMarkdown>
+  );
+}
+
+function ChatsThinkingIndicator({ text }: { text: string | null | undefined }) {
+  const displayText = typeof text === "string" && text.trim().length > 0 ? text : "Thinking...";
+
+  return (
+    <>
+      <style>{CHATS_THINKING_GRADIENT_KEYFRAMES}</style>
+      <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} shrink-0 pt-2`}>
+        <p
+          className="whitespace-pre-wrap text-sm font-medium text-transparent"
+          style={{
+            animation: "chats-thinking-gradient 2.2s linear infinite",
+            backgroundClip: "text",
+            backgroundImage: "linear-gradient(90deg, rgba(250,250,250,0.32) 0%, rgba(250,250,250,0.95) 48%, rgba(250,250,250,0.32) 100%)",
+            backgroundSize: "200% 100%",
+            WebkitBackgroundClip: "text",
+          }}
+        >
+          {displayText}
+        </p>
+      </div>
+    </>
   );
 }
 
@@ -1417,6 +1461,7 @@ function ChatsPageContent() {
               sessionMessages={selectedSessionMessages}
               transcriptScrollRef={transcriptScrollRef}
             />
+            {selectedSession.isThinking ? <ChatsThinkingIndicator text={selectedSession.thinkingText} /> : null}
           </CardContent>
         ) : null}
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e9790ad7986a14751bccfbc44c4d0118>>
+ * @generated SignedSource<<c3306c50decf07c074623d3cca43d69c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,9 +25,11 @@ export type chatsPageCreateSessionMutation$data = {
     readonly createdAt: string;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
+    readonly isThinking: boolean;
     readonly modelId: string;
     readonly reasoningLevel: string;
     readonly status: string;
+    readonly thinkingText: string | null | undefined;
     readonly updatedAt: string;
     readonly userSetTitle: string | null | undefined;
   };
@@ -99,7 +101,21 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isThinking",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "thinkingText",
         "storageKey": null
       },
       {
@@ -145,16 +161,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "8771c490c0daefd1492a8f4ceb063fa8",
+    "cacheID": "7a1d687e6b1823de3651c4ba342362ab",
     "id": null,
     "metadata": {},
     "name": "chatsPageCreateSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageCreateSessionMutation(\n  $input: CreateSessionInput!\n) {\n  CreateSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    status\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageCreateSessionMutation(\n  $input: CreateSessionInput!\n) {\n  CreateSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "04e827353149c92b39184a43a4b8a712";
+(node as any).hash = "365b642f33d7dd30f584caf53d58d7e3";
 
 export default node;

@@ -35,7 +35,9 @@ type SessionRecord = {
   currentReasoningLevel: string;
   id: string;
   inferredTitle: string | null;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   updatedAt: Date;
   userSetTitle: string | null;
 };
@@ -145,7 +147,9 @@ export class SessionManagerService {
           currentModelProviderCredentialId: defaultModelRecord.modelProviderCredentialId,
           currentReasoningLevel: resolvedReasoningLevel,
           inferredTitle,
+          isThinking: false,
           status: "queued",
+          thinkingText: null,
           created_at: now,
           updated_at: now,
         })
@@ -346,7 +350,9 @@ export class SessionManagerService {
       currentModelId: agentSessions.currentModelId,
       currentReasoningLevel: agentSessions.currentReasoningLevel,
       inferredTitle: agentSessions.inferredTitle,
+      isThinking: agentSessions.isThinking,
       status: agentSessions.status,
+      thinkingText: agentSessions.thinkingText,
       createdAt: agentSessions.created_at,
       updatedAt: agentSessions.updated_at,
       userSetTitle: agentSessions.userSetTitle,

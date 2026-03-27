@@ -149,7 +149,9 @@ type Session {
   modelId: String!
   reasoningLevel: String!
   inferredTitle: String
+  isThinking: Boolean!
   status: String!
+  thinkingText: String
   createdAt: String!
   updatedAt: String!
   userSetTitle: String

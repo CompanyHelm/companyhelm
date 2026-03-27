@@ -19,7 +19,9 @@ type GraphqlSessionRecord = {
   modelId: string;
   reasoningLevel: string;
   inferredTitle: string | null;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   createdAt: string;
   updatedAt: string;
   userSetTitle: string | null;
@@ -31,7 +33,9 @@ type ServiceSessionRecord = {
   currentModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   createdAt: Date;
   updatedAt: Date;
   userSetTitle: string | null;
@@ -87,7 +91,9 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,
+      isThinking: sessionRecord.isThinking,
       status: sessionRecord.status,
+      thinkingText: sessionRecord.thinkingText,
       createdAt: sessionRecord.createdAt.toISOString(),
       updatedAt: sessionRecord.updatedAt.toISOString(),
       userSetTitle: sessionRecord.userSetTitle,

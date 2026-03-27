@@ -24,6 +24,11 @@ class PiMonoSessionEventHandlerTestHarness {
     const publishCalls: Array<{ channel: string; message: string }> = [];
     const infoLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
+    const sessionState = {
+      isThinking: false,
+      status: "stopped",
+      thinkingText: null as string | null,
+    };
     const originalInfo = console.info;
     const originalError = console.error;
 
@@ -54,6 +59,7 @@ class PiMonoSessionEventHandlerTestHarness {
       },
       sessionMessageRecords,
       sessionStatusUpdates,
+      sessionState,
       transactionProvider: {
         async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
           return callback({
@@ -111,6 +117,15 @@ class PiMonoSessionEventHandlerTestHarness {
                     sessionStatusUpdates.push(value);
                     return {
                       async where() {
+                        if (typeof value.status === "string") {
+                          sessionState.status = value.status;
+                        }
+                        if (typeof value.isThinking === "boolean") {
+                          sessionState.isThinking = value.isThinking;
+                        }
+                        if ("thinkingText" in value) {
+                          sessionState.thinkingText = typeof value.thinkingText === "string" ? value.thinkingText : null;
+                        }
                         return undefined;
                       },
                     };
@@ -232,7 +247,12 @@ test("PiMonoSessionEventHandler marks the session running on agent start", async
 
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "running");
+  assert.equal(harness.sessionStatusUpdates[0]?.isThinking, false);
+  assert.equal(harness.sessionStatusUpdates[0]?.thinkingText, null);
   assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.equal(harness.sessionState.status, "running");
+  assert.equal(harness.sessionState.isThinking, false);
+  assert.equal(harness.sessionState.thinkingText, null);
   assert.deepEqual(harness.publishCalls, [{
     channel: "company:company-1:session:session-1:update",
     message: "",
@@ -257,7 +277,12 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
 
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "stopped");
+  assert.equal(harness.sessionStatusUpdates[0]?.isThinking, false);
+  assert.equal(harness.sessionStatusUpdates[0]?.thinkingText, null);
   assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.equal(harness.sessionState.status, "stopped");
+  assert.equal(harness.sessionState.isThinking, false);
+  assert.equal(harness.sessionState.thinkingText, null);
   assert.deepEqual(harness.publishCalls, [{
     channel: "company:company-1:session:session-1:update",
     message: "",
@@ -287,10 +312,6 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
           {
             text: "Drafting",
             type: "text",
-          },
-          {
-            thinking: "checking context",
-            type: "thinking",
           },
         ],
         role: "assistant",
@@ -338,8 +359,6 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   assert.equal(messageRecord?.role, "assistant");
   assert.equal(messageRecord?.sessionId, "session-1");
   assert.equal(messageRecord?.status, "completed");
-  assert.equal(messageRecord?.isThinking, false);
-  assert.equal(messageRecord?.thinkingText, null);
   assert.equal(messageRecord?.toolCallId, "tool-call-1");
   assert.equal(messageRecord?.toolName, "read_file");
   assert.ok(messageRecord?.updatedAt instanceof Date);
@@ -372,6 +391,85 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
         toolCallId: "tool-call-1",
         toolName: "read_file",
         type: "toolCall",
+      },
+    ],
+  );
+});
+
+test("PiMonoSessionEventHandler stores session thinking state from assistant thinking events", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      assistantMessageEvent: {
+        contentIndex: 0,
+        type: "thinking_start",
+      },
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      assistantMessageEvent: {
+        contentIndex: 0,
+        delta: "Inspecting the repo",
+        type: "thinking_delta",
+      },
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      assistantMessageEvent: {
+        contentIndex: 0,
+        type: "thinking_end",
+      },
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_update",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const sessionUpdateChannels = harness.publishCalls
+    .filter((call) => call.channel === "company:company-1:session:session-1:update");
+  assert.equal(sessionUpdateChannels.length, 3);
+  assert.equal(harness.sessionState.isThinking, false);
+  assert.equal(harness.sessionState.thinkingText, null);
+  assert.deepEqual(
+    harness.sessionStatusUpdates.map((update) => {
+      return {
+        isThinking: update.isThinking,
+        thinkingText: update.thinkingText,
+      };
+    }),
+    [
+      {
+        isThinking: true,
+        thinkingText: null,
+      },
+      {
+        isThinking: true,
+        thinkingText: "Inspecting the repo",
+      },
+      {
+        isThinking: false,
+        thinkingText: null,
       },
     ],
   );

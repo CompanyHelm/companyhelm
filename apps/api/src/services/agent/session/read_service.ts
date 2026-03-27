@@ -9,7 +9,9 @@ type SessionRow = {
   currentModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   createdAt: Date;
   updatedAt: Date;
   userSetTitle: string | null;
@@ -37,7 +39,15 @@ const MAX_SESSION_TRANSCRIPT_PAGE_SIZE = 200;
 const SESSION_MESSAGE_CURSOR_PREFIX = "session-message:";
 
 type SelectableDatabase = {
-  select(selection: Record<string, unknown>): any;
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): {
+        orderBy(...values: unknown[]): {
+          limit(limit: number): Promise<Array<Record<string, unknown>>>;
+        };
+      } & Promise<Array<Record<string, unknown>>>;
+    };
+  };
 };
 
 export type SessionGraphqlRecord = {
@@ -46,7 +56,9 @@ export type SessionGraphqlRecord = {
   modelId: string;
   reasoningLevel: string;
   inferredTitle: string | null;
+  isThinking: boolean;
   status: string;
+  thinkingText: string | null;
   createdAt: string;
   updatedAt: string;
   userSetTitle: string | null;
@@ -128,7 +140,9 @@ export class SessionReadService {
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
+          isThinking: agentSessions.isThinking,
           status: agentSessions.status,
+          thinkingText: agentSessions.thinkingText,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
           userSetTitle: agentSessions.userSetTitle,
@@ -156,7 +170,9 @@ export class SessionReadService {
           currentModelId: agentSessions.currentModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
+          isThinking: agentSessions.isThinking,
           status: agentSessions.status,
+          thinkingText: agentSessions.thinkingText,
           createdAt: agentSessions.created_at,
           updatedAt: agentSessions.updated_at,
           userSetTitle: agentSessions.userSetTitle,
@@ -377,7 +393,9 @@ export class SessionReadService {
       modelId: sessionRow.currentModelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
       inferredTitle: sessionRow.inferredTitle,
+      isThinking: sessionRow.isThinking,
       status: sessionRow.status,
+      thinkingText: sessionRow.thinkingText,
       createdAt: sessionRow.createdAt.toISOString(),
       updatedAt: sessionRow.updatedAt.toISOString(),
       userSetTitle: sessionRow.userSetTitle,

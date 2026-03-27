@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5cb0c62dbff31f261c84ab9b6b411727>>
+ * @generated SignedSource<<0e94a6cbb9dbb29c66c06309646026d6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,9 +16,11 @@ export type chatsPageSessionUpdatedSubscription$data = {
     readonly createdAt: string;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
+    readonly isThinking: boolean;
     readonly modelId: string;
     readonly reasoningLevel: string;
     readonly status: string;
+    readonly thinkingText: string | null | undefined;
     readonly updatedAt: string;
     readonly userSetTitle: string | null | undefined;
   };
@@ -77,7 +79,21 @@ var v0 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isThinking",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "thinkingText",
         "storageKey": null
       },
       {
@@ -123,16 +139,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "7744289ed002d697f50bbf75fab0735a",
+    "cacheID": "354203305dc89db92d13077ffb2206d0",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    status\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f16ffe273c525e46d2f2df975b091a75";
+(node as any).hash = "545a8c5c0a2ddea3aa35884eca913471";
 
 export default node;
