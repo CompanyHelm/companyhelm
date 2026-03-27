@@ -346,7 +346,7 @@ function ChatsTranscript(
         return (
           <div
             key={message.id}
-            className={`w-full ${isUserMessage ? "flex justify-end" : ""}`}
+            className={`w-full ${isUserMessage ? "flex justify-end" : "pl-6"}`}
           >
             <div
               className={`${
@@ -1074,7 +1074,7 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex flex-1 flex-col gap-6 p-3 md:p-4">
+          <CardContent className="flex flex-1 flex-col gap-6 px-4 py-3 md:py-4">
             <ChatsTranscript
               session={selectedSession}
               sessionMessages={selectedSessionMessages}
