@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
+import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
@@ -70,6 +71,22 @@ const chatsPageArchiveSessionMutationNode = graphql`
       status
       createdAt
       updatedAt
+    }
+  }
+`;
+
+const chatsPagePromptSessionMutationNode = graphql`
+  mutation chatsPagePromptSessionMutation($input: PromptSessionInput!) {
+    PromptSession(input: $input) {
+      id
+      agentId
+      modelId
+      reasoningLevel
+      inferredTitle
+      status
+      createdAt
+      updatedAt
+      userSetTitle
     }
   }
 `;
@@ -388,6 +405,9 @@ function ChatsPageContent() {
   const [commitArchiveSession, isArchiveSessionInFlight] = useMutation<chatsPageArchiveSessionMutation>(
     chatsPageArchiveSessionMutationNode,
   );
+  const [commitPromptSession, isPromptSessionInFlight] = useMutation<chatsPagePromptSessionMutation>(
+    chatsPagePromptSessionMutationNode,
+  );
 
   const sortedAgents = useMemo(() => {
     return [...data.Agents].sort((leftAgent, rightAgent) => leftAgent.name.localeCompare(rightAgent.name));
@@ -441,7 +461,8 @@ function ChatsPageContent() {
     : null;
   const isSelectedSessionRunning = Boolean(selectedSession && isRunningSession(selectedSession));
   const selectedSessionMessages = selectedSession ? sessionMessagesBySessionId.get(selectedSession.id) ?? [] : [];
-  const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isCreateSessionInFlight;
+  const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
+  const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isSubmittingDraft;
   const chatListPanelStyle: CSSProperties = {
     "--chats-list-width": `${chatListWidth}px`,
   };
@@ -739,6 +760,45 @@ function ChatsPageContent() {
     });
   };
 
+  const promptSession = async () => {
+    if (!selectedSession) {
+      return;
+    }
+
+    const userMessage = draftMessage.trim();
+    if (userMessage.length === 0) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      commitPromptSession({
+        variables: {
+          input: {
+            id: selectedSession.id,
+            shouldSteer: false,
+            userMessage,
+          },
+        },
+        updater: (store) => {
+          upsertRootLinkedRecord(store, "Sessions", "PromptSession");
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          setDraftMessage("");
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to send message.");
+    });
+  };
+
   const startChatListResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
     resizeStartXRef.current = event.clientX;
     resizeStartWidthRef.current = chatListWidth;
@@ -767,6 +827,23 @@ function ChatsPageContent() {
     draftTextareaResizeStartHeightRef.current = textarea.getBoundingClientRect().height;
     setIsResizingDraftTextarea(true);
   };
+
+  const submitDraft = async () => {
+    if (selectedSession) {
+      await promptSession();
+      return;
+    }
+
+    await startSession();
+  };
+
+  const draftSubmitAriaLabel = selectedSession
+    ? isPromptSessionInFlight
+      ? "Sending message"
+      : "Send message"
+    : isCreateSessionInFlight
+      ? "Creating chat"
+      : "Start chat";
 
   return (
     <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
@@ -991,76 +1068,19 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && !selectedSession ? (
-          <>
-            <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
-              <div className="max-w-xl text-center">
-                <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
-                <p className="mt-2 text-sm/relaxed text-muted-foreground">
-                  Sending this message creates the session and moves this page to the session URL.
-                </p>
-                <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
-                  <p className="mt-3 text-sm font-medium text-foreground">{selectedAgent.name}</p>
-                  <p className="mt-2 text-xs/relaxed text-muted-foreground">{formatAgentMeta(selectedAgent)}</p>
-                </div>
-              </div>
-            </CardContent>
-
-            <div className="border-t border-border/60 p-3 md:p-4">
-              <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
-                <div className="relative">
-                  <button
-                    aria-label="Resize message input"
-                    className="absolute inset-x-4 top-0 z-10 flex h-5 cursor-ns-resize items-start justify-center pt-1 text-muted-foreground/70 transition hover:text-foreground/80"
-                    onPointerDown={startDraftTextareaResize}
-                    type="button"
-                  >
-                    <ArrowUpDownIcon className="size-3.5" />
-                  </button>
-                  <textarea
-                    id="chat-draft-message"
-                    ref={draftTextareaRef}
-                    className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-6 pb-3 pr-14 text-sm outline-none"
-                    onChange={(event) => {
-                      setDraftMessage(event.target.value);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
-                        return;
-                      }
-
-                      event.preventDefault();
-                      void startSession();
-                    }}
-                    placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
-                    rows={CHAT_DRAFT_MIN_LINES}
-                    value={draftMessage}
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3 px-2.5 py-3">
-                  <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                    <span className="rounded-full bg-background/60 px-3 py-1.5">
-                      {selectedAgent.modelName || "Default model"}
-                    </span>
-                    <span className="rounded-full bg-background/60 px-3 py-1.5">
-                      {selectedAgent.reasoningLevel || "Default reasoning"}
-                    </span>
-                  </div>
-                  <Button
-                    aria-label={isCreateSessionInFlight ? "Creating chat" : "Start chat"}
-                    className="h-10 w-10 shrink-0 rounded-full px-0"
-                    disabled={!canSubmitDraft}
-                    onClick={() => {
-                      void startSession();
-                    }}
-                    type="button"
-                  >
-                    <SendHorizonalIcon className="size-4" />
-                  </Button>
-                </div>
+          <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
+            <div className="max-w-xl text-center">
+              <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
+              <p className="mt-2 text-sm/relaxed text-muted-foreground">
+                Sending this message creates the session and moves this page to the session URL.
+              </p>
+              <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
+                <p className="mt-3 text-sm font-medium text-foreground">{selectedAgent.name}</p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">{formatAgentMeta(selectedAgent)}</p>
               </div>
             </div>
-          </>
+          </CardContent>
         ) : null}
 
         {selectedAgent && selectedSession ? (
@@ -1070,6 +1090,63 @@ function ChatsPageContent() {
               sessionMessages={selectedSessionMessages}
             />
           </CardContent>
+        ) : null}
+
+        {selectedAgent ? (
+          <div className="border-t border-border/60 p-3 md:p-4">
+            <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+              <div className="relative">
+                <button
+                  aria-label="Resize message input"
+                  className="absolute inset-x-4 top-0 z-10 flex h-5 cursor-ns-resize items-start justify-center pt-1 text-muted-foreground/70 transition hover:text-foreground/80"
+                  onPointerDown={startDraftTextareaResize}
+                  type="button"
+                >
+                  <ArrowUpDownIcon className="size-3.5" />
+                </button>
+                <textarea
+                  id="chat-draft-message"
+                  ref={draftTextareaRef}
+                  className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-6 pb-3 pr-14 text-sm outline-none"
+                  onChange={(event) => {
+                    setDraftMessage(event.target.value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    void submitDraft();
+                  }}
+                  placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
+                  rows={CHAT_DRAFT_MIN_LINES}
+                  value={draftMessage}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3 px-2.5 py-3">
+                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-background/60 px-3 py-1.5">
+                    {selectedAgent.modelName || "Default model"}
+                  </span>
+                  <span className="rounded-full bg-background/60 px-3 py-1.5">
+                    {selectedAgent.reasoningLevel || "Default reasoning"}
+                  </span>
+                </div>
+                <Button
+                  aria-label={draftSubmitAriaLabel}
+                  className="h-10 w-10 shrink-0 rounded-full px-0"
+                  disabled={!canSubmitDraft}
+                  onClick={() => {
+                    void submitDraft();
+                  }}
+                  type="button"
+                >
+                  <SendHorizonalIcon className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : null}
       </Card>
     </main>
