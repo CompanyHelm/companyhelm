@@ -1086,7 +1086,7 @@ function ChatsPageContent() {
           <div className="relative border-t border-border/60 p-3 md:p-4">
             <button
               aria-label="Resize message input"
-              className="absolute inset-x-3 -top-2 z-10 h-4 cursor-move bg-transparent md:inset-x-4"
+              className="absolute inset-x-0 -top-3 z-10 h-6 cursor-move bg-transparent"
               onPointerDown={startDraftTextareaResize}
               type="button"
             />
