@@ -24,22 +24,6 @@ type ChatsRouteSearch = {
   sessionId?: string;
 };
 
-type GithubInstallRouteSearch = {
-  installation_id?: string;
-  setup_action?: string;
-};
-
-function normalizeOptionalSearchString(value: unknown): string | undefined {
-  if (typeof value === "string") {
-    return value.trim().length > 0 ? value.trim() : undefined;
-  }
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return String(value);
-  }
-
-  return undefined;
-}
-
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -48,13 +32,6 @@ function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSe
     sessionId: typeof search.sessionId === "string" && search.sessionId.trim().length > 0
       ? search.sessionId.trim()
       : undefined,
-  };
-}
-
-function validateGithubInstallRouteSearch(search: Record<string, unknown>): GithubInstallRouteSearch {
-  return {
-    installation_id: normalizeOptionalSearchString(search.installation_id),
-    setup_action: normalizeOptionalSearchString(search.setup_action),
   };
 }
 
@@ -110,7 +87,6 @@ const chatsRoute = createRoute({
 const githubInstallRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/github/install",
-  validateSearch: validateGithubInstallRouteSearch,
   component: GithubInstallCallbackPage,
 });
 

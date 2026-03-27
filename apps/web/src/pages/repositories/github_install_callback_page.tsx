@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 import { graphql, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -58,31 +58,48 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): StoreRecord[] {
   });
 }
 
-function resolveCallbackSearch(search: { installation_id?: string; setup_action?: string }): GithubInstallCallbackSearch {
+function normalizeInstallationId(value: string | null): string {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  try {
+    const parsedValue = JSON.parse(normalizedValue) as unknown;
+    if (typeof parsedValue === "string") {
+      return parsedValue.trim();
+    }
+  } catch {
+    // The callback can arrive with either a raw number string or an already-encoded JSON string.
+  }
+
+  return normalizedValue.replace(/^"|"$/g, "");
+}
+
+function resolveCallbackSearch(): GithubInstallCallbackSearch {
   if (typeof window === "undefined") {
     return {
-      installationId: search.installation_id || "",
-      setupAction: search.setup_action || "",
+      installationId: "",
+      setupAction: "",
     };
   }
 
   const locationSearch = new URLSearchParams(window.location.search);
 
   return {
-    installationId: search.installation_id || locationSearch.get("installation_id") || "",
-    setupAction: search.setup_action || locationSearch.get("setup_action") || "",
+    installationId: normalizeInstallationId(locationSearch.get("installation_id")),
+    setupAction: String(locationSearch.get("setup_action") || "").trim(),
   };
 }
 
 export function GithubInstallCallbackPage() {
-  const search = useSearch({ strict: false });
   const callbackHandledRef = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [commitAddInstallation] =
     useMutation<githubInstallCallbackPageAddGithubInstallationMutation>(
       githubInstallCallbackPageAddGithubInstallationMutationNode,
     );
-  const callbackSearch = resolveCallbackSearch(search);
+  const callbackSearch = resolveCallbackSearch();
 
   useEffect(() => {
     const callbackInstallationId = callbackSearch.installationId;
@@ -104,7 +121,6 @@ export function GithubInstallCallbackPage() {
       return;
     }
 
-    let isCancelled = false;
     setErrorMessage(null);
 
     const updateRepositoriesStore = (
@@ -149,47 +165,29 @@ export function GithubInstallCallbackPage() {
       );
     };
 
-    void new Promise<void>((resolve, reject) => {
-      commitAddInstallation({
-        variables: {
-          input: {
-            installationId: callbackInstallationId,
-            setupAction: callbackSetupAction || null,
-          },
+    commitAddInstallation({
+      variables: {
+        input: {
+          installationId: callbackInstallationId,
+          setupAction: callbackSetupAction || null,
         },
-        updater: updateRepositoriesStore,
-        onCompleted: (_response, errors) => {
-          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-          if (nextErrorMessage) {
-            reject(new Error(nextErrorMessage));
-            return;
-          }
-
-          resolve();
-        },
-        onError: reject,
-      });
-    })
-      .then(async () => {
-        if (isCancelled) {
+      },
+      updater: updateRepositoriesStore,
+      onCompleted: (_response, errors) => {
+        const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+        if (nextErrorMessage) {
+          setErrorMessage(nextErrorMessage);
           return;
         }
 
         if (typeof window !== "undefined") {
           window.location.replace("/repositories");
         }
-      })
-      .catch((error: unknown) => {
-        if (isCancelled) {
-          return;
-        }
-
-        setErrorMessage(error instanceof Error ? error.message : "Failed to link GitHub installation.");
-      });
-
-    return () => {
-      isCancelled = true;
-    };
+      },
+      onError: (error: Error) => {
+        setErrorMessage(error.message || "Failed to link GitHub installation.");
+      },
+    });
   }, [callbackSearch.installationId, callbackSearch.setupAction, commitAddInstallation]);
 
   return (
