@@ -29,6 +29,17 @@ type GithubInstallRouteSearch = {
   setup_action?: string;
 };
 
+function normalizeOptionalSearchString(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value.trim().length > 0 ? value.trim() : undefined;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return undefined;
+}
+
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -42,12 +53,8 @@ function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSe
 
 function validateGithubInstallRouteSearch(search: Record<string, unknown>): GithubInstallRouteSearch {
   return {
-    installation_id: typeof search.installation_id === "string" && search.installation_id.trim().length > 0
-      ? search.installation_id.trim()
-      : undefined,
-    setup_action: typeof search.setup_action === "string" && search.setup_action.trim().length > 0
-      ? search.setup_action.trim()
-      : undefined,
+    installation_id: normalizeOptionalSearchString(search.installation_id),
+    setup_action: normalizeOptionalSearchString(search.setup_action),
   };
 }
 
