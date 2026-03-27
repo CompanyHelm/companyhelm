@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -306,6 +307,52 @@ function ChatsPageFallback() {
   );
 }
 
+function AssistantTranscriptMessage({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        a: ({ children, ...anchorProps }) => (
+          <a
+            {...anchorProps}
+            className="font-medium text-foreground underline underline-offset-4"
+            rel="noreferrer"
+            target="_blank"
+          >
+            {children}
+          </a>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-border/70 pl-4 text-muted-foreground">
+            {children}
+          </blockquote>
+        ),
+        code: ({ children, className, ...codeProps }) => (
+          <code
+            {...codeProps}
+            className={className || "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground"}
+          >
+            {children}
+          </code>
+        ),
+        h1: ({ children }) => <h1 className="text-lg font-semibold text-foreground">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-base font-semibold text-foreground">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-semibold text-foreground">{children}</h3>,
+        li: ({ children }) => <li className="pl-1">{children}</li>,
+        ol: ({ children }) => <ol className="ml-5 grid list-decimal gap-2">{children}</ol>,
+        p: ({ children }) => <p className="text-sm leading-7 text-pretty text-foreground">{children}</p>,
+        pre: ({ children }) => (
+          <pre className="my-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground">
+            {children}
+          </pre>
+        ),
+        ul: ({ children }) => <ul className="ml-5 grid list-disc gap-2">{children}</ul>,
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
+
 function ChatsTranscript(
   { session, sessionMessages }:
     { session: SessionRecord; sessionMessages: ReadonlyArray<SessionMessageRecord> },
@@ -336,12 +383,6 @@ function ChatsTranscript(
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
       {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
-        const assistantParagraphs = isUserMessage
-          ? []
-          : message.text
-            .split(/\n{2,}/)
-            .map((paragraph) => paragraph.replace(/\s*\n\s*/g, " ").trim())
-            .filter((paragraph) => paragraph.length > 0);
 
         return (
           <div
@@ -358,12 +399,8 @@ function ChatsTranscript(
               {isUserMessage ? (
                 <p className="whitespace-pre-wrap text-right text-sm">{message.text}</p>
               ) : (
-                <div className="grid w-full gap-4">
-                  {assistantParagraphs.map((paragraph, index) => (
-                    <p key={`${message.id}-${index}`} className="block w-full text-left text-sm leading-7 text-pretty">
-                      {paragraph}
-                    </p>
-                  ))}
+                <div className="grid w-full gap-4 text-left">
+                  <AssistantTranscriptMessage text={message.text} />
                 </div>
               )}
             </div>
