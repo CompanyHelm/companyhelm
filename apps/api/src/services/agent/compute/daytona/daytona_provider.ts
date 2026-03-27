@@ -51,6 +51,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
           },
         ): Promise<{
           disconnect(): Promise<void>;
+          kill(): Promise<void>;
           resize(cols: number, rows: number): Promise<unknown>;
           sendInput(data: string | Uint8Array): Promise<void>;
           wait(): Promise<{
@@ -68,6 +69,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
           rows?: number;
         }): Promise<{
           disconnect(): Promise<void>;
+          kill(): Promise<void>;
           resize(cols: number, rows: number): Promise<unknown>;
           sendInput(data: string | Uint8Array): Promise<void>;
           wait(): Promise<{

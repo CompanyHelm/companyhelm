@@ -12,6 +12,11 @@ test("PiMonoToolsService returns a stubbed read override bound to the current se
   const service = new PiMonoToolsService(
     "agent-1",
     {
+      listTools() {
+        return [];
+      },
+    } as never,
+    {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({});
       },
@@ -56,6 +61,11 @@ test("PiMonoToolsService returns a stubbed read override bound to the current se
 test("PiMonoToolsService returns stubbed bash, edit, and write overrides", async () => {
   const service = new PiMonoToolsService(
     "agent-1",
+    {
+      listTools() {
+        return [];
+      },
+    } as never,
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({});
@@ -126,6 +136,11 @@ test("PiMono read override replaces the built-in read tool in a live session", a
 
   const service = new PiMonoToolsService(
     "agent-1",
+    {
+      listTools() {
+        return [];
+      },
+    } as never,
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({});
@@ -210,4 +225,39 @@ test("PiMono read override replaces the built-in read tool in a live session", a
   }]);
 
   session.dispose();
+});
+
+test("PiMonoToolsService appends compute tool definitions from the sandbox handle", () => {
+  const service = new PiMonoToolsService(
+    "agent-1",
+    {
+      listTools() {
+        return [{
+          description: "Execute a sandbox command.",
+          execute: async () => ({
+            content: [{
+              text: "sandbox result",
+              type: "text",
+            }],
+          }),
+          label: "execute_command",
+          name: "execute_command",
+          parameters: {},
+          promptGuidelines: [],
+          promptSnippet: "Run sandbox commands",
+        }];
+      },
+    } as never,
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({});
+      },
+    } as never,
+    "session-1",
+  );
+
+  assert.deepEqual(
+    service.getTools().map((tool) => tool.name),
+    ["bash", "edit", "read", "write", "execute_command"],
+  );
 });

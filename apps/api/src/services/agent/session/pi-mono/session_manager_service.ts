@@ -11,6 +11,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { AgentComputeProviderInterface } from "../../compute/provider_interface.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
@@ -52,11 +53,16 @@ type UpdatableDatabase = {
  */
 @injectable()
 export class PiMonoSessionManagerService {
+  private readonly agentComputeProvider: AgentComputeProviderInterface;
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
 
-  constructor(@inject(RedisService) redisService: RedisService) {
+  constructor(
+    @inject(RedisService) redisService: RedisService,
+    @inject(AgentComputeProviderInterface) agentComputeProvider: AgentComputeProviderInterface,
+  ) {
     this.redisService = redisService;
+    this.agentComputeProvider = agentComputeProvider;
   }
 
   async ensureSession(
@@ -72,8 +78,14 @@ export class PiMonoSessionManagerService {
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(runtimeConfig.providerId, runtimeConfig.apiKey);
     const modelRegistry = new ModelRegistry(authStorage);
+    const computeSandbox = await this.agentComputeProvider.getSandboxForSession(
+      transactionProvider,
+      runtimeConfig.agentId,
+      sessionId,
+    );
     const piMonoToolsService = new PiMonoToolsService(
       runtimeConfig.agentId,
+      computeSandbox,
       transactionProvider,
       sessionId,
     );

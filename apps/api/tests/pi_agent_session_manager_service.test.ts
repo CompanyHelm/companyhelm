@@ -113,15 +113,26 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   piAgentMocks.createAgentSessionMock.mockResolvedValue({
     session: createdSession,
   });
-  const service = new PiMonoSessionManagerService({
-    async getClient() {
-      return {
-        async publish() {
-          return 1;
-        },
-      };
-    },
-  } as never);
+  const service = new PiMonoSessionManagerService(
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    {
+      async getSandboxForSession() {
+        return {
+          listTools() {
+            return [];
+          },
+        };
+      },
+    } as never,
+  );
 
   const session = await service.ensureSession(
     {
@@ -273,15 +284,26 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   piAgentMocks.createAgentSessionMock.mockResolvedValue({
     session: createdSession,
   });
-  const service = new PiMonoSessionManagerService({
-    async getClient() {
-      return {
-        async publish() {
-          return 1;
-        },
-      };
-    },
-  } as never);
+  const service = new PiMonoSessionManagerService(
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    {
+      async getSandboxForSession() {
+        return {
+          listTools() {
+            return [];
+          },
+        };
+      },
+    } as never,
+  );
 
   const first = await service.ensureSession(
     {

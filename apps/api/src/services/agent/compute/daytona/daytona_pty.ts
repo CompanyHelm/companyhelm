@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 
 type RemotePtyHandle = {
   disconnect(): Promise<void>;
+  kill(): Promise<void>;
   resize(cols: number, rows: number): Promise<unknown>;
   sendInput(data: string | Uint8Array): Promise<void>;
   wait(): Promise<{
@@ -77,7 +78,7 @@ export class AgentComputeDaytonaPty {
     return pty;
   }
 
-  getId(): string {
+  getSessionId(): string {
     return this.id;
   }
 
@@ -176,6 +177,10 @@ export class AgentComputeDaytonaPty {
 
   async close(): Promise<void> {
     await this.handle.disconnect();
+  }
+
+  async kill(): Promise<void> {
+    await this.handle.kill();
   }
 
   private appendOutput(data: Uint8Array): void {

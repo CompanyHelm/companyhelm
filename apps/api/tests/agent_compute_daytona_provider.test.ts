@@ -18,11 +18,12 @@ test("AgentComputeDaytonaProvider returns a lazy sandbox handle without material
   const sandbox = await provider.getSandboxForSession(transactionProvider, "agent-1", "session-1");
 
   assert.equal(materializeSandboxForSession.mock.calls.length, 0);
-  assert.deepEqual(sandbox.listTools(), [
+  assert.deepEqual(sandbox.listTools().map((tool) => tool.name), [
     "execute_command",
     "send_pty_input",
     "read_pty_output",
     "resize_pty",
-    "close_pty",
+    "kill_session",
+    "close_session",
   ]);
 });
