@@ -23,6 +23,11 @@ type SessionRuntimeConfig = {
   reasoningLevel?: string | null;
 };
 
+type SessionRuntime = {
+  eventHandler: PiMonoSessionEventHandler;
+  session: AgentSession;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -41,12 +46,12 @@ type UpdatableDatabase = {
 
 /**
  * Owns the process-local PI Mono runtime sessions keyed by CompanyHelm session id. Its scope is
- * reusing a live SDK session when the same process handles later wake jobs, while lazily creating a
- * new runtime session when this process becomes the active worker for a session.
+ * creating the SDK runtime for the currently leased turn, restoring persisted context into it, and
+ * giving prompt or steer calls access to the paired event handler that writes transcript rows.
  */
 @injectable()
 export class PiMonoSessionManagerService {
-  private readonly sessionsById = new Map<string, AgentSession>();
+  private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
 
   constructor(@inject(RedisService) redisService: RedisService) {
@@ -58,9 +63,9 @@ export class PiMonoSessionManagerService {
     sessionId: string,
     runtimeConfig: SessionRuntimeConfig,
   ): Promise<AgentSession> {
-    const existingSession = this.sessionsById.get(sessionId);
-    if (existingSession) {
-      return existingSession;
+    const existingRuntime = this.runtimesById.get(sessionId);
+    if (existingRuntime) {
+      return existingRuntime.session;
     }
 
     const authStorage = AuthStorage.inMemory();
@@ -105,7 +110,10 @@ export class PiMonoSessionManagerService {
       void sessionEventHandler.handle(event);
     });
 
-    this.sessionsById.set(sessionId, session);
+    this.runtimesById.set(sessionId, {
+      eventHandler: sessionEventHandler,
+      session,
+    });
     return session;
   }
 
@@ -114,8 +122,14 @@ export class PiMonoSessionManagerService {
     sessionId: string,
     message: string,
     images?: ImageContent[],
+    userMessageCreatedAt?: Date,
   ): Promise<void> {
-    const session = this.getRequiredSession(sessionId);
+    const runtime = this.getRequiredRuntime(sessionId);
+    if (userMessageCreatedAt) {
+      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt);
+    }
+
+    const session = runtime.session;
     await session.prompt(message, images && images.length > 0 ? { images } : undefined);
     await this.persistContextMessages(transactionProvider, sessionId, session.agent.state.messages);
   }
@@ -125,42 +139,48 @@ export class PiMonoSessionManagerService {
     sessionId: string,
     message: string,
     images?: ImageContent[],
+    userMessageCreatedAt?: Date,
   ): Promise<void> {
-    const session = this.getRequiredSession(sessionId);
+    const runtime = this.getRequiredRuntime(sessionId);
+    if (userMessageCreatedAt) {
+      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt);
+    }
+
+    const session = runtime.session;
     await session.steer(message, images);
     await this.persistContextMessages(transactionProvider, sessionId, session.agent.state.messages);
   }
 
   async abort(sessionId: string): Promise<void> {
-    const session = this.sessionsById.get(sessionId);
-    if (!session) {
+    const runtime = this.runtimesById.get(sessionId);
+    if (!runtime) {
       return;
     }
 
-    await session.abort();
+    await runtime.session.abort();
   }
 
   get(sessionId: string): AgentSession | undefined {
-    return this.sessionsById.get(sessionId);
+    return this.runtimesById.get(sessionId)?.session;
   }
 
   dispose(sessionId: string): void {
-    const session = this.sessionsById.get(sessionId);
-    if (!session) {
+    const runtime = this.runtimesById.get(sessionId);
+    if (!runtime) {
       return;
     }
 
-    session.dispose();
-    this.sessionsById.delete(sessionId);
+    runtime.session.dispose();
+    this.runtimesById.delete(sessionId);
   }
 
-  private getRequiredSession(sessionId: string): AgentSession {
-    const session = this.sessionsById.get(sessionId);
-    if (!session) {
+  private getRequiredRuntime(sessionId: string): SessionRuntime {
+    const runtime = this.runtimesById.get(sessionId);
+    if (!runtime) {
       throw new Error("Session not found.");
     }
 
-    return session;
+    return runtime;
   }
 
   private resolveThinkingLevel(reasoningLevel?: string | null): ThinkingLevel | undefined {

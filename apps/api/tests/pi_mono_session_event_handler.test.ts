@@ -530,6 +530,35 @@ test("PiMonoSessionEventHandler stores user messages only when message end arriv
   );
 });
 
+test("PiMonoSessionEventHandler uses the queued user message timestamp when persisting the user row", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+  const queuedTimestamp = new Date("2026-03-27T18:00:00.000Z");
+
+  try {
+    handler.queueUserMessageTimestamp(queuedTimestamp);
+    await handler.handle({
+      message: {
+        content: "Keep the original queue ordering.",
+        role: "user",
+        timestamp: 9999999999999,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  assert.equal((messageRecord.createdAt as Date).toISOString(), queuedTimestamp.toISOString());
+  assert.equal((messageRecord.updatedAt as Date).toISOString(), queuedTimestamp.toISOString());
+});
+
 test("PiMonoSessionEventHandler removes stale content rows when a later snapshot shrinks", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(

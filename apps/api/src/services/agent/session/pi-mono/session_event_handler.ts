@@ -93,6 +93,7 @@ export class PiMonoSessionEventHandler {
   private readonly messageIdByEventKey = new Map<string, string>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
+  private readonly queuedUserMessageTimestamps: Date[] = [];
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
   private isThinking = false;
@@ -116,6 +117,10 @@ export class PiMonoSessionEventHandler {
     });
     this.eventChain = queuedEvent.catch(() => {});
     return queuedEvent;
+  }
+
+  queueUserMessageTimestamp(timestamp: Date): void {
+    this.queuedUserMessageTimestamps.push(timestamp);
   }
 
   private async handleEvent(event: unknown): Promise<void> {
@@ -216,10 +221,13 @@ export class PiMonoSessionEventHandler {
 
   private async handleMessageEnd(sessionEvent: SessionEvent): Promise<void> {
     switch (sessionEvent.message?.role) {
-      case "user":
-        await this.upsertSessionMessage("completed", sessionEvent);
+      case "user": {
+        const userMessageTimestamp = this.shiftQueuedUserMessageTimestamp()
+          ?? this.resolveMessageTimestamp(sessionEvent.message.timestamp);
+        await this.upsertSessionMessage("completed", sessionEvent, userMessageTimestamp);
         this.logInfo("pi mono user message completed", sessionEvent);
         return;
+      }
       case "assistant":
         await this.clearThinkingState(true);
         await this.upsertSessionMessage("completed", sessionEvent);
@@ -237,6 +245,7 @@ export class PiMonoSessionEventHandler {
   private async upsertSessionMessage(
     status: "running" | "completed",
     sessionEvent: SessionEvent,
+    timestampOverride?: Date,
   ): Promise<void> {
     const eventMessage = sessionEvent.message;
     if (!eventMessage?.role) {
@@ -245,7 +254,7 @@ export class PiMonoSessionEventHandler {
     }
 
     const messageId = await this.resolveMessageId(sessionEvent);
-    const timestamp = this.resolveMessageTimestamp(eventMessage.timestamp);
+    const timestamp = timestampOverride ?? this.resolveMessageTimestamp(eventMessage.timestamp);
     const companyId = await this.resolveCompanyId();
     const messageRecord = this.buildSessionMessageRecord(
       companyId,
@@ -528,6 +537,10 @@ export class PiMonoSessionEventHandler {
     }
 
     return new Date();
+  }
+
+  private shiftQueuedUserMessageTimestamp(): Date | undefined {
+    return this.queuedUserMessageTimestamps.shift();
   }
 
   private async resolveCompanyId(): Promise<string> {

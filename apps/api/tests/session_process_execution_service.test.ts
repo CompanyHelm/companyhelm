@@ -51,7 +51,7 @@ test("SessionProcessExecutionService no-ops when another worker already owns the
 test("SessionProcessExecutionService prompts one queued turn, releases the lease, and re-enqueues when more work remains", async () => {
   const ensureSessionCalls: unknown[] = [];
   const disposeCalls: string[] = [];
-  const promptCalls: Array<{ images: unknown; sessionId: string; text: string }> = [];
+  const promptCalls: Array<{ createdAt: Date | undefined; images: unknown; sessionId: string; text: string }> = [];
   const queueWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const markProcessingCalls: string[][] = [];
@@ -129,8 +129,15 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       dispose(sessionId: string) {
         disposeCalls.push(sessionId);
       },
-      async prompt(_transactionProvider: unknown, sessionId: string, text: string, images?: unknown) {
+      async prompt(
+        _transactionProvider: unknown,
+        sessionId: string,
+        text: string,
+        images?: unknown,
+        createdAt?: Date,
+      ) {
         promptCalls.push({
+          createdAt,
           images,
           sessionId,
           text,
@@ -214,6 +221,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
     sessionId: "session-1",
   }]);
   assert.deepEqual(promptCalls, [{
+    createdAt: new Date("2026-03-26T12:00:00.000Z"),
     images: [],
     sessionId: "session-1",
     text: "Investigate the regression.",

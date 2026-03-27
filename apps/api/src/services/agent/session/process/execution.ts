@@ -148,6 +148,7 @@ export class SessionProcessExecutionService {
           sessionId,
           this.combineQueuedTexts(primaryBatch),
           this.toImageContents(primaryBatch),
+          primaryBatch[0]?.createdAt,
         );
         await steeringDeliveryPromise;
         if (leaseLossError) {
@@ -207,6 +208,7 @@ export class SessionProcessExecutionService {
         sessionId,
         this.combineQueuedTexts(steerMessages),
         this.toImageContents(steerMessages),
+        steerMessages[0]?.createdAt,
       );
       await this.sessionQueuedMessageService.deleteProcessed(transactionProvider, companyId, steerMessageIds);
     } catch (error) {
