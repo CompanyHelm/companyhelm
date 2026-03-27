@@ -414,14 +414,30 @@ test("PiMonoSessionEventHandler persists tool execution events into one streamed
       type: "tool_execution_start",
     });
     await handler.handle({
-      partialResult: "Partial output",
+      partialResult: {
+        content: [{
+          text: "Partial output",
+          type: "text",
+        }],
+        details: {
+          ignored: true,
+        },
+      },
       toolCallId: "tool-call-1",
       toolName: "read",
       type: "tool_execution_update",
     });
     await handler.handle({
       isError: false,
-      result: "Final output",
+      result: {
+        content: [{
+          text: "Final output",
+          type: "text",
+        }],
+        details: {
+          path: "README.md",
+        },
+      },
       toolCallId: "tool-call-1",
       toolName: "read",
       type: "tool_execution_end",
@@ -515,6 +531,58 @@ test("PiMonoSessionEventHandler ignores trailing toolResult message events after
       {
         text: "Final output",
         type: "text",
+      },
+    ],
+  );
+});
+
+test("PiMonoSessionEventHandler stores image tool output blocks without serializing tool details", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      isError: false,
+      result: {
+        content: [{
+          data: "YmFzZTY0LWltYWdl",
+          mimeType: "image/png",
+          type: "image",
+        }],
+        details: {
+          ignored: true,
+        },
+      },
+      toolCallId: "tool-call-image",
+      toolName: "image_tool",
+      type: "tool_execution_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        data: record.data,
+        mimeType: record.mimeType,
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        data: "YmFzZTY0LWltYWdl",
+        mimeType: "image/png",
+        text: undefined,
+        type: "image",
       },
     ],
   );

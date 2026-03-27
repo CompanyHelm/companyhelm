@@ -164,10 +164,20 @@ type SessionMessage {
   status: String!
   toolCallId: String
   toolName: String
+  contents: [SessionMessageContent!]!
   text: String!
   isError: Boolean!
   createdAt: String!
   updatedAt: String!
+}
+
+type SessionMessageContent {
+  type: String!
+  text: String
+  data: String
+  mimeType: String
+  toolCallId: String
+  toolName: String
 }
 
 type PageInfo {

@@ -31,7 +31,11 @@ type SessionMessageRow = {
 
 type MessageContentRow = {
   messageId: string;
+  data: string | null;
+  mimeType: string | null;
   text: string | null;
+  toolCallId: string | null;
+  toolName: string | null;
   type: string;
   createdAt: Date;
 };
@@ -73,10 +77,20 @@ export type SessionMessageGraphqlRecord = {
   status: string;
   toolCallId: string | null;
   toolName: string | null;
+  contents: SessionMessageContentGraphqlRecord[];
   text: string;
   isError: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type SessionMessageContentGraphqlRecord = {
+  type: string;
+  text: string | null;
+  data: string | null;
+  mimeType: string | null;
+  toolCallId: string | null;
+  toolName: string | null;
 };
 
 type PageInfoGraphqlRecord = {
@@ -256,14 +270,14 @@ export class SessionReadService {
         };
       }
 
-      const textsByMessageId = await this.loadTextsByMessageId(
+      const contentsByMessageId = await this.loadContentsByMessageId(
         selectableDatabase,
         companyId,
         pageMessages.map((message) => message.id),
       );
 
       const edges = pageMessages.map((message) => {
-        const node = this.serializeMessage(message, textsByMessageId);
+        const node = this.serializeMessage(message, contentsByMessageId);
         return {
           cursor: encodeSessionMessageCursor(node.createdAt, node.id),
           node,
@@ -310,8 +324,8 @@ export class SessionReadService {
         return null;
       }
 
-      const textsByMessageId = await this.loadTextsByMessageId(selectableDatabase, companyId, [persistedMessage.id]);
-      return this.serializeMessage(persistedMessage, textsByMessageId);
+      const contentsByMessageId = await this.loadContentsByMessageId(selectableDatabase, companyId, [persistedMessage.id]);
+      return this.serializeMessage(persistedMessage, contentsByMessageId);
     });
   }
 
@@ -346,7 +360,7 @@ export class SessionReadService {
         return [];
       }
 
-      const textsByMessageId = await this.loadTextsByMessageId(
+      const contentsByMessageId = await this.loadContentsByMessageId(
         selectableDatabase,
         companyId,
         persistedMessages.map((message) => message.id),
@@ -354,19 +368,23 @@ export class SessionReadService {
 
       return [...persistedMessages]
         .sort((leftMessage, rightMessage) => leftMessage.createdAt.getTime() - rightMessage.createdAt.getTime())
-        .map((message) => this.serializeMessage(message, textsByMessageId));
+        .map((message) => this.serializeMessage(message, contentsByMessageId));
     });
   }
 
-  private async loadTextsByMessageId(
+  private async loadContentsByMessageId(
     selectableDatabase: SelectableDatabase,
     companyId: string,
     messageIds: string[],
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, SessionMessageContentGraphqlRecord[]>> {
     const contentRows = await selectableDatabase
       .select({
         messageId: messageContents.messageId,
+        data: messageContents.data,
+        mimeType: messageContents.mimeType,
         text: messageContents.text,
+        toolCallId: messageContents.toolCallId,
+        toolName: messageContents.toolName,
         type: messageContents.type,
         createdAt: messageContents.createdAt,
       })
@@ -376,24 +394,25 @@ export class SessionReadService {
         inArray(messageContents.messageId, messageIds),
       )) as MessageContentRow[];
 
-    const textsByMessageId = new Map<string, string>();
+    const contentsByMessageId = new Map<string, SessionMessageContentGraphqlRecord[]>();
     const orderedContentRows = [...contentRows].sort((leftContent, rightContent) => {
       return leftContent.createdAt.getTime() - rightContent.createdAt.getTime();
     });
 
     for (const contentRow of orderedContentRows) {
-      if (contentRow.type !== "text" || !contentRow.text) {
-        continue;
-      }
-
-      const currentText = textsByMessageId.get(contentRow.messageId) ?? "";
-      textsByMessageId.set(
-        contentRow.messageId,
-        currentText.length > 0 ? `${currentText}\n${contentRow.text}` : contentRow.text,
-      );
+      const currentContents = contentsByMessageId.get(contentRow.messageId) ?? [];
+      currentContents.push({
+        data: contentRow.data,
+        mimeType: contentRow.mimeType,
+        text: contentRow.text,
+        toolCallId: contentRow.toolCallId,
+        toolName: contentRow.toolName,
+        type: contentRow.type,
+      });
+      contentsByMessageId.set(contentRow.messageId, currentContents);
     }
 
-    return textsByMessageId;
+    return contentsByMessageId;
   }
 
   private serializeSession(sessionRow: SessionRow): SessionGraphqlRecord {
@@ -414,16 +433,23 @@ export class SessionReadService {
 
   private serializeMessage(
     messageRow: SessionMessageRow,
-    textsByMessageId: Map<string, string>,
+    contentsByMessageId: Map<string, SessionMessageContentGraphqlRecord[]>,
   ): SessionMessageGraphqlRecord {
+    const contents = contentsByMessageId.get(messageRow.id) ?? [];
+    const text = contents
+      .filter((content) => content.type === "text" && typeof content.text === "string" && content.text.length > 0)
+      .map((content) => content.text as string)
+      .join("\n");
+
     return {
+      contents,
       id: messageRow.id,
       sessionId: messageRow.sessionId,
       role: messageRow.role,
       status: messageRow.status,
       toolCallId: messageRow.toolCallId,
       toolName: messageRow.toolName,
-      text: textsByMessageId.get(messageRow.id) ?? "",
+      text,
       isError: messageRow.isError,
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),

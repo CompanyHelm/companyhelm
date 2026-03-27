@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4f0df4bc7e2fc7b2e3b02f78f3d34b56>>
+ * @generated SignedSource<<ffd11219879f6ce5da4fb2ab664965b0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,14 @@ export type chatsPageSessionMessageUpdatedSubscription$variables = {
 };
 export type chatsPageSessionMessageUpdatedSubscription$data = {
   readonly SessionMessageUpdated: {
+    readonly contents: ReadonlyArray<{
+      readonly data: string | null | undefined;
+      readonly mimeType: string | null | undefined;
+      readonly text: string | null | undefined;
+      readonly toolCallId: string | null | undefined;
+      readonly toolName: string | null | undefined;
+      readonly type: string;
+    }>;
     readonly createdAt: string;
     readonly id: string;
     readonly isError: boolean;
@@ -39,7 +47,28 @@ var v0 = [
     "name": "sessionId"
   }
 ],
-v1 = [
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "toolCallId",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "toolName",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "text",
+  "storageKey": null
+},
+v4 = [
   {
     "alias": null,
     "args": [
@@ -82,27 +111,44 @@ v1 = [
         "name": "status",
         "storageKey": null
       },
+      (v1/*: any*/),
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
-        "kind": "ScalarField",
-        "name": "toolCallId",
+        "concreteType": "SessionMessageContent",
+        "kind": "LinkedField",
+        "name": "contents",
+        "plural": true,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "type",
+            "storageKey": null
+          },
+          (v3/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "data",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "mimeType",
+            "storageKey": null
+          },
+          (v1/*: any*/),
+          (v2/*: any*/)
+        ],
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "toolName",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "text",
-        "storageKey": null
-      },
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -134,7 +180,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageSessionMessageUpdatedSubscription",
-    "selections": (v1/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -143,19 +189,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageSessionMessageUpdatedSubscription",
-    "selections": (v1/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "f1b7220a5dfb8c3d2a056d720ab29ceb",
+    "cacheID": "9fd72c755f9edec25362233b6f224c4d",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5cdd7563b9cb17b494fc78104b6ade06";
+(node as any).hash = "c1ffc0a824372a027581ce0ca0cc06c6";
 
 export default node;

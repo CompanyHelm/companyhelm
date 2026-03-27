@@ -51,6 +51,10 @@ type ToolCallContent = {
 
 type MessageContent = TextContent | ImageContent | ThinkingContent | ToolCallContent;
 
+type ToolExecutionResult = {
+  content?: unknown;
+};
+
 type SessionMessage = {
   content?: string | MessageContent[];
   errorMessage?: string;
@@ -468,11 +472,11 @@ export class PiMonoSessionEventHandler {
     const payload = sessionEvent.type === "tool_execution_update"
       ? sessionEvent.partialResult
       : sessionEvent.result;
-    const text = this.serializeToolExecutionPayload(payload);
+    const content = this.extractToolExecutionContent(payload);
 
     return {
       message: {
-        content: text.length > 0 ? text : [],
+        content,
         isError: sessionEvent.isError === true,
         role: "toolResult",
         timestamp: Date.now(),
@@ -483,7 +487,12 @@ export class PiMonoSessionEventHandler {
     };
   }
 
-  private serializeToolExecutionPayload(value: unknown): string {
+  private extractToolExecutionContent(value: unknown): string | MessageContent[] {
+    const normalizedContentBlocks = this.normalizeToolExecutionContentBlocks(value);
+    if (normalizedContentBlocks.length > 0) {
+      return normalizedContentBlocks;
+    }
+
     if (typeof value === "string") {
       return value;
     }
@@ -499,6 +508,52 @@ export class PiMonoSessionEventHandler {
     } catch {
       return String(value);
     }
+  }
+
+  private normalizeToolExecutionContentBlocks(value: unknown): MessageContent[] {
+    const rawContent = this.extractRawToolExecutionContent(value);
+    if (!Array.isArray(rawContent)) {
+      return [];
+    }
+
+    return rawContent.flatMap((contentBlock) => {
+      if (!contentBlock || typeof contentBlock !== "object") {
+        return [];
+      }
+
+      const contentType = "type" in contentBlock ? contentBlock.type : undefined;
+      if (contentType === "text" && typeof contentBlock.text === "string") {
+        return [{
+          text: contentBlock.text,
+          type: "text",
+        }];
+      }
+      if (
+        contentType === "image"
+        && typeof contentBlock.data === "string"
+        && typeof contentBlock.mimeType === "string"
+      ) {
+        return [{
+          data: contentBlock.data,
+          mimeType: contentBlock.mimeType,
+          type: "image",
+        }];
+      }
+
+      return [];
+    });
+  }
+
+  private extractRawToolExecutionContent(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (!value || typeof value !== "object") {
+      return undefined;
+    }
+
+    const toolExecutionResult = value as ToolExecutionResult;
+    return toolExecutionResult.content;
   }
 
   private async processAssistantThinkingEvent(sessionEvent: SessionEvent): Promise<void> {

@@ -153,6 +153,16 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
       status: "completed",
       toolCallId: null,
       toolName: null,
+      contents: [
+        {
+          type: "text",
+          text: "Done",
+          data: null,
+          mimeType: null,
+          toolCallId: null,
+          toolName: null,
+        },
+      ],
       text: "Done",
       isError: false,
       createdAt: "2026-03-26T06:02:00.000Z",
@@ -188,6 +198,16 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
       status: "completed",
       toolCallId: null,
       toolName: null,
+      contents: [
+        {
+          type: "text",
+          text: "Done",
+          data: null,
+          mimeType: null,
+          toolCallId: null,
+          toolName: null,
+        },
+      ],
       text: "Done",
       isError: false,
       createdAt: "2026-03-26T06:02:00.000Z",

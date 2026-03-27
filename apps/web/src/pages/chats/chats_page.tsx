@@ -51,6 +51,14 @@ const chatsPageTranscriptQueryNode = graphql`
           status
           toolCallId
           toolName
+          contents {
+            type
+            text
+            data
+            mimeType
+            toolCallId
+            toolName
+          }
           text
           isError
           createdAt
@@ -144,6 +152,14 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
       status
       toolCallId
       toolName
+      contents {
+        type
+        text
+        data
+        mimeType
+        toolCallId
+        toolName
+      }
       text
       isError
       createdAt
@@ -475,7 +491,16 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
     : message.isError
     ? "Error"
     : "Success";
-  const outputText = message.text.trim();
+  const visibleContents = message.contents.filter((content) => {
+    if (content.type === "text") {
+      return typeof content.text === "string" && content.text.trim().length > 0;
+    }
+    if (content.type === "image") {
+      return typeof content.data === "string" && content.data.length > 0;
+    }
+
+    return false;
+  });
 
   return (
     <div className="w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
@@ -484,10 +509,30 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
         <span>{message.toolName ?? "Tool"}</span>
         <span className="text-[10px] tracking-[0.18em] text-muted-foreground/70">{statusLabel}</span>
       </div>
-      {outputText.length > 0 ? (
-        <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground">
-          {message.text}
-        </pre>
+      {visibleContents.length > 0 ? (
+        <div className="mt-3 grid gap-3">
+          {visibleContents.map((content, contentIndex) => {
+            if (content.type === "image" && content.data && content.mimeType) {
+              return (
+                <img
+                  key={`${message.id}-content-${contentIndex}`}
+                  alt={`${message.toolName ?? "tool"} output`}
+                  className="max-h-[28rem] max-w-full rounded-xl border border-border/60 object-contain"
+                  src={`data:${content.mimeType};base64,${content.data}`}
+                />
+              );
+            }
+
+            return (
+              <pre
+                key={`${message.id}-content-${contentIndex}`}
+                className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground"
+              >
+                {content.text}
+              </pre>
+            );
+          })}
+        </div>
       ) : (
         <p className="mt-3 text-sm text-muted-foreground">
           {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}

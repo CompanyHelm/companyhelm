@@ -77,20 +77,32 @@ class SessionMessagesQueryTestHarness {
                     async where() {
                       return [
                         {
+                          data: null,
                           messageId: "message-2",
+                          mimeType: null,
                           text: "Line two",
+                          toolCallId: null,
+                          toolName: null,
                           type: "text",
                           createdAt: new Date("2026-03-24T08:01:30.000Z"),
                         },
                         {
+                          data: null,
                           messageId: "message-1",
+                          mimeType: null,
                           text: "hi",
+                          toolCallId: null,
+                          toolName: null,
                           type: "text",
                           createdAt: new Date("2026-03-24T08:00:00.000Z"),
                         },
                         {
+                          data: null,
                           messageId: "message-2",
+                          mimeType: null,
                           text: "Line one",
+                          toolCallId: null,
+                          toolName: null,
                           type: "text",
                           createdAt: new Date("2026-03-24T08:01:00.000Z"),
                         },
@@ -169,6 +181,14 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
             status
             toolCallId
             toolName
+            contents {
+              type
+              text
+              data
+              mimeType
+              toolCallId
+              toolName
+            }
             text
             isError
             createdAt
@@ -189,6 +209,16 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       status: "completed",
       toolCallId: null,
       toolName: null,
+      contents: [
+        {
+          type: "text",
+          text: "hi",
+          data: null,
+          mimeType: null,
+          toolCallId: null,
+          toolName: null,
+        },
+      ],
       text: "hi",
       isError: false,
       createdAt: "2026-03-24T08:00:00.000Z",
@@ -201,6 +231,24 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       status: "completed",
       toolCallId: null,
       toolName: null,
+      contents: [
+        {
+          type: "text",
+          text: "Line one",
+          data: null,
+          mimeType: null,
+          toolCallId: null,
+          toolName: null,
+        },
+        {
+          type: "text",
+          text: "Line two",
+          data: null,
+          mimeType: null,
+          toolCallId: null,
+          toolName: null,
+        },
+      ],
       text: "Line one\nLine two",
       isError: false,
       createdAt: "2026-03-24T08:01:00.000Z",
