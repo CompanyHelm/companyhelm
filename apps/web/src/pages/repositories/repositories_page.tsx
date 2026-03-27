@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { Suspense, useMemo, useState } from "react";
 import {
   ExternalLinkIcon,
@@ -18,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogActionButton,
@@ -40,7 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { repositoriesPageAddGithubInstallationMutation } from "./__generated__/repositoriesPageAddGithubInstallationMutation.graphql";
 import type { repositoriesPageDeleteGithubInstallationMutation } from "./__generated__/repositoriesPageDeleteGithubInstallationMutation.graphql";
 import type { repositoriesPageQuery } from "./__generated__/repositoriesPageQuery.graphql";
 import type { repositoriesPageRefreshGithubInstallationRepositoriesMutation } from "./__generated__/repositoriesPageRefreshGithubInstallationRepositoriesMutation.graphql";
@@ -74,31 +71,6 @@ const repositoriesPageQueryNode = graphql`
       archived
       createdAt
       updatedAt
-    }
-  }
-`;
-
-const repositoriesPageAddGithubInstallationMutationNode = graphql`
-  mutation repositoriesPageAddGithubInstallationMutation($input: AddGithubInstallationInput!) {
-    AddGithubInstallation(input: $input) {
-      githubInstallation {
-        id
-        installationId
-        createdAt
-      }
-      repositories {
-        id
-        githubInstallationId
-        externalId
-        name
-        fullName
-        htmlUrl
-        isPrivate
-        defaultBranch
-        archived
-        createdAt
-        updatedAt
-      }
     }
   }
 `;
@@ -224,7 +196,6 @@ function RepositoriesPageFallback() {
 }
 
 function RepositoriesPageContent() {
-  const [manualInstallationId, setManualInstallationId] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [deletingInstallationId, setDeletingInstallationId] = useState<string | null>(null);
@@ -236,10 +207,6 @@ function RepositoriesPageContent() {
       fetchPolicy: "store-and-network",
     },
   );
-  const [commitAddInstallation, isAddInstallationInFlight] =
-    useMutation<repositoriesPageAddGithubInstallationMutation>(
-      repositoriesPageAddGithubInstallationMutationNode,
-    );
   const [commitDeleteInstallation, isDeleteInstallationInFlight] =
     useMutation<repositoriesPageDeleteGithubInstallationMutation>(
       repositoriesPageDeleteGithubInstallationMutationNode,
@@ -321,68 +288,6 @@ function RepositoriesPageContent() {
     );
   };
 
-  const linkInstallation = async (params: {
-    installationId: string;
-    setupAction?: string | null;
-    successMessage: string;
-  }) => {
-    const normalizedInstallationId = params.installationId.trim();
-    if (!normalizedInstallationId || isAddInstallationInFlight) {
-      return;
-    }
-
-    setErrorMessage(null);
-    setNoticeMessage(null);
-
-    await new Promise<void>((resolve, reject) => {
-      commitAddInstallation({
-        variables: {
-          input: {
-            installationId: normalizedInstallationId,
-            setupAction: params.setupAction ?? null,
-          },
-        },
-        updater: (store) => {
-          const payload = store.getRootField("AddGithubInstallation");
-          const newInstallation = payload?.getLinkedRecord("githubInstallation");
-          if (!newInstallation) {
-            return;
-          }
-
-          const rootRecord = store.getRoot();
-          const currentInstallations = filterStoreRecords(rootRecord.getLinkedRecords("GithubInstallations") || []);
-          const nextInstallations = [
-            newInstallation,
-            ...currentInstallations.filter((installation) => {
-              return String(installation.getValue("installationId") || "")
-                !== String(newInstallation.getValue("installationId") || "");
-            }),
-          ];
-          rootRecord.setLinkedRecords(nextInstallations, "GithubInstallations");
-          updateRepositoriesStore(
-            store,
-            String(newInstallation.getValue("installationId") || ""),
-            "AddGithubInstallation",
-          );
-        },
-        onCompleted: (_response, errors) => {
-          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-          if (nextErrorMessage) {
-            reject(new Error(nextErrorMessage));
-            return;
-          }
-
-          setNoticeMessage(params.successMessage);
-          resolve();
-        },
-        onError: reject,
-      });
-    }).catch((error: unknown) => {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to link GitHub installation.");
-      throw error;
-    });
-  };
-
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -417,41 +322,6 @@ function RepositoriesPageContent() {
               {errorMessage}
             </div>
           ) : null}
-
-          <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 md:grid-cols-[1fr_auto] md:items-end">
-            <div className="grid gap-1">
-              <p className="text-sm font-medium text-foreground">Add an installation by ID</p>
-              <p className="text-xs/relaxed text-muted-foreground">
-                Use this when you already know the installation ID and want to link it directly without re-running setup.
-              </p>
-            </div>
-            <form
-              className="flex flex-col gap-2 sm:flex-row"
-              onSubmit={async (event: FormEvent<HTMLFormElement>) => {
-                event.preventDefault();
-                try {
-                  await linkInstallation({
-                    installationId: manualInstallationId,
-                    successMessage: `Linked GitHub installation ${manualInstallationId.trim()}.`,
-                  });
-                  setManualInstallationId("");
-                } catch {
-                  // Error state is already surfaced above.
-                }
-              }}
-            >
-              <Input
-                value={manualInstallationId}
-                onChange={(event) => {
-                  setManualInstallationId(event.currentTarget.value);
-                }}
-                placeholder="110600868"
-              />
-              <Button disabled={isAddInstallationInFlight || manualInstallationId.trim().length === 0} size="sm" type="submit">
-                Link installation
-              </Button>
-            </form>
-          </div>
         </CardContent>
       </Card>
 
@@ -469,7 +339,7 @@ function RepositoriesPageContent() {
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
               <p className="text-sm font-medium text-foreground">No installations linked yet</p>
               <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                Install the GitHub App or paste an installation ID above to populate repository data here.
+                Install the GitHub App to populate repository data here.
               </p>
             </div>
           ) : (
