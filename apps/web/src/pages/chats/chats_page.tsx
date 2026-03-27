@@ -1083,15 +1083,15 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent ? (
-          <div className="border-t border-border/60 p-3 md:p-4">
+          <div className="relative border-t border-border/60 p-3 md:p-4">
+            <button
+              aria-label="Resize message input"
+              className="absolute inset-x-3 -top-2 z-10 h-4 cursor-move bg-transparent md:inset-x-4"
+              onPointerDown={startDraftTextareaResize}
+              type="button"
+            />
             <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
-              <div className="relative">
-                <button
-                  aria-label="Resize message input"
-                  className="absolute inset-x-4 top-0 z-10 h-4 cursor-move bg-transparent"
-                  onPointerDown={startDraftTextareaResize}
-                  type="button"
-                />
+              <div>
                 <textarea
                   id="chat-draft-message"
                   ref={draftTextareaRef}
