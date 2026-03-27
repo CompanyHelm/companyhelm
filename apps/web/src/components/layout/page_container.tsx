@@ -20,7 +20,12 @@ export function PageContainer(props: PageContainerProps) {
     <ApplicationBreadcrumbProvider>
       <SidebarProvider defaultOpen>
         <ApplicationSidebar />
-        <SidebarInset className={cn("min-h-svh", isChatsPage && "max-h-svh overflow-hidden")}>
+        <SidebarInset
+          className={cn(
+            "min-h-svh",
+            isChatsPage && "h-svh min-h-0 max-h-svh overflow-hidden md:peer-data-[variant=inset]:my-0",
+          )}
+        >
           <ApplicationHeader />
           <div
             className={cn(
