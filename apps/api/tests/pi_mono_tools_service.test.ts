@@ -141,16 +141,18 @@ test("PiMono read override replaces the built-in read tool in a live session", a
 
   const { session } = await createAgentSession({
     authStorage,
+    tools: [],
     customTools: service.getTools(),
     model,
     modelRegistry,
     sessionManager,
     thinkingLevel: "low",
   });
+  session.setActiveToolsByName(service.getTools().map((tool) => tool.name));
 
   assert.deepEqual(
     session.agent.state.tools.map((tool) => tool.name),
-    ["read", "bash", "edit", "write"],
+    ["bash", "edit", "read", "write"],
   );
 
   const readTool = session.agent.state.tools.find((tool) => tool.name === "read");

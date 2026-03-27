@@ -11,6 +11,7 @@ const piAgentMocks = vi.hoisted(() => {
     newSessionMock: vi.fn<(options: { id?: string }) => void>(),
     promptMock: vi.fn(async () => undefined),
     replaceMessagesMock: vi.fn<(messages: unknown[]) => void>(),
+    setActiveToolsByNameMock: vi.fn<(toolNames: string[]) => void>(),
     setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
     steerMock: vi.fn(async () => undefined),
     subscribeMock: vi.fn(),
@@ -67,6 +68,7 @@ beforeEach(() => {
   piAgentMocks.newSessionMock.mockReset();
   piAgentMocks.promptMock.mockReset();
   piAgentMocks.replaceMessagesMock.mockReset();
+  piAgentMocks.setActiveToolsByNameMock.mockReset();
   piAgentMocks.setRuntimeApiKeyMock.mockReset();
   piAgentMocks.steerMock.mockReset();
   piAgentMocks.subscribeMock.mockReset();
@@ -100,6 +102,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     },
     dispose: piAgentMocks.disposeMock,
     prompt: piAgentMocks.promptMock,
+    setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
     steer: piAgentMocks.steerMock,
     subscribe: piAgentMocks.subscribeMock,
   };
@@ -205,11 +208,17 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[storedMessages]]);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
+    tools?: Array<{ name: string }>;
     customTools?: Array<{ name: string }>;
   };
+  assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
     ["bash", "edit", "read", "write"],
+  );
+  assert.deepEqual(
+    piAgentMocks.setActiveToolsByNameMock.mock.calls,
+    [[["bash", "edit", "read", "write"]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
@@ -232,6 +241,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     },
     dispose: piAgentMocks.disposeMock,
     prompt: piAgentMocks.promptMock,
+    setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
     steer: piAgentMocks.steerMock,
     subscribe: piAgentMocks.subscribeMock,
   };
@@ -320,4 +330,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   assert.equal(piAgentMocks.disposeMock.mock.calls.length, 0);
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[[]]]);
+  assert.deepEqual(
+    piAgentMocks.setActiveToolsByNameMock.mock.calls,
+    [[["bash", "edit", "read", "write"]]],
+  );
 });

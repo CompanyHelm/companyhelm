@@ -87,11 +87,13 @@ export class PiMonoSessionManagerService {
       modelRegistry,
       sessionManager,
       model,
-      // The PI SDK filters `tools` to built-in names before startup, so built-in overrides must
-      // stay on `customTools` and reuse the built-in tool name we are replacing.
+      // Keep the built-in active set empty at startup and register our CompanyHelm tools through
+      // `customTools`, because the PI SDK only treats `tools` as an active-name selector.
+      tools: [],
       customTools: piMonoToolsService.getTools(),
       thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
     });
+    session.setActiveToolsByName(piMonoToolsService.getTools().map((tool) => tool.name));
     session.agent.replaceMessages(storedContextMessages);
     const sessionEventHandler = new PiMonoSessionEventHandler(
       transactionProvider,
