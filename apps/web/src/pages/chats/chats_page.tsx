@@ -352,7 +352,7 @@ function upsertRootLinkedRecord(
 
 function ChatsPageFallback() {
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
         <CardHeader className={`${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
           <CardTitle>Chats</CardTitle>
@@ -1184,14 +1184,14 @@ function ChatsPageContent() {
       : "";
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {!isChatListHidden ? (
         <div
-          className="relative min-h-0 w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
+          className="relative min-h-0 overflow-hidden w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
           style={chatListPanelStyle}
         >
-          <Card className="flex h-full min-h-0 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-            <CardContent className={`flex-1 overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
+          <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+            <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
               <div className="mb-2 flex items-center justify-end pr-1">
                 <Button
                   aria-label="Hide chats list"
@@ -1421,7 +1421,7 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent ? (
-          <div className="relative shrink-0 border-t border-border/60 p-3 md:p-4">
+          <div className="relative shrink-0 border-t border-border/60 px-3 pt-3 pb-2 md:px-4 md:pt-3 md:pb-3">
             <button
               aria-label="Resize message input"
               className="absolute inset-x-0 -top-3 z-10 h-6 cursor-move bg-transparent"
