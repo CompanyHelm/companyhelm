@@ -13,8 +13,10 @@ import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
+import { PiMonoToolsService } from "./tools/service.ts";
 
 type SessionRuntimeConfig = {
+  agentId: string;
   apiKey: string;
   modelId: string;
   providerId: string;
@@ -64,6 +66,11 @@ export class PiMonoSessionManagerService {
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(runtimeConfig.providerId, runtimeConfig.apiKey);
     const modelRegistry = new ModelRegistry(authStorage);
+    const piMonoToolsService = new PiMonoToolsService(
+      runtimeConfig.agentId,
+      transactionProvider,
+      sessionId,
+    );
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {
       throw new Error(`Model not found for provider "${runtimeConfig.providerId}": ${runtimeConfig.modelId}`);
@@ -80,6 +87,7 @@ export class PiMonoSessionManagerService {
       modelRegistry,
       sessionManager,
       model,
+      customTools: piMonoToolsService.getTools(),
       thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
     });
     session.agent.replaceMessages(storedContextMessages);

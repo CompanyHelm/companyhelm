@@ -79,6 +79,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                   return {
                     async where() {
                       return [{
+                        agentId: "agent-1",
                         currentModelId: "gpt-5.4",
                         currentModelProviderCredentialId: "credential-1",
                         currentReasoningLevel: "high",
@@ -204,6 +205,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
 
   assert.deepEqual(ensureSessionCalls, [{
     runtimeConfig: {
+      agentId: "agent-1",
       apiKey: "sk-openai",
       modelId: "gpt-5.4",
       providerId: "openai",
@@ -256,6 +258,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                   return {
                     async where() {
                       return [{
+                        agentId: "agent-1",
                         currentModelId: "gpt-5.4",
                         currentModelProviderCredentialId: "credential-1",
                         currentReasoningLevel: "high",

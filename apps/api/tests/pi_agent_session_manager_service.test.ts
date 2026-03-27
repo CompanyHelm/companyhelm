@@ -151,6 +151,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     } as never,
     "session-1",
     {
+      agentId: "agent-1",
       apiKey: "sk-test",
       modelId: "gpt-5.4",
       providerId: "openai",
@@ -203,6 +204,13 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.newSessionMock.mock.calls, [[{ id: "session-1" }]]);
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[storedMessages]]);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
+  const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
+    customTools?: Array<{ name: string }>;
+  };
+  assert.deepEqual(
+    createAgentSessionOptions.customTools?.map((tool) => tool.name),
+    ["read_file"],
+  );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
   assert.equal(piAgentMocks.abortMock.mock.calls.length, 1);
@@ -266,6 +274,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     } as never,
     "session-1",
     {
+      agentId: "agent-1",
       apiKey: "sk-test",
       modelId: "gpt-5.4",
       providerId: "openai",
@@ -298,6 +307,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     } as never,
     "session-1",
     {
+      agentId: "agent-1",
       apiKey: "sk-test-2",
       modelId: "gpt-5.4",
       providerId: "openai",

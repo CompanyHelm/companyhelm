@@ -18,6 +18,7 @@ import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
 
 type SessionRuntimeRow = {
+  agentId: string;
   currentModelId: string;
   currentModelProviderCredentialId: string;
   currentReasoningLevel: string;
@@ -219,6 +220,7 @@ export class SessionProcessExecutionService {
     companyId: string,
     sessionId: string,
   ): Promise<{
+    agentId: string;
     apiKey: string;
     modelId: string;
     providerId: string;
@@ -228,6 +230,7 @@ export class SessionProcessExecutionService {
       const selectableDatabase = tx as SelectableDatabase;
       const [sessionRow] = await selectableDatabase
         .select({
+          agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
           currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
@@ -260,6 +263,7 @@ export class SessionProcessExecutionService {
       }
 
       return {
+        agentId: sessionRow.agentId,
         apiKey: credentialRow.encryptedApiKey,
         modelId: sessionRow.currentModelId,
         providerId: credentialRow.modelProvider,
