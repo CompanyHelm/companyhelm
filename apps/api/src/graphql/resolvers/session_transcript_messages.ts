@@ -2,11 +2,13 @@ import { inject, injectable } from "inversify";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import {
   SessionReadService,
-  type SessionMessageGraphqlRecord,
+  type SessionTranscriptMessageConnectionGraphqlRecord,
 } from "../../services/agent/session/read_service.ts";
 
 type SessionTranscriptMessagesArguments = {
   sessionId: string;
+  first: number;
+  after?: string | null;
 };
 
 /**
@@ -25,7 +27,7 @@ export class SessionTranscriptMessagesQueryResolver {
     _root: unknown,
     arguments_: SessionTranscriptMessagesArguments,
     context: GraphqlRequestContext,
-  ): Promise<SessionMessageGraphqlRecord[]> => {
+  ): Promise<SessionTranscriptMessageConnectionGraphqlRecord> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -42,6 +44,8 @@ export class SessionTranscriptMessagesQueryResolver {
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       sessionId,
+      arguments_.first,
+      arguments_.after,
     );
   };
 }

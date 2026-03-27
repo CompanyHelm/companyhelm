@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { ApplicationBreadcrumbProvider } from "@/components/layout/application_breadcrumb_context";
 import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
+import { cn } from "@/lib/utils";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 interface PageContainerProps {
@@ -9,13 +11,25 @@ interface PageContainerProps {
 }
 
 export function PageContainer(props: PageContainerProps) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const isChatsPage = pathname.startsWith("/chats");
+
   return (
     <ApplicationBreadcrumbProvider>
       <SidebarProvider defaultOpen>
         <ApplicationSidebar />
-        <SidebarInset className="min-h-svh">
+        <SidebarInset className={cn("min-h-svh", isChatsPage && "max-h-svh overflow-hidden")}>
           <ApplicationHeader />
-          <div className="flex flex-1 flex-col px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
+          <div
+            className={cn(
+              "flex flex-1 flex-col",
+              isChatsPage
+                ? "min-h-0 overflow-hidden px-0 pb-0 pt-0"
+                : "px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8",
+            )}
+          >
             {props.children}
           </div>
         </SidebarInset>

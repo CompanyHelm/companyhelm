@@ -1,9 +1,9 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
@@ -12,6 +12,7 @@ import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePr
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
+import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
 const chatsPageQueryNode = graphql`
   query chatsPageQuery {
@@ -33,15 +34,29 @@ const chatsPageQueryNode = graphql`
       updatedAt
       userSetTitle
     }
-    SessionMessages {
-      id
-      sessionId
-      role
-      status
-      text
-      isError
-      createdAt
-      updatedAt
+  }
+`;
+
+const chatsPageTranscriptQueryNode = graphql`
+  query chatsPageTranscriptQuery($sessionId: ID!, $first: Int!, $after: String) {
+    SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          sessionId
+          role
+          status
+          text
+          isError
+          createdAt
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
@@ -125,7 +140,13 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
-type SessionMessageRecord = chatsPageQuery["response"]["SessionMessages"][number];
+type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
+type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
+type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
+type ChatsPageSearch = {
+  agentId?: string;
+  sessionId?: string;
+};
 
 const CHAT_LIST_MIN_WIDTH = 280;
 const CHAT_LIST_MAX_WIDTH = 520;
@@ -134,6 +155,9 @@ const CHAT_LIST_WIDTH_STORAGE_KEY = "companyhelm.chats.listWidth";
 const CHAT_LIST_HIDDEN_STORAGE_KEY = "companyhelm.chats.listHidden";
 const CHAT_DRAFT_MIN_LINES = 3;
 const CHAT_DRAFT_MAX_LINES = 10;
+const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
+const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
+const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
@@ -231,6 +255,46 @@ function resolveSessionTitle(
   return resolvePersistedSessionTitle(session) ?? formatSessionTitle(messages);
 }
 
+function compareSessionMessagesByTimestamp(leftMessage: SessionMessageRecord, rightMessage: SessionMessageRecord): number {
+  const leftTimestamp = new Date(leftMessage.createdAt).getTime();
+  const rightTimestamp = new Date(rightMessage.createdAt).getTime();
+  if (leftTimestamp !== rightTimestamp) {
+    return leftTimestamp - rightTimestamp;
+  }
+
+  return leftMessage.id.localeCompare(rightMessage.id);
+}
+
+function toTranscriptMessagesFromConnection(connection: SessionTranscriptConnection | null | undefined): SessionMessageRecord[] {
+  return [...(connection?.edges ?? [])]
+    .map((edge) => edge?.node)
+    .filter((message): message is SessionMessageRecord => Boolean(message))
+    .sort(compareSessionMessagesByTimestamp);
+}
+
+function mergeTranscriptMessages(
+  existingMessages: ReadonlyArray<SessionMessageRecord>,
+  incomingMessages: ReadonlyArray<SessionMessageRecord>,
+): SessionMessageRecord[] {
+  const nextMessagesById = new Map<string, SessionMessageRecord>();
+
+  for (const message of existingMessages) {
+    nextMessagesById.set(message.id, message);
+  }
+  for (const message of incomingMessages) {
+    nextMessagesById.set(message.id, message);
+  }
+
+  return [...nextMessagesById.values()].sort(compareSessionMessagesByTimestamp);
+}
+
+function resolveSessionTitleOverride(
+  session: Pick<SessionRecord, "id" | "inferredTitle" | "userSetTitle">,
+  titleOverridesBySessionId: Readonly<Record<string, string>>,
+): string {
+  return resolvePersistedSessionTitle(session) ?? titleOverridesBySessionId[session.id] ?? "Untitled chat";
+}
+
 function isArchivedSession(session: Pick<SessionRecord, "status">): boolean {
   return session.status.trim().toLowerCase() === "archived";
 }
@@ -284,7 +348,7 @@ function upsertRootLinkedRecord(
 
 function ChatsPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
+    <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <Card className="rounded-2xl border-0 bg-transparent shadow-none ring-0 lg:w-[22rem] lg:shrink-0">
         <CardHeader className="pl-0 pr-3 md:pl-0 md:pr-3">
           <CardTitle>Chats</CardTitle>
@@ -297,7 +361,7 @@ function ChatsPageFallback() {
         </CardContent>
       </Card>
 
-      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
+      <Card className="flex min-h-0 flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
         <CardHeader className="px-2 md:px-3">
           <CardTitle>Chat</CardTitle>
           <CardDescription>Loading selected chat…</CardDescription>
@@ -353,18 +417,44 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
   );
 }
 
-function ChatsTranscript(
-  { session, sessionMessages }:
-    { session: SessionRecord; sessionMessages: ReadonlyArray<SessionMessageRecord> },
-) {
+function ChatsTranscript({
+  session,
+  sessionMessages,
+  transcriptScrollRef,
+  hasOlderMessages,
+  isLoadingOlderMessages,
+  isLoadingTranscript,
+  onScroll,
+}: {
+  session: SessionRecord;
+  sessionMessages: ReadonlyArray<SessionMessageRecord>;
+  transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
+  hasOlderMessages: boolean;
+  isLoadingOlderMessages: boolean;
+  isLoadingTranscript: boolean;
+  onScroll: (event: UIEvent<HTMLDivElement>) => void;
+}) {
   const visibleTranscriptMessages = sessionMessages.filter((message) => {
     return (message.role === "user" || message.role === "assistant") && message.text.trim().length > 0;
   });
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
 
+  if (visibleTranscriptMessages.length === 0 && isLoadingTranscript) {
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
+        <div>
+          <p className="text-sm font-medium text-foreground">Loading transcript...</p>
+          <p className="mt-2 text-xs/relaxed text-muted-foreground">
+            Fetching the latest chat history page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (visibleTranscriptMessages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
         <div>
           <p className="text-sm font-medium text-foreground">
             {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
@@ -380,7 +470,16 @@ function ChatsTranscript(
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-3 overflow-y-auto pr-1">
+    <div
+      ref={transcriptScrollRef}
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
+      onScroll={onScroll}
+    >
+      {(hasOlderMessages || isLoadingOlderMessages) ? (
+        <p className="px-1 text-xs text-muted-foreground">
+          {isLoadingOlderMessages ? "Loading older messages..." : "Scroll up to load older messages."}
+        </p>
+      ) : null}
       {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
 
@@ -414,7 +513,7 @@ function ChatsTranscript(
 function ChatsPageContent() {
   const navigate = useNavigate();
   const environment = useRelayEnvironment();
-  const search = useSearch({ strict: false });
+  const search = useSearch({ strict: false }) as ChatsPageSearch;
   const [draftMessage, setDraftMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
@@ -429,6 +528,19 @@ function ChatsPageContent() {
   const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const draftTextareaResizeStartHeightRef = useRef(0);
   const draftTextareaResizeStartYRef = useRef(0);
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const pendingTranscriptScrollRestoreRef = useRef<{ previousScrollHeight: number; previousScrollTop: number } | null>(
+    null,
+  );
+  const shouldStickTranscriptToBottomRef = useRef(true);
+  const transcriptRequestIdRef = useRef(0);
+  const activeTranscriptSessionIdRef = useRef<string | null>(null);
+  const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
+  const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
+  const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
+  const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
+  const [isLoadingOlderTranscript, setIsLoadingOlderTranscript] = useState(false);
   const data = useLazyLoadQuery<chatsPageQuery>(
     chatsPageQueryNode,
     {},
@@ -472,23 +584,6 @@ function ChatsPageContent() {
   const sessionById = useMemo(() => {
     return new Map(activeSessions.map((session) => [session.id, session]));
   }, [activeSessions]);
-  const sessionMessagesBySessionId = useMemo(() => {
-    const nextMap = new Map<string, SessionMessageRecord[]>();
-
-    for (const message of data.SessionMessages) {
-      const existingMessages = nextMap.get(message.sessionId) ?? [];
-      existingMessages.push(message);
-      nextMap.set(message.sessionId, existingMessages);
-    }
-
-    for (const messages of nextMap.values()) {
-      messages.sort((leftMessage, rightMessage) => {
-        return new Date(leftMessage.createdAt).getTime() - new Date(rightMessage.createdAt).getTime();
-      });
-    }
-
-    return nextMap;
-  }, [data.SessionMessages]);
 
   const resolvedSelectedSession = search.sessionId ? sessionById.get(search.sessionId) ?? null : null;
   const resolvedSelectedAgentId = search.agentId ?? resolvedSelectedSession?.agentId ?? "";
@@ -496,12 +591,12 @@ function ChatsPageContent() {
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
-  const selectedSessionMessages = selectedSession ? sessionMessagesBySessionId.get(selectedSession.id) ?? [] : [];
+  const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isSubmittingDraft;
-  const chatListPanelStyle: CSSProperties = {
+  const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
-  };
+  } as CSSProperties;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -518,6 +613,128 @@ function ChatsPageContent() {
 
     window.localStorage.setItem(CHAT_LIST_HIDDEN_STORAGE_KEY, String(isChatListHidden));
   }, [isChatListHidden]);
+
+  const updateSessionTitleOverride = useCallback((sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => {
+    const nextTitle = formatSessionTitle(messages);
+    setSessionTitleOverridesById((currentOverrides) => {
+      if (currentOverrides[sessionId] === nextTitle) {
+        return currentOverrides;
+      }
+
+      return {
+        ...currentOverrides,
+        [sessionId]: nextTitle,
+      };
+    });
+  }, []);
+
+  const loadTranscriptPage = useCallback(async ({
+    after = null,
+    mode,
+    sessionId,
+  }: {
+    after?: string | null;
+    mode: "prepend" | "replace";
+    sessionId: string;
+  }) => {
+    if (mode === "replace") {
+      const requestId = transcriptRequestIdRef.current + 1;
+      transcriptRequestIdRef.current = requestId;
+      pendingTranscriptScrollRestoreRef.current = null;
+      shouldStickTranscriptToBottomRef.current = true;
+      setErrorMessage(null);
+      setTranscriptMessages([]);
+      setTranscriptHasNextPage(false);
+      setTranscriptEndCursor(null);
+      setIsLoadingOlderTranscript(false);
+      setIsLoadingTranscript(true);
+
+      try {
+        const response = await fetchQuery<chatsPageTranscriptQuery>(
+          environment,
+          chatsPageTranscriptQueryNode,
+          {
+            sessionId,
+            first: CHAT_TRANSCRIPT_PAGE_SIZE,
+            after: null,
+          },
+        ).toPromise();
+
+        if (transcriptRequestIdRef.current !== requestId || activeTranscriptSessionIdRef.current !== sessionId) {
+          return;
+        }
+
+        const connection = response?.SessionTranscriptMessages;
+        const nextMessages = toTranscriptMessagesFromConnection(connection);
+        setTranscriptMessages((currentMessages) => {
+          const mergedMessages = mergeTranscriptMessages(currentMessages, nextMessages);
+          updateSessionTitleOverride(sessionId, mergedMessages);
+          return mergedMessages;
+        });
+        setTranscriptHasNextPage(Boolean(connection?.pageInfo.hasNextPage));
+        setTranscriptEndCursor(connection?.pageInfo.endCursor ?? null);
+      } catch (error) {
+        if (transcriptRequestIdRef.current === requestId) {
+          setErrorMessage(error instanceof Error ? error.message : "Failed to load transcript.");
+        }
+      } finally {
+        if (transcriptRequestIdRef.current === requestId && activeTranscriptSessionIdRef.current === sessionId) {
+          setIsLoadingTranscript(false);
+        }
+      }
+      return;
+    }
+
+    if (isLoadingOlderTranscript) {
+      return;
+    }
+
+    setErrorMessage(null);
+    const transcriptNode = transcriptScrollRef.current;
+    if (transcriptNode) {
+      pendingTranscriptScrollRestoreRef.current = {
+        previousScrollHeight: transcriptNode.scrollHeight,
+        previousScrollTop: transcriptNode.scrollTop,
+      };
+    }
+
+    setIsLoadingOlderTranscript(true);
+
+    try {
+      const response = await fetchQuery<chatsPageTranscriptQuery>(
+        environment,
+        chatsPageTranscriptQueryNode,
+        {
+          sessionId,
+          first: CHAT_TRANSCRIPT_PAGE_SIZE,
+          after,
+        },
+      ).toPromise();
+
+      if (activeTranscriptSessionIdRef.current !== sessionId) {
+        return;
+      }
+
+      const connection = response?.SessionTranscriptMessages;
+      const nextMessages = toTranscriptMessagesFromConnection(connection);
+      setTranscriptMessages((currentMessages) => {
+        const mergedMessages = mergeTranscriptMessages(currentMessages, nextMessages);
+        updateSessionTitleOverride(sessionId, mergedMessages);
+        return mergedMessages;
+      });
+      setTranscriptHasNextPage(Boolean(connection?.pageInfo.hasNextPage));
+      setTranscriptEndCursor(connection?.pageInfo.endCursor ?? null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to load older messages.");
+      pendingTranscriptScrollRestoreRef.current = null;
+    } finally {
+      setIsLoadingOlderTranscript(false);
+    }
+  }, [
+    environment,
+    isLoadingOlderTranscript,
+    updateSessionTitleOverride,
+  ]);
 
   useEffect(() => {
     if (!search.agentId || !search.sessionId || selectedSession) {
@@ -538,6 +755,27 @@ function ChatsPageContent() {
       },
     });
   }, [navigate, pendingCreatedSessionId, search.agentId, search.sessionId, selectedSession]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      transcriptRequestIdRef.current += 1;
+      activeTranscriptSessionIdRef.current = null;
+      pendingTranscriptScrollRestoreRef.current = null;
+      shouldStickTranscriptToBottomRef.current = true;
+      setTranscriptMessages([]);
+      setTranscriptHasNextPage(false);
+      setTranscriptEndCursor(null);
+      setIsLoadingTranscript(false);
+      setIsLoadingOlderTranscript(false);
+      return;
+    }
+
+    activeTranscriptSessionIdRef.current = selectedSession.id;
+    void loadTranscriptPage({
+      mode: "replace",
+      sessionId: selectedSession.id,
+    });
+  }, [loadTranscriptPage, selectedSession?.id]);
 
   useEffect(() => {
     if (!isResizingChatList) {
@@ -620,6 +858,52 @@ function ChatsPageContent() {
     textarea.style.overflowY = textarea.scrollHeight > nextHeight ? "auto" : "hidden";
   }, [draftMessage, draftTextareaHeight, selectedAgent?.id, selectedSession?.id]);
 
+  useLayoutEffect(() => {
+    const transcriptNode = transcriptScrollRef.current;
+    if (!transcriptNode) {
+      return;
+    }
+
+    if (pendingTranscriptScrollRestoreRef.current) {
+      const { previousScrollHeight, previousScrollTop } = pendingTranscriptScrollRestoreRef.current;
+      const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
+      transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
+      pendingTranscriptScrollRestoreRef.current = null;
+      return;
+    }
+
+    if (!shouldStickTranscriptToBottomRef.current) {
+      return;
+    }
+
+    transcriptNode.scrollTop = transcriptNode.scrollHeight;
+  }, [transcriptMessages]);
+
+  const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const transcriptNode = event.currentTarget;
+    const distanceFromBottom =
+      transcriptNode.scrollHeight - transcriptNode.scrollTop - transcriptNode.clientHeight;
+    shouldStickTranscriptToBottomRef.current =
+      distanceFromBottom <= CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX;
+
+    const isTranscriptNearTop = transcriptNode.scrollTop <= CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX;
+    if (!selectedSession || !isTranscriptNearTop || !transcriptHasNextPage || isLoadingOlderTranscript) {
+      return;
+    }
+
+    void loadTranscriptPage({
+      after: transcriptEndCursor,
+      mode: "prepend",
+      sessionId: selectedSession.id,
+    });
+  }, [
+    isLoadingOlderTranscript,
+    loadTranscriptPage,
+    selectedSession,
+    transcriptEndCursor,
+    transcriptHasNextPage,
+  ]);
+
   useEffect(() => {
     const disposable = requestSubscription<chatsPageSessionUpdatedSubscription>(environment, {
       subscription: chatsPageSessionUpdatedSubscriptionNode,
@@ -646,8 +930,17 @@ function ChatsPageContent() {
     const disposable = requestSubscription<chatsPageSessionMessageUpdatedSubscription>(environment, {
       subscription: chatsPageSessionMessageUpdatedSubscriptionNode,
       variables: subscriptionVariables,
-      updater: (store) => {
-        upsertRootLinkedRecord(store, "SessionMessages", "SessionMessageUpdated");
+      onNext: (response) => {
+        const nextMessage = response?.SessionMessageUpdated;
+        if (!nextMessage) {
+          return;
+        }
+
+        setTranscriptMessages((currentMessages) => {
+          const mergedMessages = mergeTranscriptMessages(currentMessages, [nextMessage]);
+          updateSessionTitleOverride(selectedSession.id, mergedMessages);
+          return mergedMessages;
+        });
       },
       onError: (error) => {
         setErrorMessage((currentMessage) => currentMessage ?? error.message);
@@ -657,7 +950,7 @@ function ChatsPageContent() {
     return () => {
       disposable.dispose();
     };
-  }, [environment, selectedSession?.id]);
+  }, [environment, selectedSession?.id, updateSessionTitleOverride]);
 
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
@@ -882,13 +1175,13 @@ function ChatsPageContent() {
       : "Start chat";
 
   return (
-    <main className="flex flex-1 flex-col gap-6 lg:min-h-0 lg:gap-0 lg:flex-row">
+    <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {!isChatListHidden ? (
         <div
-          className="relative w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
+          className="relative min-h-0 w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
           style={chatListPanelStyle}
         >
-          <Card className="flex h-full min-h-[32rem] flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
+          <Card className="flex h-full min-h-0 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
             <CardContent className="flex-1 overflow-y-auto pl-0 pr-3 md:pl-0 md:pr-3">
               <div className="mb-2 flex items-center justify-end">
                 <Button
@@ -984,7 +1277,7 @@ function ChatsPageContent() {
                                           />
                                         </span>
                                         <p className="block min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                                          {resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}
+                                          {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
                                         </p>
                                       </div>
                                       <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
@@ -993,7 +1286,7 @@ function ChatsPageContent() {
                                     </button>
                                     <div className="flex shrink-0 items-start gap-2">
                                       <button
-                                        aria-label={`Archive ${resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}`}
+                                        aria-label={`Archive ${resolveSessionTitleOverride(session, sessionTitleOverridesById)}`}
                                         className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                         disabled={isSessionArchiving}
                                         onClick={(event) => {
@@ -1035,8 +1328,8 @@ function ChatsPageContent() {
         </div>
       ) : null}
 
-      <Card className="flex min-h-[32rem] flex-1 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardHeader className="px-2 md:px-3">
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+        <CardHeader className="shrink-0 px-2 md:px-3">
           <div className="flex items-start gap-2">
             {isChatListHidden ? (
               <Button
@@ -1076,7 +1369,7 @@ function ChatsPageContent() {
         </CardHeader>
 
         {errorMessage ? (
-          <div className="px-2 pt-4 md:px-3 md:pt-5">
+          <div className="shrink-0 px-2 pt-4 md:px-3 md:pt-5">
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}
             </div>
@@ -1111,16 +1404,21 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex flex-1 flex-col gap-6 px-4 py-3 md:py-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3 md:py-4">
             <ChatsTranscript
+              hasOlderMessages={transcriptHasNextPage}
+              isLoadingOlderMessages={isLoadingOlderTranscript}
+              isLoadingTranscript={isLoadingTranscript}
+              onScroll={handleTranscriptScroll}
               session={selectedSession}
               sessionMessages={selectedSessionMessages}
+              transcriptScrollRef={transcriptScrollRef}
             />
           </CardContent>
         ) : null}
 
         {selectedAgent ? (
-          <div className="relative border-t border-border/60 p-3 md:p-4">
+          <div className="relative shrink-0 border-t border-border/60 p-3 md:p-4">
             <button
               aria-label="Resize message input"
               className="absolute inset-x-0 -top-3 z-10 h-6 cursor-move bg-transparent"

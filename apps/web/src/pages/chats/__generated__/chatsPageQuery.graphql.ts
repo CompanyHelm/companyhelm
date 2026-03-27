@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<883a94109bcd99574cf5cd95e8efdd7c>>
+ * @generated SignedSource<<aa06b0848fe3d95a160335ab2c16f209>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,16 +17,6 @@ export type chatsPageQuery$data = {
     readonly modelProvider: string | null | undefined;
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
-  }>;
-  readonly SessionMessages: ReadonlyArray<{
-    readonly createdAt: string;
-    readonly id: string;
-    readonly isError: boolean;
-    readonly role: string;
-    readonly sessionId: string;
-    readonly status: string;
-    readonly text: string;
-    readonly updatedAt: string;
   }>;
   readonly Sessions: ReadonlyArray<{
     readonly agentId: string;
@@ -60,28 +50,7 @@ v1 = {
   "name": "reasoningLevel",
   "storageKey": null
 },
-v2 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "status",
-  "storageKey": null
-},
-v3 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "createdAt",
-  "storageKey": null
-},
-v4 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "updatedAt",
-  "storageKey": null
-},
-v5 = [
+v2 = [
   {
     "alias": null,
     "args": null,
@@ -147,9 +116,27 @@ v5 = [
         "name": "inferredTitle",
         "storageKey": null
       },
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "createdAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "updatedAt",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -157,49 +144,6 @@ v5 = [
         "name": "userSetTitle",
         "storageKey": null
       }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "SessionMessage",
-    "kind": "LinkedField",
-    "name": "SessionMessages",
-    "plural": true,
-    "selections": [
-      (v0/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "sessionId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "role",
-        "storageKey": null
-      },
-      (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "text",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isError",
-        "storageKey": null
-      },
-      (v3/*: any*/),
-      (v4/*: any*/)
     ],
     "storageKey": null
   }
@@ -210,7 +154,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageQuery",
-    "selections": (v5/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -219,19 +163,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageQuery",
-    "selections": (v5/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "3fdff86197723a675fe5d20a33dca550",
+    "cacheID": "49de8c950b2e30a2b121b4e695c2cc5b",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    status\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n  SessionMessages {\n    id\n    sessionId\n    role\n    status\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    status\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "34334d7dcb8efe0d88856ffa63c9d247";
+(node as any).hash = "ea040a8fed4f1e96fcc8bfe4dad09960";
 
 export default node;

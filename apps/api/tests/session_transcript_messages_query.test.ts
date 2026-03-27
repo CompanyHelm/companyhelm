@@ -39,27 +39,44 @@ class SessionTranscriptMessagesQueryTestHarness {
               return {
                 from() {
                   return {
-                    async where() {
-                      return [
-                        {
-                          id: "message-2",
-                          sessionId: "session-1",
-                          role: "assistant",
-                          status: "completed",
-                          isError: false,
-                          createdAt: new Date("2026-03-24T08:01:00.000Z"),
-                          updatedAt: new Date("2026-03-24T08:02:00.000Z"),
+                    where() {
+                      return {
+                        orderBy() {
+                          return {
+                            async limit() {
+                              return [
+                                {
+                                  id: "message-3",
+                                  sessionId: "session-1",
+                                  role: "assistant",
+                                  status: "completed",
+                                  isError: false,
+                                  createdAt: new Date("2026-03-24T08:02:00.000Z"),
+                                  updatedAt: new Date("2026-03-24T08:03:00.000Z"),
+                                },
+                                {
+                                  id: "message-2",
+                                  sessionId: "session-1",
+                                  role: "assistant",
+                                  status: "completed",
+                                  isError: false,
+                                  createdAt: new Date("2026-03-24T08:01:00.000Z"),
+                                  updatedAt: new Date("2026-03-24T08:02:00.000Z"),
+                                },
+                                {
+                                  id: "message-1",
+                                  sessionId: "session-1",
+                                  role: "user",
+                                  status: "completed",
+                                  isError: false,
+                                  createdAt: new Date("2026-03-24T08:00:00.000Z"),
+                                  updatedAt: new Date("2026-03-24T08:00:00.000Z"),
+                                },
+                              ];
+                            },
+                          };
                         },
-                        {
-                          id: "message-1",
-                          sessionId: "session-1",
-                          role: "user",
-                          status: "completed",
-                          isError: false,
-                          createdAt: new Date("2026-03-24T08:00:00.000Z"),
-                          updatedAt: new Date("2026-03-24T08:00:00.000Z"),
-                        },
-                      ];
+                      };
                     },
                   };
                 },
@@ -72,6 +89,12 @@ class SessionTranscriptMessagesQueryTestHarness {
                   return {
                     async where() {
                       return [
+                        {
+                          messageId: "message-3",
+                          text: "Latest answer",
+                          type: "text",
+                          createdAt: new Date("2026-03-24T08:02:00.000Z"),
+                        },
                         {
                           messageId: "message-2",
                           text: "Line two",
@@ -108,7 +131,7 @@ class SessionTranscriptMessagesQueryTestHarness {
   }
 }
 
-test("GraphQL SessionTranscriptMessages query returns one session transcript in chronological order", async () => {
+test("GraphQL SessionTranscriptMessages query returns a newest-first connection with pageInfo", async () => {
   const app = Fastify();
   const config = SessionTranscriptMessagesQueryTestHarness.createConfigMock();
   const database = SessionTranscriptMessagesQueryTestHarness.createDatabaseMock();
@@ -157,49 +180,71 @@ test("GraphQL SessionTranscriptMessages query returns one session transcript in 
     },
     payload: {
       query: `
-        query SessionTranscriptMessages($sessionId: ID!) {
-          SessionTranscriptMessages(sessionId: $sessionId) {
-            id
-            sessionId
-            role
-            status
-            text
-            isError
-            createdAt
-            updatedAt
+        query SessionTranscriptMessages($sessionId: ID!, $first: Int!) {
+          SessionTranscriptMessages(sessionId: $sessionId, first: $first) {
+            edges {
+              cursor
+              node {
+                id
+                sessionId
+                role
+                status
+                text
+                isError
+                createdAt
+                updatedAt
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `,
       variables: {
         sessionId: "session-1",
+        first: 2,
       },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.SessionTranscriptMessages, [
-    {
-      id: "message-1",
-      sessionId: "session-1",
-      role: "user",
-      status: "completed",
-      text: "hi",
-      isError: false,
-      createdAt: "2026-03-24T08:00:00.000Z",
-      updatedAt: "2026-03-24T08:00:00.000Z",
+  assert.deepEqual(document.data.SessionTranscriptMessages, {
+    edges: [
+      {
+        cursor: Buffer.from("session-message:2026-03-24T08:02:00.000Z|message-3", "utf8").toString("base64url"),
+        node: {
+          id: "message-3",
+          sessionId: "session-1",
+          role: "assistant",
+          status: "completed",
+          text: "Latest answer",
+          isError: false,
+          createdAt: "2026-03-24T08:02:00.000Z",
+          updatedAt: "2026-03-24T08:03:00.000Z",
+        },
+      },
+      {
+        cursor: Buffer.from("session-message:2026-03-24T08:01:00.000Z|message-2", "utf8").toString("base64url"),
+        node: {
+          id: "message-2",
+          sessionId: "session-1",
+          role: "assistant",
+          status: "completed",
+          text: "Line one\nLine two",
+          isError: false,
+          createdAt: "2026-03-24T08:01:00.000Z",
+          updatedAt: "2026-03-24T08:02:00.000Z",
+        },
+      },
+    ],
+    pageInfo: {
+      hasNextPage: true,
+      endCursor: Buffer.from("session-message:2026-03-24T08:01:00.000Z|message-2", "utf8").toString("base64url"),
     },
-    {
-      id: "message-2",
-      sessionId: "session-1",
-      role: "assistant",
-      status: "completed",
-      text: "Line one\nLine two",
-      isError: false,
-      createdAt: "2026-03-24T08:01:00.000Z",
-      updatedAt: "2026-03-24T08:02:00.000Z",
-    },
-  ]);
+  });
 
   await app.close();
 });

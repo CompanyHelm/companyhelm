@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { injectable } from "inversify";
 import { agentSessions, messageContents, sessionMessages } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
@@ -32,12 +32,12 @@ type MessageContentRow = {
   createdAt: Date;
 };
 
+const DEFAULT_SESSION_TRANSCRIPT_PAGE_SIZE = 50;
+const MAX_SESSION_TRANSCRIPT_PAGE_SIZE = 200;
+const SESSION_MESSAGE_CURSOR_PREFIX = "session-message:";
+
 type SelectableDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
-    };
-  };
+  select(selection: Record<string, unknown>): any;
 };
 
 export type SessionGraphqlRecord = {
@@ -62,6 +62,51 @@ export type SessionMessageGraphqlRecord = {
   createdAt: string;
   updatedAt: string;
 };
+
+type PageInfoGraphqlRecord = {
+  hasNextPage: boolean;
+  endCursor: string | null;
+};
+
+type SessionTranscriptMessageEdgeGraphqlRecord = {
+  cursor: string;
+  node: SessionMessageGraphqlRecord;
+};
+
+export type SessionTranscriptMessageConnectionGraphqlRecord = {
+  edges: SessionTranscriptMessageEdgeGraphqlRecord[];
+  pageInfo: PageInfoGraphqlRecord;
+};
+
+function normalizeTranscriptPageSize(first?: number | null): number {
+  if (!Number.isInteger(first) || Number(first) <= 0) {
+    return DEFAULT_SESSION_TRANSCRIPT_PAGE_SIZE;
+  }
+
+  return Math.min(Number(first), MAX_SESSION_TRANSCRIPT_PAGE_SIZE);
+}
+
+function encodeSessionMessageCursor(createdAt: string, messageId: string): string {
+  return Buffer.from(`${SESSION_MESSAGE_CURSOR_PREFIX}${createdAt}|${messageId}`, "utf8").toString("base64url");
+}
+
+function decodeSessionMessageCursor(cursor?: string | null): { createdAt: string; messageId: string } | null {
+  if (!cursor) {
+    return null;
+  }
+
+  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+  if (!decoded.startsWith(SESSION_MESSAGE_CURSOR_PREFIX)) {
+    throw new Error("Invalid cursor.");
+  }
+
+  const [createdAt = "", messageId = ""] = decoded.slice(SESSION_MESSAGE_CURSOR_PREFIX.length).split("|");
+  if (!createdAt || !messageId) {
+    throw new Error("Invalid cursor.");
+  }
+
+  return { createdAt, messageId };
+}
 
 /**
  * Loads session and transcript records from Postgres in the GraphQL shape expected by the web app.
@@ -138,8 +183,79 @@ export class SessionReadService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
-  ): Promise<SessionMessageGraphqlRecord[]> {
-    return this.listMessagesForFilter(transactionProvider, companyId, sessionId);
+    first?: number | null,
+    after?: string | null,
+  ): Promise<SessionTranscriptMessageConnectionGraphqlRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const pageSize = normalizeTranscriptPageSize(first);
+      const cursor = decodeSessionMessageCursor(after);
+      const transcriptFilter = cursor
+        ? and(
+          eq(sessionMessages.companyId, companyId),
+          eq(sessionMessages.sessionId, sessionId),
+          or(
+            lt(sessionMessages.createdAt, new Date(cursor.createdAt)),
+            and(
+              eq(sessionMessages.createdAt, new Date(cursor.createdAt)),
+              lt(sessionMessages.id, cursor.messageId),
+            ),
+          )!,
+        )
+        : and(
+          eq(sessionMessages.companyId, companyId),
+          eq(sessionMessages.sessionId, sessionId),
+        );
+
+      const persistedMessages = await selectableDatabase
+        .select({
+          id: sessionMessages.id,
+          sessionId: sessionMessages.sessionId,
+          role: sessionMessages.role,
+          status: sessionMessages.status,
+          isError: sessionMessages.isError,
+          createdAt: sessionMessages.createdAt,
+          updatedAt: sessionMessages.updatedAt,
+        })
+        .from(sessionMessages)
+        .where(transcriptFilter)
+        .orderBy(desc(sessionMessages.createdAt), desc(sessionMessages.id))
+        .limit(pageSize + 1) as SessionMessageRow[];
+
+      const hasNextPage = persistedMessages.length > pageSize;
+      const pageMessages = hasNextPage ? persistedMessages.slice(0, pageSize) : persistedMessages;
+      if (pageMessages.length === 0) {
+        return {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            endCursor: null,
+          },
+        };
+      }
+
+      const textsByMessageId = await this.loadTextsByMessageId(
+        selectableDatabase,
+        companyId,
+        pageMessages.map((message) => message.id),
+      );
+
+      const edges = pageMessages.map((message) => {
+        const node = this.serializeMessage(message, textsByMessageId);
+        return {
+          cursor: encodeSessionMessageCursor(node.createdAt, node.id),
+          node,
+        };
+      });
+
+      return {
+        edges,
+        pageInfo: {
+          hasNextPage,
+          endCursor: edges.at(-1)?.cursor ?? null,
+        },
+      };
+    });
   }
 
   async getMessage(

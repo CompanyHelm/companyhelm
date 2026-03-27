@@ -8,7 +8,11 @@ type Query {
   GithubRepositories(installationId: ID): [GithubRepository!]!
   Sessions: [Session!]!
   SessionMessages: [SessionMessage!]!
-  SessionTranscriptMessages(sessionId: ID!): [SessionMessage!]!
+  SessionTranscriptMessages(
+    sessionId: ID!
+    first: Int!
+    after: String
+  ): SessionTranscriptMessageConnection!
   AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
@@ -160,6 +164,21 @@ type SessionMessage {
   isError: Boolean!
   createdAt: String!
   updatedAt: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type SessionTranscriptMessageEdge {
+  cursor: String!
+  node: SessionMessage!
+}
+
+type SessionTranscriptMessageConnection {
+  edges: [SessionTranscriptMessageEdge!]!
+  pageInfo: PageInfo!
 }
 
 type ModelProviderCredential {
