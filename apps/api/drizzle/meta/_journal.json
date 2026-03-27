@@ -260,6 +260,13 @@
       "when": 1774640700000,
       "tag": "0036_wiry_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1774648076782,
+      "tag": "0037_narrow_prima",
+      "breakpoints": true
     }
   ]
 }

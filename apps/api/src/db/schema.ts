@@ -27,6 +27,7 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
 export const agentSandboxStatusEnum = pgEnum("agent_sandbox_status", ["running", "stopped"]);
+export const computeProviderEnum = pgEnum("compute_provider", ["daytona"]);
 
 
 export const companies = pgTable("companies", {
@@ -370,10 +371,11 @@ export const agentSandboxes = pgTable("agent_sandboxes", {
     .notNull(),
   currentSessionId: uuid("current_session_id")
     .references(() => agentSessions.id, { onDelete: "set null" }),
+  provider: computeProviderEnum("provider").notNull(),
   leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   status: agentSandboxStatusEnum("status").notNull(),
-  daytonaSandboxId: text("daytona_sandbox_id").notNull(),
+  providerSandboxId: text("provider_sandbox_id").notNull(),
   cpuCount: integer("cpu_count").notNull(),
   memoryGb: integer("memory_gb").notNull(),
   diskSpaceGb: integer("disk_space_gb").notNull(),
@@ -384,5 +386,5 @@ export const agentSandboxes = pgTable("agent_sandboxes", {
   companyIdIndex: index("agent_sandboxes_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_sandboxes_agent_id_idx").on(table.agentId),
   currentSessionIdIndex: index("agent_sandboxes_current_session_id_idx").on(table.currentSessionId),
-  daytonaSandboxIdIndex: index("agent_sandboxes_daytona_sandbox_id_idx").on(table.daytonaSandboxId),
+  providerSandboxIdIndex: index("agent_sandboxes_provider_sandbox_id_idx").on(table.providerSandboxId),
 }));

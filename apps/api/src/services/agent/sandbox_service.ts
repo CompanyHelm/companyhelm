@@ -1,7 +1,5 @@
-import { Daytona } from "@daytonaio/sdk";
-import { eq } from "drizzle-orm";
-import { inject, injectable } from "inversify";
-import { Config } from "../../config/schema.ts";
+import { and, eq } from "drizzle-orm";
+import { injectable } from "inversify";
 import { agentSandboxes, agentSessions } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 
@@ -17,12 +15,13 @@ type AgentSandboxRow = {
   cpuCount: number;
   createdAt: Date;
   currentSessionId: string | null;
-  daytonaSandboxId: string;
   diskSpaceGb: number;
   id: string;
   lastUsedAt: Date | null;
   leaseExpiresAt: Date | null;
   memoryGb: number;
+  provider: string;
+  providerSandboxId: string;
   status: string;
   updatedAt: Date;
 };
@@ -59,39 +58,54 @@ export type AgentSandboxRecord = {
   cpuCount: number;
   createdAt: Date;
   currentSessionId: string | null;
-  daytonaSandboxId: string;
   diskSpaceGb: number;
   id: string;
   lastUsedAt: Date | null;
   leaseExpiresAt: Date | null;
   memoryGb: number;
+  provider: string;
+  providerSandboxId: string;
   status: string;
   updatedAt: Date;
 };
 
+type AgentSandboxProvisionContext = {
+  agentId: string;
+  companyId: string;
+  sessionId: string;
+};
+
+type AgentSandboxProvisionResult = {
+  cleanup?: () => Promise<void>;
+  cpuCount: number;
+  diskSpaceGb: number;
+  memoryGb: number;
+  providerSandboxId: string;
+  status: string;
+};
+
+type AgentSandboxRuntimeUpdate = {
+  cpuCount: number;
+  diskSpaceGb: number;
+  memoryGb: number;
+  status: string;
+};
+
 /**
- * Owns the lease-aware sandbox lookup for one agent session. Its scope is claiming an existing
- * agent sandbox when the lease is still valid or reclaimable, and provisioning a new Daytona
- * sandbox only when there is no reusable sandbox row left for the agent.
+ * Owns the provider-agnostic sandbox lease lifecycle for one agent session. Its scope is claiming
+ * and reusing persisted sandbox rows, while delegating provider-specific provisioning details to
+ * the caller through a narrow callback that returns generic runtime metadata.
  */
 @injectable()
 export class AgentSandboxService {
-  static readonly DEFAULT_CPU_COUNT = 2;
-  static readonly DEFAULT_DISK_SPACE_GB = 20;
-  static readonly DEFAULT_MEMORY_GB = 4;
   static readonly LEASE_TTL_MILLISECONDS = 15 * 60 * 1000;
 
-  private readonly config: Config;
-  private daytona?: Daytona;
-
-  constructor(@inject(Config) config: Config) {
-    this.config = config;
-  }
-
-  async getSandboxForSession(
+  async materializeSandboxForSession(
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     agentId: string,
+    provider: string,
+    provisionSandbox: (context: AgentSandboxProvisionContext) => Promise<AgentSandboxProvisionResult>,
   ): Promise<AgentSandboxRecord> {
     const now = new Date();
     const session = await this.loadSession(transactionProvider, sessionId);
@@ -99,7 +113,7 @@ export class AgentSandboxService {
       throw new Error("Session does not belong to the agent.");
     }
 
-    const existingSessionSandbox = await this.findActiveSessionSandbox(transactionProvider, sessionId, now);
+    const existingSessionSandbox = await this.findActiveSessionSandbox(transactionProvider, sessionId, provider, now);
     if (existingSessionSandbox) {
       const refreshedSessionSandbox = await this.refreshLease(
         transactionProvider,
@@ -108,38 +122,65 @@ export class AgentSandboxService {
         now,
       );
       if (refreshedSessionSandbox) {
-        return this.ensureRunningSandbox(transactionProvider, refreshedSessionSandbox);
+        return refreshedSessionSandbox;
       }
     }
 
-    const reusableSandboxes = await this.listReusableAgentSandboxes(transactionProvider, agentId, now);
+    const reusableSandboxes = await this.listReusableAgentSandboxes(transactionProvider, agentId, provider, now);
     for (const sandbox of reusableSandboxes) {
       const claimedSandbox = await this.claimSandbox(transactionProvider, sandbox.id, sessionId, now);
-      if (!claimedSandbox) {
-        continue;
+      if (claimedSandbox) {
+        return claimedSandbox;
       }
-
-      return this.ensureRunningSandbox(transactionProvider, claimedSandbox);
     }
 
-    return this.createSandbox(transactionProvider, session.companyId, sessionId, agentId, now);
+    return this.createSandbox(
+      transactionProvider,
+      {
+        agentId,
+        companyId: session.companyId,
+        sessionId,
+      },
+      now,
+      provider,
+      provisionSandbox,
+    );
+  }
+
+  async updateSandboxRuntimeState(
+    transactionProvider: TransactionProviderInterface,
+    sandboxId: string,
+    runtimeUpdate: AgentSandboxRuntimeUpdate,
+  ): Promise<AgentSandboxRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      const [updatedSandbox] = await updatableDatabase
+        .update(agentSandboxes)
+        .set({
+          cpuCount: runtimeUpdate.cpuCount,
+          diskSpaceGb: runtimeUpdate.diskSpaceGb,
+          memoryGb: runtimeUpdate.memoryGb,
+          status: runtimeUpdate.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(agentSandboxes.id, sandboxId))
+        .returning?.(this.sandboxSelection()) as AgentSandboxRecord[];
+      if (!updatedSandbox) {
+        throw new Error("Failed to update the sandbox runtime state.");
+      }
+
+      return updatedSandbox;
+    });
   }
 
   private async createSandbox(
     transactionProvider: TransactionProviderInterface,
-    companyId: string,
-    sessionId: string,
-    agentId: string,
+    context: AgentSandboxProvisionContext,
     now: Date,
+    provider: string,
+    provisionSandbox: (context: AgentSandboxProvisionContext) => Promise<AgentSandboxProvisionResult>,
   ): Promise<AgentSandboxRecord> {
-    const remoteSandbox = await this.getDaytonaClient().create({
-      image: "node:20-slim",
-      resources: {
-        cpu: AgentSandboxService.DEFAULT_CPU_COUNT,
-        disk: AgentSandboxService.DEFAULT_DISK_SPACE_GB,
-        memory: AgentSandboxService.DEFAULT_MEMORY_GB,
-      },
-    });
+    const provisionedSandbox = await provisionSandbox(context);
 
     try {
       return await transactionProvider.transaction(async (tx) => {
@@ -147,17 +188,18 @@ export class AgentSandboxService {
         const [insertedSandbox] = await insertableDatabase
           .insert(agentSandboxes)
           .values({
-            agentId,
-            companyId,
-            cpuCount: remoteSandbox.cpu || AgentSandboxService.DEFAULT_CPU_COUNT,
+            agentId: context.agentId,
+            companyId: context.companyId,
+            cpuCount: provisionedSandbox.cpuCount,
             createdAt: now,
-            currentSessionId: sessionId,
-            daytonaSandboxId: remoteSandbox.id,
-            diskSpaceGb: remoteSandbox.disk || AgentSandboxService.DEFAULT_DISK_SPACE_GB,
+            currentSessionId: context.sessionId,
+            diskSpaceGb: provisionedSandbox.diskSpaceGb,
             lastUsedAt: now,
             leaseExpiresAt: this.resolveLeaseExpiration(now),
-            memoryGb: remoteSandbox.memory || AgentSandboxService.DEFAULT_MEMORY_GB,
-            status: "running",
+            memoryGb: provisionedSandbox.memoryGb,
+            provider,
+            providerSandboxId: provisionedSandbox.providerSandboxId,
+            status: provisionedSandbox.status,
             updatedAt: now,
           })
           .returning?.(this.sandboxSelection()) as AgentSandboxRecord[];
@@ -168,7 +210,7 @@ export class AgentSandboxService {
         return insertedSandbox;
       });
     } catch (error) {
-      await remoteSandbox.delete().catch(() => undefined);
+      await provisionedSandbox.cleanup?.().catch(() => undefined);
       throw error;
     }
   }
@@ -196,42 +238,10 @@ export class AgentSandboxService {
     });
   }
 
-  private async ensureRunningSandbox(
-    transactionProvider: TransactionProviderInterface,
-    sandbox: AgentSandboxRecord,
-  ): Promise<AgentSandboxRecord> {
-    if (sandbox.status === "running") {
-      return sandbox;
-    }
-
-    const remoteSandbox = await this.getDaytonaClient().get(sandbox.daytonaSandboxId);
-    await remoteSandbox.start();
-    await remoteSandbox.refreshData();
-
-    return transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
-      const [updatedSandbox] = await updatableDatabase
-        .update(agentSandboxes)
-        .set({
-          cpuCount: remoteSandbox.cpu || sandbox.cpuCount,
-          diskSpaceGb: remoteSandbox.disk || sandbox.diskSpaceGb,
-          memoryGb: remoteSandbox.memory || sandbox.memoryGb,
-          status: "running",
-          updatedAt: new Date(),
-        })
-        .where(eq(agentSandboxes.id, sandbox.id))
-        .returning?.(this.sandboxSelection()) as AgentSandboxRecord[];
-      if (!updatedSandbox) {
-        throw new Error("Failed to update the sandbox status.");
-      }
-
-      return updatedSandbox;
-    });
-  }
-
   private async findActiveSessionSandbox(
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
+    provider: string,
     now: Date,
   ): Promise<AgentSandboxRecord | null> {
     const sandboxes = await transactionProvider.transaction(async (tx) => {
@@ -239,7 +249,10 @@ export class AgentSandboxService {
       return await selectableDatabase
         .select(this.sandboxSelection())
         .from(agentSandboxes)
-        .where(eq(agentSandboxes.currentSessionId, sessionId)) as AgentSandboxRow[];
+        .where(and(
+          eq(agentSandboxes.currentSessionId, sessionId),
+          eq(agentSandboxes.provider, provider),
+        )) as AgentSandboxRow[];
     });
 
     for (const sandbox of sandboxes) {
@@ -256,6 +269,7 @@ export class AgentSandboxService {
   private async listReusableAgentSandboxes(
     transactionProvider: TransactionProviderInterface,
     agentId: string,
+    provider: string,
     now: Date,
   ): Promise<AgentSandboxRecord[]> {
     const sandboxes = await transactionProvider.transaction(async (tx) => {
@@ -263,7 +277,10 @@ export class AgentSandboxService {
       return await selectableDatabase
         .select(this.sandboxSelection())
         .from(agentSandboxes)
-        .where(eq(agentSandboxes.agentId, agentId)) as AgentSandboxRow[];
+        .where(and(
+          eq(agentSandboxes.agentId, agentId),
+          eq(agentSandboxes.provider, provider),
+        )) as AgentSandboxRow[];
     });
 
     return [...sandboxes]
@@ -320,18 +337,6 @@ export class AgentSandboxService {
     });
   }
 
-  private getDaytonaClient(): Daytona {
-    if (this.daytona) {
-      return this.daytona;
-    }
-
-    this.daytona = new Daytona({
-      apiKey: this.config.daytona.api_key,
-    });
-
-    return this.daytona;
-  }
-
   private resolveLeaseExpiration(now: Date): Date {
     return new Date(now.getTime() + AgentSandboxService.LEASE_TTL_MILLISECONDS);
   }
@@ -343,12 +348,13 @@ export class AgentSandboxService {
       cpuCount: agentSandboxes.cpuCount,
       createdAt: agentSandboxes.createdAt,
       currentSessionId: agentSandboxes.currentSessionId,
-      daytonaSandboxId: agentSandboxes.daytonaSandboxId,
       diskSpaceGb: agentSandboxes.diskSpaceGb,
       id: agentSandboxes.id,
       lastUsedAt: agentSandboxes.lastUsedAt,
       leaseExpiresAt: agentSandboxes.leaseExpiresAt,
       memoryGb: agentSandboxes.memoryGb,
+      provider: agentSandboxes.provider,
+      providerSandboxId: agentSandboxes.providerSandboxId,
       status: agentSandboxes.status,
       updatedAt: agentSandboxes.updatedAt,
     };
