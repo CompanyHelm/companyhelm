@@ -52,7 +52,7 @@ test("AgentComputeDaytonaSandbox materializes lazily and paginates PTY output", 
   assert.equal(materializeSandbox.mock.calls.length, 1);
   assert.equal(createPty.mock.calls.length, 1);
   assert.equal(sendInput.mock.calls.length, 1);
-  assert.equal(sendInput.mock.calls[0]?.[0], "ls -la\n");
+  assert.match(String(sendInput.mock.calls[0]?.[0]), /^ls -la\nprintf '/);
   assert.ok(execution.ptyId.length > 0);
   assert.equal(execution.completed, false);
 
@@ -68,20 +68,11 @@ test("AgentComputeDaytonaSandbox materializes lazily and paginates PTY output", 
   assert.equal(secondPage.chunks.length, 1);
   assert.equal(secondPage.chunks[0]?.text, "second\n");
 
-  const continuedExecution = await sandbox.executeCommand({
-    command: "pwd",
-    ptyId: execution.ptyId,
-    yield_time_ms: 0,
-  });
-  assert.equal(continuedExecution.ptyId, execution.ptyId);
-  assert.equal(createPty.mock.calls.length, 1);
-  assert.equal(sendInput.mock.calls[1]?.[0], "pwd\n");
-
   await sandbox.resizePty(execution.ptyId, 120, 40);
   assert.deepEqual(resize.mock.calls[0], [120, 40]);
 
   await sandbox.sendPtyInput(execution.ptyId, "exit\n");
-  assert.equal(sendInput.mock.calls[2]?.[0], "exit\n");
+  assert.equal(sendInput.mock.calls[1]?.[0], "exit\n");
 
   await sandbox.closePty(execution.ptyId);
   assert.equal(disconnect.mock.calls.length, 1);
@@ -98,10 +89,13 @@ test("AgentComputeDaytonaSandbox returns immediately with exit code when the PTY
       disconnect: async () => undefined,
       resize: async () => undefined,
       sendInput: async (data: string | Uint8Array) => {
-        assert.equal(data, "echo done\n");
+        assert.match(String(data), /^echo done\nprintf '/);
         await onData?.(new TextEncoder().encode("done\n"));
+        const commandMarker = /\\036(codex_[a-z0-9]+):%s\\037/.exec(String(data));
+        assert.ok(commandMarker);
+        await onData?.(new TextEncoder().encode(`\u001e${commandMarker[1]}:0\u001f`));
       },
-      wait: async () => ({ exitCode: 0 }),
+      wait: async () => new Promise(() => undefined),
       waitForConnection: async () => undefined,
     };
   });

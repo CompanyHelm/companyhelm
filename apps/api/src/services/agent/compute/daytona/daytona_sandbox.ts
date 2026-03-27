@@ -90,16 +90,14 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
         rows: input.rows,
         workingDirectory: input.workingDirectory,
       });
-    const initialOffset = pty.getLatestOffset();
-    await pty.executeCommand(input.command);
+    const commandExecution = await pty.executeCommand(input.command);
     const shouldWaitForMilliseconds = this.resolveYieldTimeMilliseconds(input);
-    const waitResult = await pty.waitForYieldOrExit(shouldWaitForMilliseconds);
-    const output = pty.readCombinedOutput(initialOffset);
+    const waitResult = await pty.waitForYieldOrCommandExit(commandExecution, shouldWaitForMilliseconds);
 
     return {
       completed: waitResult.completed,
       exitCode: waitResult.exitCode ?? null,
-      output,
+      output: waitResult.output,
       ptyId: pty.getId(),
     };
   }
