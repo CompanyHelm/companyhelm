@@ -1,5 +1,6 @@
 import { Suspense, useState } from "react";
-import { LayoutGridIcon, PlusIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { CreateTaskDialog } from "./create_task_dialog";
@@ -60,6 +61,10 @@ const tasksPageSetTaskCategoryMutationNode = graphql`
   }
 `;
 
+type TasksPageSearch = {
+  category?: string;
+};
+
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
   return records.filter((record): record is { getDataID(): string } => {
     return typeof record === "object"
@@ -72,15 +77,14 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 function TasksPageFallback() {
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <LayoutGridIcon className="size-4" />
-            Tasks
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Capture work, organize it into lanes, and move tasks across the board as plans evolve.
-          </p>
+      <div className="flex shrink-0 items-center justify-between gap-4">
+        <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
+          <Button className="h-9 rounded-full border border-border/60 bg-muted px-4 text-sm" disabled variant="ghost">
+            All tasks
+          </Button>
+          <Button className="h-9 rounded-full border border-border/40 px-4 text-sm" disabled variant="ghost">
+            Loading
+          </Button>
         </div>
         <Button disabled size="sm">
           <PlusIcon />
@@ -98,6 +102,8 @@ function TasksPageFallback() {
 }
 
 function TasksPageContent() {
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as TasksPageSearch;
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const data = useLazyLoadQuery<tasksPageQuery>(
@@ -113,18 +119,73 @@ function TasksPageContent() {
   const [commitSetTaskCategory] = useMutation<tasksPageSetTaskCategoryMutation>(
     tasksPageSetTaskCategoryMutationNode,
   );
+  const allCategories = data.TaskCategories.map((category) => ({
+    id: category.id,
+    name: category.name,
+  }));
+  const uncategorizedTaskCount = data.Tasks.filter((task) => task.taskCategoryId === null).length;
+  const categoryFilterOptions = [
+    {
+      key: undefined,
+      label: "All tasks",
+      count: data.Tasks.length,
+    },
+    ...allCategories.map((category) => ({
+      key: category.id,
+      label: category.name,
+      count: data.Tasks.filter((task) => task.taskCategoryId === category.id).length,
+    })),
+    ...(uncategorizedTaskCount > 0
+      ? [{
+        key: "uncategorized",
+        label: "Uncategorized",
+        count: uncategorizedTaskCount,
+      }]
+      : []),
+  ];
+  const selectedCategoryKey = categoryFilterOptions.some((filterOption) => filterOption.key === search.category)
+    ? search.category
+    : undefined;
+  const visibleCategories = selectedCategoryKey === undefined
+    ? allCategories
+    : selectedCategoryKey === "uncategorized"
+      ? []
+      : allCategories.filter((category) => category.id === selectedCategoryKey);
+  const visibleTasks = selectedCategoryKey === undefined
+    ? data.Tasks
+    : selectedCategoryKey === "uncategorized"
+      ? data.Tasks.filter((task) => task.taskCategoryId === null)
+      : data.Tasks.filter((task) => task.taskCategoryId === selectedCategoryKey);
 
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <LayoutGridIcon className="size-4" />
-            Tasks
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create tasks, sort them into persisted kanban lanes, and drag them across the board as priorities shift.
-          </p>
+      <div className="flex shrink-0 items-center justify-between gap-4">
+        <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
+          {categoryFilterOptions.map((filterOption) => {
+            const isSelected = selectedCategoryKey === filterOption.key;
+
+            return (
+              <Button
+                key={filterOption.key ?? "all"}
+                className={`h-9 shrink-0 rounded-full border px-4 text-sm ${
+                  isSelected
+                    ? "border-border/70 bg-muted text-foreground hover:bg-muted"
+                    : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                }`}
+                onClick={() => {
+                  void navigate({
+                    to: "/tasks",
+                    search: filterOption.key ? { category: filterOption.key } : {},
+                  });
+                }}
+                size="sm"
+                variant="ghost"
+              >
+                {filterOption.label}
+                <span className="ml-1.5 text-xs text-muted-foreground/80">{filterOption.count}</span>
+              </Button>
+            );
+          })}
         </div>
         <Button
           onClick={() => {
@@ -145,11 +206,9 @@ function TasksPageContent() {
 
       <div className="min-h-0 flex-1">
         <TaskBoard
-          categories={data.TaskCategories.map((category) => ({
-            id: category.id,
-            name: category.name,
-          }))}
-          tasks={data.Tasks.map((task) => ({
+          categories={visibleCategories}
+          includeUncategorizedColumn={selectedCategoryKey === undefined || selectedCategoryKey === "uncategorized"}
+          tasks={visibleTasks.map((task) => ({
             id: task.id,
             name: task.name,
             description: task.description,

@@ -24,6 +24,10 @@ type ChatsRouteSearch = {
   sessionId?: string;
 };
 
+type TasksRouteSearch = {
+  category?: string;
+};
+
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -31,6 +35,14 @@ function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSe
       : undefined,
     sessionId: typeof search.sessionId === "string" && search.sessionId.trim().length > 0
       ? search.sessionId.trim()
+      : undefined,
+  };
+}
+
+function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSearch {
+  return {
+    category: typeof search.category === "string" && search.category.trim().length > 0
+      ? search.category.trim()
       : undefined,
   };
 }
@@ -99,6 +111,7 @@ const repositoriesRoute = createRoute({
 const tasksRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/tasks",
+  validateSearch: validateTasksRouteSearch,
   component: TasksPage,
 });
 

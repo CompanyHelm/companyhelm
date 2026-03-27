@@ -23,6 +23,7 @@ export type TaskBoardCategory = {
 interface TaskBoardProps {
   categories: TaskBoardCategory[];
   tasks: TaskBoardTask[];
+  includeUncategorizedColumn?: boolean;
   onMoveTask(taskId: string, taskCategoryId: string | null): Promise<void>;
 }
 
@@ -33,7 +34,11 @@ type TaskBoardColumn = {
   tasks: TaskBoardTask[];
 };
 
-function buildTaskBoardColumns(categories: TaskBoardCategory[], tasks: TaskBoardTask[]): TaskBoardColumn[] {
+function buildTaskBoardColumns(
+  categories: TaskBoardCategory[],
+  tasks: TaskBoardTask[],
+  includeUncategorizedColumn: boolean,
+): TaskBoardColumn[] {
   const categoryColumns = categories.map((category) => ({
     key: category.id,
     label: category.name,
@@ -41,15 +46,16 @@ function buildTaskBoardColumns(categories: TaskBoardCategory[], tasks: TaskBoard
     tasks: tasks.filter((task) => task.taskCategoryId === category.id),
   }));
 
-  return [
-    ...categoryColumns,
-    {
+  if (!includeUncategorizedColumn) {
+    return categoryColumns;
+  }
+
+  return [...categoryColumns, {
       key: "uncategorized",
       label: "Uncategorized",
       taskCategoryId: null,
       tasks: tasks.filter((task) => task.taskCategoryId === null),
-    },
-  ];
+    }];
 }
 
 function formatTaskStatus(status: TaskStatus): string {
@@ -82,7 +88,7 @@ function formatTaskTimestamp(value: string): string {
  */
 export function TaskBoard(props: TaskBoardProps) {
   const [dropTargetKey, setDropTargetKey] = useState("");
-  const columns = buildTaskBoardColumns(props.categories, props.tasks);
+  const columns = buildTaskBoardColumns(props.categories, props.tasks, props.includeUncategorizedColumn ?? true);
 
   async function handleDrop(event: DragEvent<HTMLDivElement>, taskCategoryId: string | null, columnKey: string) {
     event.preventDefault();
