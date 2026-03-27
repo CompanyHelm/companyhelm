@@ -87,7 +87,9 @@ export class PiMonoSessionManagerService {
       modelRegistry,
       sessionManager,
       model,
-      tools: piMonoToolsService.getTools(),
+      // The PI SDK filters `tools` to built-in names before startup, so built-in overrides must
+      // stay on `customTools` and reuse the built-in tool name we are replacing.
+      customTools: piMonoToolsService.getTools(),
       thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
     });
     session.agent.replaceMessages(storedContextMessages);

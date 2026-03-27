@@ -1,4 +1,4 @@
-import type { Tool, ToolDefinition } from "@mariozechner/pi-coding-agent";
+import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import type { TransactionProviderInterface } from "../../../../../db/transaction_provider_interface.ts";
 
@@ -30,15 +30,17 @@ export class PiMonoReadFileTool {
 
   getDefinition(): ToolDefinition<typeof PiMonoReadFileTool.parameters> {
     return {
-      name: "read_file",
-      label: "Read File",
+      name: "read",
+      label: "read",
       description: "Reads a file from the current workspace.",
+      promptSnippet: "Read file contents",
+      promptGuidelines: ["Use read to examine files instead of cat or sed."],
       parameters: PiMonoReadFileTool.parameters,
       execute: async (_toolCallId, params) => {
         return {
           content: [{
             type: "text",
-            text: `Stub read_file result for "${params.path}" in session ${this.sessionId} on agent ${this.agentId}.`,
+            text: `Stub read result for "${params.path}" in session ${this.sessionId} on agent ${this.agentId}.`,
           }],
           details: {
             agentId: this.agentId,
@@ -47,19 +49,6 @@ export class PiMonoReadFileTool {
             transactionProviderAvailable: typeof this.transactionProvider.transaction === "function",
           },
         };
-      },
-    };
-  }
-
-  getTool(): Tool {
-    const definition = this.getDefinition();
-    return {
-      name: definition.name,
-      label: definition.label,
-      description: definition.description,
-      parameters: definition.parameters,
-      execute: async (toolCallId, params, signal, onUpdate) => {
-        return definition.execute(toolCallId, params, signal, onUpdate, undefined as never);
       },
     };
   }
