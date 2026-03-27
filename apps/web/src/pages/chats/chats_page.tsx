@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, ArrowUpDownIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon } from "lucide-react";
+import { ArchiveIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon } from "lucide-react";
 import { graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -459,7 +459,6 @@ function ChatsPageContent() {
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
-  const isSelectedSessionRunning = Boolean(selectedSession && isRunningSession(selectedSession));
   const selectedSessionMessages = selectedSession ? sessionMessagesBySessionId.get(selectedSession.id) ?? [] : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isSubmittingDraft;
@@ -939,17 +938,17 @@ function ChatsPageContent() {
                                       }}
                                       type="button"
                                     >
-                                      <div className="flex items-start justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                                          <Loader2Icon
+                                            aria-hidden={!isSessionRunning}
+                                            className={`size-3.5 text-muted-foreground ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
+                                            title={isSessionRunning ? "Session running" : undefined}
+                                          />
+                                        </span>
                                         <p className="block min-w-0 flex-1 truncate text-xs font-medium text-foreground">
                                           {resolveSessionTitle(session, sessionMessagesBySessionId.get(session.id) ?? [])}
                                         </p>
-                                        {isSessionRunning ? (
-                                          <Loader2Icon
-                                            aria-label="Session running"
-                                            className="mt-0.5 size-3.5 shrink-0 animate-spin text-muted-foreground"
-                                            title="Session running"
-                                          />
-                                        ) : null}
                                       </div>
                                       <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
                                         {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
@@ -1017,15 +1016,6 @@ function ChatsPageContent() {
 
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                {selectedSession ? (
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                    <Loader2Icon
-                      aria-hidden={!isSelectedSessionRunning}
-                      className={`size-3.5 text-muted-foreground ${isSelectedSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
-                    />
-                  </span>
-                ) : null}
-
                 <CardTitle>
                   {selectedSession
                     ? resolveSessionTitle(selectedSession, selectedSessionMessages)
@@ -1094,16 +1084,14 @@ function ChatsPageContent() {
 
         {selectedAgent ? (
           <div className="border-t border-border/60 p-3 md:p-4">
-            <div className="group rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+            <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
               <div className="relative">
                 <button
                   aria-label="Resize message input"
-                  className="absolute top-3 right-3 z-10 flex h-6 w-6 cursor-ns-resize items-center justify-center rounded-full text-muted-foreground/70 opacity-0 transition hover:text-foreground/80 group-hover:opacity-100 group-focus-within:opacity-100"
+                  className="absolute inset-x-4 top-0 z-10 h-4 cursor-move bg-transparent"
                   onPointerDown={startDraftTextareaResize}
                   type="button"
-                >
-                  <ArrowUpDownIcon className="size-3.5" />
-                </button>
+                />
                 <textarea
                   id="chat-draft-message"
                   ref={draftTextareaRef}
