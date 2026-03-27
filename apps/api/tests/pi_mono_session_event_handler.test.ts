@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { agentSessions, messageContents, sessionMessages } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
@@ -518,6 +518,60 @@ test("PiMonoSessionEventHandler ignores trailing toolResult message events after
       },
     ],
   );
+});
+
+test("PiMonoSessionEventHandler preserves event order when tool execution and the next assistant message share the same millisecond", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-03-27T20:00:02.000Z"));
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 2000,
+      },
+      type: "message_end",
+    });
+    await handler.handle({
+      toolCallId: "tool-call-1",
+      toolName: "bash",
+      type: "tool_execution_start",
+    });
+    await handler.handle({
+      isError: false,
+      result: "stub output",
+      toolCallId: "tool-call-1",
+      toolName: "bash",
+      type: "tool_execution_end",
+    });
+    await handler.handle({
+      message: {
+        content: "Here is what happened.",
+        role: "assistant",
+        timestamp: 2000,
+      },
+      type: "message_start",
+    });
+  } finally {
+    harness.restore();
+    vi.useRealTimers();
+  }
+
+  const persistedMessages = [...harness.sessionMessageRecords.values()].sort((leftMessage, rightMessage) => {
+    return (leftMessage.createdAt as Date).getTime() - (rightMessage.createdAt as Date).getTime();
+  });
+  assert.equal(persistedMessages.length, 3);
+  assert.equal(persistedMessages[0]?.role, "assistant");
+  assert.equal(persistedMessages[1]?.role, "toolResult");
+  assert.equal(persistedMessages[2]?.role, "assistant");
+  assert.ok((persistedMessages[1]?.createdAt as Date).getTime() < (persistedMessages[2]?.createdAt as Date).getTime());
 });
 
 test("PiMonoSessionEventHandler stores session thinking state from assistant thinking events", async () => {

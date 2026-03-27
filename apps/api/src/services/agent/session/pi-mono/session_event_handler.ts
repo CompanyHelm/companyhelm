@@ -99,6 +99,7 @@ export class PiMonoSessionEventHandler {
   private companyId?: string;
   private isThinking = false;
   private thinkingText = "";
+  private lastPersistedTimestampMilliseconds = 0;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
@@ -263,7 +264,9 @@ export class PiMonoSessionEventHandler {
     }
 
     const messageId = await this.resolveMessageId(sessionEvent);
-    const timestamp = timestampOverride ?? this.resolveMessageTimestamp(eventMessage.timestamp);
+    const timestamp = this.resolvePersistedTimestamp(
+      timestampOverride ?? this.resolveMessageTimestamp(eventMessage.timestamp),
+    );
     const companyId = await this.resolveCompanyId();
     const messageRecord = this.buildSessionMessageRecord(
       companyId,
@@ -600,6 +603,15 @@ export class PiMonoSessionEventHandler {
     }
 
     return new Date();
+  }
+
+  private resolvePersistedTimestamp(timestamp: Date): Date {
+    const candidateMilliseconds = timestamp.getTime();
+    const nextMilliseconds = candidateMilliseconds > this.lastPersistedTimestampMilliseconds
+      ? candidateMilliseconds
+      : this.lastPersistedTimestampMilliseconds + 1;
+    this.lastPersistedTimestampMilliseconds = nextMilliseconds;
+    return new Date(nextMilliseconds);
   }
 
   private shiftQueuedUserMessageTimestamp(): Date | undefined {
