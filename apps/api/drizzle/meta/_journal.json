@@ -253,6 +253,13 @@
       "when": 1774638535508,
       "tag": "0035_shiny_post",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1774640700000,
+      "tag": "0036_wiry_stature",
+      "breakpoints": true
     }
   ]
 }
