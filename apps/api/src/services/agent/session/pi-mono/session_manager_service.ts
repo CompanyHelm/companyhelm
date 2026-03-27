@@ -87,7 +87,7 @@ export class PiMonoSessionManagerService {
       modelRegistry,
       sessionManager,
       model,
-      customTools: piMonoToolsService.getTools(),
+      tools: piMonoToolsService.getTools(),
       thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
     });
     session.agent.replaceMessages(storedContextMessages);

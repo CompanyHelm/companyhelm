@@ -1,4 +1,4 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
+import type { Tool, ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import type { TransactionProviderInterface } from "../../../../../db/transaction_provider_interface.ts";
 
@@ -47,6 +47,19 @@ export class PiMonoReadFileTool {
             transactionProviderAvailable: typeof this.transactionProvider.transaction === "function",
           },
         };
+      },
+    };
+  }
+
+  getTool(): Tool {
+    const definition = this.getDefinition();
+    return {
+      name: definition.name,
+      label: definition.label,
+      description: definition.description,
+      parameters: definition.parameters,
+      execute: async (toolCallId, params, signal, onUpdate) => {
+        return definition.execute(toolCallId, params, signal, onUpdate, undefined as never);
       },
     };
   }

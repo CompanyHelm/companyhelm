@@ -1,4 +1,4 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
+import type { Tool } from "@mariozechner/pi-coding-agent";
 import type { TransactionProviderInterface } from "../../../../../db/transaction_provider_interface.ts";
 import { PiMonoReadFileTool } from "./read_file_tool.ts";
 
@@ -22,13 +22,13 @@ export class PiMonoToolsService {
     this.sessionId = sessionId;
   }
 
-  getTools(): ToolDefinition[] {
+  getTools(): Tool[] {
     return [
       new PiMonoReadFileTool(
         this.agentId,
         this.transactionProvider,
         this.sessionId,
-      ).getDefinition(),
+      ).getTool(),
     ];
   }
 }

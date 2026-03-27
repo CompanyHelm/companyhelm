@@ -24,7 +24,6 @@ test("PiMonoToolsService returns a stubbed read_file tool bound to the current s
     },
     undefined,
     undefined,
-    {} as never,
   );
 
   assert.deepEqual(result.content, [{

@@ -205,10 +205,10 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[storedMessages]]);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
-    customTools?: Array<{ name: string }>;
+    tools?: Array<{ name: string }>;
   };
   assert.deepEqual(
-    createAgentSessionOptions.customTools?.map((tool) => tool.name),
+    createAgentSessionOptions.tools?.map((tool) => tool.name),
     ["read_file"],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
