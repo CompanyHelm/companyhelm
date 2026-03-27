@@ -17,6 +17,11 @@ type StoreRecord = {
   getValue(name: string): unknown;
 };
 
+type GithubInstallCallbackSearch = {
+  installationId: string;
+  setupAction: string;
+};
+
 const githubInstallCallbackPageAddGithubInstallationMutationNode = graphql`
   mutation githubInstallCallbackPageAddGithubInstallationMutation($input: AddGithubInstallationInput!) {
     AddGithubInstallation(input: $input) {
@@ -53,6 +58,22 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): StoreRecord[] {
   });
 }
 
+function resolveCallbackSearch(search: { installation_id?: string; setup_action?: string }): GithubInstallCallbackSearch {
+  if (typeof window === "undefined") {
+    return {
+      installationId: search.installation_id || "",
+      setupAction: search.setup_action || "",
+    };
+  }
+
+  const locationSearch = new URLSearchParams(window.location.search);
+
+  return {
+    installationId: search.installation_id || locationSearch.get("installation_id") || "",
+    setupAction: search.setup_action || locationSearch.get("setup_action") || "",
+  };
+}
+
 export function GithubInstallCallbackPage() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
@@ -62,10 +83,11 @@ export function GithubInstallCallbackPage() {
     useMutation<githubInstallCallbackPageAddGithubInstallationMutation>(
       githubInstallCallbackPageAddGithubInstallationMutationNode,
     );
+  const callbackSearch = resolveCallbackSearch(search);
 
   useEffect(() => {
-    const callbackInstallationId = search.installation_id || "";
-    const callbackSetupAction = search.setup_action || "";
+    const callbackInstallationId = callbackSearch.installationId;
+    const callbackSetupAction = callbackSearch.setupAction;
     const callbackKey = [callbackInstallationId, callbackSetupAction].join("|");
 
     if (!callbackKey.replace(/\|/g, "")) {
@@ -170,7 +192,7 @@ export function GithubInstallCallbackPage() {
     return () => {
       isCancelled = true;
     };
-  }, [commitAddInstallation, navigate, search.installation_id, search.setup_action]);
+  }, [callbackSearch.installationId, callbackSearch.setupAction, commitAddInstallation, navigate]);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
