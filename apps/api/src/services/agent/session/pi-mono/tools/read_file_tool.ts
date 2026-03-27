@@ -12,6 +12,12 @@ export class PiMonoReadFileTool {
     path: Type.String({
       description: "Path to the file to read.",
     }),
+    offset: Type.Optional(Type.Number({
+      description: "Line number to start reading from (1-indexed).",
+    })),
+    limit: Type.Optional(Type.Number({
+      description: "Maximum number of lines to read.",
+    })),
   });
 
   private readonly agentId: string;
@@ -44,6 +50,8 @@ export class PiMonoReadFileTool {
           }],
           details: {
             agentId: this.agentId,
+            limit: params.limit,
+            offset: params.offset,
             path: params.path,
             sessionId: this.sessionId,
             transactionProviderAvailable: typeof this.transactionProvider.transaction === "function",

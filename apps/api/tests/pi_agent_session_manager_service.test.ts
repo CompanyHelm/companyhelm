@@ -209,7 +209,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   };
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
-    ["read"],
+    ["bash", "edit", "read", "write"],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
