@@ -11,7 +11,8 @@ import {
   uniqueIndex,
   uuid,
   boolean,
-  jsonb
+  jsonb,
+  integer
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
@@ -25,6 +26,7 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
+export const agentSandboxStatusEnum = pgEnum("agent_sandbox_status", ["running", "stopped"]);
 
 
 export const companies = pgTable("companies", {
@@ -333,4 +335,33 @@ export const tasks = pgTable("tasks", {
   companyIdIndex: index("tasks_company_id_idx").on(table.companyId),
   companyTaskCategoryIdIndex: index("tasks_company_task_category_id_idx").on(table.companyId, table.taskCategoryId),
   companyStatusCreatedAtIndex: index("tasks_company_status_created_at_idx").on(table.companyId, table.status, table.createdAt),
+}));
+
+export const agentSandboxes = pgTable("agent_sandboxes", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+  currentSessionId: uuid("current_session_id")
+    .references(() => agentSessions.id, { onDelete: "set null" }),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  status: agentSandboxStatusEnum("status").notNull(),
+  daytonaSandboxId: text("daytona_sandbox_id").notNull(),
+  cpuCount: integer("cpu_count").notNull(),
+  memoryGb: integer("memory_gb").notNull(),
+  diskSpaceGb: integer("disk_space_gb").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("agent_sandboxes_company_id_idx").on(table.companyId),
+  agentIdIndex: index("agent_sandboxes_agent_id_idx").on(table.agentId),
+  currentSessionIdIndex: index("agent_sandboxes_current_session_id_idx").on(table.currentSessionId),
+  daytonaSandboxIdIndex: index("agent_sandboxes_daytona_sandbox_id_idx").on(table.daytonaSandboxId),
 }));
