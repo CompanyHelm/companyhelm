@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon } from "lucide-react";
+import { ArchiveIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ const chatsPageTranscriptQueryNode = graphql`
           sessionId
           role
           status
+          toolCallId
+          toolName
           text
           isError
           createdAt
@@ -140,6 +142,8 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
       sessionId
       role
       status
+      toolCallId
+      toolName
       text
       isError
       createdAt
@@ -465,6 +469,34 @@ function ChatsThinkingIndicator({ text }: { text: string | null | undefined }) {
   );
 }
 
+function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
+  const statusLabel = message.status.trim().toLowerCase() === "running"
+    ? "Running"
+    : message.isError
+    ? "Error"
+    : "Success";
+  const outputText = message.text.trim();
+
+  return (
+    <div className="w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+        <WrenchIcon className="size-4 shrink-0" />
+        <span>{message.toolName ?? "Tool"}</span>
+        <span className="text-[10px] tracking-[0.18em] text-muted-foreground/70">{statusLabel}</span>
+      </div>
+      {outputText.length > 0 ? (
+        <pre className="mt-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground">
+          {message.text}
+        </pre>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ChatsTranscript({
   session,
   sessionMessages,
@@ -483,6 +515,10 @@ function ChatsTranscript({
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
 }) {
   const visibleTranscriptMessages = sessionMessages.filter((message) => {
+    if (message.role === "toolResult") {
+      return typeof message.toolName === "string" && message.toolName.trim().length > 0;
+    }
+
     return (message.role === "user" || message.role === "assistant") && message.text.trim().length > 0;
   });
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
@@ -530,6 +566,7 @@ function ChatsTranscript({
       ) : null}
       {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
+        const isToolMessage = message.role === "toolResult";
 
         return (
           <div
@@ -540,11 +577,15 @@ function ChatsTranscript({
               className={`${
                 isUserMessage
                   ? "w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
+                  : isToolMessage
+                  ? "w-full px-0 py-0 text-foreground"
                   : "w-full px-0 py-0 text-foreground"
               }`}
             >
               {isUserMessage ? (
                 <p className="whitespace-pre-wrap text-right text-sm">{message.text}</p>
+              ) : isToolMessage ? (
+                <ToolTranscriptMessage message={message} />
               ) : (
                 <div className="grid w-full gap-4 text-left">
                   <AssistantTranscriptMessage text={message.text} />

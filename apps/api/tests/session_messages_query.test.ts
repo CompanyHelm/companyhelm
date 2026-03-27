@@ -46,6 +46,8 @@ class SessionMessagesQueryTestHarness {
                           sessionId: "session-1",
                           role: "assistant",
                           status: "completed",
+                          toolCallId: null,
+                          toolName: null,
                           isError: false,
                           createdAt: new Date("2026-03-24T08:01:00.000Z"),
                           updatedAt: new Date("2026-03-24T08:02:00.000Z"),
@@ -55,6 +57,8 @@ class SessionMessagesQueryTestHarness {
                           sessionId: "session-1",
                           role: "user",
                           status: "completed",
+                          toolCallId: null,
+                          toolName: null,
                           isError: false,
                           createdAt: new Date("2026-03-24T08:00:00.000Z"),
                           updatedAt: new Date("2026-03-24T08:00:00.000Z"),
@@ -163,6 +167,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
             sessionId
             role
             status
+            toolCallId
+            toolName
             text
             isError
             createdAt
@@ -181,6 +187,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       sessionId: "session-1",
       role: "user",
       status: "completed",
+      toolCallId: null,
+      toolName: null,
       text: "hi",
       isError: false,
       createdAt: "2026-03-24T08:00:00.000Z",
@@ -191,6 +199,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       sessionId: "session-1",
       role: "assistant",
       status: "completed",
+      toolCallId: null,
+      toolName: null,
       text: "Line one\nLine two",
       isError: false,
       createdAt: "2026-03-24T08:01:00.000Z",

@@ -396,6 +396,130 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   );
 });
 
+test("PiMonoSessionEventHandler persists tool execution events into one streamed tool result message", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      args: {
+        path: "README.md",
+      },
+      toolCallId: "tool-call-1",
+      toolName: "read",
+      type: "tool_execution_start",
+    });
+    await handler.handle({
+      partialResult: "Partial output",
+      toolCallId: "tool-call-1",
+      toolName: "read",
+      type: "tool_execution_update",
+    });
+    await handler.handle({
+      isError: false,
+      result: "Final output",
+      toolCallId: "tool-call-1",
+      toolName: "read",
+      type: "tool_execution_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.role, "toolResult");
+  assert.equal(messageRecord?.status, "completed");
+  assert.equal(messageRecord?.toolCallId, "tool-call-1");
+  assert.equal(messageRecord?.toolName, "read");
+  assert.equal(messageRecord?.isError, false);
+
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "Final output",
+        type: "text",
+      },
+    ],
+  );
+});
+
+test("PiMonoSessionEventHandler ignores trailing toolResult message events after tool execution lifecycle persisted the tool row", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      toolCallId: "tool-call-1",
+      toolName: "read",
+      type: "tool_execution_start",
+    });
+    await handler.handle({
+      isError: false,
+      result: "Final output",
+      toolCallId: "tool-call-1",
+      toolName: "read",
+      type: "tool_execution_end",
+    });
+    await handler.handle({
+      message: {
+        content: "Final output from tool result message",
+        role: "toolResult",
+        timestamp: 5000,
+        toolCallId: "tool-call-1",
+        toolName: "read",
+      },
+      type: "message_start",
+    });
+    await handler.handle({
+      message: {
+        content: "Final output from tool result message",
+        role: "toolResult",
+        timestamp: 5000,
+        toolCallId: "tool-call-1",
+        toolName: "read",
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "Final output",
+        type: "text",
+      },
+    ],
+  );
+});
+
 test("PiMonoSessionEventHandler stores session thinking state from assistant thinking events", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(

@@ -162,6 +162,8 @@ type SessionMessage {
   sessionId: ID!
   role: String!
   status: String!
+  toolCallId: String
+  toolName: String
   text: String!
   isError: Boolean!
   createdAt: String!

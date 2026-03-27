@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9cce6b3f98a7bcc4a0700350aa9616e5>>
+ * @generated SignedSource<<4f0df4bc7e2fc7b2e3b02f78f3d34b56>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,8 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
     readonly sessionId: string;
     readonly status: string;
     readonly text: string;
+    readonly toolCallId: string | null | undefined;
+    readonly toolName: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -84,6 +86,20 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "toolCallId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "toolName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "text",
         "storageKey": null
       },
@@ -130,16 +146,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "95775f11610b72a9b69015767d61c1c7",
+    "cacheID": "f1b7220a5dfb8c3d2a056d720ab29ceb",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "544d1bf6911fb153e22342443b07dd0d";
+(node as any).hash = "5cdd7563b9cb17b494fc78104b6ade06";
 
 export default node;

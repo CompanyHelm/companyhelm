@@ -50,6 +50,8 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   sessionId: "session-1",
                                   role: "assistant",
                                   status: "completed",
+                                  toolCallId: null,
+                                  toolName: null,
                                   isError: false,
                                   createdAt: new Date("2026-03-24T08:02:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:03:00.000Z"),
@@ -59,6 +61,8 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   sessionId: "session-1",
                                   role: "assistant",
                                   status: "completed",
+                                  toolCallId: null,
+                                  toolName: null,
                                   isError: false,
                                   createdAt: new Date("2026-03-24T08:01:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:02:00.000Z"),
@@ -68,6 +72,8 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   sessionId: "session-1",
                                   role: "user",
                                   status: "completed",
+                                  toolCallId: null,
+                                  toolName: null,
                                   isError: false,
                                   createdAt: new Date("2026-03-24T08:00:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:00:00.000Z"),
@@ -189,6 +195,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                 sessionId
                 role
                 status
+                toolCallId
+                toolName
                 text
                 isError
                 createdAt
@@ -220,6 +228,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
           sessionId: "session-1",
           role: "assistant",
           status: "completed",
+          toolCallId: null,
+          toolName: null,
           text: "Latest answer",
           isError: false,
           createdAt: "2026-03-24T08:02:00.000Z",
@@ -233,6 +243,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
           sessionId: "session-1",
           role: "assistant",
           status: "completed",
+          toolCallId: null,
+          toolName: null,
           text: "Line one\nLine two",
           isError: false,
           createdAt: "2026-03-24T08:01:00.000Z",

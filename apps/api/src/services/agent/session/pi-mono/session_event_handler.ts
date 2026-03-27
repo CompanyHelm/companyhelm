@@ -94,6 +94,7 @@ export class PiMonoSessionEventHandler {
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
   private readonly queuedUserMessageTimestamps: Date[] = [];
+  private readonly completedToolExecutionKeys = new Set<string>();
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
   private isThinking = false;
@@ -148,13 +149,13 @@ export class PiMonoSessionEventHandler {
         await this.handleMessageEnd(sessionEvent);
         return;
       case "tool_execution_start":
-        this.logInfo("pi mono tool execution started", sessionEvent);
+        await this.handleToolExecutionStart(sessionEvent);
         return;
       case "tool_execution_update":
-        this.logInfo("pi mono tool execution updated", sessionEvent);
+        await this.handleToolExecutionUpdate(sessionEvent);
         return;
       case "tool_execution_end":
-        this.logInfo("pi mono tool execution ended", sessionEvent);
+        await this.handleToolExecutionEnd(sessionEvent);
         return;
       default:
         this.logError("unhandled pi mono session event", sessionEvent);
@@ -200,6 +201,10 @@ export class PiMonoSessionEventHandler {
         this.logInfo("pi mono assistant message started", sessionEvent);
         return;
       case "toolResult":
+        if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
+          this.logInfo("ignoring pi mono tool result start after tool execution events", sessionEvent);
+          return;
+        }
         await this.upsertSessionMessage("running", sessionEvent);
         this.logInfo("pi mono tool result message started", sessionEvent);
         return;
@@ -234,6 +239,10 @@ export class PiMonoSessionEventHandler {
         this.logInfo("pi mono assistant message completed", sessionEvent);
         return;
       case "toolResult":
+        if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
+          this.logInfo("ignoring pi mono tool result end after tool execution events", sessionEvent);
+          return;
+        }
         await this.upsertSessionMessage("completed", sessionEvent);
         this.logInfo("pi mono tool result message completed", sessionEvent);
         return;
@@ -293,6 +302,23 @@ export class PiMonoSessionEventHandler {
       this.contentIdsByMessageId.delete(messageId);
       this.persistedMessageIds.delete(messageId);
     }
+  }
+
+  private async handleToolExecutionStart(sessionEvent: SessionEvent): Promise<void> {
+    this.completedToolExecutionKeys.delete(this.createToolExecutionEventKey(sessionEvent));
+    await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent));
+    this.logInfo("pi mono tool execution started", sessionEvent);
+  }
+
+  private async handleToolExecutionUpdate(sessionEvent: SessionEvent): Promise<void> {
+    await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent));
+    this.logInfo("pi mono tool execution updated", sessionEvent);
+  }
+
+  private async handleToolExecutionEnd(sessionEvent: SessionEvent): Promise<void> {
+    await this.upsertSessionMessage("completed", this.createToolExecutionSessionEvent(sessionEvent));
+    this.completedToolExecutionKeys.add(this.createToolExecutionEventKey(sessionEvent));
+    this.logInfo("pi mono tool execution ended", sessionEvent);
   }
 
   private async upsertMessageContents(
@@ -433,6 +459,43 @@ export class PiMonoSessionEventHandler {
     }
 
     return [];
+  }
+
+  private createToolExecutionSessionEvent(sessionEvent: SessionEvent): SessionEvent {
+    const payload = sessionEvent.type === "tool_execution_update"
+      ? sessionEvent.partialResult
+      : sessionEvent.result;
+    const text = this.serializeToolExecutionPayload(payload);
+
+    return {
+      message: {
+        content: text.length > 0 ? text : [],
+        isError: sessionEvent.isError === true,
+        role: "toolResult",
+        timestamp: Date.now(),
+        toolCallId: sessionEvent.toolCallId,
+        toolName: sessionEvent.toolName,
+      },
+      type: sessionEvent.type,
+    };
+  }
+
+  private serializeToolExecutionPayload(value: unknown): string {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+      return String(value);
+    }
+    if (value === null || typeof value === "undefined") {
+      return "";
+    }
+
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
   }
 
   private async processAssistantThinkingEvent(sessionEvent: SessionEvent): Promise<void> {
@@ -592,12 +655,37 @@ export class PiMonoSessionEventHandler {
   }
 
   private createEventKey(message: SessionMessage): string {
+    if (message.role === "toolResult" && (message.toolCallId || message.toolName)) {
+      return [
+        message.role,
+        message.toolCallId ?? "",
+        message.toolName ?? "",
+      ].join(":");
+    }
+
     return [
       message.role ?? "unknown",
       typeof message.timestamp === "number" ? String(message.timestamp) : "no-timestamp",
       message.toolCallId ?? "",
       message.toolName ?? "",
     ].join(":");
+  }
+
+  private hasTrackedToolExecutionMessage(message?: SessionMessage): boolean {
+    if (!message || message.role !== "toolResult" || (!message.toolCallId && !message.toolName)) {
+      return false;
+    }
+
+    const eventKey = this.createEventKey(message);
+    return this.messageIdByEventKey.has(eventKey) || this.completedToolExecutionKeys.has(eventKey);
+  }
+
+  private createToolExecutionEventKey(sessionEvent: SessionEvent): string {
+    return this.createEventKey({
+      role: "toolResult",
+      toolCallId: sessionEvent.toolCallId,
+      toolName: sessionEvent.toolName,
+    });
   }
 
   private logInfo(logMessage: string, event: SessionEvent): void {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<63b0e849150e4bd6895a52fa9d361c43>>
+ * @generated SignedSource<<edbd21bf54301f6162bebbcadbe42257>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,6 +26,8 @@ export type chatsPageTranscriptQuery$data = {
         readonly sessionId: string;
         readonly status: string;
         readonly text: string;
+        readonly toolCallId: string | null | undefined;
+        readonly toolName: string | null | undefined;
         readonly updatedAt: string;
       };
     }>;
@@ -136,6 +138,20 @@ v3 = [
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
+                "name": "toolCallId",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "toolName",
+                "storageKey": null
+              },
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
                 "name": "text",
                 "storageKey": null
               },
@@ -221,16 +237,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "0e8cf6b10d0226c5a5b194b31f7c2efc",
+    "cacheID": "9bf5019b5f6ab4729553b5b0315be235",
     "id": null,
     "metadata": {},
     "name": "chatsPageTranscriptQuery",
     "operationKind": "query",
-    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        role\n        status\n        text\n        isError\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        role\n        status\n        toolCallId\n        toolName\n        text\n        isError\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ad12b69272da06522c1e4720a6378bb2";
+(node as any).hash = "95ce6b87e965ed2772e955bdf78b5bb7";
 
 export default node;

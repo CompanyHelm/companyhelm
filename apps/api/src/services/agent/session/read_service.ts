@@ -22,6 +22,8 @@ type SessionMessageRow = {
   sessionId: string;
   role: string;
   status: string;
+  toolCallId: string | null;
+  toolName: string | null;
   isError: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -69,6 +71,8 @@ export type SessionMessageGraphqlRecord = {
   sessionId: string;
   role: string;
   status: string;
+  toolCallId: string | null;
+  toolName: string | null;
   text: string;
   isError: boolean;
   createdAt: string;
@@ -229,6 +233,8 @@ export class SessionReadService {
           sessionId: sessionMessages.sessionId,
           role: sessionMessages.role,
           status: sessionMessages.status,
+          toolCallId: sessionMessages.toolCallId,
+          toolName: sessionMessages.toolName,
           isError: sessionMessages.isError,
           createdAt: sessionMessages.createdAt,
           updatedAt: sessionMessages.updatedAt,
@@ -287,6 +293,8 @@ export class SessionReadService {
           sessionId: sessionMessages.sessionId,
           role: sessionMessages.role,
           status: sessionMessages.status,
+          toolCallId: sessionMessages.toolCallId,
+          toolName: sessionMessages.toolName,
           isError: sessionMessages.isError,
           createdAt: sessionMessages.createdAt,
           updatedAt: sessionMessages.updatedAt,
@@ -320,6 +328,8 @@ export class SessionReadService {
           sessionId: sessionMessages.sessionId,
           role: sessionMessages.role,
           status: sessionMessages.status,
+          toolCallId: sessionMessages.toolCallId,
+          toolName: sessionMessages.toolName,
           isError: sessionMessages.isError,
           createdAt: sessionMessages.createdAt,
           updatedAt: sessionMessages.updatedAt,
@@ -411,6 +421,8 @@ export class SessionReadService {
       sessionId: messageRow.sessionId,
       role: messageRow.role,
       status: messageRow.status,
+      toolCallId: messageRow.toolCallId,
+      toolName: messageRow.toolName,
       text: textsByMessageId.get(messageRow.id) ?? "",
       isError: messageRow.isError,
       createdAt: messageRow.createdAt.toISOString(),
