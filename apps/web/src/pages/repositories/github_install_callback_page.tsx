@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 import { graphql, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,6 @@ function resolveCallbackSearch(search: { installation_id?: string; setup_action?
 }
 
 export function GithubInstallCallbackPage() {
-  const navigate = useNavigate();
   const search = useSearch({ strict: false });
   const callbackHandledRef = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -176,10 +175,9 @@ export function GithubInstallCallbackPage() {
           return;
         }
 
-        await navigate({
-          to: "/repositories",
-          replace: true,
-        });
+        if (typeof window !== "undefined") {
+          window.location.replace("/repositories");
+        }
       })
       .catch((error: unknown) => {
         if (isCancelled) {
@@ -192,7 +190,7 @@ export function GithubInstallCallbackPage() {
     return () => {
       isCancelled = true;
     };
-  }, [callbackSearch.installationId, callbackSearch.setupAction, commitAddInstallation, navigate]);
+  }, [callbackSearch.installationId, callbackSearch.setupAction, commitAddInstallation]);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
