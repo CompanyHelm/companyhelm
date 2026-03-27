@@ -1,7 +1,7 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
-import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { graphql, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,22 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { githubInstallCallbackPageAddGithubInstallationMutation } from "./__generated__/githubInstallCallbackPageAddGithubInstallationMutation.graphql";
-import type { githubInstallCallbackPageQuery } from "./__generated__/githubInstallCallbackPageQuery.graphql";
 
 type StoreRecord = {
   getDataID(): string;
   getValue(name: string): unknown;
 };
-
-const githubInstallCallbackPageQueryNode = graphql`
-  query githubInstallCallbackPageQuery {
-    Me {
-      company {
-        id
-      }
-    }
-  }
-`;
 
 const githubInstallCallbackPageAddGithubInstallationMutationNode = graphql`
   mutation githubInstallCallbackPageAddGithubInstallationMutation($input: AddGithubInstallationInput!) {
@@ -64,36 +53,11 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): StoreRecord[] {
   });
 }
 
-function GithubInstallCallbackPageFallback() {
-  return (
-    <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle>Connecting GitHub installation</CardTitle>
-          <CardDescription>Processing the GitHub install callback.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading callback context…
-          </div>
-        </CardContent>
-      </Card>
-    </main>
-  );
-}
-
-function GithubInstallCallbackPageContent() {
+export function GithubInstallCallbackPage() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
   const callbackHandledRef = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const data = useLazyLoadQuery<githubInstallCallbackPageQuery>(
-    githubInstallCallbackPageQueryNode,
-    {},
-    {
-      fetchPolicy: "store-or-network",
-    },
-  );
   const [commitAddInstallation] =
     useMutation<githubInstallCallbackPageAddGithubInstallationMutation>(
       githubInstallCallbackPageAddGithubInstallationMutationNode,
@@ -102,8 +66,7 @@ function GithubInstallCallbackPageContent() {
   useEffect(() => {
     const callbackInstallationId = search.installation_id || "";
     const callbackSetupAction = search.setup_action || "";
-    const callbackState = search.state || "";
-    const callbackKey = [callbackInstallationId, callbackSetupAction, callbackState].join("|");
+    const callbackKey = [callbackInstallationId, callbackSetupAction].join("|");
 
     if (!callbackKey.replace(/\|/g, "")) {
       setErrorMessage("GitHub install callback is missing installation details.");
@@ -117,10 +80,6 @@ function GithubInstallCallbackPageContent() {
 
     if (!callbackInstallationId) {
       setErrorMessage("GitHub install callback is missing installation_id.");
-      return;
-    }
-    if (callbackState && callbackState !== data.Me.company.id) {
-      setErrorMessage(`GitHub callback belongs to company ${callbackState}, not the current company.`);
       return;
     }
 
@@ -211,7 +170,7 @@ function GithubInstallCallbackPageContent() {
     return () => {
       isCancelled = true;
     };
-  }, [commitAddInstallation, data.Me.company.id, navigate, search.installation_id, search.setup_action, search.state]);
+  }, [commitAddInstallation, navigate, search.installation_id, search.setup_action]);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -243,13 +202,5 @@ function GithubInstallCallbackPageContent() {
         </CardContent>
       </Card>
     </main>
-  );
-}
-
-export function GithubInstallCallbackPage() {
-  return (
-    <Suspense fallback={<GithubInstallCallbackPageFallback />}>
-      <GithubInstallCallbackPageContent />
-    </Suspense>
   );
 }

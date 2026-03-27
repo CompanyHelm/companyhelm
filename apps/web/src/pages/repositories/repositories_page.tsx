@@ -173,7 +173,7 @@ function formatTimestamp(value: string): string {
   }).format(parsedDate);
 }
 
-function buildGithubInstallationUrl(appLink: string, companyId: string): string {
+function buildGithubInstallationUrl(appLink: string): string {
   const normalizedAppLink = String(appLink || "").trim();
   if (!normalizedAppLink) {
     return "";
@@ -183,9 +183,6 @@ function buildGithubInstallationUrl(appLink: string, companyId: string): string 
     const url = new URL(normalizedAppLink);
     if (!/\/installations\/new\/?$/.test(url.pathname)) {
       url.pathname = `${url.pathname.replace(/\/+$/, "")}/installations/new`;
-    }
-    if (companyId) {
-      url.searchParams.set("state", companyId);
     }
     return url.toString();
   } catch {
@@ -292,8 +289,8 @@ function RepositoriesPageContent() {
     return nextMap;
   }, [repositories]);
   const githubInstallUrl = useMemo(() => {
-    return buildGithubInstallationUrl(data.GithubAppConfig.appLink, data.Me.company.id);
-  }, [data.GithubAppConfig.appLink, data.Me.company.id]);
+    return buildGithubInstallationUrl(data.GithubAppConfig.appLink);
+  }, [data.GithubAppConfig.appLink]);
 
   const updateRepositoriesStore = (
     store: {

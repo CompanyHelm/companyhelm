@@ -27,7 +27,6 @@ type ChatsRouteSearch = {
 type GithubInstallRouteSearch = {
   installation_id?: string;
   setup_action?: string;
-  state?: string;
 };
 
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
@@ -48,9 +47,6 @@ function validateGithubInstallRouteSearch(search: Record<string, unknown>): Gith
       : undefined,
     setup_action: typeof search.setup_action === "string" && search.setup_action.trim().length > 0
       ? search.setup_action.trim()
-      : undefined,
-    state: typeof search.state === "string" && search.state.trim().length > 0
-      ? search.state.trim()
       : undefined,
   };
 }
