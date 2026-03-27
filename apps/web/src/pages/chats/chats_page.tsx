@@ -158,6 +158,9 @@ const CHAT_DRAFT_MAX_LINES = 10;
 const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
 const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
 const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
+const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
+const CHAT_LIST_SESSION_TEXT_GUTTER_CLASS = "pl-4";
+const CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS = "pl-10";
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
@@ -486,7 +489,7 @@ function ChatsTranscript({
         return (
           <div
             key={message.id}
-            className={`w-full ${isUserMessage ? "flex justify-end" : "pl-6"}`}
+            className={`w-full ${isUserMessage ? "flex justify-end" : CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS}`}
           >
             <div
               className={`${
@@ -1173,6 +1176,11 @@ function ChatsPageContent() {
     : isCreateSessionInFlight
       ? "Creating chat"
       : "Start chat";
+  const chatHeaderContentClassName = isChatListHidden
+    ? CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS
+    : selectedSession
+      ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS
+      : "";
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -1183,7 +1191,7 @@ function ChatsPageContent() {
         >
           <Card className="flex h-full min-h-0 flex-col rounded-2xl border-0 bg-transparent shadow-none ring-0">
             <CardContent className="flex-1 overflow-y-auto pl-0 pr-3 md:pl-0 md:pr-3">
-              <div className="mb-2 flex items-center justify-end">
+              <div className="mb-2 flex items-center justify-end pr-1">
                 <Button
                   aria-label="Hide chats list"
                   className="text-muted-foreground hover:text-foreground"
@@ -1217,7 +1225,7 @@ function ChatsPageContent() {
                     >
                       <div className="flex items-start gap-3">
                         <button
-                          className="min-w-0 flex-1 text-left"
+                          className="min-w-0 flex-1 pl-1 text-left"
                           onClick={() => {
                             void openDraftForAgent(agent.id);
                           }}
@@ -1254,32 +1262,30 @@ function ChatsPageContent() {
                               return (
                                 <li key={session.id}>
                                   <div
-                                    className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg pl-1 pr-2 py-2 transition ${
+                                    className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-1 py-2 transition ${
                                       isSessionSelected
                                         ? "bg-muted/45"
                                         : "bg-transparent hover:bg-muted/30"
                                     }`}
                                   >
                                     <button
-                                      className="min-w-0 overflow-hidden text-left"
+                                      className={`relative min-w-0 overflow-hidden ${CHAT_LIST_SESSION_TEXT_GUTTER_CLASS} text-left`}
                                       disabled={isSessionArchiving}
                                       onClick={() => {
                                         void openSession(agent.id, session.id);
                                       }}
                                       type="button"
                                     >
-                                      <div className="flex items-center gap-2">
-                                        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                                          <Loader2Icon
-                                            aria-hidden={!isSessionRunning}
-                                            className={`size-3.5 text-muted-foreground ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
-                                            title={isSessionRunning ? "Session running" : undefined}
-                                          />
-                                        </span>
-                                        <p className="block min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                                          {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
-                                        </p>
-                                      </div>
+                                      <span className="absolute left-0 top-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                                        <Loader2Icon
+                                          aria-hidden={!isSessionRunning}
+                                          className={`size-3.5 text-muted-foreground ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
+                                          title={isSessionRunning ? "Session running" : undefined}
+                                        />
+                                      </span>
+                                      <p className="block min-w-0 truncate text-xs font-medium text-foreground">
+                                        {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
+                                      </p>
                                       <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
                                         {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
                                       </p>
@@ -1329,12 +1335,12 @@ function ChatsPageContent() {
       ) : null}
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardHeader className="shrink-0 px-2 md:px-3">
-          <div className="flex items-start gap-2">
+        <CardHeader className="shrink-0 px-4 md:px-4">
+          <div className={`relative flex min-w-0 flex-col gap-1 ${chatHeaderContentClassName}`}>
             {isChatListHidden ? (
               <Button
                 aria-label="Show chats list"
-                className="mt-0.5 shrink-0 text-muted-foreground hover:text-foreground"
+                className="absolute left-0 top-0.5 text-muted-foreground hover:text-foreground"
                 onClick={showChatList}
                 size="icon-sm"
                 title="Show chats list"
@@ -1344,27 +1350,23 @@ function ChatsPageContent() {
               </Button>
             ) : null}
 
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <CardTitle>
-                  {selectedSession
-                    ? resolveSessionTitle(selectedSession, selectedSessionMessages)
-                    : selectedAgent
-                      ? selectedAgent.name
-                      : "Chat"}
-                </CardTitle>
-              </div>
+            <CardTitle className="min-w-0">
+              {selectedSession
+                ? resolveSessionTitle(selectedSession, selectedSessionMessages)
+                : selectedAgent
+                  ? selectedAgent.name
+                  : "Chat"}
+            </CardTitle>
 
-              <CardDescription className={selectedSession ? "pl-6" : undefined}>
-                {selectedSession
-                  ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
-                  : !selectedAgent
-                    ? isChatListHidden
-                      ? "Show the chats list to start a chat."
-                      : "Choose an agent from the sidebar to start a chat."
-                    : null}
-              </CardDescription>
-            </div>
+            <CardDescription>
+              {selectedSession
+                ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
+                : !selectedAgent
+                  ? isChatListHidden
+                    ? "Show the chats list to start a chat."
+                    : "Choose an agent from the sidebar to start a chat."
+                  : null}
+            </CardDescription>
           </div>
         </CardHeader>
 

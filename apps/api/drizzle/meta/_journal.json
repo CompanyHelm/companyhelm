@@ -239,6 +239,13 @@
       "when": 1774577560452,
       "tag": "0033_wandering_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1774637767343,
+      "tag": "0034_steep_redwing",
+      "breakpoints": true
     }
   ]
 }

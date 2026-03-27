@@ -121,6 +121,27 @@ export const agentSessions = pgTable("agent_sessions", {
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
 }));
 
+export const sessionTools = pgTable("session_tools", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  agentSessionId: uuid("agent_session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("session_tools_company_id_idx").on(table.companyId),
+  agentSessionIdIndex: index("session_tools_agent_session_id_idx").on(table.agentSessionId),
+  nameIndex: index("session_tools_name_idx").on(table.name),
+}));
+
 export const sessionMessages = pgTable("session_messages", {
   id: uuid("id")
     .primaryKey()
