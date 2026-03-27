@@ -116,6 +116,8 @@ redis:
   port: 6379
   username: ""
   password: ""
+daytona:
+  api_key: "daytona-local-api-key"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
@@ -174,6 +176,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     username: "",
     password: "",
   });
+  assert.equal(document.daytona.api_key, "daytona-local-api-key");
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");

@@ -52,6 +52,9 @@ export const ConfigDocument = z.object({
     username: z.string(),
     password: z.string(),
   }),
+  daytona: z.object({
+    api_key: NonEmptyStringSchema,
+  }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,
     app_private_key_pem: NonEmptyStringSchema,

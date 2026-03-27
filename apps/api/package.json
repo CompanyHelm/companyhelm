@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^3.2.2",
+    "@daytonaio/sdk": "^0.157.0",
     "@fastify/cors": "^11.2.0",
     "@mariozechner/pi-agent-core": "^0.62.0",
     "@mariozechner/pi-ai": "^0.62.0",
