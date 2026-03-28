@@ -1,23 +1,23 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AgentComputeDaytonaProvider } from "../src/services/agent/compute/daytona/daytona_provider.ts";
-import { AgentSandboxService } from "../src/services/agent/sandbox_service.ts";
+import { AgentEnvironmentService } from "../src/services/agent/environment_service.ts";
 
 test("AgentComputeDaytonaProvider returns a lazy sandbox handle without materializing Daytona immediately", async () => {
   const transactionProvider = {} as never;
-  const materializeSandboxForSession = vi.fn();
-  const agentSandboxService = {
-    materializeSandboxForSession,
-  } as unknown as AgentSandboxService;
+  const materializeEnvironmentForSession = vi.fn();
+  const agentEnvironmentService = {
+    materializeEnvironmentForSession,
+  } as unknown as AgentEnvironmentService;
   const provider = new AgentComputeDaytonaProvider({
     daytona: {
       api_key: "daytona-api-key",
     },
-  } as never, agentSandboxService);
+  } as never, agentEnvironmentService);
 
   const sandbox = await provider.getSandboxForSession(transactionProvider, "agent-1", "session-1");
 
-  assert.equal(materializeSandboxForSession.mock.calls.length, 0);
+  assert.equal(materializeEnvironmentForSession.mock.calls.length, 0);
   assert.deepEqual(sandbox.listTools().map((tool) => tool.name), [
     "list_pty_sessions",
     "execute_command",

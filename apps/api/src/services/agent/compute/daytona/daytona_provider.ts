@@ -3,30 +3,30 @@ import { inject, injectable } from "inversify";
 import { Config } from "../../../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import {
-  AgentSandboxService,
-  type AgentSandboxRecord,
-} from "../../sandbox_service.ts";
+  AgentEnvironmentService,
+  type AgentEnvironmentRecord,
+} from "../../environment_service.ts";
 import { AgentComputeProviderInterface } from "../provider_interface.ts";
 import { AgentComputeDaytonaSandbox } from "./daytona_sandbox.ts";
 
 /**
  * Bridges the generic compute-provider contract onto the Daytona runtime. The provider returns a
- * lazy sandbox handle and only provisions or leases the backing Daytona sandbox when a sandbox
+ * lazy sandbox handle and only provisions or leases the backing Daytona environment when a sandbox
  * tool is invoked.
  */
 @injectable()
 export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
   private readonly config: Config;
-  private readonly agentSandboxService: AgentSandboxService;
+  private readonly agentEnvironmentService: AgentEnvironmentService;
   private daytona?: Daytona;
 
   constructor(
     @inject(Config) config: Config,
-    @inject(AgentSandboxService) agentSandboxService: AgentSandboxService,
+    @inject(AgentEnvironmentService) agentEnvironmentService: AgentEnvironmentService,
   ) {
     super();
     this.config = config;
-    this.agentSandboxService = agentSandboxService;
+    this.agentEnvironmentService = agentEnvironmentService;
   }
 
   async getSandboxForSession(
@@ -34,10 +34,10 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     agentId: string,
     sessionId: string,
   ) {
-    return new AgentComputeDaytonaSandbox(() => this.materializeSandbox(transactionProvider, agentId, sessionId));
+    return new AgentComputeDaytonaSandbox(() => this.materializeEnvironment(transactionProvider, agentId, sessionId));
   }
 
-  private async materializeSandbox(
+  private async materializeEnvironment(
     transactionProvider: TransactionProviderInterface,
     agentId: string,
     sessionId: string,
@@ -59,9 +59,9 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
         }>;
       };
     };
-    sandboxRecord: AgentSandboxRecord;
+    environmentRecord: AgentEnvironmentRecord;
   }> {
-    const sandboxRecord = await this.agentSandboxService.materializeSandboxForSession(
+    const environmentRecord = await this.agentEnvironmentService.materializeEnvironmentForSession(
       transactionProvider,
       sessionId,
       agentId,
@@ -83,39 +83,39 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
           cpuCount: remoteSandbox.cpu || 2,
           diskSpaceGb: remoteSandbox.disk || 20,
           memoryGb: remoteSandbox.memory || 4,
-          providerSandboxId: remoteSandbox.id,
+          providerEnvironmentId: remoteSandbox.id,
           status: "running",
         };
       },
     );
 
-    const remoteSandbox = await this.getDaytonaClient().get(sandboxRecord.providerSandboxId);
-    if (sandboxRecord.status !== "running") {
+    const remoteSandbox = await this.getDaytonaClient().get(environmentRecord.providerEnvironmentId);
+    if (environmentRecord.status !== "running") {
       await remoteSandbox.start();
       await remoteSandbox.refreshData();
       await this.ensureTmuxInstalled(remoteSandbox);
 
-      const updatedSandboxRecord = await this.agentSandboxService.updateSandboxRuntimeState(
+      const updatedEnvironmentRecord = await this.agentEnvironmentService.updateEnvironmentRuntimeState(
         transactionProvider,
-        sandboxRecord.id,
+        environmentRecord.id,
         {
-          cpuCount: remoteSandbox.cpu || sandboxRecord.cpuCount,
-          diskSpaceGb: remoteSandbox.disk || sandboxRecord.diskSpaceGb,
-          memoryGb: remoteSandbox.memory || sandboxRecord.memoryGb,
+          cpuCount: remoteSandbox.cpu || environmentRecord.cpuCount,
+          diskSpaceGb: remoteSandbox.disk || environmentRecord.diskSpaceGb,
+          memoryGb: remoteSandbox.memory || environmentRecord.memoryGb,
           status: "running",
         },
       );
 
       return {
         release: async () => {
-          await this.agentSandboxService.releaseSandboxForSession(
+          await this.agentEnvironmentService.releaseEnvironmentForSession(
             transactionProvider,
-            updatedSandboxRecord.id,
+            updatedEnvironmentRecord.id,
             sessionId,
           );
         },
+        environmentRecord: updatedEnvironmentRecord,
         remoteSandbox,
-        sandboxRecord: updatedSandboxRecord,
       };
     }
 
@@ -123,14 +123,14 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
 
     return {
       release: async () => {
-        await this.agentSandboxService.releaseSandboxForSession(
+        await this.agentEnvironmentService.releaseEnvironmentForSession(
           transactionProvider,
-          sandboxRecord.id,
+          environmentRecord.id,
           sessionId,
         );
       },
+      environmentRecord,
       remoteSandbox,
-      sandboxRecord,
     };
   }
 

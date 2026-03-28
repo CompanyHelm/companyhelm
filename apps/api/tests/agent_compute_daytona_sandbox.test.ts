@@ -161,13 +161,13 @@ test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output dire
   });
   const release = vi.fn(async () => undefined);
   const sandbox = new AgentComputeDaytonaSandbox(async () => ({
+    environmentRecord: {
+      id: "environment-1",
+      status: "running",
+    },
     release,
     remoteSandbox: {
       process: fakeProcess,
-    },
-    sandboxRecord: {
-      id: "sandbox-1",
-      status: "running",
     },
   }));
   const tools = sandbox.listTools();
@@ -275,13 +275,13 @@ test("AgentComputeDaytonaSandbox returns immediately from execute_command when t
   const fakeProcess = new FakeDaytonaTmuxProcess();
   fakeProcess.autoCompleteCommands = true;
   const sandbox = new AgentComputeDaytonaSandbox(async () => ({
+    environmentRecord: {
+      id: "environment-1",
+      status: "running",
+    },
     release: async () => undefined,
     remoteSandbox: {
       process: fakeProcess,
-    },
-    sandboxRecord: {
-      id: "sandbox-1",
-      status: "running",
     },
   }));
   const executeCommandTool = sandbox.listTools().find((tool) => tool.name === "execute_command");
@@ -307,13 +307,13 @@ test("AgentComputeDaytonaSandbox returns immediately from execute_command when t
 test("AgentComputeDaytonaSandbox reuses tmux sessions by session id across sandbox handles", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
   const materializeSandbox = async () => ({
+    environmentRecord: {
+      id: "environment-1",
+      status: "running",
+    },
     release: async () => undefined,
     remoteSandbox: {
       process: fakeProcess,
-    },
-    sandboxRecord: {
-      id: "sandbox-1",
-      status: "running",
     },
   });
   const creatingSandbox = new AgentComputeDaytonaSandbox(materializeSandbox);

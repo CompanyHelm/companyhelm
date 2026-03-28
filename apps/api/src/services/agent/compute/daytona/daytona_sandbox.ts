@@ -9,6 +9,10 @@ import type {
 import { AgentComputeSandboxInterface } from "../sandbox_interface.ts";
 
 type MaterializedDaytonaSandbox = {
+  environmentRecord: {
+    id: string;
+    status: string;
+  };
   release: () => Promise<void>;
   remoteSandbox: {
     process: {
@@ -25,10 +29,6 @@ type MaterializedDaytonaSandbox = {
         result: string;
       }>;
     };
-  };
-  sandboxRecord: {
-    id: string;
-    status: string;
   };
 };
 

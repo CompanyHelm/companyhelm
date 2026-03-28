@@ -26,7 +26,7 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
-export const agentSandboxStatusEnum = pgEnum("agent_sandbox_status", ["running", "stopped"]);
+export const agentEnvironmentStatusEnum = pgEnum("agent_environment_status", ["running", "stopped"]);
 export const computeProviderEnum = pgEnum("compute_provider", ["daytona"]);
 
 
@@ -359,7 +359,7 @@ export const tasks = pgTable("tasks", {
   companyStatusCreatedAtIndex: index("tasks_company_status_created_at_idx").on(table.companyId, table.status, table.createdAt),
 }));
 
-export const agentSandboxes = pgTable("agent_sandboxes", {
+export const agentEnvironments = pgTable("agent_environments", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
@@ -374,8 +374,8 @@ export const agentSandboxes = pgTable("agent_sandboxes", {
   provider: computeProviderEnum("provider").notNull(),
   leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-  status: agentSandboxStatusEnum("status").notNull(),
-  providerSandboxId: text("provider_sandbox_id").notNull(),
+  status: agentEnvironmentStatusEnum("status").notNull(),
+  providerEnvironmentId: text("provider_environment_id").notNull(),
   cpuCount: integer("cpu_count").notNull(),
   memoryGb: integer("memory_gb").notNull(),
   diskSpaceGb: integer("disk_space_gb").notNull(),
@@ -383,8 +383,8 @@ export const agentSandboxes = pgTable("agent_sandboxes", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
-  companyIdIndex: index("agent_sandboxes_company_id_idx").on(table.companyId),
-  agentIdIndex: index("agent_sandboxes_agent_id_idx").on(table.agentId),
-  currentSessionIdIndex: index("agent_sandboxes_current_session_id_idx").on(table.currentSessionId),
-  providerSandboxIdIndex: index("agent_sandboxes_provider_sandbox_id_idx").on(table.providerSandboxId),
+  companyIdIndex: index("agent_environments_company_id_idx").on(table.companyId),
+  agentIdIndex: index("agent_environments_agent_id_idx").on(table.agentId),
+  currentSessionIdIndex: index("agent_environments_current_session_id_idx").on(table.currentSessionId),
+  providerEnvironmentIdIndex: index("agent_environments_provider_environment_id_idx").on(table.providerEnvironmentId),
 }));
