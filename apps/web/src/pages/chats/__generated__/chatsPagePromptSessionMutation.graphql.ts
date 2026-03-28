@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bfeddf93a2437f856a271942680d8a6c>>
+ * @generated SignedSource<<09707792565a190b4a8aef9968ddc00d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,8 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type PromptSessionInput = {
   id: string;
+  modelProviderCredentialModelId?: string | null | undefined;
+  reasoningLevel?: string | null | undefined;
   shouldSteer?: boolean | null | undefined;
   userMessage: string;
 };
@@ -25,6 +27,7 @@ export type chatsPagePromptSessionMutation$data = {
     readonly inferredTitle: string | null | undefined;
     readonly isThinking: boolean;
     readonly modelId: string;
+    readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly thinkingText: string | null | undefined;
@@ -72,6 +75,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelProviderCredentialModelId",
         "storageKey": null
       },
       {
@@ -159,16 +169,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "334303b139de38128e7b85f5628e080d",
+    "cacheID": "2aa33e3304127924f757545274bbf4c5",
     "id": null,
     "metadata": {},
     "name": "chatsPagePromptSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPagePromptSessionMutation(\n  $input: PromptSessionInput!\n) {\n  PromptSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPagePromptSessionMutation(\n  $input: PromptSessionInput!\n) {\n  PromptSession(input: $input) {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5cea7d8bb6aac42981a982d3496eda33";
+(node as any).hash = "67ddd2f46ac9ba26d52a63d04bad53ac";
 
 export default node;

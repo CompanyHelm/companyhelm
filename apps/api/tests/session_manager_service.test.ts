@@ -69,6 +69,7 @@ test("SessionManagerService createSession persists a queued session, stores the 
                   id: "model-row-1",
                   modelId: "gpt-5.4",
                   modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high", "xhigh"],
                 }];
               },
             };
@@ -144,6 +145,7 @@ test("SessionManagerService createSession persists a queued session, stores the 
   );
 
   assert.equal(sessionRecord.id, "session-1");
+  assert.equal(sessionRecord.modelProviderCredentialModelId, "model-row-1");
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.companyId, "company-1");
   assert.equal(insertedValues[0]?.agentId, "agent-1");
@@ -209,9 +211,10 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
             return {
               async where() {
                 return [{
-                  id: "model-row-1",
-                  modelId: "gpt-5.4",
+                  id: "model-row-2",
+                  modelId: "gpt-5.4-mini",
                   modelProviderCredentialId: "credential-2",
+                  reasoningLevels: ["low", "medium"],
                 }];
               },
             };
@@ -227,13 +230,14 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
           insertedValues.push(value);
           return {
             async returning() {
-              return [{
-                id: "session-client-1",
-                agentId: "agent-1",
-                currentModelId: "gpt-5.4-mini",
-                currentReasoningLevel: "low",
-                inferredTitle: "Summarize the open issues.",
-                status: "queued",
+                return [{
+                  id: "session-client-1",
+                  agentId: "agent-1",
+                  currentModelId: "gpt-5.4-mini",
+                  currentReasoningLevel: "low",
+                  modelProviderCredentialModelId: "model-row-2",
+                  inferredTitle: "Summarize the open issues.",
+                  status: "queued",
                 createdAt: new Date("2026-03-25T02:00:00.000Z"),
                 updatedAt: new Date("2026-03-25T02:00:00.000Z"),
                 userSetTitle: null,
@@ -274,7 +278,7 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
     "company-1",
     "agent-1",
     "Summarize the open issues.",
-    "gpt-5.4-mini",
+    "model-row-2",
     "low",
     "session-client-1",
   );
@@ -383,8 +387,29 @@ test("SessionManagerService prompt queues the message, publishes session updates
             return {
               async where() {
                 return [{
+                  agentId: "agent-1",
+                  currentModelId: "gpt-5.4",
+                  currentModelProviderCredentialId: "credential-1",
+                  currentReasoningLevel: "high",
                   id: "session-1",
                   status: "running",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-2",
+                  modelId: "gpt-5.4-mini",
+                  modelProviderCredentialId: "credential-2",
+                  reasoningLevels: ["low", "medium"],
                 }];
               },
             };
@@ -405,8 +430,9 @@ test("SessionManagerService prompt queues the message, publishes session updates
                   return [{
                     id: "session-1",
                     agentId: "agent-1",
-                    currentModelId: "gpt-5.4",
-                    currentReasoningLevel: "high",
+                    modelProviderCredentialModelId: "model-row-2",
+                    currentModelId: "gpt-5.4-mini",
+                    currentReasoningLevel: "medium",
                     inferredTitle: "Existing title",
                     status: "running",
                     createdAt: new Date("2026-03-25T01:00:00.000Z"),
@@ -461,10 +487,16 @@ test("SessionManagerService prompt queues the message, publishes session updates
     "company-1",
     "session-1",
     "Focus on the failed deploy.",
+    "model-row-2",
+    "medium",
     true,
   );
 
   assert.equal(sessionRecord.id, "session-1");
+  assert.equal(sessionRecord.modelProviderCredentialModelId, "model-row-2");
+  assert.equal(updatedValues[0]?.currentModelId, "gpt-5.4-mini");
+  assert.equal(updatedValues[0]?.currentModelProviderCredentialId, "credential-2");
+  assert.equal(updatedValues[0]?.currentReasoningLevel, "medium");
   assert.equal(updatedValues[0]?.status, "running");
   assert.deepEqual(queuedMessages, [{
     companyId: "company-1",
@@ -493,6 +525,8 @@ test("SessionManagerService prompt queues the message, publishes session updates
     message: "queued session prompt",
     payload: {
       companyId: "company-1",
+      modelId: "gpt-5.4-mini",
+      reasoningLevel: "medium",
       sessionId: "session-1",
       shouldSteer: true,
     },

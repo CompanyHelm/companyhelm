@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6220e7a3e1bf63e18e5de1665ebe0cbd>>
+ * @generated SignedSource<<47df5a56d647e38178968a0f1f9f1e17>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type chatsPageArchiveSessionMutation$data = {
     readonly id: string;
     readonly isThinking: boolean;
     readonly modelId: string;
+    readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly thinkingText: string | null | undefined;
@@ -68,6 +69,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelProviderCredentialModelId",
         "storageKey": null
       },
       {
@@ -141,16 +149,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "cc2430971ce1ab94535bc483b219bb8c",
+    "cacheID": "a4221db80926435b18d79d3b7e2ab023",
     "id": null,
     "metadata": {},
     "name": "chatsPageArchiveSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a6306e5b0279f468e1d2934f25a4294b";
+(node as any).hash = "1042e7aeea6f8952f80fbf9a92d2cb1d";
 
 export default node;

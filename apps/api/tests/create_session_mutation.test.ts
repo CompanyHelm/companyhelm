@@ -81,19 +81,20 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       companyId: string,
       agentId: string,
       userMessage: string,
-      modelId?: string | null,
+      modelProviderCredentialModelId?: string | null,
       reasoningLevel?: string | null,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
       assert.equal(agentId, "agent-1");
       assert.equal(userMessage, "Draft the onboarding email.");
-      assert.equal(modelId, "gpt-5.4");
+      assert.equal(modelProviderCredentialModelId, "model-row-1");
       assert.equal(reasoningLevel, "high");
 
       return {
         id: "session-1",
         agentId,
+        modelProviderCredentialModelId: "model-row-1",
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
         inferredTitle: "Draft the onboarding email.",
@@ -137,6 +138,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
           CreateSession(input: $input) {
             id
             agentId
+            modelProviderCredentialModelId
             modelId
             reasoningLevel
             inferredTitle
@@ -150,7 +152,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       variables: {
         input: {
           agentId: "agent-1",
-          modelId: "gpt-5.4",
+          modelProviderCredentialModelId: "model-row-1",
           reasoningLevel: "high",
           userMessage: "Draft the onboarding email.",
         },
@@ -163,6 +165,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
   assert.deepEqual(document.data.CreateSession, {
     id: "session-1",
     agentId: "agent-1",
+    modelProviderCredentialModelId: "model-row-1",
     modelId: "gpt-5.4",
     reasoningLevel: "high",
     inferredTitle: "Draft the onboarding email.",

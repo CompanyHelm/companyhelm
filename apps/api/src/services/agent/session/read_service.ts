@@ -1,12 +1,13 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agentSessions, messageContents, sessionMessages } from "../../../db/schema.ts";
+import { agentSessions, messageContents, modelProviderCredentialModels, sessionMessages } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 
 type SessionRow = {
   id: string;
   agentId: string;
   currentModelId: string;
+  currentModelProviderCredentialId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
   isThinking: boolean;
@@ -59,6 +60,7 @@ type SelectableDatabase = {
 export type SessionGraphqlRecord = {
   id: string;
   agentId: string;
+  modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
   inferredTitle: string | null;
@@ -96,6 +98,12 @@ export type SessionMessageContentGraphqlRecord = {
 type PageInfoGraphqlRecord = {
   hasNextPage: boolean;
   endCursor: string | null;
+};
+
+type SessionModelRecord = {
+  id: string;
+  modelId: string;
+  modelProviderCredentialId: string;
 };
 
 type SessionTranscriptMessageEdgeGraphqlRecord = {
@@ -156,6 +164,7 @@ export class SessionReadService {
           id: agentSessions.id,
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
+          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
           isThinking: agentSessions.isThinking,
@@ -167,10 +176,21 @@ export class SessionReadService {
         })
         .from(agentSessions)
         .where(eq(agentSessions.companyId, companyId)) as SessionRow[];
+      const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(
+        selectableDatabase,
+        companyId,
+        sessionRows,
+      );
 
       return [...sessionRows]
         .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
-        .map((sessionRow) => this.serializeSession(sessionRow));
+        .map((sessionRow) => this.serializeSession(
+          sessionRow,
+          modelOptionIdBySessionKey.get(this.toSessionModelKey(
+            sessionRow.currentModelProviderCredentialId,
+            sessionRow.currentModelId,
+          )) ?? null,
+        ));
     });
   }
 
@@ -186,6 +206,7 @@ export class SessionReadService {
           id: agentSessions.id,
           agentId: agentSessions.agentId,
           currentModelId: agentSessions.currentModelId,
+          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
           isThinking: agentSessions.isThinking,
@@ -202,7 +223,22 @@ export class SessionReadService {
         )) as SessionRow[];
 
       const sessionRow = sessionRows[0];
-      return sessionRow ? this.serializeSession(sessionRow) : null;
+      if (!sessionRow) {
+        return null;
+      }
+
+      const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(
+        selectableDatabase,
+        companyId,
+        [sessionRow],
+      );
+      return this.serializeSession(
+        sessionRow,
+        modelOptionIdBySessionKey.get(this.toSessionModelKey(
+          sessionRow.currentModelProviderCredentialId,
+          sessionRow.currentModelId,
+        )) ?? null,
+      );
     });
   }
 
@@ -415,10 +451,45 @@ export class SessionReadService {
     return contentsByMessageId;
   }
 
-  private serializeSession(sessionRow: SessionRow): SessionGraphqlRecord {
+  private async loadSessionModelOptionIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionRows: ReadonlyArray<SessionRow>,
+  ): Promise<Map<string, string>> {
+    const modelProviderCredentialIds = [...new Set(sessionRows.map((sessionRow) => sessionRow.currentModelProviderCredentialId))];
+    if (modelProviderCredentialIds.length === 0) {
+      return new Map();
+    }
+
+    const modelRecords = await selectableDatabase
+      .select({
+        id: modelProviderCredentialModels.id,
+        modelId: modelProviderCredentialModels.modelId,
+        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        inArray(modelProviderCredentialModels.modelProviderCredentialId, modelProviderCredentialIds),
+      )) as SessionModelRecord[];
+
+    return new Map(
+      modelRecords.map((modelRecord) => [
+        this.toSessionModelKey(modelRecord.modelProviderCredentialId, modelRecord.modelId),
+        modelRecord.id,
+      ]),
+    );
+  }
+
+  private toSessionModelKey(modelProviderCredentialId: string, modelId: string): string {
+    return `${modelProviderCredentialId}:${modelId}`;
+  }
+
+  private serializeSession(sessionRow: SessionRow, modelProviderCredentialModelId: string | null): SessionGraphqlRecord {
     return {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
+      modelProviderCredentialModelId,
       modelId: sessionRow.currentModelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
       inferredTitle: sessionRow.inferredTitle,

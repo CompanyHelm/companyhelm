@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0e94a6cbb9dbb29c66c06309646026d6>>
+ * @generated SignedSource<<f8c43770cd36222f376d6786d370c0e6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type chatsPageSessionUpdatedSubscription$data = {
     readonly inferredTitle: string | null | undefined;
     readonly isThinking: boolean;
     readonly modelId: string;
+    readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly thinkingText: string | null | undefined;
@@ -52,6 +53,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelProviderCredentialModelId",
         "storageKey": null
       },
       {
@@ -139,16 +147,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "354203305dc89db92d13077ffb2206d0",
+    "cacheID": "3654e9b9c1f23f435b341470ee1bb1c7",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "545a8c5c0a2ddea3aa35884eca913471";
+(node as any).hash = "fbab0a3461184cd19c822293d4a3553a";
 
 export default node;

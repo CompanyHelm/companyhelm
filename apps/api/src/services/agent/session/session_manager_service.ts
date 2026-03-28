@@ -18,6 +18,10 @@ type AgentRecord = {
 };
 
 type ExistingSessionRow = {
+  agentId: string;
+  currentModelId: string;
+  currentModelProviderCredentialId: string;
+  currentReasoningLevel: string;
   id: string;
   status: string;
 };
@@ -26,6 +30,7 @@ type ModelRecord = {
   id: string;
   modelId: string;
   modelProviderCredentialId: string;
+  reasoningLevels: string[] | null;
 };
 
 type SessionRecord = {
@@ -36,6 +41,7 @@ type SessionRecord = {
   id: string;
   inferredTitle: string | null;
   isThinking: boolean;
+  modelProviderCredentialModelId?: string | null;
   status: string;
   thinkingText: string | null;
   updatedAt: Date;
@@ -105,7 +111,7 @@ export class SessionManagerService {
     companyId: string,
     agentId: string,
     userMessage: string,
-    modelId?: string | null,
+    modelProviderCredentialModelId?: string | null,
     reasoningLevel?: string | null,
     sessionId?: string | null,
   ): Promise<SessionRecord> {
@@ -127,13 +133,22 @@ export class SessionManagerService {
         throw new Error("Agent not found.");
       }
 
-      const defaultModelRecord = await this.resolveDefaultModelRecord(
-        selectableDatabase,
-        companyId,
-        agentRecord,
+      const selectedModelRecord = modelProviderCredentialModelId
+        ? await this.resolveModelRecordById(
+          selectableDatabase,
+          companyId,
+          modelProviderCredentialModelId,
+        )
+        : await this.resolveDefaultModelRecord(
+          selectableDatabase,
+          companyId,
+          agentRecord,
+        );
+      const resolvedReasoningLevel = this.resolveReasoningLevel(
+        selectedModelRecord.reasoningLevels,
+        reasoningLevel,
+        agentRecord.defaultReasoningLevel,
       );
-      const resolvedModelId = this.resolveModelId(defaultModelRecord, modelId);
-      const resolvedReasoningLevel = this.resolveReasoningLevel(agentRecord, reasoningLevel);
       const inferredTitle = this.inferTitle(userMessage);
       const resolvedSessionId = String(sessionId || "").trim();
       const now = new Date();
@@ -143,8 +158,8 @@ export class SessionManagerService {
           ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
           companyId,
           agentId,
-          currentModelId: resolvedModelId,
-          currentModelProviderCredentialId: defaultModelRecord.modelProviderCredentialId,
+          currentModelId: selectedModelRecord.modelId,
+          currentModelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
           currentReasoningLevel: resolvedReasoningLevel,
           inferredTitle,
           isThinking: false,
@@ -165,7 +180,10 @@ export class SessionManagerService {
         text: userMessage,
       });
 
-      return createdSessionRecord;
+      return {
+        ...createdSessionRecord,
+        modelProviderCredentialModelId: selectedModelRecord.id,
+      };
     });
 
     await this.publishSessionUpdate(companyId, sessionRecord.id);
@@ -224,6 +242,8 @@ export class SessionManagerService {
     companyId: string,
     sessionId: string,
     userMessage: string,
+    modelProviderCredentialModelId?: string | null,
+    reasoningLevel?: string | null,
     shouldSteer = false,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
@@ -232,6 +252,10 @@ export class SessionManagerService {
       const updatableDatabase = tx as UpdatableDatabase;
       const [existingSession] = await selectableDatabase
         .select({
+          agentId: agentSessions.agentId,
+          currentModelId: agentSessions.currentModelId,
+          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
           status: agentSessions.status,
         })
@@ -247,10 +271,29 @@ export class SessionManagerService {
         throw new Error("Archived sessions cannot receive new messages.");
       }
 
+      const selectedModelRecord = modelProviderCredentialModelId
+        ? await this.resolveModelRecordById(
+          selectableDatabase,
+          companyId,
+          modelProviderCredentialModelId,
+        )
+        : await this.resolveCurrentModelRecord(
+          selectableDatabase,
+          companyId,
+          existingSession,
+        );
+      const resolvedReasoningLevel = this.resolveReasoningLevel(
+        selectedModelRecord.reasoningLevels,
+        reasoningLevel,
+        existingSession.currentReasoningLevel,
+      );
       const now = new Date();
       const [updatedSessionRecord] = await updatableDatabase
         .update(agentSessions)
         .set({
+          currentModelId: selectedModelRecord.modelId,
+          currentModelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
+          currentReasoningLevel: resolvedReasoningLevel,
           status: existingSession.status === "running" ? "running" : "queued",
           updated_at: now,
         })
@@ -270,7 +313,10 @@ export class SessionManagerService {
         text: userMessage,
       });
 
-      return updatedSessionRecord;
+      return {
+        ...updatedSessionRecord,
+        modelProviderCredentialModelId: selectedModelRecord.id,
+      };
     });
 
     await this.publishSessionUpdate(companyId, sessionId);
@@ -281,6 +327,8 @@ export class SessionManagerService {
 
     this.logger.info({
       companyId,
+      modelId: sessionRecord.currentModelId,
+      reasoningLevel: sessionRecord.currentReasoningLevel,
       sessionId,
       shouldSteer,
     }, "queued session prompt");
@@ -302,6 +350,7 @@ export class SessionManagerService {
         id: modelProviderCredentialModels.id,
         modelId: modelProviderCredentialModels.modelId,
         modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
       })
       .from(modelProviderCredentialModels)
       .where(and(
@@ -315,23 +364,80 @@ export class SessionManagerService {
     return modelRecord;
   }
 
-  private resolveModelId(defaultModelRecord: ModelRecord, modelId?: string | null): string {
-    if (modelId) {
-      return modelId;
+  private async resolveModelRecordById(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    modelProviderCredentialModelId: string,
+  ): Promise<ModelRecord> {
+    const [modelRecord] = await selectableDatabase
+      .select({
+        id: modelProviderCredentialModels.id,
+        modelId: modelProviderCredentialModels.modelId,
+        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.id, modelProviderCredentialModelId),
+      )) as ModelRecord[];
+    if (!modelRecord) {
+      throw new Error("Selected model not found.");
     }
 
-    return defaultModelRecord.modelId;
+    return modelRecord;
+  }
+
+  private async resolveCurrentModelRecord(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    existingSession: ExistingSessionRow,
+  ): Promise<ModelRecord> {
+    const [modelRecord] = await selectableDatabase
+      .select({
+        id: modelProviderCredentialModels.id,
+        modelId: modelProviderCredentialModels.modelId,
+        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, existingSession.currentModelProviderCredentialId),
+        eq(modelProviderCredentialModels.modelId, existingSession.currentModelId),
+      )) as ModelRecord[];
+    if (!modelRecord) {
+      throw new Error("Current session model not found.");
+    }
+
+    return modelRecord;
   }
 
   private resolveReasoningLevel(
-    agentRecord: AgentRecord,
-    reasoningLevel?: string | null,
+    supportedLevels: string[] | null,
+    requestedReasoningLevel?: string | null,
+    fallbackReasoningLevel?: string | null,
   ): string {
-    if (reasoningLevel) {
-      return reasoningLevel;
+    const availableLevels = supportedLevels?.filter((level) => level.length > 0) ?? [];
+    if (availableLevels.length === 0) {
+      if (requestedReasoningLevel) {
+        throw new Error("reasoningLevel is not supported for the selected model.");
+      }
+
+      return "";
+    }
+    if (requestedReasoningLevel) {
+      if (!availableLevels.includes(requestedReasoningLevel)) {
+        throw new Error("reasoningLevel is not supported for the selected model.");
+      }
+
+      return requestedReasoningLevel;
+    }
+    if (fallbackReasoningLevel && availableLevels.includes(fallbackReasoningLevel)) {
+      return fallbackReasoningLevel;
     }
 
-    return agentRecord.defaultReasoningLevel ?? "";
+    return availableLevels[0] ?? "";
   }
 
   private inferTitle(userMessage: string): string | null {

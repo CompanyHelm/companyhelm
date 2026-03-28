@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c3306c50decf07c074623d3cca43d69c>>
+ * @generated SignedSource<<4f5475d037e4a744d68bd4f1c9aa935a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type CreateSessionInput = {
   agentId: string;
-  modelId?: string | null | undefined;
+  modelProviderCredentialModelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
   sessionId?: string | null | undefined;
   userMessage: string;
@@ -27,6 +27,7 @@ export type chatsPageCreateSessionMutation$data = {
     readonly inferredTitle: string | null | undefined;
     readonly isThinking: boolean;
     readonly modelId: string;
+    readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly thinkingText: string | null | undefined;
@@ -74,6 +75,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelProviderCredentialModelId",
         "storageKey": null
       },
       {
@@ -161,16 +169,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "7a1d687e6b1823de3651c4ba342362ab",
+    "cacheID": "51e9897988c1c96abc39466688fa8997",
     "id": null,
     "metadata": {},
     "name": "chatsPageCreateSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageCreateSessionMutation(\n  $input: CreateSessionInput!\n) {\n  CreateSession(input: $input) {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageCreateSessionMutation(\n  $input: CreateSessionInput!\n) {\n  CreateSession(input: $input) {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "365b642f33d7dd30f584caf53d58d7e3";
+(node as any).hash = "581a1e4eabab8f1994aa54806bc1c16e";
 
 export default node;

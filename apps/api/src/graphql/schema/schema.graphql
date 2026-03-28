@@ -146,6 +146,7 @@ type AgentCreateModelOption {
 type Session {
   id: ID!
   agentId: ID!
+  modelProviderCredentialModelId: ID
   modelId: String!
   reasoningLevel: String!
   inferredTitle: String
@@ -293,7 +294,7 @@ input ArchiveSessionInput {
 
 input CreateSessionInput {
   agentId: ID!
-  modelId: String
+  modelProviderCredentialModelId: ID
   reasoningLevel: String
   sessionId: ID
   userMessage: String!
@@ -301,6 +302,8 @@ input CreateSessionInput {
 
 input PromptSessionInput {
   id: ID!
+  modelProviderCredentialModelId: ID
+  reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!
 }

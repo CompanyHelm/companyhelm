@@ -6,6 +6,8 @@ import { SessionManagerService } from "../../services/agent/session/session_mana
 type PromptSessionMutationArguments = {
   input: {
     id: string;
+    modelProviderCredentialModelId?: string | null;
+    reasoningLevel?: string | null;
     shouldSteer?: boolean | null;
     userMessage: string;
   };
@@ -17,6 +19,7 @@ type GraphqlSessionRecord = {
   id: string;
   inferredTitle: string | null;
   isThinking: boolean;
+  modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
   status: string;
@@ -28,6 +31,7 @@ type GraphqlSessionRecord = {
 type ServiceSessionRecord = {
   agentId: string;
   createdAt: Date;
+  modelProviderCredentialModelId?: string | null;
   currentModelId: string;
   currentReasoningLevel: string;
   id: string;
@@ -74,6 +78,8 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       context.authSession.company.id,
       arguments_.input.id,
       arguments_.input.userMessage,
+      arguments_.input.modelProviderCredentialModelId,
+      arguments_.input.reasoningLevel,
       arguments_.input.shouldSteer === true,
     );
 
@@ -84,6 +90,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
     return {
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
+      modelProviderCredentialModelId: sessionRecord.modelProviderCredentialModelId ?? null,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,

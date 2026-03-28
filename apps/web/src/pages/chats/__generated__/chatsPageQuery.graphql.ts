@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e8ebfbe010efcc4b3c60be934774af28>>
+ * @generated SignedSource<<73cadedba9be06b131170bae90b027ee>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,10 +11,26 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type chatsPageQuery$variables = Record<PropertyKey, never>;
 export type chatsPageQuery$data = {
+  readonly AgentCreateOptions: ReadonlyArray<{
+    readonly defaultModelId: string | null | undefined;
+    readonly defaultReasoningLevel: string | null | undefined;
+    readonly id: string;
+    readonly label: string;
+    readonly modelProvider: string;
+    readonly models: ReadonlyArray<{
+      readonly description: string;
+      readonly id: string;
+      readonly modelId: string;
+      readonly name: string;
+      readonly reasoningLevels: ReadonlyArray<string>;
+    }>;
+  }>;
   readonly Agents: ReadonlyArray<{
     readonly id: string;
     readonly modelName: string | null | undefined;
     readonly modelProvider: string | null | undefined;
+    readonly modelProviderCredentialId: string | null | undefined;
+    readonly modelProviderCredentialModelId: string | null | undefined;
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
   }>;
@@ -25,6 +41,7 @@ export type chatsPageQuery$data = {
     readonly inferredTitle: string | null | undefined;
     readonly isThinking: boolean;
     readonly modelId: string;
+    readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
     readonly status: string;
     readonly thinkingText: string | null | undefined;
@@ -49,10 +66,38 @@ v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelProviderCredentialModelId",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelProvider",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "reasoningLevel",
   "storageKey": null
 },
-v2 = [
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelId",
+  "storageKey": null
+},
+v6 = [
   {
     "alias": null,
     "args": null,
@@ -62,20 +107,16 @@ v2 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "name",
+        "name": "modelProviderCredentialId",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "modelProvider",
-        "storageKey": null
-      },
+      (v2/*: any*/),
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -83,7 +124,69 @@ v2 = [
         "name": "modelName",
         "storageKey": null
       },
-      (v1/*: any*/)
+      (v4/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "AgentCreateProviderOption",
+    "kind": "LinkedField",
+    "name": "AgentCreateOptions",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "label",
+        "storageKey": null
+      },
+      (v3/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultModelId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultReasoningLevel",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "AgentCreateModelOption",
+        "kind": "LinkedField",
+        "name": "models",
+        "plural": true,
+        "selections": [
+          (v0/*: any*/),
+          (v5/*: any*/),
+          (v1/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "description",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "reasoningLevels",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
     ],
     "storageKey": null
   },
@@ -103,14 +206,9 @@ v2 = [
         "name": "agentId",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "modelId",
-        "storageKey": null
-      },
-      (v1/*: any*/),
+      (v2/*: any*/),
+      (v5/*: any*/),
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -170,7 +268,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v6/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -179,19 +277,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "b93deca495f9fb584182dfd00dcaac7e",
+    "cacheID": "9adbc6f1bdcfc91964735ec756d16cb5",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  Sessions {\n    id\n    agentId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Sessions {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "966fd957335487f42f6fef6ee220829c";
+(node as any).hash = "287b1e3befc5db64d357d8bc63a62618";
 
 export default node;

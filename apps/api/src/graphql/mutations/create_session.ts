@@ -6,7 +6,7 @@ import { SessionManagerService } from "../../services/agent/session/session_mana
 type CreateSessionMutationArguments = {
   input: {
     agentId: string;
-    modelId?: string | null;
+    modelProviderCredentialModelId?: string | null;
     reasoningLevel?: string | null;
     sessionId?: string | null;
     userMessage: string;
@@ -16,6 +16,7 @@ type CreateSessionMutationArguments = {
 type GraphqlSessionRecord = {
   id: string;
   agentId: string;
+  modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
   inferredTitle: string | null;
@@ -30,6 +31,7 @@ type GraphqlSessionRecord = {
 type ServiceSessionRecord = {
   id: string;
   agentId: string;
+  modelProviderCredentialModelId?: string | null;
   currentModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
@@ -76,7 +78,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       context.authSession.company.id,
       arguments_.input.agentId,
       arguments_.input.userMessage,
-      arguments_.input.modelId,
+      arguments_.input.modelProviderCredentialModelId,
       arguments_.input.reasoningLevel,
       arguments_.input.sessionId,
     );
@@ -88,6 +90,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
     return {
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
+      modelProviderCredentialModelId: sessionRecord.modelProviderCredentialModelId ?? null,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,

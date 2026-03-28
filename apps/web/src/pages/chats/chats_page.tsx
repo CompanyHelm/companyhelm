@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
@@ -19,13 +20,30 @@ const chatsPageQueryNode = graphql`
     Agents {
       id
       name
+      modelProviderCredentialId
+      modelProviderCredentialModelId
       modelProvider
       modelName
       reasoningLevel
     }
+    AgentCreateOptions {
+      id
+      label
+      modelProvider
+      defaultModelId
+      defaultReasoningLevel
+      models {
+        id
+        modelId
+        name
+        description
+        reasoningLevels
+      }
+    }
     Sessions {
       id
       agentId
+      modelProviderCredentialModelId
       modelId
       reasoningLevel
       inferredTitle
@@ -78,6 +96,7 @@ const chatsPageCreateSessionMutationNode = graphql`
     CreateSession(input: $input) {
       id
       agentId
+      modelProviderCredentialModelId
       modelId
       reasoningLevel
       inferredTitle
@@ -96,6 +115,7 @@ const chatsPageArchiveSessionMutationNode = graphql`
     ArchiveSession(input: $input) {
       id
       agentId
+      modelProviderCredentialModelId
       modelId
       reasoningLevel
       isThinking
@@ -112,6 +132,7 @@ const chatsPagePromptSessionMutationNode = graphql`
     PromptSession(input: $input) {
       id
       agentId
+      modelProviderCredentialModelId
       modelId
       reasoningLevel
       inferredTitle
@@ -130,6 +151,7 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
     SessionUpdated {
       id
       agentId
+      modelProviderCredentialModelId
       modelId
       reasoningLevel
       inferredTitle
@@ -169,6 +191,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 `;
 
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
+type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
 type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
@@ -260,6 +283,43 @@ function formatAgentMeta(agent: Pick<AgentRecord, "modelProvider" | "modelName" 
     (value): value is string => typeof value === "string" && value.trim().length > 0,
   );
   return segments.length > 0 ? segments.join(" • ") : "No default model configured";
+}
+
+function resolveComposerModelOptionId(
+  modelOptions: ReadonlyArray<ChatComposerModelOption>,
+  preferredModelOptionId: string | null | undefined,
+  preferredModelId: string | null | undefined,
+  fallbackModelOptionId: string | null | undefined,
+): string {
+  if (preferredModelOptionId && modelOptions.some((modelOption) => modelOption.id === preferredModelOptionId)) {
+    return preferredModelOptionId;
+  }
+  if (preferredModelId) {
+    const matchedModelOption = modelOptions.find((modelOption) => modelOption.modelId === preferredModelId);
+    if (matchedModelOption) {
+      return matchedModelOption.id;
+    }
+  }
+  if (fallbackModelOptionId && modelOptions.some((modelOption) => modelOption.id === fallbackModelOptionId)) {
+    return fallbackModelOptionId;
+  }
+
+  return modelOptions[0]?.id ?? "";
+}
+
+function resolveComposerReasoningLevel(
+  modelOption: ChatComposerModelOption | null,
+  preferredReasoningLevel: string | null | undefined,
+): string {
+  const supportedLevels = modelOption?.reasoningLevels ?? [];
+  if (supportedLevels.length === 0) {
+    return "";
+  }
+  if (preferredReasoningLevel && supportedLevels.includes(preferredReasoningLevel)) {
+    return preferredReasoningLevel;
+  }
+
+  return supportedLevels[0] ?? "";
 }
 
 function formatSessionTitle(messages: ReadonlyArray<Pick<SessionMessageRecord, "role" | "text">>): string {
@@ -657,6 +717,8 @@ function ChatsPageContent() {
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
   const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
+  const [composerModelOptionId, setComposerModelOptionId] = useState("");
+  const [composerReasoningLevel, setComposerReasoningLevel] = useState("");
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
   const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -695,6 +757,33 @@ function ChatsPageContent() {
   const sortedAgents = useMemo(() => {
     return [...data.Agents].sort((leftAgent, rightAgent) => leftAgent.name.localeCompare(rightAgent.name));
   }, [data.Agents]);
+  const providerOptions = useMemo(() => {
+    return data.AgentCreateOptions.map((providerOption): ProviderOptionRecord => providerOption);
+  }, [data.AgentCreateOptions]);
+  const composerModelOptions = useMemo<ChatComposerModelOption[]>(() => {
+    return providerOptions
+      .flatMap((providerOption) => {
+        return providerOption.models.map((modelOption) => ({
+          description: modelOption.description,
+          id: modelOption.id,
+          modelId: modelOption.modelId,
+          name: modelOption.name,
+          providerLabel: providerOption.label,
+          reasoningLevels: [...modelOption.reasoningLevels],
+        }));
+      })
+      .sort((leftModelOption, rightModelOption) => {
+        const providerComparison = leftModelOption.providerLabel.localeCompare(rightModelOption.providerLabel);
+        if (providerComparison !== 0) {
+          return providerComparison;
+        }
+
+        return leftModelOption.name.localeCompare(rightModelOption.name);
+      });
+  }, [providerOptions]);
+  const composerModelOptionById = useMemo(() => {
+    return new Map(composerModelOptions.map((modelOption) => [modelOption.id, modelOption]));
+  }, [composerModelOptions]);
   const activeSessions = useMemo(() => {
     return data.Sessions.filter((session) => !isArchivedSession(session));
   }, [data.Sessions]);
@@ -725,9 +814,10 @@ function ChatsPageContent() {
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
+  const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
-  const canSubmitDraft = Boolean(selectedAgent && draftMessage.trim().length > 0) && !isSubmittingDraft;
+  const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
@@ -910,6 +1000,44 @@ function ChatsPageContent() {
       sessionId: selectedSession.id,
     });
   }, [loadTranscriptPage, selectedSession?.id]);
+
+  useEffect(() => {
+    if (!selectedAgent) {
+      setComposerModelOptionId("");
+      setComposerReasoningLevel("");
+      return;
+    }
+
+    const nextModelOptionId = resolveComposerModelOptionId(
+      composerModelOptions,
+      selectedSession?.modelProviderCredentialModelId ?? null,
+      selectedSession?.modelId ?? null,
+      selectedAgent.modelProviderCredentialModelId ?? null,
+    );
+    const nextModelOption = composerModelOptionById.get(nextModelOptionId) ?? null;
+    const nextReasoningLevel = resolveComposerReasoningLevel(
+      nextModelOption,
+      selectedSession?.reasoningLevel ?? selectedAgent.reasoningLevel,
+    );
+
+    setComposerModelOptionId(nextModelOptionId);
+    setComposerReasoningLevel(nextReasoningLevel);
+  }, [
+    composerModelOptionById,
+    composerModelOptions,
+    selectedAgent,
+    selectedSession,
+  ]);
+
+  useEffect(() => {
+    const nextModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
+    const nextReasoningLevel = resolveComposerReasoningLevel(nextModelOption, composerReasoningLevel);
+    if (nextReasoningLevel === composerReasoningLevel) {
+      return;
+    }
+
+    setComposerReasoningLevel(nextReasoningLevel);
+  }, [composerModelOptionById, composerModelOptionId, composerReasoningLevel]);
 
   useEffect(() => {
     if (!isResizingChatList) {
@@ -1109,7 +1237,7 @@ function ChatsPageContent() {
   };
 
   const startSession = async () => {
-    if (!selectedAgent) {
+    if (!selectedAgent || !selectedComposerModelOption) {
       return;
     }
 
@@ -1135,6 +1263,8 @@ function ChatsPageContent() {
         variables: {
           input: {
             agentId: selectedAgent.id,
+            modelProviderCredentialModelId: selectedComposerModelOption.id,
+            reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             sessionId: nextSessionId,
             userMessage,
           },
@@ -1224,7 +1354,7 @@ function ChatsPageContent() {
   };
 
   const promptSession = async () => {
-    if (!selectedSession) {
+    if (!selectedSession || !selectedComposerModelOption) {
       return;
     }
 
@@ -1238,6 +1368,8 @@ function ChatsPageContent() {
         variables: {
           input: {
             id: selectedSession.id,
+            modelProviderCredentialModelId: selectedComposerModelOption.id,
+            reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             shouldSteer: false,
             userMessage,
           },
@@ -1530,7 +1662,15 @@ function ChatsPageContent() {
               <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
                 <p className="mt-3 text-sm font-medium text-foreground">{selectedAgent.name}</p>
-                <p className="mt-2 text-xs/relaxed text-muted-foreground">{formatAgentMeta(selectedAgent)}</p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                  {selectedComposerModelOption
+                    ? [
+                      selectedComposerModelOption.providerLabel,
+                      selectedComposerModelOption.name,
+                      composerReasoningLevel || null,
+                    ].filter(Boolean).join(" • ")
+                    : formatAgentMeta(selectedAgent)}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -1582,14 +1722,13 @@ function ChatsPageContent() {
                 />
               </div>
               <div className="flex items-center justify-between gap-3 px-2.5 py-3">
-                <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                  <span className="rounded-full bg-background/60 px-3 py-1.5">
-                    {selectedAgent.modelName || "Default model"}
-                  </span>
-                  <span className="rounded-full bg-background/60 px-3 py-1.5">
-                    {selectedAgent.reasoningLevel || "Default reasoning"}
-                  </span>
-                </div>
+                <ChatComposerModelPicker
+                  modelOptions={composerModelOptions}
+                  onModelChange={setComposerModelOptionId}
+                  onReasoningLevelChange={setComposerReasoningLevel}
+                  reasoningLevel={composerReasoningLevel}
+                  selectedModelOptionId={composerModelOptionId}
+                />
                 <Button
                   aria-label={draftSubmitAriaLabel}
                   className="h-10 w-10 shrink-0 rounded-full px-0"

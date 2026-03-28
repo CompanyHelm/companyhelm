@@ -82,19 +82,24 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       companyId: string,
       sessionId: string,
       userMessage: string,
+      modelProviderCredentialModelId: string | null | undefined,
+      reasoningLevel: string | null | undefined,
       shouldSteer: boolean,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
       assert.equal(sessionId, "session-1");
       assert.equal(userMessage, "Focus on the failed deploy.");
+      assert.equal(modelProviderCredentialModelId, "model-row-9");
+      assert.equal(reasoningLevel, "medium");
       assert.equal(shouldSteer, true);
 
       return {
         id: "session-1",
         agentId: "agent-1",
+        modelProviderCredentialModelId: "model-row-9",
         currentModelId: "gpt-5.4",
-        currentReasoningLevel: "high",
+        currentReasoningLevel: "medium",
         inferredTitle: "Existing title",
         status: "running",
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
@@ -147,6 +152,7 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
           PromptSession(input: $input) {
             id
             agentId
+            modelProviderCredentialModelId
             modelId
             reasoningLevel
             inferredTitle
@@ -160,6 +166,8 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       variables: {
         input: {
           id: "session-1",
+          modelProviderCredentialModelId: "model-row-9",
+          reasoningLevel: "medium",
           shouldSteer: true,
           userMessage: "Focus on the failed deploy.",
         },
@@ -172,8 +180,9 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
   assert.deepEqual(document.data.PromptSession, {
     id: "session-1",
     agentId: "agent-1",
+    modelProviderCredentialModelId: "model-row-9",
     modelId: "gpt-5.4",
-    reasoningLevel: "high",
+    reasoningLevel: "medium",
     inferredTitle: "Existing title",
     status: "running",
     createdAt: "2026-03-25T12:00:00.000Z",
