@@ -9,6 +9,7 @@ import type {
 import { AgentComputeSandboxInterface } from "../sandbox_interface.ts";
 
 type MaterializedDaytonaSandbox = {
+  release: () => Promise<void>;
   remoteSandbox: {
     process: {
       executeCommand(
@@ -45,8 +46,9 @@ type TmuxSessionInfo = {
 
 /**
  * Adapts a lazily materialized Daytona sandbox into a tmux-backed PI Mono tool surface. Every
- * compute session maps to a remote tmux session inside the sandbox, so follow-up tool calls can
- * address the same shell by session id without keeping PTY output buffered in the API process.
+ * runtime-local compute session maps to a remote tmux session inside the sandbox, so follow-up
+ * tool calls can address the same shell by session id without keeping PTY output buffered in the
+ * API process.
  */
 export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
   private static readonly DEFAULT_EXECUTE_COMMAND_YIELD_MS = 1_000;
@@ -148,18 +150,24 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
   }
 
   async dispose(): Promise<void> {
+    const materializedSandbox = this.materializedSandboxPromise
+      ? await this.materializedSandboxPromise
+      : null;
     const trackedSessionIds = [...this.trackedSessionIds];
     this.trackedSessionIds.clear();
-    await Promise.allSettled(trackedSessionIds.map(async (sessionId) => {
-      await this.killTmuxSession(sessionId).catch(() => undefined);
-    }));
+    if (materializedSandbox) {
+      await Promise.allSettled(trackedSessionIds.map(async (sessionId) => {
+        await this.killTmuxSession(sessionId).catch(() => undefined);
+      }));
+      await materializedSandbox.release().catch(() => undefined);
+    }
   }
 
   private getListPtySessionsTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.listPtySessionsParameters> {
     return {
-      description: "List the tmux-backed sandbox sessions currently available in the sandbox.",
+      description: "List the tmux-backed sandbox sessions currently tracked by this agent runtime.",
       execute: async () => {
-        const sessions = await this.listTmuxSessions();
+        const sessions = await this.listTrackedTmuxSessions();
         return {
           content: [{
             type: "text",
@@ -171,7 +179,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       name: "list_pty_sessions",
       parameters: AgentComputeDaytonaSandbox.listPtySessionsParameters,
       promptGuidelines: [
-        "Use list_pty_sessions when you need to discover reusable sandbox tmux sessions.",
+        "Use list_pty_sessions when you need to review the tmux sessions created or reused by this prompt run.",
       ],
       promptSnippet: "List sandbox tmux sessions",
     };
@@ -430,11 +438,28 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       .filter((session) => session.id.length > 0);
   }
 
+  private async listTrackedTmuxSessions(): Promise<TmuxSessionInfo[]> {
+    if (this.trackedSessionIds.size === 0) {
+      return [];
+    }
+
+    const trackedSessionIds = new Set(this.trackedSessionIds);
+    const sessions = await this.listTmuxSessions();
+    const trackedSessions = sessions.filter((session) => trackedSessionIds.has(session.id));
+    this.trackedSessionIds.clear();
+    for (const session of trackedSessions) {
+      this.trackedSessionIds.add(session.id);
+    }
+
+    return trackedSessions;
+  }
+
   private async ensureTmuxSession(
     sessionId: string,
     input: AgentComputeCommandInput,
   ): Promise<void> {
     if (await this.hasTmuxSession(sessionId)) {
+      this.trackedSessionIds.add(sessionId);
       return;
     }
 
@@ -454,6 +479,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private async ensureExistingTmuxSession(sessionId: string): Promise<void> {
     if (await this.hasTmuxSession(sessionId)) {
+      this.trackedSessionIds.add(sessionId);
       return;
     }
 
@@ -745,7 +771,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private formatListPtySessionsResult(sessions: TmuxSessionInfo[]): string {
     if (sessions.length === 0) {
-      return "No PTY sessions found.";
+      return "No tracked PTY sessions found.";
     }
 
     return sessions.map((session) => {

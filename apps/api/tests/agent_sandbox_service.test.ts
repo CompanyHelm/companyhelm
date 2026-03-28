@@ -302,3 +302,23 @@ test("AgentSandboxService updates persisted sandbox runtime state generically", 
   assert.equal(sandbox.status, "stopped");
   assert.equal(harness.updatedValues.length, 1);
 });
+
+test("AgentSandboxService releases the sandbox lease for the completed session", async () => {
+  const harness = AgentSandboxServiceTestHarness.create();
+  harness.updatePlans.push({
+    rows: [],
+    table: agentSandboxes,
+  });
+  const service = new AgentSandboxService();
+
+  await service.releaseSandboxForSession(
+    harness.transactionProvider as never,
+    "sandbox-1",
+    "session-1",
+  );
+
+  assert.equal(harness.updatedValues.length, 1);
+  assert.equal(harness.updatedValues[0]?.currentSessionId, null);
+  assert.equal(harness.updatedValues[0]?.leaseExpiresAt, null);
+  assert.ok(harness.updatedValues[0]?.updatedAt instanceof Date);
+});

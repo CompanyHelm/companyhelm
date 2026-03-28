@@ -25,13 +25,7 @@ export class AgentToolsService {
   }
 
   async cleanupTools(): Promise<void> {
-    const disposableSandbox = this.computeSandbox as {
-      dispose?: () => Promise<void> | void;
-    };
-    if (typeof disposableSandbox.dispose === "function") {
-      await disposableSandbox.dispose();
-    }
-
+    await this.computeSandbox.dispose();
     this.initializedTools = null;
   }
 }

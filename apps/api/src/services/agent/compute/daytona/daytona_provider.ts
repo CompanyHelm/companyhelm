@@ -42,6 +42,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     agentId: string,
     sessionId: string,
   ): Promise<{
+    release: () => Promise<void>;
     remoteSandbox: {
       process: {
         executeCommand(
@@ -106,6 +107,13 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       );
 
       return {
+        release: async () => {
+          await this.agentSandboxService.releaseSandboxForSession(
+            transactionProvider,
+            updatedSandboxRecord.id,
+            sessionId,
+          );
+        },
         remoteSandbox,
         sandboxRecord: updatedSandboxRecord,
       };
@@ -114,6 +122,13 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     await this.ensureTmuxInstalled(remoteSandbox);
 
     return {
+      release: async () => {
+        await this.agentSandboxService.releaseSandboxForSession(
+          transactionProvider,
+          sandboxRecord.id,
+          sessionId,
+        );
+      },
       remoteSandbox,
       sandboxRecord,
     };

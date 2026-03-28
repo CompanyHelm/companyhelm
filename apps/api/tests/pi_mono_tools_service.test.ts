@@ -24,6 +24,9 @@ test("AgentToolsService initializes only compute-backed tools for the current se
     promptSnippet: "Run sandbox commands",
   };
   const service = new AgentToolsService({
+    async dispose() {
+      return undefined;
+    },
     listTools() {
       return [computeTool];
     },
@@ -65,6 +68,9 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
   }
 
   const service = new AgentToolsService({
+    async dispose() {
+      return undefined;
+    },
     listTools() {
       return [{
         description: "Execute a sandbox command.",

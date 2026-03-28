@@ -141,6 +141,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     {
       async getSandboxForSession() {
         return {
+          async dispose() {
+            return undefined;
+          },
           listTools() {
             return [computeToolDefinition];
           },
@@ -312,6 +315,9 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     {
       async getSandboxForSession() {
         return {
+          async dispose() {
+            return undefined;
+          },
           listTools() {
             return [computeToolDefinition];
           },

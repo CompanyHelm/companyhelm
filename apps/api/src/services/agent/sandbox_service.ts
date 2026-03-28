@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, lte, or } from "drizzle-orm";
 import { injectable } from "inversify";
 import { agentSandboxes, agentSessions } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
@@ -173,6 +173,28 @@ export class AgentSandboxService {
     });
   }
 
+  async releaseSandboxForSession(
+    transactionProvider: TransactionProviderInterface,
+    sandboxId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(agentSandboxes)
+        .set({
+          currentSessionId: null,
+          leaseExpiresAt: null,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(agentSandboxes.id, sandboxId),
+          eq(agentSandboxes.currentSessionId, sessionId),
+        ))
+        .returning?.(this.sandboxSelection());
+    });
+  }
+
   private async createSandbox(
     transactionProvider: TransactionProviderInterface,
     context: AgentSandboxProvisionContext,
@@ -231,7 +253,13 @@ export class AgentSandboxService {
           leaseExpiresAt: this.resolveLeaseExpiration(now),
           updatedAt: now,
         })
-        .where(eq(agentSandboxes.id, sandboxId))
+        .where(and(
+          eq(agentSandboxes.id, sandboxId),
+          or(
+            isNull(agentSandboxes.leaseExpiresAt),
+            lte(agentSandboxes.leaseExpiresAt, now),
+          ),
+        ))
         .returning?.(this.sandboxSelection()) as AgentSandboxRecord[];
 
       return claimedSandbox ?? null;
@@ -330,7 +358,10 @@ export class AgentSandboxService {
           leaseExpiresAt: this.resolveLeaseExpiration(now),
           updatedAt: now,
         })
-        .where(eq(agentSandboxes.id, sandboxId))
+        .where(and(
+          eq(agentSandboxes.id, sandboxId),
+          eq(agentSandboxes.currentSessionId, sessionId),
+        ))
         .returning?.(this.sandboxSelection()) as AgentSandboxRecord[];
 
       return refreshedSandbox ?? null;

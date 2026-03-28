@@ -41,4 +41,11 @@ export abstract class AgentComputeSandboxInterface {
    * callbacks.
    */
   abstract listTools(): ToolDefinition[];
+
+  /**
+   * Releases any runtime-local resources held by the sandbox handle after the PI Mono session
+   * finishes. Implementations should use this hook to detach shells, release leases, and clean up
+   * any provider objects that are scoped to a single prompt run.
+   */
+  abstract dispose(): Promise<void>;
 }

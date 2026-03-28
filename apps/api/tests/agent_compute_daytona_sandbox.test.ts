@@ -153,7 +153,15 @@ class FakeDaytonaTmuxProcess {
 
 test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output directly from tmux", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
+  fakeProcess.sessions.set("stray-session", {
+    createdAt: "67890",
+    height: 24,
+    output: "stray output",
+    width: 80,
+  });
+  const release = vi.fn(async () => undefined);
   const sandbox = new AgentComputeDaytonaSandbox(async () => ({
+    release,
     remoteSandbox: {
       process: fakeProcess,
     },
@@ -208,6 +216,7 @@ test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output dire
   );
   const listText = (listResult.content[0] as { text: string }).text;
   assert.ok(listText.includes(`sessionId: ${sessionId}`));
+  assert.ok(!listText.includes("stray-session"));
 
   const firstReadResult = await readPtyOutputTool.execute(
     "tool-call-3",
@@ -257,12 +266,16 @@ test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output dire
     undefined,
   );
   assert.equal(fakeProcess.sessions.has(sessionId), false);
+
+  await sandbox.dispose();
+  assert.equal(release.mock.calls.length, 1);
 });
 
 test("AgentComputeDaytonaSandbox returns immediately from execute_command when the tmux command completes before the yield window", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
   fakeProcess.autoCompleteCommands = true;
   const sandbox = new AgentComputeDaytonaSandbox(async () => ({
+    release: async () => undefined,
     remoteSandbox: {
       process: fakeProcess,
     },
@@ -294,6 +307,7 @@ test("AgentComputeDaytonaSandbox returns immediately from execute_command when t
 test("AgentComputeDaytonaSandbox reuses tmux sessions by session id across sandbox handles", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
   const materializeSandbox = async () => ({
+    release: async () => undefined,
     remoteSandbox: {
       process: fakeProcess,
     },
