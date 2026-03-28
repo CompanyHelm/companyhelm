@@ -9,6 +9,7 @@ import {
   LayoutDashboardIcon,
   MessageSquareIcon,
   MoonIcon,
+  ServerIcon,
   Settings2Icon,
   SunIcon,
   WorkflowIcon,
@@ -94,6 +95,11 @@ export function ApplicationSidebar() {
       icon: BotIcon,
       label: "Agents",
       to: "/agents",
+    },
+    {
+      icon: ServerIcon,
+      label: "Environments",
+      to: "/environments",
     },
     {
       icon: MessageSquareIcon,

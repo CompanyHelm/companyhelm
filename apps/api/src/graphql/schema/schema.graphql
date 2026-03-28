@@ -3,6 +3,7 @@ type Query {
   Me: Me!
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
+  Environments: [Environment!]!
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
@@ -122,6 +123,23 @@ type Agent {
   modelName: String
   reasoningLevel: String
   systemPrompt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Environment {
+  id: ID!
+  agentId: ID!
+  agentName: String
+  provider: String!
+  providerEnvironmentId: String!
+  displayName: String
+  platform: String!
+  status: String!
+  cpuCount: Int!
+  memoryGb: Int!
+  diskSpaceGb: Int!
+  lastSeenAt: String
   createdAt: String!
   updatedAt: String!
 }

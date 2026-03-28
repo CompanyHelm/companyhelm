@@ -26,6 +26,7 @@ import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
+import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
 import { GithubInstallationsQueryResolver } from "./resolvers/github_installations.ts";
 import { GithubRepositoriesQueryResolver } from "./resolvers/github_repositories.ts";
@@ -54,6 +55,7 @@ export class GraphqlApplication {
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
+  private readonly environmentsQueryResolver: EnvironmentsQueryResolver;
   private readonly archiveSessionMutation: ArchiveSessionMutation;
   private readonly createTaskCategoryMutation: CreateTaskCategoryMutation;
   private readonly createTaskMutation: CreateTaskMutation;
@@ -157,6 +159,7 @@ export class GraphqlApplication {
     @inject(RefreshGithubInstallationRepositoriesMutation)
     refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
+    @inject(EnvironmentsQueryResolver) environmentsQueryResolver: EnvironmentsQueryResolver = new EnvironmentsQueryResolver(),
   ) {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
@@ -165,6 +168,7 @@ export class GraphqlApplication {
     this.agentQueryResolver = agentQueryResolver;
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentsQueryResolver = agentsQueryResolver;
+    this.environmentsQueryResolver = environmentsQueryResolver;
     this.archiveSessionMutation = archiveSessionMutation;
     this.createTaskCategoryMutation = createTaskCategoryMutation;
     this.createTaskMutation = createTaskMutation;
@@ -242,6 +246,7 @@ export class GraphqlApplication {
           Agent: this.agentQueryResolver.execute,
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,
+          Environments: this.environmentsQueryResolver.execute,
           GithubAppConfig: this.githubAppConfigQueryResolver.execute,
           GithubInstallations: this.githubInstallationsQueryResolver.execute,
           GithubRepositories: this.githubRepositoriesQueryResolver.execute,
