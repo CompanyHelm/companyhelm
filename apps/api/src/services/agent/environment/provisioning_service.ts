@@ -16,7 +16,7 @@ export class AgentEnvironmentProvisioningService {
   private readonly provider: AgentComputeProviderInterface;
 
   constructor(
-    catalogService: AgentEnvironmentCatalogService,
+    @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
   ) {
     this.catalogService = catalogService;

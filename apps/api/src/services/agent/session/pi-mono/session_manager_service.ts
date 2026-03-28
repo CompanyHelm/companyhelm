@@ -61,7 +61,7 @@ export class PiMonoSessionManagerService {
 
   constructor(
     @inject(RedisService) redisService: RedisService,
-    agentEnvironmentAccessService: AgentEnvironmentAccessService,
+    @inject(AgentEnvironmentAccessService) agentEnvironmentAccessService: AgentEnvironmentAccessService,
   ) {
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;

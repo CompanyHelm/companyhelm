@@ -23,11 +23,11 @@ export class AgentEnvironmentAccessService {
   private readonly selectionService: AgentEnvironmentSelectionService;
 
   constructor(
-    catalogService: AgentEnvironmentCatalogService,
-    leaseService: AgentEnvironmentLeaseService,
+    @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
+    @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
     @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
-    provisioningService: AgentEnvironmentProvisioningService,
-    selectionService: AgentEnvironmentSelectionService,
+    @inject(AgentEnvironmentProvisioningService) provisioningService: AgentEnvironmentProvisioningService,
+    @inject(AgentEnvironmentSelectionService) selectionService: AgentEnvironmentSelectionService,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;

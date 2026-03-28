@@ -1,4 +1,4 @@
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import type { AgentEnvironmentRecord } from "../compute/provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
@@ -15,8 +15,8 @@ export class AgentEnvironmentSelectionService {
   private readonly leaseService: AgentEnvironmentLeaseService;
 
   constructor(
-    catalogService: AgentEnvironmentCatalogService,
-    leaseService: AgentEnvironmentLeaseService,
+    @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
+    @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;

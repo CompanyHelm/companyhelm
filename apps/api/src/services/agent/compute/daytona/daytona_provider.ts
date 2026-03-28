@@ -20,7 +20,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
 
   constructor(
     @inject(Config) config: Config,
-    catalogService: AgentEnvironmentCatalogService,
+    @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
   ) {
     super();
     this.catalogService = catalogService;
