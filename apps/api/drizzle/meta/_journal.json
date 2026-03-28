@@ -281,6 +281,13 @@
       "when": 1774677425982,
       "tag": "0039_mixed_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1774678524974,
+      "tag": "0040_rich_alice",
+      "breakpoints": true
     }
   ]
 }

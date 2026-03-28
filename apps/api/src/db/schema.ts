@@ -108,9 +108,8 @@ export const agentSessions = pgTable("agent_sessions", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
-  currentModelId: text("current_model_id").notNull(),
-  currentModelProviderCredentialId: uuid("current_model_provider_credential_id")
-    .references(() => modelProviderCredentials.id, { onDelete: "restrict" })
+  currentModelProviderCredentialModelId: uuid("current_model_provider_credential_model_id")
+    .references(() => modelProviderCredentialModels.id, { onDelete: "set null" })
     .notNull(),
   // inferred from first message or based on LLM generated title
   inferredTitle: text("inferred_title"),
