@@ -54,6 +54,10 @@ export const ConfigDocument = z.object({
   }),
   daytona: z.object({
     api_key: NonEmptyStringSchema,
+    api_url: NonEmptyStringSchema,
+    disk_gb: PositiveIntegerSchema,
+    memory_gb: PositiveIntegerSchema,
+    cpu_count: PositiveIntegerSchema,
   }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,

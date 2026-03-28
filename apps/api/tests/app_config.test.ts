@@ -118,6 +118,10 @@ redis:
   password: ""
 daytona:
   api_key: "daytona-local-api-key"
+  api_url: "https://app.daytona.io/api"
+  disk_gb: 10
+  memory_gb: 8
+  cpu_count: 4
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
@@ -176,7 +180,13 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     username: "",
     password: "",
   });
-  assert.equal(document.daytona.api_key, "daytona-local-api-key");
+  assert.deepEqual(document.daytona, {
+    api_key: "daytona-local-api-key",
+    api_url: "https://app.daytona.io/api",
+    disk_gb: 10,
+    memory_gb: 8,
+    cpu_count: 4,
+  });
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");

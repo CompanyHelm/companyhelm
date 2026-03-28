@@ -5,16 +5,20 @@ import { AgentEnvironmentCatalogService } from "../src/services/agent/environmen
 
 test("AgentComputeDaytonaProvider provisions Daytona environments on demand with generic metadata", async () => {
   const create = vi.fn(async () => ({
-    cpu: 2,
+    cpu: 4,
     delete: vi.fn(async () => undefined),
-    disk: 20,
+    disk: 10,
     id: "daytona-environment-1",
-    memory: 4,
+    memory: 8,
   }));
   const provider = new AgentComputeDaytonaProvider(
     {
       daytona: {
         api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
       },
     } as never,
     {} as AgentEnvironmentCatalogService,
@@ -32,9 +36,20 @@ test("AgentComputeDaytonaProvider provisions Daytona environments on demand with
   assert.equal(provider.getProvider(), "daytona");
   assert.equal(provider.supportsOnDemandProvisioning(), true);
   assert.equal(create.mock.calls.length, 1);
+  assert.deepEqual(create.mock.calls[0]?.[0], {
+    image: "node:20-slim",
+    resources: {
+      cpu: 4,
+      disk: 10,
+      memory: 8,
+    },
+  });
   assert.equal(provisionedEnvironment.providerEnvironmentId, "daytona-environment-1");
   assert.equal(provisionedEnvironment.platform, "linux");
   assert.deepEqual(provisionedEnvironment.metadata, {});
+  assert.equal(provisionedEnvironment.cpuCount, 4);
+  assert.equal(provisionedEnvironment.diskSpaceGb, 10);
+  assert.equal(provisionedEnvironment.memoryGb, 8);
 });
 
 test("AgentComputeDaytonaProvider starts stopped environments and updates the catalog before creating the runtime", async () => {
@@ -51,6 +66,10 @@ test("AgentComputeDaytonaProvider starts stopped environments and updates the ca
     {
       daytona: {
         api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
       },
     } as never,
     {
