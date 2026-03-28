@@ -80,21 +80,6 @@ beforeEach(() => {
   piAgentMocks.sessionManagerInstances.length = 0;
 });
 
-const computeToolDefinition = {
-  description: "Execute a sandbox command.",
-  execute: async () => ({
-    content: [{
-      text: "sandbox result",
-      type: "text",
-    }],
-  }),
-  label: "execute_command",
-  name: "execute_command",
-  parameters: {},
-  promptGuidelines: [],
-  promptSnippet: "Run sandbox commands",
-};
-
 test("PiMonoSessionManagerService creates one runtime session and routes prompt plus steer calls through it", async () => {
   const storedMessages = [{
     content: "Earlier context",
@@ -140,14 +125,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     } as never,
     {
       async getEnvironmentForSession() {
-        return {
-          async dispose() {
-            return undefined;
-          },
-          listTools() {
-            return [computeToolDefinition];
-          },
-        };
+        throw new Error("tools should not acquire an environment during ensureSession");
       },
     } as never,
   );
@@ -256,7 +234,15 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
-    ["execute_command"],
+    [
+      "list_pty_sessions",
+      "execute_command",
+      "send_pty_input",
+      "read_pty_output",
+      "resize_pty",
+      "kill_session",
+      "close_session",
+    ],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
     agentsFiles: [],
@@ -268,7 +254,15 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   );
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
-    [[["execute_command"]]],
+    [[[
+      "list_pty_sessions",
+      "execute_command",
+      "send_pty_input",
+      "read_pty_output",
+      "resize_pty",
+      "kill_session",
+      "close_session",
+    ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
@@ -314,14 +308,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     } as never,
     {
       async getEnvironmentForSession() {
-        return {
-          async dispose() {
-            return undefined;
-          },
-          listTools() {
-            return [computeToolDefinition];
-          },
-        };
+        throw new Error("tools should not acquire an environment during ensureSession");
       },
     } as never,
   );
@@ -396,6 +383,14 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[[]]]);
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
-    [[["execute_command"]]],
+    [[[
+      "list_pty_sessions",
+      "execute_command",
+      "send_pty_input",
+      "read_pty_output",
+      "resize_pty",
+      "kill_session",
+      "close_session",
+    ]]],
   );
 });

@@ -8,27 +8,13 @@ import {
 import { test, vi } from "vitest";
 import { AgentToolsService } from "../src/services/agent/tools_service.ts";
 
-test("AgentToolsService initializes only compute-backed tools for the current session", () => {
-  const computeTool = {
-    description: "Execute a sandbox command.",
-    execute: async () => ({
-      content: [{
-        text: "sandbox result",
-        type: "text",
-      }],
-    }),
-    label: "execute_command",
-    name: "execute_command",
-    parameters: {},
-    promptGuidelines: [],
-    promptSnippet: "Run sandbox commands",
-  };
+test("AgentToolsService initializes the environment-backed terminal tool catalog once per prompt scope", () => {
   const service = new AgentToolsService({
     async dispose() {
       return undefined;
     },
-    listTools() {
-      return [computeTool];
+    async getEnvironment() {
+      throw new Error("tools should not acquire the environment during initialization");
     },
   } as never);
 
@@ -36,19 +22,27 @@ test("AgentToolsService initializes only compute-backed tools for the current se
 
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["execute_command"],
+    [
+      "list_pty_sessions",
+      "execute_command",
+      "send_pty_input",
+      "read_pty_output",
+      "resize_pty",
+      "kill_session",
+      "close_session",
+    ],
   );
   assert.equal(service.initializeTools(), tools);
 });
 
-test("AgentToolsService cleanup invokes sandbox disposal when available", async () => {
+test("AgentToolsService cleanup disposes the prompt scope", async () => {
   const dispose = vi.fn(async () => undefined);
   const service = new AgentToolsService({
     async dispose() {
       await dispose();
     },
-    listTools() {
-      return [];
+    async getEnvironment() {
+      throw new Error("tools should not acquire the environment during cleanup");
     },
   } as never);
 
@@ -71,21 +65,8 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
     async dispose() {
       return undefined;
     },
-    listTools() {
-      return [{
-        description: "Execute a sandbox command.",
-        execute: async () => ({
-          content: [{
-            text: "sandbox result",
-            type: "text",
-          }],
-        }),
-        label: "execute_command",
-        name: "execute_command",
-        parameters: {},
-        promptGuidelines: [],
-        promptSnippet: "Run sandbox commands",
-      }];
+    async getEnvironment() {
+      throw new Error("session creation should not eagerly acquire the environment");
     },
   } as never);
 
@@ -107,7 +88,15 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
 
   assert.deepEqual(
     session.agent.state.tools.map((tool) => tool.name),
-    ["execute_command"],
+    [
+      "list_pty_sessions",
+      "execute_command",
+      "send_pty_input",
+      "read_pty_output",
+      "resize_pty",
+      "kill_session",
+      "close_session",
+    ],
   );
 
   session.dispose();

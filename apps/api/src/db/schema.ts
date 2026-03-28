@@ -26,7 +26,16 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
-export const agentEnvironmentStatusEnum = pgEnum("agent_environment_status", ["running", "stopped"]);
+export const agentEnvironmentStatusEnum = pgEnum("agent_environment_status", [
+  "provisioning",
+  "available",
+  "running",
+  "stopped",
+  "unhealthy",
+  "deleting",
+]);
+export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
+export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
 export const computeProviderEnum = pgEnum("compute_provider", ["daytona"]);
 
 
@@ -369,22 +378,58 @@ export const agentEnvironments = pgTable("agent_environments", {
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
-  currentSessionId: uuid("current_session_id")
-    .references(() => agentSessions.id, { onDelete: "set null" }),
   provider: computeProviderEnum("provider").notNull(),
-  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
-  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-  status: agentEnvironmentStatusEnum("status").notNull(),
   providerEnvironmentId: text("provider_environment_id").notNull(),
+  displayName: text("display_name"),
+  platform: agentEnvironmentPlatformEnum("platform").notNull(),
+  status: agentEnvironmentStatusEnum("status").notNull(),
   cpuCount: integer("cpu_count").notNull(),
   memoryGb: integer("memory_gb").notNull(),
   diskSpaceGb: integer("disk_space_gb").notNull(),
+  metadata: jsonb("metadata").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 },
 (table) => ({
   companyIdIndex: index("agent_environments_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_environments_agent_id_idx").on(table.agentId),
-  currentSessionIdIndex: index("agent_environments_current_session_id_idx").on(table.currentSessionId),
-  providerEnvironmentIdIndex: index("agent_environments_provider_environment_id_idx").on(table.providerEnvironmentId),
+  providerEnvironmentIdIndex: index("agent_environments_provider_environment_id_idx").on(table.provider, table.providerEnvironmentId),
+}));
+
+export const agentEnvironmentLeases = pgTable("agent_environment_leases", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  environmentId: uuid("environment_id")
+    .references(() => agentEnvironments.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  state: agentEnvironmentLeaseStateEnum("state").notNull(),
+  ownerToken: text("owner_token"),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true }).notNull(),
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  releasedAt: timestamp("released_at", { withTimezone: true }),
+  releaseReason: text("release_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("agent_environment_leases_company_id_idx").on(table.companyId),
+  environmentIdIndex: index("agent_environment_leases_environment_id_idx").on(table.environmentId),
+  agentIdIndex: index("agent_environment_leases_agent_id_idx").on(table.agentId),
+  sessionIdIndex: index("agent_environment_leases_session_id_idx").on(table.sessionId),
+  stateExpiresAtIndex: index("agent_environment_leases_state_expires_at_idx").on(table.state, table.expiresAt),
+  openLeaseUnique: uniqueIndex("agent_environment_leases_open_environment_uidx")
+    .on(table.environmentId)
+    .where(sql`${table.state} in ('active', 'idle')`),
 }));

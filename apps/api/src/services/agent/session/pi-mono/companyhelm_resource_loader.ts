@@ -88,7 +88,8 @@ export class CompanyHelmResourceLoader implements ResourceLoader {
     return this.appendSystemPrompt;
   }
 
-  extendResources(_paths: Parameters<ResourceLoader["extendResources"]>[0]): void {
+  extendResources(paths: Parameters<ResourceLoader["extendResources"]>[0]): void {
+    void paths;
     // CompanyHelm intentionally does not permit dynamic local resource discovery in PI Mono.
   }
 

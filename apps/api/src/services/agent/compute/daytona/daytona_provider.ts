@@ -2,136 +2,94 @@ import { Daytona } from "@daytonaio/sdk";
 import { inject, injectable } from "inversify";
 import { Config } from "../../../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
-import {
-  AgentEnvironmentService,
-  type AgentEnvironmentRecord,
-} from "../../environment_service.ts";
-import { AgentComputeProviderInterface } from "../provider_interface.ts";
-import { AgentComputeDaytonaSandbox } from "./daytona_sandbox.ts";
+import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
+import { AgentComputeProviderInterface, type AgentEnvironmentRecord } from "../provider_interface.ts";
+import { AgentEnvironmentRuntimeInterface } from "../runtime_interface.ts";
+import { AgentComputeDaytonaEnvironment } from "./daytona_environment.ts";
 
 /**
- * Bridges the generic compute-provider contract onto the Daytona runtime. The provider returns a
- * lazy sandbox handle and only provisions or leases the backing Daytona environment when a sandbox
- * tool is invoked.
+ * Bridges the generic provider contract onto Daytona. The environment orchestration layer decides
+ * when to provision or reuse an environment; this provider only knows how to create Daytona
+ * sandboxes and how to build tmux-backed runtimes for persisted environment rows.
  */
 @injectable()
 export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
+  private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly config: Config;
-  private readonly agentEnvironmentService: AgentEnvironmentService;
   private daytona?: Daytona;
 
   constructor(
     @inject(Config) config: Config,
-    @inject(AgentEnvironmentService) agentEnvironmentService: AgentEnvironmentService,
+    catalogService: AgentEnvironmentCatalogService,
   ) {
     super();
+    this.catalogService = catalogService;
     this.config = config;
-    this.agentEnvironmentService = agentEnvironmentService;
   }
 
-  async getEnvironmentForSession(
+  getProvider(): "daytona" {
+    return "daytona";
+  }
+
+  supportsOnDemandProvisioning(): boolean {
+    return true;
+  }
+
+  async provisionEnvironment(
     transactionProvider: TransactionProviderInterface,
-    agentId: string,
-    sessionId: string,
+    request: {
+      agentId: string;
+      companyId: string;
+      sessionId: string;
+    },
   ) {
-    return new AgentComputeDaytonaSandbox(() => this.materializeEnvironment(transactionProvider, agentId, sessionId));
+    void transactionProvider;
+    void request;
+    const remoteSandbox = await this.getDaytonaClient().create({
+      image: "node:20-slim",
+      resources: {
+        cpu: 2,
+        disk: 20,
+        memory: 4,
+      },
+    });
+
+    return {
+      cleanup: async () => {
+        await remoteSandbox.delete().catch(() => undefined);
+      },
+      cpuCount: remoteSandbox.cpu || 2,
+      diskSpaceGb: remoteSandbox.disk || 20,
+      displayName: null,
+      memoryGb: remoteSandbox.memory || 4,
+      metadata: {},
+      platform: "linux" as const,
+      providerEnvironmentId: remoteSandbox.id,
+      status: "running" as const,
+    };
   }
 
-  private async materializeEnvironment(
+  async createRuntime(
     transactionProvider: TransactionProviderInterface,
-    agentId: string,
-    sessionId: string,
-  ): Promise<{
-    release: () => Promise<void>;
-    remoteSandbox: {
-      process: {
-        executeCommand(
-          command: string,
-          cwd?: string,
-          env?: Record<string, string>,
-          timeout?: number,
-        ): Promise<{
-          artifacts?: {
-            stdout?: string;
-          };
-          exitCode: number;
-          result: string;
-        }>;
-      };
-    };
-    environmentRecord: AgentEnvironmentRecord;
-  }> {
-    const environmentRecord = await this.agentEnvironmentService.materializeEnvironmentForSession(
-      transactionProvider,
-      sessionId,
-      agentId,
-      "daytona",
-      async () => {
-        const remoteSandbox = await this.getDaytonaClient().create({
-          image: "node:20-slim",
-          resources: {
-            cpu: 2,
-            disk: 20,
-            memory: 4,
-          },
-        });
-
-        return {
-          cleanup: async () => {
-            await remoteSandbox.delete().catch(() => undefined);
-          },
-          cpuCount: remoteSandbox.cpu || 2,
-          diskSpaceGb: remoteSandbox.disk || 20,
-          memoryGb: remoteSandbox.memory || 4,
-          providerEnvironmentId: remoteSandbox.id,
-          status: "running",
-        };
-      },
-    );
-
-    const remoteSandbox = await this.getDaytonaClient().get(environmentRecord.providerEnvironmentId);
-    if (environmentRecord.status !== "running") {
+    environment: AgentEnvironmentRecord,
+  ): Promise<AgentEnvironmentRuntimeInterface> {
+    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    if (environment.status !== "running") {
       await remoteSandbox.start();
       await remoteSandbox.refreshData();
       await this.ensureTmuxInstalled(remoteSandbox);
-
-      const updatedEnvironmentRecord = await this.agentEnvironmentService.updateEnvironmentRuntimeState(
-        transactionProvider,
-        environmentRecord.id,
-        {
-          cpuCount: remoteSandbox.cpu || environmentRecord.cpuCount,
-          diskSpaceGb: remoteSandbox.disk || environmentRecord.diskSpaceGb,
-          memoryGb: remoteSandbox.memory || environmentRecord.memoryGb,
-          status: "running",
-        },
-      );
-
-      return {
-        release: async () => {
-          await this.agentEnvironmentService.releaseEnvironmentForSession(
-            transactionProvider,
-            updatedEnvironmentRecord.id,
-            sessionId,
-          );
-        },
-        environmentRecord: updatedEnvironmentRecord,
-        remoteSandbox,
-      };
+      await this.catalogService.updateRuntimeState(transactionProvider, environment.id, {
+        cpuCount: remoteSandbox.cpu || environment.cpuCount,
+        diskSpaceGb: remoteSandbox.disk || environment.diskSpaceGb,
+        memoryGb: remoteSandbox.memory || environment.memoryGb,
+        metadata: environment.metadata,
+        status: "running",
+      });
+    } else {
+      await this.ensureTmuxInstalled(remoteSandbox);
     }
 
-    await this.ensureTmuxInstalled(remoteSandbox);
-
-    return {
-      release: async () => {
-        await this.agentEnvironmentService.releaseEnvironmentForSession(
-          transactionProvider,
-          environmentRecord.id,
-          sessionId,
-        );
-      },
-      environmentRecord,
-      remoteSandbox,
-    };
+    return new AgentComputeDaytonaEnvironment(remoteSandbox);
   }
 
   private async ensureTmuxInstalled(remoteSandbox: {

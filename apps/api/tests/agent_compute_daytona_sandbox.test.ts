@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
-import { AgentComputeDaytonaSandbox } from "../src/services/agent/compute/daytona/daytona_sandbox.ts";
+import { test } from "vitest";
+import { AgentComputeDaytonaEnvironment } from "../src/services/agent/compute/daytona/daytona_environment.ts";
 
 type FakeTmuxSession = {
   createdAt: string;
@@ -10,7 +10,12 @@ type FakeTmuxSession = {
 };
 
 class FakeDaytonaTmuxProcess {
-  readonly executeCommand = vi.fn(async (command: string) => {
+  readonly commandFiles = new Map<string, string>();
+  readonly rcFiles = new Map<string, string>();
+  readonly sessions = new Map<string, FakeTmuxSession>();
+  autoCompleteCommands = false;
+
+  async executeCommand(command: string) {
     if (command.includes("tmux list-sessions")) {
       return {
         exitCode: 0,
@@ -137,12 +142,7 @@ class FakeDaytonaTmuxProcess {
     }
 
     throw new Error(`Unhandled sandbox command: ${command}`);
-  });
-
-  readonly commandFiles = new Map<string, string>();
-  readonly rcFiles = new Map<string, string>();
-  readonly sessions = new Map<string, FakeTmuxSession>();
-  autoCompleteCommands = false;
+  }
 
   private extractFirstQuotedValue(command: string): string {
     const match = /'([^']+)'/.exec(command);
@@ -151,7 +151,7 @@ class FakeDaytonaTmuxProcess {
   }
 }
 
-test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output directly from tmux", async () => {
+test("AgentComputeDaytonaEnvironment executes commands, reads tmux output, and resizes sessions", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
   fakeProcess.sessions.set("stray-session", {
     createdAt: "67890",
@@ -159,220 +159,74 @@ test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output dire
     output: "stray output",
     width: 80,
   });
-  const release = vi.fn(async () => undefined);
-  const sandbox = new AgentComputeDaytonaSandbox(async () => ({
-    environmentRecord: {
-      id: "environment-1",
-      status: "running",
-    },
-    release,
-    remoteSandbox: {
-      process: fakeProcess,
-    },
-  }));
-  const tools = sandbox.listTools();
-  const executeCommandTool = tools.find((tool) => tool.name === "execute_command");
-  const readPtyOutputTool = tools.find((tool) => tool.name === "read_pty_output");
-  const resizePtyTool = tools.find((tool) => tool.name === "resize_pty");
-  const closeSessionTool = tools.find((tool) => tool.name === "close_session");
-  const listPtySessionsTool = tools.find((tool) => tool.name === "list_pty_sessions");
+  const environment = new AgentComputeDaytonaEnvironment({
+    process: fakeProcess,
+  });
 
-  assert.deepEqual(tools.map((tool) => tool.name), [
-    "list_pty_sessions",
-    "execute_command",
-    "send_pty_input",
-    "read_pty_output",
-    "resize_pty",
-    "kill_session",
-    "close_session",
-  ]);
-  assert.ok(executeCommandTool);
-  assert.ok(readPtyOutputTool);
-  assert.ok(resizePtyTool);
-  assert.ok(closeSessionTool);
-  assert.ok(listPtySessionsTool);
+  const executionResult = await environment.executeCommand({
+    command: "ls -la",
+    yield_time_ms: 0,
+  });
 
-  const executionResult = await executeCommandTool.execute(
-    "tool-call-1",
-    {
-      command: "ls -la",
-      yield_time_ms: 0,
-    },
-    undefined,
-    undefined,
-  );
-  const executionText = (executionResult.content[0] as { text: string }).text;
-  const sessionId = executionText.match(/^sessionId: (.+)$/m)?.[1];
+  assert.ok(executionResult.sessionId.startsWith("pty-"));
+  assert.equal(executionResult.completed, false);
+  assert.ok(executionResult.output.includes("ran: ls -la\n"));
 
-  assert.ok(sessionId);
-  assert.match(executionText, /^completed: false$/m);
-  assert.ok(executionText.includes("output:\nran: ls -la\n"));
+  const sessions = await environment.listSessions();
+  assert.ok(sessions.some((session) => session.id === executionResult.sessionId));
+  assert.ok(sessions.some((session) => session.id === "stray-session"));
 
-  const listResult = await listPtySessionsTool.execute(
-    "tool-call-2",
-    {},
-    undefined,
-    undefined,
-  );
-  const listText = (listResult.content[0] as { text: string }).text;
-  assert.ok(listText.includes(`sessionId: ${sessionId}`));
-  assert.ok(!listText.includes("stray-session"));
+  const firstPage = await environment.readOutput(executionResult.sessionId, null, 4_000);
+  assert.equal(firstPage.chunks.length, 1);
+  assert.ok(firstPage.chunks[0]?.text.includes("ran: ls -la\n"));
 
-  const firstReadResult = await readPtyOutputTool.execute(
-    "tool-call-3",
-    {
-      limit: 4_000,
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  const firstReadText = (firstReadResult.content[0] as { text: string }).text;
-  const nextOffset = Number(firstReadText.match(/^nextOffset: (\d+)$/m)?.[1] ?? "0");
-  assert.ok(firstReadText.includes("output:\nran: ls -la\n"));
+  const secondPage = await environment.readOutput(executionResult.sessionId, firstPage.nextOffset, 4_000);
+  assert.deepEqual(secondPage.chunks, []);
 
-  const secondReadResult = await readPtyOutputTool.execute(
-    "tool-call-4",
-    {
-      afterOffset: nextOffset,
-      limit: 4_000,
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  const secondReadText = (secondReadResult.content[0] as { text: string }).text;
-  assert.ok(secondReadText.includes("output:\n(no output)"));
+  await environment.resizeSession(executionResult.sessionId, 120, 40);
+  assert.equal(fakeProcess.sessions.get(executionResult.sessionId)?.width, 120);
+  assert.equal(fakeProcess.sessions.get(executionResult.sessionId)?.height, 40);
 
-  await resizePtyTool.execute(
-    "tool-call-5",
-    {
-      columns: 120,
-      rows: 40,
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  assert.equal(fakeProcess.sessions.get(sessionId)?.width, 120);
-  assert.equal(fakeProcess.sessions.get(sessionId)?.height, 40);
-
-  await closeSessionTool.execute(
-    "tool-call-6",
-    {
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  assert.equal(fakeProcess.sessions.has(sessionId), false);
-
-  await sandbox.dispose();
-  assert.equal(release.mock.calls.length, 1);
+  await environment.closeSession(executionResult.sessionId);
+  assert.equal(fakeProcess.sessions.has(executionResult.sessionId), false);
 });
 
-test("AgentComputeDaytonaSandbox returns immediately from execute_command when the tmux command completes before the yield window", async () => {
+test("AgentComputeDaytonaEnvironment returns immediately when a tmux command completes before the yield window", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
   fakeProcess.autoCompleteCommands = true;
-  const sandbox = new AgentComputeDaytonaSandbox(async () => ({
-    environmentRecord: {
-      id: "environment-1",
-      status: "running",
-    },
-    release: async () => undefined,
-    remoteSandbox: {
-      process: fakeProcess,
-    },
-  }));
-  const executeCommandTool = sandbox.listTools().find((tool) => tool.name === "execute_command");
+  const environment = new AgentComputeDaytonaEnvironment({
+    process: fakeProcess,
+  });
 
-  assert.ok(executeCommandTool);
+  const result = await environment.executeCommand({
+    command: "echo done",
+    yield_time_ms: 5_000,
+  });
 
-  const executionResult = await executeCommandTool.execute(
-    "tool-call-1",
-    {
-      command: "echo done",
-      yield_time_ms: 5_000,
-    },
-    undefined,
-    undefined,
-  );
-  const executionText = (executionResult.content[0] as { text: string }).text;
-
-  assert.match(executionText, /^completed: true$/m);
-  assert.match(executionText, /^exitCode: 0$/m);
-  assert.ok(executionText.includes("output:\nran: echo done\n"));
+  assert.equal(result.completed, true);
+  assert.equal(result.exitCode, 0);
+  assert.ok(result.output.includes("ran: echo done\n"));
 });
 
-test("AgentComputeDaytonaSandbox reuses tmux sessions by session id across sandbox handles", async () => {
+test("AgentComputeDaytonaEnvironment reuses tmux sessions by session id across runtime instances", async () => {
   const fakeProcess = new FakeDaytonaTmuxProcess();
-  const materializeSandbox = async () => ({
-    environmentRecord: {
-      id: "environment-1",
-      status: "running",
-    },
-    release: async () => undefined,
-    remoteSandbox: {
-      process: fakeProcess,
-    },
+  const firstRuntime = new AgentComputeDaytonaEnvironment({
+    process: fakeProcess,
   });
-  const creatingSandbox = new AgentComputeDaytonaSandbox(materializeSandbox);
-  const executeCommandTool = creatingSandbox.listTools().find((tool) => tool.name === "execute_command");
 
-  assert.ok(executeCommandTool);
+  const createdSession = await firstRuntime.executeCommand({
+    command: "tail -f log.txt",
+    yield_time_ms: 0,
+  });
+  const secondRuntime = new AgentComputeDaytonaEnvironment({
+    process: fakeProcess,
+  });
 
-  const executionResult = await executeCommandTool.execute(
-    "tool-call-1",
-    {
-      command: "tail -f log.txt",
-      yield_time_ms: 0,
-    },
-    undefined,
-    undefined,
-  );
-  const executionText = (executionResult.content[0] as { text: string }).text;
-  const sessionId = executionText.match(/^sessionId: (.+)$/m)?.[1];
-  const reconnectingSandbox = new AgentComputeDaytonaSandbox(materializeSandbox);
-  const reconnectingTools = reconnectingSandbox.listTools();
-  const sendPtyInputTool = reconnectingTools.find((tool) => tool.name === "send_pty_input");
-  const readPtyOutputTool = reconnectingTools.find((tool) => tool.name === "read_pty_output");
-  const killSessionTool = reconnectingTools.find((tool) => tool.name === "kill_session");
+  await secondRuntime.sendInput(createdSession.sessionId, "q\n", 0);
+  const outputPage = await secondRuntime.readOutput(createdSession.sessionId, null, 4_000);
 
-  assert.ok(sessionId);
-  assert.ok(sendPtyInputTool);
-  assert.ok(readPtyOutputTool);
-  assert.ok(killSessionTool);
+  assert.ok(outputPage.chunks[0]?.text.includes("ran: tail -f log.txt\nq\n"));
 
-  await sendPtyInputTool.execute(
-    "tool-call-2",
-    {
-      input: "q\n",
-      sessionId,
-      yield_time_ms: 0,
-    },
-    undefined,
-    undefined,
-  );
-  const outputResult = await readPtyOutputTool.execute(
-    "tool-call-3",
-    {
-      limit: 4_000,
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  const outputText = (outputResult.content[0] as { text: string }).text;
-
-  assert.ok(outputText.includes("output:\nran: tail -f log.txt\nq\n"));
-
-  await killSessionTool.execute(
-    "tool-call-4",
-    {
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  assert.equal(fakeProcess.sessions.has(sessionId), false);
+  await secondRuntime.killSession(createdSession.sessionId);
+  assert.equal(fakeProcess.sessions.has(createdSession.sessionId), false);
 });

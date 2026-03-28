@@ -12,7 +12,8 @@ import {
 import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { AgentToolsService } from "../../tools_service.ts";
-import { AgentComputeProviderInterface } from "../../compute/provider_interface.ts";
+import { AgentEnvironmentAccessService } from "../../environment/access_service.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
@@ -54,16 +55,16 @@ type UpdatableDatabase = {
  */
 @injectable()
 export class PiMonoSessionManagerService {
-  private readonly agentComputeProvider: AgentComputeProviderInterface;
+  private readonly agentEnvironmentAccessService: AgentEnvironmentAccessService;
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
 
   constructor(
     @inject(RedisService) redisService: RedisService,
-    @inject(AgentComputeProviderInterface) agentComputeProvider: AgentComputeProviderInterface,
+    agentEnvironmentAccessService: AgentEnvironmentAccessService,
   ) {
     this.redisService = redisService;
-    this.agentComputeProvider = agentComputeProvider;
+    this.agentEnvironmentAccessService = agentEnvironmentAccessService;
   }
 
   async ensureSession(
@@ -79,12 +80,13 @@ export class PiMonoSessionManagerService {
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(runtimeConfig.providerId, runtimeConfig.apiKey);
     const modelRegistry = new ModelRegistry(authStorage);
-    const environment = await this.agentComputeProvider.getEnvironmentForSession(
+    const promptScope = new AgentEnvironmentPromptScope(
       transactionProvider,
+      this.agentEnvironmentAccessService,
       runtimeConfig.agentId,
       sessionId,
     );
-    const agentToolsService = new AgentToolsService(environment);
+    const agentToolsService = new AgentToolsService(promptScope);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {
       throw new Error(`Model not found for provider "${runtimeConfig.providerId}": ${runtimeConfig.modelId}`);

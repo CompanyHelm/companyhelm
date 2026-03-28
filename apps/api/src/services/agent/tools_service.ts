@@ -1,17 +1,23 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import type { AgentEnvironmentInterface } from "./compute/environment_interface.ts";
+import { AgentEnvironmentPromptScope } from "./environment/prompt_scope.ts";
+import { AgentCloseTerminalSessionTool } from "./tools/close_terminal_session.ts";
+import { AgentExecuteCommandTool } from "./tools/execute_command.ts";
+import { AgentKillTerminalSessionTool } from "./tools/kill_terminal_session.ts";
+import { AgentListTerminalSessionsTool } from "./tools/list_terminal_sessions.ts";
+import { AgentReadTerminalOutputTool } from "./tools/read_terminal_output.ts";
+import { AgentResizeTerminalSessionTool } from "./tools/resize_terminal_session.ts";
+import { AgentSendTerminalInputTool } from "./tools/send_terminal_input.ts";
 
 /**
- * Owns the provider-backed tool lifecycle for one agent runtime. It initializes the Daytona
- * sandbox tools before the session is created and performs cleanup when the runtime is disposed so
- * provider-backed resources such as tmux sessions are released at the end of the turn.
+ * Builds the PI Mono tool catalog for one prompt run. The catalog itself is static, while each
+ * tool lazily asks the prompt scope for a leased environment only when the tool executes.
  */
 export class AgentToolsService {
-  private readonly environment: AgentEnvironmentInterface;
+  private readonly promptScope: AgentEnvironmentPromptScope;
   private initializedTools: ToolDefinition[] | null = null;
 
-  constructor(environment: AgentEnvironmentInterface) {
-    this.environment = environment;
+  constructor(promptScope: AgentEnvironmentPromptScope) {
+    this.promptScope = promptScope;
   }
 
   initializeTools(): ToolDefinition[] {
@@ -19,13 +25,21 @@ export class AgentToolsService {
       return this.initializedTools;
     }
 
-    this.initializedTools = this.environment.listTools();
+    this.initializedTools = [
+      new AgentListTerminalSessionsTool(this.promptScope).createDefinition(),
+      new AgentExecuteCommandTool(this.promptScope).createDefinition(),
+      new AgentSendTerminalInputTool(this.promptScope).createDefinition(),
+      new AgentReadTerminalOutputTool(this.promptScope).createDefinition(),
+      new AgentResizeTerminalSessionTool(this.promptScope).createDefinition(),
+      new AgentKillTerminalSessionTool(this.promptScope).createDefinition(),
+      new AgentCloseTerminalSessionTool(this.promptScope).createDefinition(),
+    ];
 
     return this.initializedTools;
   }
 
   async cleanupTools(): Promise<void> {
-    await this.environment.dispose();
+    await this.promptScope.dispose();
     this.initializedTools = null;
   }
 }
