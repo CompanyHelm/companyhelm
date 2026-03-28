@@ -8,7 +8,7 @@ import {
 import { test, vi } from "vitest";
 import { AgentToolsService } from "../src/services/agent/tools_service.ts";
 
-test("AgentToolsService initializes built-in tools plus compute tools for the current session", () => {
+test("AgentToolsService initializes only compute-backed tools for the current session", () => {
   const computeTool = {
     description: "Execute a sandbox command.",
     execute: async () => ({
@@ -23,49 +23,31 @@ test("AgentToolsService initializes built-in tools plus compute tools for the cu
     promptGuidelines: [],
     promptSnippet: "Run sandbox commands",
   };
-  const service = new AgentToolsService(
-    "agent-1",
-    {
-      listTools() {
-        return [computeTool];
-      },
-    } as never,
-    {
-      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
-        return callback({});
-      },
-    } as never,
-    "session-1",
-  );
+  const service = new AgentToolsService({
+    listTools() {
+      return [computeTool];
+    },
+  } as never);
 
   const tools = service.initializeTools();
 
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["bash", "edit", "read", "write", "execute_command"],
+    ["execute_command"],
   );
   assert.equal(service.initializeTools(), tools);
 });
 
 test("AgentToolsService cleanup invokes sandbox disposal when available", async () => {
   const dispose = vi.fn(async () => undefined);
-  const service = new AgentToolsService(
-    "agent-1",
-    {
-      async dispose() {
-        await dispose();
-      },
-      listTools() {
-        return [];
-      },
-    } as never,
-    {
-      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
-        return callback({});
-      },
-    } as never,
-    "session-1",
-  );
+  const service = new AgentToolsService({
+    async dispose() {
+      await dispose();
+    },
+    listTools() {
+      return [];
+    },
+  } as never);
 
   service.initializeTools();
   await service.cleanupTools();
@@ -82,33 +64,24 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
     throw new Error("Model not found.");
   }
 
-  const service = new AgentToolsService(
-    "agent-1",
-    {
-      listTools() {
-        return [{
-          description: "Execute a sandbox command.",
-          execute: async () => ({
-            content: [{
-              text: "sandbox result",
-              type: "text",
-            }],
-          }),
-          label: "execute_command",
-          name: "execute_command",
-          parameters: {},
-          promptGuidelines: [],
-          promptSnippet: "Run sandbox commands",
-        }];
-      },
-    } as never,
-    {
-      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
-        return callback({});
-      },
-    } as never,
-    "session-1",
-  );
+  const service = new AgentToolsService({
+    listTools() {
+      return [{
+        description: "Execute a sandbox command.",
+        execute: async () => ({
+          content: [{
+            text: "sandbox result",
+            type: "text",
+          }],
+        }),
+        label: "execute_command",
+        name: "execute_command",
+        parameters: {},
+        promptGuidelines: [],
+        promptSnippet: "Run sandbox commands",
+      }];
+    },
+  } as never);
 
   const sessionManager = SessionManager.inMemory();
   sessionManager.newSession({
@@ -128,7 +101,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
 
   assert.deepEqual(
     session.agent.state.tools.map((tool) => tool.name),
-    ["bash", "edit", "read", "write", "execute_command"],
+    ["execute_command"],
   );
 
   session.dispose();

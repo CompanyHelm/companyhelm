@@ -84,12 +84,7 @@ export class PiMonoSessionManagerService {
       runtimeConfig.agentId,
       sessionId,
     );
-    const agentToolsService = new AgentToolsService(
-      runtimeConfig.agentId,
-      computeSandbox,
-      transactionProvider,
-      sessionId,
-    );
+    const agentToolsService = new AgentToolsService(computeSandbox);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {
       throw new Error(`Model not found for provider "${runtimeConfig.providerId}": ${runtimeConfig.modelId}`);
