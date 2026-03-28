@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import type { AgentComputeSandboxInterface } from "./compute/sandbox_interface.ts";
+import type { AgentEnvironmentInterface } from "./compute/environment_interface.ts";
 
 /**
  * Owns the provider-backed tool lifecycle for one agent runtime. It initializes the Daytona
@@ -7,11 +7,11 @@ import type { AgentComputeSandboxInterface } from "./compute/sandbox_interface.t
  * provider-backed resources such as tmux sessions are released at the end of the turn.
  */
 export class AgentToolsService {
-  private readonly computeSandbox: AgentComputeSandboxInterface;
+  private readonly environment: AgentEnvironmentInterface;
   private initializedTools: ToolDefinition[] | null = null;
 
-  constructor(computeSandbox: AgentComputeSandboxInterface) {
-    this.computeSandbox = computeSandbox;
+  constructor(environment: AgentEnvironmentInterface) {
+    this.environment = environment;
   }
 
   initializeTools(): ToolDefinition[] {
@@ -19,13 +19,13 @@ export class AgentToolsService {
       return this.initializedTools;
     }
 
-    this.initializedTools = this.computeSandbox.listTools();
+    this.initializedTools = this.environment.listTools();
 
     return this.initializedTools;
   }
 
   async cleanupTools(): Promise<void> {
-    await this.computeSandbox.dispose();
+    await this.environment.dispose();
     this.initializedTools = null;
   }
 }

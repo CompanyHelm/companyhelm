@@ -5,8 +5,8 @@ import type {
   AgentComputeCommandInput,
   AgentComputeCommandResult,
   AgentComputePtyOutputPage,
-} from "../sandbox_interface.ts";
-import { AgentComputeSandboxInterface } from "../sandbox_interface.ts";
+} from "../environment_interface.ts";
+import { AgentEnvironmentInterface } from "../environment_interface.ts";
 
 type MaterializedDaytonaSandbox = {
   environmentRecord: {
@@ -50,7 +50,7 @@ type TmuxSessionInfo = {
  * tool calls can address the same shell by session id without keeping PTY output buffered in the
  * API process.
  */
-export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
+export class AgentComputeDaytonaSandbox extends AgentEnvironmentInterface {
   private static readonly DEFAULT_EXECUTE_COMMAND_YIELD_MS = 1_000;
   private static readonly DEFAULT_READ_OUTPUT_LIMIT = 4_000;
   private static readonly POLL_INTERVAL_MILLISECONDS = 100;

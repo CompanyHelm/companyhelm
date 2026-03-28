@@ -139,7 +139,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       },
     } as never,
     {
-      async getSandboxForSession() {
+      async getEnvironmentForSession() {
         return {
           async dispose() {
             return undefined;
@@ -313,7 +313,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       },
     } as never,
     {
-      async getSandboxForSession() {
+      async getEnvironmentForSession() {
         return {
           async dispose() {
             return undefined;

@@ -30,11 +30,11 @@ export type AgentComputePtyOutputPage = {
 };
 
 /**
- * Describes the provider-agnostic compute surface exposed to PI Mono. Implementations keep their
- * runtime-specific lifecycle and PTY coordination private and only publish PI Mono tool
- * definitions that agents can invoke.
+ * Describes the provider-agnostic compute environment surface exposed to PI Mono. Implementations
+ * keep their runtime-specific lifecycle and PTY coordination private and only publish PI Mono
+ * tool definitions that agents can invoke.
  */
-export abstract class AgentComputeSandboxInterface {
+export abstract class AgentEnvironmentInterface {
   /**
    * Lists the PI Mono tool definitions exposed by this runtime handle. The returned tools should
    * be self-contained and should hide provider-specific session management behind their execute
@@ -43,7 +43,7 @@ export abstract class AgentComputeSandboxInterface {
   abstract listTools(): ToolDefinition[];
 
   /**
-   * Releases any runtime-local resources held by the sandbox handle after the PI Mono session
+   * Releases any runtime-local resources held by the environment handle after the PI Mono session
    * finishes. Implementations should use this hook to detach shells, release leases, and clean up
    * any provider objects that are scoped to a single prompt run.
    */

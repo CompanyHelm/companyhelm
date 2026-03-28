@@ -29,7 +29,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     this.agentEnvironmentService = agentEnvironmentService;
   }
 
-  async getSandboxForSession(
+  async getEnvironmentForSession(
     transactionProvider: TransactionProviderInterface,
     agentId: string,
     sessionId: string,

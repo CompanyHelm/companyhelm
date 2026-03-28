@@ -79,12 +79,12 @@ export class PiMonoSessionManagerService {
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(runtimeConfig.providerId, runtimeConfig.apiKey);
     const modelRegistry = new ModelRegistry(authStorage);
-    const computeSandbox = await this.agentComputeProvider.getSandboxForSession(
+    const environment = await this.agentComputeProvider.getEnvironmentForSession(
       transactionProvider,
       runtimeConfig.agentId,
       sessionId,
     );
-    const agentToolsService = new AgentToolsService(computeSandbox);
+    const agentToolsService = new AgentToolsService(environment);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {
       throw new Error(`Model not found for provider "${runtimeConfig.providerId}": ${runtimeConfig.modelId}`);

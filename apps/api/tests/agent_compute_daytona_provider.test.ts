@@ -15,10 +15,10 @@ test("AgentComputeDaytonaProvider returns a lazy sandbox handle without material
     },
   } as never, agentEnvironmentService);
 
-  const sandbox = await provider.getSandboxForSession(transactionProvider, "agent-1", "session-1");
+  const environment = await provider.getEnvironmentForSession(transactionProvider, "agent-1", "session-1");
 
   assert.equal(materializeEnvironmentForSession.mock.calls.length, 0);
-  assert.deepEqual(sandbox.listTools().map((tool) => tool.name), [
+  assert.deepEqual(environment.listTools().map((tool) => tool.name), [
     "list_pty_sessions",
     "execute_command",
     "send_pty_input",
