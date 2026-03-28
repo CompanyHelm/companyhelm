@@ -33,7 +33,8 @@ redis:
   username: ""
   password: ""
 daytona:
-  api_key: "daytona-local-api-key"
+  api_key: "${DAYTONA_API_KEY}"
+  api_url: "https://app.daytona.io/api"
 github:
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
