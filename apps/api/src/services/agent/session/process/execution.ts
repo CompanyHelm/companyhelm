@@ -175,7 +175,7 @@ export class SessionProcessExecutionService {
         clearInterval(heartbeatHandle);
       }
 
-      this.piMonoSessionManagerService.dispose(sessionId);
+      await this.piMonoSessionManagerService.dispose(sessionId);
       await this.sessionLeaseService.release(lease);
       await redisCompanyScopedService.disconnect();
 

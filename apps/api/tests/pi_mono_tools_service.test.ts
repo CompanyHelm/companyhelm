@@ -5,15 +5,29 @@ import {
   ModelRegistry,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
-import { test } from "vitest";
-import { PiMonoToolsService } from "../src/services/agent/session/pi-mono/tools/service.ts";
+import { test, vi } from "vitest";
+import { AgentToolsService } from "../src/services/agent/tools_service.ts";
 
-test("PiMonoToolsService returns a stubbed read override bound to the current session", async () => {
-  const service = new PiMonoToolsService(
+test("AgentToolsService initializes built-in tools plus compute tools for the current session", () => {
+  const computeTool = {
+    description: "Execute a sandbox command.",
+    execute: async () => ({
+      content: [{
+        text: "sandbox result",
+        type: "text",
+      }],
+    }),
+    label: "execute_command",
+    name: "execute_command",
+    parameters: {},
+    promptGuidelines: [],
+    promptSnippet: "Run sandbox commands",
+  };
+  const service = new AgentToolsService(
     "agent-1",
     {
       listTools() {
-        return [];
+        return [computeTool];
       },
     } as never,
     {
@@ -24,44 +38,23 @@ test("PiMonoToolsService returns a stubbed read override bound to the current se
     "session-1",
   );
 
-  const tools = service.getTools();
-  assert.equal(tools.length, 4);
+  const tools = service.initializeTools();
+
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["bash", "edit", "read", "write"],
+    ["bash", "edit", "read", "write", "execute_command"],
   );
-
-  const readTool = tools.find((tool) => tool.name === "read");
-  assert.ok(readTool);
-  const result = await readTool.execute(
-    "tool-call-1",
-    {
-      path: "src/index.ts",
-      limit: 20,
-      offset: 5,
-    },
-    undefined,
-    undefined,
-  );
-
-  assert.deepEqual(result.content, [{
-    type: "text",
-    text: "Stub read result for \"src/index.ts\" in session session-1 on agent agent-1.",
-  }]);
-  assert.deepEqual(result.details, {
-    agentId: "agent-1",
-    limit: 20,
-    offset: 5,
-    path: "src/index.ts",
-    sessionId: "session-1",
-    transactionProviderAvailable: true,
-  });
+  assert.equal(service.initializeTools(), tools);
 });
 
-test("PiMonoToolsService returns stubbed bash, edit, and write overrides", async () => {
-  const service = new PiMonoToolsService(
+test("AgentToolsService cleanup invokes sandbox disposal when available", async () => {
+  const dispose = vi.fn(async () => undefined);
+  const service = new AgentToolsService(
     "agent-1",
     {
+      async dispose() {
+        await dispose();
+      },
       listTools() {
         return [];
       },
@@ -74,58 +67,13 @@ test("PiMonoToolsService returns stubbed bash, edit, and write overrides", async
     "session-1",
   );
 
-  const tools = service.getTools();
-  const bashTool = tools.find((tool) => tool.name === "bash");
-  const editTool = tools.find((tool) => tool.name === "edit");
-  const writeTool = tools.find((tool) => tool.name === "write");
-  assert.ok(bashTool);
-  assert.ok(editTool);
-  assert.ok(writeTool);
+  service.initializeTools();
+  await service.cleanupTools();
 
-  const bashResult = await bashTool.execute(
-    "tool-call-1",
-    {
-      command: "npm test",
-      timeout: 30_000,
-    },
-    undefined,
-    undefined,
-  );
-  const editResult = await editTool.execute(
-    "tool-call-2",
-    {
-      newText: "new body",
-      oldText: "old body",
-      path: "src/index.ts",
-    },
-    undefined,
-    undefined,
-  );
-  const writeResult = await writeTool.execute(
-    "tool-call-3",
-    {
-      content: "file contents",
-      path: "src/output.ts",
-    },
-    undefined,
-    undefined,
-  );
-
-  assert.deepEqual(bashResult.content, [{
-    type: "text",
-    text: "Stub bash result for \"npm test\" in session session-1 on agent agent-1.",
-  }]);
-  assert.deepEqual(editResult.content, [{
-    type: "text",
-    text: "Stub edit result for \"src/index.ts\" in session session-1 on agent agent-1.",
-  }]);
-  assert.deepEqual(writeResult.content, [{
-    type: "text",
-    text: "Stub write result for \"src/output.ts\" in session session-1 on agent agent-1.",
-  }]);
+  assert.equal(dispose.mock.calls.length, 1);
 });
 
-test("PiMono read override replaces the built-in read tool in a live session", async () => {
+test("AgentToolsService custom tools can be injected into a live PI Mono session", async () => {
   const authStorage = AuthStorage.inMemory();
   authStorage.setRuntimeApiKey("openai", "sk-test");
   const modelRegistry = new ModelRegistry(authStorage);
@@ -134,101 +82,7 @@ test("PiMono read override replaces the built-in read tool in a live session", a
     throw new Error("Model not found.");
   }
 
-  const service = new PiMonoToolsService(
-    "agent-1",
-    {
-      listTools() {
-        return [];
-      },
-    } as never,
-    {
-      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
-        return callback({});
-      },
-    } as never,
-    "session-1",
-  );
-
-  const sessionManager = SessionManager.inMemory();
-  sessionManager.newSession({
-    id: "session-1",
-  });
-
-  const { session } = await createAgentSession({
-    authStorage,
-    tools: [],
-    customTools: service.getTools(),
-    model,
-    modelRegistry,
-    sessionManager,
-    thinkingLevel: "low",
-  });
-  session.setActiveToolsByName(service.getTools().map((tool) => tool.name));
-
-  assert.deepEqual(
-    session.agent.state.tools.map((tool) => tool.name),
-    ["bash", "edit", "read", "write"],
-  );
-
-  const readTool = session.agent.state.tools.find((tool) => tool.name === "read");
-  const bashTool = session.agent.state.tools.find((tool) => tool.name === "bash");
-  const editTool = session.agent.state.tools.find((tool) => tool.name === "edit");
-  const writeTool = session.agent.state.tools.find((tool) => tool.name === "write");
-  assert.ok(readTool);
-  assert.ok(bashTool);
-  assert.ok(editTool);
-  assert.ok(writeTool);
-
-  const readResult = await readTool.execute(
-    "tool-call-1",
-    {
-      path: "src/index.ts",
-    },
-  );
-  const bashResult = await bashTool.execute(
-    "tool-call-2",
-    {
-      command: "pwd",
-    },
-  );
-  const editResult = await editTool.execute(
-    "tool-call-3",
-    {
-      newText: "next",
-      oldText: "prev",
-      path: "src/index.ts",
-    },
-  );
-  const writeResult = await writeTool.execute(
-    "tool-call-4",
-    {
-      content: "hello",
-      path: "src/output.ts",
-    },
-  );
-
-  assert.deepEqual(readResult.content, [{
-    type: "text",
-    text: "Stub read result for \"src/index.ts\" in session session-1 on agent agent-1.",
-  }]);
-  assert.deepEqual(bashResult.content, [{
-    type: "text",
-    text: "Stub bash result for \"pwd\" in session session-1 on agent agent-1.",
-  }]);
-  assert.deepEqual(editResult.content, [{
-    type: "text",
-    text: "Stub edit result for \"src/index.ts\" in session session-1 on agent agent-1.",
-  }]);
-  assert.deepEqual(writeResult.content, [{
-    type: "text",
-    text: "Stub write result for \"src/output.ts\" in session session-1 on agent agent-1.",
-  }]);
-
-  session.dispose();
-});
-
-test("PiMonoToolsService appends compute tool definitions from the sandbox handle", () => {
-  const service = new PiMonoToolsService(
+  const service = new AgentToolsService(
     "agent-1",
     {
       listTools() {
@@ -256,8 +110,26 @@ test("PiMonoToolsService appends compute tool definitions from the sandbox handl
     "session-1",
   );
 
+  const sessionManager = SessionManager.inMemory();
+  sessionManager.newSession({
+    id: "session-1",
+  });
+  const tools = service.initializeTools();
+  const { session } = await createAgentSession({
+    authStorage,
+    tools: [],
+    customTools: tools,
+    model,
+    modelRegistry,
+    sessionManager,
+    thinkingLevel: "low",
+  });
+  session.setActiveToolsByName(tools.map((tool) => tool.name));
+
   assert.deepEqual(
-    service.getTools().map((tool) => tool.name),
+    session.agent.state.tools.map((tool) => tool.name),
     ["bash", "edit", "read", "write", "execute_command"],
   );
+
+  session.dispose();
 });

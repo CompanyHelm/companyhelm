@@ -44,39 +44,17 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
   ): Promise<{
     remoteSandbox: {
       process: {
-        connectPty(
-          sessionId_: string,
-          options: {
-            onData: (data: Uint8Array) => void | Promise<void>;
-          },
+        executeCommand(
+          command: string,
+          cwd?: string,
+          env?: Record<string, string>,
+          timeout?: number,
         ): Promise<{
-          disconnect(): Promise<void>;
-          kill(): Promise<void>;
-          resize(cols: number, rows: number): Promise<unknown>;
-          sendInput(data: string | Uint8Array): Promise<void>;
-          wait(): Promise<{
-            error?: string;
-            exitCode?: number;
-          }>;
-          waitForConnection(): Promise<void>;
-        }>;
-        createPty(options: {
-          cols?: number;
-          cwd?: string;
-          envs?: Record<string, string>;
-          id: string;
-          onData: (data: Uint8Array) => void | Promise<void>;
-          rows?: number;
-        }): Promise<{
-          disconnect(): Promise<void>;
-          kill(): Promise<void>;
-          resize(cols: number, rows: number): Promise<unknown>;
-          sendInput(data: string | Uint8Array): Promise<void>;
-          wait(): Promise<{
-            error?: string;
-            exitCode?: number;
-          }>;
-          waitForConnection(): Promise<void>;
+          artifacts?: {
+            stdout?: string;
+          };
+          exitCode: number;
+          result: string;
         }>;
       };
     };
@@ -114,6 +92,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     if (sandboxRecord.status !== "running") {
       await remoteSandbox.start();
       await remoteSandbox.refreshData();
+      await this.ensureTmuxInstalled(remoteSandbox);
 
       const updatedSandboxRecord = await this.agentSandboxService.updateSandboxRuntimeState(
         transactionProvider,
@@ -132,10 +111,40 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       };
     }
 
+    await this.ensureTmuxInstalled(remoteSandbox);
+
     return {
       remoteSandbox,
       sandboxRecord,
     };
+  }
+
+  private async ensureTmuxInstalled(remoteSandbox: {
+    process: {
+      executeCommand(
+        command: string,
+        cwd?: string,
+        env?: Record<string, string>,
+        timeout?: number,
+      ): Promise<{
+        artifacts?: {
+          stdout?: string;
+        };
+        exitCode: number;
+        result: string;
+      }>;
+    };
+  }): Promise<void> {
+    const result = await remoteSandbox.process.executeCommand(
+      "sh -lc 'command -v tmux >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tmux)'",
+      undefined,
+      undefined,
+      300,
+    );
+    if (result.exitCode !== 0) {
+      const stdout = result.artifacts?.stdout ?? result.result;
+      throw new Error(`Failed to prepare tmux in Daytona sandbox: ${stdout}`);
+    }
   }
 
   private getDaytonaClient(): Daytona {

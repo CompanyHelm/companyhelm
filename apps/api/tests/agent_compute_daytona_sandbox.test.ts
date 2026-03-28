@@ -2,47 +2,175 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AgentComputeDaytonaSandbox } from "../src/services/agent/compute/daytona/daytona_sandbox.ts";
 
-test("AgentComputeDaytonaSandbox exposes PI Mono tools and paginates PTY output through them", async () => {
-  const sendInput = vi.fn(async () => undefined);
-  const resize = vi.fn(async () => undefined);
-  const disconnect = vi.fn(async () => undefined);
-  const wait = vi.fn(() => new Promise<{ exitCode: number }>(() => undefined));
-  let onData: ((data: Uint8Array) => void | Promise<void>) | null = null;
-  const createPty = vi.fn(async (options: {
-    onData: (data: Uint8Array) => void | Promise<void>;
-  }) => {
-    onData = options.onData;
+type FakeTmuxSession = {
+  createdAt: string;
+  height: number;
+  output: string;
+  width: number;
+};
 
-    return {
-      disconnect,
-      kill: async () => undefined,
-      resize,
-      sendInput,
-      wait,
-      waitForConnection: async () => undefined,
-    };
+class FakeDaytonaTmuxProcess {
+  readonly executeCommand = vi.fn(async (command: string) => {
+    if (command.includes("tmux list-sessions")) {
+      return {
+        exitCode: 0,
+        result: [...this.sessions.entries()]
+          .map(([sessionId, session]) => `${sessionId}\t0\t${session.createdAt}\t${session.width}\t${session.height}`)
+          .join("\n"),
+      };
+    }
+
+    if (command.startsWith("tmux has-session -t ")) {
+      const sessionId = this.extractFirstQuotedValue(command);
+      return {
+        exitCode: this.sessions.has(sessionId) ? 0 : 1,
+        result: "",
+      };
+    }
+
+    if (command.includes("tmux new-session -d")) {
+      const sessionId = /-s '([^']+)'/.exec(command)?.[1];
+      assert.ok(sessionId);
+      const width = Number(/-x (\d+)/.exec(command)?.[1] ?? "80");
+      const height = Number(/-y (\d+)/.exec(command)?.[1] ?? "24");
+      this.sessions.set(sessionId, {
+        createdAt: "12345",
+        height,
+        output: "",
+        width,
+      });
+
+      return {
+        exitCode: 0,
+        result: "",
+      };
+    }
+
+    if (command.startsWith("cat > ")) {
+      const filePath = this.extractFirstQuotedValue(command);
+      const lines = command.split("\n");
+      this.commandFiles.set(filePath, lines.slice(1, -1).join("\n"));
+      return {
+        exitCode: 0,
+        result: "",
+      };
+    }
+
+    if (command.startsWith("rm -f ")) {
+      for (const filePath of command.match(/'[^']+'/g) ?? []) {
+        const normalizedPath = filePath.slice(1, -1);
+        this.commandFiles.delete(normalizedPath);
+        this.rcFiles.delete(normalizedPath);
+      }
+
+      return {
+        exitCode: 0,
+        result: "",
+      };
+    }
+
+    if (command.startsWith("tmux send-keys -t ")) {
+      const sessionId = /tmux send-keys -t '([^']+)'/.exec(command)?.[1];
+      assert.ok(sessionId);
+      const session = this.sessions.get(sessionId);
+      assert.ok(session);
+      const commandFilePath = command.match(/\/tmp\/companyhelm\/[A-Za-z0-9-]+\.command\.sh/)?.[0];
+      const rcFilePath = command.match(/\/tmp\/companyhelm\/[A-Za-z0-9-]+\.rc/)?.[0];
+
+      if (commandFilePath && rcFilePath) {
+        const commandFileContents = this.commandFiles.get(commandFilePath) ?? "";
+        session.output += `ran: ${commandFileContents.trim()}\n`;
+        if (this.autoCompleteCommands) {
+          this.rcFiles.set(rcFilePath, "0");
+        }
+      } else {
+        const literalInput = /-l -- '([^']*)'/.exec(command)?.[1] ?? "";
+        session.output += literalInput;
+        if (command.includes(" Enter")) {
+          session.output += "\n";
+        }
+      }
+
+      return {
+        exitCode: 0,
+        result: "",
+      };
+    }
+
+    if (command.startsWith("sh -lc 'if [ -f ")) {
+      const filePath = command.match(/\/tmp\/companyhelm\/[A-Za-z0-9-]+\.rc/)?.[0];
+      const content = filePath ? (this.rcFiles.get(filePath) ?? "") : "";
+      return {
+        exitCode: 0,
+        result: content,
+      };
+    }
+
+    if (command.startsWith("tmux capture-pane -pt ")) {
+      const sessionId = this.extractFirstQuotedValue(command);
+      const session = this.sessions.get(sessionId);
+      return {
+        exitCode: session ? 0 : 1,
+        result: session?.output ?? "",
+      };
+    }
+
+    if (command.startsWith("tmux resize-window -t ")) {
+      const sessionId = this.extractFirstQuotedValue(command);
+      const session = this.sessions.get(sessionId);
+      assert.ok(session);
+      session.width = Number(/-x (\d+)/.exec(command)?.[1] ?? "80");
+      session.height = Number(/-y (\d+)/.exec(command)?.[1] ?? "24");
+      return {
+        exitCode: 0,
+        result: "",
+      };
+    }
+
+    if (command.startsWith("tmux kill-session -t ")) {
+      const sessionId = this.extractFirstQuotedValue(command);
+      this.sessions.delete(sessionId);
+      return {
+        exitCode: 0,
+        result: "",
+      };
+    }
+
+    throw new Error(`Unhandled sandbox command: ${command}`);
   });
-  const materializeSandbox = vi.fn(async () => ({
+
+  readonly commandFiles = new Map<string, string>();
+  readonly rcFiles = new Map<string, string>();
+  readonly sessions = new Map<string, FakeTmuxSession>();
+  autoCompleteCommands = false;
+
+  private extractFirstQuotedValue(command: string): string {
+    const match = /'([^']+)'/.exec(command);
+    assert.ok(match);
+    return match[1];
+  }
+}
+
+test("AgentComputeDaytonaSandbox exposes tmux-backed tools and reads output directly from tmux", async () => {
+  const fakeProcess = new FakeDaytonaTmuxProcess();
+  const sandbox = new AgentComputeDaytonaSandbox(async () => ({
     remoteSandbox: {
-      process: {
-        connectPty: createPty,
-        createPty,
-      },
+      process: fakeProcess,
     },
     sandboxRecord: {
       id: "sandbox-1",
       status: "running",
     },
   }));
-  const sandbox = new AgentComputeDaytonaSandbox(materializeSandbox);
   const tools = sandbox.listTools();
   const executeCommandTool = tools.find((tool) => tool.name === "execute_command");
-  const sendPtyInputTool = tools.find((tool) => tool.name === "send_pty_input");
   const readPtyOutputTool = tools.find((tool) => tool.name === "read_pty_output");
   const resizePtyTool = tools.find((tool) => tool.name === "resize_pty");
   const closeSessionTool = tools.find((tool) => tool.name === "close_session");
+  const listPtySessionsTool = tools.find((tool) => tool.name === "list_pty_sessions");
 
   assert.deepEqual(tools.map((tool) => tool.name), [
+    "list_pty_sessions",
     "execute_command",
     "send_pty_input",
     "read_pty_output",
@@ -51,11 +179,10 @@ test("AgentComputeDaytonaSandbox exposes PI Mono tools and paginates PTY output 
     "close_session",
   ]);
   assert.ok(executeCommandTool);
-  assert.ok(sendPtyInputTool);
   assert.ok(readPtyOutputTool);
   assert.ok(resizePtyTool);
   assert.ok(closeSessionTool);
-  assert.equal(materializeSandbox.mock.calls.length, 0);
+  assert.ok(listPtySessionsTool);
 
   const executionResult = await executeCommandTool.execute(
     "tool-call-1",
@@ -67,48 +194,49 @@ test("AgentComputeDaytonaSandbox exposes PI Mono tools and paginates PTY output 
     undefined,
   );
   const executionText = (executionResult.content[0] as { text: string }).text;
-  const sessionIdMatch = executionText.match(/^sessionId: (.+)$/m);
-  const sessionId = sessionIdMatch?.[1];
+  const sessionId = executionText.match(/^sessionId: (.+)$/m)?.[1];
 
   assert.ok(sessionId);
   assert.match(executionText, /^completed: false$/m);
-  assert.equal(materializeSandbox.mock.calls.length, 1);
-  assert.equal(createPty.mock.calls.length, 1);
-  assert.equal(sendInput.mock.calls.length, 1);
-  assert.match(String(sendInput.mock.calls[0]?.[0]), /^ls -la\nprintf '/);
+  assert.ok(executionText.includes("output:\nran: ls -la\n"));
 
-  await onData?.(new TextEncoder().encode("first\n"));
-  await onData?.(new TextEncoder().encode("second\n"));
-
-  const firstPageResult = await readPtyOutputTool.execute(
+  const listResult = await listPtySessionsTool.execute(
     "tool-call-2",
-    {
-      limit: 1,
-      sessionId,
-    },
+    {},
     undefined,
     undefined,
   );
-  const firstPageText = (firstPageResult.content[0] as { text: string }).text;
-  assert.match(firstPageText, /^nextOffset: 0$/m);
-  assert.ok(firstPageText.includes("output:\nfirst\n"));
+  const listText = (listResult.content[0] as { text: string }).text;
+  assert.ok(listText.includes(`sessionId: ${sessionId}`));
 
-  const secondPageResult = await readPtyOutputTool.execute(
+  const firstReadResult = await readPtyOutputTool.execute(
     "tool-call-3",
     {
-      afterOffset: 0,
-      limit: 1,
+      limit: 4_000,
       sessionId,
     },
     undefined,
     undefined,
   );
-  const secondPageText = (secondPageResult.content[0] as { text: string }).text;
-  assert.match(secondPageText, /^nextOffset: 1$/m);
-  assert.ok(secondPageText.includes("output:\nsecond\n"));
+  const firstReadText = (firstReadResult.content[0] as { text: string }).text;
+  const nextOffset = Number(firstReadText.match(/^nextOffset: (\d+)$/m)?.[1] ?? "0");
+  assert.ok(firstReadText.includes("output:\nran: ls -la\n"));
+
+  const secondReadResult = await readPtyOutputTool.execute(
+    "tool-call-4",
+    {
+      afterOffset: nextOffset,
+      limit: 4_000,
+      sessionId,
+    },
+    undefined,
+    undefined,
+  );
+  const secondReadText = (secondReadResult.content[0] as { text: string }).text;
+  assert.ok(secondReadText.includes("output:\n(no output)"));
 
   await resizePtyTool.execute(
-    "tool-call-4",
+    "tool-call-5",
     {
       columns: 120,
       rows: 40,
@@ -117,18 +245,8 @@ test("AgentComputeDaytonaSandbox exposes PI Mono tools and paginates PTY output 
     undefined,
     undefined,
   );
-  assert.deepEqual(resize.mock.calls[0], [120, 40]);
-
-  await sendPtyInputTool.execute(
-    "tool-call-5",
-    {
-      input: "exit\n",
-      sessionId,
-    },
-    undefined,
-    undefined,
-  );
-  assert.equal(sendInput.mock.calls[1]?.[0], "exit\n");
+  assert.equal(fakeProcess.sessions.get(sessionId)?.width, 120);
+  assert.equal(fakeProcess.sessions.get(sessionId)?.height, 40);
 
   await closeSessionTool.execute(
     "tool-call-6",
@@ -138,37 +256,15 @@ test("AgentComputeDaytonaSandbox exposes PI Mono tools and paginates PTY output 
     undefined,
     undefined,
   );
-  assert.equal(disconnect.mock.calls.length, 1);
+  assert.equal(fakeProcess.sessions.has(sessionId), false);
 });
 
-test("AgentComputeDaytonaSandbox returns immediately from execute_command when the PTY finishes before the yield window", async () => {
-  let onData: ((data: Uint8Array) => void | Promise<void>) | null = null;
-  const createPty = vi.fn(async (options: {
-    onData: (data: Uint8Array) => void | Promise<void>;
-  }) => {
-    onData = options.onData;
-
-    return {
-      disconnect: async () => undefined,
-      kill: async () => undefined,
-      resize: async () => undefined,
-      sendInput: async (data: string | Uint8Array) => {
-        assert.match(String(data), /^echo done\nprintf '/);
-        await onData?.(new TextEncoder().encode("done\n"));
-        const commandMarker = /\\036(codex_[a-z0-9]+):%s\\037/.exec(String(data));
-        assert.ok(commandMarker);
-        await onData?.(new TextEncoder().encode(`\u001e${commandMarker[1]}:0\u001f`));
-      },
-      wait: async () => new Promise(() => undefined),
-      waitForConnection: async () => undefined,
-    };
-  });
+test("AgentComputeDaytonaSandbox returns immediately from execute_command when the tmux command completes before the yield window", async () => {
+  const fakeProcess = new FakeDaytonaTmuxProcess();
+  fakeProcess.autoCompleteCommands = true;
   const sandbox = new AgentComputeDaytonaSandbox(async () => ({
     remoteSandbox: {
-      process: {
-        connectPty: createPty,
-        createPty,
-      },
+      process: fakeProcess,
     },
     sandboxRecord: {
       id: "sandbox-1",
@@ -192,39 +288,14 @@ test("AgentComputeDaytonaSandbox returns immediately from execute_command when t
 
   assert.match(executionText, /^completed: true$/m);
   assert.match(executionText, /^exitCode: 0$/m);
-  assert.ok(executionText.includes("output:\ndone\n"));
+  assert.ok(executionText.includes("output:\nran: echo done\n"));
 });
 
-test("AgentComputeDaytonaSandbox reconnects by session id across handles through the PI Mono tool definitions", async () => {
-  const createSendInput = vi.fn(async () => undefined);
-  const connectSendInput = vi.fn(async () => undefined);
-  const connectKill = vi.fn(async () => undefined);
-  const connectPty = vi.fn(async (_sessionId: string, options: {
-    onData: (data: Uint8Array) => void | Promise<void>;
-  }) => ({
-    disconnect: async () => undefined,
-    kill: connectKill,
-    resize: async () => undefined,
-    sendInput: connectSendInput,
-    wait: async () => new Promise(() => undefined),
-    waitForConnection: async () => {
-      await options.onData(new TextEncoder().encode("follow-up\n"));
-    },
-  }));
-  const createPty = vi.fn(async () => ({
-    disconnect: async () => undefined,
-    kill: async () => undefined,
-    resize: async () => undefined,
-    sendInput: createSendInput,
-    wait: async () => new Promise(() => undefined),
-    waitForConnection: async () => undefined,
-  }));
+test("AgentComputeDaytonaSandbox reuses tmux sessions by session id across sandbox handles", async () => {
+  const fakeProcess = new FakeDaytonaTmuxProcess();
   const materializeSandbox = async () => ({
     remoteSandbox: {
-      process: {
-        connectPty,
-        createPty,
-      },
+      process: fakeProcess,
     },
     sandboxRecord: {
       id: "sandbox-1",
@@ -232,8 +303,8 @@ test("AgentComputeDaytonaSandbox reconnects by session id across handles through
     },
   });
   const creatingSandbox = new AgentComputeDaytonaSandbox(materializeSandbox);
-  const creatingTools = creatingSandbox.listTools();
-  const executeCommandTool = creatingTools.find((tool) => tool.name === "execute_command");
+  const executeCommandTool = creatingSandbox.listTools().find((tool) => tool.name === "execute_command");
+
   assert.ok(executeCommandTool);
 
   const executionResult = await executeCommandTool.execute(
@@ -261,8 +332,9 @@ test("AgentComputeDaytonaSandbox reconnects by session id across handles through
   await sendPtyInputTool.execute(
     "tool-call-2",
     {
-      input: "q",
+      input: "q\n",
       sessionId,
+      yield_time_ms: 0,
     },
     undefined,
     undefined,
@@ -270,7 +342,7 @@ test("AgentComputeDaytonaSandbox reconnects by session id across handles through
   const outputResult = await readPtyOutputTool.execute(
     "tool-call-3",
     {
-      limit: 10,
+      limit: 4_000,
       sessionId,
     },
     undefined,
@@ -278,11 +350,7 @@ test("AgentComputeDaytonaSandbox reconnects by session id across handles through
   );
   const outputText = (outputResult.content[0] as { text: string }).text;
 
-  assert.equal(createPty.mock.calls.length, 1);
-  assert.equal(connectPty.mock.calls.length, 1);
-  assert.equal(connectPty.mock.calls[0]?.[0], sessionId);
-  assert.equal(connectSendInput.mock.calls[0]?.[0], "q");
-  assert.ok(outputText.includes("output:\nfollow-up\n"));
+  assert.ok(outputText.includes("output:\nran: tail -f log.txt\nq\n"));
 
   await killSessionTool.execute(
     "tool-call-4",
@@ -292,5 +360,5 @@ test("AgentComputeDaytonaSandbox reconnects by session id across handles through
     undefined,
     undefined,
   );
-  assert.equal(connectKill.mock.calls.length, 1);
+  assert.equal(fakeProcess.sessions.has(sessionId), false);
 });

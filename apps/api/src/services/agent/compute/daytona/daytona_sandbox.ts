@@ -7,44 +7,21 @@ import type {
   AgentComputePtyOutputPage,
 } from "../sandbox_interface.ts";
 import { AgentComputeSandboxInterface } from "../sandbox_interface.ts";
-import { AgentComputeDaytonaPty } from "./daytona_pty.ts";
 
 type MaterializedDaytonaSandbox = {
   remoteSandbox: {
     process: {
-      connectPty(
-        sessionId: string,
-        options: {
-          onData: (data: Uint8Array) => void | Promise<void>;
-        },
+      executeCommand(
+        command: string,
+        cwd?: string,
+        env?: Record<string, string>,
+        timeout?: number,
       ): Promise<{
-        disconnect(): Promise<void>;
-        kill(): Promise<void>;
-        resize(cols: number, rows: number): Promise<unknown>;
-        sendInput(data: string | Uint8Array): Promise<void>;
-        wait(): Promise<{
-          error?: string;
-          exitCode?: number;
-        }>;
-        waitForConnection(): Promise<void>;
-      }>;
-      createPty(options: {
-        cols?: number;
-        cwd?: string;
-        envs?: Record<string, string>;
-        id: string;
-        onData: (data: Uint8Array) => void | Promise<void>;
-        rows?: number;
-      }): Promise<{
-        disconnect(): Promise<void>;
-        kill(): Promise<void>;
-        resize(cols: number, rows: number): Promise<unknown>;
-        sendInput(data: string | Uint8Array): Promise<void>;
-        wait(): Promise<{
-          error?: string;
-          exitCode?: number;
-        }>;
-        waitForConnection(): Promise<void>;
+        artifacts?: {
+          stdout?: string;
+        };
+        exitCode: number;
+        result: string;
       }>;
     };
   };
@@ -54,26 +31,42 @@ type MaterializedDaytonaSandbox = {
   };
 };
 
+type TmuxCommandRun = {
+  rcFile: string;
+};
+
+type TmuxSessionInfo = {
+  attached: boolean;
+  createdAt: string;
+  height: number;
+  id: string;
+  width: number;
+};
+
 /**
- * Adapts a lazily materialized Daytona sandbox into the PI Mono tool-definition contract. The
- * sandbox keeps PTY lifecycle and reconnection logic private and publishes only PI Mono tools,
- * allowing the rest of the agent stack to stay independent from Daytona-specific runtime types.
+ * Adapts a lazily materialized Daytona sandbox into a tmux-backed PI Mono tool surface. Every
+ * compute session maps to a remote tmux session inside the sandbox, so follow-up tool calls can
+ * address the same shell by session id without keeping PTY output buffered in the API process.
  */
 export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
   private static readonly DEFAULT_EXECUTE_COMMAND_YIELD_MS = 1_000;
-  private static readonly DEFAULT_READ_OUTPUT_LIMIT = 200;
+  private static readonly DEFAULT_READ_OUTPUT_LIMIT = 4_000;
+  private static readonly POLL_INTERVAL_MILLISECONDS = 100;
+  private static readonly REMOTE_COMMAND_TIMEOUT_SECONDS = 30;
+  private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
+  private static readonly listPtySessionsParameters = Type.Object({});
   private static readonly executeCommandParameters = Type.Object({
     columns: Type.Optional(Type.Number({
       description: "Optional terminal width to use when creating a new session.",
     })),
     command: Type.String({
-      description: "Shell command to execute inside the sandbox.",
+      description: "Shell command to execute inside the sandbox tmux session.",
     }),
     environment: Type.Optional(Type.Record(
       Type.String(),
       Type.String(),
       {
-        description: "Optional environment variables for a newly created session.",
+        description: "Optional environment variables to apply for this command execution.",
       },
     )),
     rows: Type.Optional(Type.Number({
@@ -83,7 +76,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       description: "Existing sandbox session id to reuse for follow-up commands.",
     })),
     workingDirectory: Type.Optional(Type.String({
-      description: "Optional working directory for a newly created session.",
+      description: "Optional working directory to use for this command execution.",
     })),
     yield_time_ms: Type.Optional(Type.Number({
       description: "How long to wait for output before returning control, in milliseconds.",
@@ -91,18 +84,21 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
   });
   private static readonly sendPtyInputParameters = Type.Object({
     input: Type.String({
-      description: "Raw terminal input to write into the running sandbox session.",
+      description: "Raw terminal input to write into the running sandbox tmux session.",
     }),
     sessionId: Type.String({
       description: "Sandbox session id returned by execute_command.",
     }),
+    yield_time_ms: Type.Optional(Type.Number({
+      description: "How long to wait for output before returning control, in milliseconds.",
+    })),
   });
   private static readonly readPtyOutputParameters = Type.Object({
     afterOffset: Type.Optional(Type.Number({
-      description: "Read output strictly after this offset. Omit for the first page.",
+      description: "Character offset cursor returned by the previous read. Omit for the first page.",
     })),
     limit: Type.Optional(Type.Number({
-      description: "Maximum number of chunks to return.",
+      description: "Maximum number of characters to return from the tmux pane capture.",
     })),
     sessionId: Type.String({
       description: "Sandbox session id returned by execute_command.",
@@ -131,8 +127,8 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
   });
 
   private readonly materializeSandbox: () => Promise<MaterializedDaytonaSandbox>;
-  private readonly ptys = new Map<string, AgentComputeDaytonaPty>();
   private materializedSandboxPromise: Promise<MaterializedDaytonaSandbox> | null = null;
+  private readonly trackedSessionIds = new Set<string>();
 
   constructor(materializeSandbox: () => Promise<MaterializedDaytonaSandbox>) {
     super();
@@ -141,6 +137,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   listTools(): ToolDefinition[] {
     return [
+      this.getListPtySessionsTool(),
       this.getExecuteCommandTool(),
       this.getSendPtyInputTool(),
       this.getReadPtyOutputTool(),
@@ -150,9 +147,39 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
     ];
   }
 
+  async dispose(): Promise<void> {
+    const trackedSessionIds = [...this.trackedSessionIds];
+    this.trackedSessionIds.clear();
+    await Promise.allSettled(trackedSessionIds.map(async (sessionId) => {
+      await this.killTmuxSession(sessionId).catch(() => undefined);
+    }));
+  }
+
+  private getListPtySessionsTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.listPtySessionsParameters> {
+    return {
+      description: "List the tmux-backed sandbox sessions currently available in the sandbox.",
+      execute: async () => {
+        const sessions = await this.listTmuxSessions();
+        return {
+          content: [{
+            type: "text",
+            text: this.formatListPtySessionsResult(sessions),
+          }],
+        };
+      },
+      label: "list_pty_sessions",
+      name: "list_pty_sessions",
+      parameters: AgentComputeDaytonaSandbox.listPtySessionsParameters,
+      promptGuidelines: [
+        "Use list_pty_sessions when you need to discover reusable sandbox tmux sessions.",
+      ],
+      promptSnippet: "List sandbox tmux sessions",
+    };
+  }
+
   private getExecuteCommandTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.executeCommandParameters> {
     return {
-      description: "Execute a shell command inside the sandbox and return combined terminal output.",
+      description: "Execute a shell command inside a sandbox tmux session and return captured pane output.",
       execute: async (_toolCallId, params) => {
         const result = await this.executeCommand(params);
         return {
@@ -166,8 +193,8 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       name: "execute_command",
       parameters: AgentComputeDaytonaSandbox.executeCommandParameters,
       promptGuidelines: [
-        "Use execute_command to start or continue sandbox terminal work.",
-        "Reuse the returned sessionId when you need follow-up terminal calls.",
+        "Use execute_command to create or continue work in a sandbox tmux session.",
+        "Reuse the returned sessionId when you want later tool calls to target the same tmux shell.",
       ],
       promptSnippet: "Execute commands in the sandbox",
     };
@@ -175,13 +202,17 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private getSendPtyInputTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.sendPtyInputParameters> {
     return {
-      description: "Send additional terminal input to an existing sandbox session.",
+      description: "Send additional terminal input to an existing sandbox tmux session and return new pane output.",
       execute: async (_toolCallId, params) => {
-        await this.sendPtyInput(params.sessionId, params.input);
+        const result = await this.sendPtyInput(
+          params.sessionId,
+          params.input,
+          params.yield_time_ms,
+        );
         return {
           content: [{
             type: "text",
-            text: `Sent input to session ${params.sessionId}.`,
+            text: this.formatExecuteCommandResult(result),
           }],
         };
       },
@@ -189,7 +220,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       name: "send_pty_input",
       parameters: AgentComputeDaytonaSandbox.sendPtyInputParameters,
       promptGuidelines: [
-        "Use send_pty_input to interact with a running process after execute_command returns.",
+        "Use send_pty_input to continue interacting with an existing tmux shell after execute_command returns.",
       ],
       promptSnippet: "Send input to a sandbox terminal session",
     };
@@ -197,7 +228,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private getReadPtyOutputTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.readPtyOutputParameters> {
     return {
-      description: "Read paginated terminal output from an existing sandbox session.",
+      description: "Read pane output directly from an existing sandbox tmux session.",
       execute: async (_toolCallId, params) => {
         const outputPage = await this.readPtyOutput(
           params.sessionId,
@@ -215,7 +246,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       name: "read_pty_output",
       parameters: AgentComputeDaytonaSandbox.readPtyOutputParameters,
       promptGuidelines: [
-        "Use read_pty_output to continue streaming output from a prior sandbox session.",
+        "Use read_pty_output to fetch more output from a tmux session after a prior execute or input call.",
       ],
       promptSnippet: "Read sandbox terminal output",
     };
@@ -223,7 +254,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private getResizePtyTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.resizePtyParameters> {
     return {
-      description: "Resize the terminal backing an existing sandbox session.",
+      description: "Resize the tmux window backing an existing sandbox session.",
       execute: async (_toolCallId, params) => {
         await this.resizePty(params.sessionId, params.columns, params.rows);
         return {
@@ -245,7 +276,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private getKillSessionTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.killSessionParameters> {
     return {
-      description: "Kill a running sandbox session and its backing process.",
+      description: "Kill a sandbox tmux session immediately.",
       execute: async (_toolCallId, params) => {
         await this.killSession(params.sessionId);
         return {
@@ -259,7 +290,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       name: "kill_session",
       parameters: AgentComputeDaytonaSandbox.killSessionParameters,
       promptGuidelines: [
-        "Use kill_session when a sandbox process is hung or must be terminated immediately.",
+        "Use kill_session when a sandbox tmux shell is hung or must be terminated immediately.",
       ],
       promptSnippet: "Kill a sandbox terminal session",
     };
@@ -267,7 +298,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
 
   private getCloseSessionTool(): ToolDefinition<typeof AgentComputeDaytonaSandbox.closeSessionParameters> {
     return {
-      description: "Close the transport for an existing sandbox session without killing it.",
+      description: "Close a sandbox tmux session by killing it and releasing its shell state.",
       execute: async (_toolCallId, params) => {
         await this.closeSession(params.sessionId);
         return {
@@ -281,7 +312,7 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       name: "close_session",
       parameters: AgentComputeDaytonaSandbox.closeSessionParameters,
       promptGuidelines: [
-        "Use close_session when you are done with a session but do not need to kill its process.",
+        "Use close_session when you are done with a tmux session and no longer need its shell state.",
       ],
       promptSnippet: "Close a sandbox terminal session",
     };
@@ -292,29 +323,49 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       throw new Error("command is required.");
     }
 
-    const terminalSession = input.sessionId
-      ? await this.getOrConnectPty(input.sessionId)
-      : await this.createPtyInternal({
-        columns: input.columns,
-        environment: input.environment,
-        rows: input.rows,
-        workingDirectory: input.workingDirectory,
-      });
-    const commandExecution = await terminalSession.executeCommand(input.command);
-    const shouldWaitForMilliseconds = this.resolveYieldTimeMilliseconds(input);
-    const waitResult = await terminalSession.waitForYieldOrCommandExit(commandExecution, shouldWaitForMilliseconds);
+    const sessionId = input.sessionId?.trim() || `pty-${randomUUID().replaceAll("-", "")}`;
+    await this.ensureTmuxSession(sessionId, input);
+    const startOffset = await this.captureTmuxOutputLength(sessionId);
+    const commandRun = await this.startTmuxCommand(sessionId, input);
+    const waitResult = await this.waitForTmuxCommand(commandRun.rcFile, this.resolveYieldTimeMilliseconds(input));
+    const output = await this.captureTmuxOutputSince(sessionId, startOffset);
+    if (waitResult.completed) {
+      await this.deleteRemoteFile(commandRun.rcFile);
+    }
 
     return {
       completed: waitResult.completed,
-      exitCode: waitResult.exitCode ?? null,
-      output: waitResult.output,
-      sessionId: terminalSession.getSessionId(),
+      exitCode: waitResult.exitCode,
+      output,
+      sessionId,
     };
   }
 
-  private async sendPtyInput(sessionId: string, input: string): Promise<void> {
-    const terminalSession = await this.getOrConnectPty(sessionId);
-    await terminalSession.sendInput(input);
+  private async sendPtyInput(
+    sessionId: string,
+    input: string,
+    yieldTimeMilliseconds?: number,
+  ): Promise<AgentComputeCommandResult> {
+    await this.ensureExistingTmuxSession(sessionId);
+    const startOffset = await this.captureTmuxOutputLength(sessionId);
+    await this.sendInputToTmuxSession(sessionId, input);
+    const waitResult = await this.waitForSessionExit(
+      sessionId,
+      this.resolveYieldTimeMilliseconds({
+        command: input,
+        yield_time_ms: yieldTimeMilliseconds,
+      }),
+    );
+    const output = waitResult.completed
+      ? ""
+      : await this.captureTmuxOutputSince(sessionId, startOffset);
+
+    return {
+      completed: waitResult.completed,
+      exitCode: waitResult.exitCode,
+      output,
+      sessionId,
+    };
   }
 
   private async readPtyOutput(
@@ -322,63 +373,303 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentComputePtyOutputPage> {
-    const terminalSession = await this.getOrConnectPty(sessionId);
-    return terminalSession.readOutput(afterOffset, limit);
+    await this.ensureExistingTmuxSession(sessionId);
+    const fullOutput = await this.captureTmuxOutput(sessionId);
+    const cursor = Math.max(0, afterOffset ?? 0);
+    const nextOffset = Math.min(fullOutput.length, cursor + Math.max(1, limit));
+    const text = fullOutput.slice(cursor, nextOffset);
+
+    return {
+      chunks: text.length > 0
+        ? [{
+          createdAt: new Date().toISOString(),
+          offset: cursor,
+          stream: "terminal",
+          text,
+        }]
+        : [],
+      nextOffset,
+    };
   }
 
   private async resizePty(sessionId: string, columns: number, rows: number): Promise<void> {
-    const terminalSession = await this.getOrConnectPty(sessionId);
-    await terminalSession.resize(columns, rows);
+    await this.ensureExistingTmuxSession(sessionId);
+    await this.runRequiredRemoteCommand(
+      `tmux resize-window -t ${AgentComputeDaytonaSandbox.shellQuote(sessionId)} -x ${columns} -y ${rows}`,
+    );
   }
 
   private async killSession(sessionId: string): Promise<void> {
-    const terminalSession = await this.getOrConnectPty(sessionId);
-    await terminalSession.kill();
-    this.ptys.delete(sessionId);
+    await this.killTmuxSession(sessionId);
+    this.trackedSessionIds.delete(sessionId);
   }
 
   private async closeSession(sessionId: string): Promise<void> {
-    const terminalSession = await this.getOrConnectPty(sessionId);
-    await terminalSession.close();
-    this.ptys.delete(sessionId);
+    await this.killSession(sessionId);
   }
 
-  private async createPtyInternal(options: {
-    columns?: number;
-    environment?: Record<string, string>;
-    rows?: number;
-    workingDirectory?: string;
-  }): Promise<AgentComputeDaytonaPty> {
-    const materializedSandbox = await this.resolveMaterializedSandbox();
-    const sessionId = randomUUID();
-    const pty = await AgentComputeDaytonaPty.create(sessionId, (handleOutput) => materializedSandbox.remoteSandbox.process.createPty({
-      cols: options.columns,
-      cwd: options.workingDirectory,
-      envs: options.environment,
-      id: sessionId,
-      onData: handleOutput,
-      rows: options.rows,
-    }));
-    this.ptys.set(sessionId, pty);
-    return pty;
+  private async listTmuxSessions(): Promise<TmuxSessionInfo[]> {
+    const output = await this.runRemoteCommand(
+      "sh -lc 'tmux list-sessions -F \"#{session_name}\t#{session_attached}\t#{session_created}\t#{window_width}\t#{window_height}\" 2>/dev/null || true'",
+    );
+
+    return output.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const [id, attached, createdAt, width, height] = line.split("\t");
+        return {
+          attached: attached === "1",
+          createdAt: createdAt ?? "",
+          height: Number(height ?? "0"),
+          id: id ?? "",
+          width: Number(width ?? "0"),
+        };
+      })
+      .filter((session) => session.id.length > 0);
   }
 
-  private async getOrConnectPty(sessionId: string): Promise<AgentComputeDaytonaPty> {
-    const existingPty = this.ptys.get(sessionId);
-    if (existingPty) {
-      return existingPty;
+  private async ensureTmuxSession(
+    sessionId: string,
+    input: AgentComputeCommandInput,
+  ): Promise<void> {
+    if (await this.hasTmuxSession(sessionId)) {
+      return;
     }
 
-    const materializedSandbox = await this.resolveMaterializedSandbox();
-    const connectedPty = await AgentComputeDaytonaPty.create(sessionId, (handleOutput) => materializedSandbox.remoteSandbox.process.connectPty(
-      sessionId,
-      {
-        onData: handleOutput,
-      },
-    ));
-    this.ptys.set(sessionId, connectedPty);
+    const creationCommand = [
+      `mkdir -p ${AgentComputeDaytonaSandbox.shellQuote(AgentComputeDaytonaSandbox.STATE_DIRECTORY)}`,
+      "&&",
+      "tmux new-session -d",
+      `-s ${AgentComputeDaytonaSandbox.shellQuote(sessionId)}`,
+      input.columns ? `-x ${input.columns}` : "",
+      input.rows ? `-y ${input.rows}` : "",
+      input.workingDirectory ? `-c ${AgentComputeDaytonaSandbox.shellQuote(input.workingDirectory)}` : "",
+      AgentComputeDaytonaSandbox.shellQuote(this.buildShellBootstrapCommand(input.environment)),
+    ].filter((segment) => segment.length > 0).join(" ");
+    await this.runRequiredRemoteCommand(creationCommand);
+    this.trackedSessionIds.add(sessionId);
+  }
 
-    return connectedPty;
+  private async ensureExistingTmuxSession(sessionId: string): Promise<void> {
+    if (await this.hasTmuxSession(sessionId)) {
+      return;
+    }
+
+    throw new Error(`Sandbox session ${sessionId} was not found.`);
+  }
+
+  private async startTmuxCommand(
+    sessionId: string,
+    input: AgentComputeCommandInput,
+  ): Promise<TmuxCommandRun> {
+    const commandRunId = randomUUID().replaceAll("-", "");
+    const doneKey = `${sessionId}-${commandRunId}-done`;
+    const commandFile = `${AgentComputeDaytonaSandbox.STATE_DIRECTORY}/${commandRunId}.command.sh`;
+    const rcFile = `${AgentComputeDaytonaSandbox.STATE_DIRECTORY}/${commandRunId}.rc`;
+    await this.writeRemoteFile(
+      commandFile,
+      this.buildCommandFileContents(input),
+    );
+    await this.deleteRemoteFile(rcFile);
+    const wrapperCommand = [
+      `sh ${AgentComputeDaytonaSandbox.shellQuote(commandFile)}`,
+      "rc=$?",
+      `rm -f ${AgentComputeDaytonaSandbox.shellQuote(commandFile)}`,
+      `printf '%s' "$rc" > ${AgentComputeDaytonaSandbox.shellQuote(rcFile)}`,
+      `tmux wait-for -S ${AgentComputeDaytonaSandbox.shellQuote(doneKey)}`,
+    ].join("; ");
+    await this.sendInputToTmuxSession(sessionId, wrapperCommand, true);
+
+    return {
+      rcFile,
+    };
+  }
+
+  private async waitForTmuxCommand(
+    rcFile: string,
+    yieldTimeMilliseconds: number,
+  ): Promise<{
+    completed: boolean;
+    exitCode: number | null;
+  }> {
+    const deadline = Date.now() + yieldTimeMilliseconds;
+    while (true) {
+      const exitCode = await this.readExitCodeIfPresent(rcFile);
+      if (exitCode !== null) {
+        return {
+          completed: true,
+          exitCode,
+        };
+      }
+
+      const remainingMilliseconds = deadline - Date.now();
+      if (remainingMilliseconds <= 0) {
+        return {
+          completed: false,
+          exitCode: null,
+        };
+      }
+
+      await AgentComputeDaytonaSandbox.delay(Math.min(
+        AgentComputeDaytonaSandbox.POLL_INTERVAL_MILLISECONDS,
+        remainingMilliseconds,
+      ));
+    }
+  }
+
+  private async waitForSessionExit(
+    sessionId: string,
+    yieldTimeMilliseconds: number,
+  ): Promise<{
+    completed: boolean;
+    exitCode: number | null;
+  }> {
+    const deadline = Date.now() + yieldTimeMilliseconds;
+    while (true) {
+      if (!await this.hasTmuxSession(sessionId)) {
+        return {
+          completed: true,
+          exitCode: null,
+        };
+      }
+
+      const remainingMilliseconds = deadline - Date.now();
+      if (remainingMilliseconds <= 0) {
+        return {
+          completed: false,
+          exitCode: null,
+        };
+      }
+
+      await AgentComputeDaytonaSandbox.delay(Math.min(
+        AgentComputeDaytonaSandbox.POLL_INTERVAL_MILLISECONDS,
+        remainingMilliseconds,
+      ));
+    }
+  }
+
+  private async captureTmuxOutputLength(sessionId: string): Promise<number> {
+    const output = await this.captureTmuxOutput(sessionId);
+    return output.length;
+  }
+
+  private async captureTmuxOutputSince(sessionId: string, offset: number): Promise<string> {
+    const output = await this.captureTmuxOutput(sessionId);
+    return output.slice(offset);
+  }
+
+  private async captureTmuxOutput(sessionId: string): Promise<string> {
+    const output = await this.runRequiredRemoteCommand(
+      `tmux capture-pane -pt ${AgentComputeDaytonaSandbox.shellQuote(sessionId)} -S -32768`,
+    );
+    return output;
+  }
+
+  private async sendInputToTmuxSession(
+    sessionId: string,
+    input: string,
+    appendEnter = false,
+  ): Promise<void> {
+    const command = this.buildSendKeysCommand(sessionId, input, appendEnter);
+    if (command.length === 0) {
+      return;
+    }
+
+    await this.runRequiredRemoteCommand(command);
+  }
+
+  private buildSendKeysCommand(sessionId: string, input: string, appendEnter = false): string {
+    const lines = input.split("\n");
+    const commands = [] as string[];
+    const shouldSendTrailingEnter = appendEnter || input.endsWith("\n");
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index] ?? "";
+      if (line.length > 0) {
+        commands.push(
+          `tmux send-keys -t ${AgentComputeDaytonaSandbox.shellQuote(sessionId)} -l -- ${AgentComputeDaytonaSandbox.shellQuote(line)}`,
+        );
+      }
+
+      if (index < lines.length - 1 || shouldSendTrailingEnter) {
+        commands.push(
+          `tmux send-keys -t ${AgentComputeDaytonaSandbox.shellQuote(sessionId)} Enter`,
+        );
+      }
+    }
+
+    return commands.join("\n");
+  }
+
+  private buildShellBootstrapCommand(environment?: Record<string, string>): string {
+    const exports = Object.entries(environment ?? {})
+      .map(([key, value]) => `${key}=${AgentComputeDaytonaSandbox.shellQuote(value)}`)
+      .join(" ");
+    if (exports.length === 0) {
+      return "env PS1='' sh";
+    }
+
+    return `env PS1='' ${exports} sh`;
+  }
+
+  private buildCommandFileContents(input: AgentComputeCommandInput): string {
+    const lines = [] as string[];
+    if (input.workingDirectory) {
+      lines.push(`cd ${AgentComputeDaytonaSandbox.shellQuote(input.workingDirectory)}`);
+    }
+
+    for (const [key, value] of Object.entries(input.environment ?? {})) {
+      lines.push(`export ${key}=${AgentComputeDaytonaSandbox.shellQuote(value)}`);
+    }
+
+    lines.push(input.command);
+
+    return `${lines.join("\n")}\n`;
+  }
+
+  private async writeRemoteFile(path: string, content: string): Promise<void> {
+    const hereDocToken = `__COMPANYHELM_${randomUUID().replaceAll("-", "")}__`;
+    await this.runRequiredRemoteCommand([
+      `cat > ${AgentComputeDaytonaSandbox.shellQuote(path)} <<'${hereDocToken}'`,
+      content.endsWith("\n") ? content.slice(0, -1) : content,
+      hereDocToken,
+    ].join("\n"));
+  }
+
+  private async deleteRemoteFile(path: string): Promise<void> {
+    await this.runRemoteCommand(`rm -f ${AgentComputeDaytonaSandbox.shellQuote(path)}`);
+  }
+
+  private async readExitCodeIfPresent(path: string): Promise<number | null> {
+    const output = await this.runRemoteCommand(
+      `sh -lc 'if [ -f ${AgentComputeDaytonaSandbox.shellQuote(path)} ]; then cat ${AgentComputeDaytonaSandbox.shellQuote(path)}; fi'`,
+    );
+    const trimmedOutput = output.stdout.trim();
+    if (trimmedOutput.length === 0) {
+      return null;
+    }
+
+    const exitCode = Number(trimmedOutput);
+    if (!Number.isInteger(exitCode)) {
+      throw new Error(`Invalid exit code returned for tmux command: ${trimmedOutput}`);
+    }
+
+    return exitCode;
+  }
+
+  private async hasTmuxSession(sessionId: string): Promise<boolean> {
+    const commandResult = await this.runRemoteCommand(
+      `tmux has-session -t ${AgentComputeDaytonaSandbox.shellQuote(sessionId)} 2>/dev/null`,
+    );
+
+    return commandResult.exitCode === 0;
+  }
+
+  private async killTmuxSession(sessionId: string): Promise<void> {
+    await this.runRemoteCommand(
+      `tmux kill-session -t ${AgentComputeDaytonaSandbox.shellQuote(sessionId)} 2>/dev/null || true`,
+    );
   }
 
   private resolveMaterializedSandbox(): Promise<MaterializedDaytonaSandbox> {
@@ -387,6 +678,39 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
     }
 
     return this.materializedSandboxPromise;
+  }
+
+  private async runRequiredRemoteCommand(
+    command: string,
+    timeoutSeconds = AgentComputeDaytonaSandbox.REMOTE_COMMAND_TIMEOUT_SECONDS,
+  ): Promise<string> {
+    const commandResult = await this.runRemoteCommand(command, timeoutSeconds);
+    if (commandResult.exitCode !== 0) {
+      throw new Error(`Sandbox command failed (${commandResult.exitCode}): ${commandResult.stdout || command}`);
+    }
+
+    return commandResult.stdout;
+  }
+
+  private async runRemoteCommand(
+    command: string,
+    timeoutSeconds = AgentComputeDaytonaSandbox.REMOTE_COMMAND_TIMEOUT_SECONDS,
+  ): Promise<{
+    exitCode: number;
+    stdout: string;
+  }> {
+    const materializedSandbox = await this.resolveMaterializedSandbox();
+    const result = await materializedSandbox.remoteSandbox.process.executeCommand(
+      command,
+      undefined,
+      undefined,
+      timeoutSeconds,
+    );
+
+    return {
+      exitCode: result.exitCode,
+      stdout: result.artifacts?.stdout ?? result.result,
+    };
   }
 
   private resolveYieldTimeMilliseconds(input: AgentComputeCommandInput): number {
@@ -417,5 +741,30 @@ export class AgentComputeDaytonaSandbox extends AgentComputeSandboxInterface {
       "output:",
       combinedOutput.length > 0 ? combinedOutput : "(no output)",
     ].join("\n");
+  }
+
+  private formatListPtySessionsResult(sessions: TmuxSessionInfo[]): string {
+    if (sessions.length === 0) {
+      return "No PTY sessions found.";
+    }
+
+    return sessions.map((session) => {
+      return [
+        `sessionId: ${session.id}`,
+        `attached: ${session.attached}`,
+        `createdAt: ${session.createdAt}`,
+        `size: ${session.width}x${session.height}`,
+      ].join("\n");
+    }).join("\n\n");
+  }
+
+  private static shellQuote(value: string): string {
+    return `'${value.replaceAll("'", `'"'"'`)}'`;
+  }
+
+  private static async delay(milliseconds: number): Promise<void> {
+    await new Promise((resolve) => {
+      setTimeout(resolve, milliseconds);
+    });
   }
 }

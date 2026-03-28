@@ -11,11 +11,11 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { AgentToolsService } from "../../tools_service.ts";
 import { AgentComputeProviderInterface } from "../../compute/provider_interface.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
-import { PiMonoToolsService } from "./tools/service.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -28,6 +28,7 @@ type SessionRuntimeConfig = {
 type SessionRuntime = {
   eventHandler: PiMonoSessionEventHandler;
   session: AgentSession;
+  toolsService: AgentToolsService;
 };
 
 type SelectableDatabase = {
@@ -83,7 +84,7 @@ export class PiMonoSessionManagerService {
       runtimeConfig.agentId,
       sessionId,
     );
-    const piMonoToolsService = new PiMonoToolsService(
+    const agentToolsService = new AgentToolsService(
       runtimeConfig.agentId,
       computeSandbox,
       transactionProvider,
@@ -102,6 +103,7 @@ export class PiMonoSessionManagerService {
     const resourceLoader = new CompanyHelmResourceLoader();
     await resourceLoader.reload();
 
+    const initializedTools = agentToolsService.initializeTools();
     const { session } = await createAgentSession({
       authStorage,
       modelRegistry,
@@ -111,10 +113,10 @@ export class PiMonoSessionManagerService {
       // Keep the built-in active set empty at startup and register our CompanyHelm tools through
       // `customTools`, because the PI SDK only treats `tools` as an active-name selector.
       tools: [],
-      customTools: piMonoToolsService.getTools(),
+      customTools: initializedTools,
       thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
     });
-    session.setActiveToolsByName(piMonoToolsService.getTools().map((tool) => tool.name));
+    session.setActiveToolsByName(initializedTools.map((tool) => tool.name));
     session.agent.replaceMessages(storedContextMessages);
     const sessionEventHandler = new PiMonoSessionEventHandler(
       transactionProvider,
@@ -129,6 +131,7 @@ export class PiMonoSessionManagerService {
     this.runtimesById.set(sessionId, {
       eventHandler: sessionEventHandler,
       session,
+      toolsService: agentToolsService,
     });
     return session;
   }
@@ -180,12 +183,13 @@ export class PiMonoSessionManagerService {
     return this.runtimesById.get(sessionId)?.session;
   }
 
-  dispose(sessionId: string): void {
+  async dispose(sessionId: string): Promise<void> {
     const runtime = this.runtimesById.get(sessionId);
     if (!runtime) {
       return;
     }
 
+    await runtime.toolsService.cleanupTools();
     runtime.session.dispose();
     this.runtimesById.delete(sessionId);
   }

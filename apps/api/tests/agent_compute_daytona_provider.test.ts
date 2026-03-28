@@ -19,6 +19,7 @@ test("AgentComputeDaytonaProvider returns a lazy sandbox handle without material
 
   assert.equal(materializeSandboxForSession.mock.calls.length, 0);
   assert.deepEqual(sandbox.listTools().map((tool) => tool.name), [
+    "list_pty_sessions",
     "execute_command",
     "send_pty_input",
     "read_pty_output",
