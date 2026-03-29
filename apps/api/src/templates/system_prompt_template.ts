@@ -7,7 +7,7 @@ import * as nunjucks from "nunjucks";
  */
 export class SystemPromptTemplate {
   private readonly templateSource = readFileSync(
-    new URL("./system_prompt.jinja", import.meta.url),
+    new URL("./system_prompt.njk", import.meta.url),
     "utf8",
   ).trim();
 
