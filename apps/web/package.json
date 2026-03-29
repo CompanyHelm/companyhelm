@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run relay -- --watch & vite",
+    "dev": "if command -v watchman >/dev/null 2>&1; then npm run relay -- --watch & else npm run relay; fi; vite",
     "relay": "relay-compiler relay.config.json",
     "build": "npm run relay && vite build"
   },
