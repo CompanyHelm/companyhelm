@@ -7,7 +7,11 @@ import { SessionProcessQueuedNames } from "../src/services/agent/session/process
 const workerMocks = vi.hoisted(() => ({
   closeMock: vi.fn(async () => undefined),
   onMock: vi.fn(),
-  workerInstances: [] as Array<{ close: ReturnType<typeof vi.fn>; on: ReturnType<typeof vi.fn> }>,
+  workerInstances: [] as Array<{
+    close: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
+    processor: (job: { data: { companyId: string; sessionId: string } }) => Promise<void>;
+  }>,
 }));
 
 const ioRedisMocks = vi.hoisted(() => ({
@@ -19,13 +23,14 @@ vi.mock("bullmq", () => ({
   Worker: class MockWorker {
     close = workerMocks.closeMock;
     on = workerMocks.onMock;
+    processor;
 
     constructor(
       queueName: string,
       processor: (job: { data: { companyId: string; sessionId: string } }) => Promise<void>,
     ) {
       void queueName;
-      void processor;
+      this.processor = processor;
       workerMocks.workerInstances.push(this);
     }
   },
@@ -82,4 +87,63 @@ test("SessionProcessWorker starts one BullMQ worker and closes it cleanly", asyn
 
   assert.equal(workerMocks.closeMock.mock.calls.length, 1);
   assert.equal(ioRedisMocks.quitMock.mock.calls.length, 1);
+});
+
+test("SessionProcessWorker logs and rethrows failed wake jobs with company and session context", async () => {
+  const debug = vi.fn();
+  const error = vi.fn();
+  const worker = new SessionProcessWorker(
+    {
+      redis: {
+        host: "127.0.0.1",
+        password: "redis-password",
+        port: 6379,
+        username: "redis-user",
+      },
+    } as Config,
+    {
+      child() {
+        return {
+          debug,
+          error,
+        };
+      },
+    } as never,
+    {
+      async execute() {
+        throw new Error("prompt execution failed");
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+  );
+
+  worker.start();
+
+  const workerInstance = workerMocks.workerInstances[0];
+  assert.ok(workerInstance, "worker instance should be created");
+
+  await assert.rejects(
+    workerInstance.processor({
+      data: {
+        companyId: "company-1",
+        sessionId: "session-1",
+      },
+    }),
+    /prompt execution failed/,
+  );
+
+  assert.equal(debug.mock.calls.length, 1);
+  assert.equal(
+    debug.mock.calls[0]?.[1],
+    "processing session wake job",
+  );
+  assert.equal(error.mock.calls.length, 1);
+  assert.equal(
+    error.mock.calls[0]?.[1],
+    "session wake job failed",
+  );
+  assert.equal(error.mock.calls[0]?.[0]?.companyId, "company-1");
+  assert.equal(error.mock.calls[0]?.[0]?.sessionId, "session-1");
+
+  await worker.stop();
 });

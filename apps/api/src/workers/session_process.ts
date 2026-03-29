@@ -51,7 +51,26 @@ export class SessionProcessWorker {
     this.worker = new Worker<SessionWakeJobPayload>(
       this.sessionProcessQueuedNames.getWakeQueueName(),
       async (job) => {
-        await this.sessionProcessExecutionService.execute(job.data.companyId, job.data.sessionId);
+        this.logger.debug({
+          companyId: job.data.companyId,
+          sessionId: job.data.sessionId,
+        }, "processing session wake job");
+
+        try {
+          await this.sessionProcessExecutionService.execute(job.data.companyId, job.data.sessionId);
+        } catch (error) {
+          this.logger.error({
+            companyId: job.data.companyId,
+            error,
+            sessionId: job.data.sessionId,
+          }, "session wake job failed");
+          throw error;
+        }
+
+        this.logger.debug({
+          companyId: job.data.companyId,
+          sessionId: job.data.sessionId,
+        }, "completed session wake job");
       },
       {
         connection: this.connection,
