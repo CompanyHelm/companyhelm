@@ -74,6 +74,8 @@ const chatsPageTranscriptQueryNode = graphql`
             text
             data
             mimeType
+            structuredContent
+            structuredContentType
             toolCallId
             toolName
           }
@@ -179,6 +181,8 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
         text
         data
         mimeType
+        structuredContent
+        structuredContentType
         toolCallId
         toolName
       }
@@ -196,6 +200,7 @@ type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
 type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
 type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
+type SessionMessageContentRecord = SessionMessageRecord["contents"][number];
 type ChatsPageSearch = {
   agentId?: string;
   sessionId?: string;
@@ -224,6 +229,14 @@ const CHATS_THINKING_GRADIENT_KEYFRAMES = `
     background-position: 200% 50%;
   }
 }
+
+type TerminalStructuredContentRecord = {
+  command: string;
+  completed: boolean;
+  cwd: string | null;
+  exitCode: number | null;
+  sessionId: string;
+};
 `;
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
@@ -240,6 +253,35 @@ function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxH
 
 function clampChatListWidth(width: number): number {
   return Math.min(CHAT_LIST_MAX_WIDTH, Math.max(CHAT_LIST_MIN_WIDTH, width));
+}
+
+function parseTerminalStructuredContent(
+  content: Pick<SessionMessageContentRecord, "structuredContent" | "structuredContentType">,
+): TerminalStructuredContentRecord | null {
+  if (content.structuredContentType !== "terminal" || typeof content.structuredContent !== "string") {
+    return null;
+  }
+
+  try {
+    const parsedContent = JSON.parse(content.structuredContent) as Partial<TerminalStructuredContentRecord>;
+    if (
+      typeof parsedContent.command !== "string"
+      || typeof parsedContent.completed !== "boolean"
+      || typeof parsedContent.sessionId !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      command: parsedContent.command,
+      completed: parsedContent.completed,
+      cwd: typeof parsedContent.cwd === "string" ? parsedContent.cwd : null,
+      exitCode: typeof parsedContent.exitCode === "number" ? parsedContent.exitCode : null,
+      sessionId: parsedContent.sessionId,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function loadChatListWidth(): number {
@@ -552,6 +594,9 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
     ? "Error"
     : "Success";
   const visibleContents = message.contents.filter((content) => {
+    if (parseTerminalStructuredContent(content)) {
+      return true;
+    }
     if (content.type === "text") {
       return typeof content.text === "string" && content.text.trim().length > 0;
     }
@@ -572,6 +617,38 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
       {visibleContents.length > 0 ? (
         <div className="mt-3 grid gap-3">
           {visibleContents.map((content, contentIndex) => {
+            const terminalStructuredContent = parseTerminalStructuredContent(content);
+            if (terminalStructuredContent) {
+              return (
+                <div
+                  key={`${message.id}-content-${contentIndex}`}
+                  className="overflow-hidden rounded-xl border border-border/60 bg-background/60"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+                    <code className="text-xs font-medium text-foreground">{terminalStructuredContent.command}</code>
+                    <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {terminalStructuredContent.completed
+                        ? terminalStructuredContent.exitCode === null
+                          ? "Completed"
+                          : `Exit ${terminalStructuredContent.exitCode}`
+                        : "Running"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
+                    {terminalStructuredContent.cwd ? <span>cwd: {terminalStructuredContent.cwd}</span> : null}
+                    <span>session: {terminalStructuredContent.sessionId}</span>
+                  </div>
+                  <pre className="border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground">
+                    {typeof content.text === "string" && content.text.length > 0
+                      ? content.text
+                      : terminalStructuredContent.completed
+                      ? "(no output)"
+                      : "Waiting for command output..."}
+                  </pre>
+                </div>
+              );
+            }
+
             if (content.type === "image" && content.data && content.mimeType) {
               return (
                 <img

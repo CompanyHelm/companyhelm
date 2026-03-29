@@ -218,6 +218,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                   text
                   data
                   mimeType
+                  structuredContent
+                  structuredContentType
                   toolCallId
                   toolName
                 }
@@ -260,6 +262,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               text: "Latest answer",
               data: null,
               mimeType: null,
+              structuredContent: null,
+              structuredContentType: null,
               toolCallId: null,
               toolName: null,
             },
@@ -285,6 +289,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               text: "Line one",
               data: null,
               mimeType: null,
+              structuredContent: null,
+              structuredContentType: null,
               toolCallId: null,
               toolName: null,
             },
@@ -293,6 +299,8 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               text: "Line two",
               data: null,
               mimeType: null,
+              structuredContent: null,
+              structuredContentType: null,
               toolCallId: null,
               toolName: null,
             },

@@ -33,6 +33,8 @@ type MessageContentRow = {
   messageId: string;
   data: string | null;
   mimeType: string | null;
+  structuredContent: unknown | null;
+  structuredContentType: string | null;
   text: string | null;
   toolCallId: string | null;
   toolName: string | null;
@@ -90,6 +92,8 @@ export type SessionMessageContentGraphqlRecord = {
   text: string | null;
   data: string | null;
   mimeType: string | null;
+  structuredContent: string | null;
+  structuredContentType: string | null;
   toolCallId: string | null;
   toolName: string | null;
 };
@@ -402,6 +406,8 @@ export class SessionReadService {
         messageId: messageContents.messageId,
         data: messageContents.data,
         mimeType: messageContents.mimeType,
+        structuredContent: messageContents.structuredContent,
+        structuredContentType: messageContents.structuredContentType,
         text: messageContents.text,
         toolCallId: messageContents.toolCallId,
         toolName: messageContents.toolName,
@@ -424,6 +430,8 @@ export class SessionReadService {
       currentContents.push({
         data: contentRow.data,
         mimeType: contentRow.mimeType,
+        structuredContent: this.serializeStructuredContent(contentRow.structuredContent),
+        structuredContentType: contentRow.structuredContentType,
         text: contentRow.text,
         toolCallId: contentRow.toolCallId,
         toolName: contentRow.toolName,
@@ -511,5 +519,13 @@ export class SessionReadService {
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),
     };
+  }
+
+  private serializeStructuredContent(structuredContent: unknown): string | null {
+    if (structuredContent === null || typeof structuredContent === "undefined") {
+      return null;
+    }
+
+    return JSON.stringify(structuredContent);
   }
 }

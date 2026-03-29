@@ -472,6 +472,85 @@ test("PiMonoSessionEventHandler persists tool execution events into one streamed
   );
 });
 
+test("PiMonoSessionEventHandler stores terminal structured content from tool execution details", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      partialResult: {
+        content: [{
+          text: "partial output",
+          type: "text",
+        }],
+        details: {
+          command: "ls -la",
+          completed: false,
+          cwd: "/workspace",
+          exitCode: null,
+          sessionId: "pty-123",
+        },
+      },
+      toolCallId: "tool-call-terminal",
+      toolName: "execute_command",
+      type: "tool_execution_update",
+    });
+    await handler.handle({
+      isError: false,
+      result: {
+        content: [{
+          text: "final output",
+          type: "text",
+        }],
+        details: {
+          command: "ls -la",
+          completed: true,
+          cwd: "/workspace",
+          exitCode: 2,
+          sessionId: "pty-123",
+        },
+      },
+      toolCallId: "tool-call-terminal",
+      toolName: "execute_command",
+      type: "tool_execution_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        structuredContent: record.structuredContent,
+        structuredContentType: record.structuredContentType,
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        structuredContent: {
+          command: "ls -la",
+          completed: true,
+          cwd: "/workspace",
+          exitCode: 2,
+          sessionId: "pty-123",
+        },
+        structuredContentType: "terminal",
+        text: "final output",
+        type: "text",
+      },
+    ],
+  );
+});
+
 test("PiMonoSessionEventHandler ignores trailing toolResult message events after tool execution lifecycle persisted the tool row", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(

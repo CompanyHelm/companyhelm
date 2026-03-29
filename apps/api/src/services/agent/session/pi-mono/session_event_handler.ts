@@ -53,6 +53,15 @@ type MessageContent = TextContent | ImageContent | ThinkingContent | ToolCallCon
 
 type ToolExecutionResult = {
   content?: unknown;
+  details?: unknown;
+};
+
+type TerminalStructuredContent = {
+  command: string;
+  completed: boolean;
+  cwd: string | null;
+  exitCode: number | null;
+  sessionId: string;
 };
 
 type SessionMessage = {
@@ -60,6 +69,8 @@ type SessionMessage = {
   errorMessage?: string;
   isError?: boolean;
   role?: string;
+  structuredContent?: TerminalStructuredContent | null;
+  structuredContentType?: string | null;
   stopReason?: string;
   timestamp?: number;
   toolCallId?: string;
@@ -206,10 +217,10 @@ export class PiMonoSessionEventHandler {
         this.logInfo("pi mono assistant message started", sessionEvent);
         return;
       case "toolResult":
-        if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
-          this.logInfo("ignoring pi mono tool result start after tool execution events", sessionEvent);
-          return;
-        }
+      if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
+        this.logInfo("ignoring pi mono tool result start after tool execution events", sessionEvent);
+        return;
+      }
         await this.upsertSessionMessage("running", sessionEvent);
         this.logInfo("pi mono tool result message started", sessionEvent);
         return;
@@ -350,6 +361,8 @@ export class PiMonoSessionEventHandler {
               arguments: contentRecord.arguments,
               data: contentRecord.data,
               mimeType: contentRecord.mimeType,
+              structuredContent: contentRecord.structuredContent,
+              structuredContentType: contentRecord.structuredContentType,
               text: contentRecord.text,
               toolCallId: contentRecord.toolCallId,
               toolName: contentRecord.toolName,
@@ -407,15 +420,21 @@ export class PiMonoSessionEventHandler {
     timestamp: Date,
   ): Array<Record<string, unknown>> {
     const messageContent = this.normalizeMessageContent(message.content);
+    const structuredContent = message.structuredContentType === "terminal" ? message.structuredContent ?? null : null;
+    const structuredContentType = message.structuredContentType === "terminal" ? "terminal" : null;
 
     return messageContent
-      .flatMap((contentBlock) => {
+      .flatMap((contentBlock, contentIndex) => {
+        const contentStructuredContent = contentIndex === 0 ? structuredContent : null;
+        const contentStructuredContentType = contentIndex === 0 ? structuredContentType : null;
         if (contentBlock.type === "text") {
           return [{
             companyId,
             createdAt: timestamp,
             id: randomUUID(),
             messageId,
+            structuredContent: contentStructuredContent,
+            structuredContentType: contentStructuredContentType,
             text: contentBlock.text,
             type: "text",
             updatedAt: timestamp,
@@ -430,6 +449,8 @@ export class PiMonoSessionEventHandler {
             id: randomUUID(),
             messageId,
             mimeType: contentBlock.mimeType,
+            structuredContent: contentStructuredContent,
+            structuredContentType: contentStructuredContentType,
             type: "image",
             updatedAt: timestamp,
           }];
@@ -442,6 +463,8 @@ export class PiMonoSessionEventHandler {
             createdAt: timestamp,
             id: randomUUID(),
             messageId,
+            structuredContent: contentStructuredContent,
+            structuredContentType: contentStructuredContentType,
             toolCallId: contentBlock.id,
             toolName: contentBlock.name,
             type: "toolCall",
@@ -473,12 +496,15 @@ export class PiMonoSessionEventHandler {
       ? sessionEvent.partialResult
       : sessionEvent.result;
     const content = this.extractToolExecutionContent(payload);
+    const structuredContent = this.extractTerminalStructuredContent(payload);
 
     return {
       message: {
         content,
         isError: sessionEvent.isError === true,
         role: "toolResult",
+        structuredContent,
+        structuredContentType: structuredContent ? "terminal" : null,
         timestamp: Date.now(),
         toolCallId: sessionEvent.toolCallId,
         toolName: sessionEvent.toolName,
@@ -554,6 +580,38 @@ export class PiMonoSessionEventHandler {
 
     const toolExecutionResult = value as ToolExecutionResult;
     return toolExecutionResult.content;
+  }
+
+  private extractTerminalStructuredContent(value: unknown): TerminalStructuredContent | null {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+
+    const toolExecutionResult = value as ToolExecutionResult;
+    const details = toolExecutionResult.details;
+    if (!details || typeof details !== "object") {
+      return null;
+    }
+
+    const terminalDetails = details as Record<string, unknown>;
+    if (
+      typeof terminalDetails.command !== "string"
+      || typeof terminalDetails.completed !== "boolean"
+      || typeof terminalDetails.sessionId !== "string"
+    ) {
+      return null;
+    }
+
+    const cwd = typeof terminalDetails.cwd === "string" ? terminalDetails.cwd : null;
+    const exitCode = typeof terminalDetails.exitCode === "number" ? terminalDetails.exitCode : null;
+
+    return {
+      command: terminalDetails.command,
+      completed: terminalDetails.completed,
+      cwd,
+      exitCode,
+      sessionId: terminalDetails.sessionId,
+    };
   }
 
   private async processAssistantThinkingEvent(sessionEvent: SessionEvent): Promise<void> {

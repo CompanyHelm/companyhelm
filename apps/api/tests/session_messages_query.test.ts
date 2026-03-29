@@ -186,6 +186,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
               text
               data
               mimeType
+              structuredContent
+              structuredContentType
               toolCallId
               toolName
             }
@@ -215,6 +217,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           text: "hi",
           data: null,
           mimeType: null,
+          structuredContent: null,
+          structuredContentType: null,
           toolCallId: null,
           toolName: null,
         },
@@ -237,6 +241,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           text: "Line one",
           data: null,
           mimeType: null,
+          structuredContent: null,
+          structuredContentType: null,
           toolCallId: null,
           toolName: null,
         },
@@ -245,6 +251,8 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           text: "Line two",
           data: null,
           mimeType: null,
+          structuredContent: null,
+          structuredContentType: null,
           toolCallId: null,
           toolName: null,
         },

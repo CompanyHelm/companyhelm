@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<247b3a818e01bec27f4044f597fd6047>>
+ * @generated SignedSource<<7dace85fb37cc390a19e57d05229c3a6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,8 @@ export type chatsPageTranscriptQuery$data = {
         readonly contents: ReadonlyArray<{
           readonly data: string | null | undefined;
           readonly mimeType: string | null | undefined;
+          readonly structuredContent: string | null | undefined;
+          readonly structuredContentType: string | null | undefined;
           readonly text: string | null | undefined;
           readonly toolCallId: string | null | undefined;
           readonly toolName: string | null | undefined;
@@ -195,6 +197,20 @@ v6 = [
                     "name": "mimeType",
                     "storageKey": null
                   },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "structuredContent",
+                    "storageKey": null
+                  },
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "structuredContentType",
+                    "storageKey": null
+                  },
                   (v3/*: any*/),
                   (v4/*: any*/)
                 ],
@@ -283,16 +299,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "70e4ef072a089bf6ba688f606546ee64",
+    "cacheID": "de8ef3c9ee0153cf44995d948f5f2d46",
     "id": null,
     "metadata": {},
     "name": "chatsPageTranscriptQuery",
     "operationKind": "query",
-    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        role\n        status\n        toolCallId\n        toolName\n        contents {\n          type\n          text\n          data\n          mimeType\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        role\n        status\n        toolCallId\n        toolName\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          structuredContentType\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bcb4420e551bd9441caefbfe06559558";
+(node as any).hash = "1891de72a0c76ed1ab9488694ecf766a";
 
 export default node;

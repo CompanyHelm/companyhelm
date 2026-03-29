@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ffd11219879f6ce5da4fb2ab664965b0>>
+ * @generated SignedSource<<216dc147a82ccaedd68cc0f94215c97d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,8 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
     readonly contents: ReadonlyArray<{
       readonly data: string | null | undefined;
       readonly mimeType: string | null | undefined;
+      readonly structuredContent: string | null | undefined;
+      readonly structuredContentType: string | null | undefined;
       readonly text: string | null | undefined;
       readonly toolCallId: string | null | undefined;
       readonly toolName: string | null | undefined;
@@ -143,6 +145,20 @@ v4 = [
             "name": "mimeType",
             "storageKey": null
           },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "structuredContent",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "structuredContentType",
+            "storageKey": null
+          },
           (v1/*: any*/),
           (v2/*: any*/)
         ],
@@ -192,16 +208,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "9fd72c755f9edec25362233b6f224c4d",
+    "cacheID": "64db69b815017718884600885e3c2d29",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      structuredContentType\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c1ffc0a824372a027581ce0ca0cc06c6";
+(node as any).hash = "afb23836abe454c20949818671f3cacf";
 
 export default node;

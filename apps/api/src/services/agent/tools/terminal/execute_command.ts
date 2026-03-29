@@ -53,6 +53,13 @@ export class AgentExecuteCommandTool {
             text: AgentTerminalResultFormatter.formatCommandResult(result),
             type: "text",
           }],
+          details: {
+            command: params.command,
+            completed: result.completed,
+            cwd: params.workingDirectory ?? null,
+            exitCode: result.exitCode,
+            sessionId: result.sessionId,
+          },
         };
       },
       label: "execute_command",
