@@ -25,6 +25,7 @@ type ServiceSessionRecord = {
   id: string;
   agentId: string;
   currentModelId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   isThinking: boolean;
   status: string;

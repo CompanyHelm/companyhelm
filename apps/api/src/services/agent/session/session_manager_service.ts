@@ -19,8 +19,7 @@ type AgentRecord = {
 
 type ExistingSessionRow = {
   agentId: string;
-  currentModelId: string;
-  currentModelProviderCredentialId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   id: string;
   status: string;
@@ -37,11 +36,11 @@ type SessionRecord = {
   agentId: string;
   createdAt: Date;
   currentModelId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   id: string;
   inferredTitle: string | null;
   isThinking: boolean;
-  modelProviderCredentialModelId?: string | null;
   status: string;
   thinkingText: string | null;
   updatedAt: Date;
@@ -158,8 +157,7 @@ export class SessionManagerService {
           ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
           companyId,
           agentId,
-          currentModelId: selectedModelRecord.modelId,
-          currentModelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
+          currentModelProviderCredentialModelId: selectedModelRecord.id,
           currentReasoningLevel: resolvedReasoningLevel,
           inferredTitle,
           isThinking: false,
@@ -182,7 +180,7 @@ export class SessionManagerService {
 
       return {
         ...createdSessionRecord,
-        modelProviderCredentialModelId: selectedModelRecord.id,
+        currentModelId: selectedModelRecord.modelId,
       };
     });
 
@@ -206,6 +204,7 @@ export class SessionManagerService {
     sessionId: string,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
       const now = new Date();
       const [updatedSessionRecord] = await updatableDatabase
@@ -224,7 +223,16 @@ export class SessionManagerService {
         throw new Error("Session not found.");
       }
 
-      return updatedSessionRecord;
+      const currentModelRecord = await this.resolveModelRecordById(
+        selectableDatabase,
+        companyId,
+        updatedSessionRecord.currentModelProviderCredentialModelId,
+      );
+
+      return {
+        ...updatedSessionRecord,
+        currentModelId: currentModelRecord.modelId,
+      };
     });
 
     await this.publishSessionUpdate(companyId, sessionRecord.id);
@@ -253,8 +261,7 @@ export class SessionManagerService {
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
           status: agentSessions.status,
@@ -291,8 +298,7 @@ export class SessionManagerService {
       const [updatedSessionRecord] = await updatableDatabase
         .update(agentSessions)
         .set({
-          currentModelId: selectedModelRecord.modelId,
-          currentModelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
+          currentModelProviderCredentialModelId: selectedModelRecord.id,
           currentReasoningLevel: resolvedReasoningLevel,
           status: existingSession.status === "running" ? "running" : "queued",
           updated_at: now,
@@ -315,7 +321,7 @@ export class SessionManagerService {
 
       return {
         ...updatedSessionRecord,
-        modelProviderCredentialModelId: selectedModelRecord.id,
+        currentModelId: selectedModelRecord.modelId,
       };
     });
 
@@ -403,8 +409,7 @@ export class SessionManagerService {
       .from(modelProviderCredentialModels)
       .where(and(
         eq(modelProviderCredentialModels.companyId, companyId),
-        eq(modelProviderCredentialModels.modelProviderCredentialId, existingSession.currentModelProviderCredentialId),
-        eq(modelProviderCredentialModels.modelId, existingSession.currentModelId),
+        eq(modelProviderCredentialModels.id, existingSession.currentModelProviderCredentialModelId),
       )) as ModelRecord[];
     if (!modelRecord) {
       throw new Error("Current session model not found.");
@@ -453,7 +458,7 @@ export class SessionManagerService {
     return {
       id: agentSessions.id,
       agentId: agentSessions.agentId,
-      currentModelId: agentSessions.currentModelId,
+      currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
       currentReasoningLevel: agentSessions.currentReasoningLevel,
       inferredTitle: agentSessions.inferredTitle,
       isThinking: agentSessions.isThinking,

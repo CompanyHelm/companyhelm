@@ -4,7 +4,7 @@ import type { ImageContent } from "@mariozechner/pi-ai";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { agentSessions, modelProviderCredentials } from "../../../../db/schema.ts";
+import { agentSessions, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
@@ -19,10 +19,14 @@ import { SessionProcessQueuedNames } from "./queued_names.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
-  currentModelId: string;
-  currentModelProviderCredentialId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   status: string;
+};
+
+type ModelRow = {
+  modelId: string;
+  modelProviderCredentialId: string;
 };
 
 type CredentialRow = {
@@ -233,8 +237,7 @@ export class SessionProcessExecutionService {
       const [sessionRow] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           status: agentSessions.status,
         })
@@ -250,6 +253,20 @@ export class SessionProcessExecutionService {
         throw new Error("Archived sessions cannot be processed.");
       }
 
+      const [modelRow] = await selectableDatabase
+        .select({
+          modelId: modelProviderCredentialModels.modelId,
+          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        })
+        .from(modelProviderCredentialModels)
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, companyId),
+          eq(modelProviderCredentialModels.id, sessionRow.currentModelProviderCredentialModelId),
+        )) as ModelRow[];
+      if (!modelRow) {
+        throw new Error("Session model not found.");
+      }
+
       const [credentialRow] = await selectableDatabase
         .select({
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
@@ -258,7 +275,7 @@ export class SessionProcessExecutionService {
         .from(modelProviderCredentials)
         .where(and(
           eq(modelProviderCredentials.companyId, companyId),
-          eq(modelProviderCredentials.id, sessionRow.currentModelProviderCredentialId),
+          eq(modelProviderCredentials.id, modelRow.modelProviderCredentialId),
         )) as CredentialRow[];
       if (!credentialRow) {
         throw new Error("Session credential not found.");
@@ -267,7 +284,7 @@ export class SessionProcessExecutionService {
       return {
         agentId: sessionRow.agentId,
         apiKey: credentialRow.encryptedApiKey,
-        modelId: sessionRow.currentModelId,
+        modelId: modelRow.modelId,
         providerId: credentialRow.modelProvider,
         reasoningLevel: sessionRow.currentReasoningLevel,
       };

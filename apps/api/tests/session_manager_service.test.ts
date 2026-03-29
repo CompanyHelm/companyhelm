@@ -88,7 +88,7 @@ test("SessionManagerService createSession persists a queued session, stores the 
               return [{
                 id: "session-1",
                 agentId: "agent-1",
-                currentModelId: "gpt-5.4",
+                currentModelProviderCredentialModelId: "model-row-1",
                 currentReasoningLevel: "high",
                 inferredTitle: userMessage.slice(0, 50),
                 status: "queued",
@@ -145,12 +145,12 @@ test("SessionManagerService createSession persists a queued session, stores the 
   );
 
   assert.equal(sessionRecord.id, "session-1");
-  assert.equal(sessionRecord.modelProviderCredentialModelId, "model-row-1");
+  assert.equal(sessionRecord.currentModelProviderCredentialModelId, "model-row-1");
+  assert.equal(sessionRecord.currentModelId, "gpt-5.4");
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.companyId, "company-1");
   assert.equal(insertedValues[0]?.agentId, "agent-1");
-  assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4");
-  assert.equal(insertedValues[0]?.currentModelProviderCredentialId, "credential-1");
+  assert.equal(insertedValues[0]?.currentModelProviderCredentialModelId, "model-row-1");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
   assert.equal(insertedValues[0]?.inferredTitle, userMessage.slice(0, 50));
   assert.equal(insertedValues[0]?.status, "queued");
@@ -233,9 +233,8 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
                 return [{
                   id: "session-client-1",
                   agentId: "agent-1",
-                  currentModelId: "gpt-5.4-mini",
+                  currentModelProviderCredentialModelId: "model-row-2",
                   currentReasoningLevel: "low",
-                  modelProviderCredentialModelId: "model-row-2",
                   inferredTitle: "Summarize the open issues.",
                   status: "queued",
                 createdAt: new Date("2026-03-25T02:00:00.000Z"),
@@ -284,16 +283,37 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
   );
 
   assert.equal(insertedValues[0]?.id, "session-client-1");
-  assert.equal(insertedValues[0]?.currentModelId, "gpt-5.4-mini");
+  assert.equal(insertedValues[0]?.currentModelProviderCredentialModelId, "model-row-2");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
-  assert.equal(insertedValues[0]?.currentModelProviderCredentialId, "credential-2");
 });
 
 test("SessionManagerService archiveSession updates the session status and publishes the session update", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
+  let selectCallCount = 0;
   const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
     update() {
       return {
         set(value: Record<string, unknown>) {
@@ -305,7 +325,7 @@ test("SessionManagerService archiveSession updates the session status and publis
                   return [{
                     id: "session-1",
                     agentId: "agent-1",
-                    currentModelId: "gpt-5.4",
+                    currentModelProviderCredentialModelId: "model-row-1",
                     currentReasoningLevel: "high",
                     inferredTitle: "Existing title",
                     status: "archived",
@@ -388,8 +408,7 @@ test("SessionManagerService prompt queues the message, publishes session updates
               async where() {
                 return [{
                   agentId: "agent-1",
-                  currentModelId: "gpt-5.4",
-                  currentModelProviderCredentialId: "credential-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
                   currentReasoningLevel: "high",
                   id: "session-1",
                   status: "running",
@@ -430,8 +449,7 @@ test("SessionManagerService prompt queues the message, publishes session updates
                   return [{
                     id: "session-1",
                     agentId: "agent-1",
-                    modelProviderCredentialModelId: "model-row-2",
-                    currentModelId: "gpt-5.4-mini",
+                    currentModelProviderCredentialModelId: "model-row-2",
                     currentReasoningLevel: "medium",
                     inferredTitle: "Existing title",
                     status: "running",
@@ -493,9 +511,9 @@ test("SessionManagerService prompt queues the message, publishes session updates
   );
 
   assert.equal(sessionRecord.id, "session-1");
-  assert.equal(sessionRecord.modelProviderCredentialModelId, "model-row-2");
-  assert.equal(updatedValues[0]?.currentModelId, "gpt-5.4-mini");
-  assert.equal(updatedValues[0]?.currentModelProviderCredentialId, "credential-2");
+  assert.equal(sessionRecord.currentModelProviderCredentialModelId, "model-row-2");
+  assert.equal(sessionRecord.currentModelId, "gpt-5.4-mini");
+  assert.equal(updatedValues[0]?.currentModelProviderCredentialModelId, "model-row-2");
   assert.equal(updatedValues[0]?.currentReasoningLevel, "medium");
   assert.equal(updatedValues[0]?.status, "running");
   assert.deepEqual(queuedMessages, [{

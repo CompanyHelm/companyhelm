@@ -31,8 +31,8 @@ type GraphqlSessionRecord = {
 type ServiceSessionRecord = {
   agentId: string;
   createdAt: Date;
-  modelProviderCredentialModelId?: string | null;
   currentModelId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   id: string;
   inferredTitle: string | null;
@@ -90,7 +90,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
     return {
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
-      modelProviderCredentialModelId: sessionRecord.modelProviderCredentialModelId ?? null,
+      modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,

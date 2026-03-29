@@ -97,7 +97,7 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       return {
         id: "session-1",
         agentId: "agent-1",
-        modelProviderCredentialModelId: "model-row-9",
+        currentModelProviderCredentialModelId: "model-row-9",
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "medium",
         inferredTitle: "Existing title",

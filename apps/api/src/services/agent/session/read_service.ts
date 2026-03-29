@@ -6,8 +6,7 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 type SessionRow = {
   id: string;
   agentId: string;
-  currentModelId: string;
-  currentModelProviderCredentialId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
   isThinking: boolean;
@@ -103,7 +102,6 @@ type PageInfoGraphqlRecord = {
 type SessionModelRecord = {
   id: string;
   modelId: string;
-  modelProviderCredentialId: string;
 };
 
 type SessionTranscriptMessageEdgeGraphqlRecord = {
@@ -163,8 +161,7 @@ export class SessionReadService {
         .select({
           id: agentSessions.id,
           agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
           isThinking: agentSessions.isThinking,
@@ -184,13 +181,7 @@ export class SessionReadService {
 
       return [...sessionRows]
         .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
-        .map((sessionRow) => this.serializeSession(
-          sessionRow,
-          modelOptionIdBySessionKey.get(this.toSessionModelKey(
-            sessionRow.currentModelProviderCredentialId,
-            sessionRow.currentModelId,
-          )) ?? null,
-        ));
+        .map((sessionRow) => this.serializeSession(sessionRow, modelOptionIdBySessionKey));
     });
   }
 
@@ -205,8 +196,7 @@ export class SessionReadService {
         .select({
           id: agentSessions.id,
           agentId: agentSessions.agentId,
-          currentModelId: agentSessions.currentModelId,
-          currentModelProviderCredentialId: agentSessions.currentModelProviderCredentialId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
           isThinking: agentSessions.isThinking,
@@ -232,13 +222,7 @@ export class SessionReadService {
         companyId,
         [sessionRow],
       );
-      return this.serializeSession(
-        sessionRow,
-        modelOptionIdBySessionKey.get(this.toSessionModelKey(
-          sessionRow.currentModelProviderCredentialId,
-          sessionRow.currentModelId,
-        )) ?? null,
-      );
+      return this.serializeSession(sessionRow, modelOptionIdBySessionKey);
     });
   }
 
@@ -456,8 +440,10 @@ export class SessionReadService {
     companyId: string,
     sessionRows: ReadonlyArray<SessionRow>,
   ): Promise<Map<string, string>> {
-    const modelProviderCredentialIds = [...new Set(sessionRows.map((sessionRow) => sessionRow.currentModelProviderCredentialId))];
-    if (modelProviderCredentialIds.length === 0) {
+    const modelProviderCredentialModelIds = [...new Set(
+      sessionRows.map((sessionRow) => sessionRow.currentModelProviderCredentialModelId),
+    )];
+    if (modelProviderCredentialModelIds.length === 0) {
       return new Map();
     }
 
@@ -465,32 +451,32 @@ export class SessionReadService {
       .select({
         id: modelProviderCredentialModels.id,
         modelId: modelProviderCredentialModels.modelId,
-        modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
       })
       .from(modelProviderCredentialModels)
       .where(and(
         eq(modelProviderCredentialModels.companyId, companyId),
-        inArray(modelProviderCredentialModels.modelProviderCredentialId, modelProviderCredentialIds),
+        inArray(modelProviderCredentialModels.id, modelProviderCredentialModelIds),
       )) as SessionModelRecord[];
 
     return new Map(
-      modelRecords.map((modelRecord) => [
-        this.toSessionModelKey(modelRecord.modelProviderCredentialId, modelRecord.modelId),
-        modelRecord.id,
-      ]),
+      modelRecords.map((modelRecord) => [modelRecord.id, modelRecord.modelId]),
     );
   }
 
-  private toSessionModelKey(modelProviderCredentialId: string, modelId: string): string {
-    return `${modelProviderCredentialId}:${modelId}`;
-  }
+  private serializeSession(
+    sessionRow: SessionRow,
+    modelIdByModelRecordId: Map<string, string>,
+  ): SessionGraphqlRecord {
+    const modelId = modelIdByModelRecordId.get(sessionRow.currentModelProviderCredentialModelId);
+    if (!modelId) {
+      throw new Error("Session model not found.");
+    }
 
-  private serializeSession(sessionRow: SessionRow, modelProviderCredentialModelId: string | null): SessionGraphqlRecord {
     return {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
-      modelProviderCredentialModelId,
-      modelId: sessionRow.currentModelId,
+      modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
+      modelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
       inferredTitle: sessionRow.inferredTitle,
       isThinking: sessionRow.isThinking,

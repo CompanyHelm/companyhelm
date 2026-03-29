@@ -80,8 +80,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                     async where() {
                       return [{
                         agentId: "agent-1",
-                        currentModelId: "gpt-5.4",
-                        currentModelProviderCredentialId: "credential-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
                         status: "queued",
                       }];
@@ -92,6 +91,21 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
             }
 
             if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        modelId: "gpt-5.4",
+                        modelProviderCredentialId: "credential-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -267,8 +281,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                     async where() {
                       return [{
                         agentId: "agent-1",
-                        currentModelId: "gpt-5.4",
-                        currentModelProviderCredentialId: "credential-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
                         status: "queued",
                       }];
@@ -279,6 +292,21 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
             }
 
             if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        modelId: "gpt-5.4",
+                        modelProviderCredentialId: "credential-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {

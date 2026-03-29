@@ -31,8 +31,8 @@ type GraphqlSessionRecord = {
 type ServiceSessionRecord = {
   id: string;
   agentId: string;
-  modelProviderCredentialModelId?: string | null;
   currentModelId: string;
+  currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
   isThinking: boolean;
@@ -90,7 +90,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
     return {
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
-      modelProviderCredentialModelId: sessionRecord.modelProviderCredentialModelId ?? null,
+      modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,

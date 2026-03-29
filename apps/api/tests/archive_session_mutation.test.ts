@@ -78,6 +78,7 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
         id: sessionId,
         agentId: "agent-1",
         currentModelId: "gpt-5.4",
+        currentModelProviderCredentialModelId: "model-row-1",
         currentReasoningLevel: "high",
         status: "archived",
         createdAt: new Date("2026-03-25T12:00:00.000Z"),

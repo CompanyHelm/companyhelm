@@ -29,48 +29,75 @@ class SessionsQueryTestHarness {
 
   static createDatabaseMock() {
     const scopedCompanyIds: string[] = [];
+    let selectCallCount = 0;
 
     return {
       scopedCompanyIds,
       getDatabase() {
         return {
           select() {
-            return {
-              from() {
-                return {
-                  async where() {
-                    return [
-                      {
-                        id: "session-older",
-                        agentId: "agent-1",
-                        currentModelId: "gpt-5.4",
-                        currentReasoningLevel: "medium",
-                        inferredTitle: "Inferred older title",
-                        isThinking: false,
-                        status: "running",
-                        thinkingText: null,
-                        createdAt: new Date("2026-03-24T08:00:00.000Z"),
-                        updatedAt: new Date("2026-03-24T08:05:00.000Z"),
-                        userSetTitle: null,
-                      },
-                      {
-                        id: "session-newer",
-                        agentId: "agent-2",
-                        currentModelId: "claude-3.7-sonnet",
-                        currentReasoningLevel: "high",
-                        inferredTitle: null,
-                        isThinking: true,
-                        status: "archived",
-                        thinkingText: "Inspecting deployment history",
-                        createdAt: new Date("2026-03-24T09:00:00.000Z"),
-                        updatedAt: new Date("2026-03-24T09:30:00.000Z"),
-                        userSetTitle: "Fallback user title",
-                      },
-                    ];
-                  },
-                };
-              },
-            };
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          id: "session-older",
+                          agentId: "agent-1",
+                          currentModelProviderCredentialModelId: "model-row-1",
+                          currentReasoningLevel: "medium",
+                          inferredTitle: "Inferred older title",
+                          isThinking: false,
+                          status: "running",
+                          thinkingText: null,
+                          createdAt: new Date("2026-03-24T08:00:00.000Z"),
+                          updatedAt: new Date("2026-03-24T08:05:00.000Z"),
+                          userSetTitle: null,
+                        },
+                        {
+                          id: "session-newer",
+                          agentId: "agent-2",
+                          currentModelProviderCredentialModelId: "model-row-2",
+                          currentReasoningLevel: "high",
+                          inferredTitle: null,
+                          isThinking: true,
+                          status: "archived",
+                          thinkingText: "Inspecting deployment history",
+                          createdAt: new Date("2026-03-24T09:00:00.000Z"),
+                          updatedAt: new Date("2026-03-24T09:30:00.000Z"),
+                          userSetTitle: "Fallback user title",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          id: "model-row-1",
+                          modelId: "gpt-5.4",
+                        },
+                        {
+                          id: "model-row-2",
+                          modelId: "claude-3.7-sonnet",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
           },
         } as never;
       },

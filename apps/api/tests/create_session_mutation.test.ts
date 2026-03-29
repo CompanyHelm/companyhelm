@@ -94,7 +94,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       return {
         id: "session-1",
         agentId,
-        modelProviderCredentialModelId: "model-row-1",
+        currentModelProviderCredentialModelId: "model-row-1",
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
         inferredTitle: "Draft the onboarding email.",

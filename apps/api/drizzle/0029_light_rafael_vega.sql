@@ -19,4 +19,4 @@ SET "current_model_provider_credential_id" = COALESCE(
 )
 WHERE "agent_sessions"."current_model_provider_credential_id" IS NULL;--> statement-breakpoint
 ALTER TABLE "agent_sessions" ALTER COLUMN "current_model_provider_credential_id" SET NOT NULL;--> statement-breakpoint
-ALTER TABLE "agent_sessions" ADD CONSTRAINT "agent_sessions_current_model_provider_credential_id_model_provider_credentials_id_fk" FOREIGN KEY ("current_model_provider_credential_id") REFERENCES "public"."model_provider_credentials"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "agent_sessions" ADD CONSTRAINT "agent_sessions_current_model_credential_fk" FOREIGN KEY ("current_model_provider_credential_id") REFERENCES "public"."model_provider_credentials"("id") ON DELETE restrict ON UPDATE no action;
