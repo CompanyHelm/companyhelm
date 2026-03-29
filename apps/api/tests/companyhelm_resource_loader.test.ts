@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { CompanyHelmResourceLoader } from "../src/services/agent/session/pi-mono/companyhelm_resource_loader.ts";
+import { SystemPromptTemplate } from "../src/templates/system_prompt_template.ts";
 
 test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables local project discovery", async () => {
   const loader = new CompanyHelmResourceLoader();
@@ -26,8 +27,5 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
   assert.equal(loader.getExtensions().errors.length, 0);
   assert.equal(loader.getExtensions().extensions.length, 0);
   assert.ok(loader.getExtensions().runtime);
-  assert.match(
-    loader.getSystemPrompt() ?? "",
-    /do not have local filesystem access/i,
-  );
+  assert.equal(loader.getSystemPrompt(), new SystemPromptTemplate().render());
 });

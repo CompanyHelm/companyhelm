@@ -2,6 +2,7 @@ import {
   type ResourceLoader,
   createExtensionRuntime,
 } from "@mariozechner/pi-coding-agent";
+import { SystemPromptTemplate } from "../../../../templates/system_prompt_template.ts";
 
 /**
  * Owns the CompanyHelm PI Mono resource surface. Its scope is replacing the upstream default
@@ -39,19 +40,7 @@ export class CompanyHelmResourceLoader implements ResourceLoader {
     }>,
     skills: [],
   };
-  private readonly systemPrompt = [
-    "You are CompanyHelm's embedded agent runtime.",
-    "",
-    "You do not have local filesystem access, shell access, or automatic access to repository files.",
-    "Do not claim that you inspected files, read AGENTS instructions, or executed commands unless a",
-    "tool result in this session explicitly proves it.",
-    "",
-    "Rely only on the conversation, persisted session context, and the actual CompanyHelm tools",
-    "available in this runtime.",
-    "",
-    "If a requested action depends on unavailable local resources, say that clearly instead of",
-    "implying repo access.",
-  ].join("\n");
+  private readonly systemPrompt: string;
   private readonly themes = {
     diagnostics: [] as Array<{
       error: string;
@@ -59,6 +48,10 @@ export class CompanyHelmResourceLoader implements ResourceLoader {
     }>,
     themes: [],
   };
+
+  constructor(systemPromptTemplate: SystemPromptTemplate = new SystemPromptTemplate()) {
+    this.systemPrompt = systemPromptTemplate.render();
+  }
 
   getExtensions(): ReturnType<ResourceLoader["getExtensions"]> {
     return this.extensions;
