@@ -92,7 +92,7 @@ export type SessionMessageContentGraphqlRecord = {
   text: string | null;
   data: string | null;
   mimeType: string | null;
-  structuredContent: string | null;
+  structuredContent: unknown | null;
   structuredContentType: string | null;
   toolCallId: string | null;
   toolName: string | null;
@@ -430,7 +430,7 @@ export class SessionReadService {
       currentContents.push({
         data: contentRow.data,
         mimeType: contentRow.mimeType,
-        structuredContent: this.serializeStructuredContent(contentRow.structuredContent),
+        structuredContent: contentRow.structuredContent,
         structuredContentType: contentRow.structuredContentType,
         text: contentRow.text,
         toolCallId: contentRow.toolCallId,
@@ -519,13 +519,5 @@ export class SessionReadService {
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),
     };
-  }
-
-  private serializeStructuredContent(structuredContent: unknown): string | null {
-    if (structuredContent === null || typeof structuredContent === "undefined") {
-      return null;
-    }
-
-    return JSON.stringify(structuredContent);
   }
 }

@@ -258,30 +258,26 @@ function clampChatListWidth(width: number): number {
 function parseTerminalStructuredContent(
   content: Pick<SessionMessageContentRecord, "structuredContent" | "structuredContentType">,
 ): TerminalStructuredContentRecord | null {
-  if (content.structuredContentType !== "terminal" || typeof content.structuredContent !== "string") {
+  if (content.structuredContentType !== "terminal" || !content.structuredContent || typeof content.structuredContent !== "object") {
     return null;
   }
 
-  try {
-    const parsedContent = JSON.parse(content.structuredContent) as Partial<TerminalStructuredContentRecord>;
-    if (
-      typeof parsedContent.command !== "string"
-      || typeof parsedContent.completed !== "boolean"
-      || typeof parsedContent.sessionId !== "string"
-    ) {
-      return null;
-    }
-
-    return {
-      command: parsedContent.command,
-      completed: parsedContent.completed,
-      cwd: typeof parsedContent.cwd === "string" ? parsedContent.cwd : null,
-      exitCode: typeof parsedContent.exitCode === "number" ? parsedContent.exitCode : null,
-      sessionId: parsedContent.sessionId,
-    };
-  } catch {
+  const parsedContent = content.structuredContent as Partial<TerminalStructuredContentRecord>;
+  if (
+    typeof parsedContent.command !== "string"
+    || typeof parsedContent.completed !== "boolean"
+    || typeof parsedContent.sessionId !== "string"
+  ) {
     return null;
   }
+
+  return {
+    command: parsedContent.command,
+    completed: parsedContent.completed,
+    cwd: typeof parsedContent.cwd === "string" ? parsedContent.cwd : null,
+    exitCode: typeof parsedContent.exitCode === "number" ? parsedContent.exitCode : null,
+    sessionId: parsedContent.sessionId,
+  };
 }
 
 function loadChatListWidth(): number {

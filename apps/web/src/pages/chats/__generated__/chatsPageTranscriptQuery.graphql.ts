@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7dace85fb37cc390a19e57d05229c3a6>>
+ * @generated SignedSource<<290074339b3196eea72f9a3ab8e880cb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +22,7 @@ export type chatsPageTranscriptQuery$data = {
         readonly contents: ReadonlyArray<{
           readonly data: string | null | undefined;
           readonly mimeType: string | null | undefined;
-          readonly structuredContent: string | null | undefined;
+          readonly structuredContent: any | null | undefined;
           readonly structuredContentType: string | null | undefined;
           readonly text: string | null | undefined;
           readonly toolCallId: string | null | undefined;

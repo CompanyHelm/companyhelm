@@ -49,6 +49,8 @@ type Subscription {
   SessionMessageUpdated(sessionId: ID!): SessionMessage!
 }
 
+scalar JSON
+
 type AuthenticatedCompany {
   id: ID!
   name: String!
@@ -195,7 +197,7 @@ type SessionMessageContent {
   text: String
   data: String
   mimeType: String
-  structuredContent: String
+  structuredContent: JSON
   structuredContentType: String
   toolCallId: String
   toolName: String

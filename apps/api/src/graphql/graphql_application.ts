@@ -1,5 +1,6 @@
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
+import GraphQLJSON from "graphql-type-json";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
 import { GithubClient } from "../github/client.ts";
@@ -242,6 +243,7 @@ export class GraphqlApplication {
         },
       },
       resolvers: {
+        JSON: GraphQLJSON,
         Query: {
           Agent: this.agentQueryResolver.execute,
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<216dc147a82ccaedd68cc0f94215c97d>>
+ * @generated SignedSource<<81ec02487466f74bd5898e5c91372a7c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,7 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
     readonly contents: ReadonlyArray<{
       readonly data: string | null | undefined;
       readonly mimeType: string | null | undefined;
-      readonly structuredContent: string | null | undefined;
+      readonly structuredContent: any | null | undefined;
       readonly structuredContentType: string | null | undefined;
       readonly text: string | null | undefined;
       readonly toolCallId: string | null | undefined;
