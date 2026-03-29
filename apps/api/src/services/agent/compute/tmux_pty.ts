@@ -24,6 +24,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly DEFAULT_READ_OUTPUT_LIMIT = 4_000;
   private static readonly POLL_INTERVAL_MILLISECONDS = 100;
   private static readonly REMOTE_COMMAND_TIMEOUT_SECONDS = 30;
+  private static readonly SESSION_LIST_FIELD_SEPARATOR = "|";
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
   private readonly environmentShell: AgentEnvironmentShellInterface;
   private tmuxPrepared = false;
@@ -120,23 +121,15 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   async listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
     await this.ensureTmuxPrepared();
     const output = await this.runRequiredRemoteCommand(
-      "sh -lc 'tmux list-sessions -F \"#{session_name}\t#{session_attached}\t#{session_created}\t#{window_width}\t#{window_height}\" 2>/dev/null || true'",
+      `sh -lc 'tmux list-sessions -F "#{session_name}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_attached}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_created}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_width}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_height}" 2>/dev/null || true'`,
     );
 
     return output
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-      .map((line) => {
-        const [id, attached, createdAt, width, height] = line.split("\t");
-        return {
-          attached: attached === "1",
-          createdAt: createdAt ?? "",
-          height: Number(height ?? "0"),
-          id: id ?? "",
-          width: Number(width ?? "0"),
-        };
-      })
+      .map((line) => this.parseSessionListLine(line))
+      .filter((session): session is AgentEnvironmentTerminalSession => session !== null)
       .filter((session) => session.id.length > 0);
   }
 
@@ -350,6 +343,43 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     const visibleOutput = endIndex >= 0 ? slicedOutput.slice(0, endIndex) : slicedOutput;
 
     return visibleOutput.replace(/(?:\r?\n[ \t]*)+$/u, "");
+  }
+
+  private parseSessionListLine(line: string): AgentEnvironmentTerminalSession | null {
+    const separatorDelimitedParts = line.split(AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR);
+    if (separatorDelimitedParts.length === 5) {
+      return this.buildTerminalSessionRecord(separatorDelimitedParts);
+    }
+
+    const tabDelimitedParts = line.split("\t");
+    if (tabDelimitedParts.length === 5) {
+      return this.buildTerminalSessionRecord(tabDelimitedParts);
+    }
+
+    const flattenedMatch = /^(.*)_([01])_(\d+)_(\d+)_(\d+)$/.exec(line);
+    if (flattenedMatch) {
+      const [, id, attached, createdAt, width, height] = flattenedMatch;
+      return this.buildTerminalSessionRecord([id, attached, createdAt, width, height]);
+    }
+
+    return {
+      attached: false,
+      createdAt: "",
+      height: 0,
+      id: line,
+      width: 0,
+    };
+  }
+
+  private buildTerminalSessionRecord(parts: string[]): AgentEnvironmentTerminalSession {
+    const [id, attached, createdAt, width, height] = parts;
+    return {
+      attached: attached === "1",
+      createdAt: createdAt ?? "",
+      height: Number(height ?? "0"),
+      id: id ?? "",
+      width: Number(width ?? "0"),
+    };
   }
 
   private buildSendKeysCommand(sessionId: string, input: string, appendEnter = false): string {

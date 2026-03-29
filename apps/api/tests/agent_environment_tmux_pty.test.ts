@@ -14,6 +14,7 @@ class FakeEnvironmentShell {
   readonly rcFiles = new Map<string, string>();
   readonly sessions = new Map<string, FakeTmuxSession>();
   autoCompleteCommands = false;
+  listedSessionsOutput: string | null = null;
 
   async executeCommand(command: string) {
     if (command.includes("command -v tmux")) {
@@ -24,6 +25,13 @@ class FakeEnvironmentShell {
     }
 
     if (command.includes("tmux list-sessions")) {
+      if (typeof this.listedSessionsOutput === "string") {
+        return {
+          exitCode: 0,
+          stdout: this.listedSessionsOutput,
+        };
+      }
+
       return {
         exitCode: 0,
         stdout: [...this.sessions.entries()]
@@ -268,4 +276,20 @@ test("AgentEnvironmentTmuxPty reuses tmux sessions by session id across PTY inst
 
   await secondPty.killSession(createdSession.sessionId);
   assert.equal(fakeEnvironmentShell.sessions.has(createdSession.sessionId), false);
+});
+
+test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusable session ids", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.listedSessionsOutput = "pty-22ffc1cb214c4c0791235fd457e2d415_0_1774825845_80_20";
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  const sessions = await pty.listSessions();
+
+  assert.deepEqual(sessions, [{
+    attached: false,
+    createdAt: "1774825845",
+    height: 20,
+    id: "pty-22ffc1cb214c4c0791235fd457e2d415",
+    width: 80,
+  }]);
 });
