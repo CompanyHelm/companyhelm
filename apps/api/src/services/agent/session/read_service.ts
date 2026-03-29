@@ -34,7 +34,6 @@ type MessageContentRow = {
   data: string | null;
   mimeType: string | null;
   structuredContent: unknown | null;
-  structuredContentType: string | null;
   text: string | null;
   toolCallId: string | null;
   toolName: string | null;
@@ -93,7 +92,6 @@ export type SessionMessageContentGraphqlRecord = {
   data: string | null;
   mimeType: string | null;
   structuredContent: unknown | null;
-  structuredContentType: string | null;
   toolCallId: string | null;
   toolName: string | null;
 };
@@ -407,7 +405,6 @@ export class SessionReadService {
         data: messageContents.data,
         mimeType: messageContents.mimeType,
         structuredContent: messageContents.structuredContent,
-        structuredContentType: messageContents.structuredContentType,
         text: messageContents.text,
         toolCallId: messageContents.toolCallId,
         toolName: messageContents.toolName,
@@ -431,7 +428,6 @@ export class SessionReadService {
         data: contentRow.data,
         mimeType: contentRow.mimeType,
         structuredContent: contentRow.structuredContent,
-        structuredContentType: contentRow.structuredContentType,
         text: contentRow.text,
         toolCallId: contentRow.toolCallId,
         toolName: contentRow.toolName,

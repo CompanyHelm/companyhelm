@@ -59,6 +59,7 @@ export class AgentExecuteCommandTool {
             cwd: params.workingDirectory ?? null,
             exitCode: result.exitCode,
             sessionId: result.sessionId,
+            type: "terminal",
           },
         };
       },

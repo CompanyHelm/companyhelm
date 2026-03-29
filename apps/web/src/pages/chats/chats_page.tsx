@@ -75,7 +75,6 @@ const chatsPageTranscriptQueryNode = graphql`
             data
             mimeType
             structuredContent
-            structuredContentType
             toolCallId
             toolName
           }
@@ -182,7 +181,6 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
         data
         mimeType
         structuredContent
-        structuredContentType
         toolCallId
         toolName
       }
@@ -229,15 +227,16 @@ const CHATS_THINKING_GRADIENT_KEYFRAMES = `
     background-position: 200% 50%;
   }
 }
+`;
 
 type TerminalStructuredContentRecord = {
+  type: "terminal";
   command: string;
   completed: boolean;
   cwd: string | null;
   exitCode: number | null;
   sessionId: string;
 };
-`;
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
@@ -256,15 +255,16 @@ function clampChatListWidth(width: number): number {
 }
 
 function parseTerminalStructuredContent(
-  content: Pick<SessionMessageContentRecord, "structuredContent" | "structuredContentType">,
+  content: Pick<SessionMessageContentRecord, "structuredContent">,
 ): TerminalStructuredContentRecord | null {
-  if (content.structuredContentType !== "terminal" || !content.structuredContent || typeof content.structuredContent !== "object") {
+  if (!content.structuredContent || typeof content.structuredContent !== "object") {
     return null;
   }
 
   const parsedContent = content.structuredContent as Partial<TerminalStructuredContentRecord>;
   if (
-    typeof parsedContent.command !== "string"
+    parsedContent.type !== "terminal"
+    || typeof parsedContent.command !== "string"
     || typeof parsedContent.completed !== "boolean"
     || typeof parsedContent.sessionId !== "string"
   ) {
@@ -272,12 +272,44 @@ function parseTerminalStructuredContent(
   }
 
   return {
+    type: "terminal",
     command: parsedContent.command,
     completed: parsedContent.completed,
     cwd: typeof parsedContent.cwd === "string" ? parsedContent.cwd : null,
     exitCode: typeof parsedContent.exitCode === "number" ? parsedContent.exitCode : null,
     sessionId: parsedContent.sessionId,
   };
+}
+
+function sanitizeTerminalDisplayOutput(text: string): string {
+  let output = text;
+  const outputMarker = "output:\n";
+  const outputMarkerIndex = output.indexOf(outputMarker);
+  if (outputMarkerIndex >= 0) {
+    output = output.slice(outputMarkerIndex + outputMarker.length);
+  }
+
+  const outputLines = output.split(/\r?\n/u);
+  while (outputLines.length > 0) {
+    const firstLine = outputLines[0]?.trim() ?? "";
+    if (firstLine.length === 0) {
+      outputLines.shift();
+      continue;
+    }
+    if (
+      firstLine.includes("/tmp/companyhelm/")
+      || firstLine.includes(".command.sh")
+      || firstLine.includes(".rc")
+      || firstLine.includes("rc=$?")
+      || firstLine.includes("printf '%s' \"$rc\"")
+    ) {
+      outputLines.shift();
+      continue;
+    }
+    break;
+  }
+
+  return outputLines.join("\n").replace(/(?:\r?\n[ \t]*)+$/u, "");
 }
 
 function loadChatListWidth(): number {
@@ -615,6 +647,9 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
           {visibleContents.map((content, contentIndex) => {
             const terminalStructuredContent = parseTerminalStructuredContent(content);
             if (terminalStructuredContent) {
+              const terminalOutputText = typeof content.text === "string"
+                ? sanitizeTerminalDisplayOutput(content.text)
+                : "";
               return (
                 <div
                   key={`${message.id}-content-${contentIndex}`}
@@ -635,8 +670,8 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
                   <pre className="border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground">
-                    {typeof content.text === "string" && content.text.length > 0
-                      ? content.text
+                    {terminalOutputText.length > 0
+                      ? terminalOutputText
                       : terminalStructuredContent.completed
                       ? "(no output)"
                       : "Waiting for command output..."}

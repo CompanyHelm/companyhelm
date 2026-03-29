@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<81ec02487466f74bd5898e5c91372a7c>>
+ * @generated SignedSource<<000d573b064c025f4460fc2425e116e0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,6 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
       readonly data: string | null | undefined;
       readonly mimeType: string | null | undefined;
       readonly structuredContent: any | null | undefined;
-      readonly structuredContentType: string | null | undefined;
       readonly text: string | null | undefined;
       readonly toolCallId: string | null | undefined;
       readonly toolName: string | null | undefined;
@@ -152,13 +151,6 @@ v4 = [
             "name": "structuredContent",
             "storageKey": null
           },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "structuredContentType",
-            "storageKey": null
-          },
           (v1/*: any*/),
           (v2/*: any*/)
         ],
@@ -208,16 +200,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "64db69b815017718884600885e3c2d29",
+    "cacheID": "cce77dd6dbc3052abb869453064cf952",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      structuredContentType\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "afb23836abe454c20949818671f3cacf";
+(node as any).hash = "a8ab83653a9b7d23cc71239b075db5d2";
 
 export default node;

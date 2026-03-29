@@ -198,7 +198,6 @@ type SessionMessageContent {
   data: String
   mimeType: String
   structuredContent: JSON
-  structuredContentType: String
   toolCallId: String
   toolName: String
 }

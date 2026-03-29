@@ -529,7 +529,6 @@ test("PiMonoSessionEventHandler stores terminal structured content from tool exe
     messageContentRecords?.map((record) => {
       return {
         structuredContent: record.structuredContent,
-        structuredContentType: record.structuredContentType,
         text: record.text,
         type: record.type,
       };
@@ -537,13 +536,13 @@ test("PiMonoSessionEventHandler stores terminal structured content from tool exe
     [
       {
         structuredContent: {
+          type: "terminal",
           command: "ls -la",
           completed: true,
           cwd: "/workspace",
           exitCode: 2,
           sessionId: "pty-123",
         },
-        structuredContentType: "terminal",
         text: "final output",
         type: "text",
       },

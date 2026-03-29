@@ -101,13 +101,13 @@ class SessionMessagesQueryTestHarness {
                           messageId: "message-2",
                           mimeType: null,
                           structuredContent: {
+                            type: "terminal",
                             command: "ls -la",
                             completed: true,
                             cwd: "/workspace",
                             exitCode: 2,
                             sessionId: "pty-123",
                           },
-                          structuredContentType: "terminal",
                           text: "Line one",
                           toolCallId: null,
                           toolName: null,
@@ -195,7 +195,6 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
               data
               mimeType
               structuredContent
-              structuredContentType
               toolCallId
               toolName
             }
@@ -226,7 +225,6 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           data: null,
           mimeType: null,
           structuredContent: null,
-          structuredContentType: null,
           toolCallId: null,
           toolName: null,
         },
@@ -250,13 +248,13 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           data: null,
           mimeType: null,
           structuredContent: {
+            type: "terminal",
             command: "ls -la",
             completed: true,
             cwd: "/workspace",
             exitCode: 2,
             sessionId: "pty-123",
           },
-          structuredContentType: "terminal",
           toolCallId: null,
           toolName: null,
         },
@@ -266,7 +264,6 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           data: null,
           mimeType: null,
           structuredContent: null,
-          structuredContentType: null,
           toolCallId: null,
           toolName: null,
         },

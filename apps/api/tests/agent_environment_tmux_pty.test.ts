@@ -91,8 +91,31 @@ class FakeEnvironmentShell {
 
       if (commandFilePath && rcFilePath) {
         const commandFileContents = this.commandFiles.get(commandFilePath) ?? "";
-        session.output += `ran: ${commandFileContents.trim()}\n`;
+        const commandLines = commandFileContents
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => {
+            return line.length > 0
+              && !line.startsWith("cd ")
+              && !line.startsWith("export ")
+              && !line.startsWith("printf '%s\\n' '__COMPANYHELM_OUTPUT_START_")
+              && !line.startsWith("printf '\\n%s\\n' '__COMPANYHELM_OUTPUT_END_");
+          });
+        const commandOutput = commandLines.join("\n");
+        const outputStartMarker = commandFileContents.match(/__COMPANYHELM_OUTPUT_START_[A-Za-z0-9]+__/)?.[0];
+        const outputEndMarker = commandFileContents.match(/__COMPANYHELM_OUTPUT_END_[A-Za-z0-9]+__/)?.[0];
+
+        session.output += "wrapper command that should be hidden\n";
+        if (outputStartMarker) {
+          session.output += `${outputStartMarker}\n`;
+        }
+        if (commandOutput.length > 0) {
+          session.output += `ran: ${commandOutput}\n\n\n`;
+        }
         if (this.autoCompleteCommands) {
+          if (outputEndMarker) {
+            session.output += `${outputEndMarker}\n\n`;
+          }
           this.rcFiles.set(rcFilePath, "0");
         }
       } else {
@@ -175,7 +198,7 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
 
   assert.equal(executionResult.sessionId, "main");
   assert.equal(executionResult.completed, false);
-  assert.ok(executionResult.output.includes("ran: ls -la\n"));
+  assert.equal(executionResult.output, "ran: ls -la");
 
   const sessions = await pty.listSessions();
   assert.ok(sessions.some((session) => session.id === executionResult.sessionId));
@@ -183,7 +206,8 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
 
   const firstPage = await pty.readOutput(executionResult.sessionId, null, 4_000);
   assert.equal(firstPage.chunks.length, 1);
-  assert.ok(firstPage.chunks[0]?.text.includes("ran: ls -la\n"));
+  assert.ok(firstPage.chunks[0]?.text.includes("wrapper command that should be hidden"));
+  assert.ok(firstPage.chunks[0]?.text.includes("ran: ls -la"));
 
   const secondPage = await pty.readOutput(executionResult.sessionId, firstPage.nextOffset, 4_000);
   assert.deepEqual(secondPage.chunks, []);
@@ -208,7 +232,7 @@ test("AgentEnvironmentTmuxPty returns immediately when a tmux command completes 
 
   assert.equal(result.completed, true);
   assert.equal(result.exitCode, 0);
-  assert.ok(result.output.includes("ran: echo done\n"));
+  assert.equal(result.output, "ran: echo done");
 });
 
 test("AgentEnvironmentTmuxPty uses the provided logical session name when creating tmux sessions", async () => {
@@ -239,7 +263,8 @@ test("AgentEnvironmentTmuxPty reuses tmux sessions by session id across PTY inst
   await secondPty.sendInput(createdSession.sessionId, "q\n", 0);
   const outputPage = await secondPty.readOutput(createdSession.sessionId, null, 4_000);
 
-  assert.ok(outputPage.chunks[0]?.text.includes("ran: tail -f log.txt\nq\n"));
+  assert.ok(outputPage.chunks[0]?.text.includes("ran: tail -f log.txt"));
+  assert.ok(outputPage.chunks[0]?.text.includes("q\n"));
 
   await secondPty.killSession(createdSession.sessionId);
   assert.equal(fakeEnvironmentShell.sessions.has(createdSession.sessionId), false);

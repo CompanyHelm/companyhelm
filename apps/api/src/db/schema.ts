@@ -183,7 +183,6 @@ export const messageContents = pgTable("message_contents", {
   data: text("data"),
   mimeType: text("mime_type"),
   structuredContent: jsonb("structured_content"),
-  structuredContentType: text("structured_content_type"),
   toolCallId: text("tool_call_id"),
   toolName: text("tool_name"),
   arguments: jsonb("arguments"),

@@ -100,13 +100,13 @@ class SessionTranscriptMessagesQueryTestHarness {
                           messageId: "message-3",
                           mimeType: null,
                           structuredContent: {
+                            type: "terminal",
                             command: "ls -la",
                             completed: false,
                             cwd: "/workspace",
                             exitCode: null,
                             sessionId: "pty-123",
                           },
-                          structuredContentType: "terminal",
                           text: "Latest answer",
                           toolCallId: null,
                           toolName: null,
@@ -227,7 +227,6 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                   data
                   mimeType
                   structuredContent
-                  structuredContentType
                   toolCallId
                   toolName
                 }
@@ -271,13 +270,13 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               data: null,
               mimeType: null,
               structuredContent: {
+                type: "terminal",
                 command: "ls -la",
                 completed: false,
                 cwd: "/workspace",
                 exitCode: null,
                 sessionId: "pty-123",
               },
-              structuredContentType: "terminal",
               toolCallId: null,
               toolName: null,
             },
@@ -304,7 +303,6 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               data: null,
               mimeType: null,
               structuredContent: null,
-              structuredContentType: null,
               toolCallId: null,
               toolName: null,
             },
@@ -314,7 +312,6 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               data: null,
               mimeType: null,
               structuredContent: null,
-              structuredContentType: null,
               toolCallId: null,
               toolName: null,
             },

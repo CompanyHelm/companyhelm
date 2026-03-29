@@ -57,6 +57,7 @@ type ToolExecutionResult = {
 };
 
 type TerminalStructuredContent = {
+  type: "terminal";
   command: string;
   completed: boolean;
   cwd: string | null;
@@ -70,7 +71,6 @@ type SessionMessage = {
   isError?: boolean;
   role?: string;
   structuredContent?: TerminalStructuredContent | null;
-  structuredContentType?: string | null;
   stopReason?: string;
   timestamp?: number;
   toolCallId?: string;
@@ -362,7 +362,6 @@ export class PiMonoSessionEventHandler {
               data: contentRecord.data,
               mimeType: contentRecord.mimeType,
               structuredContent: contentRecord.structuredContent,
-              structuredContentType: contentRecord.structuredContentType,
               text: contentRecord.text,
               toolCallId: contentRecord.toolCallId,
               toolName: contentRecord.toolName,
@@ -420,13 +419,11 @@ export class PiMonoSessionEventHandler {
     timestamp: Date,
   ): Array<Record<string, unknown>> {
     const messageContent = this.normalizeMessageContent(message.content);
-    const structuredContent = message.structuredContentType === "terminal" ? message.structuredContent ?? null : null;
-    const structuredContentType = message.structuredContentType === "terminal" ? "terminal" : null;
+    const structuredContent = message.structuredContent?.type === "terminal" ? message.structuredContent : null;
 
     return messageContent
       .flatMap((contentBlock, contentIndex) => {
         const contentStructuredContent = contentIndex === 0 ? structuredContent : null;
-        const contentStructuredContentType = contentIndex === 0 ? structuredContentType : null;
         if (contentBlock.type === "text") {
           return [{
             companyId,
@@ -434,7 +431,6 @@ export class PiMonoSessionEventHandler {
             id: randomUUID(),
             messageId,
             structuredContent: contentStructuredContent,
-            structuredContentType: contentStructuredContentType,
             text: contentBlock.text,
             type: "text",
             updatedAt: timestamp,
@@ -450,7 +446,6 @@ export class PiMonoSessionEventHandler {
             messageId,
             mimeType: contentBlock.mimeType,
             structuredContent: contentStructuredContent,
-            structuredContentType: contentStructuredContentType,
             type: "image",
             updatedAt: timestamp,
           }];
@@ -464,7 +459,6 @@ export class PiMonoSessionEventHandler {
             id: randomUUID(),
             messageId,
             structuredContent: contentStructuredContent,
-            structuredContentType: contentStructuredContentType,
             toolCallId: contentBlock.id,
             toolName: contentBlock.name,
             type: "toolCall",
@@ -504,7 +498,6 @@ export class PiMonoSessionEventHandler {
         isError: sessionEvent.isError === true,
         role: "toolResult",
         structuredContent,
-        structuredContentType: structuredContent ? "terminal" : null,
         timestamp: Date.now(),
         toolCallId: sessionEvent.toolCallId,
         toolName: sessionEvent.toolName,
@@ -606,6 +599,7 @@ export class PiMonoSessionEventHandler {
     const exitCode = typeof terminalDetails.exitCode === "number" ? terminalDetails.exitCode : null;
 
     return {
+      type: "terminal",
       command: terminalDetails.command,
       completed: terminalDetails.completed,
       cwd,

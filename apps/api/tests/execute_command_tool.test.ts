@@ -28,15 +28,10 @@ test("AgentExecuteCommandTool returns terminal metadata in details", async () =>
     cwd: "/workspace",
     exitCode: 2,
     sessionId: "pty-123",
+    type: "terminal",
   });
   assert.deepEqual(result.content, [{
-    text: [
-      "sessionId: pty-123",
-      "completed: true",
-      "exitCode: 2",
-      "output:",
-      "file-a\nfile-b",
-    ].join("\n"),
+    text: "file-a\nfile-b",
     type: "text",
   }]);
   assert.deepEqual(executeCommand.mock.calls, [[{

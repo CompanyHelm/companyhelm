@@ -10,14 +10,8 @@ import type {
  */
 export class AgentTerminalResultFormatter {
   static formatCommandResult(result: AgentEnvironmentCommandResult): string {
-    const output = result.output.length > 0 ? result.output : "(no output)";
-    return [
-      `sessionId: ${result.sessionId}`,
-      `completed: ${result.completed}`,
-      `exitCode: ${result.exitCode === null ? "null" : result.exitCode}`,
-      "output:",
-      output,
-    ].join("\n");
+    const output = result.output.replace(/(?:\r?\n[ \t]*)+$/u, "");
+    return output.length > 0 ? output : "(no output)";
   }
 
   static formatOutputResult(sessionId: string, page: AgentEnvironmentTerminalOutputPage): string {

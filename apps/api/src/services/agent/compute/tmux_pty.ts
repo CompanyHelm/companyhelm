@@ -10,6 +10,8 @@ import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 type TmuxCommandRun = {
   rcFile: string;
+  outputEndMarker: string;
+  outputStartMarker: string;
 };
 
 /**
@@ -42,7 +44,11 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     const startOffset = await this.captureTmuxOutputLength(sessionId);
     const commandRun = await this.startTmuxCommand(sessionId, input);
     const waitResult = await this.waitForTmuxCommand(commandRun.rcFile, this.resolveYieldTimeMilliseconds(input));
-    const output = await this.captureTmuxOutputSince(sessionId, startOffset);
+    const output = this.sanitizeCommandOutput(
+      await this.captureTmuxOutputSince(sessionId, startOffset),
+      commandRun.outputStartMarker,
+      commandRun.outputEndMarker,
+    );
     if (waitResult.completed) {
       await this.deleteRemoteFile(commandRun.rcFile);
     }
@@ -216,7 +222,9 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     const commandRunId = randomUUID().replaceAll("-", "");
     const commandFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.command.sh`;
     const rcFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.rc`;
-    await this.writeRemoteFile(commandFile, this.buildCommandFileContents(input));
+    const outputStartMarker = `__COMPANYHELM_OUTPUT_START_${commandRunId}__`;
+    const outputEndMarker = `__COMPANYHELM_OUTPUT_END_${commandRunId}__`;
+    await this.writeRemoteFile(commandFile, this.buildCommandFileContents(input, outputStartMarker, outputEndMarker));
     await this.deleteRemoteFile(rcFile);
     const wrapperCommand = [
       `sh ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
@@ -228,6 +236,8 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
 
     return {
       rcFile,
+      outputEndMarker,
+      outputStartMarker,
     };
   }
 
@@ -310,8 +320,13 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     return output.slice(offset);
   }
 
-  private buildCommandFileContents(input: AgentEnvironmentCommandInput): string {
+  private buildCommandFileContents(
+    input: AgentEnvironmentCommandInput,
+    outputStartMarker: string,
+    outputEndMarker: string,
+  ): string {
     const lines = [] as string[];
+    lines.push(`printf '%s\\n' ${AgentEnvironmentTmuxPty.shellQuote(outputStartMarker)}`);
     if (input.workingDirectory) {
       lines.push(`cd ${AgentEnvironmentTmuxPty.shellQuote(input.workingDirectory)}`);
     }
@@ -321,8 +336,20 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
 
     lines.push(input.command);
+    lines.push(`printf '\\n%s\\n' ${AgentEnvironmentTmuxPty.shellQuote(outputEndMarker)}`);
 
     return `${lines.join("\n")}\n`;
+  }
+
+  private sanitizeCommandOutput(output: string, outputStartMarker: string, outputEndMarker: string): string {
+    const startIndex = output.indexOf(outputStartMarker);
+    const slicedOutput = startIndex >= 0
+      ? output.slice(startIndex + outputStartMarker.length).replace(/^\r?\n/, "")
+      : output;
+    const endIndex = slicedOutput.indexOf(outputEndMarker);
+    const visibleOutput = endIndex >= 0 ? slicedOutput.slice(0, endIndex) : slicedOutput;
+
+    return visibleOutput.replace(/(?:\r?\n[ \t]*)+$/u, "");
   }
 
   private buildSendKeysCommand(sessionId: string, input: string, appendEnter = false): string {
