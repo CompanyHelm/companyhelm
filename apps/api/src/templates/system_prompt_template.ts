@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import * as nunjucks from "nunjucks";
+import nunjucks from "nunjucks";
 
 /**
  * Loads and renders the PI Mono system prompt template from the API source tree so the prompt text
