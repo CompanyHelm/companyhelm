@@ -135,8 +135,8 @@ test("GraphQL Environments query lists company-scoped agent environments", async
       environmentsQueryResolver: EnvironmentsQueryResolver;
     }
   ).environmentsQueryResolver = new EnvironmentsQueryResolver({
-    async createRuntime() {
-      throw new Error("createRuntime should not run for the environments query");
+    async createShell() {
+      throw new Error("createShell should not run for the environments query");
     },
     getEnvironmentStatus,
     getProvider() {

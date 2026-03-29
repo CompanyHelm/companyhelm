@@ -146,7 +146,7 @@ test("AgentComputeDaytonaProvider starts stopped environments and updates the ca
     },
   };
 
-  const runtime = await provider.createRuntime({} as never, {
+  const shell = await provider.createShell({} as never, {
     agentId: "agent-1",
     companyId: "company-1",
     cpuCount: 2,
@@ -166,7 +166,10 @@ test("AgentComputeDaytonaProvider starts stopped environments and updates the ca
   assert.equal(start.mock.calls.length, 1);
   assert.equal(refreshData.mock.calls.length, 2);
   assert.equal(updateEnvironmentResources.mock.calls.length, 1);
-  assert.deepEqual(await runtime.listSessions(), []);
+  assert.deepEqual(await shell.executeCommand("echo ready"), {
+    exitCode: 0,
+    stdout: "",
+  });
 });
 
 test("AgentComputeDaytonaProvider starts a remotely stopped sandbox even when the catalog says it is running", async () => {
@@ -216,7 +219,7 @@ test("AgentComputeDaytonaProvider starts a remotely stopped sandbox even when th
     },
   };
 
-  const runtime = await provider.createRuntime({} as never, {
+  const shell = await provider.createShell({} as never, {
     agentId: "agent-1",
     companyId: "company-1",
     cpuCount: 4,
@@ -236,5 +239,8 @@ test("AgentComputeDaytonaProvider starts a remotely stopped sandbox even when th
   assert.equal(start.mock.calls.length, 1);
   assert.equal(refreshData.mock.calls.length, 2);
   assert.equal(updateEnvironmentResources.mock.calls.length, 0);
-  assert.deepEqual(await runtime.listSessions(), []);
+  assert.deepEqual(await shell.executeCommand("echo ready"), {
+    exitCode: 0,
+    stdout: "",
+  });
 });

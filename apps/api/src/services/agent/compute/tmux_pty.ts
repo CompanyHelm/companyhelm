@@ -4,49 +4,35 @@ import type {
   AgentEnvironmentCommandResult,
   AgentEnvironmentTerminalOutputPage,
   AgentEnvironmentTerminalSession,
-} from "../environment_interface.ts";
-import { AgentEnvironmentRuntimeInterface } from "../runtime_interface.ts";
-
-type DaytonaRemoteSandbox = {
-  process: {
-    executeCommand(
-      command: string,
-      cwd?: string,
-      env?: Record<string, string>,
-      timeout?: number,
-    ): Promise<{
-      artifacts?: {
-        stdout?: string;
-      };
-      exitCode: number;
-      result: string;
-    }>;
-  };
-};
+} from "./environment_interface.ts";
+import { AgentEnvironmentPtyInterface } from "./pty_interface.ts";
+import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 type TmuxCommandRun = {
   rcFile: string;
 };
 
 /**
- * Implements tmux-backed terminal operations for one Daytona environment. It reads pane output
- * directly from tmux on demand so the API process does not need to keep any extra terminal buffer
- * in memory between tool calls.
+ * Implements tmux-backed PTY management on top of the generic environment shell contract. This
+ * keeps tmux session orchestration reusable across providers that can execute normal shell
+ * commands, while provider adapters stay focused on reaching the remote environment itself.
  */
-export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInterface {
+export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly DEFAULT_EXECUTE_COMMAND_YIELD_MS = 1_000;
   private static readonly DEFAULT_READ_OUTPUT_LIMIT = 4_000;
   private static readonly POLL_INTERVAL_MILLISECONDS = 100;
   private static readonly REMOTE_COMMAND_TIMEOUT_SECONDS = 30;
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
-  private readonly remoteSandbox: DaytonaRemoteSandbox;
+  private readonly environmentShell: AgentEnvironmentShellInterface;
+  private tmuxPrepared = false;
 
-  constructor(remoteSandbox: DaytonaRemoteSandbox) {
+  constructor(environmentShell: AgentEnvironmentShellInterface) {
     super();
-    this.remoteSandbox = remoteSandbox;
+    this.environmentShell = environmentShell;
   }
 
   async executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {
+    await this.ensureTmuxPrepared();
     if (input.command.trim().length === 0) {
       throw new Error("command is required.");
     }
@@ -74,6 +60,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
     input: string,
     yieldTimeMilliseconds?: number,
   ): Promise<AgentEnvironmentCommandResult> {
+    await this.ensureTmuxPrepared();
     await this.ensureExistingTmuxSession(sessionId);
     const startOffset = await this.captureTmuxOutputLength(sessionId);
     await this.sendInputToTmuxSession(sessionId, input);
@@ -101,10 +88,14 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage> {
+    await this.ensureTmuxPrepared();
     await this.ensureExistingTmuxSession(sessionId);
     const fullOutput = await this.captureTmuxOutput(sessionId);
     const cursor = Math.max(0, afterOffset ?? 0);
-    const nextOffset = Math.min(fullOutput.length, cursor + Math.max(1, limit || AgentComputeDaytonaEnvironment.DEFAULT_READ_OUTPUT_LIMIT));
+    const nextOffset = Math.min(
+      fullOutput.length,
+      cursor + Math.max(1, limit || AgentEnvironmentTmuxPty.DEFAULT_READ_OUTPUT_LIMIT),
+    );
     const text = fullOutput.slice(cursor, nextOffset);
 
     return {
@@ -121,11 +112,12 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
   }
 
   async listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
-    const output = await this.runRemoteCommand(
+    await this.ensureTmuxPrepared();
+    const output = await this.runRequiredRemoteCommand(
       "sh -lc 'tmux list-sessions -F \"#{session_name}\t#{session_attached}\t#{session_created}\t#{window_width}\t#{window_height}\" 2>/dev/null || true'",
     );
 
-    return output.stdout
+    return output
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
@@ -143,15 +135,17 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
   }
 
   async resizeSession(sessionId: string, columns: number, rows: number): Promise<void> {
+    await this.ensureTmuxPrepared();
     await this.ensureExistingTmuxSession(sessionId);
     await this.runRequiredRemoteCommand(
-      `tmux resize-window -t ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)} -x ${columns} -y ${rows}`,
+      `tmux resize-window -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -x ${columns} -y ${rows}`,
     );
   }
 
   async killSession(sessionId: string): Promise<void> {
+    await this.ensureTmuxPrepared();
     await this.runRemoteCommand(
-      `tmux kill-session -t ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)} 2>/dev/null || true`,
+      `tmux kill-session -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} 2>/dev/null || true`,
     );
   }
 
@@ -177,14 +171,14 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
     }
 
     const creationCommand = [
-      `mkdir -p ${AgentComputeDaytonaEnvironment.shellQuote(AgentComputeDaytonaEnvironment.STATE_DIRECTORY)}`,
+      `mkdir -p ${AgentEnvironmentTmuxPty.shellQuote(AgentEnvironmentTmuxPty.STATE_DIRECTORY)}`,
       "&&",
       "tmux new-session -d",
-      `-s ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)}`,
+      `-s ${AgentEnvironmentTmuxPty.shellQuote(sessionId)}`,
       input.columns ? `-x ${input.columns}` : "",
       input.rows ? `-y ${input.rows}` : "",
-      input.workingDirectory ? `-c ${AgentComputeDaytonaEnvironment.shellQuote(input.workingDirectory)}` : "",
-      AgentComputeDaytonaEnvironment.shellQuote(this.buildShellBootstrapCommand(input.environment)),
+      input.workingDirectory ? `-c ${AgentEnvironmentTmuxPty.shellQuote(input.workingDirectory)}` : "",
+      AgentEnvironmentTmuxPty.shellQuote(this.buildShellBootstrapCommand(input.environment)),
     ].filter((segment) => segment.length > 0).join(" ");
     await this.runRequiredRemoteCommand(creationCommand);
   }
@@ -197,20 +191,38 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
     throw new Error(`Sandbox session ${sessionId} was not found.`);
   }
 
+  private async ensureTmuxPrepared(): Promise<void> {
+    if (this.tmuxPrepared) {
+      return;
+    }
+
+    const result = await this.environmentShell.executeCommand(
+      "sh -lc 'command -v tmux >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tmux)'",
+      undefined,
+      undefined,
+      300,
+    );
+    if (result.exitCode !== 0) {
+      throw new Error(`Failed to prepare tmux in environment: ${result.stdout}`);
+    }
+
+    this.tmuxPrepared = true;
+  }
+
   private async startTmuxCommand(
     sessionId: string,
     input: AgentEnvironmentCommandInput,
   ): Promise<TmuxCommandRun> {
     const commandRunId = randomUUID().replaceAll("-", "");
-    const commandFile = `${AgentComputeDaytonaEnvironment.STATE_DIRECTORY}/${commandRunId}.command.sh`;
-    const rcFile = `${AgentComputeDaytonaEnvironment.STATE_DIRECTORY}/${commandRunId}.rc`;
+    const commandFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.command.sh`;
+    const rcFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.rc`;
     await this.writeRemoteFile(commandFile, this.buildCommandFileContents(input));
     await this.deleteRemoteFile(rcFile);
     const wrapperCommand = [
-      `sh ${AgentComputeDaytonaEnvironment.shellQuote(commandFile)}`,
+      `sh ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
       "rc=$?",
-      `rm -f ${AgentComputeDaytonaEnvironment.shellQuote(commandFile)}`,
-      `printf '%s' "$rc" > ${AgentComputeDaytonaEnvironment.shellQuote(rcFile)}`,
+      `rm -f ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
+      `printf '%s' "$rc" > ${AgentEnvironmentTmuxPty.shellQuote(rcFile)}`,
     ].join("; ");
     await this.sendInputToTmuxSession(sessionId, wrapperCommand, true);
 
@@ -244,8 +256,8 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
         };
       }
 
-      await AgentComputeDaytonaEnvironment.delay(Math.min(
-        AgentComputeDaytonaEnvironment.POLL_INTERVAL_MILLISECONDS,
+      await AgentEnvironmentTmuxPty.delay(Math.min(
+        AgentEnvironmentTmuxPty.POLL_INTERVAL_MILLISECONDS,
         remainingMilliseconds,
       ));
     }
@@ -275,8 +287,8 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
         };
       }
 
-      await AgentComputeDaytonaEnvironment.delay(Math.min(
-        AgentComputeDaytonaEnvironment.POLL_INTERVAL_MILLISECONDS,
+      await AgentEnvironmentTmuxPty.delay(Math.min(
+        AgentEnvironmentTmuxPty.POLL_INTERVAL_MILLISECONDS,
         remainingMilliseconds,
       ));
     }
@@ -284,7 +296,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
 
   private async captureTmuxOutput(sessionId: string): Promise<string> {
     return this.runRequiredRemoteCommand(
-      `tmux capture-pane -pt ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)} -S -32768`,
+      `tmux capture-pane -pt ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -S -32768`,
     );
   }
 
@@ -301,11 +313,11 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
   private buildCommandFileContents(input: AgentEnvironmentCommandInput): string {
     const lines = [] as string[];
     if (input.workingDirectory) {
-      lines.push(`cd ${AgentComputeDaytonaEnvironment.shellQuote(input.workingDirectory)}`);
+      lines.push(`cd ${AgentEnvironmentTmuxPty.shellQuote(input.workingDirectory)}`);
     }
 
     for (const [key, value] of Object.entries(input.environment ?? {})) {
-      lines.push(`export ${key}=${AgentComputeDaytonaEnvironment.shellQuote(value)}`);
+      lines.push(`export ${key}=${AgentEnvironmentTmuxPty.shellQuote(value)}`);
     }
 
     lines.push(input.command);
@@ -321,13 +333,13 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
       const line = lines[index] ?? "";
       if (line.length > 0) {
         commands.push(
-          `tmux send-keys -t ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)} -l -- ${AgentComputeDaytonaEnvironment.shellQuote(line)}`,
+          `tmux send-keys -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -l -- ${AgentEnvironmentTmuxPty.shellQuote(line)}`,
         );
       }
 
       if (index < lines.length - 1 || shouldSendTrailingEnter) {
         commands.push(
-          `tmux send-keys -t ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)} Enter`,
+          `tmux send-keys -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} Enter`,
         );
       }
     }
@@ -337,7 +349,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
 
   private buildShellBootstrapCommand(environment?: Record<string, string>): string {
     const exports = Object.entries(environment ?? {})
-      .map(([key, value]) => `${key}=${AgentComputeDaytonaEnvironment.shellQuote(value)}`)
+      .map(([key, value]) => `${key}=${AgentEnvironmentTmuxPty.shellQuote(value)}`)
       .join(" ");
     if (exports.length === 0) {
       return "env PS1='' sh";
@@ -347,12 +359,12 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
   }
 
   private async deleteRemoteFile(path: string): Promise<void> {
-    await this.runRemoteCommand(`rm -f ${AgentComputeDaytonaEnvironment.shellQuote(path)}`);
+    await this.runRemoteCommand(`rm -f ${AgentEnvironmentTmuxPty.shellQuote(path)}`);
   }
 
   private async hasTmuxSession(sessionId: string): Promise<boolean> {
     const commandResult = await this.runRemoteCommand(
-      `tmux has-session -t ${AgentComputeDaytonaEnvironment.shellQuote(sessionId)} 2>/dev/null`,
+      `tmux has-session -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} 2>/dev/null`,
     );
 
     return commandResult.exitCode === 0;
@@ -360,7 +372,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
 
   private async readExitCodeIfPresent(path: string): Promise<number | null> {
     const output = await this.runRemoteCommand(
-      `sh -lc 'if [ -f ${AgentComputeDaytonaEnvironment.shellQuote(path)} ]; then cat ${AgentComputeDaytonaEnvironment.shellQuote(path)}; fi'`,
+      `sh -lc 'if [ -f ${AgentEnvironmentTmuxPty.shellQuote(path)} ]; then cat ${AgentEnvironmentTmuxPty.shellQuote(path)}; fi'`,
     );
     const trimmedOutput = output.stdout.trim();
     if (trimmedOutput.length === 0) {
@@ -378,7 +390,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
   private resolveYieldTimeMilliseconds(input: AgentEnvironmentCommandInput): number {
     const configuredYieldTime = input.yield_time_ms;
     if (!Number.isFinite(configuredYieldTime)) {
-      return AgentComputeDaytonaEnvironment.DEFAULT_EXECUTE_COMMAND_YIELD_MS;
+      return AgentEnvironmentTmuxPty.DEFAULT_EXECUTE_COMMAND_YIELD_MS;
     }
 
     return Math.max(0, Number(configuredYieldTime));
@@ -386,7 +398,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
 
   private async runRequiredRemoteCommand(
     command: string,
-    timeoutSeconds = AgentComputeDaytonaEnvironment.REMOTE_COMMAND_TIMEOUT_SECONDS,
+    timeoutSeconds = AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_SECONDS,
   ): Promise<string> {
     const commandResult = await this.runRemoteCommand(command, timeoutSeconds);
     if (commandResult.exitCode !== 0) {
@@ -396,24 +408,14 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
     return commandResult.stdout;
   }
 
-  private async runRemoteCommand(
+  private runRemoteCommand(
     command: string,
-    timeoutSeconds = AgentComputeDaytonaEnvironment.REMOTE_COMMAND_TIMEOUT_SECONDS,
+    timeoutSeconds = AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_SECONDS,
   ): Promise<{
     exitCode: number;
     stdout: string;
   }> {
-    const result = await this.remoteSandbox.process.executeCommand(
-      command,
-      undefined,
-      undefined,
-      timeoutSeconds,
-    );
-
-    return {
-      exitCode: result.exitCode,
-      stdout: result.artifacts?.stdout ?? result.result,
-    };
+    return this.environmentShell.executeCommand(command, undefined, undefined, timeoutSeconds);
   }
 
   private async sendInputToTmuxSession(
@@ -432,7 +434,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
   private async writeRemoteFile(path: string, content: string): Promise<void> {
     const hereDocToken = `__COMPANYHELM_${randomUUID().replaceAll("-", "")}__`;
     await this.runRequiredRemoteCommand([
-      `cat > ${AgentComputeDaytonaEnvironment.shellQuote(path)} <<'${hereDocToken}'`,
+      `cat > ${AgentEnvironmentTmuxPty.shellQuote(path)} <<'${hereDocToken}'`,
       content.endsWith("\n") ? content.slice(0, -1) : content,
       hereDocToken,
     ].join("\n"));

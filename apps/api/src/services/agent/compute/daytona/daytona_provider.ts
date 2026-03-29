@@ -8,13 +8,13 @@ import {
   type AgentEnvironmentRecord,
   type AgentEnvironmentStatus,
 } from "../provider_interface.ts";
-import { AgentEnvironmentRuntimeInterface } from "../runtime_interface.ts";
-import { AgentComputeDaytonaEnvironment } from "./daytona_environment.ts";
+import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
+import { AgentComputeDaytonaShell } from "./daytona_shell.ts";
 
 /**
  * Bridges the generic provider contract onto Daytona. The environment orchestration layer decides
  * when to provision or reuse an environment; this provider only knows how to create Daytona
- * sandboxes and how to build tmux-backed runtimes for persisted environment rows.
+ * sandboxes and how to expose them through the generic shell adapter.
  */
 @injectable()
 export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
@@ -84,17 +84,16 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     return this.mapSandboxState(remoteSandbox.state);
   }
 
-  async createRuntime(
+  async createShell(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
-  ): Promise<AgentEnvironmentRuntimeInterface> {
+  ): Promise<AgentEnvironmentShellInterface> {
     const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
     await remoteSandbox.refreshData();
     if (remoteSandbox.state !== "started") {
       await remoteSandbox.start();
       await remoteSandbox.refreshData();
     }
-    await this.ensureTmuxInstalled(remoteSandbox);
 
     if (
       remoteSandbox.cpu !== environment.cpuCount
@@ -109,35 +108,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       });
     }
 
-    return new AgentComputeDaytonaEnvironment(remoteSandbox);
-  }
-
-  private async ensureTmuxInstalled(remoteSandbox: {
-    process: {
-      executeCommand(
-        command: string,
-        cwd?: string,
-        env?: Record<string, string>,
-        timeout?: number,
-      ): Promise<{
-        artifacts?: {
-          stdout?: string;
-        };
-        exitCode: number;
-        result: string;
-      }>;
-    };
-  }): Promise<void> {
-    const result = await remoteSandbox.process.executeCommand(
-      "sh -lc 'command -v tmux >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tmux)'",
-      undefined,
-      undefined,
-      300,
-    );
-    if (result.exitCode !== 0) {
-      const stdout = result.artifacts?.stdout ?? result.result;
-      throw new Error(`Failed to prepare tmux in Daytona sandbox: ${stdout}`);
-    }
+    return new AgentComputeDaytonaShell(remoteSandbox);
   }
 
   private getDaytonaClient(): Daytona {

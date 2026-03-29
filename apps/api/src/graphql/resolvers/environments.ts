@@ -63,7 +63,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
 
   constructor(
     @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface = {
-      async createRuntime() {
+      async createShell() {
         throw new Error("Environment provider is not configured.");
       },
       getEnvironmentStatus: async () => "unhealthy",

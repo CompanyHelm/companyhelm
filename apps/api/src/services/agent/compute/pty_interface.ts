@@ -6,13 +6,13 @@ import type {
 } from "./environment_interface.ts";
 
 /**
- * Provider runtimes implement the raw terminal mechanics for one provisioned environment. Lease
- * ownership is layered on top by the environment access service, so runtime implementations stay
- * focused on tmux/PTY operations.
+ * Defines the reusable PTY/session operations that agent tools expect once an environment has been
+ * leased. Concrete implementations can be backed by tmux, Windows terminals, or other provider-
+ * specific PTY mechanisms without changing the tool layer.
  */
-export abstract class AgentEnvironmentRuntimeInterface {
+export abstract class AgentEnvironmentPtyInterface {
   /**
-   * Executes a shell command inside the provider environment.
+   * Executes a shell command inside the leased environment.
    */
   abstract executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult>;
 
@@ -41,7 +41,7 @@ export abstract class AgentEnvironmentRuntimeInterface {
   abstract resizeSession(sessionId: string, columns: number, rows: number): Promise<void>;
 
   /**
-   * Terminates an existing terminal session.
+   * Terminates an existing terminal session immediately.
    */
   abstract killSession(sessionId: string): Promise<void>;
 
@@ -51,7 +51,7 @@ export abstract class AgentEnvironmentRuntimeInterface {
   abstract closeSession(sessionId: string): Promise<void>;
 
   /**
-   * Releases any provider-local resources held by the runtime object itself.
+   * Releases any PTY-local resources held by the implementation itself.
    */
   abstract dispose(): Promise<void>;
 }

@@ -2,31 +2,30 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AgentEnvironmentAccessService } from "../src/services/agent/environment/access_service.ts";
 
+class FakeEnvironmentShell {
+  async executeCommand(command: string) {
+    if (command.includes("command -v tmux")) {
+      return {
+        exitCode: 0,
+        stdout: "",
+      };
+    }
+    if (command.includes("tmux list-sessions")) {
+      return {
+        exitCode: 0,
+        stdout: "",
+      };
+    }
+
+    throw new Error(`unexpected shell command: ${command}`);
+  }
+}
+
 test("AgentEnvironmentAccessService reactivates the current session lease before consulting history or provisioning", async () => {
   const activateLease = vi.fn(async () => ({
     id: "lease-1",
   }));
-  const createRuntime = vi.fn(async () => ({
-    async closeSession() {},
-    async dispose() {},
-    async executeCommand() {
-      throw new Error("not used");
-    },
-    async killSession() {},
-    async listSessions() {
-      return [];
-    },
-    async readOutput() {
-      return {
-        chunks: [],
-        nextOffset: null,
-      };
-    },
-    async resizeSession() {},
-    async sendInput() {
-      throw new Error("not used");
-    },
-  }));
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const service = new AgentEnvironmentAccessService(
     {
       async loadEnvironmentById() {
@@ -68,7 +67,7 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
       },
     } as never,
     {
-      createRuntime,
+      createShell,
       getProvider() {
         return "daytona";
       },
@@ -88,7 +87,7 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
   const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
 
   assert.equal(activateLease.mock.calls.length, 1);
-  assert.equal(createRuntime.mock.calls.length, 1);
+  assert.equal(createShell.mock.calls.length, 1);
   assert.deepEqual(await environment.listSessions(), []);
 });
 
@@ -96,27 +95,7 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
   const acquireLease = vi.fn(async () => ({
     id: "lease-2",
   }));
-  const createRuntime = vi.fn(async () => ({
-    async closeSession() {},
-    async dispose() {},
-    async executeCommand() {
-      throw new Error("not used");
-    },
-    async killSession() {},
-    async listSessions() {
-      return [];
-    },
-    async readOutput() {
-      return {
-        chunks: [],
-        nextOffset: null,
-      };
-    },
-    async resizeSession() {},
-    async sendInput() {
-      throw new Error("not used");
-    },
-  }));
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const historicalEnvironment = {
     agentId: "agent-1",
     companyId: "company-1",
@@ -156,7 +135,7 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
       },
     } as never,
     {
-      createRuntime,
+      createShell,
       getProvider() {
         return "daytona";
       },
@@ -176,8 +155,8 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
   const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
 
   assert.equal(acquireLease.mock.calls.length, 1);
-  assert.equal(createRuntime.mock.calls.length, 1);
-  assert.equal(createRuntime.mock.calls[0]?.[1]?.id, "environment-2");
+  assert.equal(createShell.mock.calls.length, 1);
+  assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-2");
   await environment.dispose();
 });
 
@@ -185,27 +164,7 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
   const acquireLease = vi.fn(async () => ({
     id: "lease-3",
   }));
-  const createRuntime = vi.fn(async () => ({
-    async closeSession() {},
-    async dispose() {},
-    async executeCommand() {
-      throw new Error("not used");
-    },
-    async killSession() {},
-    async listSessions() {
-      return [];
-    },
-    async readOutput() {
-      return {
-        chunks: [],
-        nextOffset: null,
-      };
-    },
-    async resizeSession() {},
-    async sendInput() {
-      throw new Error("not used");
-    },
-  }));
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const provisionedEnvironment = {
     agentId: "agent-1",
     companyId: "company-1",
@@ -246,7 +205,7 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
       },
     } as never,
     {
-      createRuntime,
+      createShell,
       getProvider() {
         return "daytona";
       },
@@ -265,6 +224,6 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
 
   assert.equal(provisionEnvironmentForSession.mock.calls.length, 1);
   assert.equal(acquireLease.mock.calls.length, 1);
-  assert.equal(createRuntime.mock.calls[0]?.[1]?.id, "environment-3");
+  assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-3");
   await environment.dispose();
 });

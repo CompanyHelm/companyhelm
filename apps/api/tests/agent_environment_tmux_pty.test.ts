@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentComputeDaytonaEnvironment } from "../src/services/agent/compute/daytona/daytona_environment.ts";
+import { AgentEnvironmentTmuxPty } from "../src/services/agent/compute/tmux_pty.ts";
 
 type FakeTmuxSession = {
   createdAt: string;
@@ -9,17 +9,24 @@ type FakeTmuxSession = {
   width: number;
 };
 
-class FakeDaytonaTmuxProcess {
+class FakeEnvironmentShell {
   readonly commandFiles = new Map<string, string>();
   readonly rcFiles = new Map<string, string>();
   readonly sessions = new Map<string, FakeTmuxSession>();
   autoCompleteCommands = false;
 
   async executeCommand(command: string) {
+    if (command.includes("command -v tmux")) {
+      return {
+        exitCode: 0,
+        stdout: "",
+      };
+    }
+
     if (command.includes("tmux list-sessions")) {
       return {
         exitCode: 0,
-        result: [...this.sessions.entries()]
+        stdout: [...this.sessions.entries()]
           .map(([sessionId, session]) => `${sessionId}\t0\t${session.createdAt}\t${session.width}\t${session.height}`)
           .join("\n"),
       };
@@ -29,7 +36,7 @@ class FakeDaytonaTmuxProcess {
       const sessionId = this.extractFirstQuotedValue(command);
       return {
         exitCode: this.sessions.has(sessionId) ? 0 : 1,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -47,7 +54,7 @@ class FakeDaytonaTmuxProcess {
 
       return {
         exitCode: 0,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -57,7 +64,7 @@ class FakeDaytonaTmuxProcess {
       this.commandFiles.set(filePath, lines.slice(1, -1).join("\n"));
       return {
         exitCode: 0,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -70,7 +77,7 @@ class FakeDaytonaTmuxProcess {
 
       return {
         exitCode: 0,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -98,7 +105,7 @@ class FakeDaytonaTmuxProcess {
 
       return {
         exitCode: 0,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -107,7 +114,7 @@ class FakeDaytonaTmuxProcess {
       const content = filePath ? (this.rcFiles.get(filePath) ?? "") : "";
       return {
         exitCode: 0,
-        result: content,
+        stdout: content,
       };
     }
 
@@ -116,7 +123,7 @@ class FakeDaytonaTmuxProcess {
       const session = this.sessions.get(sessionId);
       return {
         exitCode: session ? 0 : 1,
-        result: session?.output ?? "",
+        stdout: session?.output ?? "",
       };
     }
 
@@ -128,7 +135,7 @@ class FakeDaytonaTmuxProcess {
       session.height = Number(/-y (\d+)/.exec(command)?.[1] ?? "24");
       return {
         exitCode: 0,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -137,7 +144,7 @@ class FakeDaytonaTmuxProcess {
       this.sessions.delete(sessionId);
       return {
         exitCode: 0,
-        result: "",
+        stdout: "",
       };
     }
 
@@ -151,19 +158,17 @@ class FakeDaytonaTmuxProcess {
   }
 }
 
-test("AgentComputeDaytonaEnvironment executes commands, reads tmux output, and resizes sessions", async () => {
-  const fakeProcess = new FakeDaytonaTmuxProcess();
-  fakeProcess.sessions.set("stray-session", {
+test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes sessions", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.sessions.set("stray-session", {
     createdAt: "67890",
     height: 24,
     output: "stray output",
     width: 80,
   });
-  const environment = new AgentComputeDaytonaEnvironment({
-    process: fakeProcess,
-  });
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  const executionResult = await environment.executeCommand({
+  const executionResult = await pty.executeCommand({
     command: "ls -la",
     yield_time_ms: 0,
   });
@@ -172,33 +177,31 @@ test("AgentComputeDaytonaEnvironment executes commands, reads tmux output, and r
   assert.equal(executionResult.completed, false);
   assert.ok(executionResult.output.includes("ran: ls -la\n"));
 
-  const sessions = await environment.listSessions();
+  const sessions = await pty.listSessions();
   assert.ok(sessions.some((session) => session.id === executionResult.sessionId));
   assert.ok(sessions.some((session) => session.id === "stray-session"));
 
-  const firstPage = await environment.readOutput(executionResult.sessionId, null, 4_000);
+  const firstPage = await pty.readOutput(executionResult.sessionId, null, 4_000);
   assert.equal(firstPage.chunks.length, 1);
   assert.ok(firstPage.chunks[0]?.text.includes("ran: ls -la\n"));
 
-  const secondPage = await environment.readOutput(executionResult.sessionId, firstPage.nextOffset, 4_000);
+  const secondPage = await pty.readOutput(executionResult.sessionId, firstPage.nextOffset, 4_000);
   assert.deepEqual(secondPage.chunks, []);
 
-  await environment.resizeSession(executionResult.sessionId, 120, 40);
-  assert.equal(fakeProcess.sessions.get(executionResult.sessionId)?.width, 120);
-  assert.equal(fakeProcess.sessions.get(executionResult.sessionId)?.height, 40);
+  await pty.resizeSession(executionResult.sessionId, 120, 40);
+  assert.equal(fakeEnvironmentShell.sessions.get(executionResult.sessionId)?.width, 120);
+  assert.equal(fakeEnvironmentShell.sessions.get(executionResult.sessionId)?.height, 40);
 
-  await environment.closeSession(executionResult.sessionId);
-  assert.equal(fakeProcess.sessions.has(executionResult.sessionId), false);
+  await pty.closeSession(executionResult.sessionId);
+  assert.equal(fakeEnvironmentShell.sessions.has(executionResult.sessionId), false);
 });
 
-test("AgentComputeDaytonaEnvironment returns immediately when a tmux command completes before the yield window", async () => {
-  const fakeProcess = new FakeDaytonaTmuxProcess();
-  fakeProcess.autoCompleteCommands = true;
-  const environment = new AgentComputeDaytonaEnvironment({
-    process: fakeProcess,
-  });
+test("AgentEnvironmentTmuxPty returns immediately when a tmux command completes before the yield window", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.autoCompleteCommands = true;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  const result = await environment.executeCommand({
+  const result = await pty.executeCommand({
     command: "echo done",
     yield_time_ms: 5_000,
   });
@@ -208,41 +211,36 @@ test("AgentComputeDaytonaEnvironment returns immediately when a tmux command com
   assert.ok(result.output.includes("ran: echo done\n"));
 });
 
-test("AgentComputeDaytonaEnvironment uses the provided logical session name when creating tmux sessions", async () => {
-  const fakeProcess = new FakeDaytonaTmuxProcess();
-  const environment = new AgentComputeDaytonaEnvironment({
-    process: fakeProcess,
-  });
+test("AgentEnvironmentTmuxPty uses the provided logical session name when creating tmux sessions", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  const result = await environment.executeCommand({
+  const result = await pty.executeCommand({
     command: "npm run dev",
     sessionId: "web",
     yield_time_ms: 0,
   });
 
   assert.equal(result.sessionId, "web");
-  assert.ok(fakeProcess.sessions.has("web"));
+  assert.ok(fakeEnvironmentShell.sessions.has("web"));
 });
 
-test("AgentComputeDaytonaEnvironment reuses tmux sessions by session id across runtime instances", async () => {
-  const fakeProcess = new FakeDaytonaTmuxProcess();
-  const firstRuntime = new AgentComputeDaytonaEnvironment({
-    process: fakeProcess,
-  });
+test("AgentEnvironmentTmuxPty reuses tmux sessions by session id across PTY instances", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  const firstPty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+ 
 
-  const createdSession = await firstRuntime.executeCommand({
+  const createdSession = await firstPty.executeCommand({
     command: "tail -f log.txt",
     yield_time_ms: 0,
   });
-  const secondRuntime = new AgentComputeDaytonaEnvironment({
-    process: fakeProcess,
-  });
+  const secondPty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  await secondRuntime.sendInput(createdSession.sessionId, "q\n", 0);
-  const outputPage = await secondRuntime.readOutput(createdSession.sessionId, null, 4_000);
+  await secondPty.sendInput(createdSession.sessionId, "q\n", 0);
+  const outputPage = await secondPty.readOutput(createdSession.sessionId, null, 4_000);
 
   assert.ok(outputPage.chunks[0]?.text.includes("ran: tail -f log.txt\nq\n"));
 
-  await secondRuntime.killSession(createdSession.sessionId);
-  assert.equal(fakeProcess.sessions.has(createdSession.sessionId), false);
+  await secondPty.killSession(createdSession.sessionId);
+  assert.equal(fakeEnvironmentShell.sessions.has(createdSession.sessionId), false);
 });

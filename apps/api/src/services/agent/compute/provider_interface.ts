@@ -1,5 +1,5 @@
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import { AgentEnvironmentRuntimeInterface } from "./runtime_interface.ts";
+import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
 
@@ -39,8 +39,8 @@ export type AgentEnvironmentRecord = {
 
 /**
  * Bridges the generic environment orchestration layer onto one concrete compute provider. The
- * access service uses this contract to provision new environments on demand and to create runtime
- * handles for already selected environment rows.
+ * access service uses this contract to provision new environments on demand and to create shell
+ * adapters for already selected environment rows.
  */
 export abstract class AgentComputeProviderInterface {
   /**
@@ -74,10 +74,11 @@ export abstract class AgentComputeProviderInterface {
   ): Promise<AgentEnvironmentStatus>;
 
   /**
-   * Creates a provider runtime handle for an already selected environment row.
+   * Creates the provider-specific shell adapter for an already selected environment row. Shared
+   * PTY/session orchestration can then layer tmux or some other terminal manager on top.
    */
-  abstract createRuntime(
+  abstract createShell(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
-  ): Promise<AgentEnvironmentRuntimeInterface>;
+  ): Promise<AgentEnvironmentShellInterface>;
 }

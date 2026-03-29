@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentInterface } from "../compute/environment_interface.ts";
 import { AgentComputeProviderInterface } from "../compute/provider_interface.ts";
+import { AgentEnvironmentTmuxPty } from "../compute/tmux_pty.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 import { AgentEnvironmentProvisioningService } from "./provisioning_service.ts";
@@ -11,7 +12,7 @@ import { AgentEnvironmentSelectionService } from "./selection_service.ts";
 
 /**
  * Resolves a leased environment for one agent session. It centralizes the reuse policy, on-demand
- * provisioning fallback, and provider runtime creation so individual tools only need to ask for an
+ * provisioning fallback, and provider shell creation so individual tools only need to ask for an
  * environment lease when they execute.
  */
 @injectable()
@@ -57,11 +58,12 @@ export class AgentEnvironmentAccessService {
       }
 
       const reactivatedLease = await this.leaseService.activateLease(transactionProvider, existingLease.id, ownerToken);
-      const runtime = await this.provider.createRuntime(transactionProvider, environment);
+      const environmentShell = await this.provider.createShell(transactionProvider, environment);
+      const pty = new AgentEnvironmentTmuxPty(environmentShell);
       return new AgentSessionEnvironment(
         transactionProvider,
         this.leaseService,
-        runtime,
+        pty,
         reactivatedLease.id,
         ownerToken,
       );
@@ -85,12 +87,13 @@ export class AgentEnvironmentAccessService {
       ownerToken,
       sessionId,
     });
-    const runtime = await this.provider.createRuntime(transactionProvider, selectedEnvironment);
+    const environmentShell = await this.provider.createShell(transactionProvider, selectedEnvironment);
+    const pty = new AgentEnvironmentTmuxPty(environmentShell);
 
     return new AgentSessionEnvironment(
       transactionProvider,
       this.leaseService,
-      runtime,
+      pty,
       lease.id,
       ownerToken,
     );

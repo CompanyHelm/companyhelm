@@ -6,12 +6,12 @@ import type {
   AgentEnvironmentTerminalSession,
 } from "../compute/environment_interface.ts";
 import { AgentEnvironmentInterface as AgentEnvironmentInterfaceClass } from "../compute/environment_interface.ts";
-import { AgentEnvironmentRuntimeInterface } from "../compute/runtime_interface.ts";
+import { AgentEnvironmentPtyInterface } from "../compute/pty_interface.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 
 /**
- * Wraps a provider runtime with lease ownership. It keeps the lease alive while a prompt run is
+ * Wraps one PTY manager with lease ownership. It keeps the lease alive while a prompt run is
  * active and transitions the lease into warm idle state when the prompt scope is disposed.
  */
 export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass implements AgentEnvironmentInterface {
@@ -21,14 +21,14 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
   private readonly leaseId: string;
   private readonly leaseOwnerToken: string;
   private readonly leaseService: AgentEnvironmentLeaseService;
-  private readonly runtime: AgentEnvironmentRuntimeInterface;
+  private readonly pty: AgentEnvironmentPtyInterface;
   private readonly heartbeatHandle: ReturnType<typeof setInterval>;
   private disposed = false;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
     leaseService: AgentEnvironmentLeaseService,
-    runtime: AgentEnvironmentRuntimeInterface,
+    pty: AgentEnvironmentPtyInterface,
     leaseId: string,
     leaseOwnerToken: string,
   ) {
@@ -37,7 +37,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     this.leaseId = leaseId;
     this.leaseOwnerToken = leaseOwnerToken;
     this.leaseService = leaseService;
-    this.runtime = runtime;
+    this.pty = pty;
     this.heartbeatHandle = setInterval(() => {
       void this.leaseService.heartbeatLease(this.transactionProvider, this.leaseId, this.leaseOwnerToken)
         .catch(() => undefined);
@@ -46,11 +46,11 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
   }
 
   executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {
-    return this.runtime.executeCommand(input);
+    return this.pty.executeCommand(input);
   }
 
   sendInput(sessionId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult> {
-    return this.runtime.sendInput(sessionId, input, yieldTimeMilliseconds);
+    return this.pty.sendInput(sessionId, input, yieldTimeMilliseconds);
   }
 
   readOutput(
@@ -58,23 +58,23 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage> {
-    return this.runtime.readOutput(sessionId, afterOffset, limit);
+    return this.pty.readOutput(sessionId, afterOffset, limit);
   }
 
   listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
-    return this.runtime.listSessions();
+    return this.pty.listSessions();
   }
 
   resizeSession(sessionId: string, columns: number, rows: number): Promise<void> {
-    return this.runtime.resizeSession(sessionId, columns, rows);
+    return this.pty.resizeSession(sessionId, columns, rows);
   }
 
   killSession(sessionId: string): Promise<void> {
-    return this.runtime.killSession(sessionId);
+    return this.pty.killSession(sessionId);
   }
 
   closeSession(sessionId: string): Promise<void> {
-    return this.runtime.closeSession(sessionId);
+    return this.pty.closeSession(sessionId);
   }
 
   async dispose(): Promise<void> {
@@ -85,7 +85,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     this.disposed = true;
     clearInterval(this.heartbeatHandle);
     try {
-      await this.runtime.dispose();
+      await this.pty.dispose();
     } finally {
       await this.leaseService.markLeaseIdle(this.transactionProvider, this.leaseId, this.leaseOwnerToken);
     }
