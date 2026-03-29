@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { AgentEnvironmentPromptScope } from "../environment/prompt_scope.ts";
-import { AgentToolResultFormatter } from "./result_formatter.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
  * Reads terminal output directly from tmux without relying on any API-side PTY buffer.
@@ -33,7 +33,7 @@ export class AgentReadTerminalOutputTool {
         const page = await environment.readOutput(params.sessionId, params.afterOffset ?? null, params.limit ?? 4_000);
         return {
           content: [{
-            text: AgentToolResultFormatter.formatOutputResult(params.sessionId, page),
+            text: AgentTerminalResultFormatter.formatOutputResult(params.sessionId, page),
             type: "text",
           }],
         };

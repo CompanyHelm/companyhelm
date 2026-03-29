@@ -1,6 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { AgentEnvironmentPromptScope } from "../environment/prompt_scope.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 
 /**
  * Closes an environment tmux session when the agent is done with that shell state.

@@ -2,13 +2,13 @@ import type {
   AgentEnvironmentCommandResult,
   AgentEnvironmentTerminalOutputPage,
   AgentEnvironmentTerminalSession,
-} from "../compute/environment_interface.ts";
+} from "../../compute/environment_interface.ts";
 
 /**
  * Centralizes the text rendering used by the PI Mono tool layer so command, output, and session
  * responses stay consistent across the individual tool classes.
  */
-export class AgentToolResultFormatter {
+export class AgentTerminalResultFormatter {
   static formatCommandResult(result: AgentEnvironmentCommandResult): string {
     const output = result.output.length > 0 ? result.output : "(no output)";
     return [

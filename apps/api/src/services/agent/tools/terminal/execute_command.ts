@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { AgentEnvironmentPromptScope } from "../environment/prompt_scope.ts";
-import { AgentToolResultFormatter } from "./result_formatter.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
  * Executes shell commands inside the leased environment, creating a tmux session when needed and
@@ -50,7 +50,7 @@ export class AgentExecuteCommandTool {
         const result = await environment.executeCommand(params);
         return {
           content: [{
-            text: AgentToolResultFormatter.formatCommandResult(result),
+            text: AgentTerminalResultFormatter.formatCommandResult(result),
             type: "text",
           }],
         };

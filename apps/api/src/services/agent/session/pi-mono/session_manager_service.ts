@@ -11,9 +11,10 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
-import { AgentToolsService } from "../../tools_service.ts";
 import { AgentEnvironmentAccessService } from "../../environment/access_service.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { AgentToolsService } from "../../tools/service.ts";
+import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
@@ -86,7 +87,9 @@ export class PiMonoSessionManagerService {
       runtimeConfig.agentId,
       sessionId,
     );
-    const agentToolsService = new AgentToolsService(promptScope);
+    const agentToolsService = new AgentToolsService(promptScope, [
+      new AgentTerminalToolProvider(promptScope),
+    ]);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {
       throw new Error(`Model not found for provider "${runtimeConfig.providerId}": ${runtimeConfig.modelId}`);

@@ -6,7 +6,8 @@ import {
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
-import { AgentToolsService } from "../src/services/agent/tools_service.ts";
+import { AgentToolsService } from "../src/services/agent/tools/service.ts";
+import { AgentTerminalToolProvider } from "../src/services/agent/tools/terminal/provider.ts";
 
 test("AgentToolsService initializes the environment-backed terminal tool catalog once per prompt scope", () => {
   const service = new AgentToolsService({
@@ -16,7 +17,13 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
     async getEnvironment() {
       throw new Error("tools should not acquire the environment during initialization");
     },
-  } as never);
+  } as never, [
+    new AgentTerminalToolProvider({
+      async getEnvironment() {
+        throw new Error("tools should not acquire the environment during initialization");
+      },
+    } as never),
+  ]);
 
   const tools = service.initializeTools();
 
@@ -44,7 +51,13 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     async getEnvironment() {
       throw new Error("tools should not acquire the environment during cleanup");
     },
-  } as never);
+  } as never, [
+    new AgentTerminalToolProvider({
+      async getEnvironment() {
+        throw new Error("tools should not acquire the environment during cleanup");
+      },
+    } as never),
+  ]);
 
   service.initializeTools();
   await service.cleanupTools();
@@ -68,7 +81,13 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
     async getEnvironment() {
       throw new Error("session creation should not eagerly acquire the environment");
     },
-  } as never);
+  } as never, [
+    new AgentTerminalToolProvider({
+      async getEnvironment() {
+        throw new Error("session creation should not eagerly acquire the environment");
+      },
+    } as never),
+  ]);
 
   const sessionManager = SessionManager.inMemory();
   sessionManager.newSession({

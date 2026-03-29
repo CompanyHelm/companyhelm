@@ -1,6 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { AgentEnvironmentPromptScope } from "../environment/prompt_scope.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 
 /**
  * Adjusts the tmux window size for an existing session so interactive terminal programs can react

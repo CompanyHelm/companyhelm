@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { AgentEnvironmentPromptScope } from "../environment/prompt_scope.ts";
-import { AgentToolResultFormatter } from "./result_formatter.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
  * Lists tmux sessions that currently exist inside the leased environment so the agent can decide
@@ -23,7 +23,7 @@ export class AgentListTerminalSessionsTool {
         const sessions = await environment.listSessions();
         return {
           content: [{
-            text: AgentToolResultFormatter.formatSessionList(sessions),
+            text: AgentTerminalResultFormatter.formatSessionList(sessions),
             type: "text",
           }],
         };

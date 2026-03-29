@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { AgentEnvironmentPromptScope } from "../environment/prompt_scope.ts";
-import { AgentToolResultFormatter } from "./result_formatter.ts";
+import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
  * Continues interacting with an existing tmux session by sending raw terminal input and returning
@@ -34,7 +34,7 @@ export class AgentSendTerminalInputTool {
         const result = await environment.sendInput(params.sessionId, params.input, params.yield_time_ms);
         return {
           content: [{
-            text: AgentToolResultFormatter.formatCommandResult(result),
+            text: AgentTerminalResultFormatter.formatCommandResult(result),
             type: "text",
           }],
         };
