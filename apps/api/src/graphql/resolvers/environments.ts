@@ -1,6 +1,10 @@
 import { eq, inArray } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { agentEnvironments, agents } from "../../db/schema.ts";
+import {
+  AgentComputeProviderInterface,
+  type AgentEnvironmentStatus,
+} from "../../services/agent/compute/provider_interface.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -16,7 +20,6 @@ type EnvironmentRecord = {
   platform: "linux" | "macos" | "windows";
   provider: "daytona";
   providerEnvironmentId: string;
-  status: "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
   updatedAt: Date;
 };
 
@@ -38,7 +41,7 @@ type GraphqlEnvironmentRecord = {
   platform: "linux" | "macos" | "windows";
   provider: "daytona";
   providerEnvironmentId: string;
-  status: "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
+  status: AgentEnvironmentStatus;
   updatedAt: string;
 };
 
@@ -56,6 +59,29 @@ type SelectableDatabase = {
  */
 @injectable()
 export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord[]> {
+  private readonly provider: AgentComputeProviderInterface;
+
+  constructor(
+    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface = {
+      async createRuntime() {
+        throw new Error("Environment provider is not configured.");
+      },
+      getEnvironmentStatus: async () => "unhealthy",
+      getProvider() {
+        return "daytona";
+      },
+      async provisionEnvironment() {
+        throw new Error("Environment provider is not configured.");
+      },
+      supportsOnDemandProvisioning() {
+        return false;
+      },
+    },
+  ) {
+    super();
+    this.provider = provider;
+  }
+
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlEnvironmentRecord[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
@@ -79,7 +105,6 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
           platform: agentEnvironments.platform,
           provider: agentEnvironments.provider,
           providerEnvironmentId: agentEnvironments.providerEnvironmentId,
-          status: agentEnvironments.status,
           updatedAt: agentEnvironments.updatedAt,
         })
         .from(agentEnvironments)
@@ -97,15 +122,36 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
           .where(inArray(agents.id, agentIds)) as AgentRecord[];
       const agentNameById = new Map(agentRecords.map((agentRecord) => [agentRecord.id, agentRecord.name]));
 
-      return [...environmentRecords]
-        .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())
-        .map((environmentRecord) => EnvironmentsQueryResolver.serializeRecord(environmentRecord, agentNameById));
+      const sortedEnvironmentRecords = [...environmentRecords]
+        .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+      const statusesByEnvironmentId = new Map(
+        await Promise.all(
+          sortedEnvironmentRecords.map(async (environmentRecord) => {
+            if (environmentRecord.provider !== this.provider.getProvider()) {
+              throw new Error(`Environment provider ${environmentRecord.provider} is not configured.`);
+            }
+
+            return [
+              environmentRecord.id,
+              await this.provider.getEnvironmentStatus(context.app_runtime_transaction_provider, environmentRecord),
+            ] as const;
+          }),
+        ),
+      );
+
+      return sortedEnvironmentRecords
+        .map((environmentRecord) => EnvironmentsQueryResolver.serializeRecord(
+          environmentRecord,
+          agentNameById,
+          statusesByEnvironmentId.get(environmentRecord.id) ?? "unhealthy",
+        ));
     });
   };
 
   private static serializeRecord(
     environmentRecord: EnvironmentRecord,
     agentNameById: Map<string, string>,
+    status: AgentEnvironmentStatus,
   ): GraphqlEnvironmentRecord {
     return {
       agentId: environmentRecord.agentId,
@@ -120,7 +166,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
       platform: environmentRecord.platform,
       provider: environmentRecord.provider,
       providerEnvironmentId: environmentRecord.providerEnvironmentId,
-      status: environmentRecord.status,
+      status,
       updatedAt: environmentRecord.updatedAt.toISOString(),
     };
   }

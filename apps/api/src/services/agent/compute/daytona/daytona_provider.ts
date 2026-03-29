@@ -3,7 +3,11 @@ import { inject, injectable } from "inversify";
 import { Config } from "../../../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
-import { AgentComputeProviderInterface, type AgentEnvironmentRecord } from "../provider_interface.ts";
+import {
+  AgentComputeProviderInterface,
+  type AgentEnvironmentRecord,
+  type AgentEnvironmentStatus,
+} from "../provider_interface.ts";
 import { AgentEnvironmentRuntimeInterface } from "../runtime_interface.ts";
 import { AgentComputeDaytonaEnvironment } from "./daytona_environment.ts";
 
@@ -65,8 +69,19 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       metadata: {},
       platform: "linux" as const,
       providerEnvironmentId: remoteSandbox.id,
-      status: "running" as const,
     };
+  }
+
+  async getEnvironmentStatus(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<AgentEnvironmentStatus> {
+    void transactionProvider;
+
+    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    await remoteSandbox.refreshData();
+
+    return this.mapSandboxState(remoteSandbox.state);
   }
 
   async createRuntime(
@@ -82,17 +97,15 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     await this.ensureTmuxInstalled(remoteSandbox);
 
     if (
-      environment.status !== "running"
-      || remoteSandbox.cpu !== environment.cpuCount
+      remoteSandbox.cpu !== environment.cpuCount
       || remoteSandbox.disk !== environment.diskSpaceGb
       || remoteSandbox.memory !== environment.memoryGb
     ) {
-      await this.catalogService.updateRuntimeState(transactionProvider, environment.id, {
+      await this.catalogService.updateEnvironmentResources(transactionProvider, environment.id, {
         cpuCount: remoteSandbox.cpu || environment.cpuCount,
         diskSpaceGb: remoteSandbox.disk || environment.diskSpaceGb,
         memoryGb: remoteSandbox.memory || environment.memoryGb,
         metadata: environment.metadata,
-        status: "running",
       });
     }
 
@@ -138,5 +151,24 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     });
 
     return this.daytona;
+  }
+
+  private mapSandboxState(state: string): AgentEnvironmentStatus {
+    switch (state) {
+      case "started":
+        return "running";
+      case "stopped":
+        return "stopped";
+      case "creating":
+      case "pulling":
+      case "starting":
+      case "pending":
+        return "provisioning";
+      case "destroying":
+      case "deleting":
+        return "deleting";
+      default:
+        return "unhealthy";
+    }
   }
 }

@@ -1,6 +1,8 @@
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentRuntimeInterface } from "./runtime_interface.ts";
 
+export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
+
 export type AgentEnvironmentProvisionRequest = {
   agentId: string;
   companyId: string;
@@ -16,7 +18,6 @@ export type AgentEnvironmentProvisionResult = {
   metadata: Record<string, unknown>;
   platform: "linux" | "macos" | "windows";
   providerEnvironmentId: string;
-  status: "available" | "provisioning" | "running" | "stopped" | "unhealthy";
 };
 
 export type AgentEnvironmentRecord = {
@@ -33,7 +34,6 @@ export type AgentEnvironmentRecord = {
   platform: "linux" | "macos" | "windows";
   provider: "daytona";
   providerEnvironmentId: string;
-  status: "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
   updatedAt: Date;
 };
 
@@ -62,6 +62,16 @@ export abstract class AgentComputeProviderInterface {
     transactionProvider: TransactionProviderInterface,
     request: AgentEnvironmentProvisionRequest,
   ): Promise<AgentEnvironmentProvisionResult>;
+
+  /**
+   * Fetches the latest provider-side environment status instead of trusting persisted state. This
+   * keeps the catalog focused on identity and resource metadata while GraphQL can still expose the
+   * live environment health from the provider.
+   */
+  abstract getEnvironmentStatus(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<AgentEnvironmentStatus>;
 
   /**
    * Creates a provider runtime handle for an already selected environment row.

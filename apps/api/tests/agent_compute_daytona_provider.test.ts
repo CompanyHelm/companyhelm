@@ -52,6 +52,55 @@ test("AgentComputeDaytonaProvider provisions Daytona environments on demand with
   assert.equal(provisionedEnvironment.memoryGb, 8);
 });
 
+test("AgentComputeDaytonaProvider maps remote sandbox state into generic environment status", async () => {
+  const refreshData = vi.fn(async () => undefined);
+  const provider = new AgentComputeDaytonaProvider(
+    {
+      daytona: {
+        api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
+      },
+    } as never,
+    {} as AgentEnvironmentCatalogService,
+  );
+  (provider as {
+    daytona: {
+      get: (id: string) => Promise<unknown>;
+    };
+  }).daytona = {
+    async get(id: string) {
+      assert.equal(id, "daytona-environment-status");
+      return {
+        refreshData,
+        state: "started",
+      };
+    },
+  };
+
+  const status = await provider.getEnvironmentStatus({} as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 4,
+    createdAt: new Date("2026-03-27T20:00:00.000Z"),
+    diskSpaceGb: 10,
+    displayName: null,
+    id: "environment-status",
+    lastSeenAt: null,
+    memoryGb: 8,
+    metadata: {},
+    platform: "linux",
+    provider: "daytona",
+    providerEnvironmentId: "daytona-environment-status",
+    updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+  });
+
+  assert.equal(refreshData.mock.calls.length, 1);
+  assert.equal(status, "running");
+});
+
 test("AgentComputeDaytonaProvider starts stopped environments and updates the catalog before creating the runtime", async () => {
   const refreshData = vi.fn(async () => undefined);
   const start = vi.fn(async () => undefined);
@@ -59,7 +108,7 @@ test("AgentComputeDaytonaProvider starts stopped environments and updates the ca
     exitCode: 0,
     result: "",
   }));
-  const updateRuntimeState = vi.fn(async () => ({
+  const updateEnvironmentResources = vi.fn(async () => ({
     id: "environment-1",
   }));
   const provider = new AgentComputeDaytonaProvider(
@@ -73,7 +122,7 @@ test("AgentComputeDaytonaProvider starts stopped environments and updates the ca
       },
     } as never,
     {
-      updateRuntimeState,
+      updateEnvironmentResources,
     } as unknown as AgentEnvironmentCatalogService,
   );
   (provider as {
@@ -111,13 +160,12 @@ test("AgentComputeDaytonaProvider starts stopped environments and updates the ca
     platform: "linux",
     provider: "daytona",
     providerEnvironmentId: "daytona-environment-1",
-    status: "stopped",
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   });
 
   assert.equal(start.mock.calls.length, 1);
   assert.equal(refreshData.mock.calls.length, 2);
-  assert.equal(updateRuntimeState.mock.calls.length, 1);
+  assert.equal(updateEnvironmentResources.mock.calls.length, 1);
   assert.deepEqual(await runtime.listSessions(), []);
 });
 
@@ -130,7 +178,7 @@ test("AgentComputeDaytonaProvider starts a remotely stopped sandbox even when th
     exitCode: 0,
     result: "",
   }));
-  const updateRuntimeState = vi.fn(async () => ({
+  const updateEnvironmentResources = vi.fn(async () => ({
     id: "environment-2",
   }));
   const provider = new AgentComputeDaytonaProvider(
@@ -144,7 +192,7 @@ test("AgentComputeDaytonaProvider starts a remotely stopped sandbox even when th
       },
     } as never,
     {
-      updateRuntimeState,
+      updateEnvironmentResources,
     } as unknown as AgentEnvironmentCatalogService,
   );
   (provider as {
@@ -182,12 +230,11 @@ test("AgentComputeDaytonaProvider starts a remotely stopped sandbox even when th
     platform: "linux",
     provider: "daytona",
     providerEnvironmentId: "daytona-environment-2",
-    status: "running",
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   });
 
   assert.equal(start.mock.calls.length, 1);
   assert.equal(refreshData.mock.calls.length, 2);
-  assert.equal(updateRuntimeState.mock.calls.length, 0);
+  assert.equal(updateEnvironmentResources.mock.calls.length, 0);
   assert.deepEqual(await runtime.listSessions(), []);
 });

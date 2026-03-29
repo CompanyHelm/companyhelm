@@ -288,6 +288,13 @@
       "when": 1774678524974,
       "tag": "0040_rich_alice",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1774758368929,
+      "tag": "0041_overjoyed_fat_cobra",
+      "breakpoints": true
     }
   ]
 }

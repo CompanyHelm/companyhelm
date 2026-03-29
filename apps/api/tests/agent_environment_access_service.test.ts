@@ -44,7 +44,6 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
           platform: "linux",
           provider: "daytona",
           providerEnvironmentId: "daytona-environment-1",
-          status: "running",
           updatedAt: new Date("2026-03-27T20:00:00.000Z"),
         };
       },
@@ -132,7 +131,6 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
     platform: "linux" as const,
     provider: "daytona" as const,
     providerEnvironmentId: "daytona-environment-2",
-    status: "running" as const,
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   };
   const service = new AgentEnvironmentAccessService(
@@ -222,7 +220,6 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
     platform: "linux" as const,
     provider: "daytona" as const,
     providerEnvironmentId: "daytona-environment-3",
-    status: "running" as const,
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   };
   const provisionEnvironmentForSession = vi.fn(async () => provisionedEnvironment);

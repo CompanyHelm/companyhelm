@@ -26,14 +26,6 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
-export const agentEnvironmentStatusEnum = pgEnum("agent_environment_status", [
-  "provisioning",
-  "available",
-  "running",
-  "stopped",
-  "unhealthy",
-  "deleting",
-]);
 export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
 export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
 export const computeProviderEnum = pgEnum("compute_provider", ["daytona"]);
@@ -381,7 +373,6 @@ export const agentEnvironments = pgTable("agent_environments", {
   providerEnvironmentId: text("provider_environment_id").notNull(),
   displayName: text("display_name"),
   platform: agentEnvironmentPlatformEnum("platform").notNull(),
-  status: agentEnvironmentStatusEnum("status").notNull(),
   cpuCount: integer("cpu_count").notNull(),
   memoryGb: integer("memory_gb").notNull(),
   diskSpaceGb: integer("disk_space_gb").notNull(),

@@ -8,6 +8,7 @@ import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_co
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
+import { EnvironmentsQueryResolver } from "../src/graphql/resolvers/environments.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
@@ -54,7 +55,6 @@ class EnvironmentsQueryTestHarness {
                         platform: "linux",
                         provider: "daytona",
                         providerEnvironmentId: "daytona-env-1",
-                        status: "running",
                         updatedAt: new Date("2026-03-27T15:00:00.000Z"),
                       }];
                     },
@@ -93,6 +93,7 @@ class EnvironmentsQueryTestHarness {
 test("GraphQL Environments query lists company-scoped agent environments", async () => {
   const app = Fastify();
   const database = EnvironmentsQueryTestHarness.createDatabaseMock();
+  const getEnvironmentStatus = async () => "stopped" as const;
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -118,7 +119,7 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     },
   };
 
-  await new GraphqlApplication(
+  const graphqlApplication = new GraphqlApplication(
     EnvironmentsQueryTestHarness.createConfigMock(),
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -128,7 +129,27 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
-  ).register(app);
+  );
+  (
+    graphqlApplication as unknown as {
+      environmentsQueryResolver: EnvironmentsQueryResolver;
+    }
+  ).environmentsQueryResolver = new EnvironmentsQueryResolver({
+    async createRuntime() {
+      throw new Error("createRuntime should not run for the environments query");
+    },
+    getEnvironmentStatus,
+    getProvider() {
+      return "daytona";
+    },
+    async provisionEnvironment() {
+      throw new Error("provisionEnvironment should not run for the environments query");
+    },
+    supportsOnDemandProvisioning() {
+      return true;
+    },
+  } as never);
+  await graphqlApplication.register(app);
 
   const response = await app.inject({
     method: "POST",
@@ -170,7 +191,7 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     providerEnvironmentId: "daytona-env-1",
     displayName: "Research Ubuntu Box",
     platform: "linux",
-    status: "running",
+    status: "stopped",
     cpuCount: 4,
     memoryGb: 16,
     diskSpaceGb: 120,

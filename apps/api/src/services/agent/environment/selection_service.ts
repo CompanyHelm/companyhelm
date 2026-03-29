@@ -69,9 +69,6 @@ export class AgentEnvironmentSelectionService {
       if (environment.provider !== provider) {
         continue;
       }
-      if (environment.status === "deleting" || environment.status === "unhealthy") {
-        continue;
-      }
       if (openLeaseEnvironmentIds.has(environment.id)) {
         continue;
       }

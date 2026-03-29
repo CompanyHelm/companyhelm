@@ -48,7 +48,6 @@ export class AgentEnvironmentProvisioningService {
         platform: provisionedEnvironment.platform,
         provider: this.provider.getProvider(),
         providerEnvironmentId: provisionedEnvironment.providerEnvironmentId,
-        status: provisionedEnvironment.status,
       });
     } catch (error) {
       await provisionedEnvironment.cleanup?.().catch(() => undefined);

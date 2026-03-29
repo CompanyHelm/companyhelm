@@ -56,7 +56,6 @@ export class AgentEnvironmentCatalogService {
       platform: "linux" | "macos" | "windows";
       provider: "daytona";
       providerEnvironmentId: string;
-      status: "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
     },
   ): Promise<AgentEnvironmentRecord> {
     const now = new Date();
@@ -76,7 +75,6 @@ export class AgentEnvironmentCatalogService {
           platform: input.platform,
           provider: input.provider,
           providerEnvironmentId: input.providerEnvironmentId,
-          status: input.status,
           updatedAt: now,
         })
         .returning?.(this.environmentSelection()) as AgentEnvironmentRecord[];
@@ -160,7 +158,7 @@ export class AgentEnvironmentCatalogService {
     });
   }
 
-  async updateRuntimeState(
+  async updateEnvironmentResources(
     transactionProvider: TransactionProviderInterface,
     environmentId: string,
     input: {
@@ -168,7 +166,6 @@ export class AgentEnvironmentCatalogService {
       diskSpaceGb: number;
       memoryGb: number;
       metadata: Record<string, unknown>;
-      status: "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
     },
   ): Promise<AgentEnvironmentRecord> {
     const now = new Date();
@@ -182,7 +179,6 @@ export class AgentEnvironmentCatalogService {
           lastSeenAt: now,
           memoryGb: input.memoryGb,
           metadata: input.metadata,
-          status: input.status,
           updatedAt: now,
         })
         .where(eq(agentEnvironments.id, environmentId))
@@ -210,7 +206,6 @@ export class AgentEnvironmentCatalogService {
       platform: agentEnvironments.platform,
       provider: agentEnvironments.provider,
       providerEnvironmentId: agentEnvironments.providerEnvironmentId,
-      status: agentEnvironments.status,
       updatedAt: agentEnvironments.updatedAt,
     };
   }
