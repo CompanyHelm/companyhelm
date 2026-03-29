@@ -74,10 +74,19 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     environment: AgentEnvironmentRecord,
   ): Promise<AgentEnvironmentRuntimeInterface> {
     const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
-    if (environment.status !== "running") {
+    await remoteSandbox.refreshData();
+    if (remoteSandbox.state !== "started") {
       await remoteSandbox.start();
       await remoteSandbox.refreshData();
-      await this.ensureTmuxInstalled(remoteSandbox);
+    }
+    await this.ensureTmuxInstalled(remoteSandbox);
+
+    if (
+      environment.status !== "running"
+      || remoteSandbox.cpu !== environment.cpuCount
+      || remoteSandbox.disk !== environment.diskSpaceGb
+      || remoteSandbox.memory !== environment.memoryGb
+    ) {
       await this.catalogService.updateRuntimeState(transactionProvider, environment.id, {
         cpuCount: remoteSandbox.cpu || environment.cpuCount,
         diskSpaceGb: remoteSandbox.disk || environment.diskSpaceGb,
@@ -85,8 +94,6 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
         metadata: environment.metadata,
         status: "running",
       });
-    } else {
-      await this.ensureTmuxInstalled(remoteSandbox);
     }
 
     return new AgentComputeDaytonaEnvironment(remoteSandbox);
