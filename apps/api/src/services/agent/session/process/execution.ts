@@ -96,6 +96,7 @@ export class SessionProcessExecutionService {
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
     let leaseLossError: Error | null = null;
+    let shouldEnqueueFollowUpWake = false;
     let steeringSubscription: RedisSubscriptionHandle | null = null;
     let steeringDeliveryPromise = Promise.resolve();
 
@@ -163,6 +164,11 @@ export class SessionProcessExecutionService {
           companyId,
           primaryMessageIds,
         );
+        shouldEnqueueFollowUpWake = await this.sessionQueuedMessageService.hasPendingMessages(
+          transactionProvider,
+          companyId,
+          sessionId,
+        );
       } catch (error) {
         await this.sessionQueuedMessageService.markPending(
           transactionProvider,
@@ -183,7 +189,7 @@ export class SessionProcessExecutionService {
       await this.sessionLeaseService.release(lease);
       await redisCompanyScopedService.disconnect();
 
-      if (await this.sessionQueuedMessageService.hasPendingMessages(transactionProvider, companyId, sessionId)) {
+      if (shouldEnqueueFollowUpWake) {
         await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
       }
     }

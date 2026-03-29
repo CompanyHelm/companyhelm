@@ -61,7 +61,7 @@ export class SessionProcessWorker {
         } catch (error) {
           this.logger.error({
             companyId: job.data.companyId,
-            error,
+            err: error,
             sessionId: job.data.sessionId,
           }, "session wake job failed");
           throw error;

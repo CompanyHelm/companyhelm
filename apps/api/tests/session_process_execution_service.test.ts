@@ -256,6 +256,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
 
 test("SessionProcessExecutionService disposes the runtime session even when turn processing fails", async () => {
   const disposeCalls: string[] = [];
+  const enqueueSessionWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const subscriber = {
     isOpen: true,
@@ -370,8 +371,11 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
       },
     } as never,
     {
-      async enqueueSessionWake() {
-        throw new Error("No wake job should be queued after a failed turn with no pending work.");
+      async enqueueSessionWake(companyId: string, sessionId: string) {
+        enqueueSessionWakeCalls.push({
+          companyId,
+          sessionId,
+        });
       },
     } as never,
     new SessionProcessQueuedNames(),
@@ -401,7 +405,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
         return undefined;
       },
       async hasPendingMessages() {
-        return false;
+        return true;
       },
     } as never,
   );
@@ -417,4 +421,5 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
     sessionId: "session-1",
     token: "lease-token",
   }]);
+  assert.deepEqual(enqueueSessionWakeCalls, []);
 });
