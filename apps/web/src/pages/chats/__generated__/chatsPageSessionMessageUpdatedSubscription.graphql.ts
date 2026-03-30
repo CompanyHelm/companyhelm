@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<000d573b064c025f4460fc2425e116e0>>
+ * @generated SignedSource<<3a3c28133ef6332e3ff87efa5f587692>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type chatsPageSessionMessageUpdatedSubscription$variables = {
 export type chatsPageSessionMessageUpdatedSubscription$data = {
   readonly SessionMessageUpdated: {
     readonly contents: ReadonlyArray<{
+      readonly arguments: any | null | undefined;
       readonly data: string | null | undefined;
       readonly mimeType: string | null | undefined;
       readonly structuredContent: any | null | undefined;
@@ -151,6 +152,13 @@ v4 = [
             "name": "structuredContent",
             "storageKey": null
           },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "arguments",
+            "storageKey": null
+          },
           (v1/*: any*/),
           (v2/*: any*/)
         ],
@@ -200,16 +208,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "cce77dd6dbc3052abb869453064cf952",
+    "cacheID": "4e027c849752e1885dceb3cb4e6b8ef1",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a8ab83653a9b7d23cc71239b075db5d2";
+(node as any).hash = "edaa521645a4a0f6551014048ac6fac2";
 
 export default node;

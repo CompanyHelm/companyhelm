@@ -30,6 +30,7 @@ type SessionMessageRow = {
 };
 
 type MessageContentRow = {
+  arguments: unknown | null;
   messageId: string;
   data: string | null;
   mimeType: string | null;
@@ -87,6 +88,7 @@ export type SessionMessageGraphqlRecord = {
 };
 
 export type SessionMessageContentGraphqlRecord = {
+  arguments: unknown | null;
   type: string;
   text: string | null;
   data: string | null;
@@ -401,6 +403,7 @@ export class SessionReadService {
   ): Promise<Map<string, SessionMessageContentGraphqlRecord[]>> {
     const contentRows = await selectableDatabase
       .select({
+        arguments: messageContents.arguments,
         messageId: messageContents.messageId,
         data: messageContents.data,
         mimeType: messageContents.mimeType,
@@ -425,6 +428,7 @@ export class SessionReadService {
     for (const contentRow of orderedContentRows) {
       const currentContents = contentsByMessageId.get(contentRow.messageId) ?? [];
       currentContents.push({
+        arguments: contentRow.arguments,
         data: contentRow.data,
         mimeType: contentRow.mimeType,
         structuredContent: contentRow.structuredContent,

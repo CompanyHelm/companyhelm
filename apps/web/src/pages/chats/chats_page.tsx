@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,7 @@ const chatsPageTranscriptQueryNode = graphql`
             data
             mimeType
             structuredContent
+            arguments
             toolCallId
             toolName
           }
@@ -181,6 +182,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
         data
         mimeType
         structuredContent
+        arguments
         toolCallId
         toolName
       }
@@ -236,6 +238,11 @@ type TerminalStructuredContentRecord = {
   cwd: string | null;
   exitCode: number | null;
   sessionId: string;
+};
+
+type ToolCallSummaryRecord = {
+  argumentsText: string | null;
+  toolName: string | null;
 };
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
@@ -310,6 +317,41 @@ function sanitizeTerminalDisplayOutput(text: string): string {
   }
 
   return outputLines.join("\n").replace(/(?:\r?\n[ \t]*)+$/u, "");
+}
+
+function formatToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): string | null {
+  if (typeof argumentsValue === "undefined" || argumentsValue === null) {
+    return null;
+  }
+  if (typeof argumentsValue === "string") {
+    return argumentsValue.trim().length > 0 ? argumentsValue : null;
+  }
+
+  try {
+    return JSON.stringify(argumentsValue, null, 2);
+  } catch {
+    return null;
+  }
+}
+
+function buildToolCallSummaryById(
+  messages: ReadonlyArray<SessionMessageRecord>,
+): Map<string, ToolCallSummaryRecord> {
+  const summaries = new Map<string, ToolCallSummaryRecord>();
+  for (const message of messages) {
+    for (const content of message.contents) {
+      if (content.type !== "toolCall" || typeof content.toolCallId !== "string" || content.toolCallId.length === 0) {
+        continue;
+      }
+
+      summaries.set(content.toolCallId, {
+        argumentsText: formatToolArguments(content.arguments),
+        toolName: typeof content.toolName === "string" ? content.toolName : null,
+      });
+    }
+  }
+
+  return summaries;
 }
 
 function loadChatListWidth(): number {
@@ -615,7 +657,10 @@ function ChatsThinkingIndicator({ text }: { text: string | null | undefined }) {
   );
 }
 
-function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
+function ToolTranscriptMessage(
+  { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
+) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const statusLabel = message.status.trim().toLowerCase() === "running"
     ? "Running"
     : message.isError
@@ -634,15 +679,39 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
 
     return false;
   });
+  const hasExpandableOutput = visibleContents.length > 0;
+  const defaultArgumentsText = toolCallSummary?.argumentsText ?? "Arguments unavailable.";
+  const defaultToolName = toolCallSummary?.toolName ?? message.toolName ?? "Tool";
 
   return (
     <div className="w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-        <WrenchIcon className="size-4 shrink-0" />
-        <span>{message.toolName ?? "Tool"}</span>
-        <span className="text-[10px] tracking-[0.18em] text-muted-foreground/70">{statusLabel}</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          <WrenchIcon className="size-4 shrink-0" />
+          <span>{defaultToolName}</span>
+          <span className="text-[10px] tracking-[0.18em] text-muted-foreground/70">{statusLabel}</span>
+        </div>
+        {hasExpandableOutput ? (
+          <button
+            aria-expanded={isExpanded}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
+            onClick={() => setIsExpanded((value) => !value)}
+            type="button"
+          >
+            <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+            <span>{isExpanded ? "Hide output" : "Show output"}</span>
+          </button>
+        ) : null}
       </div>
-      {visibleContents.length > 0 ? (
+      <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background/60">
+        <div className="border-b border-border/60 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Arguments
+        </div>
+        <pre className="whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground">
+          {defaultArgumentsText}
+        </pre>
+      </div>
+      {isExpanded && visibleContents.length > 0 ? (
         <div className="mt-3 grid gap-3">
           {visibleContents.map((content, contentIndex) => {
             const terminalStructuredContent = parseTerminalStructuredContent(content);
@@ -702,9 +771,11 @@ function ToolTranscriptMessage({ message }: { message: SessionMessageRecord }) {
           })}
         </div>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">
-          {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}
-        </p>
+        !hasExpandableOutput ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}
+          </p>
+        ) : null
       )}
     </div>
   );
@@ -727,6 +798,9 @@ function ChatsTranscript({
   isLoadingTranscript: boolean;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
 }) {
+  const toolCallSummaryById = useMemo(() => {
+    return buildToolCallSummaryById(sessionMessages);
+  }, [sessionMessages]);
   const visibleTranscriptMessages = sessionMessages.filter((message) => {
     if (message.role === "toolResult") {
       return typeof message.toolName === "string" && message.toolName.trim().length > 0;
@@ -798,7 +872,10 @@ function ChatsTranscript({
               {isUserMessage ? (
                 <p className="whitespace-pre-wrap text-right text-sm">{message.text}</p>
               ) : isToolMessage ? (
-                <ToolTranscriptMessage message={message} />
+                <ToolTranscriptMessage
+                  message={message}
+                  toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                />
               ) : (
                 <div className="grid w-full gap-4 text-left">
                   <AssistantTranscriptMessage text={message.text} />

@@ -201,6 +201,7 @@ type SessionMessageContent {
   data: String
   mimeType: String
   structuredContent: JSON
+  arguments: JSON
   toolCallId: String
   toolName: String
 }
