@@ -224,6 +224,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[storedMessages]]);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
+    cwd?: string;
     tools?: Array<{ name: string }>;
     customTools?: Array<{ name: string }>;
     resourceLoader?: {
@@ -237,6 +238,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       getSystemPrompt(): string | undefined;
     };
   };
+  assert.equal(createAgentSessionOptions.cwd, "/workspace");
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),

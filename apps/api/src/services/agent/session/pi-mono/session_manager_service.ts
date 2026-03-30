@@ -37,6 +37,8 @@ type SessionRuntime = {
   toolsService: AgentToolsService;
 };
 
+const DEFAULT_PI_WORKING_DIRECTORY = "/workspace";
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -121,6 +123,7 @@ export class PiMonoSessionManagerService {
       authStorage,
       modelRegistry,
       sessionManager,
+      cwd: DEFAULT_PI_WORKING_DIRECTORY,
       model,
       resourceLoader,
       // Keep the built-in active set empty at startup and register our CompanyHelm tools through
