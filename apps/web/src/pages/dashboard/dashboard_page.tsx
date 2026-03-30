@@ -1,12 +1,5 @@
 import { Suspense, useMemo } from "react";
 import { graphql, useLazyLoadQuery } from "react-relay";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { AgentsSection, type DashboardAgentRecord } from "./agents_section";
 import { CredentialsSection, type DashboardCredentialRecord } from "./credentials_section";
 import { EnvironmentsSection, type DashboardEnvironmentRecord } from "./environments_section";
@@ -81,26 +74,21 @@ const dashboardPageQueryNode = graphql`
 function DashboardPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle>Dashboard</CardTitle>
-          <CardDescription>Loading company activity and inventories…</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading agents and sessions…
-          </div>
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading repositories…
-          </div>
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading environments…
-          </div>
-          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading credentials…
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-8 w-64 animate-pulse rounded-md bg-muted/40" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+          Loading agents and sessions…
+        </div>
+        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+          Loading repositories…
+        </div>
+        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+          Loading environments…
+        </div>
+        <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+          Loading credentials…
+        </div>
+      </div>
     </main>
   );
 }
@@ -208,14 +196,11 @@ function DashboardPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle>{data.Me.company.name}</CardTitle>
-          <CardDescription>
-            Navigate sessions, inspect repository access, and review environment plus credential inventory from one page.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <header className="min-w-0">
+        <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+          {data.Me.company.name}
+        </h1>
+      </header>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <AgentsSection agents={agents} />
