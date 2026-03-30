@@ -3,12 +3,11 @@ import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { createPortal } from "react-dom";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
@@ -1746,21 +1745,154 @@ function ChatsPageContent() {
       : "";
   const renderChatListPanel = (panelMode: "desktop" | "mobile") => {
     const isMobilePanel = panelMode === "mobile";
-    const panelContentPaddingClassName = isMobilePanel
-      ? "px-4 py-4"
-      : `${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`;
-    const panelContainerClassName = isMobilePanel
-      ? "h-full border-r border-border/60 bg-background/95 supports-backdrop-filter:backdrop-blur-xl"
-      : "";
-    const panelCardClassName = isMobilePanel
-      ? "rounded-none"
-      : "rounded-2xl";
     const hideButtonLabel = isMobilePanel ? "Close chats panel" : "Hide chats list";
 
+    if (isMobilePanel) {
+      return (
+        <div className="app-shell-sidebar flex h-full flex-col bg-sidebar text-sidebar-foreground">
+          <div className="flex items-center justify-between gap-3 border-b border-sidebar-border px-2 py-2">
+            <div className="min-w-0 px-2">
+              <p className="truncate font-semibold tracking-tight text-sidebar-foreground">Chats</p>
+            </div>
+            <Button
+              aria-label={hideButtonLabel}
+              className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              onClick={hideChatList}
+              size="icon-sm"
+              title={hideButtonLabel}
+              variant="ghost"
+            >
+              <PanelLeftIcon className="size-4" />
+            </Button>
+          </div>
+
+          <div className="no-scrollbar flex-1 overflow-y-auto px-4 py-4">
+            {sortedAgents.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-4 py-10 text-center">
+                <p className="text-sm font-medium text-sidebar-foreground">No agents yet</p>
+                <p className="mt-2 text-xs/relaxed text-sidebar-foreground/65">
+                  Create an agent first from the <Link className="text-sidebar-primary hover:underline" to="/agents">Agents</Link> page.
+                </p>
+              </div>
+            ) : null}
+
+            <ul className="grid gap-3" role="list" aria-label="Agents">
+              {sortedAgents.map((agent) => {
+                const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
+                const isAgentSelected = selectedAgent?.id === agent.id;
+
+                return (
+                  <li
+                    key={agent.id}
+                    className="px-0 py-2"
+                  >
+                    <div className="flex items-start gap-3">
+                      <button
+                        className="min-w-0 flex-1 rounded-md px-1 py-1 text-left"
+                        onClick={() => {
+                          void openDraftForAgent(agent.id);
+                        }}
+                        type="button"
+                      >
+                        <p className="truncate text-sm font-medium text-sidebar-foreground">{agent.name}</p>
+                        <p className="mt-1 text-xs/relaxed text-sidebar-foreground/65">{formatAgentMeta(agent)}</p>
+                      </button>
+                    </div>
+
+                    <div className="mt-3">
+                      <button
+                        aria-label={`Create chat for ${agent.name}`}
+                        className={`flex w-full items-center justify-center rounded-lg px-2 py-3 text-sm font-medium transition ${
+                          isAgentSelected && !selectedSession
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                            : "bg-transparent text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        }`}
+                        onClick={() => {
+                          void openDraftForAgent(agent.id);
+                        }}
+                        type="button"
+                      >
+                        <PlusIcon className="size-5" />
+                      </button>
+
+                      {agentSessions.length > 0 ? (
+                        <ul className="mt-2 grid gap-2" role="list" aria-label={`${agent.name} sessions`}>
+                          {agentSessions.map((session) => {
+                            const isSessionSelected = selectedSession?.id === session.id;
+                            const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
+                            const isSessionRunning = isRunningSession(session);
+
+                            return (
+                              <li key={session.id}>
+                                <div
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-1 py-2 transition ${
+                                    isSessionSelected
+                                      ? "bg-sidebar-accent"
+                                      : "bg-transparent hover:bg-sidebar-accent/70"
+                                  }`}
+                                >
+                                  <button
+                                    className="min-w-0 overflow-hidden pr-1 text-left"
+                                    disabled={isSessionArchiving}
+                                    onClick={() => {
+                                      void openSession(agent.id, session.id);
+                                    }}
+                                    type="button"
+                                  >
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                        <Loader2Icon
+                                          aria-hidden={!isSessionRunning}
+                                          className={`size-3.5 text-sidebar-foreground/70 ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
+                                          title={isSessionRunning ? "Session running" : undefined}
+                                        />
+                                      </span>
+                                      <p className="block min-w-0 truncate text-xs font-medium text-sidebar-foreground">
+                                        {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
+                                      </p>
+                                    </div>
+                                    <p className="mt-1 block w-full truncate pl-6 text-[0.7rem] text-sidebar-foreground/55">
+                                      {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
+                                    </p>
+                                  </button>
+                                  <div className="flex shrink-0 items-start gap-2">
+                                    <button
+                                      aria-label={`Archive ${resolveSessionTitleOverride(session, sessionTitleOverridesById)}`}
+                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-transparent text-sidebar-foreground/60 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                      disabled={isSessionArchiving}
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        void archiveSession(session);
+                                      }}
+                                      title={isSessionArchiving ? "Archiving..." : "Archive chat"}
+                                      type="button"
+                                    >
+                                      <ArchiveIcon className="size-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-xs text-sidebar-foreground/55">No chats yet.</p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className={panelContainerClassName}>
-        <Card className={`flex h-full min-h-0 flex-col overflow-hidden border-0 bg-transparent shadow-none ring-0 ${panelCardClassName}`}>
-          <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-y-auto ${panelContentPaddingClassName}`}>
+      <div>
+        <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+          <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
             <div className="mb-2 flex items-center justify-end pr-1">
               <Button
                 aria-label={hideButtonLabel}
@@ -1896,38 +2028,20 @@ function ChatsPageContent() {
       </div>
     );
   };
-  const mobileChatListOverlay = isMobile && typeof document !== "undefined"
-    ? createPortal(
-      <div
-        aria-hidden={!isMobileChatListOpen}
-        className={cn(
-          "pointer-events-none fixed inset-0 z-50 md:hidden",
-          isMobileChatListOpen && "pointer-events-auto",
-        )}
+  const mobileChatListOverlay = isMobile ? (
+    <Sheet open={isMobileChatListOpen} onOpenChange={setIsMobileChatListOpen}>
+      <SheetContent
+        data-sidebar="sidebar"
+        data-slot="sidebar"
+        data-mobile="true"
+        showCloseButton={false}
+        side="right"
+        className="app-shell-sidebar !w-[80vw] !max-w-[80vw] border-l border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
       >
-        <button
-          aria-label="Hide chats panel"
-          className={cn(
-            "fixed inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.04)_0%,rgba(15,23,42,0.08)_60%,rgba(15,23,42,0.34)_100%)] opacity-0 transition-opacity duration-300 ease-out supports-backdrop-filter:backdrop-blur-sm",
-            isMobileChatListOpen && "opacity-100",
-          )}
-          onClick={hideChatList}
-          type="button"
-        />
-        <section
-          aria-label="Chats panel"
-          className={cn(
-            "fixed inset-y-0 left-0 h-dvh w-[80%] max-w-[30rem] min-w-[18rem] overflow-hidden shadow-[18px_0_48px_rgba(15,23,42,0.24)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-            isMobileChatListOpen ? "translate-x-0" : "-translate-x-full",
-          )}
-          role="dialog"
-        >
-          {renderChatListPanel("mobile")}
-        </section>
-      </div>,
-      document.body,
-    )
-    : null;
+        <div className="flex h-full w-full flex-col">{renderChatListPanel("mobile")}</div>
+      </SheetContent>
+    </Sheet>
+  ) : null;
 
   return (
     <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
