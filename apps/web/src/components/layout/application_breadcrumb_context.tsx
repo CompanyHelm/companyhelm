@@ -1,8 +1,10 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 type ApplicationBreadcrumbContextValue = {
   detailLabel: string | null;
+  headerActions: ReactNode | null;
   setDetailLabel: (label: string | null) => void;
+  setHeaderActions: (actions: ReactNode | null) => void;
 };
 
 const ApplicationBreadcrumbContext = createContext<ApplicationBreadcrumbContextValue | null>(null);
@@ -13,13 +15,19 @@ interface ApplicationBreadcrumbProviderProps {
 
 export function ApplicationBreadcrumbProvider(props: ApplicationBreadcrumbProviderProps) {
   const [detailLabel, setDetailLabel] = useState<string | null>(null);
+  const [headerActions, setHeaderActions] = useState<ReactNode | null>(null);
+  const value = useMemo<ApplicationBreadcrumbContextValue>(() => {
+    return {
+      detailLabel,
+      headerActions,
+      setDetailLabel,
+      setHeaderActions,
+    };
+  }, [detailLabel, headerActions]);
 
   return (
     <ApplicationBreadcrumbContext.Provider
-      value={{
-        detailLabel,
-        setDetailLabel,
-      }}
+      value={value}
     >
       {props.children}
     </ApplicationBreadcrumbContext.Provider>
@@ -33,4 +41,16 @@ export function useApplicationBreadcrumb() {
   }
 
   return context;
+}
+
+export function useApplicationHeaderActions(actions: ReactNode | null) {
+  const { setHeaderActions } = useApplicationBreadcrumb();
+
+  useEffect(() => {
+    setHeaderActions(actions);
+
+    return () => {
+      setHeaderActions(null);
+    };
+  }, [actions, setHeaderActions]);
 }

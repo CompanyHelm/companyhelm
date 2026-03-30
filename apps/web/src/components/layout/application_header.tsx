@@ -13,7 +13,7 @@ export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const { detailLabel } = useApplicationBreadcrumb();
+  const { detailLabel, headerActions } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
   const pageTitle = pathname.startsWith("/model-provider-credentials")
@@ -68,6 +68,11 @@ export function ApplicationHeader() {
           </Breadcrumb>
         </div>
       </div>
+      {headerActions ? (
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          {headerActions}
+        </div>
+      ) : null}
     </header>
   );
 }

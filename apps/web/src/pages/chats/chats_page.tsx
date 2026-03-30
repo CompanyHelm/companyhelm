@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { useApplicationHeaderActions } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -219,8 +220,6 @@ const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
 const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
 const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
-const CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS = "pl-10";
-const CHAT_HIDDEN_LIST_HEADER_MOBILE_GUTTER_CLASS = "pr-10";
 const CHATS_THINKING_GRADIENT_KEYFRAMES = `
 @keyframes chats-thinking-gradient {
   0% {
@@ -1685,7 +1684,7 @@ function ChatsPageContent() {
     setIsResizingChatList(true);
   };
 
-  const hideChatList = () => {
+  const hideChatList = useCallback(() => {
     if (isMobile) {
       setIsMobileChatListOpen(false);
       return;
@@ -1695,16 +1694,16 @@ function ChatsPageContent() {
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
     setIsChatListHidden(true);
-  };
+  }, [isMobile]);
 
-  const showChatList = () => {
+  const showChatList = useCallback(() => {
     if (isMobile) {
       setIsMobileChatListOpen(true);
       return;
     }
 
     setIsChatListHidden(false);
-  };
+  }, [isMobile]);
 
   const startDraftTextareaResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const textarea = draftTextareaRef.current;
@@ -1736,13 +1735,28 @@ function ChatsPageContent() {
       : "Start chat";
   const isDesktopChatListVisible = !isMobile && !isChatListHidden;
   const shouldShowChatListButton = isMobile ? !isMobileChatListOpen : isChatListHidden;
-  const chatHeaderContentClassName = !isDesktopChatListVisible
-    ? isMobile
-      ? CHAT_HIDDEN_LIST_HEADER_MOBILE_GUTTER_CLASS
-      : CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS
-    : selectedSession
-      ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS
-      : "";
+  const chatHeaderContentClassName = isDesktopChatListVisible && selectedSession
+    ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS
+    : "";
+  const headerAction = useMemo(() => {
+    if (!shouldShowChatListButton) {
+      return null;
+    }
+
+    return (
+      <Button
+        aria-label={isMobile ? "Show chats panel" : "Show chats list"}
+        className="text-muted-foreground hover:text-foreground"
+        onClick={showChatList}
+        size="icon-sm"
+        title={isMobile ? "Show chats panel" : "Show chats list"}
+        variant="ghost"
+      >
+        <MessageSquareIcon className="size-4" />
+      </Button>
+    );
+  }, [isMobile, shouldShowChatListButton, showChatList]);
+  useApplicationHeaderActions(headerAction);
   const renderChatListPanel = (panelMode: "desktop" | "mobile") => {
     const isMobilePanel = panelMode === "mobile";
     const hideButtonLabel = isMobilePanel ? "Close chats panel" : "Hide chats list";
@@ -2069,19 +2083,6 @@ function ChatsPageContent() {
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
         <CardHeader className="shrink-0 px-4 md:px-4">
           <div className={`relative flex min-w-0 flex-col gap-1 ${chatHeaderContentClassName}`}>
-            {shouldShowChatListButton ? (
-              <Button
-                aria-label={isMobile ? "Show chats panel" : "Show chats list"}
-                className={`absolute top-0.5 text-muted-foreground hover:text-foreground ${isMobile ? "right-0" : "left-0"}`}
-                onClick={showChatList}
-                size="icon-sm"
-                title={isMobile ? "Show chats panel" : "Show chats list"}
-                variant="ghost"
-              >
-                {isMobile ? <MessageSquareIcon className="size-4" /> : <PanelLeftIcon className="size-4" />}
-              </Button>
-            ) : null}
-
             <CardTitle className="min-w-0">
               {selectedSession
                 ? resolveSessionTitle(selectedSession, selectedSessionMessages)
