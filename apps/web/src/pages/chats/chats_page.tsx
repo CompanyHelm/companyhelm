@@ -988,7 +988,7 @@ function ChatsPageContent() {
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
-  const [isChatListHidden, setIsChatListHidden] = useState(false);
+  const [isChatListHidden, setIsChatListHidden] = useState(Boolean(search.agentId || search.sessionId));
   const [isMobileChatListOpen, setIsMobileChatListOpen] = useState(false);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
@@ -1107,20 +1107,15 @@ function ChatsPageContent() {
   }, [chatListWidth]);
 
   useEffect(() => {
+    const hasSelectedChatTarget = Boolean(search.agentId || search.sessionId);
+    setIsChatListHidden(hasSelectedChatTarget);
+
     if (isMobile) {
+      setIsMobileChatListOpen(!hasSelectedChatTarget);
       return;
     }
 
     setIsMobileChatListOpen(false);
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (!isMobile) {
-      return;
-    }
-
-    const hasSelectedChatTarget = Boolean(search.agentId || search.sessionId);
-    setIsMobileChatListOpen(!hasSelectedChatTarget);
   }, [isMobile, search.agentId, search.sessionId]);
 
   const updateSessionTitleOverride = useCallback((sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => {
