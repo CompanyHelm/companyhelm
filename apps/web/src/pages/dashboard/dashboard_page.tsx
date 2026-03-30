@@ -1,4 +1,5 @@
 import { Suspense, useMemo } from "react";
+import { useOrganization } from "@clerk/react";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { AgentsSection, type DashboardAgentRecord } from "./agents_section";
 import { CredentialsSection, type DashboardCredentialRecord } from "./credentials_section";
@@ -94,6 +95,7 @@ function DashboardPageFallback() {
 }
 
 function DashboardPageContent() {
+  const organizationState = useOrganization();
   const data = useLazyLoadQuery<dashboardPageQuery>(
     dashboardPageQueryNode,
     {},
@@ -193,12 +195,13 @@ function DashboardPageContent() {
       }))
       .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
   }, [data.ModelProviderCredentials]);
+  const organizationName = organizationState.organization?.name || data.Me.company.name;
 
   return (
     <main className="flex flex-1 flex-col gap-6">
       <header className="min-w-0">
         <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
-          {data.Me.company.name}
+          {organizationName}
         </h1>
       </header>
 
