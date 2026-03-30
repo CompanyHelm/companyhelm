@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch server.ts --config-path ./config/local.yaml",
+    "dev": "tsx watch --include src/graphql/schema/schema.graphql server.ts --config-path ./config/local.yaml",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "lint": "eslint server.ts src tests",

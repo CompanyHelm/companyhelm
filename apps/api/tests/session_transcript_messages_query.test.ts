@@ -96,6 +96,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                     async where() {
                       return [
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-3",
                           mimeType: null,
@@ -114,6 +115,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                           createdAt: new Date("2026-03-24T08:02:00.000Z"),
                         },
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-2",
                           mimeType: null,
@@ -124,6 +126,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                           createdAt: new Date("2026-03-24T08:01:30.000Z"),
                         },
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-1",
                           mimeType: null,
@@ -134,6 +137,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                           createdAt: new Date("2026-03-24T08:00:00.000Z"),
                         },
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-2",
                           mimeType: null,
@@ -227,6 +231,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                   data
                   mimeType
                   structuredContent
+                  arguments
                   toolCallId
                   toolName
                 }
@@ -277,6 +282,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                 exitCode: null,
                 sessionId: "pty-123",
               },
+              arguments: null,
               toolCallId: null,
               toolName: null,
             },
@@ -303,6 +309,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               data: null,
               mimeType: null,
               structuredContent: null,
+              arguments: null,
               toolCallId: null,
               toolName: null,
             },
@@ -312,6 +319,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               data: null,
               mimeType: null,
               structuredContent: null,
+              arguments: null,
               toolCallId: null,
               toolName: null,
             },

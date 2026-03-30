@@ -77,6 +77,7 @@ class SessionMessagesQueryTestHarness {
                     async where() {
                       return [
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-2",
                           mimeType: null,
@@ -87,6 +88,7 @@ class SessionMessagesQueryTestHarness {
                           createdAt: new Date("2026-03-24T08:01:30.000Z"),
                         },
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-1",
                           mimeType: null,
@@ -97,6 +99,7 @@ class SessionMessagesQueryTestHarness {
                           createdAt: new Date("2026-03-24T08:00:00.000Z"),
                         },
                         {
+                          arguments: null,
                           data: null,
                           messageId: "message-2",
                           mimeType: null,
@@ -195,6 +198,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
               data
               mimeType
               structuredContent
+              arguments
               toolCallId
               toolName
             }
@@ -225,6 +229,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           data: null,
           mimeType: null,
           structuredContent: null,
+          arguments: null,
           toolCallId: null,
           toolName: null,
         },
@@ -255,6 +260,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
             exitCode: 2,
             sessionId: "pty-123",
           },
+          arguments: null,
           toolCallId: null,
           toolName: null,
         },
@@ -264,6 +270,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           data: null,
           mimeType: null,
           structuredContent: null,
+          arguments: null,
           toolCallId: null,
           toolName: null,
         },
