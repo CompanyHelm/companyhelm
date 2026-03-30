@@ -221,6 +221,7 @@ const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
 const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
 const CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS = "pl-10";
+const CHAT_HIDDEN_LIST_HEADER_MOBILE_GUTTER_CLASS = "pr-10";
 const CHATS_THINKING_GRADIENT_KEYFRAMES = `
 @keyframes chats-thinking-gradient {
   0% {
@@ -1737,7 +1738,9 @@ function ChatsPageContent() {
   const isDesktopChatListVisible = !isMobile && !isChatListHidden;
   const shouldShowChatListButton = isMobile ? !isMobileChatListOpen : isChatListHidden;
   const chatHeaderContentClassName = !isDesktopChatListVisible
-    ? CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS
+    ? isMobile
+      ? CHAT_HIDDEN_LIST_HEADER_MOBILE_GUTTER_CLASS
+      : CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS
     : selectedSession
       ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS
       : "";
@@ -1955,7 +1958,7 @@ function ChatsPageContent() {
             {shouldShowChatListButton ? (
               <Button
                 aria-label={isMobile ? "Show chats panel" : "Show chats list"}
-                className="absolute left-0 top-0.5 text-muted-foreground hover:text-foreground"
+                className={`absolute top-0.5 text-muted-foreground hover:text-foreground ${isMobile ? "right-0" : "left-0"}`}
                 onClick={showChatList}
                 size="icon-sm"
                 title={isMobile ? "Show chats panel" : "Show chats list"}
