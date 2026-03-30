@@ -19,7 +19,7 @@ import { sql } from "drizzle-orm/sql";
 export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic", "openai-codex"]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
-export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall"]);
+export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["queued", "running", "stopped", "archived"]);
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
 // it will be deleted on completion of the message, so no completed or failed statuses
@@ -116,7 +116,6 @@ export const agentSessions = pgTable("agent_sessions", {
   // it is used to reload messages into context when resuming the session
   context_messages: jsonb("context_messages"),
   isThinking: boolean("is_thinking").notNull(),
-  thinkingText: text("thinking_text"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
 },

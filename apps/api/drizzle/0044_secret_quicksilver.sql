@@ -1,0 +1,1 @@
+ALTER TYPE "public"."message_content_type" ADD VALUE 'thinking';
