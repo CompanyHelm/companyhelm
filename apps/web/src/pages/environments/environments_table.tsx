@@ -140,15 +140,11 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
                 <p className="truncate font-medium text-foreground">
                   {environment.displayName ?? environment.providerEnvironmentId}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{environment.providerEnvironmentId}</p>
               </div>
             </TableCell>
             <TableCell>
               <div className="min-w-0">
                 <p className="truncate text-foreground">{environment.agentName ?? environment.agentId}</p>
-                {environment.agentName ? (
-                  <p className="truncate text-xs text-muted-foreground">{environment.agentId}</p>
-                ) : null}
               </div>
             </TableCell>
             <TableCell>
