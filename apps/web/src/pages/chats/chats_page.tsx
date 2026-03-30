@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon, XIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
-import { useApplicationHeaderActions } from "@/components/layout/application_breadcrumb_context";
+import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -1735,9 +1735,22 @@ function ChatsPageContent() {
       : "Start chat";
   const isDesktopChatListVisible = !isMobile && !isChatListHidden;
   const shouldShowChatListButton = isMobile ? !isMobileChatListOpen : isChatListHidden;
-  const chatHeaderContentClassName = isDesktopChatListVisible && selectedSession
-    ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS
-    : "";
+  const chatsHeaderTitle = selectedSession
+    ? resolveSessionTitle(selectedSession, selectedSessionMessages)
+    : selectedAgent
+      ? selectedAgent.name
+      : "Chat";
+  const chatsHeaderDescription = selectedSession
+    ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
+    : selectedAgent
+      ? "New chat"
+      : shouldShowChatListButton
+        ? isMobile
+          ? "Show the chats panel to start a chat."
+          : "Show the chats list to start a chat."
+        : isMobile
+          ? "Choose an agent from the panel to start a chat."
+          : "Choose an agent from the sidebar to start a chat.";
   const headerAction = useMemo(() => {
     if (!shouldShowChatListButton) {
       return null;
@@ -1756,7 +1769,22 @@ function ChatsPageContent() {
       </Button>
     );
   }, [isMobile, shouldShowChatListButton, showChatList]);
-  useApplicationHeaderActions(headerAction);
+  const headerContent = useMemo(() => {
+    return (
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">{chatsHeaderTitle}</p>
+        {chatsHeaderDescription ? (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {chatsHeaderDescription}
+          </p>
+        ) : null}
+      </div>
+    );
+  }, [chatsHeaderDescription, chatsHeaderTitle]);
+  useApplicationHeader({
+    actions: headerAction,
+    content: headerContent,
+  });
   const renderChatListPanel = (panelMode: "desktop" | "mobile") => {
     const isMobilePanel = panelMode === "mobile";
     const hideButtonLabel = isMobilePanel ? "Close chats panel" : "Hide chats list";
@@ -2081,32 +2109,6 @@ function ChatsPageContent() {
       ) : null}
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardHeader className="shrink-0 px-4 md:px-4">
-          <div className={`relative flex min-w-0 flex-col gap-1 ${chatHeaderContentClassName}`}>
-            <CardTitle className="min-w-0">
-              {selectedSession
-                ? resolveSessionTitle(selectedSession, selectedSessionMessages)
-                : selectedAgent
-                  ? selectedAgent.name
-                  : "Chat"}
-            </CardTitle>
-
-            <CardDescription>
-              {selectedSession
-                ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
-                : !selectedAgent
-                  ? shouldShowChatListButton
-                    ? isMobile
-                      ? "Show the chats panel to start a chat."
-                      : "Show the chats list to start a chat."
-                    : isMobile
-                      ? "Choose an agent from the panel to start a chat."
-                      : "Choose an agent from the sidebar to start a chat."
-                  : null}
-            </CardDescription>
-          </div>
-        </CardHeader>
-
         {errorMessage ? (
           <div className="shrink-0 px-2 pt-4 md:px-3 md:pt-5">
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">

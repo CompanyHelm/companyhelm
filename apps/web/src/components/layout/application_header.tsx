@@ -13,7 +13,7 @@ export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const { detailLabel, headerActions } = useApplicationBreadcrumb();
+  const { detailLabel, headerActions, headerContent } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
   const pageTitle = pathname.startsWith("/model-provider-credentials")
@@ -44,28 +44,30 @@ export function ApplicationHeader() {
       <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger className="-ml-1 shrink-0 md:hidden" size="icon-lg" />
         <div className="min-w-0">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                {isDetailPage && detailPageHref ? (
-                  <Link
-                    className="font-medium text-muted-foreground transition hover:text-foreground"
-                    to={detailPageHref}
-                  >
-                    {pageTitle}
-                  </Link>
-                ) : (
-                  <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
-                )}
-              </BreadcrumbItem>
-              {isDetailPage ? <BreadcrumbSeparator /> : null}
-              {isDetailPage ? (
+          {headerContent ?? (
+            <Breadcrumb>
+              <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbPage>{detailPageTitle}</BreadcrumbPage>
+                  {isDetailPage && detailPageHref ? (
+                    <Link
+                      className="font-medium text-muted-foreground transition hover:text-foreground"
+                      to={detailPageHref}
+                    >
+                      {pageTitle}
+                    </Link>
+                  ) : (
+                    <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+                  )}
                 </BreadcrumbItem>
-              ) : null}
-            </BreadcrumbList>
-          </Breadcrumb>
+                {isDetailPage ? <BreadcrumbSeparator /> : null}
+                {isDetailPage ? (
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{detailPageTitle}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                ) : null}
+              </BreadcrumbList>
+            </Breadcrumb>
+          )}
         </div>
       </div>
       {headerActions ? (
