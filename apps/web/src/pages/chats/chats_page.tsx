@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon, XIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { useApplicationHeaderActions } from "@/components/layout/application_breadcrumb_context";
@@ -1764,19 +1764,19 @@ function ChatsPageContent() {
     if (isMobilePanel) {
       return (
         <div className="app-shell-sidebar flex h-full flex-col bg-sidebar text-sidebar-foreground">
-          <div className="flex items-center justify-between gap-3 border-b border-sidebar-border px-2 py-2">
-            <div className="min-w-0 px-2">
-              <p className="truncate font-semibold tracking-tight text-sidebar-foreground">Chats</p>
+          <div className="flex items-center justify-between gap-3 border-b border-sidebar-border px-4 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">Chats</p>
             </div>
             <Button
               aria-label={hideButtonLabel}
-              className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="-mr-1 shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               onClick={hideChatList}
               size="icon-sm"
               title={hideButtonLabel}
               variant="ghost"
             >
-              <PanelLeftIcon className="size-4" />
+              <XIcon className="size-4" />
             </Button>
           </div>
 
