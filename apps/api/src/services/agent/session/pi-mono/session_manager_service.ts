@@ -11,9 +11,12 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { agentSessions } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { GithubClient } from "../../../../github/client.ts";
 import { AgentEnvironmentAccessService } from "../../environment/access_service.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { AgentToolsService } from "../../tools/service.ts";
+import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
+import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
 import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
@@ -22,6 +25,7 @@ import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 type SessionRuntimeConfig = {
   agentId: string;
   apiKey: string;
+  companyId: string;
   modelId: string;
   providerId: string;
   reasoningLevel?: string | null;
@@ -57,15 +61,18 @@ type UpdatableDatabase = {
 @injectable()
 export class PiMonoSessionManagerService {
   private readonly agentEnvironmentAccessService: AgentEnvironmentAccessService;
+  private readonly githubClient: GithubClient;
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
 
   constructor(
     @inject(RedisService) redisService: RedisService,
     @inject(AgentEnvironmentAccessService) agentEnvironmentAccessService: AgentEnvironmentAccessService,
+    @inject(GithubClient) githubClient: GithubClient,
   ) {
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
+    this.githubClient = githubClient;
   }
 
   async ensureSession(
@@ -87,8 +94,14 @@ export class PiMonoSessionManagerService {
       runtimeConfig.agentId,
       sessionId,
     );
+    const githubInstallationService = new AgentGithubInstallationService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      this.githubClient,
+    );
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
+      new AgentGithubToolProvider(promptScope, githubInstallationService),
     ]);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {

@@ -234,6 +234,7 @@ export class SessionProcessExecutionService {
   ): Promise<{
     agentId: string;
     apiKey: string;
+    companyId: string;
     modelId: string;
     providerId: string;
     reasoningLevel: string;
@@ -290,6 +291,7 @@ export class SessionProcessExecutionService {
       return {
         agentId: sessionRow.agentId,
         apiKey: credentialRow.encryptedApiKey,
+        companyId,
         modelId: modelRow.modelId,
         providerId: credentialRow.modelProvider,
         reasoningLevel: sessionRow.currentReasoningLevel,

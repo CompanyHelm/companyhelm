@@ -228,6 +228,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
     runtimeConfig: {
       agentId: "agent-1",
       apiKey: "sk-openai",
+      companyId: "company-1",
       modelId: "gpt-5.4",
       providerId: "openai",
       reasoningLevel: "high",

@@ -128,6 +128,11 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("tools should not acquire an environment during ensureSession");
       },
     } as never,
+    {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
   );
 
   const session = await service.ensureSession(
@@ -166,6 +171,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     {
       agentId: "agent-1",
       apiKey: "sk-test",
+      companyId: "company-1",
       modelId: "gpt-5.4",
       providerId: "openai",
       reasoningLevel: "high",
@@ -242,6 +248,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_github_installations",
+      "gh_exec",
     ],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
@@ -262,6 +270,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_github_installations",
+      "gh_exec",
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
@@ -311,6 +321,11 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
         throw new Error("tools should not acquire an environment during ensureSession");
       },
     } as never,
+    {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
   );
 
   const first = await service.ensureSession(
@@ -337,6 +352,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     {
       agentId: "agent-1",
       apiKey: "sk-test",
+      companyId: "company-1",
       modelId: "gpt-5.4",
       providerId: "openai",
       reasoningLevel: "medium",
@@ -370,6 +386,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     {
       agentId: "agent-1",
       apiKey: "sk-test-2",
+      companyId: "company-1",
       modelId: "gpt-5.4",
       providerId: "openai",
       reasoningLevel: "low",
@@ -391,6 +408,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_github_installations",
+      "gh_exec",
     ]]],
   );
 });

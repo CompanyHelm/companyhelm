@@ -6,6 +6,7 @@ import {
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
+import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
 import { AgentToolsService } from "../src/services/agent/tools/service.ts";
 import { AgentTerminalToolProvider } from "../src/services/agent/tools/terminal/provider.ts";
 
@@ -23,6 +24,18 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
         throw new Error("tools should not acquire the environment during initialization");
       },
     } as never),
+    new AgentGithubToolProvider({
+      async getEnvironment() {
+        throw new Error("tools should not acquire the environment during initialization");
+      },
+    } as never, {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during initialization");
+      },
+      async listInstallations() {
+        throw new Error("github installations should not be loaded during initialization");
+      },
+    } as never),
   ]);
 
   const tools = service.initializeTools();
@@ -37,6 +50,8 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_github_installations",
+      "gh_exec",
     ],
   );
   assert.equal(service.initializeTools(), tools);
@@ -55,6 +70,18 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     new AgentTerminalToolProvider({
       async getEnvironment() {
         throw new Error("tools should not acquire the environment during cleanup");
+      },
+    } as never),
+    new AgentGithubToolProvider({
+      async getEnvironment() {
+        throw new Error("tools should not acquire the environment during cleanup");
+      },
+    } as never, {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during cleanup");
+      },
+      async listInstallations() {
+        throw new Error("github installations should not be loaded during cleanup");
       },
     } as never),
   ]);
@@ -87,6 +114,18 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("session creation should not eagerly acquire the environment");
       },
     } as never),
+    new AgentGithubToolProvider({
+      async getEnvironment() {
+        throw new Error("session creation should not eagerly acquire the environment");
+      },
+    } as never, {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during session creation");
+      },
+      async listInstallations() {
+        throw new Error("github installations should not be loaded during session creation");
+      },
+    } as never),
   ]);
 
   const sessionManager = SessionManager.inMemory();
@@ -115,6 +154,8 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_github_installations",
+      "gh_exec",
     ],
   );
 

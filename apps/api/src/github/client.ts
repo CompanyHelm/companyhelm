@@ -99,6 +99,22 @@ export class GithubClient {
       forceRefresh?: boolean;
     } = {},
   ): Promise<GithubInstallationRepository[]> {
+    const installationToken = await this.getInstallationAccessToken(installationIdValue, options);
+    const installationId = GithubClient.validateInstallationId(installationIdValue);
+    const githubRepositories = await this.fetchInstallationRepositories(
+      installationId,
+      installationToken,
+    );
+
+    return this.buildInstallationRepositories(githubRepositories);
+  }
+
+  async getInstallationAccessToken(
+    installationIdValue: string | number | bigint,
+    options: {
+      forceRefresh?: boolean;
+    } = {},
+  ): Promise<string> {
     const installationId = GithubClient.validateInstallationId(installationIdValue);
     if (options.forceRefresh) {
       this.installationAccessTokenCache.delete(installationId);
@@ -109,12 +125,7 @@ export class GithubClient {
       cachedInstallationToken = await this.requestInstallationAccessToken(installationId);
     }
 
-    const githubRepositories = await this.fetchInstallationRepositories(
-      installationId,
-      cachedInstallationToken.token,
-    );
-
-    return this.buildInstallationRepositories(githubRepositories);
+    return cachedInstallationToken.token;
   }
 
   static validateInstallationId(value: string | number | bigint): number {
