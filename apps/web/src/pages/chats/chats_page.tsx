@@ -699,9 +699,7 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
   );
 }
 
-function ChatsThinkingIndicator({ text }: { text: string | null | undefined }) {
-  const displayText = typeof text === "string" && text.trim().length > 0 ? text : "Thinking...";
-
+function ChatsThinkingIndicator() {
   return (
     <>
       <style>{CHATS_THINKING_GRADIENT_KEYFRAMES}</style>
@@ -716,7 +714,7 @@ function ChatsThinkingIndicator({ text }: { text: string | null | undefined }) {
             WebkitBackgroundClip: "text",
           }}
         >
-          {displayText}
+          Thinking...
         </p>
       </div>
     </>
@@ -1969,7 +1967,7 @@ function ChatsPageContent() {
               sessionMessages={selectedSessionMessages}
               transcriptScrollRef={transcriptScrollRef}
             />
-            {selectedSession.isThinking ? <ChatsThinkingIndicator text={selectedSession.thinkingText} /> : null}
+            {selectedSession.isThinking ? <ChatsThinkingIndicator /> : null}
           </CardContent>
         ) : null}
 
