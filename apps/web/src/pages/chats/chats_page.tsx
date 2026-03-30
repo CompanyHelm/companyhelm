@@ -218,7 +218,6 @@ const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
 const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
 const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
-const CHAT_LIST_SESSION_TEXT_GUTTER_CLASS = "pl-4";
 const CHAT_HIDDEN_LIST_HEADER_GUTTER_CLASS = "pl-10";
 const CHATS_THINKING_GRADIENT_KEYFRAMES = `
 @keyframes chats-thinking-gradient {
@@ -1814,24 +1813,26 @@ function ChatsPageContent() {
                                     }`}
                                   >
                                     <button
-                                      className={`relative min-w-0 overflow-hidden ${CHAT_LIST_SESSION_TEXT_GUTTER_CLASS} text-left`}
+                                      className="min-w-0 overflow-hidden pr-1 text-left"
                                       disabled={isSessionArchiving}
                                       onClick={() => {
                                         void openSession(agent.id, session.id);
                                       }}
                                       type="button"
                                     >
-                                      <span className="absolute left-0 top-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                                        <Loader2Icon
-                                          aria-hidden={!isSessionRunning}
-                                          className={`size-3.5 text-muted-foreground ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
-                                          title={isSessionRunning ? "Session running" : undefined}
-                                        />
-                                      </span>
-                                      <p className="block min-w-0 truncate text-xs font-medium text-foreground">
-                                        {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
-                                      </p>
-                                      <p className="mt-1 block w-full truncate text-[0.7rem] text-muted-foreground">
+                                      <div className="flex min-w-0 items-center gap-2">
+                                        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                          <Loader2Icon
+                                            aria-hidden={!isSessionRunning}
+                                            className={`size-3.5 text-muted-foreground ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
+                                            title={isSessionRunning ? "Session running" : undefined}
+                                          />
+                                        </span>
+                                        <p className="block min-w-0 truncate text-xs font-medium text-foreground">
+                                          {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
+                                        </p>
+                                      </div>
+                                      <p className="mt-1 block w-full truncate pl-6 text-[0.7rem] text-muted-foreground">
                                         {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
                                       </p>
                                     </button>
