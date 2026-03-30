@@ -1,7 +1,8 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -58,33 +59,39 @@ function resolveSessionTitle(session: DashboardSessionRecord): string {
 }
 
 /**
- * Renders the recent session list and makes each session row navigable directly into the chats
+ * Renders the recent chat list and makes each row navigable directly into the chats
  * page so operators can jump from the dashboard into the full transcript view in one click.
  */
-export function SessionsSection(props: { sessions: DashboardSessionRecord[] }) {
+export function SessionsSection(props: { sessions: DashboardSessionRecord[]; totalCount: number }) {
   const navigate = useNavigate();
 
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
-        <CardTitle>Sessions</CardTitle>
+        <CardAction>
+          <Link className="text-xs font-medium text-primary hover:underline" to="/chats">
+            Show all
+          </Link>
+        </CardAction>
+        <CardTitle>Chats</CardTitle>
         <CardDescription>
-          {props.sessions.length} sessions. Click any row to open the session in chats.
+          Showing {props.sessions.length} of {props.totalCount} active chats. Click any row to open
+          the transcript.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {props.sessions.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
-            <p className="text-sm font-medium text-foreground">No sessions yet</p>
+            <p className="text-sm font-medium text-foreground">No chats yet</p>
             <p className="mt-2 text-xs/relaxed text-muted-foreground">
-              Session history will appear here after users start chatting with agents.
+              Chat history will appear here after users start chatting with agents.
             </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Session</TableHead>
+                <TableHead>Chat</TableHead>
                 <TableHead>Agent</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Updated</TableHead>

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -60,13 +61,19 @@ function formatTimestamp(value: string): string {
  * Renders the read-only agent inventory for the dashboard so operators can quickly inspect which
  * agents exist and how many chat sessions each one currently owns.
  */
-export function AgentsSection(props: { agents: DashboardAgentRecord[] }) {
+export function AgentsSection(props: { agents: DashboardAgentRecord[]; totalCount: number }) {
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardAction>
+          <Link className="text-xs font-medium text-primary hover:underline" to="/agents">
+            Show all
+          </Link>
+        </CardAction>
         <CardTitle>Agents</CardTitle>
         <CardDescription>
-          {props.agents.length} configured agents with their current default model and session count.
+          Showing {props.agents.length} of {props.totalCount} configured agents with their current
+          default model and active chat count.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -84,7 +91,7 @@ export function AgentsSection(props: { agents: DashboardAgentRecord[] }) {
                 <TableHead>Agent</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>Reasoning</TableHead>
-                <TableHead>Sessions</TableHead>
+                <TableHead>Chats</TableHead>
                 <TableHead>Updated</TableHead>
               </TableRow>
             </TableHeader>

@@ -12,6 +12,8 @@ import {
 import { SessionsSection, type DashboardSessionRecord } from "./sessions_section";
 import type { dashboardPageQuery } from "./__generated__/dashboardPageQuery.graphql";
 
+const DASHBOARD_SECTION_LIMIT = 5;
+
 const dashboardPageQueryNode = graphql`
   query dashboardPageQuery {
     Me {
@@ -78,7 +80,7 @@ function DashboardPageFallback() {
       <div className="h-8 w-64 animate-pulse rounded-md bg-muted/40" />
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-          Loading agents and sessions…
+          Loading agents and chats…
         </div>
         <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
           Loading repositories…
@@ -111,6 +113,9 @@ function DashboardPageContent() {
   const sessionsByAgentId = useMemo(() => {
     const counts = new Map<string, number>();
     for (const session of data.Sessions) {
+      if (session.status.trim().toLowerCase() === "archived") {
+        continue;
+      }
       counts.set(session.agentId, (counts.get(session.agentId) ?? 0) + 1);
     }
     return counts;
@@ -127,11 +132,12 @@ function DashboardPageContent() {
         sessionCount: sessionsByAgentId.get(agent.id) ?? 0,
         updatedAt: agent.updatedAt,
       }))
-      .sort((left, right) => left.name.localeCompare(right.name));
+      .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
   }, [data.Agents, sessionsByAgentId]);
 
   const sessions = useMemo<DashboardSessionRecord[]>(() => {
-    return [...data.Sessions]
+    return data.Sessions
+      .filter((session) => session.status.trim().toLowerCase() !== "archived")
       .map((session) => ({
         agentId: session.agentId,
         agentName: agentNameById.get(session.agentId) ?? "Unknown agent",
@@ -167,7 +173,7 @@ function DashboardPageContent() {
         name: repository.name,
         updatedAt: repository.updatedAt,
       }))
-      .sort((left, right) => left.fullName.localeCompare(right.fullName));
+      .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
   }, [data.GithubRepositories]);
 
   const environments = useMemo<DashboardEnvironmentRecord[]>(() => {
@@ -196,6 +202,14 @@ function DashboardPageContent() {
       .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
   }, [data.ModelProviderCredentials]);
   const organizationName = organizationState.organization?.name || data.Me.company.name;
+  const runningEnvironmentCount = environments.filter((environment) => environment.status.trim().toLowerCase() === "running").length;
+  const stoppedEnvironmentCount = environments.filter((environment) => environment.status.trim().toLowerCase() === "stopped").length;
+  const otherEnvironmentCount = environments.length - runningEnvironmentCount - stoppedEnvironmentCount;
+  const recentAgents = agents.slice(0, DASHBOARD_SECTION_LIMIT);
+  const recentSessions = sessions.slice(0, DASHBOARD_SECTION_LIMIT);
+  const recentRepositories = repositories.slice(0, DASHBOARD_SECTION_LIMIT);
+  const recentEnvironments = environments.slice(0, DASHBOARD_SECTION_LIMIT);
+  const recentCredentials = credentials.slice(0, DASHBOARD_SECTION_LIMIT);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -206,18 +220,25 @@ function DashboardPageContent() {
       </header>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <AgentsSection agents={agents} />
-        <SessionsSection sessions={sessions} />
+        <AgentsSection agents={recentAgents} totalCount={agents.length} />
+        <SessionsSection sessions={recentSessions} totalCount={sessions.length} />
       </div>
 
       <RepositoriesSection
         installations={installations}
-        repositories={repositories}
+        repositories={recentRepositories}
+        totalCount={repositories.length}
       />
 
       <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <EnvironmentsSection environments={environments} />
-        <CredentialsSection credentials={credentials} />
+        <EnvironmentsSection
+          environments={recentEnvironments}
+          otherCount={otherEnvironmentCount}
+          runningCount={runningEnvironmentCount}
+          stoppedCount={stoppedEnvironmentCount}
+          totalCount={environments.length}
+        />
+        <CredentialsSection credentials={recentCredentials} totalCount={credentials.length} />
       </div>
     </main>
   );

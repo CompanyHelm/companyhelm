@@ -1,7 +1,9 @@
+import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon, FolderGit2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -56,6 +58,7 @@ function formatTimestamp(value: string): string {
 export function RepositoriesSection(props: {
   installations: DashboardInstallationRecord[];
   repositories: DashboardRepositoryRecord[];
+  totalCount: number;
 }) {
   const installationLabelById = new Map(
     props.installations.map((installation) => [
@@ -67,9 +70,15 @@ export function RepositoriesSection(props: {
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardAction>
+          <Link className="text-xs font-medium text-primary hover:underline" to="/repositories">
+            Show all
+          </Link>
+        </CardAction>
         <CardTitle>Repositories</CardTitle>
         <CardDescription>
-          {props.repositories.length} repositories cached across {props.installations.length} GitHub installations.
+          Showing {props.repositories.length} of {props.totalCount} repositories cached across{" "}
+          {props.installations.length} GitHub installations.
         </CardDescription>
       </CardHeader>
       <CardContent>

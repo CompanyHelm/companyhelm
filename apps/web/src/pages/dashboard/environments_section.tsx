@@ -1,6 +1,8 @@
+import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -63,17 +65,25 @@ function getStatusBadgeVariant(status: string): "outline" | "positive" | "second
  * Summarizes live environment status on the dashboard, with explicit counts for running and
  * stopped environments plus a compact table of the current inventory.
  */
-export function EnvironmentsSection(props: { environments: DashboardEnvironmentRecord[] }) {
-  const runningCount = props.environments.filter((environment) => environment.status.trim().toLowerCase() === "running").length;
-  const stoppedCount = props.environments.filter((environment) => environment.status.trim().toLowerCase() === "stopped").length;
-  const otherCount = props.environments.length - runningCount - stoppedCount;
-
+export function EnvironmentsSection(props: {
+  environments: DashboardEnvironmentRecord[];
+  otherCount: number;
+  runningCount: number;
+  stoppedCount: number;
+  totalCount: number;
+}) {
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardAction>
+          <Link className="text-xs font-medium text-primary hover:underline" to="/environments">
+            Show all
+          </Link>
+        </CardAction>
         <CardTitle>Environments</CardTitle>
         <CardDescription>
-          {runningCount} running, {stoppedCount} stopped{otherCount > 0 ? `, ${otherCount} other` : ""}.
+          Showing {props.environments.length} of {props.totalCount}. {props.runningCount} running,{" "}
+          {props.stoppedCount} stopped{props.otherCount > 0 ? `, ${props.otherCount} other` : ""}.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

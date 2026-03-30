@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -49,13 +50,25 @@ function formatTimestamp(value: string): string {
  * Shows the available model credentials on the dashboard so operators can confirm which providers
  * are currently configured before drilling into the credential management screens.
  */
-export function CredentialsSection(props: { credentials: DashboardCredentialRecord[] }) {
+export function CredentialsSection(props: {
+  credentials: DashboardCredentialRecord[];
+  totalCount: number;
+}) {
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardAction>
+          <Link
+            className="text-xs font-medium text-primary hover:underline"
+            to="/model-provider-credentials"
+          >
+            Show all
+          </Link>
+        </CardAction>
         <CardTitle>Credentials</CardTitle>
         <CardDescription>
-          {props.credentials.length} provider credentials currently available to company agents.
+          Showing {props.credentials.length} of {props.totalCount} provider credentials currently
+          available to company agents.
         </CardDescription>
       </CardHeader>
       <CardContent>
