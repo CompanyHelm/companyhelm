@@ -40,7 +40,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       throw new Error("command is required.");
     }
 
-    const sessionId = AgentComputeDaytonaEnvironment.resolveSessionId(input.sessionId);
+    const sessionId = AgentEnvironmentTmuxPty.resolveSessionId(input.sessionId);
     await this.ensureTmuxSession(sessionId, input);
     const startOffset = await this.captureTmuxOutputLength(sessionId);
     const commandRun = await this.startTmuxCommand(sessionId, input);
