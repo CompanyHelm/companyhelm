@@ -19,6 +19,10 @@ export class SessionProcessQueuedNames {
     return `session:${sessionId}:steer`;
   }
 
+  getSessionInterruptChannel(sessionId: string): string {
+    return `session:${sessionId}:interrupt`;
+  }
+
   getSessionLeaseKey(sessionId: string): string {
     return `session:${sessionId}:lease`;
   }

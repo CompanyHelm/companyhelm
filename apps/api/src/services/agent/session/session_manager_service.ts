@@ -203,9 +203,26 @@ export class SessionManagerService {
     companyId: string,
     sessionId: string,
   ): Promise<SessionRecord> {
-    const sessionRecord = await transactionProvider.transaction(async (tx) => {
+    const { shouldInterrupt, sessionRecord } = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
+      const [existingSession] = await selectableDatabase
+        .select({
+          agentId: agentSessions.agentId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          id: agentSessions.id,
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!existingSession) {
+        throw new Error("Session not found.");
+      }
+
       const now = new Date();
       const [updatedSessionRecord] = await updatableDatabase
         .update(agentSessions)
@@ -230,11 +247,17 @@ export class SessionManagerService {
       );
 
       return {
-        ...updatedSessionRecord,
-        currentModelId: currentModelRecord.modelId,
+        sessionRecord: {
+          ...updatedSessionRecord,
+          currentModelId: currentModelRecord.modelId,
+        },
+        shouldInterrupt: existingSession.status === "running",
       };
     });
 
+    if (shouldInterrupt) {
+      await this.publishInterrupt(companyId, sessionRecord.id);
+    }
     await this.publishSessionUpdate(companyId, sessionRecord.id);
 
     this.logger.info({
@@ -473,6 +496,11 @@ export class SessionManagerService {
   private async publishSteer(companyId: string, sessionId: string): Promise<void> {
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     await redisCompanyScopedService.publish(this.sessionProcessQueuedNames.getSessionSteerChannel(sessionId));
+  }
+
+  private async publishInterrupt(companyId: string, sessionId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.sessionProcessQueuedNames.getSessionInterruptChannel(sessionId));
   }
 
   private async publishSessionUpdate(companyId: string, sessionId: string): Promise<void> {

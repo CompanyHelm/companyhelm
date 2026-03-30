@@ -95,6 +95,8 @@ export class SessionProcessExecutionService {
     const transactionProvider = new AppRuntimeTransactionProvider(this.appRuntimeDatabase, companyId);
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     let heartbeatHandle: ReturnType<typeof setInterval> | null = null;
+    let interruptError: Error | null = null;
+    let interruptSubscription: RedisSubscriptionHandle | null = null;
     let leaseLossError: Error | null = null;
     let shouldEnqueueFollowUpWake = false;
     let steeringSubscription: RedisSubscriptionHandle | null = null;
@@ -139,6 +141,16 @@ export class SessionProcessExecutionService {
           });
         },
       );
+      interruptSubscription = await redisCompanyScopedService.subscribe(
+        this.sessionProcessQueuedNames.getSessionInterruptChannel(sessionId),
+        () => {
+          if (interruptError) {
+            return;
+          }
+          interruptError = new Error("Session interrupted.");
+          void this.piMonoSessionManagerService.abort(sessionId);
+        },
+      );
 
       const primaryMessageIds = primaryBatch.map((queuedMessage) => queuedMessage.id);
       await this.sessionQueuedMessageService.markProcessing(
@@ -159,6 +171,9 @@ export class SessionProcessExecutionService {
         if (leaseLossError) {
           throw leaseLossError;
         }
+        if (interruptError) {
+          throw interruptError;
+        }
         await this.sessionQueuedMessageService.deleteProcessed(
           transactionProvider,
           companyId,
@@ -178,6 +193,9 @@ export class SessionProcessExecutionService {
         throw error;
       }
     } finally {
+      if (interruptSubscription) {
+        await interruptSubscription.unsubscribe();
+      }
       if (steeringSubscription) {
         await steeringSubscription.unsubscribe();
       }

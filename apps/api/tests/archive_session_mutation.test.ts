@@ -7,12 +7,16 @@ import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { ArchiveSessionMutation } from "../src/graphql/mutations/archive_session.ts";
+import { DeleteEnvironmentMutation } from "../src/graphql/mutations/delete_environment.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
+import { StartEnvironmentMutation } from "../src/graphql/mutations/start_environment.ts";
+import { StopEnvironmentMutation } from "../src/graphql/mutations/stop_environment.ts";
 import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import { ModelProvidersQueryResolver } from "../src/graphql/resolvers/model_providers.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class ArchiveSessionMutationTestHarness {
@@ -80,7 +84,9 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
         currentModelId: "gpt-5.4",
         currentModelProviderCredentialModelId: "model-row-1",
         currentReasoningLevel: "high",
+        isThinking: false,
         status: "archived",
+        thinkingText: null,
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
         updatedAt: new Date("2026-03-25T12:05:00.000Z"),
       };
@@ -102,7 +108,10 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     undefined,
     undefined,
     undefined,
-    undefined,
+    new DeleteEnvironmentMutation(),
+    new StartEnvironmentMutation(),
+    new StopEnvironmentMutation(),
+    new ModelProvidersQueryResolver(),
     undefined,
     undefined,
     undefined,

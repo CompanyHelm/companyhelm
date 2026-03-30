@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { agentSessions, messageContents, sessionMessages } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
@@ -189,7 +189,10 @@ export class PiMonoSessionEventHandler {
           thinkingText: null,
           updated_at: new Date(),
         })
-        .where(eq(agentSessions.id, this.sessionId));
+        .where(and(
+          eq(agentSessions.id, this.sessionId),
+          ne(agentSessions.status, "archived"),
+        ));
     });
 
     this.isThinking = false;

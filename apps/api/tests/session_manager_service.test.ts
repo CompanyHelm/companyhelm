@@ -287,7 +287,7 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
 });
 
-test("SessionManagerService archiveSession updates the session status and publishes the session update", async () => {
+test("SessionManagerService archiveSession interrupts running sessions before publishing the session update", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
@@ -296,6 +296,24 @@ test("SessionManagerService archiveSession updates the session status and publis
     select() {
       selectCallCount += 1;
       if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  id: "session-1",
+                  status: "running",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
         return {
           from() {
             return {
@@ -375,10 +393,16 @@ test("SessionManagerService archiveSession updates the session status and publis
   assert.equal(sessionRecord.status, "archived");
   assert.equal(updatedValues[0]?.status, "archived");
   assert.ok(updatedValues[0]?.updated_at instanceof Date);
-  assert.deepEqual(publishCalls, [{
-    channel: "company:company-1:session:session-1:update",
-    message: "",
-  }]);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:interrupt",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+  ]);
   assert.deepEqual(logs, [{
     bindings: {
       component: "session_manager_service",
@@ -388,6 +412,116 @@ test("SessionManagerService archiveSession updates the session status and publis
       companyId: "company-1",
       sessionId: "session-1",
     },
+  }]);
+});
+
+test("SessionManagerService archiveSession does not interrupt stopped sessions", async () => {
+  const updatedValues: Array<Record<string, unknown>> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  id: "session-1",
+                  status: "stopped",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
+          return {
+            where() {
+              return {
+                async returning() {
+                  return [{
+                    id: "session-1",
+                    agentId: "agent-1",
+                    currentModelProviderCredentialModelId: "model-row-1",
+                    currentReasoningLevel: "high",
+                    inferredTitle: "Existing title",
+                    status: "archived",
+                    createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                    updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                    userSetTitle: null,
+                  }];
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while archiving.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    new SessionQueuedMessageService(),
+  );
+
+  const sessionRecord = await service.archiveSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.equal(sessionRecord.status, "archived");
+  assert.equal(updatedValues[0]?.status, "archived");
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
   }]);
 });
 
@@ -549,4 +683,77 @@ test("SessionManagerService prompt queues the message, publishes session updates
       shouldSteer: true,
     },
   }]);
+});
+
+test("SessionManagerService prompt rejects archived sessions without queueing work", async () => {
+  const queuedMessages: Array<Record<string, unknown>> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const wakeCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const transaction = {
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              return [{
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                id: "session-1",
+                status: "archived",
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake(companyId: string, sessionId: string) {
+        wakeCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
+        queuedMessages.push(input);
+        return {
+          id: "queued-2",
+        };
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  await assert.rejects(
+    service.prompt(
+      SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+      "company-1",
+      "session-1",
+      "Do not accept this.",
+    ),
+    /Archived sessions cannot receive new messages\./,
+  );
+
+  assert.deepEqual(queuedMessages, []);
+  assert.deepEqual(publishCalls, []);
+  assert.deepEqual(wakeCalls, []);
 });

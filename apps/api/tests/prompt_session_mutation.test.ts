@@ -8,10 +8,13 @@ import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_co
 import { AddAgentMutation } from "../src/graphql/mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { CreateSessionMutation } from "../src/graphql/mutations/create_session.ts";
+import { DeleteEnvironmentMutation } from "../src/graphql/mutations/delete_environment.ts";
 import { DeleteAgentMutation } from "../src/graphql/mutations/delete_agent.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
 import { PromptSessionMutation } from "../src/graphql/mutations/prompt_session.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
+import { StartEnvironmentMutation } from "../src/graphql/mutations/start_environment.ts";
+import { StopEnvironmentMutation } from "../src/graphql/mutations/stop_environment.ts";
 import { UpdateAgentMutation } from "../src/graphql/mutations/update_agent.ts";
 import { AgentCreateOptionsQueryResolver } from "../src/graphql/resolvers/agent_create_options.ts";
 import { AgentQueryResolver } from "../src/graphql/resolvers/agent.ts";
@@ -101,7 +104,9 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "medium",
         inferredTitle: "Existing title",
+        isThinking: false,
         status: "running",
+        thinkingText: null,
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
         updatedAt: new Date("2026-03-25T12:05:00.000Z"),
         userSetTitle: null,
@@ -129,6 +134,9 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
     new AgentCreateOptionsQueryResolver(),
     new AgentsQueryResolver(),
     new DeleteAgentMutation(),
+    new DeleteEnvironmentMutation(),
+    new StartEnvironmentMutation(),
+    new StopEnvironmentMutation(),
     new ModelProvidersQueryResolver(),
     new UpdateAgentMutation(),
     undefined,
@@ -189,6 +197,105 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
     updatedAt: "2026-03-25T12:05:00.000Z",
     userSetTitle: null,
   });
+
+  await app.close();
+});
+
+test("GraphQL PromptSession mutation rejects archived sessions", async () => {
+  const app = Fastify();
+  const config = PromptSessionMutationTestHarness.createConfigMock();
+  const database = PromptSessionMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+  const sessionManagerService = {
+    async prompt() {
+      throw new Error("Archived sessions cannot receive new messages.");
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+    new AddAgentMutation(),
+    new CreateSessionMutation({
+      async createSession() {
+        throw new Error("CreateSession should not be called.");
+      },
+    } as never),
+    new AgentQueryResolver(),
+    new AgentCreateOptionsQueryResolver(),
+    new AgentsQueryResolver(),
+    new DeleteAgentMutation(),
+    new DeleteEnvironmentMutation(),
+    new StartEnvironmentMutation(),
+    new StopEnvironmentMutation(),
+    new ModelProvidersQueryResolver(),
+    new UpdateAgentMutation(),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    new PromptSessionMutation(sessionManagerService as never),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation PromptSession($input: PromptSessionInput!) {
+          PromptSession(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          id: "session-1",
+          userMessage: "Focus on the failed deploy.",
+        },
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.data, null);
+  assert.equal(document.errors[0]?.message, "Archived sessions cannot receive new messages.");
 
   await app.close();
 });

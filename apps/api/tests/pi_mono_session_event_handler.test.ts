@@ -114,9 +114,12 @@ class PiMonoSessionEventHandlerTestHarness {
               if (table === agentSessions) {
                 return {
                   set(value: Record<string, unknown>) {
-                    sessionStatusUpdates.push(value);
                     return {
                       async where() {
+                        if (typeof value.status === "string" && sessionState.status === "archived") {
+                          return undefined;
+                        }
+                        sessionStatusUpdates.push(value);
                         if (typeof value.status === "string") {
                           sessionState.status = value.status;
                         }
@@ -253,6 +256,31 @@ test("PiMonoSessionEventHandler marks the session running on agent start", async
   assert.equal(harness.sessionState.status, "running");
   assert.equal(harness.sessionState.isThinking, false);
   assert.equal(harness.sessionState.thinkingText, null);
+  assert.deepEqual(harness.publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }]);
+});
+
+test("PiMonoSessionEventHandler does not overwrite archived sessions when agent end arrives", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  harness.sessionState.status = "archived";
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      type: "agent_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionStatusUpdates.length, 0);
+  assert.equal(harness.sessionState.status, "archived");
   assert.deepEqual(harness.publishCalls, [{
     channel: "company:company-1:session:session-1:update",
     message: "",
