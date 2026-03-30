@@ -114,6 +114,7 @@ export class PiMonoSessionEventHandler {
   private companyId?: string;
   private isThinking = false;
   private thinkingText = "";
+  private persistedThinkingContent = "";
   private lastPersistedTimestampMilliseconds = 0;
 
   constructor(
@@ -216,6 +217,7 @@ export class PiMonoSessionEventHandler {
         this.logInfo("ignoring pi mono user message start", sessionEvent);
         return;
       case "assistant":
+        this.persistedThinkingContent = "";
         await this.upsertSessionMessage("running", sessionEvent);
         this.logInfo("pi mono assistant message started", sessionEvent);
         return;
@@ -255,6 +257,7 @@ export class PiMonoSessionEventHandler {
       case "assistant":
         await this.clearThinkingState(true);
         await this.upsertSessionMessage("completed", sessionEvent);
+        this.persistedThinkingContent = "";
         this.logInfo("pi mono assistant message completed", sessionEvent);
         return;
       case "toolResult":
@@ -421,7 +424,7 @@ export class PiMonoSessionEventHandler {
     message: SessionMessage,
     timestamp: Date,
   ): Array<Record<string, unknown>> {
-    const messageContent = this.normalizeMessageContent(message.content);
+    const messageContent = this.resolveMessageContent(message);
     const structuredContent = message.structuredContent?.type === "terminal" ? message.structuredContent : null;
 
     return messageContent
@@ -454,6 +457,19 @@ export class PiMonoSessionEventHandler {
           }];
         }
 
+        if (contentBlock.type === "thinking") {
+          return [{
+            companyId,
+            createdAt: timestamp,
+            id: randomUUID(),
+            messageId,
+            structuredContent: contentStructuredContent,
+            text: contentBlock.thinking,
+            type: "thinking",
+            updatedAt: timestamp,
+          }];
+        }
+
         if (contentBlock.type === "toolCall") {
           return [{
             arguments: contentBlock.arguments,
@@ -471,6 +487,27 @@ export class PiMonoSessionEventHandler {
 
         return [];
       });
+  }
+
+  private resolveMessageContent(message: SessionMessage): MessageContent[] {
+    const normalizedContent = this.normalizeMessageContent(message.content);
+    if (message.role !== "assistant") {
+      return normalizedContent;
+    }
+    if (normalizedContent.some((contentBlock) => contentBlock.type === "thinking")) {
+      return normalizedContent;
+    }
+    if (this.persistedThinkingContent.trim().length === 0) {
+      return normalizedContent;
+    }
+
+    return [
+      {
+        thinking: this.persistedThinkingContent,
+        type: "thinking",
+      },
+      ...normalizedContent,
+    ];
   }
 
   private normalizeMessageContent(content: SessionMessage["content"]): MessageContent[] {
@@ -616,12 +653,14 @@ export class PiMonoSessionEventHandler {
       case "thinking_start":
         this.isThinking = true;
         this.thinkingText = "";
+        this.persistedThinkingContent = "";
         await this.updateThinkingState(true, null);
         return;
       case "thinking_delta": {
         const nextThinkingDelta = String(sessionEvent.assistantMessageEvent.delta ?? "");
         this.isThinking = true;
         this.thinkingText = `${this.thinkingText}${nextThinkingDelta}`;
+        this.persistedThinkingContent = this.thinkingText;
         await this.updateThinkingState(
           true,
           this.thinkingText.trim().length > 0 ? this.thinkingText : null,

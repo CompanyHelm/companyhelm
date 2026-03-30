@@ -252,6 +252,11 @@ type CommandToolArgumentsRecord = {
   yieldTimeMs: number | null;
 };
 
+type AssistantDisplayContentRecord = {
+  text: string;
+  type: "text" | "thinking";
+};
+
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
   const lineHeight = Number.parseFloat(computedStyle.lineHeight) || 20;
@@ -386,6 +391,33 @@ function buildToolCallSummaryById(
   }
 
   return summaries;
+}
+
+function resolveAssistantDisplayContents(message: SessionMessageRecord): AssistantDisplayContentRecord[] {
+  const contentBlocks = message.contents.flatMap((content): AssistantDisplayContentRecord[] => {
+    if ((content.type !== "text" && content.type !== "thinking") || typeof content.text !== "string") {
+      return [];
+    }
+    if (content.text.trim().length === 0) {
+      return [];
+    }
+
+    return [{
+      text: content.text,
+      type: content.type,
+    }];
+  });
+  if (contentBlocks.length > 0) {
+    return contentBlocks;
+  }
+  if (message.text.trim().length === 0) {
+    return [];
+  }
+
+  return [{
+    text: message.text,
+    type: "text",
+  }];
 }
 
 function loadChatListWidth(): number {
@@ -857,8 +889,11 @@ function ChatsTranscript({
     if (message.role === "toolResult") {
       return typeof message.toolName === "string" && message.toolName.trim().length > 0;
     }
+    if (message.role === "assistant") {
+      return resolveAssistantDisplayContents(message).length > 0;
+    }
 
-    return (message.role === "user" || message.role === "assistant") && message.text.trim().length > 0;
+    return message.role === "user" && message.text.trim().length > 0;
   });
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
 
@@ -906,6 +941,9 @@ function ChatsTranscript({
       {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
         const isToolMessage = message.role === "toolResult";
+        const assistantDisplayContents = !isUserMessage && !isToolMessage
+          ? resolveAssistantDisplayContents(message)
+          : [];
 
         return (
           <div
@@ -930,7 +968,14 @@ function ChatsTranscript({
                 />
               ) : (
                 <div className="grid w-full gap-4 text-left">
-                  <AssistantTranscriptMessage text={message.text} />
+                  {assistantDisplayContents.map((content, contentIndex) => (
+                    <div
+                      key={`${message.id}-assistant-content-${contentIndex}`}
+                      className={content.type === "thinking" ? "opacity-80" : ""}
+                    >
+                      <AssistantTranscriptMessage text={content.text} />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

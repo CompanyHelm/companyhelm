@@ -825,6 +825,122 @@ test("PiMonoSessionEventHandler stores session thinking state from assistant thi
       },
     ],
   );
+
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  const [thinkingMessageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(thinkingMessageRecord?.role, "assistant");
+  assert.equal(thinkingMessageRecord?.status, "running");
+  const thinkingContentRecords = harness.messageContentRecordsByMessageId.get(thinkingMessageRecord.id);
+  assert.deepEqual(
+    thinkingContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "Inspecting the repo",
+        type: "thinking",
+      },
+    ],
+  );
+});
+
+test("PiMonoSessionEventHandler keeps thinking content on the assistant message after final text arrives", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_start",
+    });
+    await handler.handle({
+      assistantMessageEvent: {
+        contentIndex: 0,
+        type: "thinking_start",
+      },
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      assistantMessageEvent: {
+        contentIndex: 0,
+        delta: "Inspecting the repo",
+        type: "thinking_delta",
+      },
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      assistantMessageEvent: {
+        contentIndex: 0,
+        type: "thinking_end",
+      },
+      message: {
+        content: [],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_update",
+    });
+    await handler.handle({
+      message: {
+        content: [
+          {
+            text: "Final answer",
+            type: "text",
+          },
+        ],
+        role: "assistant",
+        timestamp: 1500,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.role, "assistant");
+  assert.equal(messageRecord?.status, "completed");
+
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.deepEqual(
+    messageContentRecords?.map((record) => {
+      return {
+        text: record.text,
+        type: record.type,
+      };
+    }),
+    [
+      {
+        text: "Inspecting the repo",
+        type: "thinking",
+      },
+      {
+        text: "Final answer",
+        type: "text",
+      },
+    ],
+  );
 });
 
 test("PiMonoSessionEventHandler stores user messages only when message end arrives", async () => {
