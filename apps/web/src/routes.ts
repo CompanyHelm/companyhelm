@@ -11,6 +11,7 @@ import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
+import { FlagsPage } from "./pages/flags/flags_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
@@ -76,6 +77,12 @@ const rootIndexRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/",
   component: DashboardPage,
+});
+
+const flagsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/flags",
+  component: FlagsPage,
 });
 
 const modelProviderCredentialsRoute = createRoute({
@@ -156,6 +163,7 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
+      flagsRoute,
       agentsRoute,
       environmentsRoute,
       chatsRoute,

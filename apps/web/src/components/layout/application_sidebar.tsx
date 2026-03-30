@@ -17,6 +17,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
+import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import {
   Sidebar,
   SidebarContent,
@@ -73,6 +74,7 @@ function ApplicationSidebarVersion() {
 
 export function ApplicationSidebar() {
   const userState = useUser();
+  const featureFlags = useFeatureFlags();
   const themeState = useTheme();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -111,11 +113,13 @@ export function ApplicationSidebar() {
       label: "Repositories",
       to: "/repositories",
     },
-    {
-      icon: WorkflowIcon,
-      label: "Tasks",
-      to: "/tasks",
-    },
+    ...(featureFlags.isEnabled("tasks_management")
+      ? [{
+        icon: WorkflowIcon,
+        label: "Tasks",
+        to: "/tasks",
+      }]
+      : []),
   ];
 
   return (

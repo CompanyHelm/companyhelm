@@ -23,11 +23,13 @@ export function ApplicationHeader() {
         ? "Repositories"
         : pathname.startsWith("/tasks")
           ? "Tasks"
+          : pathname.startsWith("/flags")
+            ? "Feature Flags"
           : pathname.startsWith("/settings")
             ? "Settings"
-      : pathname.startsWith("/agents")
-        ? "Agents"
-        : "Dashboard";
+            : pathname.startsWith("/agents")
+              ? "Agents"
+              : "Dashboard";
   const detailPageTitle = detailLabel || (isAgentDetailPage ? "Agent" : "Credential");
   const detailPageHref = isCredentialDetailPage
     ? "/model-provider-credentials"
