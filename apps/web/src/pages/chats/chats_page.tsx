@@ -3,6 +3,7 @@ import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArchiveIcon, ChevronRightIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { createPortal } from "react-dom";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1892,38 +1893,42 @@ function ChatsPageContent() {
       </div>
     );
   };
+  const mobileChatListOverlay = isMobile && typeof document !== "undefined"
+    ? createPortal(
+      <div
+        aria-hidden={!isMobileChatListOpen}
+        className={cn(
+          "pointer-events-none fixed inset-0 z-50 md:hidden",
+          isMobileChatListOpen && "pointer-events-auto",
+        )}
+      >
+        <button
+          aria-label="Hide chats panel"
+          className={cn(
+            "fixed inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.04)_0%,rgba(15,23,42,0.08)_60%,rgba(15,23,42,0.34)_100%)] opacity-0 transition-opacity duration-300 ease-out supports-backdrop-filter:backdrop-blur-sm",
+            isMobileChatListOpen && "opacity-100",
+          )}
+          onClick={hideChatList}
+          type="button"
+        />
+        <section
+          aria-label="Chats panel"
+          className={cn(
+            "fixed inset-y-0 left-0 h-dvh w-[80%] max-w-[30rem] min-w-[18rem] overflow-hidden shadow-[18px_0_48px_rgba(15,23,42,0.24)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            isMobileChatListOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+          role="dialog"
+        >
+          {renderChatListPanel("mobile")}
+        </section>
+      </div>,
+      document.body,
+    )
+    : null;
 
   return (
     <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-      {isMobile ? (
-        <div
-          aria-hidden={!isMobileChatListOpen}
-          className={cn(
-            "pointer-events-none fixed inset-0 z-30 md:hidden",
-            isMobileChatListOpen && "pointer-events-auto",
-          )}
-        >
-          <button
-            aria-label="Hide chats panel"
-            className={cn(
-              "fixed inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.04)_0%,rgba(15,23,42,0.08)_60%,rgba(15,23,42,0.34)_100%)] opacity-0 transition-opacity duration-300 ease-out supports-backdrop-filter:backdrop-blur-sm",
-              isMobileChatListOpen && "opacity-100",
-            )}
-            onClick={hideChatList}
-            type="button"
-          />
-          <section
-            aria-label="Chats panel"
-            className={cn(
-              "fixed inset-y-0 left-0 h-svh w-[80%] max-w-[30rem] min-w-[18rem] overflow-hidden shadow-[18px_0_48px_rgba(15,23,42,0.24)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-              isMobileChatListOpen ? "translate-x-0" : "-translate-x-full",
-            )}
-            role="dialog"
-          >
-            {renderChatListPanel("mobile")}
-          </section>
-        </div>
-      ) : null}
+      {mobileChatListOverlay}
 
       {isDesktopChatListVisible ? (
         <div
