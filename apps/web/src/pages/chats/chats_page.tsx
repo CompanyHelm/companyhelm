@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, ChevronRightIcon, Loader2Icon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { createPortal } from "react-dom";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
@@ -1964,7 +1964,7 @@ function ChatsPageContent() {
                 title={isMobile ? "Show chats panel" : "Show chats list"}
                 variant="ghost"
               >
-                <PanelLeftIcon className="size-4" />
+                {isMobile ? <MessageSquareIcon className="size-4" /> : <PanelLeftIcon className="size-4" />}
               </Button>
             ) : null}
 
