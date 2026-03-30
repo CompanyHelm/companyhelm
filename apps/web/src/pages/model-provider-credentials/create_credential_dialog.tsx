@@ -75,6 +75,10 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               Provider
             </label>
             <Select
+              items={props.providers.map((provider) => ({
+                label: provider.name,
+                value: provider.id,
+              }))}
               onValueChange={(value) => {
                 setAuthFileContents("");
                 setApiKey("");
@@ -98,7 +102,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="credential-name">
-              Credential name
+              Credential name (optional)
             </label>
             <Input
               autoComplete="off"
