@@ -116,6 +116,7 @@ export const agentSessions = pgTable("agent_sessions", {
   // it is used to reload messages into context when resuming the session
   context_messages: jsonb("context_messages"),
   isThinking: boolean("is_thinking").notNull(),
+  thinkingText: text("thinking_text"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
