@@ -1196,6 +1196,7 @@ function ChatsPageContent() {
 
     setErrorMessage(null);
     const transcriptNode = transcriptScrollRef.current;
+    shouldStickTranscriptToBottomRef.current = false;
     if (transcriptNode) {
       pendingTranscriptScrollRestoreRef.current = {
         previousScrollHeight: transcriptNode.scrollHeight,
@@ -1412,6 +1413,7 @@ function ChatsPageContent() {
       const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
       transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
       pendingTranscriptScrollRestoreRef.current = null;
+      shouldStickTranscriptToBottomRef.current = false;
       return;
     }
 
