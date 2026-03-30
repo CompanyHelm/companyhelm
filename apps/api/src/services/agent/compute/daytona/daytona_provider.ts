@@ -102,6 +102,38 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     }
   }
 
+  async startEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<void> {
+    void transactionProvider;
+
+    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    await remoteSandbox.refreshData();
+    if (remoteSandbox.state === "started") {
+      return;
+    }
+
+    await remoteSandbox.start();
+    await remoteSandbox.refreshData();
+  }
+
+  async stopEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<void> {
+    void transactionProvider;
+
+    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    await remoteSandbox.refreshData();
+    if (remoteSandbox.state === "stopped") {
+      return;
+    }
+
+    await remoteSandbox.stop();
+    await remoteSandbox.refreshData();
+  }
+
   async createShell(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,

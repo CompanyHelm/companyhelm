@@ -25,6 +25,8 @@ type Query {
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   DeleteEnvironment(input: DeleteEnvironmentInput!): Environment!
+  StartEnvironment(input: StartEnvironmentInput!): Environment!
+  StopEnvironment(input: StopEnvironmentInput!): Environment!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   ArchiveSession(input: ArchiveSessionInput!): Session!
@@ -307,6 +309,14 @@ input DeleteAgentInput {
 }
 
 input DeleteEnvironmentInput {
+  id: ID!
+}
+
+input StartEnvironmentInput {
+  id: ID!
+}
+
+input StopEnvironmentInput {
   id: ID!
 }
 

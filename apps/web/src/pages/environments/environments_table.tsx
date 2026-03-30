@@ -1,4 +1,4 @@
-import { Trash2Icon } from "lucide-react";
+import { PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,10 +40,13 @@ export type EnvironmentsTableRecord = {
 };
 
 interface EnvironmentsTableProps {
+  actingEnvironmentId: string | null;
   deletingEnvironmentId: string | null;
   environments: EnvironmentsTableRecord[];
   isLoading: boolean;
   onDelete: (environmentId: string) => Promise<void>;
+  onStart: (environmentId: string) => Promise<void>;
+  onStop: (environmentId: string) => Promise<void>;
 }
 
 function formatProviderLabel(provider: string): string {
@@ -78,6 +81,14 @@ function formatTimestamp(value: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+function canStartEnvironment(status: string): boolean {
+  return status === "stopped" || status === "available";
+}
+
+function canStopEnvironment(status: string): boolean {
+  return status === "running";
 }
 
 /**
@@ -118,7 +129,7 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
           <TableHead>Disk</TableHead>
           <TableHead>Last seen</TableHead>
           <TableHead>Updated</TableHead>
-          <TableHead className="w-16 text-right">Actions</TableHead>
+          <TableHead className="w-28 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -153,42 +164,68 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
             <TableCell>{formatTimestamp(environment.lastSeenAt)}</TableCell>
             <TableCell>{formatTimestamp(environment.updatedAt)}</TableCell>
             <TableCell className="text-right">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <div className="flex items-center justify-end gap-1">
+                {canStartEnvironment(environment.status) ? (
                   <Button
                     variant="ghost"
                     size="icon"
-                    disabled={props.deletingEnvironmentId === environment.id}
+                    disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
+                    onClick={async () => {
+                      await props.onStart(environment.id);
+                    }}
                   >
-                    <Trash2Icon className="h-4 w-4" />
+                    <PlayIcon className="h-4 w-4" />
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete environment</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete the CompanyHelm environment record and tear down
-                      the backing compute environment. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancelAction asChild>
-                      <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
-                    </AlertDialogCancelAction>
-                    <AlertDialogPrimaryAction asChild>
-                      <AlertDialogActionButton
-                        variant="destructive"
-                        disabled={props.deletingEnvironmentId === environment.id}
-                        onClick={async () => {
-                          await props.onDelete(environment.id);
-                        }}
-                      >
-                        Delete
-                      </AlertDialogActionButton>
-                    </AlertDialogPrimaryAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                ) : null}
+                {canStopEnvironment(environment.status) ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
+                    onClick={async () => {
+                      await props.onStop(environment.id);
+                    }}
+                  >
+                    <SquareIcon className="h-4 w-4" />
+                  </Button>
+                ) : null}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
+                    >
+                      <Trash2Icon className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete environment</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the CompanyHelm environment record and tear down
+                        the backing compute environment. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancelAction asChild>
+                        <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
+                      </AlertDialogCancelAction>
+                      <AlertDialogPrimaryAction asChild>
+                        <AlertDialogActionButton
+                          variant="destructive"
+                          disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
+                          onClick={async () => {
+                            await props.onDelete(environment.id);
+                          }}
+                        >
+                          Delete
+                        </AlertDialogActionButton>
+                      </AlertDialogPrimaryAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </TableCell>
           </TableRow>
         ))}

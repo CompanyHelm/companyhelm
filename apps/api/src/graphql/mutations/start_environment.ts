@@ -4,7 +4,7 @@ import { AgentEnvironmentCatalogService } from "../../services/agent/environment
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
-type DeleteEnvironmentMutationArguments = {
+type StartEnvironmentMutationArguments = {
   input: {
     id: string;
   };
@@ -23,17 +23,17 @@ type GraphqlEnvironmentRecord = {
   platform: "linux" | "macos" | "windows";
   provider: "daytona";
   providerEnvironmentId: string;
-  status: "deleting";
+  status: "running";
   updatedAt: string;
 };
 
 /**
- * Deletes one company-scoped environment by tearing it down at the provider first and then
- * removing the local catalog row so the environment inventory and remote compute stay aligned.
+ * Starts one company-scoped environment through the configured provider so the inventory can bring
+ * a stopped sandbox back online without requiring the chat/session flow to touch it first.
  */
 @injectable()
-export class DeleteEnvironmentMutation extends Mutation<
-  DeleteEnvironmentMutationArguments,
+export class StartEnvironmentMutation extends Mutation<
+  StartEnvironmentMutationArguments,
   GraphqlEnvironmentRecord
 > {
   private readonly catalogService: AgentEnvironmentCatalogService;
@@ -74,7 +74,7 @@ export class DeleteEnvironmentMutation extends Mutation<
   }
 
   protected resolve = async (
-    arguments_: DeleteEnvironmentMutationArguments,
+    arguments_: StartEnvironmentMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlEnvironmentRecord> => {
     const environmentId = String(arguments_.input.id || "").trim();
@@ -99,32 +99,23 @@ export class DeleteEnvironmentMutation extends Mutation<
       throw new Error(`Environment provider ${environment.provider} is not configured.`);
     }
 
-    await this.provider.deleteEnvironment(context.app_runtime_transaction_provider, environment);
-
-    const deletedEnvironment = await this.catalogService.deleteEnvironment(
-      context.app_runtime_transaction_provider,
-      environment.id,
-      context.authSession.company.id,
-    );
-    if (!deletedEnvironment) {
-      throw new Error("Environment not found.");
-    }
+    await this.provider.startEnvironment(context.app_runtime_transaction_provider, environment);
 
     return {
-      agentId: deletedEnvironment.agentId,
+      agentId: environment.agentId,
       agentName: null,
-      cpuCount: deletedEnvironment.cpuCount,
-      createdAt: deletedEnvironment.createdAt.toISOString(),
-      diskSpaceGb: deletedEnvironment.diskSpaceGb,
-      displayName: deletedEnvironment.displayName,
-      id: deletedEnvironment.id,
-      lastSeenAt: deletedEnvironment.lastSeenAt?.toISOString() ?? null,
-      memoryGb: deletedEnvironment.memoryGb,
-      platform: deletedEnvironment.platform,
-      provider: deletedEnvironment.provider,
-      providerEnvironmentId: deletedEnvironment.providerEnvironmentId,
-      status: "deleting",
-      updatedAt: deletedEnvironment.updatedAt.toISOString(),
+      cpuCount: environment.cpuCount,
+      createdAt: environment.createdAt.toISOString(),
+      diskSpaceGb: environment.diskSpaceGb,
+      displayName: environment.displayName,
+      id: environment.id,
+      lastSeenAt: environment.lastSeenAt?.toISOString() ?? null,
+      memoryGb: environment.memoryGb,
+      platform: environment.platform,
+      provider: environment.provider,
+      providerEnvironmentId: environment.providerEnvironmentId,
+      status: "running",
+      updatedAt: environment.updatedAt.toISOString(),
     };
   };
 }

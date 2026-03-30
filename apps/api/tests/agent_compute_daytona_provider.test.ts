@@ -190,6 +190,112 @@ test("AgentComputeDaytonaProvider ignores missing remote sandboxes during deleti
   });
 });
 
+test("AgentComputeDaytonaProvider starts a stopped sandbox on demand", async () => {
+  const refreshData = vi.fn(async () => undefined);
+  const start = vi.fn(async function(this: { state: string }) {
+    this.state = "started";
+  });
+  const provider = new AgentComputeDaytonaProvider(
+    {
+      daytona: {
+        api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
+      },
+    } as never,
+    {} as AgentEnvironmentCatalogService,
+  );
+  (provider as {
+    daytona: {
+      get: (id: string) => Promise<unknown>;
+    };
+  }).daytona = {
+    async get(id: string) {
+      assert.equal(id, "daytona-environment-start");
+      return {
+        refreshData,
+        start,
+        state: "stopped",
+      };
+    },
+  };
+
+  await provider.startEnvironment({} as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 4,
+    createdAt: new Date("2026-03-27T20:00:00.000Z"),
+    diskSpaceGb: 10,
+    displayName: null,
+    id: "environment-start",
+    lastSeenAt: null,
+    memoryGb: 8,
+    metadata: {},
+    platform: "linux",
+    provider: "daytona",
+    providerEnvironmentId: "daytona-environment-start",
+    updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+  });
+
+  assert.equal(start.mock.calls.length, 1);
+  assert.equal(refreshData.mock.calls.length, 2);
+});
+
+test("AgentComputeDaytonaProvider stops a running sandbox on demand", async () => {
+  const refreshData = vi.fn(async () => undefined);
+  const stop = vi.fn(async function(this: { state: string }) {
+    this.state = "stopped";
+  });
+  const provider = new AgentComputeDaytonaProvider(
+    {
+      daytona: {
+        api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
+      },
+    } as never,
+    {} as AgentEnvironmentCatalogService,
+  );
+  (provider as {
+    daytona: {
+      get: (id: string) => Promise<unknown>;
+    };
+  }).daytona = {
+    async get(id: string) {
+      assert.equal(id, "daytona-environment-stop");
+      return {
+        refreshData,
+        state: "started",
+        stop,
+      };
+    },
+  };
+
+  await provider.stopEnvironment({} as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 4,
+    createdAt: new Date("2026-03-27T20:00:00.000Z"),
+    diskSpaceGb: 10,
+    displayName: null,
+    id: "environment-stop",
+    lastSeenAt: null,
+    memoryGb: 8,
+    metadata: {},
+    platform: "linux",
+    provider: "daytona",
+    providerEnvironmentId: "daytona-environment-stop",
+    updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+  });
+
+  assert.equal(stop.mock.calls.length, 1);
+  assert.equal(refreshData.mock.calls.length, 2);
+});
+
 test("AgentComputeDaytonaProvider starts stopped environments and updates the catalog before creating the runtime", async () => {
   const refreshData = vi.fn(async () => undefined);
   const start = vi.fn(async () => undefined);

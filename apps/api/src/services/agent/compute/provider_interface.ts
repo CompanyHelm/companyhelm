@@ -83,6 +83,24 @@ export abstract class AgentComputeProviderInterface {
   ): Promise<void>;
 
   /**
+   * Starts a provider-side environment so interactive shells and previews can be used without the
+   * caller needing to know provider-specific lifecycle APIs.
+   */
+  abstract startEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<void>;
+
+  /**
+   * Stops a provider-side environment to release active compute while keeping the catalog row
+   * available for later reuse.
+   */
+  abstract stopEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<void>;
+
+  /**
    * Creates the provider-specific shell adapter for an already selected environment row. Shared
    * PTY/session orchestration can then layer tmux or some other terminal manager on top.
    */

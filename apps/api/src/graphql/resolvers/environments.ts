@@ -76,6 +76,12 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
       async provisionEnvironment() {
         throw new Error("Environment provider is not configured.");
       },
+      async startEnvironment() {
+        throw new Error("Environment provider is not configured.");
+      },
+      async stopEnvironment() {
+        throw new Error("Environment provider is not configured.");
+      },
       supportsOnDemandProvisioning() {
         return false;
       },

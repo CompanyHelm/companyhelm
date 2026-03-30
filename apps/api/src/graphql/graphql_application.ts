@@ -21,6 +21,8 @@ import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
+import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
+import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
@@ -84,6 +86,8 @@ export class GraphqlApplication {
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
   private readonly setTaskCategoryMutation: SetTaskCategoryMutation;
+  private readonly startEnvironmentMutation: StartEnvironmentMutation;
+  private readonly stopEnvironmentMutation: StopEnvironmentMutation;
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
@@ -115,6 +119,8 @@ export class GraphqlApplication {
     @inject(AgentsQueryResolver) agentsQueryResolver: AgentsQueryResolver = new AgentsQueryResolver(),
     @inject(DeleteAgentMutation) deleteAgentMutation: DeleteAgentMutation = new DeleteAgentMutation(),
     @inject(DeleteEnvironmentMutation) deleteEnvironmentMutation: DeleteEnvironmentMutation = new DeleteEnvironmentMutation(),
+    @inject(StartEnvironmentMutation) startEnvironmentMutation: StartEnvironmentMutation = new StartEnvironmentMutation(),
+    @inject(StopEnvironmentMutation) stopEnvironmentMutation: StopEnvironmentMutation = new StopEnvironmentMutation(),
     @inject(ModelProvidersQueryResolver) modelProvidersQueryResolver: ModelProvidersQueryResolver = new ModelProvidersQueryResolver(),
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(SessionMessagesQueryResolver)
@@ -179,6 +185,8 @@ export class GraphqlApplication {
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
+    this.startEnvironmentMutation = startEnvironmentMutation;
+    this.stopEnvironmentMutation = stopEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.promptSessionMutation = promptSessionMutation;
@@ -270,6 +278,8 @@ export class GraphqlApplication {
         Mutation: {
           AddAgent: this.addAgentMutation.execute,
           DeleteEnvironment: this.deleteEnvironmentMutation.execute,
+          StartEnvironment: this.startEnvironmentMutation.execute,
+          StopEnvironment: this.stopEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,

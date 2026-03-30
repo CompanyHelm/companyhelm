@@ -148,6 +148,12 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     async provisionEnvironment() {
       throw new Error("provisionEnvironment should not run for the environments query");
     },
+    async startEnvironment() {
+      throw new Error("startEnvironment should not run for the environments query");
+    },
+    async stopEnvironment() {
+      throw new Error("stopEnvironment should not run for the environments query");
+    },
     supportsOnDemandProvisioning() {
       return true;
     },

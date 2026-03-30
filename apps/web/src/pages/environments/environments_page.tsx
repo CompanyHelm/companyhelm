@@ -3,6 +3,8 @@ import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { EnvironmentsTable, type EnvironmentsTableRecord } from "./environments_table";
 import type { environmentsPageDeleteEnvironmentMutation } from "./__generated__/environmentsPageDeleteEnvironmentMutation.graphql";
+import type { environmentsPageStartEnvironmentMutation } from "./__generated__/environmentsPageStartEnvironmentMutation.graphql";
+import type { environmentsPageStopEnvironmentMutation } from "./__generated__/environmentsPageStopEnvironmentMutation.graphql";
 import type { environmentsPageQuery } from "./__generated__/environmentsPageQuery.graphql";
 
 const environmentsPageQueryNode = graphql`
@@ -33,6 +35,24 @@ const environmentsPageDeleteEnvironmentMutationNode = graphql`
   }
 `;
 
+const environmentsPageStartEnvironmentMutationNode = graphql`
+  mutation environmentsPageStartEnvironmentMutation($input: StartEnvironmentInput!) {
+    StartEnvironment(input: $input) {
+      id
+      status
+    }
+  }
+`;
+
+const environmentsPageStopEnvironmentMutationNode = graphql`
+  mutation environmentsPageStopEnvironmentMutation($input: StopEnvironmentInput!) {
+    StopEnvironment(input: $input) {
+      id
+      status
+    }
+  }
+`;
+
 function EnvironmentsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -43,7 +63,15 @@ function EnvironmentsPageFallback() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EnvironmentsTable deletingEnvironmentId={null} environments={[]} isLoading onDelete={async () => undefined} />
+          <EnvironmentsTable
+            actingEnvironmentId={null}
+            deletingEnvironmentId={null}
+            environments={[]}
+            isLoading
+            onDelete={async () => undefined}
+            onStart={async () => undefined}
+            onStop={async () => undefined}
+          />
         </CardContent>
       </Card>
     </main>
@@ -52,6 +80,7 @@ function EnvironmentsPageFallback() {
 
 function EnvironmentsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actingEnvironmentId, setActingEnvironmentId] = useState<string | null>(null);
   const [deletingEnvironmentId, setDeletingEnvironmentId] = useState<string | null>(null);
   const data = useLazyLoadQuery<environmentsPageQuery>(
     environmentsPageQueryNode,
@@ -62,6 +91,12 @@ function EnvironmentsPageContent() {
   );
   const [commitDeleteEnvironment, isDeleteEnvironmentInFlight] = useMutation<environmentsPageDeleteEnvironmentMutation>(
     environmentsPageDeleteEnvironmentMutationNode,
+  );
+  const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<environmentsPageStartEnvironmentMutation>(
+    environmentsPageStartEnvironmentMutationNode,
+  );
+  const [commitStopEnvironment, isStopEnvironmentInFlight] = useMutation<environmentsPageStopEnvironmentMutation>(
+    environmentsPageStopEnvironmentMutationNode,
   );
   const environments: EnvironmentsTableRecord[] = data.Environments.map((environment) => ({
     agentId: environment.agentId,
@@ -88,6 +123,22 @@ function EnvironmentsPageContent() {
         && typeof record.getDataID === "function";
     });
   };
+  const updateEnvironmentStatusInStore = (
+    environmentId: string,
+    status: string,
+    store: {
+      get(dataId: string): {
+        setValue(value: string, key: string): void;
+      } | null;
+    },
+  ) => {
+    const environmentRecord = store.get(environmentId);
+    if (!environmentRecord) {
+      return;
+    }
+
+    environmentRecord.setValue(status, "status");
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -104,6 +155,7 @@ function EnvironmentsPageContent() {
             </div>
           ) : null}
           <EnvironmentsTable
+            actingEnvironmentId={actingEnvironmentId}
             deletingEnvironmentId={deletingEnvironmentId}
             environments={environments}
             isLoading={false}
@@ -152,6 +204,86 @@ function EnvironmentsPageContent() {
               });
 
               setDeletingEnvironmentId(null);
+            }}
+            onStart={async (environmentId) => {
+              if (isStartEnvironmentInFlight || isDeleteEnvironmentInFlight || isStopEnvironmentInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setActingEnvironmentId(environmentId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitStartEnvironment({
+                  variables: {
+                    input: {
+                      id: environmentId,
+                    },
+                  },
+                  updater: (store) => {
+                    const startedEnvironment = store.getRootField("StartEnvironment");
+                    if (!startedEnvironment) {
+                      return;
+                    }
+
+                    updateEnvironmentStatusInStore(startedEnvironment.getDataID(), "running", store);
+                  },
+                  onCompleted: (_response, errors) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to start environment.");
+              });
+
+              setActingEnvironmentId(null);
+            }}
+            onStop={async (environmentId) => {
+              if (isStartEnvironmentInFlight || isDeleteEnvironmentInFlight || isStopEnvironmentInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setActingEnvironmentId(environmentId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitStopEnvironment({
+                  variables: {
+                    input: {
+                      id: environmentId,
+                    },
+                  },
+                  updater: (store) => {
+                    const stoppedEnvironment = store.getRootField("StopEnvironment");
+                    if (!stoppedEnvironment) {
+                      return;
+                    }
+
+                    updateEnvironmentStatusInStore(stoppedEnvironment.getDataID(), "stopped", store);
+                  },
+                  onCompleted: (_response, errors) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to stop environment.");
+              });
+
+              setActingEnvironmentId(null);
             }}
           />
         </CardContent>
