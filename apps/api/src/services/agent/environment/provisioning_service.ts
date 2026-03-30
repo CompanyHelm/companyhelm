@@ -5,6 +5,7 @@ import {
   type AgentEnvironmentRecord,
 } from "../compute/provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
+import { AgentEnvironmentProvisioning } from "./provisioning.ts";
 
 /**
  * Owns on-demand environment provisioning. It delegates the provider-specific creation work to the
@@ -13,13 +14,16 @@ import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 @injectable()
 export class AgentEnvironmentProvisioningService {
   private readonly catalogService: AgentEnvironmentCatalogService;
+  private readonly environmentProvisioning: AgentEnvironmentProvisioning;
   private readonly provider: AgentComputeProviderInterface;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
+    @inject(AgentEnvironmentProvisioning) environmentProvisioning: AgentEnvironmentProvisioning,
   ) {
     this.catalogService = catalogService;
+    this.environmentProvisioning = environmentProvisioning;
     this.provider = provider;
   }
 
@@ -36,8 +40,9 @@ export class AgentEnvironmentProvisioningService {
     }
 
     const provisionedEnvironment = await this.provider.provisionEnvironment(transactionProvider, input);
+    let createdEnvironment: AgentEnvironmentRecord | null = null;
     try {
-      return await this.catalogService.createEnvironment(transactionProvider, {
+      createdEnvironment = await this.catalogService.createEnvironment(transactionProvider, {
         agentId: input.agentId,
         companyId: input.companyId,
         cpuCount: provisionedEnvironment.cpuCount,
@@ -49,7 +54,17 @@ export class AgentEnvironmentProvisioningService {
         provider: this.provider.getProvider(),
         providerEnvironmentId: provisionedEnvironment.providerEnvironmentId,
       });
+
+      await this.environmentProvisioning.provision(transactionProvider, createdEnvironment);
+      return createdEnvironment;
     } catch (error) {
+      if (createdEnvironment) {
+        await this.catalogService.deleteEnvironment(
+          transactionProvider,
+          createdEnvironment.id,
+          input.companyId,
+        ).catch(() => undefined);
+      }
       await provisionedEnvironment.cleanup?.().catch(() => undefined);
       throw error;
     }
