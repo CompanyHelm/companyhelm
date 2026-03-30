@@ -51,7 +51,7 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
       throw new Error("command is required.");
     }
 
-    const sessionId = input.sessionId?.trim() || `pty-${randomUUID().replaceAll("-", "")}`;
+    const sessionId = AgentComputeDaytonaEnvironment.resolveSessionId(input.sessionId);
     await this.ensureTmuxSession(sessionId, input);
     const startOffset = await this.captureTmuxOutputLength(sessionId);
     const commandRun = await this.startTmuxCommand(sessionId, input);
@@ -161,6 +161,11 @@ export class AgentComputeDaytonaEnvironment extends AgentEnvironmentRuntimeInter
 
   async dispose(): Promise<void> {
     return undefined;
+  }
+
+  private static resolveSessionId(sessionId?: string | null): string {
+    const trimmedSessionId = sessionId?.trim() || "";
+    return trimmedSessionId.length > 0 ? trimmedSessionId : "main";
   }
 
   private async ensureTmuxSession(

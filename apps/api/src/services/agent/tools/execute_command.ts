@@ -60,6 +60,7 @@ export class AgentExecuteCommandTool {
       parameters: AgentExecuteCommandTool.parameters,
       promptGuidelines: [
         "Use execute_command to create or continue work in an environment tmux session.",
+        "When sessionId is omitted the environment uses the default session name \"main\".",
         "Reuse the returned sessionId when you want follow-up tool calls to target the same shell.",
       ],
       promptSnippet: "Execute commands in the environment",

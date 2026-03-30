@@ -168,7 +168,7 @@ test("AgentComputeDaytonaEnvironment executes commands, reads tmux output, and r
     yield_time_ms: 0,
   });
 
-  assert.ok(executionResult.sessionId.startsWith("pty-"));
+  assert.equal(executionResult.sessionId, "main");
   assert.equal(executionResult.completed, false);
   assert.ok(executionResult.output.includes("ran: ls -la\n"));
 
@@ -206,6 +206,22 @@ test("AgentComputeDaytonaEnvironment returns immediately when a tmux command com
   assert.equal(result.completed, true);
   assert.equal(result.exitCode, 0);
   assert.ok(result.output.includes("ran: echo done\n"));
+});
+
+test("AgentComputeDaytonaEnvironment uses the provided logical session name when creating tmux sessions", async () => {
+  const fakeProcess = new FakeDaytonaTmuxProcess();
+  const environment = new AgentComputeDaytonaEnvironment({
+    process: fakeProcess,
+  });
+
+  const result = await environment.executeCommand({
+    command: "npm run dev",
+    sessionId: "web",
+    yield_time_ms: 0,
+  });
+
+  assert.equal(result.sessionId, "web");
+  assert.ok(fakeProcess.sessions.has("web"));
 });
 
 test("AgentComputeDaytonaEnvironment reuses tmux sessions by session id across runtime instances", async () => {
