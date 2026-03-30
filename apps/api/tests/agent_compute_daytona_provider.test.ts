@@ -101,6 +101,95 @@ test("AgentComputeDaytonaProvider maps remote sandbox state into generic environ
   assert.equal(status, "running");
 });
 
+test("AgentComputeDaytonaProvider deletes the remote Daytona sandbox for an environment", async () => {
+  const deleteSandbox = vi.fn(async () => undefined);
+  const provider = new AgentComputeDaytonaProvider(
+    {
+      daytona: {
+        api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
+      },
+    } as never,
+    {} as AgentEnvironmentCatalogService,
+  );
+  (provider as {
+    daytona: {
+      get: (id: string) => Promise<unknown>;
+    };
+  }).daytona = {
+    async get(id: string) {
+      assert.equal(id, "daytona-environment-delete");
+      return {
+        delete: deleteSandbox,
+      };
+    },
+  };
+
+  await provider.deleteEnvironment({} as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 4,
+    createdAt: new Date("2026-03-27T20:00:00.000Z"),
+    diskSpaceGb: 10,
+    displayName: null,
+    id: "environment-delete",
+    lastSeenAt: null,
+    memoryGb: 8,
+    metadata: {},
+    platform: "linux",
+    provider: "daytona",
+    providerEnvironmentId: "daytona-environment-delete",
+    updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+  });
+
+  assert.equal(deleteSandbox.mock.calls.length, 1);
+});
+
+test("AgentComputeDaytonaProvider ignores missing remote sandboxes during deletion", async () => {
+  const provider = new AgentComputeDaytonaProvider(
+    {
+      daytona: {
+        api_key: "daytona-api-key",
+        api_url: "https://app.daytona.io/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
+      },
+    } as never,
+    {} as AgentEnvironmentCatalogService,
+  );
+  (provider as {
+    daytona: {
+      get: (id: string) => Promise<unknown>;
+    };
+  }).daytona = {
+    async get(id: string) {
+      assert.equal(id, "daytona-environment-missing");
+      throw new Error("Sandbox not found");
+    },
+  };
+
+  await provider.deleteEnvironment({} as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 4,
+    createdAt: new Date("2026-03-27T20:00:00.000Z"),
+    diskSpaceGb: 10,
+    displayName: null,
+    id: "environment-missing",
+    lastSeenAt: null,
+    memoryGb: 8,
+    metadata: {},
+    platform: "linux",
+    provider: "daytona",
+    providerEnvironmentId: "daytona-environment-missing",
+    updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+  });
+});
+
 test("AgentComputeDaytonaProvider starts stopped environments and updates the catalog before creating the runtime", async () => {
   const refreshData = vi.fn(async () => undefined);
   const start = vi.fn(async () => undefined);

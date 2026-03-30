@@ -66,6 +66,9 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
       async createShell() {
         throw new Error("Environment provider is not configured.");
       },
+      async deleteEnvironment() {
+        throw new Error("Environment provider is not configured.");
+      },
       getEnvironmentStatus: async () => "unhealthy",
       getProvider() {
         return "daytona";

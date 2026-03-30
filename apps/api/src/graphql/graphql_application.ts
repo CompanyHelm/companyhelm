@@ -14,6 +14,7 @@ import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts"
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
+import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
@@ -62,6 +63,7 @@ export class GraphqlApplication {
   private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
+  private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
@@ -112,6 +114,7 @@ export class GraphqlApplication {
     agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver = new AgentCreateOptionsQueryResolver(),
     @inject(AgentsQueryResolver) agentsQueryResolver: AgentsQueryResolver = new AgentsQueryResolver(),
     @inject(DeleteAgentMutation) deleteAgentMutation: DeleteAgentMutation = new DeleteAgentMutation(),
+    @inject(DeleteEnvironmentMutation) deleteEnvironmentMutation: DeleteEnvironmentMutation = new DeleteEnvironmentMutation(),
     @inject(ModelProvidersQueryResolver) modelProvidersQueryResolver: ModelProvidersQueryResolver = new ModelProvidersQueryResolver(),
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(SessionMessagesQueryResolver)
@@ -175,6 +178,7 @@ export class GraphqlApplication {
     this.createTaskMutation = createTaskMutation;
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
+    this.deleteEnvironmentMutation = deleteEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.promptSessionMutation = promptSessionMutation;
@@ -265,6 +269,7 @@ export class GraphqlApplication {
         },
         Mutation: {
           AddAgent: this.addAgentMutation.execute,
+          DeleteEnvironment: this.deleteEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,

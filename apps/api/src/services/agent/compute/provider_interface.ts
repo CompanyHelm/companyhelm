@@ -74,6 +74,15 @@ export abstract class AgentComputeProviderInterface {
   ): Promise<AgentEnvironmentStatus>;
 
   /**
+   * Deletes the provider-side environment for a persisted catalog row. Mutations use this before
+   * removing the local catalog record so provider compute is not orphaned.
+   */
+  abstract deleteEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<void>;
+
+  /**
    * Creates the provider-specific shell adapter for an already selected environment row. Shared
    * PTY/session orchestration can then layer tmux or some other terminal manager on top.
    */

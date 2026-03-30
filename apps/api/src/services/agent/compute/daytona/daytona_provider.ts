@@ -84,6 +84,24 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     return this.mapSandboxState(remoteSandbox.state);
   }
 
+  async deleteEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<void> {
+    void transactionProvider;
+
+    try {
+      const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+      await remoteSandbox.delete();
+    } catch (error) {
+      if (this.isMissingEnvironmentError(error)) {
+        return;
+      }
+
+      throw error;
+    }
+  }
+
   async createShell(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
@@ -141,5 +159,28 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       default:
         return "unhealthy";
     }
+  }
+
+  private isMissingEnvironmentError(error: unknown): boolean {
+    if (!error || typeof error !== "object") {
+      return false;
+    }
+
+    const errorRecord = error as {
+      code?: number | string;
+      message?: string;
+      response?: {
+        status?: number;
+      };
+      status?: number;
+      statusCode?: number;
+    };
+
+    return errorRecord.status === 404
+      || errorRecord.statusCode === 404
+      || errorRecord.response?.status === 404
+      || errorRecord.code === 404
+      || errorRecord.code === "404"
+      || errorRecord.message?.toLowerCase().includes("not found") === true;
   }
 }

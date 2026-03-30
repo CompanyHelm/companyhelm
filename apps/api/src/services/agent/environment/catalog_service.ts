@@ -36,6 +36,14 @@ type UpdatableDatabase = {
   };
 };
 
+type DeletableDatabase = {
+  delete(table: unknown): {
+    where(condition: unknown): {
+      returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
 /**
  * Owns the durable environment records that back lease selection. It keeps raw environment rows
  * separate from lease history so orchestration services can reason about provider state without
@@ -188,6 +196,25 @@ export class AgentEnvironmentCatalogService {
       }
 
       return environment;
+    });
+  }
+
+  async deleteEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environmentId: string,
+    companyId: string,
+  ): Promise<AgentEnvironmentRecord | null> {
+    return transactionProvider.transaction(async (tx) => {
+      const deletableDatabase = tx as DeletableDatabase;
+      const [environment] = await deletableDatabase
+        .delete(agentEnvironments)
+        .where(and(
+          eq(agentEnvironments.id, environmentId),
+          eq(agentEnvironments.companyId, companyId),
+        ))
+        .returning?.(this.environmentSelection()) as AgentEnvironmentRecord[];
+
+      return environment ?? null;
     });
   }
 

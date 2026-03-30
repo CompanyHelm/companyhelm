@@ -138,6 +138,9 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     async createShell() {
       throw new Error("createShell should not run for the environments query");
     },
+    async deleteEnvironment() {
+      throw new Error("deleteEnvironment should not run for the environments query");
+    },
     getEnvironmentStatus,
     getProvider() {
       return "daytona";
