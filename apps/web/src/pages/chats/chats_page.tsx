@@ -1904,14 +1904,14 @@ function ChatsPageContent() {
         <div
           aria-hidden={!isMobileChatListOpen}
           className={cn(
-            "pointer-events-none absolute inset-0 z-30 md:hidden",
+            "pointer-events-none fixed inset-0 z-30 md:hidden",
             isMobileChatListOpen && "pointer-events-auto",
           )}
         >
           <button
             aria-label="Hide chats panel"
             className={cn(
-              "absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.04)_0%,rgba(15,23,42,0.08)_60%,rgba(15,23,42,0.34)_100%)] opacity-0 transition-opacity duration-300 ease-out supports-backdrop-filter:backdrop-blur-sm",
+              "fixed inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.04)_0%,rgba(15,23,42,0.08)_60%,rgba(15,23,42,0.34)_100%)] opacity-0 transition-opacity duration-300 ease-out supports-backdrop-filter:backdrop-blur-sm",
               isMobileChatListOpen && "opacity-100",
             )}
             onClick={hideChatList}
@@ -1920,7 +1920,7 @@ function ChatsPageContent() {
           <section
             aria-label="Chats panel"
             className={cn(
-              "absolute inset-y-0 left-0 w-[80%] max-w-[30rem] min-w-[18rem] overflow-hidden shadow-[18px_0_48px_rgba(15,23,42,0.24)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              "fixed inset-y-0 left-0 h-svh w-[80%] max-w-[30rem] min-w-[18rem] overflow-hidden shadow-[18px_0_48px_rgba(15,23,42,0.24)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
               isMobileChatListOpen ? "translate-x-0" : "-translate-x-full",
             )}
             role="dialog"
