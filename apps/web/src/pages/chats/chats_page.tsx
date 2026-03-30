@@ -241,8 +241,15 @@ type TerminalStructuredContentRecord = {
 };
 
 type ToolCallSummaryRecord = {
+  argumentsValue: SessionMessageContentRecord["arguments"];
   argumentsText: string | null;
   toolName: string | null;
+};
+
+type CommandToolArgumentsRecord = {
+  command: string;
+  workingDirectory: string | null;
+  yieldTimeMs: number | null;
 };
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
@@ -334,6 +341,32 @@ function formatToolArguments(argumentsValue: SessionMessageContentRecord["argume
   }
 }
 
+function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): CommandToolArgumentsRecord | null {
+  if (!argumentsValue || typeof argumentsValue !== "object" || Array.isArray(argumentsValue)) {
+    return null;
+  }
+
+  const parsedArguments = argumentsValue as Record<string, unknown>;
+  if (typeof parsedArguments.command !== "string" || parsedArguments.command.trim().length === 0) {
+    return null;
+  }
+
+  const workingDirectory = typeof parsedArguments.workingDirectory === "string" && parsedArguments.workingDirectory.trim().length > 0
+    ? parsedArguments.workingDirectory
+    : null;
+  const yieldTimeMs = typeof parsedArguments.yield_time_ms === "number"
+    ? parsedArguments.yield_time_ms
+    : typeof parsedArguments.yieldTimeMs === "number"
+    ? parsedArguments.yieldTimeMs
+    : null;
+
+  return {
+    command: parsedArguments.command,
+    workingDirectory,
+    yieldTimeMs,
+  };
+}
+
 function buildToolCallSummaryById(
   messages: ReadonlyArray<SessionMessageRecord>,
 ): Map<string, ToolCallSummaryRecord> {
@@ -345,6 +378,7 @@ function buildToolCallSummaryById(
       }
 
       summaries.set(content.toolCallId, {
+        argumentsValue: content.arguments,
         argumentsText: formatToolArguments(content.arguments),
         toolName: typeof content.toolName === "string" ? content.toolName : null,
       });
@@ -679,41 +713,57 @@ function ToolTranscriptMessage(
 
     return false;
   });
-  const hasExpandableOutput = visibleContents.length > 0;
   const defaultArgumentsText = toolCallSummary?.argumentsText ?? "Arguments unavailable.";
   const defaultToolName = toolCallSummary?.toolName ?? message.toolName ?? "Tool";
+  const commandToolArguments = parseCommandToolArguments(toolCallSummary?.argumentsValue);
+  const isCommandTool = defaultToolName === "execute_command" && commandToolArguments !== null;
+  const collapsedSummary = isCommandTool ? commandToolArguments.command : defaultToolName;
 
   return (
     <div className="w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          <WrenchIcon className="size-4 shrink-0" />
-          <span>{defaultToolName}</span>
-          <span className="text-[10px] tracking-[0.18em] text-muted-foreground/70">{statusLabel}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          {isCommandTool ? (
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/70 font-mono text-xs font-semibold text-foreground">
+              $
+            </span>
+          ) : (
+            <WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
+          )}
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span
+              className={isCommandTool
+                ? "truncate font-mono text-sm text-foreground"
+                : "truncate text-sm font-medium text-foreground"}
+              title={collapsedSummary}
+            >
+              {collapsedSummary}
+            </span>
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              {statusLabel}
+            </span>
+          </div>
         </div>
-        {hasExpandableOutput ? (
-          <button
-            aria-expanded={isExpanded}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
-            onClick={() => setIsExpanded((value) => !value)}
-            type="button"
-          >
-            <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-            <span>{isExpanded ? "Hide output" : "Show output"}</span>
-          </button>
-        ) : null}
+        <button
+          aria-expanded={isExpanded}
+          className="inline-flex shrink-0 items-center rounded-md p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
+          onClick={() => setIsExpanded((value) => !value)}
+          type="button"
+        >
+          <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+        </button>
       </div>
-      <div className="mt-3 overflow-hidden rounded-xl border border-border/60 bg-background/60">
-        <div className="border-b border-border/60 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Arguments
-        </div>
-        <pre className="whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground">
-          {defaultArgumentsText}
-        </pre>
-      </div>
-      {isExpanded && visibleContents.length > 0 ? (
+      {isExpanded ? (
         <div className="mt-3 grid gap-3">
-          {visibleContents.map((content, contentIndex) => {
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-background/60">
+            <div className="border-b border-border/60 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Arguments
+            </div>
+            <pre className="whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground">
+              {defaultArgumentsText}
+            </pre>
+          </div>
+          {visibleContents.length > 0 ? visibleContents.map((content, contentIndex) => {
             const terminalStructuredContent = parseTerminalStructuredContent(content);
             if (terminalStructuredContent) {
               const terminalOutputText = typeof content.text === "string"
@@ -735,7 +785,11 @@ function ToolTranscriptMessage(
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
-                    {terminalStructuredContent.cwd ? <span>cwd: {terminalStructuredContent.cwd}</span> : null}
+                    {commandToolArguments?.workingDirectory ? <span>cwd: {commandToolArguments.workingDirectory}</span> : null}
+                    {commandToolArguments?.yieldTimeMs !== null ? <span>yield: {commandToolArguments.yieldTimeMs}ms</span> : null}
+                    {!commandToolArguments?.workingDirectory && terminalStructuredContent.cwd
+                      ? <span>cwd: {terminalStructuredContent.cwd}</span>
+                      : null}
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
                   <pre className="border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground">
@@ -768,15 +822,13 @@ function ToolTranscriptMessage(
                 {content.text}
               </pre>
             );
-          })}
+          }) : (
+            <p className="text-sm text-muted-foreground">
+              {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}
+            </p>
+          )}
         </div>
-      ) : (
-        !hasExpandableOutput ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}
-          </p>
-        ) : null
-      )}
+      ) : null}
     </div>
   );
 }
