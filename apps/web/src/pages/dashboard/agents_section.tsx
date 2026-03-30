@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -62,6 +62,8 @@ function formatTimestamp(value: string): string {
  * agents exist and how many chat sessions each one currently owns.
  */
 export function AgentsSection(props: { agents: DashboardAgentRecord[]; totalCount: number }) {
+  const navigate = useNavigate();
+
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
@@ -97,16 +99,19 @@ export function AgentsSection(props: { agents: DashboardAgentRecord[]; totalCoun
             </TableHeader>
             <TableBody>
               {props.agents.map((agent) => (
-                <TableRow key={agent.id}>
+                <TableRow
+                  key={agent.id}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    void navigate({
+                      params: { agentId: agent.id },
+                      to: "/agents/$agentId",
+                    });
+                  }}
+                >
                   <TableCell>
                     <div className="min-w-0">
-                      <Link
-                        className="truncate font-medium text-foreground hover:underline"
-                        params={{ agentId: agent.id }}
-                        to="/agents/$agentId"
-                      >
-                        {agent.name}
-                      </Link>
+                      <p className="truncate font-medium text-foreground">{agent.name}</p>
                       <p className="mt-1 truncate text-[0.7rem] text-muted-foreground">
                         {formatProviderLabel(agent.modelProvider)}
                       </p>

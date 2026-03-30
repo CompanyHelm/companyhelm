@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -54,6 +54,8 @@ export function CredentialsSection(props: {
   credentials: DashboardCredentialRecord[];
   totalCount: number;
 }) {
+  const navigate = useNavigate();
+
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
@@ -91,15 +93,18 @@ export function CredentialsSection(props: {
             </TableHeader>
             <TableBody>
               {props.credentials.map((credential) => (
-                <TableRow key={credential.id}>
+                <TableRow
+                  key={credential.id}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    void navigate({
+                      params: { credentialId: credential.id },
+                      to: "/model-provider-credentials/$credentialId",
+                    });
+                  }}
+                >
                   <TableCell>
-                    <Link
-                      className="font-medium text-foreground hover:underline"
-                      params={{ credentialId: credential.id }}
-                      to="/model-provider-credentials/$credentialId"
-                    >
-                      {credential.name}
-                    </Link>
+                    <p className="font-medium text-foreground">{credential.name}</p>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
