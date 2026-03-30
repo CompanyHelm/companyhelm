@@ -5,6 +5,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { Button } from "@/components/ui/button";
 import { CreateCredentialDialog } from "./create_credential_dialog";
 import { CredentialsTable, type CredentialsTableRecord } from "./credentials_table";
+import { formatProviderLabel } from "./provider_label";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
 import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
 import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
@@ -110,7 +111,7 @@ function ModelProviderCredentialsPageContent() {
   const providers = data.ModelProviders.map((provider) => ({
     authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown,
     id: provider.id,
-    name: provider.name,
+    name: formatProviderLabel(provider.id),
     type: provider.type as "api_key" | "oauth",
   }));
 

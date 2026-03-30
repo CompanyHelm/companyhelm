@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatProviderLabel } from "./provider_label";
+import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 export type CredentialsTableRecord = {
   id: string;
@@ -108,7 +108,7 @@ export function CredentialsTable(props: CredentialsTableProps) {
             <TableCell>
               <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
             </TableCell>
-            <TableCell>API key</TableCell>
+            <TableCell>{formatProviderCredentialType(credential.modelProvider)}</TableCell>
             <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
             <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
             <TableCell className="text-right">
