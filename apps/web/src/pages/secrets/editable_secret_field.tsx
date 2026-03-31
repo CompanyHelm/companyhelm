@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EyeIcon, EyeOffIcon, Loader2Icon, PencilIcon } from "lucide-react";
+import { useToast } from "@/components/toast_provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -24,6 +25,7 @@ export function EditableSecretField(props: EditableSecretFieldProps) {
   const [isSaving, setSaving] = useState(false);
   const [isValueVisible, setValueVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     if (!isEditing) {
@@ -71,6 +73,7 @@ export function EditableSecretField(props: EditableSecretFieldProps) {
       if (props.valueType === "password") {
         setDraftValue("");
       }
+      toast.showSavedToast();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update field.");
     } finally {
