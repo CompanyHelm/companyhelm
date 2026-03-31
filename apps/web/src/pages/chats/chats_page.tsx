@@ -1460,10 +1460,14 @@ function ChatsTranscript({
 
         const hasHiddenMessages = turn.hiddenMessages.length > 0;
         const isExpanded = expandedTurnIds[turn.turnId] === true;
+        const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
+        const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
+        const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
+        const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
 
         return (
           <div key={turn.turnId} className="grid gap-3">
-            {turn.inlineMessages.map((message) => (
+            {inlineMessagesBeforeWorkedFor.map((message) => (
               <TranscriptMessageRow
                 includeThinking={false}
                 key={message.id}
@@ -1471,8 +1475,8 @@ function ChatsTranscript({
                 toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
               />
             ))}
-            <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>
-              {hasHiddenMessages ? (
+            {hasHiddenMessages ? (
+              <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>
                 <button
                   aria-expanded={isExpanded}
                   className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
@@ -1487,22 +1491,27 @@ function ChatsTranscript({
                   <ChevronRightIcon className={`size-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                   <span>Worked for {turn.durationLabel}</span>
                 </button>
-              ) : null}
-            </div>
-            {hasHiddenMessages && isExpanded ? (
-              <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>
-                <div className="grid gap-3 rounded-2xl border border-border/60 bg-muted/10 px-4 py-4">
-                  {turn.hiddenMessages.map((message) => (
-                    <TranscriptMessageRow
-                      includeThinking={true}
-                      key={message.id}
-                      message={message}
-                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                      useLeftGutter={false}
-                    />
-                  ))}
-                </div>
               </div>
+            ) : null}
+            {inlineMessagesAfterWorkedFor.map((message) => (
+              <TranscriptMessageRow
+                includeThinking={false}
+                key={message.id}
+                message={message}
+                toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+              />
+            ))}
+            {hasHiddenMessages && isExpanded ? (
+              <>
+                {turn.hiddenMessages.map((message) => (
+                  <TranscriptMessageRow
+                    includeThinking={true}
+                    key={message.id}
+                    message={message}
+                    toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                  />
+                ))}
+              </>
             ) : null}
           </div>
         );
