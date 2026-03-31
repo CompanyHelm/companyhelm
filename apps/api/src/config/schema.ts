@@ -70,6 +70,7 @@ export const ConfigDocument = z.object({
   security: z.object({
     encryption: z.object({
       key: NonEmptyStringSchema,
+      key_id: NonEmptyStringSchema,
     }),
   }),
   log: z.object({

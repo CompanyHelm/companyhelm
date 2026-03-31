@@ -9,6 +9,7 @@ import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 import { AgentEnvironmentProvisioningService } from "./provisioning_service.ts";
 import { AgentSessionEnvironment } from "./session_environment.ts";
 import { AgentEnvironmentSelectionService } from "./selection_service.ts";
+import { SecretService } from "../../secrets/service.ts";
 
 /**
  * Resolves a leased environment for one agent session. It centralizes the reuse policy, on-demand
@@ -22,6 +23,7 @@ export class AgentEnvironmentAccessService {
   private readonly provider: AgentComputeProviderInterface;
   private readonly provisioningService: AgentEnvironmentProvisioningService;
   private readonly selectionService: AgentEnvironmentSelectionService;
+  private readonly secretService: SecretService;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
@@ -29,12 +31,14 @@ export class AgentEnvironmentAccessService {
     @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
     @inject(AgentEnvironmentProvisioningService) provisioningService: AgentEnvironmentProvisioningService,
     @inject(AgentEnvironmentSelectionService) selectionService: AgentEnvironmentSelectionService,
+    @inject(SecretService) secretService: SecretService,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
     this.provider = provider;
     this.provisioningService = provisioningService;
     this.selectionService = selectionService;
+    this.secretService = secretService;
   }
 
   async getEnvironmentForSession(
@@ -62,7 +66,10 @@ export class AgentEnvironmentAccessService {
       const pty = new AgentEnvironmentTmuxPty(environmentShell);
       return new AgentSessionEnvironment(
         transactionProvider,
+        session.companyId,
+        sessionId,
         this.leaseService,
+        this.secretService,
         pty,
         reactivatedLease.id,
         ownerToken,
@@ -92,7 +99,10 @@ export class AgentEnvironmentAccessService {
 
     return new AgentSessionEnvironment(
       transactionProvider,
+      session.companyId,
+      sessionId,
       this.leaseService,
+      this.secretService,
       pty,
       lease.id,
       ownerToken,

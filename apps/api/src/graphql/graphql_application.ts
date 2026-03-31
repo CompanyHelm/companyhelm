@@ -4,19 +4,25 @@ import GraphQLJSON from "graphql-type-json";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
 import { GithubClient } from "../github/client.ts";
+import { SecretEncryptionService } from "../services/secrets/encryption.ts";
+import { SecretService } from "../services/secrets/service.ts";
 import { RedisService } from "../services/redis/service.ts";
 import { RedisCompanyScopedService } from "../services/redis/company_scoped_service.ts";
 import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddGithubInstallationMutation } from "./mutations/add_github_installation.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
+import { AttachSecretToSessionMutation } from "./mutations/attach_secret_to_session.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
+import { CreateSecretMutation } from "./mutations/create_secret.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
+import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
@@ -39,6 +45,8 @@ import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
+import { SecretsQueryResolver } from "./resolvers/secrets.ts";
+import { SessionSecretsQueryResolver } from "./resolvers/session_secrets.ts";
 import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
@@ -56,6 +64,7 @@ export class GraphqlApplication {
   private readonly addAgentMutation: AddAgentMutation;
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
+  private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
@@ -63,11 +72,14 @@ export class GraphqlApplication {
   private readonly archiveSessionMutation: ArchiveSessionMutation;
   private readonly createTaskCategoryMutation: CreateTaskCategoryMutation;
   private readonly createTaskMutation: CreateTaskMutation;
+  private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private readonly deleteSecretMutation: DeleteSecretMutation;
+  private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
@@ -80,8 +92,10 @@ export class GraphqlApplication {
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
+  private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
   private readonly sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver;
+  private readonly sessionSecretsQueryResolver: SessionSecretsQueryResolver;
   private readonly sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver;
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
@@ -170,11 +184,27 @@ export class GraphqlApplication {
     refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
     @inject(EnvironmentsQueryResolver) environmentsQueryResolver: EnvironmentsQueryResolver = new EnvironmentsQueryResolver(),
+    @inject(AttachSecretToSessionMutation)
+    attachSecretToSessionMutation?: AttachSecretToSessionMutation,
+    @inject(CreateSecretMutation)
+    createSecretMutation?: CreateSecretMutation,
+    @inject(DeleteSecretMutation)
+    deleteSecretMutation?: DeleteSecretMutation,
+    @inject(DetachSecretFromSessionMutation)
+    detachSecretFromSessionMutation?: DetachSecretFromSessionMutation,
+    @inject(SecretsQueryResolver)
+    secretsQueryResolver?: SecretsQueryResolver,
+    @inject(SessionSecretsQueryResolver)
+    sessionSecretsQueryResolver?: SessionSecretsQueryResolver,
   ) {
+    const defaultSecretService = new SecretService(new SecretEncryptionService(config));
+
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
+    this.attachSecretToSessionMutation = attachSecretToSessionMutation
+      ?? new AttachSecretToSessionMutation(defaultSecretService);
     this.agentQueryResolver = agentQueryResolver;
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentsQueryResolver = agentsQueryResolver;
@@ -182,6 +212,7 @@ export class GraphqlApplication {
     this.archiveSessionMutation = archiveSessionMutation;
     this.createTaskCategoryMutation = createTaskCategoryMutation;
     this.createTaskMutation = createTaskMutation;
+    this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
@@ -189,6 +220,9 @@ export class GraphqlApplication {
     this.stopEnvironmentMutation = stopEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
+      ?? new DetachSecretFromSessionMutation(defaultSecretService);
     this.promptSessionMutation = promptSessionMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
@@ -201,8 +235,11 @@ export class GraphqlApplication {
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
+    this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
     this.sessionMessageUpdatedSubscriptionResolver = sessionMessageUpdatedSubscriptionResolver;
+    this.sessionSecretsQueryResolver = sessionSecretsQueryResolver
+      ?? new SessionSecretsQueryResolver(defaultSecretService);
     this.sessionTranscriptMessagesQueryResolver = sessionTranscriptMessagesQueryResolver;
     this.sessionsQueryResolver = sessionsQueryResolver;
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
@@ -269,9 +306,11 @@ export class GraphqlApplication {
           ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
           ModelProviders: this.modelProvidersQueryResolver.execute,
+          Secrets: this.secretsQueryResolver.execute,
           TaskCategories: this.taskCategoriesQueryResolver.execute,
           Tasks: this.tasksQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,
+          SessionSecrets: this.sessionSecretsQueryResolver.execute,
           SessionTranscriptMessages: this.sessionTranscriptMessagesQueryResolver.execute,
           Sessions: this.sessionsQueryResolver.execute,
         },
@@ -282,13 +321,17 @@ export class GraphqlApplication {
           StopEnvironment: this.stopEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
+          AttachSecretToSession: this.attachSecretToSessionMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
+          CreateSecret: this.createSecretMutation.execute,
           CreateTask: this.createTaskMutation.execute,
           CreateTaskCategory: this.createTaskCategoryMutation.execute,
           CreateSession: this.createSessionMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          DeleteSecret: this.deleteSecretMutation.execute,
+          DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,

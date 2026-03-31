@@ -261,6 +261,38 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   ),
 }));
 
+export const companySecrets = pgTable("company_secrets", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  envVarName: text("env_var_name").notNull(),
+  encryptedValue: text("encrypted_value").notNull(),
+  encryptionKeyId: text("encryption_key_id").notNull(),
+  createdByUserId: uuid("created_by_user_id")
+    .references(() => users.id, { onDelete: "restrict" })
+    .notNull(),
+  updatedByUserId: uuid("updated_by_user_id")
+    .references(() => users.id, { onDelete: "restrict" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companyIdIndex: index("company_secrets_company_id_idx").on(table.companyId),
+  companyNameLowerUnique: uniqueIndex("company_secrets_company_name_lower_uidx")
+    .on(table.companyId, sql`lower(${table.name})`),
+  companyEnvVarLowerUnique: uniqueIndex("company_secrets_company_env_var_lower_uidx")
+    .on(table.companyId, sql`lower(${table.envVarName})`),
+  envVarNameCheck: check(
+    "company_secrets_env_var_name_check",
+    sql`${table.envVarName} ~ '^[A-Z_][A-Z0-9_]*$'`,
+  ),
+}));
+
 // avaialbe models based on the model provider credential
 export const modelProviderCredentialModels = pgTable("model_provider_credential_models", {
   id: uuid("id")
@@ -281,6 +313,27 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
 (table) => ({
   companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),
   modelProviderCredentialIdIndex: index("model_provider_credential_models_model_provider_credential_id_idx").on(table.modelProviderCredentialId),
+}));
+
+export const agentSessionSecrets = pgTable("agent_session_secrets", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  secretId: uuid("secret_id")
+    .references(() => companySecrets.id, { onDelete: "cascade" })
+    .notNull(),
+  createdByUserId: uuid("created_by_user_id")
+    .references(() => users.id, { onDelete: "restrict" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.sessionId, table.secretId] }),
+  companyIdIndex: index("agent_session_secrets_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("agent_session_secrets_session_id_idx").on(table.sessionId),
+  secretIdIndex: index("agent_session_secrets_secret_id_idx").on(table.secretId),
 }));
 
 export const companyGithubInstallations = pgTable("company_github_installations", {

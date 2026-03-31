@@ -7,7 +7,9 @@ type Query {
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
+  Secrets: [Secret!]!
   Sessions: [Session!]!
+  SessionSecrets(sessionId: ID!): [Secret!]!
   SessionMessages: [SessionMessage!]!
   SessionTranscriptMessages(
     sessionId: ID!
@@ -29,11 +31,15 @@ type Mutation {
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
+  AttachSecretToSession(input: AttachSecretToSessionInput!): Secret!
   ArchiveSession(input: ArchiveSessionInput!): Session!
+  CreateSecret(input: CreateSecretInput!): Secret!
   CreateSession(input: CreateSessionInput!): Session!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  DeleteSecret(input: DeleteSecretInput!): Secret!
+  DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   PromptSession(input: PromptSessionInput!): Session!
   RefreshGithubInstallationRepositories(
     input: RefreshGithubInstallationRepositoriesInput!
@@ -235,6 +241,16 @@ type ModelProviderCredential {
   updatedAt: String!
 }
 
+type Secret {
+  id: ID!
+  companyId: ID!
+  name: String!
+  description: String
+  envVarName: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type ModelProviderCredentialModel {
   id: ID!
   modelProviderCredentialId: ID!
@@ -343,6 +359,27 @@ input PromptSessionInput {
   reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!
+}
+
+input CreateSecretInput {
+  name: String!
+  description: String
+  envVarName: String
+  value: String!
+}
+
+input DeleteSecretInput {
+  id: ID!
+}
+
+input AttachSecretToSessionInput {
+  sessionId: ID!
+  secretId: ID!
+}
+
+input DetachSecretFromSessionInput {
+  sessionId: ID!
+  secretId: ID!
 }
 
 input RefreshModelProviderCredentialModelsInput {

@@ -1,0 +1,389 @@
+import { and, eq, inArray } from "drizzle-orm";
+import { inject, injectable } from "inversify";
+import {
+  agentSessions,
+  agentSessionSecrets,
+  companySecrets,
+} from "../../db/schema.ts";
+import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import { SecretEncryptionService } from "./encryption.ts";
+
+type SecretRecord = {
+  companyId: string;
+  createdAt: Date;
+  description: string | null;
+  envVarName: string;
+  id: string;
+  name: string;
+  updatedAt: Date;
+};
+
+type PersistedSecretValueRecord = {
+  encryptedValue: string;
+  encryptionKeyId: string;
+  envVarName: string;
+  id: string;
+};
+
+type SessionRecord = {
+  id: string;
+  status: string;
+};
+
+type SelectableDatabase = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
+type InsertableDatabase = {
+  insert(table: unknown): {
+    values(value: Record<string, unknown>): {
+      returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
+type DeletableDatabase = {
+  delete(table: unknown): {
+    where(condition: unknown): {
+      returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
+/**
+ * Owns the company secret catalog plus session attachments. It keeps secret values encrypted at
+ * rest, resolves session-scoped environment variables just in time, and never exposes plaintext
+ * back through GraphQL.
+ */
+@injectable()
+export class SecretService {
+  private readonly encryptionService: SecretEncryptionService;
+
+  constructor(@inject(SecretEncryptionService) encryptionService: SecretEncryptionService) {
+    this.encryptionService = encryptionService;
+  }
+
+  async createSecret(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      description?: string | null;
+      envVarName?: string | null;
+      name: string;
+      userId: string;
+      value: string;
+    },
+  ): Promise<SecretRecord> {
+    const name = input.name.trim();
+    if (name.length === 0) {
+      throw new Error("Secret name is required.");
+    }
+
+    const value = input.value.trim();
+    if (value.length === 0) {
+      throw new Error("Secret value is required.");
+    }
+
+    const description = this.normalizeOptionalText(input.description);
+    const envVarName = this.resolveEnvVarName(name, input.envVarName);
+    const encryptedSecret = this.encryptionService.encrypt(value);
+
+    return transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const now = new Date();
+      const [createdSecret] = await insertableDatabase
+        .insert(companySecrets)
+        .values({
+          companyId: input.companyId,
+          createdAt: now,
+          createdByUserId: input.userId,
+          description,
+          encryptedValue: encryptedSecret.encryptedValue,
+          encryptionKeyId: encryptedSecret.encryptionKeyId,
+          envVarName,
+          name,
+          updatedAt: now,
+          updatedByUserId: input.userId,
+        })
+        .returning?.(this.secretSelection()) as SecretRecord[];
+
+      if (!createdSecret) {
+        throw new Error("Failed to create secret.");
+      }
+
+      return createdSecret;
+    });
+  }
+
+  async listSecrets(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+  ): Promise<SecretRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const secrets = await selectableDatabase
+        .select(this.secretSelection())
+        .from(companySecrets)
+        .where(eq(companySecrets.companyId, companyId)) as SecretRecord[];
+
+      return [...secrets].sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async listSessionSecrets(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<SecretRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireSession(selectableDatabase, companyId, sessionId);
+      const attachments = await selectableDatabase
+        .select({
+          secretId: agentSessionSecrets.secretId,
+        })
+        .from(agentSessionSecrets)
+        .where(and(
+          eq(agentSessionSecrets.companyId, companyId),
+          eq(agentSessionSecrets.sessionId, sessionId),
+        )) as Array<{ secretId: string }>;
+
+      const secretIds = attachments.map((attachment) => attachment.secretId);
+      if (secretIds.length === 0) {
+        return [];
+      }
+
+      const secrets = await selectableDatabase
+        .select(this.secretSelection())
+        .from(companySecrets)
+        .where(and(
+          eq(companySecrets.companyId, companyId),
+          inArray(companySecrets.id, secretIds),
+        )) as SecretRecord[];
+
+      return [...secrets].sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async deleteSecret(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    secretId: string,
+  ): Promise<SecretRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const deletableDatabase = tx as DeletableDatabase;
+      const [deletedSecret] = await deletableDatabase
+        .delete(companySecrets)
+        .where(and(
+          eq(companySecrets.companyId, companyId),
+          eq(companySecrets.id, secretId),
+        ))
+        .returning?.(this.secretSelection()) as SecretRecord[];
+
+      if (!deletedSecret) {
+        throw new Error("Secret not found.");
+      }
+
+      return deletedSecret;
+    });
+  }
+
+  async attachSecretToSession(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      secretId: string;
+      sessionId: string;
+      userId: string;
+    },
+  ): Promise<SecretRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
+      const session = await this.requireSession(selectableDatabase, input.companyId, input.sessionId);
+      if (session.status === "archived") {
+        throw new Error("Archived sessions cannot be modified.");
+      }
+
+      const secret = await this.requireSecret(selectableDatabase, input.companyId, input.secretId);
+      const existingAttachment = await selectableDatabase
+        .select({
+          secretId: agentSessionSecrets.secretId,
+        })
+        .from(agentSessionSecrets)
+        .where(and(
+          eq(agentSessionSecrets.companyId, input.companyId),
+          eq(agentSessionSecrets.sessionId, input.sessionId),
+          eq(agentSessionSecrets.secretId, input.secretId),
+        )) as Array<{ secretId: string }>;
+
+      if (existingAttachment.length === 0) {
+        await insertableDatabase
+          .insert(agentSessionSecrets)
+          .values({
+            companyId: input.companyId,
+            createdAt: new Date(),
+            createdByUserId: input.userId,
+            secretId: input.secretId,
+            sessionId: input.sessionId,
+          });
+      }
+
+      return secret;
+    });
+  }
+
+  async detachSecretFromSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    secretId: string,
+  ): Promise<SecretRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      await this.requireSession(selectableDatabase, companyId, sessionId);
+      const secret = await this.requireSecret(selectableDatabase, companyId, secretId);
+      const [deletedAttachment] = await deletableDatabase
+        .delete(agentSessionSecrets)
+        .where(and(
+          eq(agentSessionSecrets.companyId, companyId),
+          eq(agentSessionSecrets.sessionId, sessionId),
+          eq(agentSessionSecrets.secretId, secretId),
+        ))
+        .returning?.({
+          secretId: agentSessionSecrets.secretId,
+        }) as Array<{ secretId: string }>;
+
+      if (!deletedAttachment) {
+        throw new Error("Secret is not attached to the session.");
+      }
+
+      return secret;
+    });
+  }
+
+  async resolveSessionEnvironmentVariables(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<Record<string, string>> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireSession(selectableDatabase, companyId, sessionId);
+      const attachments = await selectableDatabase
+        .select({
+          secretId: agentSessionSecrets.secretId,
+        })
+        .from(agentSessionSecrets)
+        .where(and(
+          eq(agentSessionSecrets.companyId, companyId),
+          eq(agentSessionSecrets.sessionId, sessionId),
+        )) as Array<{ secretId: string }>;
+
+      const secretIds = attachments.map((attachment) => attachment.secretId);
+      if (secretIds.length === 0) {
+        return {};
+      }
+
+      const secrets = await selectableDatabase
+        .select({
+          encryptedValue: companySecrets.encryptedValue,
+          encryptionKeyId: companySecrets.encryptionKeyId,
+          envVarName: companySecrets.envVarName,
+          id: companySecrets.id,
+        })
+        .from(companySecrets)
+        .where(and(
+          eq(companySecrets.companyId, companyId),
+          inArray(companySecrets.id, secretIds),
+        )) as PersistedSecretValueRecord[];
+
+      return Object.fromEntries(secrets.map((secret) => [
+        secret.envVarName,
+        this.encryptionService.decrypt(secret.encryptedValue, secret.encryptionKeyId),
+      ]));
+    });
+  }
+
+  private normalizeOptionalText(value?: string | null): string | null {
+    const normalizedValue = value?.trim() ?? "";
+    return normalizedValue.length > 0 ? normalizedValue : null;
+  }
+
+  private resolveEnvVarName(name: string, envVarName?: string | null): string {
+    const explicitEnvVarName = envVarName?.trim() ?? "";
+    const resolvedEnvVarName = explicitEnvVarName.length > 0
+      ? explicitEnvVarName
+      : name
+        .toUpperCase()
+        .replaceAll(/[\s-]+/g, "_")
+        .replaceAll(/[^A-Z0-9_]/g, "_")
+        .replaceAll(/_+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(resolvedEnvVarName)) {
+      throw new Error("envVarName must be a valid environment variable name.");
+    }
+
+    return resolvedEnvVarName;
+  }
+
+  private async requireSecret(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretId: string,
+  ): Promise<SecretRecord> {
+    const [secret] = await selectableDatabase
+      .select(this.secretSelection())
+      .from(companySecrets)
+      .where(and(
+        eq(companySecrets.companyId, companyId),
+        eq(companySecrets.id, secretId),
+      )) as SecretRecord[];
+
+    if (!secret) {
+      throw new Error("Secret not found.");
+    }
+
+    return secret;
+  }
+
+  private async requireSession(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionId: string,
+  ): Promise<SessionRecord> {
+    const [session] = await selectableDatabase
+      .select({
+        id: agentSessions.id,
+        status: agentSessions.status,
+      })
+      .from(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        eq(agentSessions.id, sessionId),
+      )) as SessionRecord[];
+
+    if (!session) {
+      throw new Error("Session not found.");
+    }
+
+    return session;
+  }
+
+  private secretSelection(): Record<string, unknown> {
+    return {
+      companyId: companySecrets.companyId,
+      createdAt: companySecrets.createdAt,
+      description: companySecrets.description,
+      envVarName: companySecrets.envVarName,
+      id: companySecrets.id,
+      name: companySecrets.name,
+      updatedAt: companySecrets.updatedAt,
+    };
+  }
+}

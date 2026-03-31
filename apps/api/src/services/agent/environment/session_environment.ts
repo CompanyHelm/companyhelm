@@ -9,6 +9,7 @@ import { AgentEnvironmentInterface as AgentEnvironmentInterfaceClass } from "../
 import { AgentEnvironmentPtyInterface } from "../compute/pty_interface.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
+import { SecretService } from "../../secrets/service.ts";
 
 /**
  * Wraps one PTY manager with lease ownership. It keeps the lease alive while a prompt run is
@@ -18,25 +19,34 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
   private static readonly HEARTBEAT_INTERVAL_MILLISECONDS = 60 * 1000;
 
   private readonly transactionProvider: TransactionProviderInterface;
+  private readonly companyId: string;
   private readonly leaseId: string;
   private readonly leaseOwnerToken: string;
   private readonly leaseService: AgentEnvironmentLeaseService;
   private readonly pty: AgentEnvironmentPtyInterface;
+  private readonly secretService: SecretService;
+  private readonly sessionId: string;
   private readonly heartbeatHandle: ReturnType<typeof setInterval>;
   private disposed = false;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
     leaseService: AgentEnvironmentLeaseService,
+    secretService: SecretService,
     pty: AgentEnvironmentPtyInterface,
     leaseId: string,
     leaseOwnerToken: string,
   ) {
     super();
     this.transactionProvider = transactionProvider;
+    this.companyId = companyId;
+    this.sessionId = sessionId;
     this.leaseId = leaseId;
     this.leaseOwnerToken = leaseOwnerToken;
     this.leaseService = leaseService;
+    this.secretService = secretService;
     this.pty = pty;
     this.heartbeatHandle = setInterval(() => {
       void this.leaseService.heartbeatLease(this.transactionProvider, this.leaseId, this.leaseOwnerToken)
@@ -45,8 +55,20 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     this.heartbeatHandle.unref?.();
   }
 
-  executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {
-    return this.pty.executeCommand(input);
+  async executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {
+    const sessionEnvironmentVariables = await this.secretService.resolveSessionEnvironmentVariables(
+      this.transactionProvider,
+      this.companyId,
+      this.sessionId,
+    );
+
+    return this.pty.executeCommand({
+      ...input,
+      environment: {
+        ...sessionEnvironmentVariables,
+        ...(input.environment ?? {}),
+      },
+    });
   }
 
   sendInput(sessionId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult> {

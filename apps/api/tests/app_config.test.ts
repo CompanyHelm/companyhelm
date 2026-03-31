@@ -130,6 +130,7 @@ ${authDocument}
 security:
   encryption:
     key: "companyhelm-local-encryption-key"
+    key_id: "companyhelm-local-key"
 log:
   level: "debug"
 `.trimStart();
@@ -186,6 +187,10 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     disk_gb: 10,
     memory_gb: 8,
     cpu_count: 4,
+  });
+  assert.deepEqual(document.security.encryption, {
+    key: "companyhelm-local-encryption-key",
+    key_id: "companyhelm-local-key",
   });
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.auth.provider, "clerk");
