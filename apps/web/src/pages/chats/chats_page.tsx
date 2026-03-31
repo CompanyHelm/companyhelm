@@ -1067,6 +1067,7 @@ function ChatsPageContent() {
   const pendingTranscriptScrollRestoreRef = useRef<TranscriptScrollRestoreRecord | null>(
     null,
   );
+  const isLoadingOlderTranscriptRef = useRef(false);
   const shouldStickTranscriptToBottomRef = useRef(true);
   const transcriptRequestIdRef = useRef(0);
   const activeTranscriptSessionIdRef = useRef<string | null>(null);
@@ -1212,6 +1213,7 @@ function ChatsPageContent() {
       setTranscriptMessages([]);
       setTranscriptHasNextPage(false);
       setTranscriptEndCursor(null);
+      isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
       setIsLoadingTranscript(true);
 
@@ -1251,7 +1253,7 @@ function ChatsPageContent() {
       return;
     }
 
-    if (isLoadingOlderTranscript) {
+    if (isLoadingOlderTranscriptRef.current) {
       return;
     }
 
@@ -1262,6 +1264,7 @@ function ChatsPageContent() {
       pendingTranscriptScrollRestoreRef.current = captureTranscriptScrollRestoreRecord(transcriptNode);
     }
 
+    isLoadingOlderTranscriptRef.current = true;
     setIsLoadingOlderTranscript(true);
 
     try {
@@ -1292,11 +1295,11 @@ function ChatsPageContent() {
       setErrorMessage(error instanceof Error ? error.message : "Failed to load older messages.");
       pendingTranscriptScrollRestoreRef.current = null;
     } finally {
+      isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
     }
   }, [
     environment,
-    isLoadingOlderTranscript,
     updateSessionTitleOverride,
   ]);
 
@@ -1334,6 +1337,7 @@ function ChatsPageContent() {
       setTranscriptHasNextPage(false);
       setTranscriptEndCursor(null);
       setIsLoadingTranscript(false);
+      isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
       return;
     }
