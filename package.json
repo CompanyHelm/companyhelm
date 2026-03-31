@@ -11,12 +11,19 @@
     "dev:api": "npm run dev -w @companyhelm/api",
     "dev:web": "npm run dev -w @companyhelm/web",
     "lint": "turbo run lint",
-    "test": "turbo run lint build test",
+    "test": "npm run test:all",
     "db:generate": "npm exec -w @companyhelm/api -- drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "npm exec -w @companyhelm/api -- drizzle-kit migrate --config=drizzle.config.ts",
     "db:up": "docker compose up -d postgres redis pgadmin && echo \"pgAdmin: http://localhost:5050\" && echo \"Redis: localhost:6379\"",
     "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d postgres redis pgadmin && echo \"pgAdmin: http://localhost:5050\" && echo \"Redis: localhost:6379\""
+    "db:reset": "docker compose down -v && docker compose up -d postgres redis pgadmin && echo \"pgAdmin: http://localhost:5050\" && echo \"Redis: localhost:6379\"",
+    "check": "npm run check:all",
+    "check:api": "npm run check -w @companyhelm/api",
+    "check:web": "npm run check -w @companyhelm/web",
+    "check:all": "npm run check:api && npm run check:web",
+    "test:api": "npm run test -w @companyhelm/api",
+    "test:web": "npm run test -w @companyhelm/web",
+    "test:all": "npm run test:api && npm run test:web"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -25,5 +32,9 @@
     "tsx": "^4.21.0",
     "turbo": "^2.8.20",
     "typescript-eslint": "^8.57.1"
+  },
+  "engines": {
+    "node": "20.20.0",
+    "npm": "11.6.2"
   }
 }
