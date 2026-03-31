@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   artifactExternalLinks,
@@ -91,7 +91,7 @@ export class ArtifactService {
         .where(and(
           eq(artifacts.companyId, input.companyId),
           eq(artifacts.scopeType, input.scopeType),
-          taskId === null ? eq(artifacts.taskId, null) : eq(artifacts.taskId, taskId),
+          taskId === null ? isNull(artifacts.taskId) : eq(artifacts.taskId, taskId),
         )) as ArtifactBaseRecord[];
 
       return (await this.hydrateArtifacts(tx, baseRecords))
