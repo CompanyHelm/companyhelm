@@ -2,15 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { AgentEnvironmentRequirementsService } from "../src/services/agent/environment/requirements_service.ts";
 
-test("AgentEnvironmentRequirementsService falls back to config defaults when the agent has no persisted requirements", async () => {
+test("AgentEnvironmentRequirementsService falls back to the default minimum compute shape when the agent has no persisted requirements", async () => {
   let selectCallCount = 0;
-  const service = new AgentEnvironmentRequirementsService({
-    daytona: {
-      cpu_count: 4,
-      disk_gb: 40,
-      memory_gb: 8,
-    },
-  } as never);
+  const service = new AgentEnvironmentRequirementsService();
 
   const requirements = await service.getRequirements({
     async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
@@ -50,22 +44,16 @@ test("AgentEnvironmentRequirementsService falls back to config defaults when the
   } as never, "company-1", "agent-1");
 
   assert.deepEqual(requirements, {
-    minCpuCount: 4,
-    minDiskSpaceGb: 40,
-    minMemoryGb: 8,
+    minCpuCount: 1,
+    minDiskSpaceGb: 10,
+    minMemoryGb: 3,
   });
 });
 
 test("AgentEnvironmentRequirementsService creates requirements on the first update", async () => {
   const insertedValues: Array<Record<string, unknown>> = [];
   let selectCallCount = 0;
-  const service = new AgentEnvironmentRequirementsService({
-    daytona: {
-      cpu_count: 4,
-      disk_gb: 40,
-      memory_gb: 8,
-    },
-  } as never);
+  const service = new AgentEnvironmentRequirementsService();
 
   const requirements = await service.updateRequirements({
     async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {

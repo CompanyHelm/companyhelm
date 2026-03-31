@@ -371,7 +371,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                       Minimum compute
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Leave all three fields blank to use workspace defaults.
+                      Leave all three fields blank to use the default minimum of 1 CPU, 3 GB RAM, and 10 GB disk.
                     </p>
                   </div>
 
@@ -386,7 +386,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                         onChange={(event) => {
                           setMinCpuCount(event.target.value);
                         }}
-                        placeholder="Default"
+                        placeholder="1"
                         type="number"
                         value={minCpuCount}
                       />
@@ -402,7 +402,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                         onChange={(event) => {
                           setMinMemoryGb(event.target.value);
                         }}
-                        placeholder="Default"
+                        placeholder="3"
                         type="number"
                         value={minMemoryGb}
                       />
@@ -418,7 +418,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                         onChange={(event) => {
                           setMinDiskSpaceGb(event.target.value);
                         }}
-                        placeholder="Default"
+                        placeholder="10"
                         type="number"
                         value={minDiskSpaceGb}
                       />

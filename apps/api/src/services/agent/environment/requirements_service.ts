@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { inject, injectable } from "inversify";
-import { Config } from "../../../config/schema.ts";
+import { injectable } from "inversify";
 import { agentEnvironmentRequirements, agents } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import type { AgentEnvironmentRequirements } from "../compute/provider_interface.ts";
@@ -45,17 +44,11 @@ type UpdatableDatabase = {
 
 /**
  * Resolves the desired minimum compute shape for an agent. It keeps persisted overrides separate
- * from the actual provisioned environments and falls back to configuration defaults when an agent
+ * from the actual provisioned environments and falls back to the product defaults when an agent
  * has never customized its environment requirements.
  */
 @injectable()
 export class AgentEnvironmentRequirementsService {
-  private readonly config: Config;
-
-  constructor(@inject(Config) config: Config) {
-    this.config = config;
-  }
-
   async getRequirements(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -82,9 +75,9 @@ export class AgentEnvironmentRequirementsService {
       }
 
       return {
-        minCpuCount: this.config.daytona.cpu_count,
-        minDiskSpaceGb: this.config.daytona.disk_gb,
-        minMemoryGb: this.config.daytona.memory_gb,
+        minCpuCount: 1,
+        minDiskSpaceGb: 10,
+        minMemoryGb: 3,
       };
     });
   }

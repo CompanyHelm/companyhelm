@@ -222,7 +222,7 @@ export class GraphqlApplication {
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
-      ?? new AgentEnvironmentRequirementsService(config);
+      ?? new AgentEnvironmentRequirementsService();
 
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation
