@@ -44,17 +44,21 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     request: {
       agentId: string;
       companyId: string;
+      requirements: {
+        minCpuCount: number;
+        minDiskSpaceGb: number;
+        minMemoryGb: number;
+      };
       sessionId: string;
     },
   ) {
     void transactionProvider;
-    void request;
     const remoteSandbox = await this.getDaytonaClient().create({
       image: "node:20-slim",
       resources: {
-        cpu: this.config.daytona.cpu_count,
-        disk: this.config.daytona.disk_gb,
-        memory: this.config.daytona.memory_gb,
+        cpu: request.requirements.minCpuCount,
+        disk: request.requirements.minDiskSpaceGb,
+        memory: request.requirements.minMemoryGb,
       },
     });
 
@@ -62,10 +66,10 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       cleanup: async () => {
         await remoteSandbox.delete().catch(() => undefined);
       },
-      cpuCount: remoteSandbox.cpu || this.config.daytona.cpu_count,
-      diskSpaceGb: remoteSandbox.disk || this.config.daytona.disk_gb,
+      cpuCount: remoteSandbox.cpu || request.requirements.minCpuCount,
+      diskSpaceGb: remoteSandbox.disk || request.requirements.minDiskSpaceGb,
       displayName: null,
-      memoryGb: remoteSandbox.memory || this.config.daytona.memory_gb,
+      memoryGb: remoteSandbox.memory || request.requirements.minMemoryGb,
       metadata: {},
       platform: "linux" as const,
       providerEnvironmentId: remoteSandbox.id,

@@ -3,9 +3,16 @@ import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
 
+export type AgentEnvironmentRequirements = {
+  minCpuCount: number;
+  minDiskSpaceGb: number;
+  minMemoryGb: number;
+};
+
 export type AgentEnvironmentProvisionRequest = {
   agentId: string;
   companyId: string;
+  requirements: AgentEnvironmentRequirements;
   sessionId: string;
 };
 

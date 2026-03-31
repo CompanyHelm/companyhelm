@@ -30,6 +30,11 @@ test("AgentComputeDaytonaProvider provisions Daytona environments on demand with
   const provisionedEnvironment = await provider.provisionEnvironment({} as never, {
     agentId: "agent-1",
     companyId: "company-1",
+    requirements: {
+      minCpuCount: 6,
+      minDiskSpaceGb: 24,
+      minMemoryGb: 12,
+    },
     sessionId: "session-1",
   });
 
@@ -39,9 +44,9 @@ test("AgentComputeDaytonaProvider provisions Daytona environments on demand with
   assert.deepEqual(create.mock.calls[0]?.[0], {
     image: "node:20-slim",
     resources: {
-      cpu: 4,
-      disk: 10,
-      memory: 8,
+      cpu: 6,
+      disk: 24,
+      memory: 12,
     },
   });
   assert.equal(provisionedEnvironment.providerEnvironmentId, "daytona-environment-1");

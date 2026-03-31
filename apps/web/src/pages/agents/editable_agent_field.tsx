@@ -18,7 +18,7 @@ type EditableAgentFieldOption = {
 type EditableAgentFieldTextProps = {
   displayValue?: string | null;
   emptyValueLabel: string;
-  fieldType: "text" | "textarea";
+  fieldType: "number" | "text" | "textarea";
   label: string;
   onSave: (value: string) => Promise<void>;
   value: string | null;
@@ -116,8 +116,9 @@ export function EditableAgentField(props: EditableAgentFieldProps) {
       </div>
 
       <div className="mt-3">
-        {props.fieldType === "text" && isEditing ? (
+        {(props.fieldType === "text" || props.fieldType === "number") && isEditing ? (
           <Input
+            min={props.fieldType === "number" ? 1 : undefined}
             onBlur={async (event) => {
               await commitValue(event.target.value);
             }}
@@ -140,6 +141,8 @@ export function EditableAgentField(props: EditableAgentFieldProps) {
             ref={(node) => {
               inputRef.current = node;
             }}
+            step={props.fieldType === "number" ? 1 : undefined}
+            type={props.fieldType === "number" ? "number" : "text"}
             value={draftValue}
           />
         ) : null}

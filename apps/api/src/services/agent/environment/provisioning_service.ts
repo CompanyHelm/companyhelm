@@ -6,6 +6,7 @@ import {
 } from "../compute/provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentProvisioning } from "./provisioning.ts";
+import { AgentEnvironmentRequirementsService } from "./requirements_service.ts";
 
 /**
  * Owns on-demand environment provisioning. It delegates the provider-specific creation work to the
@@ -16,15 +17,18 @@ export class AgentEnvironmentProvisioningService {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly environmentProvisioning: AgentEnvironmentProvisioning;
   private readonly provider: AgentComputeProviderInterface;
+  private readonly requirementsService: AgentEnvironmentRequirementsService;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
     @inject(AgentEnvironmentProvisioning) environmentProvisioning: AgentEnvironmentProvisioning,
+    @inject(AgentEnvironmentRequirementsService) requirementsService: AgentEnvironmentRequirementsService,
   ) {
     this.catalogService = catalogService;
     this.environmentProvisioning = environmentProvisioning;
     this.provider = provider;
+    this.requirementsService = requirementsService;
   }
 
   async provisionEnvironmentForSession(
@@ -39,7 +43,15 @@ export class AgentEnvironmentProvisioningService {
       throw new Error(`Provider ${this.provider.getProvider()} does not support on-demand environments.`);
     }
 
-    const provisionedEnvironment = await this.provider.provisionEnvironment(transactionProvider, input);
+    const requirements = await this.requirementsService.getRequirements(
+      transactionProvider,
+      input.companyId,
+      input.agentId,
+    );
+    const provisionedEnvironment = await this.provider.provisionEnvironment(transactionProvider, {
+      ...input,
+      requirements,
+    });
     let createdEnvironment: AgentEnvironmentRecord | null = null;
     try {
       createdEnvironment = await this.catalogService.createEnvironment(transactionProvider, {

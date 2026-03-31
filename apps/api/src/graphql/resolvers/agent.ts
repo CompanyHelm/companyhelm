@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { agents, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { AgentEnvironmentRequirementsService } from "../../services/agent/environment/requirements_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type AgentQueryArguments = {
@@ -37,6 +38,11 @@ type GraphqlAgentRecord = {
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;
+  environmentRequirements: {
+    minCpuCount: number;
+    minDiskSpaceGb: number;
+    minMemoryGb: number;
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -55,6 +61,19 @@ type SelectableDatabase = {
  */
 @injectable()
 export class AgentQueryResolver {
+  private readonly requirementsService: AgentEnvironmentRequirementsService;
+
+  constructor(
+    @inject(AgentEnvironmentRequirementsService)
+    requirementsService: AgentEnvironmentRequirementsService = {
+      async getRequirements() {
+        throw new Error("Agent environment requirements service is not configured.");
+      },
+    } as never,
+  ) {
+    this.requirementsService = requirementsService;
+  }
+
   execute = async (
     _root: unknown,
     arguments_: AgentQueryArguments,
@@ -91,8 +110,14 @@ export class AgentQueryResolver {
         throw new Error("Agent not found.");
       }
 
+      const environmentRequirements = await this.requirementsService.getRequirements(
+        context.app_runtime_transaction_provider,
+        context.authSession.company.id,
+        agentRecord.id,
+      );
+
       if (!agentRecord.defaultModelProviderCredentialModelId) {
-        return AgentQueryResolver.serializeRecord(agentRecord, null, null);
+        return AgentQueryResolver.serializeRecord(agentRecord, null, null, environmentRequirements);
       }
 
       const [modelRecord] = await selectableDatabase
@@ -117,7 +142,12 @@ export class AgentQueryResolver {
           .where(eq(modelProviderCredentials.id, modelRecord.modelProviderCredentialId)) as CredentialRecord[]
         : [];
 
-      return AgentQueryResolver.serializeRecord(agentRecord, modelRecord ?? null, credentialRecord ?? null);
+      return AgentQueryResolver.serializeRecord(
+        agentRecord,
+        modelRecord ?? null,
+        credentialRecord ?? null,
+        environmentRequirements,
+      );
     });
   };
 
@@ -125,6 +155,11 @@ export class AgentQueryResolver {
     agentRecord: AgentRecord,
     modelRecord: ModelRecord | null,
     credentialRecord: CredentialRecord | null,
+    environmentRequirements: {
+      minCpuCount: number;
+      minDiskSpaceGb: number;
+      minMemoryGb: number;
+    },
   ): GraphqlAgentRecord {
     return {
       id: agentRecord.id,
@@ -135,6 +170,7 @@ export class AgentQueryResolver {
       modelName: modelRecord?.name ?? null,
       reasoningLevel: agentRecord.defaultReasoningLevel,
       systemPrompt: agentRecord.systemPrompt,
+      environmentRequirements,
       createdAt: agentRecord.createdAt.toISOString(),
       updatedAt: agentRecord.updatedAt.toISOString(),
     };

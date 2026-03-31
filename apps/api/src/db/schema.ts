@@ -93,6 +93,27 @@ export const agents = pgTable("agents", {
   companyIdIndex: index("agents_company_id_idx").on(table.companyId),
 }));
 
+export const agentEnvironmentRequirements = pgTable("agent_environment_requirements", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+  minCpuCount: integer("min_cpu_count").notNull(),
+  minMemoryGb: integer("min_memory_gb").notNull(),
+  minDiskSpaceGb: integer("min_disk_space_gb").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("agent_environment_requirements_company_id_idx").on(table.companyId),
+  agentIdUnique: uniqueIndex("agent_environment_requirements_agent_id_uidx").on(table.agentId),
+}));
+
 export const agentSessions = pgTable("agent_sessions", {
   id: uuid("id")
     .primaryKey()

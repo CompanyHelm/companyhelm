@@ -47,6 +47,9 @@ type Mutation {
   RefreshGithubInstallationRepositories(
     input: RefreshGithubInstallationRepositoriesInput!
   ): RefreshGithubInstallationRepositoriesPayload!
+  UpdateAgentEnvironmentRequirements(
+    input: UpdateAgentEnvironmentRequirementsInput!
+  ): AgentEnvironmentRequirements!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
@@ -138,8 +141,15 @@ type Agent {
   modelName: String
   reasoningLevel: String
   systemPrompt: String
+  environmentRequirements: AgentEnvironmentRequirements!
   createdAt: String!
   updatedAt: String!
+}
+
+type AgentEnvironmentRequirements {
+  minCpuCount: Int!
+  minMemoryGb: Int!
+  minDiskSpaceGb: Int!
 }
 
 type Environment {
@@ -319,6 +329,13 @@ input UpdateAgentInput {
   modelProviderCredentialModelId: ID!
   reasoningLevel: String
   systemPrompt: String
+}
+
+input UpdateAgentEnvironmentRequirementsInput {
+  agentId: ID!
+  minCpuCount: Int!
+  minMemoryGb: Int!
+  minDiskSpaceGb: Int!
 }
 
 input DeleteModelProviderCredentialInput {

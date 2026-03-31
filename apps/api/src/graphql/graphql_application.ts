@@ -31,6 +31,7 @@ import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refres
 import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
+import { UpdateAgentEnvironmentRequirementsMutation } from "./mutations/update_agent_environment_requirements.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
@@ -58,6 +59,7 @@ import { SessionMessageUpdatedSubscriptionResolver } from "./resolvers/session_m
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
+import { AgentEnvironmentRequirementsService } from "../services/agent/environment/requirements_service.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -112,6 +114,7 @@ export class GraphqlApplication {
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
+  private readonly updateAgentEnvironmentRequirementsMutation: UpdateAgentEnvironmentRequirementsMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly redisService: RedisService;
 
@@ -135,7 +138,7 @@ export class GraphqlApplication {
         throw new Error("CreateSession mutation is not configured.");
       },
     } as never),
-    @inject(AgentQueryResolver) agentQueryResolver: AgentQueryResolver = new AgentQueryResolver(),
+    @inject(AgentQueryResolver) agentQueryResolver?: AgentQueryResolver,
     @inject(AgentCreateOptionsQueryResolver)
     agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver = new AgentCreateOptionsQueryResolver(),
     @inject(AgentsQueryResolver) agentsQueryResolver: AgentsQueryResolver = new AgentsQueryResolver(),
@@ -212,8 +215,14 @@ export class GraphqlApplication {
     secretsQueryResolver?: SecretsQueryResolver,
     @inject(SessionSecretsQueryResolver)
     sessionSecretsQueryResolver?: SessionSecretsQueryResolver,
+    @inject(AgentEnvironmentRequirementsService)
+    agentEnvironmentRequirementsService?: AgentEnvironmentRequirementsService,
+    @inject(UpdateAgentEnvironmentRequirementsMutation)
+    updateAgentEnvironmentRequirementsMutation?: UpdateAgentEnvironmentRequirementsMutation,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
+    const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
+      ?? new AgentEnvironmentRequirementsService(config);
 
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation;
@@ -223,7 +232,7 @@ export class GraphqlApplication {
       ?? new AttachSecretToAgentMutation(defaultSecretService);
     this.attachSecretToSessionMutation = attachSecretToSessionMutation
       ?? new AttachSecretToSessionMutation(defaultSecretService);
-    this.agentQueryResolver = agentQueryResolver;
+    this.agentQueryResolver = agentQueryResolver ?? new AgentQueryResolver(defaultAgentEnvironmentRequirementsService);
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
@@ -270,6 +279,8 @@ export class GraphqlApplication {
     this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
     this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
+    this.updateAgentEnvironmentRequirementsMutation = updateAgentEnvironmentRequirementsMutation
+      ?? new UpdateAgentEnvironmentRequirementsMutation(defaultAgentEnvironmentRequirementsService);
     this.redisService = redisService;
   }
 
@@ -362,6 +373,7 @@ export class GraphqlApplication {
           PromptSession: this.promptSessionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,
+          UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
           UpdateSecret: this.updateSecretMutation.execute,
         },

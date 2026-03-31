@@ -68,6 +68,15 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
     {
       provision: bootstrapProvision,
     } as never,
+    {
+      async getRequirements() {
+        return {
+          minCpuCount: 6,
+          minDiskSpaceGb: 40,
+          minMemoryGb: 12,
+        };
+      },
+    } as never,
   );
 
   const environment = await service.provisionEnvironmentForSession({} as never, {
@@ -78,6 +87,16 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
 
   assert.equal(environment, createdEnvironment);
   assert.equal(providerProvisionEnvironment.mock.calls.length, 1);
+  assert.deepEqual(providerProvisionEnvironment.mock.calls[0]?.[1], {
+    agentId: "agent-1",
+    companyId: "company-1",
+    requirements: {
+      minCpuCount: 6,
+      minDiskSpaceGb: 40,
+      minMemoryGb: 12,
+    },
+    sessionId: "session-1",
+  });
   assert.equal(createEnvironment.mock.calls.length, 1);
   assert.deepEqual(bootstrapProvision.mock.calls, [[{}, createdEnvironment]]);
 });
@@ -115,6 +134,15 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
     {
       async provision() {
         throw new Error("workspace bootstrap failed");
+      },
+    } as never,
+    {
+      async getRequirements() {
+        return {
+          minCpuCount: 2,
+          minDiskSpaceGb: 20,
+          minMemoryGb: 4,
+        };
       },
     } as never,
   );

@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { AgentEnvironmentRequirementsCard } from "./agent_environment_requirements_card";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
 import { EditableAgentField } from "./editable_agent_field";
 import type { AgentCreateProviderOption } from "./create_agent_dialog";
@@ -20,6 +21,11 @@ const agentDetailPageQueryNode = graphql`
       modelName
       reasoningLevel
       systemPrompt
+      environmentRequirements {
+        minCpuCount
+        minMemoryGb
+        minDiskSpaceGb
+      }
       createdAt
       updatedAt
     }
@@ -366,6 +372,13 @@ function AgentDetailPageContent() {
         agentId={agent.id}
         agentSecrets={agentSecrets}
         companySecrets={companySecrets}
+      />
+
+      <AgentEnvironmentRequirementsCard
+        agentId={agent.id}
+        minCpuCount={agent.environmentRequirements.minCpuCount}
+        minDiskSpaceGb={agent.environmentRequirements.minDiskSpaceGb}
+        minMemoryGb={agent.environmentRequirements.minMemoryGb}
       />
 
       <Card className="rounded-2xl border border-border/60 shadow-sm">

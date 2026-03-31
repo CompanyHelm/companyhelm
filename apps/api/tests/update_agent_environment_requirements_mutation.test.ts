@@ -14,14 +14,9 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class AgentQueryTestHarness {
+class UpdateAgentEnvironmentRequirementsMutationTestHarness {
   static createConfigMock(): Config {
     return {
-      daytona: {
-        cpu_count: 4,
-        disk_gb: 40,
-        memory_gb: 8,
-      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
@@ -29,15 +24,39 @@ class AgentQueryTestHarness {
       auth: {
         provider: "clerk",
       },
+      daytona: {
+        cpu_count: 4,
+        disk_gb: 40,
+        memory_gb: 8,
+      },
     } as Config;
   }
 
   static createDatabaseMock() {
     let selectCallCount = 0;
+    const insertedValues: Array<Record<string, unknown>> = [];
 
     return {
+      insertedValues,
       getDatabase() {
         return {
+          insert() {
+            return {
+              values(value: Record<string, unknown>) {
+                insertedValues.push(value);
+                return {
+                  async returning() {
+                    return [{
+                      ...value,
+                      createdAt: value.createdAt,
+                      id: "requirements-1",
+                      updatedAt: value.updatedAt,
+                    }];
+                  },
+                };
+              },
+            };
+          },
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
@@ -47,12 +66,6 @@ class AgentQueryTestHarness {
                     async where() {
                       return [{
                         id: "agent-1",
-                        name: "Research Agent",
-                        defaultModelProviderCredentialModelId: "model-row-1",
-                        defaultReasoningLevel: "high",
-                        systemPrompt: "You are concise.",
-                        createdAt: new Date("2026-03-24T09:00:00.000Z"),
-                        updatedAt: new Date("2026-03-24T09:10:00.000Z"),
                       }];
                     },
                   };
@@ -65,57 +78,7 @@ class AgentQueryTestHarness {
                 from() {
                   return {
                     async where() {
-                      return [{
-                        id: "agent-1",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 3) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "requirements-1",
-                        minCpuCount: 4,
-                        minDiskSpaceGb: 40,
-                        minMemoryGb: 8,
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 4) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "model-row-1",
-                        modelProviderCredentialId: "credential-1",
-                        name: "GPT-5.4",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 5) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "credential-1",
-                        modelProvider: "openai",
-                      }];
+                      return [];
                     },
                   };
                 },
@@ -123,6 +86,9 @@ class AgentQueryTestHarness {
             }
 
             throw new Error(`Unexpected select call: ${selectCallCount}`);
+          },
+          update() {
+            throw new Error("update should not be used when no requirements row exists");
           },
         } as never;
       },
@@ -133,10 +99,10 @@ class AgentQueryTestHarness {
   }
 }
 
-test("GraphQL Agent query returns one agent detail record", async () => {
+test("GraphQL UpdateAgentEnvironmentRequirements mutation upserts the persisted minimum compute requirements", async () => {
   const app = Fastify();
-  const config = AgentQueryTestHarness.createConfigMock();
-  const database = AgentQueryTestHarness.createDatabaseMock();
+  const config = UpdateAgentEnvironmentRequirementsMutationTestHarness.createConfigMock();
+  const database = UpdateAgentEnvironmentRequirementsMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -182,51 +148,36 @@ test("GraphQL Agent query returns one agent detail record", async () => {
     },
     payload: {
       query: `
-        query AgentDetail($id: ID!) {
-          Agent(id: $id) {
-            id
-            name
-            modelProviderCredentialId
-            modelProviderCredentialModelId
-            modelProvider
-            modelName
-            reasoningLevel
-            systemPrompt
-            environmentRequirements {
-              minCpuCount
-              minMemoryGb
-              minDiskSpaceGb
-            }
-            createdAt
-            updatedAt
+        mutation UpdateAgentEnvironmentRequirements($input: UpdateAgentEnvironmentRequirementsInput!) {
+          UpdateAgentEnvironmentRequirements(input: $input) {
+            minCpuCount
+            minMemoryGb
+            minDiskSpaceGb
           }
         }
       `,
       variables: {
-        id: "agent-1",
+        input: {
+          agentId: "agent-1",
+          minCpuCount: 6,
+          minMemoryGb: 16,
+          minDiskSpaceGb: 120,
+        },
       },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.Agent, {
-    id: "agent-1",
-    name: "Research Agent",
-    modelProviderCredentialId: "credential-1",
-    modelProviderCredentialModelId: "model-row-1",
-    modelProvider: "openai",
-    modelName: "GPT-5.4",
-    reasoningLevel: "high",
-    systemPrompt: "You are concise.",
-    environmentRequirements: {
-      minCpuCount: 4,
-      minMemoryGb: 8,
-      minDiskSpaceGb: 40,
-    },
-    createdAt: "2026-03-24T09:00:00.000Z",
-    updatedAt: "2026-03-24T09:10:00.000Z",
+  assert.deepEqual(document.data.UpdateAgentEnvironmentRequirements, {
+    minCpuCount: 6,
+    minMemoryGb: 16,
+    minDiskSpaceGb: 120,
   });
+  assert.equal(database.insertedValues.length, 1);
+  assert.equal(database.insertedValues[0]?.minCpuCount, 6);
+  assert.equal(database.insertedValues[0]?.minMemoryGb, 16);
+  assert.equal(database.insertedValues[0]?.minDiskSpaceGb, 120);
 
   await app.close();
 });
