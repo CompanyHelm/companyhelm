@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f8c43770cd36222f376d6786d370c0e6>>
+ * @generated SignedSource<<7e2ea9c684766c35f1a06815189ae78f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,9 +14,12 @@ export type chatsPageSessionUpdatedSubscription$data = {
   readonly SessionUpdated: {
     readonly agentId: string;
     readonly createdAt: string;
+    readonly currentContextTokens: number | null | undefined;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
+    readonly isCompacting: boolean;
     readonly isThinking: boolean;
+    readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
@@ -53,6 +56,27 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isCompacting",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "maxContextTokens",
         "storageKey": null
       },
       {
@@ -147,16 +171,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "3654e9b9c1f23f435b341470ee1bb1c7",
+    "cacheID": "1df8bf5e46529ad5bf576a28c251e8b2",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fbab0a3461184cd19c822293d4a3553a";
+(node as any).hash = "0a97bb5ff0939d4ab80e891d07ab5587";
 
 export default node;

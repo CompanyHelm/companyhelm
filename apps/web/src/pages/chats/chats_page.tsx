@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
+import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
@@ -58,6 +59,9 @@ const chatsPageQueryNode = graphql`
     Sessions {
       id
       agentId
+      currentContextTokens
+      isCompacting
+      maxContextTokens
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -137,6 +141,9 @@ const chatsPageCreateSessionMutationNode = graphql`
     CreateSession(input: $input) {
       id
       agentId
+      currentContextTokens
+      isCompacting
+      maxContextTokens
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -156,6 +163,9 @@ const chatsPageArchiveSessionMutationNode = graphql`
     ArchiveSession(input: $input) {
       id
       agentId
+      currentContextTokens
+      isCompacting
+      maxContextTokens
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -173,6 +183,9 @@ const chatsPagePromptSessionMutationNode = graphql`
     PromptSession(input: $input) {
       id
       agentId
+      currentContextTokens
+      isCompacting
+      maxContextTokens
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -192,6 +205,9 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
     SessionUpdated {
       id
       agentId
+      currentContextTokens
+      isCompacting
+      maxContextTokens
       modelProviderCredentialModelId
       modelId
       reasoningLevel
@@ -2502,13 +2518,22 @@ function ChatsPageContent() {
                 />
               </div>
               <div className="flex items-center justify-between gap-3 px-2.5 py-3">
-                <ChatComposerModelPicker
-                  modelOptions={composerModelOptions}
-                  onModelChange={setComposerModelOptionId}
-                  onReasoningLevelChange={setComposerReasoningLevel}
-                  reasoningLevel={composerReasoningLevel}
-                  selectedModelOptionId={composerModelOptionId}
-                />
+                <div className="flex min-w-0 items-center gap-2">
+                  <ChatComposerModelPicker
+                    modelOptions={composerModelOptions}
+                    onModelChange={setComposerModelOptionId}
+                    onReasoningLevelChange={setComposerReasoningLevel}
+                    reasoningLevel={composerReasoningLevel}
+                    selectedModelOptionId={composerModelOptionId}
+                  />
+                  {selectedSession ? (
+                    <ChatsContextUsageIndicator
+                      currentContextTokens={selectedSession.currentContextTokens}
+                      isCompacting={selectedSession.isCompacting}
+                      maxContextTokens={selectedSession.maxContextTokens}
+                    />
+                  ) : null}
+                </div>
                 <Button
                   aria-label={draftSubmitAriaLabel}
                   className="h-10 w-10 shrink-0 rounded-full px-0"

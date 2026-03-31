@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<73cadedba9be06b131170bae90b027ee>>
+ * @generated SignedSource<<8635cb200926f6ba7fdbca73dc3cc38a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -37,9 +37,12 @@ export type chatsPageQuery$data = {
   readonly Sessions: ReadonlyArray<{
     readonly agentId: string;
     readonly createdAt: string;
+    readonly currentContextTokens: number | null | undefined;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
+    readonly isCompacting: boolean;
     readonly isThinking: boolean;
+    readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
@@ -206,6 +209,27 @@ v6 = [
         "name": "agentId",
         "storageKey": null
       },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isCompacting",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "maxContextTokens",
+        "storageKey": null
+      },
       (v2/*: any*/),
       (v5/*: any*/),
       (v4/*: any*/),
@@ -280,16 +304,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "9adbc6f1bdcfc91964735ec756d16cb5",
+    "cacheID": "fb09c3cb6a3b317b75f793e1c0217d65",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Sessions {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Sessions {\n    id\n    agentId\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "287b1e3befc5db64d357d8bc63a62618";
+(node as any).hash = "f73d5816879d4e48f77e6aedfefd3364";
 
 export default node;

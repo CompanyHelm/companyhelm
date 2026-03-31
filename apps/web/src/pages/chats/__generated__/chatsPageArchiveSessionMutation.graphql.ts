@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<47df5a56d647e38178968a0f1f9f1e17>>
+ * @generated SignedSource<<afc04d2fb3fe0d45accb30e8c32b9b19>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,8 +19,11 @@ export type chatsPageArchiveSessionMutation$data = {
   readonly ArchiveSession: {
     readonly agentId: string;
     readonly createdAt: string;
+    readonly currentContextTokens: number | null | undefined;
     readonly id: string;
+    readonly isCompacting: boolean;
     readonly isThinking: boolean;
+    readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly reasoningLevel: string;
@@ -69,6 +72,27 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isCompacting",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "maxContextTokens",
         "storageKey": null
       },
       {
@@ -149,16 +173,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "a4221db80926435b18d79d3b7e2ab023",
+    "cacheID": "0399823b5d2bfaf38d862d5460f5e7f1",
     "id": null,
     "metadata": {},
     "name": "chatsPageArchiveSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1042e7aeea6f8952f80fbf9a92d2cb1d";
+(node as any).hash = "9fedf673d78a311132ae207fc5d8144a";
 
 export default node;
