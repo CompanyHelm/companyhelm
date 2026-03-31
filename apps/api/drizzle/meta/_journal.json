@@ -386,6 +386,13 @@
       "when": 1774987599170,
       "tag": "0054_classy_shard",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1774991200000,
+      "tag": "0055_user_session_reads_repair",
+      "breakpoints": true
     }
   ]
 }
