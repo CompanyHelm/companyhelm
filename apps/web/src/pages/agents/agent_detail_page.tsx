@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
 import { EditableAgentField } from "./editable_agent_field";
 import type { AgentCreateProviderOption } from "./create_agent_dialog";
 import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.graphql";
@@ -22,6 +23,12 @@ const agentDetailPageQueryNode = graphql`
       createdAt
       updatedAt
     }
+    AgentSecrets(agentId: $agentId) {
+      id
+      name
+      description
+      envVarName
+    }
     AgentCreateOptions {
       id
       label
@@ -35,6 +42,12 @@ const agentDetailPageQueryNode = graphql`
         description
         reasoningLevels
       }
+    }
+    Secrets {
+      id
+      name
+      description
+      envVarName
     }
   }
 `;
@@ -163,6 +176,18 @@ function AgentDetailPageContent() {
   );
 
   const agent = data.Agent;
+  const agentSecrets = data.AgentSecrets.map((secret) => ({
+    description: secret.description,
+    envVarName: secret.envVarName,
+    id: secret.id,
+    name: secret.name,
+  }));
+  const companySecrets = data.Secrets.map((secret) => ({
+    description: secret.description,
+    envVarName: secret.envVarName,
+    id: secret.id,
+    name: secret.name,
+  }));
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
@@ -336,6 +361,12 @@ function AgentDetailPageContent() {
           />
         </CardContent>
       </Card>
+
+      <AgentSecretDefaultsCard
+        agentId={agent.id}
+        agentSecrets={agentSecrets}
+        companySecrets={companySecrets}
+      />
 
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>

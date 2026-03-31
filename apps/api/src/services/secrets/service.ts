@@ -1,12 +1,18 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import {
+  agentDefaultSecrets,
   agentSessions,
   agentSessionSecrets,
+  agents,
   companySecrets,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { SecretEncryptionService } from "./encryption.ts";
+
+type AgentRecord = {
+  id: string;
+};
 
 type SecretRecord = {
   companyId: string;
@@ -65,9 +71,9 @@ type UpdatableDatabase = {
 };
 
 /**
- * Owns the company secret catalog plus session attachments. It keeps secret values encrypted at
- * rest, resolves session-scoped environment variables just in time, and never exposes plaintext
- * back through GraphQL.
+ * Owns the company secret catalog plus the agent and session attachment layers. It keeps secret
+ * values encrypted at rest, copies agent defaults into sessions at creation time elsewhere, and
+ * never exposes plaintext back through GraphQL.
  */
 @injectable()
 export class SecretService {
@@ -144,6 +150,32 @@ export class SecretService {
     });
   }
 
+  async listAgentSecrets(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+  ): Promise<SecretRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const attachments = await selectableDatabase
+        .select({
+          secretId: agentDefaultSecrets.secretId,
+        })
+        .from(agentDefaultSecrets)
+        .where(and(
+          eq(agentDefaultSecrets.companyId, companyId),
+          eq(agentDefaultSecrets.agentId, agentId),
+        )) as Array<{ secretId: string }>;
+
+      return this.listSecretsByIds(
+        selectableDatabase,
+        companyId,
+        attachments.map((attachment) => attachment.secretId),
+      );
+    });
+  }
+
   async listSessionSecrets(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -162,20 +194,11 @@ export class SecretService {
           eq(agentSessionSecrets.sessionId, sessionId),
         )) as Array<{ secretId: string }>;
 
-      const secretIds = attachments.map((attachment) => attachment.secretId);
-      if (secretIds.length === 0) {
-        return [];
-      }
-
-      const secrets = await selectableDatabase
-        .select(this.secretSelection())
-        .from(companySecrets)
-        .where(and(
-          eq(companySecrets.companyId, companyId),
-          inArray(companySecrets.id, secretIds),
-        )) as SecretRecord[];
-
-      return [...secrets].sort((left, right) => left.name.localeCompare(right.name));
+      return this.listSecretsByIds(
+        selectableDatabase,
+        companyId,
+        attachments.map((attachment) => attachment.secretId),
+      );
     });
   }
 
@@ -296,6 +319,47 @@ export class SecretService {
     });
   }
 
+  async attachSecretToAgent(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      agentId: string;
+      companyId: string;
+      secretId: string;
+      userId: string;
+    },
+  ): Promise<SecretRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
+      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const secret = await this.requireSecret(selectableDatabase, input.companyId, input.secretId);
+      const existingAttachment = await selectableDatabase
+        .select({
+          secretId: agentDefaultSecrets.secretId,
+        })
+        .from(agentDefaultSecrets)
+        .where(and(
+          eq(agentDefaultSecrets.companyId, input.companyId),
+          eq(agentDefaultSecrets.agentId, input.agentId),
+          eq(agentDefaultSecrets.secretId, input.secretId),
+        )) as Array<{ secretId: string }>;
+
+      if (existingAttachment.length === 0) {
+        await insertableDatabase
+          .insert(agentDefaultSecrets)
+          .values({
+            agentId: input.agentId,
+            companyId: input.companyId,
+            createdAt: new Date(),
+            createdByUserId: input.userId,
+            secretId: input.secretId,
+          });
+      }
+
+      return secret;
+    });
+  }
+
   async detachSecretFromSession(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -320,6 +384,36 @@ export class SecretService {
 
       if (!deletedAttachment) {
         throw new Error("Secret is not attached to the session.");
+      }
+
+      return secret;
+    });
+  }
+
+  async detachSecretFromAgent(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+    secretId: string,
+  ): Promise<SecretRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const secret = await this.requireSecret(selectableDatabase, companyId, secretId);
+      const [deletedAttachment] = await deletableDatabase
+        .delete(agentDefaultSecrets)
+        .where(and(
+          eq(agentDefaultSecrets.companyId, companyId),
+          eq(agentDefaultSecrets.agentId, agentId),
+          eq(agentDefaultSecrets.secretId, secretId),
+        ))
+        .returning?.({
+          secretId: agentDefaultSecrets.secretId,
+        }) as Array<{ secretId: string }>;
+
+      if (!deletedAttachment) {
+        throw new Error("Secret is not attached to the agent.");
       }
 
       return secret;
@@ -407,6 +501,48 @@ export class SecretService {
     }
 
     return resolvedEnvVarName;
+  }
+
+  private async listSecretsByIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretIds: string[],
+  ): Promise<SecretRecord[]> {
+    if (secretIds.length === 0) {
+      return [];
+    }
+
+    const secrets = await selectableDatabase
+      .select(this.secretSelection())
+      .from(companySecrets)
+      .where(and(
+        eq(companySecrets.companyId, companyId),
+        inArray(companySecrets.id, secretIds),
+      )) as SecretRecord[];
+
+    return [...secrets].sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  private async requireAgent(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    agentId: string,
+  ): Promise<AgentRecord> {
+    const [agent] = await selectableDatabase
+      .select({
+        id: agents.id,
+      })
+      .from(agents)
+      .where(and(
+        eq(agents.companyId, companyId),
+        eq(agents.id, agentId),
+      )) as AgentRecord[];
+
+    if (!agent) {
+      throw new Error("Agent not found.");
+    }
+
+    return agent;
   }
 
   private async requireSecret(

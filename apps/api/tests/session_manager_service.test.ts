@@ -77,6 +77,18 @@ test("SessionManagerService createSession persists a queued session, stores the 
         };
       }
 
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
       throw new Error("Unexpected select call.");
     },
     insert() {
@@ -222,6 +234,18 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
         };
       }
 
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
       throw new Error("Unexpected select call.");
     },
     insert() {
@@ -285,6 +309,146 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
   assert.equal(insertedValues[0]?.id, "session-client-1");
   assert.equal(insertedValues[0]?.currentModelProviderCredentialModelId, "model-row-2");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "low");
+});
+
+test("SessionManagerService createSession copies agent default secrets into the new session", async () => {
+  const insertedValues: Array<Record<string, unknown> | Record<string, unknown>[]> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "agent-1",
+                  defaultModelProviderCredentialModelId: "model-row-1",
+                  defaultReasoningLevel: "medium",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  createdByUserId: "user-agent-defaults",
+                  secretId: "secret-1",
+                }, {
+                  createdByUserId: null,
+                  secretId: "secret-2",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    insert() {
+      return {
+        values(value: Record<string, unknown> | Record<string, unknown>[]) {
+          insertedValues.push(value);
+          return {
+            async returning() {
+              if (Array.isArray(value)) {
+                return [];
+              }
+
+              return [{
+                id: "session-1",
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "medium",
+                inferredTitle: "Open the repository board.",
+                status: "queued",
+                createdAt: new Date("2026-03-25T03:00:00.000Z"),
+                updatedAt: new Date("2026-03-25T03:00:00.000Z"),
+                userSetTitle: null,
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {},
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction() {
+        return {
+          id: "queued-1",
+        };
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  await service.createSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "agent-1",
+    "Open the repository board.",
+    undefined,
+    undefined,
+    undefined,
+    "user-session-creator",
+  );
+
+  assert.equal(insertedValues.length, 2);
+  const copiedSecretValues = insertedValues[1];
+  assert.ok(Array.isArray(copiedSecretValues));
+  assert.deepEqual(copiedSecretValues, [{
+    companyId: "company-1",
+    createdAt: copiedSecretValues[0]?.createdAt,
+    createdByUserId: "user-session-creator",
+    secretId: "secret-1",
+    sessionId: "session-1",
+  }, {
+    companyId: "company-1",
+    createdAt: copiedSecretValues[1]?.createdAt,
+    createdByUserId: "user-session-creator",
+    secretId: "secret-2",
+    sessionId: "session-1",
+  }]);
 });
 
 test("SessionManagerService archiveSession interrupts running sessions before publishing the session update", async () => {

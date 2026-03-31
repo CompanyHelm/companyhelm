@@ -81,6 +81,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       arguments_.input.modelProviderCredentialModelId,
       arguments_.input.reasoningLevel,
       arguments_.input.sessionId,
+      context.authSession.user.id,
     );
 
     return CreateSessionMutation.serializeRecord(sessionRecord);

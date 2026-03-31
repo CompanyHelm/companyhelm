@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<756d3330b3920a54471bc25c44b6796c>>
+ * @generated SignedSource<<246dc9e082889b22b298774817533b3e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -39,6 +39,18 @@ export type agentDetailPageQuery$data = {
       readonly reasoningLevels: ReadonlyArray<string>;
     }>;
   }>;
+  readonly AgentSecrets: ReadonlyArray<{
+    readonly description: string | null | undefined;
+    readonly envVarName: string;
+    readonly id: string;
+    readonly name: string;
+  }>;
+  readonly Secrets: ReadonlyArray<{
+    readonly description: string | null | undefined;
+    readonly envVarName: string;
+    readonly id: string;
+    readonly name: string;
+  }>;
 };
 export type agentDetailPageQuery = {
   response: agentDetailPageQuery$data;
@@ -74,7 +86,26 @@ v3 = {
   "name": "modelProvider",
   "storageKey": null
 },
-v4 = [
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v5 = [
+  (v1/*: any*/),
+  (v2/*: any*/),
+  (v4/*: any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "envVarName",
+    "storageKey": null
+  }
+],
+v6 = [
   {
     "alias": null,
     "args": [
@@ -146,6 +177,22 @@ v4 = [
   },
   {
     "alias": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "agentId",
+        "variableName": "agentId"
+      }
+    ],
+    "concreteType": "Secret",
+    "kind": "LinkedField",
+    "name": "AgentSecrets",
+    "plural": true,
+    "selections": (v5/*: any*/),
+    "storageKey": null
+  },
+  {
+    "alias": null,
     "args": null,
     "concreteType": "AgentCreateProviderOption",
     "kind": "LinkedField",
@@ -192,13 +239,7 @@ v4 = [
             "storageKey": null
           },
           (v2/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "description",
-            "storageKey": null
-          },
+          (v4/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -211,6 +252,16 @@ v4 = [
       }
     ],
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Secret",
+    "kind": "LinkedField",
+    "name": "Secrets",
+    "plural": true,
+    "selections": (v5/*: any*/),
+    "storageKey": null
   }
 ];
 return {
@@ -219,7 +270,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentDetailPageQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v6/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -228,19 +279,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "agentDetailPageQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "577e49ef70af284975d059e13fea9231",
+    "cacheID": "9a7eb8e609124c953e07ec5977b30131",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b758769ca27c0a88c28d004947af06b9";
+(node as any).hash = "027aefee71b35bd195de7879195a3c25";
 
 export default node;

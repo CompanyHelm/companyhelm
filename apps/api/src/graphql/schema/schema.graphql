@@ -8,6 +8,7 @@ type Query {
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
   Secrets: [Secret!]!
+  AgentSecrets(agentId: ID!): [Secret!]!
   Sessions: [Session!]!
   SessionSecrets(sessionId: ID!): [Secret!]!
   SessionMessages: [SessionMessage!]!
@@ -31,6 +32,7 @@ type Mutation {
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
+  AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
   AttachSecretToSession(input: AttachSecretToSessionInput!): Secret!
   ArchiveSession(input: ArchiveSessionInput!): Session!
   CreateSecret(input: CreateSecretInput!): Secret!
@@ -39,6 +41,7 @@ type Mutation {
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   DeleteSecret(input: DeleteSecretInput!): Secret!
+  DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   PromptSession(input: PromptSessionInput!): Session!
   RefreshGithubInstallationRepositories(
@@ -382,6 +385,16 @@ input UpdateSecretInput {
 
 input AttachSecretToSessionInput {
   sessionId: ID!
+  secretId: ID!
+}
+
+input AttachSecretToAgentInput {
+  agentId: ID!
+  secretId: ID!
+}
+
+input DetachSecretFromAgentInput {
+  agentId: ID!
   secretId: ID!
 }
 

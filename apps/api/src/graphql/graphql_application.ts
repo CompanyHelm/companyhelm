@@ -11,6 +11,7 @@ import { RedisCompanyScopedService } from "../services/redis/company_scoped_serv
 import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddGithubInstallationMutation } from "./mutations/add_github_installation.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
+import { AttachSecretToAgentMutation } from "./mutations/attach_secret_to_agent.ts";
 import { AttachSecretToSessionMutation } from "./mutations/attach_secret_to_session.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
@@ -22,6 +23,7 @@ import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
+import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
@@ -36,6 +38,7 @@ import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
+import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
 import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
@@ -65,9 +68,11 @@ export class GraphqlApplication {
   private readonly addAgentMutation: AddAgentMutation;
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
+  private readonly attachSecretToAgentMutation: AttachSecretToAgentMutation;
   private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
+  private readonly agentSecretsQueryResolver: AgentSecretsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
   private readonly environmentsQueryResolver: EnvironmentsQueryResolver;
   private readonly archiveSessionMutation: ArchiveSessionMutation;
@@ -80,6 +85,7 @@ export class GraphqlApplication {
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
+  private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
@@ -186,16 +192,22 @@ export class GraphqlApplication {
     refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
     @inject(EnvironmentsQueryResolver) environmentsQueryResolver: EnvironmentsQueryResolver = new EnvironmentsQueryResolver(),
+    @inject(AttachSecretToAgentMutation)
+    attachSecretToAgentMutation?: AttachSecretToAgentMutation,
     @inject(AttachSecretToSessionMutation)
     attachSecretToSessionMutation?: AttachSecretToSessionMutation,
     @inject(CreateSecretMutation)
     createSecretMutation?: CreateSecretMutation,
     @inject(DeleteSecretMutation)
     deleteSecretMutation?: DeleteSecretMutation,
+    @inject(DetachSecretFromAgentMutation)
+    detachSecretFromAgentMutation?: DetachSecretFromAgentMutation,
     @inject(UpdateSecretMutation)
     updateSecretMutation?: UpdateSecretMutation,
     @inject(DetachSecretFromSessionMutation)
     detachSecretFromSessionMutation?: DetachSecretFromSessionMutation,
+    @inject(AgentSecretsQueryResolver)
+    agentSecretsQueryResolver?: AgentSecretsQueryResolver,
     @inject(SecretsQueryResolver)
     secretsQueryResolver?: SecretsQueryResolver,
     @inject(SessionSecretsQueryResolver)
@@ -207,10 +219,14 @@ export class GraphqlApplication {
     this.addAgentMutation = addAgentMutation;
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
+    this.attachSecretToAgentMutation = attachSecretToAgentMutation
+      ?? new AttachSecretToAgentMutation(defaultSecretService);
     this.attachSecretToSessionMutation = attachSecretToSessionMutation
       ?? new AttachSecretToSessionMutation(defaultSecretService);
     this.agentQueryResolver = agentQueryResolver;
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
+    this.agentSecretsQueryResolver = agentSecretsQueryResolver
+      ?? new AgentSecretsQueryResolver(defaultSecretService);
     this.agentsQueryResolver = agentsQueryResolver;
     this.environmentsQueryResolver = environmentsQueryResolver;
     this.archiveSessionMutation = archiveSessionMutation;
@@ -225,6 +241,8 @@ export class GraphqlApplication {
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
+      ?? new DetachSecretFromAgentMutation(defaultSecretService);
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
@@ -301,6 +319,7 @@ export class GraphqlApplication {
         Query: {
           Agent: this.agentQueryResolver.execute,
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
+          AgentSecrets: this.agentSecretsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,
           Environments: this.environmentsQueryResolver.execute,
           GithubAppConfig: this.githubAppConfigQueryResolver.execute,
@@ -326,6 +345,7 @@ export class GraphqlApplication {
           StopEnvironment: this.stopEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
+          AttachSecretToAgent: this.attachSecretToAgentMutation.execute,
           AttachSecretToSession: this.attachSecretToSessionMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
           CreateSecret: this.createSecretMutation.execute,
@@ -336,6 +356,7 @@ export class GraphqlApplication {
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           DeleteSecret: this.deleteSecretMutation.execute,
+          DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,

@@ -83,6 +83,8 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       userMessage: string,
       modelProviderCredentialModelId?: string | null,
       reasoningLevel?: string | null,
+      _sessionId?: string | null,
+      userId?: string | null,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
@@ -90,6 +92,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       assert.equal(userMessage, "Draft the onboarding email.");
       assert.equal(modelProviderCredentialModelId, "model-row-1");
       assert.equal(reasoningLevel, "high");
+      assert.equal(userId, "user-123");
 
       return {
         id: "session-1",

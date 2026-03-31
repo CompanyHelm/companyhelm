@@ -293,6 +293,26 @@ export const companySecrets = pgTable("company_secrets", {
   ),
 }));
 
+export const agentDefaultSecrets = pgTable("agent_default_secrets", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+  secretId: uuid("secret_id")
+    .references(() => companySecrets.id, { onDelete: "cascade" })
+    .notNull(),
+  createdByUserId: uuid("created_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.agentId, table.secretId] }),
+  companyIdIndex: index("agent_default_secrets_company_id_idx").on(table.companyId),
+  agentIdIndex: index("agent_default_secrets_agent_id_idx").on(table.agentId),
+  secretIdIndex: index("agent_default_secrets_secret_id_idx").on(table.secretId),
+}));
+
 // avaialbe models based on the model provider credential
 export const modelProviderCredentialModels = pgTable("model_provider_credential_models", {
   id: uuid("id")
@@ -326,8 +346,7 @@ export const agentSessionSecrets = pgTable("agent_session_secrets", {
     .references(() => companySecrets.id, { onDelete: "cascade" })
     .notNull(),
   createdByUserId: uuid("created_by_user_id")
-    .references(() => users.id, { onDelete: "restrict" })
-    .notNull(),
+    .references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.sessionId, table.secretId] }),

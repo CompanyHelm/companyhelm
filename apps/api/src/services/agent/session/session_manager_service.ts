@@ -2,7 +2,13 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { ApiLogger } from "../../../log/api_logger.ts";
-import { agents, agentSessions, modelProviderCredentialModels } from "../../../db/schema.ts";
+import {
+  agentDefaultSecrets,
+  agentSessions,
+  agentSessionSecrets,
+  agents,
+  modelProviderCredentialModels,
+} from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
@@ -32,6 +38,11 @@ type ModelRecord = {
   reasoningLevels: string[] | null;
 };
 
+type AgentDefaultSecretRecord = {
+  createdByUserId: string | null;
+  secretId: string;
+};
+
 type SessionRecord = {
   agentId: string;
   createdAt: Date;
@@ -57,7 +68,7 @@ type SelectableDatabase = {
 
 type InsertableDatabase = {
   insert(table: unknown): {
-    values(value: Record<string, unknown>): {
+    values(value: Record<string, unknown> | Record<string, unknown>[]): {
       returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
     };
   };
@@ -113,6 +124,7 @@ export class SessionManagerService {
     modelProviderCredentialModelId?: string | null,
     reasoningLevel?: string | null,
     sessionId?: string | null,
+    userId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -171,6 +183,15 @@ export class SessionManagerService {
         throw new Error("Failed to create session.");
       }
 
+      await this.copyAgentDefaultSecretsToSession(
+        selectableDatabase,
+        insertableDatabase,
+        companyId,
+        agentId,
+        createdSessionRecord.id,
+        userId,
+      );
+
       await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
         companyId,
         sessionId: createdSessionRecord.id,
@@ -196,6 +217,40 @@ export class SessionManagerService {
     }, "created agent session");
 
     return sessionRecord;
+  }
+
+  private async copyAgentDefaultSecretsToSession(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+    agentId: string,
+    sessionId: string,
+    userId?: string | null,
+  ): Promise<void> {
+    const defaultSecrets = await selectableDatabase
+      .select({
+        createdByUserId: agentDefaultSecrets.createdByUserId,
+        secretId: agentDefaultSecrets.secretId,
+      })
+      .from(agentDefaultSecrets)
+      .where(and(
+        eq(agentDefaultSecrets.companyId, companyId),
+        eq(agentDefaultSecrets.agentId, agentId),
+      )) as AgentDefaultSecretRecord[];
+
+    if (defaultSecrets.length === 0) {
+      return;
+    }
+
+    await insertableDatabase
+      .insert(agentSessionSecrets)
+      .values(defaultSecrets.map((defaultSecret) => ({
+        companyId,
+        createdAt: new Date(),
+        createdByUserId: userId ?? defaultSecret.createdByUserId,
+        secretId: defaultSecret.secretId,
+        sessionId,
+      })));
   }
 
   async archiveSession(
