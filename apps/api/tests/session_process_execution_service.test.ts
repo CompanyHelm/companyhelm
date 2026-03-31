@@ -433,6 +433,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
 
 test("SessionProcessExecutionService aborts the active prompt when an interrupt signal arrives", async () => {
   const abortCalls: string[] = [];
+  const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
   const disposeCalls: string[] = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const subscribedListeners = new Map<string, () => void>();
@@ -593,6 +594,12 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
       async deleteProcessed() {
         throw new Error("deleteProcessed should not be called after an interrupt.");
       },
+      async deleteAllForSession(_transactionProvider: unknown, companyId: string, sessionId: string) {
+        clearQueuedCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
       async markPending() {
         return undefined;
       },
@@ -606,8 +613,157 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
   await promptStarted;
   subscribedListeners.get("company:company-1:session:session-1:interrupt")?.();
 
-  await assert.rejects(executionPromise, /Session interrupted\./);
+  await executionPromise;
   assert.deepEqual(abortCalls, ["session-1"]);
+  assert.deepEqual(clearQueuedCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(releaseCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+    token: "lease-token",
+  }]);
+});
+
+test("SessionProcessExecutionService clears queued work and exits quietly for archived sessions", async () => {
+  const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const disposeCalls: string[] = [];
+  const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
+  let selectCallCount = 0;
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        assert.equal(companyId, "company-1");
+        return callback({
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        agentId: "agent-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentReasoningLevel: "high",
+                        status: "archived",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
+          },
+        });
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {},
+          error() {},
+        };
+      },
+    } as never,
+    {
+      async ensureSession() {
+        throw new Error("ensureSession should not run for archived sessions.");
+      },
+      async prompt() {
+        throw new Error("prompt should not run for archived sessions.");
+      },
+      dispose(sessionId: string) {
+        disposeCalls.push(sessionId);
+      },
+    } as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+          duplicate() {
+            return {
+              isOpen: true,
+              async connect() {
+                return this;
+              },
+              async subscribe() {},
+              async unsubscribe() {},
+              async quit() {},
+            };
+          },
+        };
+      },
+    } as never,
+    {
+      async acquire(companyId: string, sessionId: string) {
+        return {
+          companyId,
+          sessionId,
+          token: "lease-token",
+        };
+      },
+      async heartbeat() {
+        return true;
+      },
+      async release(handle: { companyId: string; sessionId: string; token: string }) {
+        releaseCalls.push(handle);
+      },
+    } as never,
+    {
+      async enqueueSessionWake() {
+        throw new Error("Archived sessions should not enqueue wake jobs.");
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        return [{
+          createdAt: new Date("2026-03-26T12:00:00.000Z"),
+          id: "queued-1",
+          images: [],
+          sessionId: "session-1",
+          shouldSteer: false,
+          status: "pending",
+          text: "Investigate the regression.",
+          updatedAt: new Date("2026-03-26T12:00:00.000Z"),
+        }];
+      },
+      async deleteAllForSession(_transactionProvider: unknown, companyId: string, sessionId: string) {
+        clearQueuedCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+      async listPendingSteer() {
+        throw new Error("listPendingSteer should not run for archived sessions.");
+      },
+      async markProcessing() {
+        throw new Error("markProcessing should not run for archived sessions.");
+      },
+      async deleteProcessed() {
+        throw new Error("deleteProcessed should not run for archived sessions.");
+      },
+      async markPending() {
+        throw new Error("markPending should not run for archived sessions.");
+      },
+      async hasPendingMessages() {
+        throw new Error("hasPendingMessages should not run for archived sessions.");
+      },
+    } as never,
+  );
+
+  await service.execute("company-1", "session-1");
+
+  assert.deepEqual(clearQueuedCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
   assert.deepEqual(disposeCalls, ["session-1"]);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",

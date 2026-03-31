@@ -283,6 +283,29 @@ export class SessionQueuedMessageService {
     });
   }
 
+  async deleteAllForSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await transactionProvider.transaction(async (tx) => {
+      await this.deleteAllForSessionInTransaction(tx as DeletableDatabase, companyId, sessionId);
+    });
+  }
+
+  async deleteAllForSessionInTransaction(
+    deletableDatabase: DeletableDatabase,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await deletableDatabase
+      .delete(sessionQueuedMessages)
+      .where(and(
+        eq(sessionQueuedMessages.companyId, companyId),
+        eq(sessionQueuedMessages.sessionId, sessionId),
+      ));
+  }
+
   async hasPendingMessages(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

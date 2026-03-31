@@ -119,6 +119,10 @@ export class SessionProcessExecutionService {
       }
 
       const runtimeConfig = await this.loadRuntimeConfig(transactionProvider, companyId, sessionId);
+      if (!runtimeConfig) {
+        await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+        return;
+      }
       await this.piMonoSessionManagerService.ensureSession(
         transactionProvider,
         sessionId,
@@ -178,7 +182,8 @@ export class SessionProcessExecutionService {
           throw leaseLossError;
         }
         if (interruptError) {
-          throw interruptError;
+          await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+          return;
         }
         await this.sessionQueuedMessageService.deleteProcessed(
           transactionProvider,
@@ -192,6 +197,10 @@ export class SessionProcessExecutionService {
           sessionId,
         );
       } catch (error) {
+        if (interruptError) {
+          await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+          return;
+        }
         await this.sessionQueuedMessageService.markPending(
           transactionProvider,
           companyId,
@@ -275,7 +284,7 @@ export class SessionProcessExecutionService {
     modelId: string;
     providerId: string;
     reasoningLevel: string;
-  }> {
+  } | null> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const [sessionRow] = await selectableDatabase
@@ -294,7 +303,7 @@ export class SessionProcessExecutionService {
         throw new Error("Session not found.");
       }
       if (sessionRow.status === "archived") {
-        throw new Error("Archived sessions cannot be processed.");
+        return null;
       }
 
       const [modelRow] = await selectableDatabase
@@ -334,6 +343,20 @@ export class SessionProcessExecutionService {
         reasoningLevel: sessionRow.currentReasoningLevel,
       };
     });
+  }
+
+  private async clearQueuedMessages(
+    transactionProvider: TransactionProviderInterface,
+    redisCompanyScopedService: RedisCompanyScopedService,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await this.sessionQueuedMessageService.deleteAllForSession(
+      transactionProvider,
+      companyId,
+      sessionId,
+    );
+    await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
   }
 
   private selectPrimaryBatch(

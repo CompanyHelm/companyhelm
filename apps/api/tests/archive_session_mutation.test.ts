@@ -93,7 +93,7 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     },
   };
 
-  await new GraphqlApplication(
+  const graphqlApplication = new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -118,7 +118,13 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     undefined,
     undefined,
     new ArchiveSessionMutation(sessionManagerService as never),
-  ).register(app);
+  );
+  (
+    graphqlApplication as unknown as {
+      archiveSessionMutation: ArchiveSessionMutation;
+    }
+  ).archiveSessionMutation = new ArchiveSessionMutation(sessionManagerService as never);
+  await graphqlApplication.register(app);
 
   const response = await app.inject({
     method: "POST",

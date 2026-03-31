@@ -459,6 +459,7 @@ test("SessionManagerService createSession copies agent default secrets into the 
 
 test("SessionManagerService archiveSession interrupts running sessions before publishing the session update", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const deleteQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
@@ -551,7 +552,14 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
       },
     } as SessionProcessQueueService,
     new SessionProcessQueuedNames(),
-    new SessionQueuedMessageService(),
+    {
+      async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
+        deleteQueuedCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as SessionQueuedMessageService,
   );
 
   const sessionRecord = await service.archiveSession(
@@ -563,9 +571,17 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
   assert.equal(sessionRecord.status, "archived");
   assert.equal(updatedValues[0]?.status, "archived");
   assert.ok(updatedValues[0]?.updated_at instanceof Date);
+  assert.deepEqual(deleteQueuedCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
   assert.deepEqual(publishCalls, [
     {
       channel: "company:company-1:session:session-1:interrupt",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:queued:update",
       message: "",
     },
     {
@@ -586,6 +602,7 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
 });
 
 test("SessionManagerService archiveSession does not interrupt stopped sessions", async () => {
+  const deleteQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
@@ -678,7 +695,14 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
       },
     } as SessionProcessQueueService,
     new SessionProcessQueuedNames(),
-    new SessionQueuedMessageService(),
+    {
+      async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
+        deleteQueuedCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as SessionQueuedMessageService,
   );
 
   const sessionRecord = await service.archiveSession(
@@ -689,10 +713,20 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
 
   assert.equal(sessionRecord.status, "archived");
   assert.equal(updatedValues[0]?.status, "archived");
-  assert.deepEqual(publishCalls, [{
-    channel: "company:company-1:session:session-1:update",
-    message: "",
+  assert.deepEqual(deleteQueuedCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
   }]);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+  ]);
 });
 
 test("SessionManagerService prompt queues the message, publishes session updates, and nudges steering when requested", async () => {

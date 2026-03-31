@@ -87,6 +87,12 @@ type UpdatableDatabase = {
   };
 };
 
+type DeletableDatabase = {
+  delete(table: unknown): {
+    where(condition: unknown): Promise<unknown>;
+  };
+};
+
 /**
  * Owns the persisted ingress for agent-session work. Its scope is resolving the session defaults,
  * storing session rows and queued user messages in Postgres, and nudging the BullMQ wake queue plus
@@ -264,6 +270,7 @@ export class SessionManagerService {
   ): Promise<SessionRecord> {
     const { shouldInterrupt, sessionRecord } = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
       const [existingSession] = await selectableDatabase
         .select({
@@ -299,6 +306,12 @@ export class SessionManagerService {
         throw new Error("Session not found.");
       }
 
+      await this.sessionQueuedMessageService.deleteAllForSessionInTransaction(
+        deletableDatabase,
+        companyId,
+        sessionId,
+      );
+
       const currentModelRecord = await this.resolveModelRecordById(
         selectableDatabase,
         companyId,
@@ -317,6 +330,7 @@ export class SessionManagerService {
     if (shouldInterrupt) {
       await this.publishInterrupt(companyId, sessionRecord.id);
     }
+    await this.publishQueuedMessagesUpdate(companyId, sessionRecord.id);
     await this.publishSessionUpdate(companyId, sessionRecord.id);
 
     this.logger.info({
