@@ -96,6 +96,20 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                   return {
                     async where() {
                       return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         modelId: "gpt-5.4",
                         modelProviderCredentialId: "credential-1",
                       }];
@@ -105,7 +119,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -230,6 +244,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
   assert.deepEqual(ensureSessionCalls, [{
     runtimeConfig: {
       agentId: "agent-1",
+      agentName: "Support Agent",
       apiKey: "sk-openai",
       companyId: "company-1",
       modelId: "gpt-5.4",
@@ -302,6 +317,34 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                   return {
                     async where() {
                       return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         modelId: "gpt-5.4",
                         modelProviderCredentialId: "credential-1",
                       }];
@@ -311,7 +354,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -485,6 +528,20 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
                   return {
                     async where() {
                       return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         modelId: "gpt-5.4",
                         modelProviderCredentialId: "credential-1",
                       }];
@@ -494,7 +551,7 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {

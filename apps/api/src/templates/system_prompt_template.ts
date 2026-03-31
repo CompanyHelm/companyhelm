@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import nunjucks from "nunjucks";
+import { SystemPromptTemplateContext } from "./system_prompt_template_context.ts";
 
 /**
  * Loads and renders the PI Mono system prompt template from the API source tree so the prompt text
@@ -11,7 +12,7 @@ export class SystemPromptTemplate {
     "utf8",
   ).trim();
 
-  render(context: Record<string, string> = {}): string {
+  render(context: SystemPromptTemplateContext): string {
     return nunjucks.renderString(this.templateSource, context).trim();
   }
 }

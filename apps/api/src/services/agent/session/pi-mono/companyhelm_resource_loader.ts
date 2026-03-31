@@ -3,6 +3,7 @@ import {
   createExtensionRuntime,
 } from "@mariozechner/pi-coding-agent";
 import { SystemPromptTemplate } from "../../../../templates/system_prompt_template.ts";
+import { SystemPromptTemplateContext } from "../../../../templates/system_prompt_template_context.ts";
 
 /**
  * Owns the CompanyHelm PI Mono resource surface. Its scope is replacing the upstream default
@@ -49,8 +50,11 @@ export class CompanyHelmResourceLoader implements ResourceLoader {
     themes: [],
   };
 
-  constructor(systemPromptTemplate: SystemPromptTemplate = new SystemPromptTemplate()) {
-    this.systemPrompt = systemPromptTemplate.render();
+  constructor(
+    systemPromptContext: SystemPromptTemplateContext,
+    systemPromptTemplate: SystemPromptTemplate = new SystemPromptTemplate(),
+  ) {
+    this.systemPrompt = systemPromptTemplate.render(systemPromptContext);
   }
 
   getExtensions(): ReturnType<ResourceLoader["getExtensions"]> {

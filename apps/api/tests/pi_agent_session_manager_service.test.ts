@@ -183,6 +183,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     "session-1",
     {
       agentId: "agent-1",
+      agentName: "Support Agent",
       apiKey: "sk-test",
       companyId: "company-1",
       modelId: "gpt-5.4",
@@ -290,6 +291,18 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.match(
     createAgentSessionOptions.resourceLoader?.getSystemPrompt() ?? "",
     /do not have local filesystem access/i,
+  );
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getSystemPrompt() ?? "",
+    /Agent name:\s+Support Agent/i,
+  );
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getSystemPrompt() ?? "",
+    /Agent id:\s+agent-1/i,
+  );
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getSystemPrompt() ?? "",
+    /Session id:\s+session-1/i,
   );
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
@@ -411,6 +424,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     "session-1",
     {
       agentId: "agent-1",
+      agentName: "Support Agent",
       apiKey: "sk-test",
       companyId: "company-1",
       modelId: "gpt-5.4",
@@ -445,6 +459,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     "session-1",
     {
       agentId: "agent-1",
+      agentName: "Support Agent",
       apiKey: "sk-test-2",
       companyId: "company-1",
       modelId: "gpt-5.4",

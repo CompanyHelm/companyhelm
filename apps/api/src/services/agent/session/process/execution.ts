@@ -4,7 +4,7 @@ import type { ImageContent } from "@mariozechner/pi-ai";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { agentSessions, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
+import { agentSessions, agents, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
@@ -23,6 +23,10 @@ type SessionRuntimeRow = {
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   status: string;
+};
+
+type AgentRow = {
+  name: string;
 };
 
 type ModelRow = {
@@ -279,6 +283,7 @@ export class SessionProcessExecutionService {
     sessionId: string,
   ): Promise<{
     agentId: string;
+    agentName: string;
     apiKey: string;
     companyId: string;
     modelId: string;
@@ -304,6 +309,19 @@ export class SessionProcessExecutionService {
       }
       if (sessionRow.status === "archived") {
         return null;
+      }
+
+      const [agentRow] = await selectableDatabase
+        .select({
+          name: agents.name,
+        })
+        .from(agents)
+        .where(and(
+          eq(agents.companyId, companyId),
+          eq(agents.id, sessionRow.agentId),
+        )) as AgentRow[];
+      if (!agentRow) {
+        throw new Error("Session agent not found.");
       }
 
       const [modelRow] = await selectableDatabase
@@ -336,6 +354,7 @@ export class SessionProcessExecutionService {
 
       return {
         agentId: sessionRow.agentId,
+        agentName: agentRow.name,
         apiKey: credentialRow.encryptedApiKey,
         companyId,
         modelId: modelRow.modelId,

@@ -33,9 +33,11 @@ import { RedisService } from "../../../redis/service.ts";
 import { TaskService } from "../../../task_service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
+import { SystemPromptTemplateContext } from "../../../../templates/system_prompt_template_context.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
+  agentName: string;
   apiKey: string;
   companyId: string;
   modelId: string;
@@ -162,7 +164,13 @@ export class PiMonoSessionManagerService {
       id: sessionId,
     });
     const storedContextMessages = await this.loadStoredContextMessages(transactionProvider, sessionId);
-    const resourceLoader = new CompanyHelmResourceLoader();
+    const resourceLoader = new CompanyHelmResourceLoader(
+      new SystemPromptTemplateContext(
+        runtimeConfig.agentId,
+        runtimeConfig.agentName,
+        sessionId,
+      ),
+    );
     await resourceLoader.reload();
 
     const initializedTools = agentToolsService.initializeTools();
