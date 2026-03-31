@@ -8,7 +8,9 @@
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "lint": "eslint server.ts src tests",
-    "test": "vitest run"
+    "test": "npm run check && vitest run",
+    "typecheck": "npm exec -- tsc -p tsconfig.json",
+    "check": "npm run lint && npm run typecheck"
   },
   "devDependencies": {
     "@types/nunjucks": "^3.2.6",
@@ -26,7 +28,6 @@
     "bullmq": "^5.71.1",
     "commander": "^14.0.3",
     "drizzle-orm": "^0.45.1",
-    "e2b": "^2.18.0",
     "fastify": "^5.2.1",
     "graphql-type-json": "^0.3.2",
     "inversify": "^8.1.0",
