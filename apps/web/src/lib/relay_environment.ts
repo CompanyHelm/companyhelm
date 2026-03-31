@@ -1,17 +1,27 @@
 import { Environment, Network, RecordSource, Store } from "relay-runtime";
 import { config } from "@/config";
+import { GraphqlSubscriptionConnectionStore } from "./graphql_subscription_connection_store";
 import { GraphqlSubscriptionClient } from "./graphql_subscription_client";
 
 type GetToken = () => Promise<string | null>;
 
 /**
- * Creates the Relay environment used by the browser app.
+ * Owns the Relay environment together with the live GraphQL subscription transport state that the
+ * UI needs for reconnect-aware screens like `/chats`.
  */
 export class RelayEnvironment {
-  static create(getToken: GetToken) {
-    const subscriptionClient = new GraphqlSubscriptionClient(config.graphqlUrl, getToken);
+  readonly environment: Environment;
+  readonly subscriptionConnectionStore: GraphqlSubscriptionConnectionStore;
 
-    return new Environment({
+  constructor(getToken: GetToken) {
+    this.subscriptionConnectionStore = new GraphqlSubscriptionConnectionStore();
+    const subscriptionClient = new GraphqlSubscriptionClient(
+      config.graphqlUrl,
+      getToken,
+      this.subscriptionConnectionStore,
+    );
+
+    this.environment = new Environment({
       network: Network.create(
         async (parameters, variables) => {
           if (!parameters.text) {

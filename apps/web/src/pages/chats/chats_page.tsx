@@ -15,6 +15,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
+import { useGraphqlSubscriptionConnectionStatus } from "@/components/relay_environment_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -838,6 +839,21 @@ function ChatsThinkingIndicator({ visible }: { visible: boolean }) {
   );
 }
 
+function ChatsReconnectBanner({ visible }: { visible: boolean }) {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <div className="shrink-0 px-2 pt-4 md:px-3 md:pt-5">
+      <div className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <Loader2Icon className="size-3.5 animate-spin" />
+        <span>Reconnecting live updates...</span>
+      </div>
+    </div>
+  );
+}
+
 function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
 ) {
@@ -1092,6 +1108,7 @@ function ChatsTranscript({
 function ChatsPageContent() {
   const navigate = useNavigate();
   const environment = useRelayEnvironment();
+  const subscriptionConnectionStatus = useGraphqlSubscriptionConnectionStatus();
   const search = useSearch({ strict: false }) as ChatsPageSearch;
   const isMobile = useIsMobile();
   const [draftMessage, setDraftMessage] = useState("");
@@ -1211,6 +1228,7 @@ function ChatsPageContent() {
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
+  const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting";
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
@@ -2394,6 +2412,8 @@ function ChatsPageContent() {
       {environmentDetailsPanel}
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+        <ChatsReconnectBanner visible={isReconnectingLiveUpdates} />
+
         {errorMessage ? (
           <div className="shrink-0 px-2 pt-4 md:px-3 md:pt-5">
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
