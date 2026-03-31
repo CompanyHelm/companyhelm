@@ -161,6 +161,60 @@ export class SessionQueuedMessageService {
     return queuedMessages.filter((queuedMessage) => queuedMessage.shouldSteer);
   }
 
+  async markSteer(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    queuedMessageId: string,
+  ): Promise<QueuedSessionMessageRecord> {
+    const sessionId = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const [queuedMessage] = await selectableDatabase
+        .select({
+          companyId: sessionQueuedMessages.companyId,
+          createdAt: sessionQueuedMessages.createdAt,
+          id: sessionQueuedMessages.id,
+          sessionId: sessionQueuedMessages.sessionId,
+          shouldSteer: sessionQueuedMessages.shouldSteer,
+          status: sessionQueuedMessages.status,
+          text: sessionQueuedMessages.text,
+          updatedAt: sessionQueuedMessages.updatedAt,
+        })
+        .from(sessionQueuedMessages)
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          eq(sessionQueuedMessages.id, queuedMessageId),
+        )) as QueuedMessageRow[];
+      if (!queuedMessage) {
+        throw new Error("Queued message not found.");
+      }
+      if (queuedMessage.status !== "pending") {
+        throw new Error("Only pending queued messages can be steered.");
+      }
+
+      await updatableDatabase
+        .update(sessionQueuedMessages)
+        .set({
+          shouldSteer: true,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          eq(sessionQueuedMessages.id, queuedMessageId),
+        ));
+
+      return queuedMessage.sessionId;
+    });
+
+    const queuedMessages = await this.listPending(transactionProvider, companyId, sessionId);
+    const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId);
+    if (!queuedMessage) {
+      throw new Error("Queued message not found.");
+    }
+
+    return queuedMessage;
+  }
+
   async markPending(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

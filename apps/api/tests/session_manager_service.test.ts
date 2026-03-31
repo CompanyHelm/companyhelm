@@ -172,10 +172,16 @@ test("SessionManagerService createSession persists a queued session, stores the 
     shouldSteer: false,
     text: userMessage,
   }]);
-  assert.deepEqual(publishCalls, [{
-    channel: "company:company-1:session:session-1:update",
-    message: "",
-  }]);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+  ]);
   assert.deepEqual(wakeCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
@@ -826,6 +832,10 @@ test("SessionManagerService prompt queues the message, publishes session updates
   }]);
   assert.deepEqual(publishCalls, [
     {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+    {
       channel: "company:company-1:session:session-1:update",
       message: "",
     },
@@ -845,6 +855,77 @@ test("SessionManagerService prompt queues the message, publishes session updates
       reasoningLevel: "medium",
       sessionId: "session-1",
       shouldSteer: true,
+    },
+  }]);
+});
+
+test("SessionManagerService steerQueuedMessage marks the queued row and publishes queue plus steer updates", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while steering an existing queued row.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async markSteer() {
+        return {
+          createdAt: new Date("2026-03-31T17:00:00.000Z"),
+          id: "queued-1",
+          images: [],
+          sessionId: "session-1",
+          shouldSteer: true,
+          status: "pending",
+          text: "Focus only on the failing integration test.",
+          updatedAt: new Date("2026-03-31T17:01:00.000Z"),
+        };
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  const queuedMessage = await service.steerQueuedMessage(
+    SessionManagerServiceTestHarness.createTransactionProviderMock({}) as never,
+    "company-1",
+    "queued-1",
+  );
+
+  assert.equal(queuedMessage.shouldSteer, true);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:steer",
+      message: "",
+    },
+  ]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "steered queued session message",
+    payload: {
+      companyId: "company-1",
+      queuedMessageId: "queued-1",
+      sessionId: "session-1",
     },
   }]);
 });

@@ -200,3 +200,26 @@ test("SessionQueuedMessageService reports whether a session still has pending ro
 
   assert.equal(await service.hasPendingMessages(harness.transactionProvider as never, "company-1", "session-1"), true);
 });
+
+test("SessionQueuedMessageService marks one pending queued row as steer", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+
+  const queuedMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Please narrow the response to migration failures.",
+  });
+
+  const steeredMessage = await service.markSteer(
+    harness.transactionProvider as never,
+    "company-1",
+    queuedMessage.id,
+  );
+
+  assert.equal(steeredMessage.id, queuedMessage.id);
+  assert.equal(steeredMessage.shouldSteer, true);
+  assert.equal(harness.queuedMessages[0]?.shouldSteer, true);
+  assert.ok(harness.queuedMessages[0]?.updatedAt instanceof Date);
+});

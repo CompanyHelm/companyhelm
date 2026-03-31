@@ -14,7 +14,10 @@ import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts
 import { RedisService } from "../../redis/service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueueService } from "./process/queue.ts";
-import { SessionQueuedMessageService } from "./process/queued_messages.ts";
+import {
+  SessionQueuedMessageService,
+  type QueuedSessionMessageRecord,
+} from "./process/queued_messages.ts";
 import { SessionProcessQueuedNames } from "./process/queued_names.ts";
 
 type AgentRecord = {
@@ -205,6 +208,7 @@ export class SessionManagerService {
       };
     });
 
+    await this.publishQueuedMessagesUpdate(companyId, sessionRecord.id);
     await this.publishSessionUpdate(companyId, sessionRecord.id);
     await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionRecord.id);
 
@@ -403,6 +407,7 @@ export class SessionManagerService {
       };
     });
 
+    await this.publishQueuedMessagesUpdate(companyId, sessionId);
     await this.publishSessionUpdate(companyId, sessionId);
     await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
     if (shouldSteer) {
@@ -418,6 +423,29 @@ export class SessionManagerService {
     }, "queued session prompt");
 
     return sessionRecord;
+  }
+
+  async steerQueuedMessage(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    queuedMessageId: string,
+  ): Promise<QueuedSessionMessageRecord> {
+    const queuedMessage = await this.sessionQueuedMessageService.markSteer(
+      transactionProvider,
+      companyId,
+      queuedMessageId,
+    );
+
+    await this.publishQueuedMessagesUpdate(companyId, queuedMessage.sessionId);
+    await this.publishSteer(companyId, queuedMessage.sessionId);
+
+    this.logger.info({
+      companyId,
+      queuedMessageId,
+      sessionId: queuedMessage.sessionId,
+    }, "steered queued session message");
+
+    return queuedMessage;
   }
 
   private async resolveDefaultModelRecord(
@@ -561,5 +589,10 @@ export class SessionManagerService {
   private async publishSessionUpdate(companyId: string, sessionId: string): Promise<void> {
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionUpdateChannel(sessionId));
+  }
+
+  private async publishQueuedMessagesUpdate(companyId: string, sessionId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdateChannel(sessionId));
   }
 }

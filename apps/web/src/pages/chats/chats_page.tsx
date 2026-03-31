@@ -14,8 +14,11 @@ import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageA
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
+import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
+import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
+import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
 const chatsPageQueryNode = graphql`
@@ -96,6 +99,20 @@ const chatsPageTranscriptQueryNode = graphql`
   }
 `;
 
+const chatsPageQueuedMessagesQueryNode = graphql`
+  query chatsPageQueuedMessagesQuery($sessionId: ID!) {
+    SessionQueuedMessages(sessionId: $sessionId) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const chatsPageCreateSessionMutationNode = graphql`
   mutation chatsPageCreateSessionMutation($input: CreateSessionInput!) {
     CreateSession(input: $input) {
@@ -151,6 +168,20 @@ const chatsPagePromptSessionMutationNode = graphql`
   }
 `;
 
+const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
+  mutation chatsPageSteerSessionQueuedMessageMutation($input: SteerSessionQueuedMessageInput!) {
+    SteerSessionQueuedMessage(input: $input) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const chatsPageSessionUpdatedSubscriptionNode = graphql`
   subscription chatsPageSessionUpdatedSubscription {
     SessionUpdated {
@@ -166,6 +197,20 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
       createdAt
       updatedAt
       userSetTitle
+    }
+  }
+`;
+
+const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
+  subscription chatsPageSessionQueuedMessagesUpdatedSubscription($sessionId: ID!) {
+    SessionQueuedMessagesUpdated(sessionId: $sessionId) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -200,6 +245,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
+type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
 type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
 type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
 type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
@@ -361,6 +407,12 @@ function resolveToolDisplayName(toolName: string): string {
   }
 
   return toolName;
+}
+
+function sortQueuedMessages(queuedMessages: ReadonlyArray<QueuedMessageRecord>): QueuedMessageRecord[] {
+  return [...queuedMessages].sort((leftMessage, rightMessage) => {
+    return new Date(leftMessage.createdAt).getTime() - new Date(rightMessage.createdAt).getTime();
+  });
 }
 
 function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): CommandToolArgumentsRecord | null {
@@ -798,6 +850,57 @@ function ChatsThinkingIndicator({ visible }: { visible: boolean }) {
   );
 }
 
+function ChatsQueuedMessagesStrip(
+  {
+    isSteeringQueuedMessage,
+    onSteer,
+    queuedMessages,
+  }: {
+    isSteeringQueuedMessage: boolean;
+    onSteer(queuedMessage: QueuedMessageRecord): void;
+    queuedMessages: ReadonlyArray<QueuedMessageRecord>;
+  },
+) {
+  if (queuedMessages.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2 border-b border-border/60 px-2.5 py-2.5">
+      {queuedMessages.map((queuedMessage) => (
+        <div
+          key={queuedMessage.id}
+          className="flex items-center gap-3 rounded-[1.15rem] bg-muted/25 px-3 py-2 ring-1 ring-border/60"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm text-foreground">{queuedMessage.text}</p>
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {queuedMessage.shouldSteer ? "Steer: yes" : "Steer: no"}
+            </p>
+          </div>
+          {queuedMessage.shouldSteer ? (
+            <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-primary">
+              Steer
+            </span>
+          ) : (
+            <Button
+              className="h-8 shrink-0 rounded-full px-3 text-xs"
+              disabled={isSteeringQueuedMessage}
+              onClick={() => {
+                onSteer(queuedMessage);
+              }}
+              type="button"
+              variant="secondary"
+            >
+              Steer
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
 ) {
@@ -1064,6 +1167,9 @@ function ChatsPageContent() {
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
   const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
+  const [isLoadingQueuedMessages, setIsLoadingQueuedMessages] = useState(false);
+  const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [composerModelOptionId, setComposerModelOptionId] = useState("");
   const [composerReasoningLevel, setComposerReasoningLevel] = useState("");
   const resizeStartXRef = useRef(0);
@@ -1101,6 +1207,9 @@ function ChatsPageContent() {
   );
   const [commitPromptSession, isPromptSessionInFlight] = useMutation<chatsPagePromptSessionMutation>(
     chatsPagePromptSessionMutationNode,
+  );
+  const [commitSteerQueuedMessage, isSteerQueuedMessageInFlight] = useMutation<chatsPageSteerSessionQueuedMessageMutation>(
+    chatsPageSteerSessionQueuedMessageMutationNode,
   );
 
   const sortedAgents = useMemo(() => {
@@ -1166,6 +1275,7 @@ function ChatsPageContent() {
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
+  const isSteeringQueuedMessage = isSteerQueuedMessageInFlight || steeringQueuedMessageId !== null;
   const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
@@ -1343,6 +1453,8 @@ function ChatsPageContent() {
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = true;
       setTranscriptMessages([]);
+      setQueuedMessages([]);
+      setIsLoadingQueuedMessages(false);
       setTranscriptHasNextPage(false);
       setTranscriptEndCursor(null);
       setIsLoadingTranscript(false);
@@ -1357,6 +1469,47 @@ function ChatsPageContent() {
       sessionId: selectedSession.id,
     });
   }, [loadTranscriptPage, selectedSession?.id]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      setQueuedMessages([]);
+      setIsLoadingQueuedMessages(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingQueuedMessages(true);
+
+    void fetchQuery<chatsPageQueuedMessagesQuery>(
+      environment,
+      chatsPageQueuedMessagesQueryNode,
+      {
+        sessionId: selectedSession.id,
+      },
+    ).toPromise().then((response) => {
+      if (isCancelled) {
+        return;
+      }
+
+      setQueuedMessages(sortQueuedMessages(response?.SessionQueuedMessages ?? []));
+    }).catch((error: unknown) => {
+      if (isCancelled) {
+        return;
+      }
+
+      setErrorMessage((currentMessage) => currentMessage ?? (error instanceof Error ? error.message : "Failed to load queued messages."));
+    }).finally(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      setIsLoadingQueuedMessages(false);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [environment, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedAgent) {
@@ -1586,6 +1739,29 @@ function ChatsPageContent() {
     };
   }, [environment, selectedSession?.id, updateSessionTitleOverride]);
 
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+
+    const disposable = requestSubscription<chatsPageSessionQueuedMessagesUpdatedSubscription>(environment, {
+      subscription: chatsPageSessionQueuedMessagesUpdatedSubscriptionNode,
+      variables: {
+        sessionId: selectedSession.id,
+      },
+      onNext: (response) => {
+        setQueuedMessages(sortQueuedMessages(response?.SessionQueuedMessagesUpdated ?? []));
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [environment, selectedSession?.id]);
+
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
     setDraftMessage("");
@@ -1765,6 +1941,50 @@ function ChatsPageContent() {
       });
     }).catch((error: unknown) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to send message.");
+    });
+  };
+
+  const steerQueuedMessage = async (queuedMessage: QueuedMessageRecord) => {
+    setErrorMessage(null);
+    setSteeringQueuedMessageId(queuedMessage.id);
+
+    await new Promise<void>((resolve, reject) => {
+      commitSteerQueuedMessage({
+        variables: {
+          input: {
+            id: queuedMessage.id,
+          },
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const steeredQueuedMessage = response.SteerSessionQueuedMessage;
+          if (!steeredQueuedMessage) {
+            reject(new Error("Failed to steer queued message."));
+            return;
+          }
+
+          setQueuedMessages((currentMessages) => {
+            return sortQueuedMessages(currentMessages.map((currentMessage) => {
+              if (currentMessage.id !== steeredQueuedMessage.id) {
+                return currentMessage;
+              }
+
+              return steeredQueuedMessage;
+            }));
+          });
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to steer queued message.");
+    }).finally(() => {
+      setSteeringQueuedMessageId(null);
     });
   };
 
@@ -2246,6 +2466,23 @@ function ChatsPageContent() {
               type="button"
             />
             <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+              {selectedSession && (queuedMessages.length > 0 || isLoadingQueuedMessages) ? (
+                <div>
+                  {queuedMessages.length > 0 ? (
+                    <ChatsQueuedMessagesStrip
+                      isSteeringQueuedMessage={isSteeringQueuedMessage}
+                      onSteer={steerQueuedMessage}
+                      queuedMessages={queuedMessages}
+                    />
+                  ) : null}
+                  {isLoadingQueuedMessages && queuedMessages.length === 0 ? (
+                    <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5 text-xs text-muted-foreground">
+                      <Loader2Icon className="size-3.5 animate-spin" />
+                      Loading queued messages...
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               <div>
                 <textarea
                   id="chat-draft-message"

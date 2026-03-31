@@ -15,6 +15,8 @@ test("SessionProcessQueuedNames returns the queue and worker coordination names"
 test("SessionProcessPubSubNames returns the session and message update channels", () => {
   const names = new SessionProcessPubSubNames();
 
+  assert.equal(names.getSessionQueuedMessagesUpdateChannel("session-1"), "session:session-1:queued:update");
+  assert.equal(names.getSessionQueuedMessagesUpdatePattern("session-1"), "session:session-1:queued:update");
   assert.equal(names.getSessionUpdateChannel("session-1"), "session:session-1:update");
   assert.equal(names.getSessionUpdatePattern(), "session:*:update");
   assert.equal(

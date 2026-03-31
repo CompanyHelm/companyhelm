@@ -7,6 +7,14 @@ import { injectable } from "inversify";
  */
 @injectable()
 export class SessionProcessPubSubNames {
+  getSessionQueuedMessagesUpdateChannel(sessionId: string): string {
+    return `session:${sessionId}:queued:update`;
+  }
+
+  getSessionQueuedMessagesUpdatePattern(sessionId: string): string {
+    return this.getSessionQueuedMessagesUpdateChannel(sessionId);
+  }
+
   getSessionUpdateChannel(sessionId: string): string {
     return `session:${sessionId}:update`;
   }

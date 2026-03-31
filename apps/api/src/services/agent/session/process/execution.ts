@@ -14,6 +14,7 @@ import { PiMonoSessionManagerService } from "../pi-mono/session_manager_service.
 import type { QueuedSessionMessageRecord } from "./queued_messages.ts";
 import { SessionQueuedMessageService } from "./queued_messages.ts";
 import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
+import { SessionProcessPubSubNames } from "./pub_sub_names.ts";
 import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
 
@@ -54,6 +55,7 @@ export class SessionProcessExecutionService {
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
   private readonly redisService: RedisService;
   private readonly sessionLeaseService: SessionLeaseService;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionProcessQueueService: SessionProcessQueueService;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
   private readonly sessionQueuedMessageService: SessionQueuedMessageService;
@@ -69,6 +71,8 @@ export class SessionProcessExecutionService {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(SessionQueuedMessageService)
     sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
+    @inject(SessionProcessPubSubNames)
+    sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
     this.logger = logger.child({
@@ -77,6 +81,7 @@ export class SessionProcessExecutionService {
     this.piMonoSessionManagerService = piMonoSessionManagerService;
     this.redisService = redisService;
     this.sessionLeaseService = sessionLeaseService;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
     this.sessionProcessQueueService = sessionProcessQueueService;
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
     this.sessionQueuedMessageService = sessionQueuedMessageService;
@@ -130,7 +135,7 @@ export class SessionProcessExecutionService {
         () => {
           steeringDeliveryPromise = steeringDeliveryPromise.then(async () => {
             try {
-              await this.deliverPendingSteerMessages(transactionProvider, companyId, sessionId);
+              await this.deliverPendingSteerMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
             } catch (error) {
               this.logger.error({
                 companyId,
@@ -158,6 +163,7 @@ export class SessionProcessExecutionService {
         companyId,
         primaryMessageIds,
       );
+      await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
 
       try {
         await this.piMonoSessionManagerService.prompt(
@@ -179,6 +185,7 @@ export class SessionProcessExecutionService {
           companyId,
           primaryMessageIds,
         );
+        await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
         shouldEnqueueFollowUpWake = await this.sessionQueuedMessageService.hasPendingMessages(
           transactionProvider,
           companyId,
@@ -190,6 +197,7 @@ export class SessionProcessExecutionService {
           companyId,
           primaryMessageIds,
         );
+        await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
         throw error;
       }
     } finally {
@@ -215,6 +223,7 @@ export class SessionProcessExecutionService {
 
   private async deliverPendingSteerMessages(
     transactionProvider: TransactionProviderInterface,
+    redisCompanyScopedService: RedisCompanyScopedService,
     companyId: string,
     sessionId: string,
   ): Promise<void> {
@@ -229,6 +238,7 @@ export class SessionProcessExecutionService {
 
     const steerMessageIds = steerMessages.map((queuedMessage) => queuedMessage.id);
     await this.sessionQueuedMessageService.markProcessing(transactionProvider, companyId, steerMessageIds);
+    await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
 
     try {
       await this.piMonoSessionManagerService.steer(
@@ -239,10 +249,19 @@ export class SessionProcessExecutionService {
         steerMessages[0]?.createdAt,
       );
       await this.sessionQueuedMessageService.deleteProcessed(transactionProvider, companyId, steerMessageIds);
+      await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
     } catch (error) {
       await this.sessionQueuedMessageService.markPending(transactionProvider, companyId, steerMessageIds);
+      await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
       throw error;
     }
+  }
+
+  private async publishQueuedMessagesUpdate(
+    redisCompanyScopedService: RedisCompanyScopedService,
+    sessionId: string,
+  ): Promise<void> {
+    await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdateChannel(sessionId));
   }
 
   private async loadRuntimeConfig(

@@ -1,0 +1,98 @@
+import { inject, injectable } from "inversify";
+import { SessionQueuedMessageGraphqlPresenter, type SessionQueuedMessageGraphqlRecord } from "../../services/agent/session/process/queued_message_graphql_presenter.ts";
+import { SessionProcessPubSubNames } from "../../services/agent/session/process/pub_sub_names.ts";
+import { SessionQueuedMessageService } from "../../services/agent/session/process/queued_messages.ts";
+import type { GraphqlRequestContext } from "../graphql_request_context.ts";
+import { RedisPatternAsyncIterator } from "../subscriptions/redis_pattern_async_iterator.ts";
+
+type SessionQueuedMessagesUpdatedArguments = {
+  sessionId: string;
+};
+
+/**
+ * Streams the live pending queue for one session. Redis only signals that queue state changed; the
+ * resolver reloads the full pending list from Postgres so the web composer can replace its local
+ * queue strip without inferring deletes or steer toggles.
+ */
+@injectable()
+export class SessionQueuedMessagesUpdatedSubscriptionResolver {
+  private readonly presenter: SessionQueuedMessageGraphqlPresenter;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
+  private readonly sessionQueuedMessageService: SessionQueuedMessageService;
+
+  constructor(
+    @inject(SessionQueuedMessageGraphqlPresenter)
+    presenter: SessionQueuedMessageGraphqlPresenter = new SessionQueuedMessageGraphqlPresenter(),
+    @inject(SessionProcessPubSubNames)
+    sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+    @inject(SessionQueuedMessageService)
+    sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
+  ) {
+    this.presenter = presenter;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
+    this.sessionQueuedMessageService = sessionQueuedMessageService;
+  }
+
+  subscribe = (
+    _root: unknown,
+    arguments_: SessionQueuedMessagesUpdatedArguments,
+    context: GraphqlRequestContext,
+  ): AsyncIterableIterator<{ SessionQueuedMessagesUpdated: SessionQueuedMessageGraphqlRecord[] }> => {
+    return this.subscribeInternal(arguments_, context);
+  };
+
+  resolve(payload: { SessionQueuedMessagesUpdated: SessionQueuedMessageGraphqlRecord[] }): SessionQueuedMessageGraphqlRecord[] {
+    return payload.SessionQueuedMessagesUpdated;
+  }
+
+  private async *subscribeInternal(
+    arguments_: SessionQueuedMessagesUpdatedArguments,
+    context: GraphqlRequestContext,
+  ): AsyncIterableIterator<{ SessionQueuedMessagesUpdated: SessionQueuedMessageGraphqlRecord[] }> {
+    const requestContext = await this.resolveRequestContext(context);
+    if (!requestContext.authSession?.company) {
+      throw new Error("Authentication required.");
+    }
+    if (!requestContext.app_runtime_transaction_provider) {
+      throw new Error("Authentication required.");
+    }
+    if (!requestContext.redisCompanyScopedService) {
+      throw new Error("Subscription transport is not configured.");
+    }
+
+    const sessionId = String(arguments_.sessionId || "").trim();
+    if (sessionId.length === 0) {
+      throw new Error("sessionId is required.");
+    }
+
+    const iterator = new RedisPatternAsyncIterator(
+      requestContext.redisCompanyScopedService,
+      this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdatePattern(sessionId),
+    );
+
+    try {
+      for await (const event of iterator) {
+        void event;
+        const queuedMessages = await this.sessionQueuedMessageService.listPending(
+          requestContext.app_runtime_transaction_provider,
+          requestContext.authSession.company.id,
+          sessionId,
+        );
+
+        yield {
+          SessionQueuedMessagesUpdated: this.presenter.serializeMany(queuedMessages),
+        };
+      }
+    } finally {
+      await iterator.return();
+    }
+  }
+
+  private async resolveRequestContext(context: GraphqlRequestContext): Promise<GraphqlRequestContext> {
+    if (context.authSession?.company && context.app_runtime_transaction_provider && context.redisCompanyScopedService) {
+      return context;
+    }
+
+    return await context.resolveSubscriptionContext?.() ?? context;
+  }
+}

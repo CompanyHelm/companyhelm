@@ -29,6 +29,7 @@ import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
+import { SteerSessionQueuedMessageMutation } from "./mutations/steer_session_queued_message.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
 import { UpdateAgentEnvironmentRequirementsMutation } from "./mutations/update_agent_environment_requirements.ts";
@@ -55,6 +56,8 @@ import { SessionSecretsQueryResolver } from "./resolvers/session_secrets.ts";
 import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
+import { SessionQueuedMessagesQueryResolver } from "./resolvers/session_queued_messages.ts";
+import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "./resolvers/session_queued_messages_updated.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "./resolvers/session_message_updated.ts";
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
@@ -103,13 +106,16 @@ export class GraphqlApplication {
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
+  private readonly sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver;
   private readonly sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver;
+  private readonly sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver;
   private readonly sessionSecretsQueryResolver: SessionSecretsQueryResolver;
   private readonly sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver;
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
   private readonly setTaskCategoryMutation: SetTaskCategoryMutation;
   private readonly startEnvironmentMutation: StartEnvironmentMutation;
+  private readonly steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation;
   private readonly stopEnvironmentMutation: StopEnvironmentMutation;
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
@@ -150,6 +156,8 @@ export class GraphqlApplication {
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(SessionMessagesQueryResolver)
     sessionMessagesQueryResolver: SessionMessagesQueryResolver = new SessionMessagesQueryResolver(),
+    @inject(SessionQueuedMessagesQueryResolver)
+    sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver = new SessionQueuedMessagesQueryResolver(),
     @inject(SessionTranscriptMessagesQueryResolver)
     sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver =
       new SessionTranscriptMessagesQueryResolver(),
@@ -163,6 +171,9 @@ export class GraphqlApplication {
     @inject(SessionMessageUpdatedSubscriptionResolver)
     sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver =
       new SessionMessageUpdatedSubscriptionResolver(),
+    @inject(SessionQueuedMessagesUpdatedSubscriptionResolver)
+    sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver =
+      new SessionQueuedMessagesUpdatedSubscriptionResolver(),
     @inject(SessionUpdatedSubscriptionResolver)
     sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver = new SessionUpdatedSubscriptionResolver(),
     @inject(PromptSessionMutation)
@@ -219,6 +230,8 @@ export class GraphqlApplication {
     agentEnvironmentRequirementsService?: AgentEnvironmentRequirementsService,
     @inject(UpdateAgentEnvironmentRequirementsMutation)
     updateAgentEnvironmentRequirementsMutation?: UpdateAgentEnvironmentRequirementsMutation,
+    @inject(SteerSessionQueuedMessageMutation)
+    steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation = new SteerSessionQueuedMessageMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -270,13 +283,16 @@ export class GraphqlApplication {
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
+    this.sessionQueuedMessagesQueryResolver = sessionQueuedMessagesQueryResolver;
     this.sessionMessageUpdatedSubscriptionResolver = sessionMessageUpdatedSubscriptionResolver;
+    this.sessionQueuedMessagesUpdatedSubscriptionResolver = sessionQueuedMessagesUpdatedSubscriptionResolver;
     this.sessionSecretsQueryResolver = sessionSecretsQueryResolver
       ?? new SessionSecretsQueryResolver(defaultSecretService);
     this.sessionTranscriptMessagesQueryResolver = sessionTranscriptMessagesQueryResolver;
     this.sessionsQueryResolver = sessionsQueryResolver;
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
     this.setTaskCategoryMutation = setTaskCategoryMutation;
+    this.steerSessionQueuedMessageMutation = steerSessionQueuedMessageMutation;
     this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
     this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
@@ -343,6 +359,7 @@ export class GraphqlApplication {
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
           ModelProviders: this.modelProvidersQueryResolver.execute,
           Secrets: this.secretsQueryResolver.execute,
+          SessionQueuedMessages: this.sessionQueuedMessagesQueryResolver.execute,
           TaskCategories: this.taskCategoriesQueryResolver.execute,
           Tasks: this.tasksQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,
@@ -374,6 +391,7 @@ export class GraphqlApplication {
           PromptSession: this.promptSessionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,
+          SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,
           UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
           UpdateSecret: this.updateSecretMutation.execute,
@@ -382,6 +400,10 @@ export class GraphqlApplication {
           SessionMessageUpdated: {
             subscribe: this.sessionMessageUpdatedSubscriptionResolver.subscribe,
             resolve: this.sessionMessageUpdatedSubscriptionResolver.resolve,
+          },
+          SessionQueuedMessagesUpdated: {
+            subscribe: this.sessionQueuedMessagesUpdatedSubscriptionResolver.subscribe,
+            resolve: this.sessionQueuedMessagesUpdatedSubscriptionResolver.resolve,
           },
           SessionUpdated: {
             subscribe: this.sessionUpdatedSubscriptionResolver.subscribe,

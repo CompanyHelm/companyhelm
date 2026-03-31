@@ -12,6 +12,7 @@ type Query {
   Sessions: [Session!]!
   SessionSecrets(sessionId: ID!): [Secret!]!
   SessionMessages: [SessionMessage!]!
+  SessionQueuedMessages(sessionId: ID!): [SessionQueuedMessage!]!
   SessionTranscriptMessages(
     sessionId: ID!
     first: Int!
@@ -44,6 +45,7 @@ type Mutation {
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   PromptSession(input: PromptSessionInput!): Session!
+  SteerSessionQueuedMessage(input: SteerSessionQueuedMessageInput!): SessionQueuedMessage!
   RefreshGithubInstallationRepositories(
     input: RefreshGithubInstallationRepositoriesInput!
   ): RefreshGithubInstallationRepositoriesPayload!
@@ -63,6 +65,7 @@ type Mutation {
 type Subscription {
   SessionUpdated: Session!
   SessionMessageUpdated(sessionId: ID!): SessionMessage!
+  SessionQueuedMessagesUpdated(sessionId: ID!): [SessionQueuedMessage!]!
 }
 
 scalar JSON
@@ -211,6 +214,16 @@ type SessionMessage {
   contents: [SessionMessageContent!]!
   text: String!
   isError: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SessionQueuedMessage {
+  id: ID!
+  sessionId: ID!
+  text: String!
+  shouldSteer: Boolean!
+  status: String!
   createdAt: String!
   updatedAt: String!
 }
@@ -389,6 +402,10 @@ input PromptSessionInput {
   reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!
+}
+
+input SteerSessionQueuedMessageInput {
+  id: ID!
 }
 
 input CreateSecretInput {

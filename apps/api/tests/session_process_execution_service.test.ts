@@ -161,6 +161,9 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
     {
       async getClient() {
         return {
+          async publish() {
+            return 1;
+          },
           duplicate() {
             return subscriber;
           },
@@ -350,6 +353,9 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
     {
       async getClient() {
         return {
+          async publish() {
+            return 1;
+          },
           duplicate() {
             return subscriber;
           },
@@ -535,6 +541,9 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
     {
       async getClient() {
         return {
+          async publish() {
+            return 1;
+          },
           duplicate() {
             return subscriber;
           },

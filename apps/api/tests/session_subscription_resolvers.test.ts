@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { SessionMessageUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_message_updated.ts";
+import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_queued_messages_updated.ts";
 import { SessionUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_updated.ts";
 
 async function waitForListener(
@@ -221,6 +222,73 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
     context.app_runtime_transaction_provider,
     "company-1",
     "message-1",
+  ]);
+
+  await iterator.return();
+  assert.equal(unsubscribe.mock.calls.length, 1);
+});
+
+test("SessionQueuedMessagesUpdated subscription reloads the full pending queue for the selected session", async () => {
+  const unsubscribe = vi.fn(async () => undefined);
+  const subscribePattern = vi.fn(async (_pattern: string, listener: (message: string, channel: string) => void) => {
+    subscribePattern.listener = listener;
+    return {
+      unsubscribe,
+    };
+  }) as typeof vi.fn & { listener?: (message: string, channel: string) => void };
+  const sessionQueuedMessageService = {
+    listPending: vi.fn(async () => ([{
+      createdAt: new Date("2026-03-31T09:00:00.000Z"),
+      id: "queued-1",
+      images: [],
+      sessionId: "session-123",
+      shouldSteer: false,
+      status: "pending",
+      text: "Focus on the flaky worker.",
+      updatedAt: new Date("2026-03-31T09:01:00.000Z"),
+    }])),
+  };
+  const resolver = new SessionQueuedMessagesUpdatedSubscriptionResolver(
+    undefined,
+    undefined,
+    sessionQueuedMessageService as never,
+  );
+  const context = {
+    authSession: {
+      company: {
+        id: "company-1",
+      },
+    },
+    app_runtime_transaction_provider: {
+      transaction: vi.fn(),
+    },
+    redisCompanyScopedService: {
+      subscribePattern,
+    },
+  };
+
+  const iterator = resolver.subscribe({}, { sessionId: "session-123" }, context as never);
+  const nextEventPromise = iterator.next();
+  await Promise.resolve();
+  subscribePattern.listener?.("", "company:company-1:session:session-123:queued:update");
+  const nextEvent = await nextEventPromise;
+
+  assert.deepEqual(nextEvent.value, {
+    SessionQueuedMessagesUpdated: [{
+      createdAt: "2026-03-31T09:00:00.000Z",
+      id: "queued-1",
+      sessionId: "session-123",
+      shouldSteer: false,
+      status: "pending",
+      text: "Focus on the flaky worker.",
+      updatedAt: "2026-03-31T09:01:00.000Z",
+    }],
+  });
+  assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:queued:update");
+  assert.deepEqual(sessionQueuedMessageService.listPending.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    "company-1",
+    "session-123",
   ]);
 
   await iterator.return();
