@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "if command -v watchman >/dev/null 2>&1; then npm run relay -- --watch & else npm run relay; fi; vite",
     "relay": "relay-compiler relay.config.json",
-    "build": "npm run relay && vite build"
+    "build": "npm run relay && vite build",
+    "lint": "eslint src vite.config.ts --ext .ts,.tsx",
+    "typecheck": "npm exec -- tsc -p tsconfig.json",
+    "check": "npm run lint && npm run typecheck",
+    "test": "npm run check"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -20,7 +24,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "graphql": "^16.13.1",
-    "graphql-ws": "^6.0.8",
     "lucide-react": "^0.577.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
