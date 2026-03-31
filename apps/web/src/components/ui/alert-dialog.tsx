@@ -23,8 +23,6 @@ const alertDialogContentStyles = cva(
 
 const alertDialogHeaderStyles = cva("flex flex-col gap-2 text-left");
 const alertDialogFooterStyles = cva("mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end");
-const alertDialogTitleStyles = cva("text-base font-semibold text-foreground");
-const alertDialogDescriptionStyles = cva("text-sm text-muted-foreground");
 
 function AlertDialogOverlay(props: AlertDialogPrimitive.AlertDialogOverlayProps) {
   return (
