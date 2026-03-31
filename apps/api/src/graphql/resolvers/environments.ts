@@ -12,6 +12,7 @@ import { Resolver } from "./resolver.ts";
 
 type EnvironmentRecord = {
   agentId: string;
+  companyId: string;
   cpuCount: number;
   createdAt: Date;
   diskSpaceGb: number;
@@ -126,6 +127,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
       const environmentRecords = await selectableDatabase
         .select({
           agentId: agentEnvironments.agentId,
+          companyId: agentEnvironments.companyId,
           cpuCount: agentEnvironments.cpuCount,
           createdAt: agentEnvironments.createdAt,
           diskSpaceGb: agentEnvironments.diskSpaceGb,

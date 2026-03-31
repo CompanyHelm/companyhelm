@@ -45,6 +45,7 @@ class EnvironmentsQueryTestHarness {
                     async where() {
                       return [{
                         agentId: "agent-1",
+                        companyId: "company-123",
                         cpuCount: 4,
                         createdAt: new Date("2026-03-26T09:00:00.000Z"),
                         diskSpaceGb: 120,
@@ -54,6 +55,7 @@ class EnvironmentsQueryTestHarness {
                         memoryGb: 16,
                         platform: "linux",
                         provider: "daytona",
+                        providerDefinitionId: "definition-1",
                         providerEnvironmentId: "daytona-env-1",
                         updatedAt: new Date("2026-03-27T15:00:00.000Z"),
                       }];
@@ -93,7 +95,10 @@ class EnvironmentsQueryTestHarness {
 test("GraphQL Environments query lists company-scoped agent environments", async () => {
   const app = Fastify();
   const database = EnvironmentsQueryTestHarness.createDatabaseMock();
-  const getEnvironmentStatus = async () => "stopped" as const;
+  const getEnvironmentStatus = async (_transactionProvider: unknown, environment: { companyId: string }) => {
+    assert.equal(environment.companyId, "company-123");
+    return "stopped" as const;
+  };
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
