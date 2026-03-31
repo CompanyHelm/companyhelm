@@ -1493,14 +1493,6 @@ function ChatsTranscript({
                 </button>
               </div>
             ) : null}
-            {inlineMessagesAfterWorkedFor.map((message) => (
-              <TranscriptMessageRow
-                includeThinking={false}
-                key={message.id}
-                message={message}
-                toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-              />
-            ))}
             {hasHiddenMessages && isExpanded ? (
               <>
                 {turn.hiddenMessages.map((message) => (
@@ -1513,6 +1505,14 @@ function ChatsTranscript({
                 ))}
               </>
             ) : null}
+            {inlineMessagesAfterWorkedFor.map((message) => (
+              <TranscriptMessageRow
+                includeThinking={false}
+                key={message.id}
+                message={message}
+                toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+              />
+            ))}
           </div>
         );
       })}
