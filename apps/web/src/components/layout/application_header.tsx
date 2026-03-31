@@ -31,15 +31,17 @@ export function ApplicationHeader() {
         ? "Repositories"
         : pathname.startsWith("/knowledge-base")
           ? "Knowledge Base"
-        : pathname.startsWith("/tasks")
-          ? "Tasks"
-          : pathname.startsWith("/flags")
-            ? "Feature Flags"
-          : pathname.startsWith("/settings")
-            ? "Settings"
-            : pathname.startsWith("/agents")
-              ? "Agents"
-              : "Dashboard";
+          : pathname.startsWith("/inbox")
+            ? "Inbox"
+          : pathname.startsWith("/tasks")
+            ? "Tasks"
+            : pathname.startsWith("/flags")
+              ? "Feature Flags"
+              : pathname.startsWith("/settings")
+                ? "Settings"
+                : pathname.startsWith("/agents")
+                  ? "Agents"
+                  : "Dashboard";
   const detailPageTitle = detailLabel
     || (isAgentDetailPage ? "Agent" : isKnowledgeBaseDetailPage ? "Artifact" : "Credential");
   const detailPageHref = isCredentialDetailPage

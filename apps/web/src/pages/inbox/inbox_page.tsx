@@ -1,7 +1,6 @@
 import { Suspense, useState } from "react";
 import { InboxIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/toast_provider";
 import { InboxQuestionCard, type InboxQuestionCardRecord } from "./inbox_question_card";
 import type { inboxPageQuery } from "./__generated__/inboxPageQuery.graphql";
@@ -46,18 +45,10 @@ const inboxPageResolveInboxHumanQuestionMutationNode = graphql`
 
 function InboxPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle>Inbox</CardTitle>
-          <CardDescription>Loading pending human questions from agents.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
-            Loading inbox items...
-          </div>
-        </CardContent>
-      </Card>
+    <main className="flex flex-1 flex-col gap-4">
+      <div className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
+        Loading inbox items...
+      </div>
     </main>
   );
 }
@@ -97,84 +88,76 @@ function InboxPageContent() {
   }));
 
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardTitle>Inbox</CardTitle>
-          <CardDescription>
-            Resolve agent questions here. Every answer is steered back into the originating chat automatically.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {errorMessage ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {errorMessage}
-            </div>
-          ) : null}
+    <main className="flex flex-1 flex-col gap-4">
+      {errorMessage ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {errorMessage}
+        </div>
+      ) : null}
 
-          {questions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-10 text-center">
-              <InboxIcon className="size-8 text-muted-foreground/70" />
-              <div className="text-sm font-medium text-foreground">Inbox is clear</div>
-              <div className="max-w-xl text-xs text-muted-foreground">
-                New human questions from agents will appear here when they need a decision, preference, or approval.
-              </div>
-            </div>
-          ) : (
-            questions.map((question) => (
-              <InboxQuestionCard
-                key={question.id}
-                isResolving={resolvingInboxItemId === question.id}
-                onResolve={async (input) => {
-                  setErrorMessage(null);
-                  setResolvingInboxItemId(question.id);
+      {questions.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 px-4 py-12 text-center">
+          <InboxIcon className="size-8 text-muted-foreground/70" />
+          <div className="text-sm font-medium text-foreground">Inbox is clear</div>
+          <div className="max-w-xl text-xs text-muted-foreground">
+            New human questions from agents will appear here when they need a decision, preference, or approval.
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {questions.map((question) => (
+            <InboxQuestionCard
+              key={question.id}
+              isResolving={resolvingInboxItemId === question.id}
+              onResolve={async (input) => {
+                setErrorMessage(null);
+                setResolvingInboxItemId(question.id);
 
-                  try {
-                    await new Promise<void>((resolve, reject) => {
-                      commitResolveInboxHumanQuestion({
-                        variables: {
-                          input,
-                        },
-                        updater: (store) => {
-                          const resolvedQuestion = store.getRootField("ResolveInboxHumanQuestion");
-                          const resolvedId = resolvedQuestion?.getDataID();
-                          if (!resolvedId) {
-                            return;
-                          }
+                try {
+                  await new Promise<void>((resolve, reject) => {
+                    commitResolveInboxHumanQuestion({
+                      variables: {
+                        input,
+                      },
+                      updater: (store) => {
+                        const resolvedQuestion = store.getRootField("ResolveInboxHumanQuestion");
+                        const resolvedId = resolvedQuestion?.getDataID();
+                        if (!resolvedId) {
+                          return;
+                        }
 
-                          const rootRecord = store.getRoot();
-                          const currentQuestions = rootRecord.getLinkedRecords("InboxHumanQuestions") || [];
-                          rootRecord.setLinkedRecords(
-                            currentQuestions.filter((record) => record && record.getDataID() !== resolvedId),
-                            "InboxHumanQuestions",
-                          );
-                        },
-                        onCompleted: (_response, errors) => {
-                          const nextErrorMessage = errors?.[0]?.message;
-                          if (nextErrorMessage) {
-                            reject(new Error(nextErrorMessage));
-                            return;
-                          }
+                        const rootRecord = store.getRoot();
+                        const currentQuestions = rootRecord.getLinkedRecords("InboxHumanQuestions") || [];
+                        rootRecord.setLinkedRecords(
+                          currentQuestions.filter((record) => record && record.getDataID() !== resolvedId),
+                          "InboxHumanQuestions",
+                        );
+                      },
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = errors?.[0]?.message;
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
 
-                          resolve();
-                        },
-                        onError: reject,
-                      });
+                        resolve();
+                      },
+                      onError: reject,
                     });
+                  });
 
-                    showSavedToast("Answer sent");
-                  } catch (error: unknown) {
-                    setErrorMessage(error instanceof Error ? error.message : "Failed to send answer.");
-                  } finally {
-                    setResolvingInboxItemId((currentValue) => currentValue === question.id ? null : currentValue);
-                  }
-                }}
-                question={question}
-              />
-            ))
-          )}
-        </CardContent>
-      </Card>
+                  showSavedToast("Answer sent");
+                } catch (error: unknown) {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to send answer.");
+                } finally {
+                  setResolvingInboxItemId((currentValue) => currentValue === question.id ? null : currentValue);
+                }
+              }}
+              question={question}
+            />
+          ))}
+        </div>
+      )}
     </main>
   );
 }
