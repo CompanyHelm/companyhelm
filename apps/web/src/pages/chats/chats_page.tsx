@@ -257,6 +257,15 @@ type AssistantDisplayContentRecord = {
   type: "text" | "thinking";
 };
 
+type TranscriptScrollRestoreRecord = {
+  anchorMessageId: string | null;
+  anchorOffsetTop: number;
+  previousScrollHeight: number;
+  previousScrollTop: number;
+};
+
+const CHAT_TRANSCRIPT_MESSAGE_SELECTOR = "[data-transcript-message-id]";
+
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
   const lineHeight = Number.parseFloat(computedStyle.lineHeight) || 20;
@@ -560,6 +569,36 @@ function mergeTranscriptMessages(
   }
 
   return [...nextMessagesById.values()].sort(compareSessionMessagesByTimestamp);
+}
+
+/**
+ * Captures the first visible transcript message before prepending another page so scroll restoration
+ * can keep that same message pinned to the same viewport offset after the DOM grows upward.
+ */
+function captureTranscriptScrollRestoreRecord(transcriptNode: HTMLDivElement): TranscriptScrollRestoreRecord {
+  const transcriptRect = transcriptNode.getBoundingClientRect();
+  const transcriptMessageElements = transcriptNode.querySelectorAll<HTMLElement>(CHAT_TRANSCRIPT_MESSAGE_SELECTOR);
+
+  for (const transcriptMessageElement of transcriptMessageElements) {
+    const messageRect = transcriptMessageElement.getBoundingClientRect();
+    if (messageRect.bottom <= transcriptRect.top) {
+      continue;
+    }
+
+    return {
+      anchorMessageId: transcriptMessageElement.dataset.transcriptMessageId ?? null,
+      anchorOffsetTop: messageRect.top - transcriptRect.top,
+      previousScrollHeight: transcriptNode.scrollHeight,
+      previousScrollTop: transcriptNode.scrollTop,
+    };
+  }
+
+  return {
+    anchorMessageId: null,
+    anchorOffsetTop: 0,
+    previousScrollHeight: transcriptNode.scrollHeight,
+    previousScrollTop: transcriptNode.scrollTop,
+  };
 }
 
 function resolveSessionTitleOverride(
@@ -932,7 +971,7 @@ function ChatsTranscript({
   return (
     <div
       ref={transcriptScrollRef}
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]"
       onScroll={onScroll}
     >
       {(hasOlderMessages || isLoadingOlderMessages) ? (
@@ -949,6 +988,7 @@ function ChatsTranscript({
 
         return (
           <div
+            data-transcript-message-id={message.id}
             key={message.id}
             className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS}`}
           >
@@ -1011,7 +1051,7 @@ function ChatsPageContent() {
   const draftTextareaResizeStartHeightRef = useRef(0);
   const draftTextareaResizeStartYRef = useRef(0);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
-  const pendingTranscriptScrollRestoreRef = useRef<{ previousScrollHeight: number; previousScrollTop: number } | null>(
+  const pendingTranscriptScrollRestoreRef = useRef<TranscriptScrollRestoreRecord | null>(
     null,
   );
   const shouldStickTranscriptToBottomRef = useRef(true);
@@ -1207,10 +1247,7 @@ function ChatsPageContent() {
     const transcriptNode = transcriptScrollRef.current;
     shouldStickTranscriptToBottomRef.current = false;
     if (transcriptNode) {
-      pendingTranscriptScrollRestoreRef.current = {
-        previousScrollHeight: transcriptNode.scrollHeight,
-        previousScrollTop: transcriptNode.scrollTop,
-      };
+      pendingTranscriptScrollRestoreRef.current = captureTranscriptScrollRestoreRecord(transcriptNode);
     }
 
     setIsLoadingOlderTranscript(true);
@@ -1418,9 +1455,25 @@ function ChatsPageContent() {
     }
 
     if (pendingTranscriptScrollRestoreRef.current) {
-      const { previousScrollHeight, previousScrollTop } = pendingTranscriptScrollRestoreRef.current;
-      const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
-      transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
+      const {
+        anchorMessageId,
+        anchorOffsetTop,
+        previousScrollHeight,
+        previousScrollTop,
+      } = pendingTranscriptScrollRestoreRef.current;
+      const anchorElement = anchorMessageId
+        ? [...transcriptNode.querySelectorAll<HTMLElement>(CHAT_TRANSCRIPT_MESSAGE_SELECTOR)]
+          .find((transcriptMessageElement) => transcriptMessageElement.dataset.transcriptMessageId === anchorMessageId)
+        : null;
+
+      if (anchorElement) {
+        const transcriptRect = transcriptNode.getBoundingClientRect();
+        const anchorRect = anchorElement.getBoundingClientRect();
+        transcriptNode.scrollTop += (anchorRect.top - transcriptRect.top) - anchorOffsetTop;
+      } else {
+        const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
+        transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
+      }
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = false;
       return;
