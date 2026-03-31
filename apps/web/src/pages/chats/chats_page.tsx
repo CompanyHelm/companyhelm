@@ -669,8 +669,8 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
             {...codeProps}
             className={[
               className,
-              "max-w-full break-words whitespace-pre-wrap [overflow-wrap:anywhere]",
-              className ? "" : "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
+              "max-w-full break-words [overflow-wrap:anywhere]",
+              "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
             ].filter(Boolean).join(" ")}
           >
             {children}
@@ -687,7 +687,7 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
           </p>
         ),
         pre: ({ children }) => (
-          <pre className="my-1 max-w-full overflow-hidden whitespace-pre-wrap break-words rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+          <pre className="my-1 max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
             {children}
           </pre>
         ),
