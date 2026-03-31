@@ -1436,24 +1436,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "current_context_tokens": {
-          "name": "current_context_tokens",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "max_context_tokens": {
-          "name": "max_context_tokens",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_compacting": {
-          "name": "is_compacting",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",

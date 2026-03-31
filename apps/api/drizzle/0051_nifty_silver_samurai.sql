@@ -45,10 +45,6 @@ CREATE TABLE "agent_inbox_items" (
 	"resolved_by_user_id" uuid
 );
 --> statement-breakpoint
-ALTER TABLE "agent_sessions" ADD COLUMN "current_context_tokens" integer;--> statement-breakpoint
-ALTER TABLE "agent_sessions" ADD COLUMN "max_context_tokens" integer;--> statement-breakpoint
-ALTER TABLE "agent_sessions" ADD COLUMN "is_compacting" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "agent_sessions" ALTER COLUMN "is_compacting" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "agent_inbox_human_question_answers" ADD CONSTRAINT "agent_inbox_human_question_answers_inbox_item_id_agent_inbox_items_id_fk" FOREIGN KEY ("inbox_item_id") REFERENCES "public"."agent_inbox_items"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_inbox_human_question_answers" ADD CONSTRAINT "agent_inbox_human_question_answers_selected_proposal_id_agent_inbox_human_question_proposals_id_fk" FOREIGN KEY ("selected_proposal_id") REFERENCES "public"."agent_inbox_human_question_proposals"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agent_inbox_human_question_answers" ADD CONSTRAINT "agent_inbox_human_question_answers_answered_by_user_id_users_id_fk" FOREIGN KEY ("answered_by_user_id") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
