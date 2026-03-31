@@ -1487,11 +1487,7 @@ function ChatsTranscript({
                   <ChevronRightIcon className={`size-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                   <span>Worked for {turn.durationLabel}</span>
                 </button>
-              ) : (
-                <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                  Worked for {turn.durationLabel}
-                </div>
-              )}
+              ) : null}
             </div>
             {hasHiddenMessages && isExpanded ? (
               <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>

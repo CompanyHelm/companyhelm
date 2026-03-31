@@ -575,8 +575,60 @@ test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rota
   assert.equal(typeof persistedMessages[0]?.turnId, "string");
   assert.equal(typeof persistedMessages[1]?.turnId, "string");
   assert.notEqual(persistedMessages[0]?.turnId, persistedMessages[1]?.turnId);
+  assert.equal(persistedTurns.filter((turn) => turn.endedAt instanceof Date).length, 1);
+  assert.equal(persistedTurns.filter((turn) => turn.endedAt === null).length, 1);
+});
+
+test("PiMonoSessionEventHandler closes the current prompt turn only after queued message persistence drains", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.startPromptTurn(new Date("2026-03-31T18:05:00.000Z"));
+    const userMessagePromise = handler.handle({
+      message: {
+        content: "hi",
+        role: "user",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+    const assistantMessagePromise = handler.handle({
+      message: {
+        content: [
+          {
+            text: "Hi! How can I help?",
+            type: "text",
+          },
+        ],
+        role: "assistant",
+        timestamp: 2000,
+      },
+      type: "message_end",
+    });
+
+    await Promise.all([
+      userMessagePromise,
+      assistantMessagePromise,
+      handler.finishPromptTurn(new Date("2026-03-31T18:05:01.000Z")),
+    ]);
+  } finally {
+    harness.restore();
+  }
+
+  const persistedTurns = [...harness.sessionTurnRecords.values()];
+  const persistedMessages = [...harness.sessionMessageRecords.values()]
+    .sort((leftMessage, rightMessage) => String(leftMessage.createdAt).localeCompare(String(rightMessage.createdAt)));
+
+  assert.equal(persistedTurns.length, 1);
+  assert.equal(persistedMessages.length, 2);
+  assert.equal(persistedMessages[0]?.turnId, persistedMessages[1]?.turnId);
+  assert.equal(persistedTurns[0]?.id, persistedMessages[0]?.turnId);
   assert.equal(persistedTurns[0]?.endedAt instanceof Date, true);
-  assert.equal(persistedTurns[1]?.endedAt, null);
 });
 
 test("PiMonoSessionEventHandler captures context snapshots when auto compaction starts and ends", async () => {

@@ -190,6 +190,7 @@ export class PiMonoSessionEventHandler {
       return;
     }
 
+    await this.waitForIdle();
     await this.transactionProvider.transaction(async (tx) => {
       const updatableDatabase = tx as UpdatableDatabase;
       await updatableDatabase
@@ -200,6 +201,14 @@ export class PiMonoSessionEventHandler {
         .where(eq(sessionTurns.id, currentTurnId));
     });
     this.currentTurnId = null;
+  }
+
+  private async waitForIdle(): Promise<void> {
+    let currentEventChain: Promise<void>;
+    do {
+      currentEventChain = this.eventChain;
+      await currentEventChain;
+    } while (currentEventChain !== this.eventChain);
   }
 
   private async handleEvent(event: unknown): Promise<void> {
