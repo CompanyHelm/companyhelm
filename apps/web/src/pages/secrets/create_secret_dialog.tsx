@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { EnvVarNameResolver } from "./env_var_name_resolver";
 
 interface CreateSecretDialogProps {
   errorMessage: string | null;
@@ -34,6 +35,12 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
+  const defaultEnvVarName = useMemo(() => {
+    const resolver = new EnvVarNameResolver();
+    return resolver.resolveDefaultEnvVarName(name);
+  }, [name]);
+  const explicitEnvVarName = envVarName.trim();
+  const hasExplicitEnvVarName = explicitEnvVarName.length > 0;
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -84,9 +91,23 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
               placeholder="Defaults from the name, e.g. GITHUB_TOKEN"
               value={envVarName}
             />
-            <p className="text-[11px] text-muted-foreground">
-              Defaults to the secret name in uppercase with spaces and hyphens converted to underscores.
-            </p>
+            {hasExplicitEnvVarName ? (
+              <p className="text-[11px] text-muted-foreground">
+                Using custom value:
+                {" "}
+                <span className="font-mono text-foreground/70">{explicitEnvVarName}</span>
+              </p>
+            ) : defaultEnvVarName ? (
+              <p className="text-[11px] text-muted-foreground">
+                Default:
+                {" "}
+                <span className="font-mono text-foreground/70">{defaultEnvVarName}</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Defaults to the secret name in uppercase with spaces and hyphens converted to underscores.
+              </p>
+            )}
           </div>
 
           <div className="grid gap-2">
