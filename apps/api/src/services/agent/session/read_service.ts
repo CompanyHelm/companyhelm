@@ -29,6 +29,7 @@ type SessionRow = {
 type SessionMessageRow = {
   id: string;
   sessionId: string;
+  turnId: string;
   role: string;
   status: string;
   toolCallId: string | null;
@@ -89,6 +90,7 @@ export type SessionGraphqlRecord = {
 export type SessionMessageGraphqlRecord = {
   id: string;
   sessionId: string;
+  turnId: string;
   role: string;
   status: string;
   toolCallId: string | null;
@@ -301,6 +303,7 @@ export class SessionReadService {
         .select({
           id: sessionMessages.id,
           sessionId: sessionMessages.sessionId,
+          turnId: sessionMessages.turnId,
           role: sessionMessages.role,
           status: sessionMessages.status,
           toolCallId: sessionMessages.toolCallId,
@@ -361,6 +364,7 @@ export class SessionReadService {
         .select({
           id: sessionMessages.id,
           sessionId: sessionMessages.sessionId,
+          turnId: sessionMessages.turnId,
           role: sessionMessages.role,
           status: sessionMessages.status,
           toolCallId: sessionMessages.toolCallId,
@@ -396,6 +400,7 @@ export class SessionReadService {
         .select({
           id: sessionMessages.id,
           sessionId: sessionMessages.sessionId,
+          turnId: sessionMessages.turnId,
           role: sessionMessages.role,
           status: sessionMessages.status,
           toolCallId: sessionMessages.toolCallId,
@@ -571,6 +576,7 @@ export class SessionReadService {
       contents,
       id: messageRow.id,
       sessionId: messageRow.sessionId,
+      turnId: messageRow.turnId,
       role: messageRow.role,
       status: messageRow.status,
       toolCallId: messageRow.toolCallId,

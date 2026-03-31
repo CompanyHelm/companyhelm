@@ -127,6 +127,7 @@ export class PiMonoSessionEventHandler {
   private readonly completedToolExecutionKeys = new Set<string>();
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
+  private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
   private persistedThinkingContent = "";
@@ -172,9 +173,11 @@ export class PiMonoSessionEventHandler {
         await this.handleAgentEnd(sessionEvent);
         return;
       case "turn_start":
+        this.currentTurnId = randomUUID();
         this.logInfo("pi mono turn started", sessionEvent);
         return;
       case "turn_end":
+        this.currentTurnId = null;
         this.logInfo("pi mono turn ended", sessionEvent);
         return;
       case "message_start":
@@ -217,11 +220,13 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleAgentStart(sessionEvent: SessionEvent): Promise<void> {
+    this.currentTurnId = null;
     this.logInfo("pi mono agent started", sessionEvent);
     await this.updateSessionStatus("running");
   }
 
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
+    this.currentTurnId = null;
     this.logInfo("pi mono agent ended", sessionEvent);
     const companyId = await this.resolveCompanyId();
     await this.userSessionReadService.clearSessionReads(this.transactionProvider, {
@@ -339,6 +344,7 @@ export class PiMonoSessionEventHandler {
             status: messageRecord.status,
             toolCallId: messageRecord.toolCallId,
             toolName: messageRecord.toolName,
+            turnId: messageRecord.turnId,
             updatedAt: messageRecord.updatedAt,
           })
           .where(eq(sessionMessages.id, messageId));
@@ -444,8 +450,18 @@ export class PiMonoSessionEventHandler {
       status,
       toolCallId: this.resolveMessageToolCallId(message),
       toolName: this.resolveMessageToolName(message),
+      turnId: this.resolveTurnId(),
       updatedAt: timestamp,
     };
+  }
+
+  private resolveTurnId(): string {
+    if (this.currentTurnId) {
+      return this.currentTurnId;
+    }
+
+    this.currentTurnId = randomUUID();
+    return this.currentTurnId;
   }
 
   private buildMessageContentRecords(

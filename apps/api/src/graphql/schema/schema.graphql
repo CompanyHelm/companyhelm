@@ -294,6 +294,7 @@ type SessionEnvironmentInfo {
 type SessionMessage {
   id: ID!
   sessionId: ID!
+  turnId: ID!
   role: String!
   status: String!
   toolCallId: String

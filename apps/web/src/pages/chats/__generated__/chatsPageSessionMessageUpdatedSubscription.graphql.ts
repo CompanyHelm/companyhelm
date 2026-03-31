@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3a3c28133ef6332e3ff87efa5f587692>>
+ * @generated SignedSource<<a7bbff5ed3d27daf556a7d5e263ce7c8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,7 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
     readonly text: string;
     readonly toolCallId: string | null | undefined;
     readonly toolName: string | null | undefined;
+    readonly turnId: string;
     readonly updatedAt: string;
   };
 };
@@ -97,6 +98,13 @@ v4 = [
         "args": null,
         "kind": "ScalarField",
         "name": "sessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "turnId",
         "storageKey": null
       },
       {
@@ -208,16 +216,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "4e027c849752e1885dceb3cb4e6b8ef1",
+    "cacheID": "f6f5d27583c90b36ff5386f0b7d971dc",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "edaa521645a4a0f6551014048ac6fac2";
+(node as any).hash = "10d19a2e881e9760a98cd97d6bcbe0f8";
 
 export default node;

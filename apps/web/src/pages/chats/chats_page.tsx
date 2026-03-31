@@ -86,6 +86,7 @@ const chatsPageTranscriptQueryNode = graphql`
         node {
           id
           sessionId
+          turnId
           role
           status
           toolCallId
@@ -256,6 +257,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
     SessionMessageUpdated(sessionId: $sessionId) {
       id
       sessionId
+      turnId
       role
       status
       toolCallId
@@ -344,6 +346,14 @@ type TranscriptScrollRestoreRecord = {
   anchorOffsetTop: number;
   previousScrollHeight: number;
   previousScrollTop: number;
+};
+
+type TranscriptTurnRecord = {
+  durationLabel: string;
+  hiddenMessages: SessionMessageRecord[];
+  inlineMessages: SessionMessageRecord[];
+  isRunning: boolean;
+  turnId: string;
 };
 
 const CHAT_TRANSCRIPT_MESSAGE_SELECTOR = "[data-transcript-message-id]";
@@ -496,9 +506,16 @@ function buildToolCallSummaryById(
   return summaries;
 }
 
-function resolveAssistantDisplayContents(message: SessionMessageRecord): AssistantDisplayContentRecord[] {
+function resolveAssistantDisplayContents(
+  message: SessionMessageRecord,
+  options: { includeThinking?: boolean } = {},
+): AssistantDisplayContentRecord[] {
+  const includeThinking = options.includeThinking ?? true;
   const contentBlocks = message.contents.flatMap((content): AssistantDisplayContentRecord[] => {
     if ((content.type !== "text" && content.type !== "thinking") || typeof content.text !== "string") {
+      return [];
+    }
+    if (content.type === "thinking" && !includeThinking) {
       return [];
     }
     if (content.text.trim().length === 0) {
@@ -640,6 +657,110 @@ function compareSessionMessagesByTimestamp(leftMessage: SessionMessageRecord, ri
   }
 
   return leftMessage.id.localeCompare(rightMessage.id);
+}
+
+function hasVisibleTranscriptMessage(
+  message: SessionMessageRecord,
+  options: { includeThinking?: boolean } = {},
+): boolean {
+  if (message.role === "toolResult") {
+    return typeof message.toolName === "string" && message.toolName.trim().length > 0;
+  }
+  if (message.role === "assistant") {
+    return resolveAssistantDisplayContents(message, options).length > 0;
+  }
+
+  return message.role === "user" && message.text.trim().length > 0;
+}
+
+function formatTurnDuration(milliseconds: number): string {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
+    return "<1s";
+  }
+
+  const totalSeconds = milliseconds / 1000;
+  if (totalSeconds < 10) {
+    return `${Math.max(0.1, Math.round(totalSeconds * 10) / 10)}s`;
+  }
+  if (totalSeconds < 60) {
+    return `${Math.round(totalSeconds)}s`;
+  }
+
+  const roundedSeconds = Math.round(totalSeconds);
+  const minutes = Math.floor(roundedSeconds / 60);
+  const seconds = roundedSeconds % 60;
+  if (minutes < 60) {
+    return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
+}
+
+function buildTranscriptTurns(
+  messages: ReadonlyArray<SessionMessageRecord>,
+  session: Pick<SessionRecord, "status">,
+): TranscriptTurnRecord[] {
+  const groupedTurns: Array<{ messages: SessionMessageRecord[]; turnId: string }> = [];
+
+  for (const message of messages) {
+    const normalizedTurnId = message.turnId.trim().length > 0 ? message.turnId : message.id;
+    const lastGroupedTurn = groupedTurns.at(-1);
+    if (!lastGroupedTurn || lastGroupedTurn.turnId !== normalizedTurnId) {
+      groupedTurns.push({
+        messages: [message],
+        turnId: normalizedTurnId,
+      });
+      continue;
+    }
+
+    lastGroupedTurn.messages.push(message);
+  }
+
+  const runningTurnId = isRunningSession(session)
+    ? [...groupedTurns]
+      .reverse()
+      .find(({ messages: turnMessages }) => turnMessages.some((message) => message.status === "running"))
+      ?.turnId ?? null
+    : null;
+  return groupedTurns.map(({ messages: turnMessages, turnId }) => {
+    const isRunning = runningTurnId === turnId;
+    if (isRunning) {
+      return {
+        durationLabel: "",
+        hiddenMessages: [],
+        inlineMessages: turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { includeThinking: true })),
+        isRunning: true,
+        turnId,
+      };
+    }
+
+    const renderableMessages = turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { includeThinking: true }));
+    const firstUserMessage = renderableMessages.find((message) => message.role === "user") ?? null;
+    const lastAssistantMessage = [...renderableMessages]
+      .reverse()
+      .find((message) => message.role === "assistant" && hasVisibleTranscriptMessage(message, { includeThinking: false }))
+      ?? null;
+    const inlineMessageIds = new Set(
+      [firstUserMessage?.id ?? null, lastAssistantMessage?.id ?? null].filter((messageId): messageId is string => Boolean(messageId)),
+    );
+
+    if (inlineMessageIds.size === 0 && renderableMessages.length > 0) {
+      inlineMessageIds.add(renderableMessages.at(-1)?.id ?? renderableMessages[0]!.id);
+    }
+
+    const startedAt = Math.min(...turnMessages.map((message) => new Date(message.createdAt).getTime()));
+    const endedAt = Math.max(...turnMessages.map((message) => new Date(message.updatedAt).getTime()));
+
+    return {
+      durationLabel: formatTurnDuration(endedAt - startedAt),
+      hiddenMessages: renderableMessages.filter((message) => !inlineMessageIds.has(message.id)),
+      inlineMessages: renderableMessages.filter((message) => inlineMessageIds.has(message.id)),
+      isRunning: false,
+      turnId,
+    };
+  });
 }
 
 function toTranscriptMessagesFromConnection(connection: SessionTranscriptConnection | null | undefined): SessionMessageRecord[] {
@@ -1042,6 +1163,65 @@ function ToolTranscriptMessage(
   );
 }
 
+function TranscriptMessageRow({
+  includeThinking,
+  message,
+  toolCallSummary,
+  useLeftGutter = true,
+}: {
+  includeThinking: boolean;
+  message: SessionMessageRecord;
+  toolCallSummary: ToolCallSummaryRecord | null;
+  useLeftGutter?: boolean;
+}) {
+  if (!hasVisibleTranscriptMessage(message, { includeThinking })) {
+    return null;
+  }
+
+  const isUserMessage = message.role === "user";
+  const isToolMessage = message.role === "toolResult";
+  const assistantDisplayContents = !isUserMessage && !isToolMessage
+    ? resolveAssistantDisplayContents(message, { includeThinking })
+    : [];
+
+  return (
+    <div
+      data-transcript-message-id={message.id}
+      className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : useLeftGutter ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS : ""}`}
+    >
+      <div
+        className={`${
+          isUserMessage
+            ? "min-w-0 w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
+            : isToolMessage
+            ? "min-w-0 w-full px-0 py-0 text-foreground"
+            : "min-w-0 w-full px-0 py-0 text-foreground"
+        }`}
+      >
+        {isUserMessage ? (
+          <p className="whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">{message.text}</p>
+        ) : isToolMessage ? (
+          <ToolTranscriptMessage
+            message={message}
+            toolCallSummary={message.toolCallId ? toolCallSummary : null}
+          />
+        ) : (
+          <div className="grid min-w-0 w-full gap-4 text-left">
+            {assistantDisplayContents.map((content, contentIndex) => (
+              <div
+                key={`${message.id}-assistant-content-${contentIndex}`}
+                className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
+              >
+                <AssistantTranscriptMessage text={content.text} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChatsTranscript({
   session,
   sessionMessages,
@@ -1060,20 +1240,21 @@ function ChatsTranscript({
   const toolCallSummaryById = useMemo(() => {
     return buildToolCallSummaryById(sessionMessages);
   }, [sessionMessages]);
-  const visibleTranscriptMessages = sessionMessages.filter((message) => {
-    if (message.role === "toolResult") {
-      return typeof message.toolName === "string" && message.toolName.trim().length > 0;
-    }
-    if (message.role === "assistant") {
-      return resolveAssistantDisplayContents(message).length > 0;
-    }
-
-    return message.role === "user" && message.text.trim().length > 0;
-  });
+  const transcriptTurns = useMemo(() => {
+    return buildTranscriptTurns(sessionMessages, session);
+  }, [session, sessionMessages]);
+  const [expandedTurnIds, setExpandedTurnIds] = useState<Record<string, boolean>>({});
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
   const showTranscriptLoader = isLoadingTranscript || isLoadingOlderMessages;
+  const hasVisibleTranscriptContent = transcriptTurns.some((turn) => {
+    return turn.inlineMessages.length > 0 || turn.hiddenMessages.length > 0;
+  });
 
-  if (visibleTranscriptMessages.length === 0 && !showTranscriptLoader) {
+  useEffect(() => {
+    setExpandedTurnIds({});
+  }, [session.id]);
+
+  if (!hasVisibleTranscriptContent && !showTranscriptLoader) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
         <div>
@@ -1101,48 +1282,72 @@ function ChatsTranscript({
           <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
         </div>
       ) : null}
-      {visibleTranscriptMessages.map((message) => {
-        const isUserMessage = message.role === "user";
-        const isToolMessage = message.role === "toolResult";
-        const assistantDisplayContents = !isUserMessage && !isToolMessage
-          ? resolveAssistantDisplayContents(message)
-          : [];
-
-        return (
-          <div
-            data-transcript-message-id={message.id}
-            key={message.id}
-            className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS}`}
-          >
-            <div
-              className={`${
-                isUserMessage
-                  ? "min-w-0 w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
-                  : isToolMessage
-                  ? "min-w-0 w-full px-0 py-0 text-foreground"
-                  : "min-w-0 w-full px-0 py-0 text-foreground"
-              }`}
-            >
-              {isUserMessage ? (
-                <p className="whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">{message.text}</p>
-              ) : isToolMessage ? (
-                <ToolTranscriptMessage
+      {transcriptTurns.map((turn) => {
+        if (turn.isRunning) {
+          return (
+            <div key={turn.turnId} className="grid gap-3">
+              {turn.inlineMessages.map((message) => (
+                <TranscriptMessageRow
+                  includeThinking={true}
+                  key={message.id}
                   message={message}
                   toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                 />
+              ))}
+            </div>
+          );
+        }
+
+        const hasHiddenMessages = turn.hiddenMessages.length > 0;
+        const isExpanded = expandedTurnIds[turn.turnId] === true;
+
+        return (
+          <div key={turn.turnId} className="grid gap-3">
+            {turn.inlineMessages.map((message) => (
+              <TranscriptMessageRow
+                includeThinking={false}
+                key={message.id}
+                message={message}
+                toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+              />
+            ))}
+            <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>
+              {hasHiddenMessages ? (
+                <button
+                  aria-expanded={isExpanded}
+                  className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
+                  onClick={() => {
+                    setExpandedTurnIds((currentExpandedTurnIds) => ({
+                      ...currentExpandedTurnIds,
+                      [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
+                    }));
+                  }}
+                  type="button"
+                >
+                  <ChevronRightIcon className={`size-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                  <span>Worked for {turn.durationLabel}</span>
+                </button>
               ) : (
-                <div className="grid min-w-0 w-full gap-4 text-left">
-                  {assistantDisplayContents.map((content, contentIndex) => (
-                    <div
-                      key={`${message.id}-assistant-content-${contentIndex}`}
-                      className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
-                    >
-                      <AssistantTranscriptMessage text={content.text} />
-                    </div>
-                  ))}
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                  Worked for {turn.durationLabel}
                 </div>
               )}
             </div>
+            {hasHiddenMessages && isExpanded ? (
+              <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>
+                <div className="grid gap-3 rounded-2xl border border-border/60 bg-muted/10 px-4 py-4">
+                  {turn.hiddenMessages.map((message) => (
+                    <TranscriptMessageRow
+                      includeThinking={true}
+                      key={message.id}
+                      message={message}
+                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                      useLeftGutter={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         );
       })}

@@ -48,6 +48,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                                 {
                                   id: "message-3",
                                   sessionId: "session-1",
+                                  turnId: "turn-2",
                                   role: "assistant",
                                   status: "completed",
                                   toolCallId: null,
@@ -59,6 +60,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                                 {
                                   id: "message-2",
                                   sessionId: "session-1",
+                                  turnId: "turn-1",
                                   role: "assistant",
                                   status: "completed",
                                   toolCallId: null,
@@ -70,6 +72,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                                 {
                                   id: "message-1",
                                   sessionId: "session-1",
+                                  turnId: "turn-1",
                                   role: "user",
                                   status: "completed",
                                   toolCallId: null,
@@ -221,6 +224,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
               node {
                 id
                 sessionId
+                turnId
                 role
                 status
                 toolCallId
@@ -264,6 +268,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
         node: {
           id: "message-3",
           sessionId: "session-1",
+          turnId: "turn-2",
           role: "assistant",
           status: "completed",
           toolCallId: null,
@@ -298,6 +303,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
         node: {
           id: "message-2",
           sessionId: "session-1",
+          turnId: "turn-1",
           role: "assistant",
           status: "completed",
           toolCallId: null,

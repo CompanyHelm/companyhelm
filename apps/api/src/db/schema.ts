@@ -205,6 +205,7 @@ export const sessionMessages = pgTable("session_messages", {
   sessionId: uuid("session_id")
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
+  turnId: uuid("turn_id").notNull(),
   role: sessionMessageRoleEnum("role").notNull(),
   status: sessionMessageStatusEnum("status").notNull(),
   toolCallId: text("tool_call_id"),
@@ -216,6 +217,7 @@ export const sessionMessages = pgTable("session_messages", {
 (table) => ({
   companyIdIndex: index("session_messages_company_id_idx").on(table.companyId),
   sessionIdIndex: index("session_messages_session_id_idx").on(table.sessionId),
+  sessionTurnIdIndex: index("session_messages_session_turn_id_idx").on(table.sessionId, table.turnId),
 }));
 
 export const messageContents = pgTable("message_contents", {

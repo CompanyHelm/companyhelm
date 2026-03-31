@@ -169,6 +169,7 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
     getMessage: vi.fn(async () => ({
       id: "message-1",
       sessionId: "session-123",
+      turnId: "turn-1",
       role: "assistant",
       status: "completed",
       toolCallId: null,
@@ -215,6 +216,7 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
     SessionMessageUpdated: {
       id: "message-1",
       sessionId: "session-123",
+      turnId: "turn-1",
       role: "assistant",
       status: "completed",
       toolCallId: null,

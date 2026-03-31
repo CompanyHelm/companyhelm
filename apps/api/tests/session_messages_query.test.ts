@@ -44,6 +44,7 @@ class SessionMessagesQueryTestHarness {
                         {
                           id: "message-2",
                           sessionId: "session-1",
+                          turnId: "turn-1",
                           role: "assistant",
                           status: "completed",
                           toolCallId: null,
@@ -55,6 +56,7 @@ class SessionMessagesQueryTestHarness {
                         {
                           id: "message-1",
                           sessionId: "session-1",
+                          turnId: "turn-1",
                           role: "user",
                           status: "completed",
                           toolCallId: null,
@@ -188,6 +190,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
           SessionMessages {
             id
             sessionId
+            turnId
             role
             status
             toolCallId
@@ -218,6 +221,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
     {
       id: "message-1",
       sessionId: "session-1",
+      turnId: "turn-1",
       role: "user",
       status: "completed",
       toolCallId: null,
@@ -242,6 +246,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
     {
       id: "message-2",
       sessionId: "session-1",
+      turnId: "turn-1",
       role: "assistant",
       status: "completed",
       toolCallId: null,

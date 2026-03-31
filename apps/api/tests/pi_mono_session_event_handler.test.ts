@@ -452,6 +452,7 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   assert.equal(messageRecord?.status, "completed");
   assert.equal(messageRecord?.toolCallId, "tool-call-1");
   assert.equal(messageRecord?.toolName, "read_file");
+  assert.equal(typeof messageRecord?.turnId, "string");
   assert.ok(messageRecord?.updatedAt instanceof Date);
 
   const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
@@ -487,6 +488,53 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   );
   assert.equal(harness.sessionState.currentContextTokens, 12000);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
+});
+
+test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rotates it for the next turn", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      type: "turn_start",
+    });
+    await handler.handle({
+      message: {
+        content: "first question",
+        role: "user",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+    await handler.handle({
+      type: "turn_end",
+    });
+
+    await handler.handle({
+      type: "turn_start",
+    });
+    await handler.handle({
+      message: {
+        content: "second question",
+        role: "user",
+        timestamp: 2000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const persistedMessages = [...harness.sessionMessageRecords.values()]
+    .sort((leftMessage, rightMessage) => String(leftMessage.id).localeCompare(String(rightMessage.id)));
+  assert.equal(persistedMessages.length, 2);
+  assert.equal(typeof persistedMessages[0]?.turnId, "string");
+  assert.equal(typeof persistedMessages[1]?.turnId, "string");
+  assert.notEqual(persistedMessages[0]?.turnId, persistedMessages[1]?.turnId);
 });
 
 test("PiMonoSessionEventHandler captures context snapshots when auto compaction starts and ends", async () => {
