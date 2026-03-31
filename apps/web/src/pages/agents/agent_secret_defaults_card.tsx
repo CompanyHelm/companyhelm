@@ -247,6 +247,11 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
             disabled={isMutating || availableSecretOptions.length === 0}
             items={availableSecretOptions}
             onValueChange={async (value) => {
+              if (typeof value !== "string" || value.length === 0) {
+                setPendingSelection(null);
+                return;
+              }
+
               setPendingSelection(value);
               await attachSecret(value);
             }}
