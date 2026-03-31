@@ -49,12 +49,15 @@ type AgentDefaultSecretRecord = {
 type SessionRecord = {
   agentId: string;
   createdAt: Date;
+  currentContextTokens: number | null;
   currentModelId: string;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   id: string;
   inferredTitle: string | null;
+  isCompacting: boolean;
   isThinking: boolean;
+  maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
   updatedAt: Date;
@@ -177,11 +180,14 @@ export class SessionManagerService {
         .values({
           ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
           companyId,
+          currentContextTokens: null,
           agentId,
           currentModelProviderCredentialModelId: selectedModelRecord.id,
           currentReasoningLevel: resolvedReasoningLevel,
           inferredTitle,
+          isCompacting: false,
           isThinking: false,
+          maxContextTokens: null,
           status: "queued",
           thinkingText: null,
           created_at: now,
@@ -580,8 +586,11 @@ export class SessionManagerService {
       agentId: agentSessions.agentId,
       currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
       currentReasoningLevel: agentSessions.currentReasoningLevel,
+      currentContextTokens: agentSessions.currentContextTokens,
       inferredTitle: agentSessions.inferredTitle,
+      isCompacting: agentSessions.isCompacting,
       isThinking: agentSessions.isThinking,
+      maxContextTokens: agentSessions.maxContextTokens,
       status: agentSessions.status,
       thinkingText: agentSessions.thinkingText,
       createdAt: agentSessions.created_at,

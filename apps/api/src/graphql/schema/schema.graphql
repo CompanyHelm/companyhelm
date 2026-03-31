@@ -260,11 +260,14 @@ type AgentCreateModelOption {
 type Session {
   id: ID!
   agentId: ID!
+  currentContextTokens: Int
   modelProviderCredentialModelId: ID
   modelId: String!
   reasoningLevel: String!
   inferredTitle: String
+  isCompacting: Boolean!
   isThinking: Boolean!
+  maxContextTokens: Int
   status: String!
   thinkingText: String
   createdAt: String!

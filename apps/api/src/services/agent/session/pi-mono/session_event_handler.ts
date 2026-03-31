@@ -95,6 +95,17 @@ type SessionEvent = {
   toolResults?: unknown;
 };
 
+type PiMonoSessionContextSnapshot = {
+  currentContextTokens: number | null;
+  isCompacting: boolean;
+  maxContextTokens: number | null;
+};
+
+type PiMonoSessionEventHandlerDependencies = {
+  contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
+  sessionProcessPubSubNames?: SessionProcessPubSubNames;
+};
+
 /**
  * Owns PI Mono session-event handling for one live session. Its scope is to classify the runtime
  * events emitted by the SDK, keep the persisted session lifecycle aligned with agent execution,
@@ -105,6 +116,7 @@ export class PiMonoSessionEventHandler {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
+  private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
   private readonly messageIdByEventKey = new Map<string, string>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
@@ -121,12 +133,17 @@ export class PiMonoSessionEventHandler {
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     redisService: RedisService,
-    sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+    dependencies: PiMonoSessionEventHandlerDependencies = {},
   ) {
     this.redisService = redisService;
     this.transactionProvider = transactionProvider;
     this.sessionId = sessionId;
-    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
+    this.contextSnapshotProvider = dependencies.contextSnapshotProvider ?? (() => ({
+      currentContextTokens: null,
+      isCompacting: false,
+      maxContextTokens: null,
+    }));
+    this.sessionProcessPubSubNames = dependencies.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
   }
 
   async handle(event: unknown): Promise<void> {
@@ -174,31 +191,25 @@ export class PiMonoSessionEventHandler {
       case "tool_execution_end":
         await this.handleToolExecutionEnd(sessionEvent);
         return;
+      case "auto_compaction_start":
+        await this.handleAutoCompactionStart(sessionEvent);
+        return;
+      case "auto_compaction_end":
+        await this.handleAutoCompactionEnd(sessionEvent);
+        return;
       default:
         this.logError("unhandled pi mono session event", sessionEvent);
     }
   }
 
   private async updateSessionStatus(status: "running" | "stopped"): Promise<void> {
-    await this.transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
-      await updatableDatabase
-        .update(agentSessions)
-        .set({
-          isThinking: false,
-          status,
-          thinkingText: null,
-          updated_at: new Date(),
-        })
-        .where(and(
-          eq(agentSessions.id, this.sessionId),
-          ne(agentSessions.status, "archived"),
-        ));
-    });
-
     this.isThinking = false;
     this.thinkingText = "";
-    await this.publishSessionUpdate();
+    await this.persistSessionState({
+      isThinking: false,
+      status,
+      thinkingText: null,
+    }, true, true);
   }
 
   private async handleAgentStart(sessionEvent: SessionEvent): Promise<void> {
@@ -209,6 +220,16 @@ export class PiMonoSessionEventHandler {
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
     this.logInfo("pi mono agent ended", sessionEvent);
     await this.updateSessionStatus("stopped");
+  }
+
+  private async handleAutoCompactionStart(sessionEvent: SessionEvent): Promise<void> {
+    this.logInfo("pi mono auto compaction started", sessionEvent);
+    await this.persistSessionState({}, true, true);
+  }
+
+  private async handleAutoCompactionEnd(sessionEvent: SessionEvent): Promise<void> {
+    this.logInfo("pi mono auto compaction ended", sessionEvent);
+    await this.persistSessionState({}, true, true);
   }
 
   private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
@@ -255,8 +276,8 @@ export class PiMonoSessionEventHandler {
         return;
       }
       case "assistant":
-        await this.clearThinkingState(true);
         await this.upsertSessionMessage("completed", sessionEvent);
+        await this.clearThinkingState(true, true);
         this.persistedThinkingContent = "";
         this.logInfo("pi mono assistant message completed", sessionEvent);
         return;
@@ -675,30 +696,61 @@ export class PiMonoSessionEventHandler {
     }
   }
 
-  private async clearThinkingState(publishUpdate: boolean): Promise<void> {
+  private async clearThinkingState(
+    publishUpdate: boolean,
+    includeContextSnapshot = false,
+  ): Promise<void> {
     const hadThinkingState = this.isThinking || this.thinkingText.length > 0;
     this.isThinking = false;
     this.thinkingText = "";
     if (!hadThinkingState) {
+      if (includeContextSnapshot) {
+        await this.persistSessionState({}, publishUpdate, true);
+      }
       return;
     }
-    await this.updateThinkingState(false, null, publishUpdate);
+    await this.updateThinkingState(false, null, publishUpdate, includeContextSnapshot);
   }
 
   private async updateThinkingState(
     isThinking: boolean,
     thinkingText: string | null,
     publishUpdate = true,
+    includeContextSnapshot = false,
+  ): Promise<void> {
+    await this.persistSessionState({
+      isThinking,
+      thinkingText,
+    }, publishUpdate, includeContextSnapshot);
+  }
+
+  private buildContextSnapshotValues(): Record<string, unknown> {
+    const contextSnapshot = this.contextSnapshotProvider();
+    return {
+      currentContextTokens: contextSnapshot.currentContextTokens,
+      isCompacting: contextSnapshot.isCompacting,
+      maxContextTokens: contextSnapshot.maxContextTokens,
+    };
+  }
+
+  private async persistSessionState(
+    values: Record<string, unknown>,
+    publishUpdate: boolean,
+    includeContextSnapshot: boolean,
   ): Promise<void> {
     await this.transactionProvider.transaction(async (tx) => {
       const updatableDatabase = tx as UpdatableDatabase;
       await updatableDatabase
         .update(agentSessions)
         .set({
-          isThinking,
-          thinkingText,
+          ...values,
+          ...(includeContextSnapshot ? this.buildContextSnapshotValues() : {}),
+          updated_at: new Date(),
         })
-        .where(eq(agentSessions.id, this.sessionId));
+        .where(and(
+          eq(agentSessions.id, this.sessionId),
+          ne(agentSessions.status, "archived"),
+        ));
     });
 
     if (publishUpdate) {

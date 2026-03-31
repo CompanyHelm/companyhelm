@@ -6,10 +6,13 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 type SessionRow = {
   id: string;
   agentId: string;
+  currentContextTokens: number | null;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
+  isCompacting: boolean;
   isThinking: boolean;
+  maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
   createdAt: Date;
@@ -61,11 +64,14 @@ type SelectableDatabase = {
 export type SessionGraphqlRecord = {
   id: string;
   agentId: string;
+  currentContextTokens: number | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
   inferredTitle: string | null;
+  isCompacting: boolean;
   isThinking: boolean;
+  maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
   createdAt: string;
@@ -165,10 +171,13 @@ export class SessionReadService {
         .select({
           id: agentSessions.id,
           agentId: agentSessions.agentId,
+          currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
+          isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
+          maxContextTokens: agentSessions.maxContextTokens,
           status: agentSessions.status,
           thinkingText: agentSessions.thinkingText,
           createdAt: agentSessions.created_at,
@@ -200,10 +209,13 @@ export class SessionReadService {
         .select({
           id: agentSessions.id,
           agentId: agentSessions.agentId,
+          currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           inferredTitle: agentSessions.inferredTitle,
+          isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
+          maxContextTokens: agentSessions.maxContextTokens,
           status: agentSessions.status,
           thinkingText: agentSessions.thinkingText,
           createdAt: agentSessions.created_at,
@@ -483,11 +495,14 @@ export class SessionReadService {
     return {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
+      currentContextTokens: sessionRow.currentContextTokens,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
       inferredTitle: sessionRow.inferredTitle,
+      isCompacting: sessionRow.isCompacting,
       isThinking: sessionRow.isThinking,
+      maxContextTokens: sessionRow.maxContextTokens,
       status: sessionRow.status,
       thinkingText: sessionRow.thinkingText,
       createdAt: sessionRow.createdAt.toISOString(),

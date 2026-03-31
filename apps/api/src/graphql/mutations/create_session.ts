@@ -16,11 +16,14 @@ type CreateSessionMutationArguments = {
 type GraphqlSessionRecord = {
   id: string;
   agentId: string;
+  currentContextTokens: number | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
   inferredTitle: string | null;
+  isCompacting: boolean;
   isThinking: boolean;
+  maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
   createdAt: string;
@@ -31,11 +34,14 @@ type GraphqlSessionRecord = {
 type ServiceSessionRecord = {
   id: string;
   agentId: string;
+  currentContextTokens: number | null;
   currentModelId: string;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
   inferredTitle: string | null;
+  isCompacting: boolean;
   isThinking: boolean;
+  maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
   createdAt: Date;
@@ -91,11 +97,14 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
     return {
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
+      currentContextTokens: sessionRecord.currentContextTokens,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
       inferredTitle: sessionRecord.inferredTitle,
+      isCompacting: sessionRecord.isCompacting,
       isThinking: sessionRecord.isThinking,
+      maxContextTokens: sessionRecord.maxContextTokens,
       status: sessionRecord.status,
       thinkingText: sessionRecord.thinkingText,
       createdAt: sessionRecord.createdAt.toISOString(),

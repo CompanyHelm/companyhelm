@@ -33,7 +33,10 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     getSession: vi.fn(async () => ({
       id: "session-1",
       agentId: "agent-1",
+      currentContextTokens: 160000,
+      isCompacting: false,
       modelId: "gpt-5.4",
+      maxContextTokens: 200000,
       reasoningLevel: "high",
       isThinking: true,
       status: "running",
@@ -67,7 +70,10 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     SessionUpdated: {
       id: "session-1",
       agentId: "agent-1",
+      currentContextTokens: 160000,
+      isCompacting: false,
       modelId: "gpt-5.4",
+      maxContextTokens: 200000,
       reasoningLevel: "high",
       isThinking: true,
       status: "running",
@@ -99,7 +105,10 @@ test("SessionUpdated subscription still works when Mercurius calls subscribe wit
     getSession: vi.fn(async () => ({
       id: "session-1",
       agentId: "agent-1",
+      currentContextTokens: null,
+      isCompacting: false,
       modelId: "gpt-5.4",
+      maxContextTokens: 200000,
       reasoningLevel: "high",
       isThinking: false,
       status: "running",

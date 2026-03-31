@@ -46,10 +46,13 @@ class SessionsQueryTestHarness {
                         {
                           id: "session-older",
                           agentId: "agent-1",
+                          currentContextTokens: 32000,
                           currentModelProviderCredentialModelId: "model-row-1",
                           currentReasoningLevel: "medium",
                           inferredTitle: "Inferred older title",
+                          isCompacting: false,
                           isThinking: false,
+                          maxContextTokens: 200000,
                           status: "running",
                           thinkingText: null,
                           createdAt: new Date("2026-03-24T08:00:00.000Z"),
@@ -59,10 +62,13 @@ class SessionsQueryTestHarness {
                         {
                           id: "session-newer",
                           agentId: "agent-2",
+                          currentContextTokens: null,
                           currentModelProviderCredentialModelId: "model-row-2",
                           currentReasoningLevel: "high",
                           inferredTitle: null,
+                          isCompacting: true,
                           isThinking: true,
+                          maxContextTokens: 200000,
                           status: "archived",
                           thinkingText: "Inspecting deployment history",
                           createdAt: new Date("2026-03-24T09:00:00.000Z"),
@@ -162,7 +168,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
           Sessions {
             id
             agentId
+            currentContextTokens
+            isCompacting
             modelId
+            maxContextTokens
             reasoningLevel
             inferredTitle
             status
@@ -181,7 +190,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     {
       id: "session-newer",
       agentId: "agent-2",
+      currentContextTokens: null,
+      isCompacting: true,
       modelId: "claude-3.7-sonnet",
+      maxContextTokens: 200000,
       reasoningLevel: "high",
       inferredTitle: null,
       status: "archived",
@@ -192,7 +204,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     {
       id: "session-older",
       agentId: "agent-1",
+      currentContextTokens: 32000,
+      isCompacting: false,
       modelId: "gpt-5.4",
+      maxContextTokens: 200000,
       reasoningLevel: "medium",
       inferredTitle: "Inferred older title",
       status: "running",

@@ -97,11 +97,14 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       return {
         id: "session-1",
         agentId,
+        currentContextTokens: null,
         currentModelProviderCredentialModelId: "model-row-1",
         currentModelId: "gpt-5.4",
         currentReasoningLevel: "high",
         inferredTitle: "Draft the onboarding email.",
+        isCompacting: false,
         status: "queued",
+        maxContextTokens: null,
         createdAt: new Date("2026-03-25T12:00:00.000Z"),
         updatedAt: new Date("2026-03-25T12:00:00.000Z"),
         userSetTitle: null,
@@ -141,8 +144,11 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
           CreateSession(input: $input) {
             id
             agentId
+            currentContextTokens
+            isCompacting
             modelProviderCredentialModelId
             modelId
+            maxContextTokens
             reasoningLevel
             inferredTitle
             status
@@ -168,8 +174,11 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
   assert.deepEqual(document.data.CreateSession, {
     id: "session-1",
     agentId: "agent-1",
+    currentContextTokens: null,
+    isCompacting: false,
     modelProviderCredentialModelId: "model-row-1",
     modelId: "gpt-5.4",
+    maxContextTokens: null,
     reasoningLevel: "high",
     inferredTitle: "Draft the onboarding email.",
     status: "queued",

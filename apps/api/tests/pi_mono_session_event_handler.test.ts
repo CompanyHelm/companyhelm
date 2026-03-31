@@ -24,8 +24,16 @@ class PiMonoSessionEventHandlerTestHarness {
     const publishCalls: Array<{ channel: string; message: string }> = [];
     const infoLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
+    const contextSnapshot = {
+      currentContextTokens: null as number | null,
+      isCompacting: false,
+      maxContextTokens: null as number | null,
+    };
     const sessionState = {
+      currentContextTokens: null as number | null,
+      isCompacting: false,
       isThinking: false,
+      maxContextTokens: null as number | null,
       status: "stopped",
       thinkingText: null as string | null,
     };
@@ -41,6 +49,7 @@ class PiMonoSessionEventHandlerTestHarness {
 
     return {
       errorLogs,
+      contextSnapshot,
       infoLogs,
       messageContentRecordsByMessageId,
       publishCalls,
@@ -116,15 +125,28 @@ class PiMonoSessionEventHandlerTestHarness {
                   set(value: Record<string, unknown>) {
                     return {
                       async where() {
-                        if (typeof value.status === "string" && sessionState.status === "archived") {
+                        if (sessionState.status === "archived") {
                           return undefined;
                         }
                         sessionStatusUpdates.push(value);
+                        if ("currentContextTokens" in value) {
+                          sessionState.currentContextTokens = typeof value.currentContextTokens === "number"
+                            ? value.currentContextTokens
+                            : null;
+                        }
+                        if (typeof value.isCompacting === "boolean") {
+                          sessionState.isCompacting = value.isCompacting;
+                        }
                         if (typeof value.status === "string") {
                           sessionState.status = value.status;
                         }
                         if (typeof value.isThinking === "boolean") {
                           sessionState.isThinking = value.isThinking;
+                        }
+                        if ("maxContextTokens" in value) {
+                          sessionState.maxContextTokens = typeof value.maxContextTokens === "number"
+                            ? value.maxContextTokens
+                            : null;
                         }
                         if ("thinkingText" in value) {
                           sessionState.thinkingText = typeof value.thinkingText === "string" ? value.thinkingText : null;
@@ -234,10 +256,15 @@ class PiMonoSessionEventHandlerTestHarness {
 
 test("PiMonoSessionEventHandler marks the session running on agent start", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
+  harness.contextSnapshot.currentContextTokens = 2048;
+  harness.contextSnapshot.maxContextTokens = 200000;
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
     harness.redisService as never,
+    {
+      contextSnapshotProvider: () => harness.contextSnapshot,
+    },
   );
 
   try {
@@ -250,11 +277,17 @@ test("PiMonoSessionEventHandler marks the session running on agent start", async
 
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "running");
+  assert.equal(harness.sessionStatusUpdates[0]?.currentContextTokens, 2048);
   assert.equal(harness.sessionStatusUpdates[0]?.isThinking, false);
+  assert.equal(harness.sessionStatusUpdates[0]?.isCompacting, false);
+  assert.equal(harness.sessionStatusUpdates[0]?.maxContextTokens, 200000);
   assert.equal(harness.sessionStatusUpdates[0]?.thinkingText, null);
   assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.equal(harness.sessionState.currentContextTokens, 2048);
+  assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.status, "running");
   assert.equal(harness.sessionState.isThinking, false);
+  assert.equal(harness.sessionState.maxContextTokens, 200000);
   assert.equal(harness.sessionState.thinkingText, null);
   assert.deepEqual(harness.publishCalls, [{
     channel: "company:company-1:session:session-1:update",
@@ -289,10 +322,15 @@ test("PiMonoSessionEventHandler does not overwrite archived sessions when agent 
 
 test("PiMonoSessionEventHandler marks the session stopped on agent end", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
+  harness.contextSnapshot.currentContextTokens = 4096;
+  harness.contextSnapshot.maxContextTokens = 200000;
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
     harness.redisService as never,
+    {
+      contextSnapshotProvider: () => harness.contextSnapshot,
+    },
   );
 
   try {
@@ -305,11 +343,17 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
 
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "stopped");
+  assert.equal(harness.sessionStatusUpdates[0]?.currentContextTokens, 4096);
   assert.equal(harness.sessionStatusUpdates[0]?.isThinking, false);
+  assert.equal(harness.sessionStatusUpdates[0]?.isCompacting, false);
+  assert.equal(harness.sessionStatusUpdates[0]?.maxContextTokens, 200000);
   assert.equal(harness.sessionStatusUpdates[0]?.thinkingText, null);
   assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.equal(harness.sessionState.currentContextTokens, 4096);
+  assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.status, "stopped");
   assert.equal(harness.sessionState.isThinking, false);
+  assert.equal(harness.sessionState.maxContextTokens, 200000);
   assert.equal(harness.sessionState.thinkingText, null);
   assert.deepEqual(harness.publishCalls, [{
     channel: "company:company-1:session:session-1:update",
@@ -319,10 +363,15 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
 
 test("PiMonoSessionEventHandler persists assistant messages across start update and end", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
+  harness.contextSnapshot.currentContextTokens = 12000;
+  harness.contextSnapshot.maxContextTokens = 200000;
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
     harness.redisService as never,
+    {
+      contextSnapshotProvider: () => harness.contextSnapshot,
+    },
   );
 
   try {
@@ -374,13 +423,15 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.sessionMessageRecords.size, 1);
-  assert.equal(harness.publishCalls.length, 3);
+  assert.equal(harness.publishCalls.length, 4);
   assert.match(harness.publishCalls[0]?.channel ?? "", /^company:company-1:session:session-1:message:[^:]+:update$/);
   assert.equal(harness.publishCalls[0]?.message, "");
   assert.equal(harness.publishCalls[1]?.channel, harness.publishCalls[0]?.channel);
   assert.equal(harness.publishCalls[1]?.message, "");
   assert.equal(harness.publishCalls[2]?.channel, harness.publishCalls[0]?.channel);
   assert.equal(harness.publishCalls[2]?.message, "");
+  assert.equal(harness.publishCalls[3]?.channel, "company:company-1:session:session-1:update");
+  assert.equal(harness.publishCalls[3]?.message, "");
 
   const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
   assert.equal(messageRecord?.companyId, "company-1");
@@ -422,6 +473,52 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
       },
     ],
   );
+  assert.equal(harness.sessionState.currentContextTokens, 12000);
+  assert.equal(harness.sessionState.maxContextTokens, 200000);
+});
+
+test("PiMonoSessionEventHandler captures context snapshots when auto compaction starts and ends", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      contextSnapshotProvider: () => harness.contextSnapshot,
+    },
+  );
+
+  try {
+    harness.contextSnapshot.currentContextTokens = 198000;
+    harness.contextSnapshot.isCompacting = true;
+    harness.contextSnapshot.maxContextTokens = 200000;
+    await handler.handle({
+      reason: "threshold",
+      type: "auto_compaction_start",
+    });
+
+    harness.contextSnapshot.currentContextTokens = null;
+    harness.contextSnapshot.isCompacting = false;
+    harness.contextSnapshot.maxContextTokens = 200000;
+    await handler.handle({
+      aborted: false,
+      type: "auto_compaction_end",
+      willRetry: false,
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionStatusUpdates.length, 2);
+  assert.equal(harness.sessionStatusUpdates[0]?.currentContextTokens, 198000);
+  assert.equal(harness.sessionStatusUpdates[0]?.isCompacting, true);
+  assert.equal(harness.sessionStatusUpdates[0]?.maxContextTokens, 200000);
+  assert.equal(harness.sessionStatusUpdates[1]?.currentContextTokens, null);
+  assert.equal(harness.sessionStatusUpdates[1]?.isCompacting, false);
+  assert.equal(harness.sessionStatusUpdates[1]?.maxContextTokens, 200000);
+  assert.equal(harness.sessionState.currentContextTokens, null);
+  assert.equal(harness.sessionState.isCompacting, false);
+  assert.equal(harness.sessionState.maxContextTokens, 200000);
 });
 
 test("PiMonoSessionEventHandler persists tool execution events into one streamed tool result message", async () => {

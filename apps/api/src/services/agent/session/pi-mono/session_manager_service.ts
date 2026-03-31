@@ -165,6 +165,9 @@ export class PiMonoSessionManagerService {
       transactionProvider,
       sessionId,
       this.redisService,
+      {
+        contextSnapshotProvider: () => this.buildContextSnapshot(session),
+      },
     );
 
     session.subscribe((event) => {
@@ -289,5 +292,18 @@ export class PiMonoSessionManagerService {
         })
         .where(eq(agentSessions.id, sessionId));
     });
+  }
+
+  private buildContextSnapshot(session: AgentSession): {
+    currentContextTokens: number | null;
+    isCompacting: boolean;
+    maxContextTokens: number | null;
+  } {
+    const contextUsage = session.getContextUsage();
+    return {
+      currentContextTokens: contextUsage?.tokens ?? null,
+      isCompacting: session.isCompacting,
+      maxContextTokens: contextUsage?.contextWindow ?? session.model?.contextWindow ?? null,
+    };
   }
 }
