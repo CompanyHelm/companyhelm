@@ -623,12 +623,22 @@ test("PiMonoSessionEventHandler closes the current prompt turn only after queued
   const persistedTurns = [...harness.sessionTurnRecords.values()];
   const persistedMessages = [...harness.sessionMessageRecords.values()]
     .sort((leftMessage, rightMessage) => String(leftMessage.createdAt).localeCompare(String(rightMessage.createdAt)));
+  const messageUpdateChannels = harness.publishCalls
+    .map((publishCall) => publishCall.channel)
+    .filter((channel) => channel.includes(":session:session-1:message:"));
 
   assert.equal(persistedTurns.length, 1);
   assert.equal(persistedMessages.length, 2);
   assert.equal(persistedMessages[0]?.turnId, persistedMessages[1]?.turnId);
   assert.equal(persistedTurns[0]?.id, persistedMessages[0]?.turnId);
   assert.equal(persistedTurns[0]?.endedAt instanceof Date, true);
+  assert.equal(messageUpdateChannels.length, persistedMessages.length * 2);
+  for (const persistedMessage of persistedMessages) {
+    assert.equal(
+      messageUpdateChannels.filter((channel) => channel.endsWith(`message:${persistedMessage.id}:update`)).length,
+      2,
+    );
+  }
 });
 
 test("PiMonoSessionEventHandler captures context snapshots when auto compaction starts and ends", async () => {

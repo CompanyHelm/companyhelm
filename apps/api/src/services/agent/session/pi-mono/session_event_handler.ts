@@ -121,6 +121,7 @@ export class PiMonoSessionEventHandler {
   private readonly userSessionReadService: UserSessionReadService;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
   private readonly messageIdByEventKey = new Map<string, string>();
+  private readonly messageIdsByTurnId = new Map<string, Set<string>>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
   private readonly queuedUserMessageTimestamps: Date[] = [];
@@ -200,6 +201,8 @@ export class PiMonoSessionEventHandler {
         })
         .where(eq(sessionTurns.id, currentTurnId));
     });
+    await this.publishTurnMessageUpdates(currentTurnId);
+    this.messageIdsByTurnId.delete(currentTurnId);
     this.currentTurnId = null;
   }
 
@@ -401,6 +404,7 @@ export class PiMonoSessionEventHandler {
     });
 
     await this.upsertMessageContents(companyId, messageId, eventMessage, timestamp);
+    this.trackMessageIdForTurn(turnId, messageId);
     await this.publishMessageUpdate(messageId);
 
     if (status === "completed") {
@@ -995,6 +999,19 @@ export class PiMonoSessionEventHandler {
     await redisCompanyScopedService.publish(
       this.sessionProcessPubSubNames.getSessionMessageUpdateChannel(this.sessionId, messageId),
     );
+  }
+
+  private trackMessageIdForTurn(turnId: string, messageId: string): void {
+    const trackedMessageIds = this.messageIdsByTurnId.get(turnId) ?? new Set<string>();
+    trackedMessageIds.add(messageId);
+    this.messageIdsByTurnId.set(turnId, trackedMessageIds);
+  }
+
+  private async publishTurnMessageUpdates(turnId: string): Promise<void> {
+    const trackedMessageIds = [...(this.messageIdsByTurnId.get(turnId) ?? [])];
+    for (const messageId of trackedMessageIds) {
+      await this.publishMessageUpdate(messageId);
+    }
   }
 
   private async publishSessionUpdate(): Promise<void> {
