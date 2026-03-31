@@ -148,6 +148,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     selectedSecretIds.length > 0 ? `${selectedSecretIds.length} secret${selectedSecretIds.length === 1 ? "" : "s"}` : null,
     hasAnyComputeRequirement ? "custom compute" : null,
   ].filter((value): value is string => Boolean(value)).join(" • ");
+  const shouldScrollSecrets = props.secretOptions.length > 7;
   const isCreateDisabled = agentName.length === 0
     || providerOptionId.length === 0
     || modelOptionId.length === 0
@@ -319,44 +320,46 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                   </div>
 
                   {props.secretOptions.length > 0 ? (
-                    <div className="grid gap-2">
-                      {props.secretOptions.map((secretOption) => {
-                        const isSelected = selectedSecretIds.includes(secretOption.id);
+                    <div className={shouldScrollSecrets ? "max-h-[28rem] overflow-y-auto pr-1" : undefined}>
+                      <div className="grid gap-2">
+                        {props.secretOptions.map((secretOption) => {
+                          const isSelected = selectedSecretIds.includes(secretOption.id);
 
-                        return (
-                          <button
-                            key={secretOption.id}
-                            aria-pressed={isSelected}
-                            className={`rounded-lg border px-3 py-3 text-left transition ${
-                              isSelected
-                                ? "border-primary/60 bg-primary/10"
-                                : "border-border/60 bg-background/40 hover:border-border hover:bg-background/70"
-                            }`}
-                            onClick={() => {
-                              setSelectedSecretIds((currentValue) => {
-                                if (currentValue.includes(secretOption.id)) {
-                                  return currentValue.filter((secretId) => secretId !== secretOption.id);
-                                }
+                          return (
+                            <button
+                              key={secretOption.id}
+                              aria-pressed={isSelected}
+                              className={`rounded-lg border px-3 py-3 text-left transition ${
+                                isSelected
+                                  ? "border-primary/60 bg-primary/10"
+                                  : "border-border/60 bg-background/40 hover:border-border hover:bg-background/70"
+                              }`}
+                              onClick={() => {
+                                setSelectedSecretIds((currentValue) => {
+                                  if (currentValue.includes(secretOption.id)) {
+                                    return currentValue.filter((secretId) => secretId !== secretOption.id);
+                                  }
 
-                                return [...currentValue, secretOption.id];
-                              });
-                            }}
-                            type="button"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-medium text-foreground">{secretOption.name}</p>
-                              <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                                {secretOption.envVarName}
-                              </span>
-                            </div>
-                            {secretOption.description ? (
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {secretOption.description}
-                              </p>
-                            ) : null}
-                          </button>
-                        );
-                      })}
+                                  return [...currentValue, secretOption.id];
+                                });
+                              }}
+                              type="button"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-medium text-foreground">{secretOption.name}</p>
+                                <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                  {secretOption.envVarName}
+                                </span>
+                              </div>
+                              {secretOption.description ? (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {secretOption.description}
+                                </p>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
