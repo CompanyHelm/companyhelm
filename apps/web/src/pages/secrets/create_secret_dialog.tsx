@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +36,7 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [value, setValue] = useState("");
+  const [isSecretValueVisible, setSecretValueVisible] = useState(false);
   const defaultEnvVarName = useMemo(() => {
     const resolver = new EnvVarNameResolver();
     return resolver.resolveDefaultEnvVarName(name);
@@ -44,6 +46,7 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
     if (!props.isOpen) {
       setDescription("");
       setEnvVarName("");
+      setSecretValueVisible(false);
       setLocalErrorMessage(null);
       setName("");
       setValue("");
@@ -120,16 +123,34 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
             <label className="text-xs font-medium text-foreground" htmlFor="secret-value">
               Secret value
             </label>
-            <Input
-              autoComplete="off"
-              id="secret-value"
-              onChange={(event) => {
-                setValue(event.target.value);
-              }}
-              placeholder="ghp_..."
-              type="password"
-              value={value}
-            />
+            <div className="relative">
+              <Input
+                autoComplete="off"
+                className="pr-10"
+                id="secret-value"
+                onChange={(event) => {
+                  setValue(event.target.value);
+                }}
+                placeholder="ghp_..."
+                type={isSecretValueVisible ? "text" : "password"}
+                value={value}
+              />
+              <Button
+                aria-label={isSecretValueVisible ? "Hide secret value" : "Show secret value"}
+                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                onClick={() => {
+                  setSecretValueVisible((currentValue) => !currentValue);
+                }}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                }}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                {isSecretValueVisible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </Button>
+            </div>
           </div>
 
           {localErrorMessage || props.errorMessage ? (

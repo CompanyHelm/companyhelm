@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2Icon, PencilIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2Icon, PencilIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -22,11 +22,13 @@ export function EditableSecretField(props: EditableSecretFieldProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEditing, setEditing] = useState(false);
   const [isSaving, setSaving] = useState(false);
+  const [isValueVisible, setValueVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isEditing) {
       setDraftValue(props.value ?? "");
+      setValueVisible(false);
     }
   }, [isEditing, props.value]);
 
@@ -101,31 +103,51 @@ export function EditableSecretField(props: EditableSecretFieldProps) {
 
       <div className="mt-3">
         {isEditing ? (
-          <Input
-            onBlur={async (event) => {
-              await commitValue(event.target.value);
-            }}
-            onChange={(event) => {
-              setDraftValue(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setDraftValue(props.value ?? "");
-                setErrorMessage(null);
-                setEditing(false);
-                return;
-              }
+          <div className="relative">
+            <Input
+              className={props.valueType === "password" ? "pr-10" : undefined}
+              onBlur={async (event) => {
+                await commitValue(event.target.value);
+              }}
+              onChange={(event) => {
+                setDraftValue(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setDraftValue(props.value ?? "");
+                  setErrorMessage(null);
+                  setEditing(false);
+                  return;
+                }
 
-              if (event.key === "Enter") {
-                event.preventDefault();
-                event.currentTarget.blur();
-              }
-            }}
-            placeholder={props.placeholder}
-            ref={inputRef}
-            type={props.valueType ?? "text"}
-            value={draftValue}
-          />
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+              }}
+              placeholder={props.placeholder}
+              ref={inputRef}
+              type={props.valueType === "password" && isValueVisible ? "text" : (props.valueType ?? "text")}
+              value={draftValue}
+            />
+            {props.valueType === "password" ? (
+              <Button
+                aria-label={isValueVisible ? "Hide secret value" : "Show secret value"}
+                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
+                onClick={() => {
+                  setValueVisible((currentValue) => !currentValue);
+                }}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                }}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                {isValueVisible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <p className="whitespace-pre-wrap text-sm text-foreground">{props.displayValue}</p>
         )}
