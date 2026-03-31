@@ -1,6 +1,5 @@
 import { Suspense, useEffect, useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { ExternalLinkIcon } from "lucide-react";
+import { Link, useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import type { knowledgeBaseDetailPageQuery } from "./__generated__/knowledgeBaseDetailPageQuery.graphql";
 import type { knowledgeBaseDetailPageUpdateArtifactMutation } from "./__generated__/knowledgeBaseDetailPageUpdateArtifactMutation.graphql";
-import type { knowledgeBaseDetailPageUpdateExternalLinkArtifactMutation } from "./__generated__/knowledgeBaseDetailPageUpdateExternalLinkArtifactMutation.graphql";
 import type { knowledgeBaseDetailPageUpdateMarkdownArtifactMutation } from "./__generated__/knowledgeBaseDetailPageUpdateMarkdownArtifactMutation.graphql";
 
 const knowledgeBaseDetailPageQueryNode = graphql`
@@ -19,7 +17,6 @@ const knowledgeBaseDetailPageQueryNode = graphql`
       name
       description
       markdownContent
-      url
       updatedAt
     }
   }
@@ -48,23 +45,10 @@ const knowledgeBaseDetailPageUpdateMarkdownArtifactMutationNode = graphql`
   }
 `;
 
-const knowledgeBaseDetailPageUpdateExternalLinkArtifactMutationNode = graphql`
-  mutation knowledgeBaseDetailPageUpdateExternalLinkArtifactMutation(
-    $input: UpdateExternalLinkArtifactInput!
-  ) {
-    UpdateExternalLinkArtifact(input: $input) {
-      id
-      url
-      updatedAt
-    }
-  }
-`;
-
 type KnowledgeBaseArtifactEditorState = {
   description: string;
   markdownContent: string;
   name: string;
-  url: string;
 };
 
 function createArtifactEditorState(): KnowledgeBaseArtifactEditorState {
@@ -72,7 +56,6 @@ function createArtifactEditorState(): KnowledgeBaseArtifactEditorState {
     description: "",
     markdownContent: "",
     name: "",
-    url: "",
   };
 }
 
@@ -103,11 +86,11 @@ function KnowledgeBaseDetailPageFallback() {
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
-          <CardTitle>Loading artifact…</CardTitle>
+          <CardTitle>Loading document…</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            Loading artifact…
+            Loading document…
           </div>
         </CardContent>
       </Card>
@@ -146,21 +129,12 @@ function KnowledgeBaseDetailPageContent() {
     useMutation<knowledgeBaseDetailPageUpdateMarkdownArtifactMutation>(
       knowledgeBaseDetailPageUpdateMarkdownArtifactMutationNode,
     );
-  const [commitUpdateExternalLinkArtifact, isUpdateExternalLinkArtifactInFlight] =
-    useMutation<knowledgeBaseDetailPageUpdateExternalLinkArtifactMutation>(
-      knowledgeBaseDetailPageUpdateExternalLinkArtifactMutationNode,
-    );
   const artifact = data.Artifact;
   const isDocumentArtifact = artifact.type === "markdown_document";
-  const isExternalLinkArtifact = artifact.type === "external_link";
-  const isSaving = isUpdateArtifactInFlight
-    || isUpdateMarkdownArtifactInFlight
-    || isUpdateExternalLinkArtifactInFlight;
+  const isSaving = isUpdateArtifactInFlight || isUpdateMarkdownArtifactInFlight;
   const isSaveDisabled = isSaving
     || editorState.name.trim().length === 0
-    || (isDocumentArtifact
-      ? editorState.markdownContent.trim().length === 0
-      : editorState.url.trim().length === 0);
+    || editorState.markdownContent.trim().length === 0;
 
   useEffect(() => {
     setDetailLabel(artifact.name);
@@ -175,17 +149,15 @@ function KnowledgeBaseDetailPageContent() {
       description: artifact.description ?? "",
       markdownContent: artifact.markdownContent ?? "",
       name: artifact.name,
-      url: artifact.url ?? "",
     });
   }, [
     artifact.description,
     artifact.markdownContent,
     artifact.name,
-    artifact.url,
   ]);
 
   async function saveArtifact() {
-    if (isSaveDisabled) {
+    if (isSaveDisabled || !isDocumentArtifact) {
       return;
     }
 
@@ -214,61 +186,58 @@ function KnowledgeBaseDetailPageContent() {
         });
       });
 
-      if (isDocumentArtifact) {
-        await new Promise<void>((resolve, reject) => {
-          commitUpdateMarkdownArtifact({
-            variables: {
-              input: {
-                contentMarkdown: editorState.markdownContent,
-                id: artifact.id,
-              },
+      await new Promise<void>((resolve, reject) => {
+        commitUpdateMarkdownArtifact({
+          variables: {
+            input: {
+              contentMarkdown: editorState.markdownContent,
+              id: artifact.id,
             },
-            onCompleted: (_mutationResponse, errors) => {
-              const mutationErrorMessage = getGraphQLErrorMessage(errors);
-              if (mutationErrorMessage) {
-                reject(new Error(mutationErrorMessage));
-                return;
-              }
+          },
+          onCompleted: (_mutationResponse, errors) => {
+            const mutationErrorMessage = getGraphQLErrorMessage(errors);
+            if (mutationErrorMessage) {
+              reject(new Error(mutationErrorMessage));
+              return;
+            }
 
-              resolve();
-            },
-            onError: reject,
-          });
+            resolve();
+          },
+          onError: reject,
         });
-      } else if (isExternalLinkArtifact) {
-        await new Promise<void>((resolve, reject) => {
-          commitUpdateExternalLinkArtifact({
-            variables: {
-              input: {
-                id: artifact.id,
-                url: editorState.url,
-              },
-            },
-            onCompleted: (_mutationResponse, errors) => {
-              const mutationErrorMessage = getGraphQLErrorMessage(errors);
-              if (mutationErrorMessage) {
-                reject(new Error(mutationErrorMessage));
-                return;
-              }
-
-              resolve();
-            },
-            onError: reject,
-          });
-        });
-      }
+      });
 
       setFetchKey((currentFetchKey) => currentFetchKey + 1);
     } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to save artifact.");
+      setErrorMessage(error instanceof Error ? error.message : "Failed to save document.");
     }
+  }
+
+  if (!isDocumentArtifact) {
+    return (
+      <main className="flex flex-1 flex-col gap-6">
+        <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <CardTitle>Document not available</CardTitle>
+            <CardDescription>
+              The Knowledge Base now only shows markdown documents.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild type="button">
+              <Link to="/knowledge-base">Back to Knowledge Base</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    );
   }
 
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader className="border-b border-border/50">
-          <CardTitle>{editorState.name || (isDocumentArtifact ? "Document" : "Link")}</CardTitle>
+          <CardTitle>{editorState.name || "Document"}</CardTitle>
           <CardDescription>
             Updated {formatTimestamp(artifact.updatedAt)}
           </CardDescription>
@@ -310,58 +279,27 @@ function KnowledgeBaseDetailPageContent() {
                   description: event.target.value,
                 }));
               }}
-              placeholder="Short summary for this artifact."
+              placeholder="Short summary for this document."
               value={editorState.description}
             />
           </div>
 
-          {isDocumentArtifact ? (
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-markdown">
-                Markdown
-              </label>
-              <textarea
-                className="min-h-[520px] w-full rounded-xl border border-input bg-transparent px-3 py-2 font-mono text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                id="knowledge-base-detail-markdown"
-                onChange={(event) => {
-                  setEditorState((currentState) => ({
-                    ...currentState,
-                    markdownContent: event.target.value,
-                  }));
-                }}
-                value={editorState.markdownContent}
-              />
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-url">
-                URL
-              </label>
-              <Input
-                id="knowledge-base-detail-url"
-                onChange={(event) => {
-                  setEditorState((currentState) => ({
-                    ...currentState,
-                    url: event.target.value,
-                  }));
-                }}
-                value={editorState.url}
-              />
-              {editorState.url ? (
-                <div className="pt-1">
-                  <a
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition hover:text-primary/80"
-                    href={editorState.url}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <ExternalLinkIcon className="size-3.5" />
-                    Open link
-                  </a>
-                </div>
-              ) : null}
-            </div>
-          )}
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-markdown">
+              Markdown
+            </label>
+            <textarea
+              className="min-h-[520px] w-full rounded-xl border border-input bg-transparent px-3 py-2 font-mono text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="knowledge-base-detail-markdown"
+              onChange={(event) => {
+                setEditorState((currentState) => ({
+                  ...currentState,
+                  markdownContent: event.target.value,
+                }));
+              }}
+              value={editorState.markdownContent}
+            />
+          </div>
 
           <div className="flex justify-end border-t border-border/50 pt-4">
             <Button

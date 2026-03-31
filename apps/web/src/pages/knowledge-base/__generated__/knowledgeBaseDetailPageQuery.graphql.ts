@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0cdce2b1edf9e86a388b89e75d071441>>
+ * @generated SignedSource<<c802826167e329eedf230b0fd4247962>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,7 +20,6 @@ export type knowledgeBaseDetailPageQuery$data = {
     readonly name: string;
     readonly type: string;
     readonly updatedAt: string;
-    readonly url: string | null | undefined;
   };
 };
 export type knowledgeBaseDetailPageQuery = {
@@ -90,13 +89,6 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "url",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "updatedAt",
         "storageKey": null
       }
@@ -122,16 +114,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "a5084aacda1b516add0c1ed2a15ae261",
+    "cacheID": "b5fe2f8efbdfe5a70698e33e3308ec60",
     "id": null,
     "metadata": {},
     "name": "knowledgeBaseDetailPageQuery",
     "operationKind": "query",
-    "text": "query knowledgeBaseDetailPageQuery(\n  $artifactId: ID!\n) {\n  Artifact(id: $artifactId) {\n    id\n    type\n    name\n    description\n    markdownContent\n    url\n    updatedAt\n  }\n}\n"
+    "text": "query knowledgeBaseDetailPageQuery(\n  $artifactId: ID!\n) {\n  Artifact(id: $artifactId) {\n    id\n    type\n    name\n    description\n    markdownContent\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c3e4c23c8f2ff228e3371486130098bb";
+(node as any).hash = "5044dfc9cfb1a5fd56d91e382fb74aae";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3268c8f80f0a4f4a07ddf1a08bfb8267>>
+ * @generated SignedSource<<805cb3491502b9c52aa183cc950a7dc3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,17 +12,12 @@ import { ConcreteRequest } from 'relay-runtime';
 export type knowledgeBasePageQuery$variables = Record<PropertyKey, never>;
 export type knowledgeBasePageQuery$data = {
   readonly Artifacts: ReadonlyArray<{
-    readonly createdAt: string;
     readonly description: string | null | undefined;
     readonly id: string;
     readonly markdownContent: string | null | undefined;
     readonly name: string;
-    readonly scopeType: string;
-    readonly state: string;
-    readonly taskId: string | null | undefined;
     readonly type: string;
     readonly updatedAt: string;
-    readonly url: string | null | undefined;
   }>;
 };
 export type knowledgeBasePageQuery = {
@@ -59,28 +54,7 @@ var v0 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "scopeType",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "type",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "state",
         "storageKey": null
       },
       {
@@ -102,20 +76,6 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "markdownContent",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "url",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
         "storageKey": null
       },
       {
@@ -147,16 +107,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "743ad9679a41b55b1eaeadc0b9d98b38",
+    "cacheID": "04c75057e601e991b68388cd79a49112",
     "id": null,
     "metadata": {},
     "name": "knowledgeBasePageQuery",
     "operationKind": "query",
-    "text": "query knowledgeBasePageQuery {\n  Artifacts(input: {scopeType: \"company\"}) {\n    id\n    taskId\n    scopeType\n    type\n    state\n    name\n    description\n    markdownContent\n    url\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query knowledgeBasePageQuery {\n  Artifacts(input: {scopeType: \"company\"}) {\n    id\n    type\n    name\n    description\n    markdownContent\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "641f5396acad18a4b2f1027596f13450";
+(node as any).hash = "1c159b6667c14b168a038a61d241660f";
 
 export default node;

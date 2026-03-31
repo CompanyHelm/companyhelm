@@ -35,10 +35,6 @@ type TasksRouteSearch = {
   category?: string;
 };
 
-type KnowledgeBaseRouteSearch = {
-  tab?: string;
-};
-
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -54,16 +50,6 @@ function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSe
   return {
     category: typeof search.category === "string" && search.category.trim().length > 0
       ? search.category.trim()
-      : undefined,
-  };
-}
-
-function validateKnowledgeBaseRouteSearch(
-  search: Record<string, unknown>,
-): KnowledgeBaseRouteSearch {
-  return {
-    tab: typeof search.tab === "string" && search.tab.trim().length > 0
-      ? search.tab.trim()
       : undefined,
   };
 }
@@ -162,7 +148,6 @@ const repositoriesRoute = createRoute({
 const knowledgeBaseRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/knowledge-base",
-  validateSearch: validateKnowledgeBaseRouteSearch,
   component: KnowledgeBasePage,
 });
 
