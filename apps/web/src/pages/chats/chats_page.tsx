@@ -936,7 +936,6 @@ function ChatsTranscript({
   session,
   sessionMessages,
   transcriptScrollRef,
-  hasOlderMessages,
   isLoadingOlderMessages,
   isLoadingTranscript,
   onScroll,
@@ -944,7 +943,6 @@ function ChatsTranscript({
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
   transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
-  hasOlderMessages: boolean;
   isLoadingOlderMessages: boolean;
   isLoadingTranscript: boolean;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
@@ -963,21 +961,9 @@ function ChatsTranscript({
     return message.role === "user" && message.text.trim().length > 0;
   });
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
+  const showTranscriptLoader = isLoadingTranscript || isLoadingOlderMessages;
 
-  if (visibleTranscriptMessages.length === 0 && isLoadingTranscript) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
-        <div>
-          <p className="text-sm font-medium text-foreground">Loading transcript...</p>
-          <p className="mt-2 text-xs/relaxed text-muted-foreground">
-            Fetching the latest chat history page.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (visibleTranscriptMessages.length === 0) {
+  if (visibleTranscriptMessages.length === 0 && !showTranscriptLoader) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
         <div>
@@ -1000,10 +986,10 @@ function ChatsTranscript({
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]"
       onScroll={onScroll}
     >
-      {(hasOlderMessages || isLoadingOlderMessages) ? (
-        <p className="px-1 text-xs text-muted-foreground">
-          {isLoadingOlderMessages ? "Loading older messages..." : "Scroll up to load older messages."}
-        </p>
+      {showTranscriptLoader ? (
+        <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex h-9 shrink-0 items-end pt-2`}>
+          <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
+        </div>
       ) : null}
       {visibleTranscriptMessages.map((message) => {
         const isUserMessage = message.role === "user";
@@ -1512,7 +1498,7 @@ function ChatsPageContent() {
     }
 
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
-  }, [isLoadingOlderTranscript, transcriptMessages]);
+  }, [transcriptMessages]);
 
   const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const transcriptNode = event.currentTarget;
@@ -2246,7 +2232,6 @@ function ChatsPageContent() {
         {selectedAgent && selectedSession ? (
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3 md:py-4">
             <ChatsTranscript
-              hasOlderMessages={transcriptHasNextPage}
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
               onScroll={handleTranscriptScroll}
