@@ -6,6 +6,7 @@ import {
   BotIcon,
   WrenchIcon,
   FolderGit2Icon,
+  InboxIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
   LockKeyholeIcon,
@@ -105,6 +106,11 @@ export function ApplicationSidebar() {
       icon: MessageSquareIcon,
       label: "Chats",
       to: "/chats",
+    },
+    {
+      icon: InboxIcon,
+      label: "Inbox",
+      to: "/inbox",
     },
     ...(featureFlags.isEnabled("tasks_management")
       ? [{

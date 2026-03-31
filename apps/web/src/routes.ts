@@ -13,6 +13,7 @@ import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/comput
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
+import { InboxPage } from "./pages/inbox/inbox_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
@@ -118,6 +119,12 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const inboxRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/inbox",
+  component: InboxPage,
+});
+
 const secretsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/secrets",
@@ -182,6 +189,7 @@ const routeTree = rootRoute.addChildren([
       environmentsRoute,
       computeProvidersRoute,
       chatsRoute,
+      inboxRoute,
       secretsRoute,
       githubInstallRoute,
       repositoriesRoute,
