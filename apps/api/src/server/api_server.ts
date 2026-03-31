@@ -59,10 +59,6 @@ export class ApiServer {
       allowedHeaders: this.config.cors.allowed_headers,
     });
 
-    this.app.get("/", async () => {
-      return { message: "hello world" };
-    });
-
     await this.graphqlApplication.register(this.app);
 
     await this.app.listen({
