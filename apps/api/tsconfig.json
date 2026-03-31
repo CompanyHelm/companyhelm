@@ -7,7 +7,15 @@
     "noEmit": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["server.ts", "src/**/*.ts", "tests/**/*.ts"]
+  "include": [
+    "server.ts",
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ]
 }
