@@ -34,7 +34,7 @@ redis:
   password: ""
 workers:
   session_process:
-    concurrency: 4
+    concurrency: 100
 daytona:
   api_key: "${DAYTONA_API_KEY}"
   api_url: "https://app.daytona.io/api"
