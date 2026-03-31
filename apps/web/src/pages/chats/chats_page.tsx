@@ -1013,7 +1013,7 @@ function ChatsPageFallback() {
 
 function AssistantTranscriptMessage({ text }: { text: string }) {
   return (
-    <div className="min-w-0 w-full">
+    <div className="min-w-0 w-full [&>*:first-child]:mt-0">
       <ReactMarkdown
         components={{
           a: ({ children, ...anchorProps }) => (
@@ -1027,7 +1027,7 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
             </a>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="min-w-0 border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
+            <blockquote className="mt-4 min-w-0 border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
               {children}
             </blockquote>
           ),
@@ -1043,22 +1043,32 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
               {children}
             </code>
           ),
-          h1: ({ children }) => <h1 className="min-w-0 text-lg font-semibold text-foreground">{children}</h1>,
-          h2: ({ children }) => <h2 className="min-w-0 text-base font-semibold text-foreground">{children}</h2>,
-          h3: ({ children }) => <h3 className="min-w-0 text-sm font-semibold text-foreground">{children}</h3>,
-          li: ({ children }) => <li className="min-w-0 pl-1">{children}</li>,
-          ol: ({ children }) => <ol className="ml-5 grid min-w-0 list-decimal gap-2">{children}</ol>,
+          h1: ({ children }) => (
+            <h1 className="mt-6 min-w-0 text-lg font-semibold leading-7 text-foreground">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="mt-5 min-w-0 text-base font-semibold leading-7 text-foreground">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="mt-4 min-w-0 text-sm font-semibold leading-6 text-foreground">{children}</h3>
+          ),
+          li: ({ children }) => (
+            <li className="min-w-0 pl-1 leading-6 marker:text-muted-foreground [&>p]:my-0 [&>ul]:mt-2 [&>ol]:mt-2">
+              {children}
+            </li>
+          ),
+          ol: ({ children }) => <ol className="mt-4 ml-5 grid min-w-0 list-decimal gap-1.5">{children}</ol>,
           p: ({ children }) => (
-            <p className="min-w-0 text-sm leading-7 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
+            <p className="mt-3 min-w-0 text-sm leading-6 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
               {children}
             </p>
           ),
           pre: ({ children }) => (
-            <pre className="my-1 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
+            <pre className="mt-4 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
               {children}
             </pre>
           ),
-          ul: ({ children }) => <ul className="ml-5 grid min-w-0 list-disc gap-2">{children}</ul>,
+          ul: ({ children }) => <ul className="mt-4 ml-5 grid min-w-0 list-disc gap-1.5">{children}</ul>,
         }}
       >
         {text}
