@@ -10,6 +10,7 @@ const workerMocks = vi.hoisted(() => ({
   workerInstances: [] as Array<{
     close: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
+    options: Record<string, unknown> | undefined;
     processor: (job: { data: { companyId: string; sessionId: string } }) => Promise<void>;
   }>,
 }));
@@ -28,8 +29,10 @@ vi.mock("bullmq", () => ({
     constructor(
       queueName: string,
       processor: (job: { data: { companyId: string; sessionId: string } }) => Promise<void>,
+      options?: Record<string, unknown>,
     ) {
       void queueName;
+      this.options = options;
       this.processor = processor;
       workerMocks.workerInstances.push(this);
     }
@@ -82,6 +85,7 @@ test("SessionProcessWorker starts one BullMQ worker and closes it cleanly", asyn
 
   assert.equal(workerMocks.workerInstances.length, 1);
   assert.equal(workerMocks.onMock.mock.calls.length, 1);
+  assert.equal(workerMocks.workerInstances[0]?.options?.concurrency, 4);
 
   await worker.stop();
 
