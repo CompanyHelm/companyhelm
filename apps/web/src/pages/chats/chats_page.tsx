@@ -823,6 +823,7 @@ function ToolTranscriptMessage(
   const defaultArgumentsText = toolCallSummary?.argumentsText ?? "Arguments unavailable.";
   const defaultToolName = resolveToolDisplayName(toolCallSummary?.toolName ?? message.toolName ?? "Tool");
   const commandToolArguments = parseCommandToolArguments(toolCallSummary?.argumentsValue);
+  const commandToolYieldTimeMs = commandToolArguments?.yieldTimeMs ?? null;
   const isCommandTool = defaultToolName === "execute_command" && commandToolArguments !== null;
   const collapsedSummary = isCommandTool ? commandToolArguments.command : defaultToolName;
 
@@ -893,7 +894,7 @@ function ToolTranscriptMessage(
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
                     {commandToolArguments?.workingDirectory ? <span>cwd: {commandToolArguments.workingDirectory}</span> : null}
-                    {commandToolArguments?.yieldTimeMs !== null ? <span>yield: {commandToolArguments.yieldTimeMs}ms</span> : null}
+                    {commandToolYieldTimeMs !== null ? <span>yield: {commandToolYieldTimeMs}ms</span> : null}
                     {!commandToolArguments?.workingDirectory && terminalStructuredContent.cwd
                       ? <span>cwd: {terminalStructuredContent.cwd}</span>
                       : null}
