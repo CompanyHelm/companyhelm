@@ -1642,11 +1642,12 @@ function ChatsPageContent() {
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
     : null;
+  const selectedSessionId = selectedSession?.id ?? null;
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
-  const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting";
+  const isReconnectingLiveUpdates = selectedSessionId !== null && subscriptionConnectionStatus === "reconnecting";
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
@@ -2148,6 +2149,10 @@ function ChatsPageContent() {
   ]);
 
   useEffect(() => {
+    if (!selectedSessionId) {
+      return;
+    }
+
     const disposable = requestSubscription<chatsPageSessionUpdatedSubscription>(environment, {
       subscription: chatsPageSessionUpdatedSubscriptionNode,
       variables: {},
@@ -2159,7 +2164,7 @@ function ChatsPageContent() {
         if (!nextSession) {
           return;
         }
-        if (nextSession.id !== selectedSession?.id) {
+        if (nextSession.id !== selectedSessionId) {
           return;
         }
         if (nextSession.status !== "stopped" || !nextSession.hasUnread) {
@@ -2176,7 +2181,7 @@ function ChatsPageContent() {
     return () => {
       disposable.dispose();
     };
-  }, [environment, markSessionRead, selectedSession?.id]);
+  }, [environment, markSessionRead, selectedSessionId]);
 
   useEffect(() => {
     if (!selectedSession) {
