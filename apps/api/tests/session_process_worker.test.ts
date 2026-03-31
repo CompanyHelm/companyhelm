@@ -66,6 +66,11 @@ test("SessionProcessWorker starts one BullMQ worker and closes it cleanly", asyn
         port: 6379,
         username: "redis-user",
       },
+      workers: {
+        session_process: {
+          concurrency: 7,
+        },
+      },
     } as Config,
     {
       child() {
@@ -85,7 +90,7 @@ test("SessionProcessWorker starts one BullMQ worker and closes it cleanly", asyn
 
   assert.equal(workerMocks.workerInstances.length, 1);
   assert.equal(workerMocks.onMock.mock.calls.length, 1);
-  assert.equal(workerMocks.workerInstances[0]?.options?.concurrency, 4);
+  assert.equal(workerMocks.workerInstances[0]?.options?.concurrency, 7);
 
   await worker.stop();
 
@@ -103,6 +108,11 @@ test("SessionProcessWorker logs and rethrows failed wake jobs with company and s
         password: "redis-password",
         port: 6379,
         username: "redis-user",
+      },
+      workers: {
+        session_process: {
+          concurrency: 7,
+        },
       },
     } as Config,
     {

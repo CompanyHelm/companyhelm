@@ -14,7 +14,6 @@ import { SessionProcessQueuedNames } from "../services/agent/session/process/que
  */
 @injectable()
 export class SessionProcessWorker {
-  private static readonly WAKE_JOB_CONCURRENCY = 4;
   private readonly config: Config;
   private readonly logger: PinoLogger;
   private readonly sessionProcessExecutionService: SessionProcessExecutionService;
@@ -75,7 +74,7 @@ export class SessionProcessWorker {
       },
       {
         connection: this.connection,
-        concurrency: SessionProcessWorker.WAKE_JOB_CONCURRENCY,
+        concurrency: this.config.workers.session_process.concurrency,
       },
     );
     this.worker.on("error", (error) => {

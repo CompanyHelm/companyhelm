@@ -52,6 +52,11 @@ export const ConfigDocument = z.object({
     username: z.string(),
     password: z.string(),
   }),
+  workers: z.object({
+    session_process: z.object({
+      concurrency: PositiveIntegerSchema,
+    }),
+  }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,
     app_private_key_pem: NonEmptyStringSchema,

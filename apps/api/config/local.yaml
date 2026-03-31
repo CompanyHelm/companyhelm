@@ -32,6 +32,9 @@ redis:
   port: 6379
   username: ""
   password: ""
+workers:
+  session_process:
+    concurrency: 4
 daytona:
   api_key: "${DAYTONA_API_KEY}"
   api_url: "https://app.daytona.io/api"
