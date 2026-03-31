@@ -355,6 +355,14 @@ function formatToolArguments(argumentsValue: SessionMessageContentRecord["argume
   }
 }
 
+function resolveToolDisplayName(toolName: string): string {
+  if (toolName === "gh_exec") {
+    return "Github";
+  }
+
+  return toolName;
+}
+
 function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): CommandToolArgumentsRecord | null {
   if (!argumentsValue || typeof argumentsValue !== "object" || Array.isArray(argumentsValue)) {
     return null;
@@ -813,7 +821,7 @@ function ToolTranscriptMessage(
     return false;
   });
   const defaultArgumentsText = toolCallSummary?.argumentsText ?? "Arguments unavailable.";
-  const defaultToolName = toolCallSummary?.toolName ?? message.toolName ?? "Tool";
+  const defaultToolName = resolveToolDisplayName(toolCallSummary?.toolName ?? message.toolName ?? "Tool");
   const commandToolArguments = parseCommandToolArguments(toolCallSummary?.argumentsValue);
   const isCommandTool = defaultToolName === "execute_command" && commandToolArguments !== null;
   const collapsedSummary = isCommandTool ? commandToolArguments.command : defaultToolName;
