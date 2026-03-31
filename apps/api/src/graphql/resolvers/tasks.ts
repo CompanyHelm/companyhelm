@@ -1,49 +1,43 @@
-import { eq, inArray } from "drizzle-orm";
-import { injectable } from "inversify";
-import { taskCategories, tasks } from "../../db/schema.ts";
+import { inject, injectable } from "inversify";
+import { TaskService } from "../../services/task_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
-type TaskRecord = {
+type GraphqlTaskAssignee = {
+  email: string | null;
   id: string;
-  name: string;
-  description: string | null;
-  status: "draft" | "pending" | "in_progress" | "completed";
-  taskCategoryId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type TaskCategoryRecord = {
-  id: string;
+  kind: "agent" | "user";
   name: string;
 };
 
 type GraphqlTaskRecord = {
+  assignedAt: string | null;
+  assignee: GraphqlTaskAssignee | null;
+  createdAt: string;
+  description: string | null;
   id: string;
   name: string;
-  description: string | null;
   status: "draft" | "pending" | "in_progress" | "completed";
   taskCategoryId: string | null;
   taskCategoryName: string | null;
-  createdAt: string;
   updatedAt: string;
 };
 
-type SelectableDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
-    };
-  };
-};
-
 /**
- * Lists company-scoped tasks together with the current category label so the kanban page can
- * render lanes without issuing one category lookup per task.
+ * Lists company-scoped tasks together with category and assignee metadata so the kanban page can
+ * render one complete board without stitching together separate task lookups client-side.
  */
 @injectable()
 export class TasksQueryResolver extends Resolver<GraphqlTaskRecord[]> {
+  private readonly taskService: TaskService;
+
+  constructor(
+    @inject(TaskService) taskService: TaskService = new TaskService(),
+  ) {
+    super();
+    this.taskService = taskService;
+  }
+
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlTaskRecord[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
@@ -52,58 +46,21 @@ export class TasksQueryResolver extends Resolver<GraphqlTaskRecord[]> {
       throw new Error("Authentication required.");
     }
 
-    return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const taskRecords = await selectableDatabase
-        .select({
-          id: tasks.id,
-          name: tasks.name,
-          description: tasks.description,
-          status: tasks.status,
-          taskCategoryId: tasks.taskCategoryId,
-          createdAt: tasks.createdAt,
-          updatedAt: tasks.updatedAt,
-        })
-        .from(tasks)
-        .where(eq(tasks.companyId, context.authSession.company.id)) as TaskRecord[];
-
-      const taskCategoryIds = taskRecords
-        .map((taskRecord) => taskRecord.taskCategoryId)
-        .filter((value): value is string => value !== null);
-      const taskCategoryRecords = taskCategoryIds.length === 0
-        ? []
-        : await selectableDatabase
-          .select({
-            id: taskCategories.id,
-            name: taskCategories.name,
-          })
-          .from(taskCategories)
-          .where(inArray(taskCategories.id, taskCategoryIds)) as TaskCategoryRecord[];
-      const taskCategoryNameById = new Map(
-        taskCategoryRecords.map((taskCategoryRecord) => [taskCategoryRecord.id, taskCategoryRecord.name]),
-      );
-
-      return [...taskRecords]
-        .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
-        .map((taskRecord) => TasksQueryResolver.serializeRecord(taskRecord, taskCategoryNameById));
+    const result = await this.taskService.listTasks(context.app_runtime_transaction_provider, {
+      companyId: context.authSession.company.id,
     });
-  };
 
-  private static serializeRecord(
-    taskRecord: TaskRecord,
-    taskCategoryNameById: Map<string, string>,
-  ): GraphqlTaskRecord {
-    return {
-      id: taskRecord.id,
-      name: taskRecord.name,
-      description: taskRecord.description,
-      status: taskRecord.status,
-      taskCategoryId: taskRecord.taskCategoryId,
-      taskCategoryName: taskRecord.taskCategoryId
-        ? taskCategoryNameById.get(taskRecord.taskCategoryId) ?? null
-        : null,
-      createdAt: taskRecord.createdAt.toISOString(),
-      updatedAt: taskRecord.updatedAt.toISOString(),
-    };
-  }
+    return result.tasks.map((task) => ({
+      assignedAt: task.assignedAt?.toISOString() ?? null,
+      assignee: task.assignee,
+      createdAt: task.createdAt.toISOString(),
+      description: task.description,
+      id: task.id,
+      name: task.name,
+      status: task.status,
+      taskCategoryId: task.taskCategoryId,
+      taskCategoryName: task.taskCategoryName,
+      updatedAt: task.updatedAt.toISOString(),
+    }));
+  };
 }

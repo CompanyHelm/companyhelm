@@ -11,6 +11,15 @@ import type { tasksPageSetTaskCategoryMutation } from "./__generated__/tasksPage
 
 const tasksPageQueryNode = graphql`
   query tasksPageQuery {
+    Agents {
+      id
+      name
+    }
+    TaskAssignableUsers {
+      id
+      displayName
+      email
+    }
     TaskCategories {
       id
       name
@@ -25,6 +34,13 @@ const tasksPageQueryNode = graphql`
       status
       taskCategoryId
       taskCategoryName
+      assignedAt
+      assignee {
+        kind
+        id
+        name
+        email
+      }
       createdAt
       updatedAt
     }
@@ -40,6 +56,13 @@ const tasksPageCreateTaskMutationNode = graphql`
       status
       taskCategoryId
       taskCategoryName
+      assignedAt
+      assignee {
+        kind
+        id
+        name
+        email
+      }
       createdAt
       updatedAt
     }
@@ -209,6 +232,15 @@ function TasksPageContent() {
           categories={visibleCategories}
           includeUncategorizedColumn={selectedCategoryKey === undefined || selectedCategoryKey === "uncategorized"}
           tasks={visibleTasks.map((task) => ({
+            assignedAt: task.assignedAt,
+            assignee: task.assignee
+              ? {
+                email: task.assignee.email,
+                id: task.assignee.id,
+                kind: task.assignee.kind as "agent" | "user",
+                name: task.assignee.name,
+              }
+              : null,
             id: task.id,
             name: task.name,
             description: task.description,
@@ -248,6 +280,16 @@ function TasksPageContent() {
       </div>
 
       <CreateTaskDialog
+        assignees={[
+          ...data.TaskAssignableUsers.map((user) => ({
+            label: `Human · ${user.displayName}`,
+            value: `user:${user.id}`,
+          })),
+          ...data.Agents.map((agent) => ({
+            label: `Agent · ${agent.name}`,
+            value: `agent:${agent.id}`,
+          })),
+        ]}
         categories={data.TaskCategories.map((category) => ({
           id: category.id,
           name: category.name,

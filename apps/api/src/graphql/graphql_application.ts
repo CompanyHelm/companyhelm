@@ -69,6 +69,7 @@ import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provide
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
 import { SecretsQueryResolver } from "./resolvers/secrets.ts";
 import { SessionSecretsQueryResolver } from "./resolvers/session_secrets.ts";
+import { TaskAssignableUsersQueryResolver } from "./resolvers/task_assignable_users.ts";
 import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
@@ -147,6 +148,7 @@ export class GraphqlApplication {
   private readonly startEnvironmentMutation: StartEnvironmentMutation;
   private readonly steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation;
   private readonly stopEnvironmentMutation: StopEnvironmentMutation;
+  private readonly taskAssignableUsersQueryResolver: TaskAssignableUsersQueryResolver;
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
@@ -216,6 +218,8 @@ export class GraphqlApplication {
     @inject(CreateTaskCategoryMutation)
     createTaskCategoryMutation: CreateTaskCategoryMutation = new CreateTaskCategoryMutation(),
     @inject(SetTaskCategoryMutation) setTaskCategoryMutation: SetTaskCategoryMutation = new SetTaskCategoryMutation(),
+    @inject(TaskAssignableUsersQueryResolver)
+    taskAssignableUsersQueryResolver: TaskAssignableUsersQueryResolver = new TaskAssignableUsersQueryResolver(),
     @inject(TaskCategoriesQueryResolver)
     taskCategoriesQueryResolver: TaskCategoriesQueryResolver = new TaskCategoriesQueryResolver(),
     @inject(TasksQueryResolver) tasksQueryResolver: TasksQueryResolver = new TasksQueryResolver(),
@@ -406,6 +410,7 @@ export class GraphqlApplication {
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
     this.setTaskCategoryMutation = setTaskCategoryMutation;
     this.steerSessionQueuedMessageMutation = steerSessionQueuedMessageMutation;
+    this.taskAssignableUsersQueryResolver = taskAssignableUsersQueryResolver;
     this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
     this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
@@ -482,6 +487,7 @@ export class GraphqlApplication {
           Secrets: this.secretsQueryResolver.execute,
           SessionQueuedMessages: this.sessionQueuedMessagesQueryResolver.execute,
           SessionEnvironment: this.sessionEnvironmentQueryResolver.execute,
+          TaskAssignableUsers: this.taskAssignableUsersQueryResolver.execute,
           TaskCategories: this.taskCategoriesQueryResolver.execute,
           Tasks: this.tasksQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,

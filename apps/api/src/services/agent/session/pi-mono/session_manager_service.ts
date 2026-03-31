@@ -25,9 +25,12 @@ import { AgentInboxToolProvider } from "../../tools/inbox/provider.ts";
 import { AgentInboxToolService } from "../../tools/inbox/service.ts";
 import { AgentSecretToolProvider } from "../../tools/secrets/provider.ts";
 import { AgentSecretToolService } from "../../tools/secrets/service.ts";
+import { AgentTaskToolProvider } from "../../tools/tasks/provider.ts";
+import { AgentTaskToolService } from "../../tools/tasks/service.ts";
 import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { ArtifactService } from "../../../artifact_service.ts";
 import { RedisService } from "../../../redis/service.ts";
+import { TaskService } from "../../../task_service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 
@@ -135,11 +138,18 @@ export class PiMonoSessionManagerService {
       runtimeConfig.agentId,
       new ArtifactService(),
     );
+    const taskToolService = new AgentTaskToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
+      new TaskService(),
+    );
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
       new AgentSecretToolProvider(secretToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
       new AgentInboxToolProvider(inboxToolService),
+      new AgentTaskToolProvider(taskToolService),
       new AgentArtifactToolProvider(artifactToolService),
     ]);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);

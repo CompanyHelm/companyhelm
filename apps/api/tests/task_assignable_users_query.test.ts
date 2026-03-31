@@ -14,7 +14,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class TasksQueryTestHarness {
+class TaskAssignableUsersQueryTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -28,11 +28,9 @@ class TasksQueryTestHarness {
   }
 
   static createDatabaseMock() {
-    const scopedCompanyIds: string[] = [];
     let selectCallCount = 0;
 
     return {
-      scopedCompanyIds,
       getDatabase() {
         return {
           select() {
@@ -43,31 +41,23 @@ class TasksQueryTestHarness {
                   return {
                     async where() {
                       return [{
-                        assignedAgentId: null,
-                        assignedAt: null,
-                        assignedUserId: null,
-                        id: "task-1",
-                        name: "Draft launch checklist",
-                        description: "Collect the first pass of rollout steps.",
-                        status: "draft",
-                        taskCategoryId: "category-1",
-                        createdAt: new Date("2026-03-25T09:00:00.000Z"),
-                        updatedAt: new Date("2026-03-25T09:30:00.000Z"),
+                        userId: "user-1",
                       }];
                     },
                   };
                 },
               };
             }
-
             if (selectCallCount === 2) {
               return {
                 from() {
                   return {
                     async where() {
                       return [{
-                        id: "category-1",
-                        name: "Backlog",
+                        id: "user-1",
+                        firstName: "Jane",
+                        lastName: "Doe",
+                        email: "jane@example.com",
                       }];
                     },
                   };
@@ -79,18 +69,17 @@ class TasksQueryTestHarness {
           },
         } as never;
       },
-      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
-        scopedCompanyIds.push(companyId);
+      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
         return callback(this.getDatabase());
       },
     };
   }
 }
 
-test("GraphQL Tasks query lists company-scoped tasks with category labels", async () => {
+test("GraphQL TaskAssignableUsers query lists company members as task assignee options", async () => {
   const app = Fastify();
-  const config = TasksQueryTestHarness.createConfigMock();
-  const database = TasksQueryTestHarness.createDatabaseMock();
+  const config = TaskAssignableUsersQueryTestHarness.createConfigMock();
+  const database = TaskAssignableUsersQueryTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -136,23 +125,13 @@ test("GraphQL Tasks query lists company-scoped tasks with category labels", asyn
     },
     payload: {
       query: `
-        query Tasks {
-          Tasks {
+        query TaskAssignableUsers {
+          TaskAssignableUsers {
             id
-            name
-            description
-            status
-            taskCategoryId
-            taskCategoryName
-            assignedAt
-            assignee {
-              kind
-              id
-              name
-              email
-            }
-            createdAt
-            updatedAt
+            firstName
+            lastName
+            email
+            displayName
           }
         }
       `,
@@ -161,19 +140,13 @@ test("GraphQL Tasks query lists company-scoped tasks with category labels", asyn
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.Tasks, [{
-    id: "task-1",
-    name: "Draft launch checklist",
-    description: "Collect the first pass of rollout steps.",
-    status: "draft",
-    taskCategoryId: "category-1",
-    taskCategoryName: "Backlog",
-    assignedAt: null,
-    assignee: null,
-    createdAt: "2026-03-25T09:00:00.000Z",
-    updatedAt: "2026-03-25T09:30:00.000Z",
+  assert.deepEqual(document.data.TaskAssignableUsers, [{
+    id: "user-1",
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "jane@example.com",
+    displayName: "Jane Doe",
   }]);
-  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();
 });

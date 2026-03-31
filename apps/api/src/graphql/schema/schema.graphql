@@ -27,6 +27,7 @@ type Query {
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
   ModelProviders: [ModelProvider!]!
+  TaskAssignableUsers: [TaskAssignableUser!]!
   TaskCategories: [TaskCategory!]!
   Tasks: [Task!]!
 }
@@ -414,8 +415,25 @@ type Task {
   status: String!
   taskCategoryId: ID
   taskCategoryName: String
+  assignee: TaskAssignee
+  assignedAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type TaskAssignee {
+  kind: String!
+  id: ID!
+  name: String!
+  email: String
+}
+
+type TaskAssignableUser {
+  id: ID!
+  firstName: String!
+  lastName: String
+  email: String!
+  displayName: String!
 }
 
 input AddModelProviderCredentialInput {
@@ -649,6 +667,8 @@ input CreateTaskInput {
   description: String
   status: String
   taskCategoryId: ID
+  assignedUserId: ID
+  assignedAgentId: ID
 }
 
 input UpdateArtifactInput {

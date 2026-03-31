@@ -24,12 +24,20 @@ export type CreateTaskDialogCategory = {
   name: string;
 };
 
+export type CreateTaskDialogAssignee = {
+  label: string;
+  value: string;
+};
+
 interface CreateTaskDialogProps {
+  assignees: CreateTaskDialogAssignee[];
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
   categories: CreateTaskDialogCategory[];
   onCreate(input: {
+    assignedAgentId?: string;
+    assignedUserId?: string;
     name: string;
     description?: string;
     status: TaskStatus;
@@ -39,6 +47,7 @@ interface CreateTaskDialogProps {
 }
 
 const uncategorizedValue = "__uncategorized__";
+const unassignedValue = "__unassigned__";
 
 /**
  * Collects the minimal task fields needed for the first `-ng` task-management slice: title,
@@ -49,6 +58,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("draft");
   const [taskCategoryId, setTaskCategoryId] = useState(uncategorizedValue);
+  const [taskAssigneeValue, setTaskAssigneeValue] = useState(unassignedValue);
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -56,6 +66,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
       setTaskDescription("");
       setTaskStatus("draft");
       setTaskCategoryId(uncategorizedValue);
+      setTaskAssigneeValue(unassignedValue);
     }
   }, [props.isOpen]);
 
@@ -109,6 +120,37 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
                 {props.categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="task-assignee">
+              Assignee (optional)
+            </label>
+            <Select
+              items={[
+                { label: "Unassigned", value: unassignedValue },
+                ...props.assignees.map((assignee) => ({
+                  label: assignee.label,
+                  value: assignee.value,
+                })),
+              ]}
+              onValueChange={(value) => {
+                setTaskAssigneeValue(value);
+              }}
+              value={taskAssigneeValue}
+            >
+              <SelectTrigger id="task-assignee">
+                <SelectValue placeholder="Select an assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={unassignedValue}>Unassigned</SelectItem>
+                {props.assignees.map((assignee) => (
+                  <SelectItem key={assignee.value} value={assignee.value}>
+                    {assignee.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -179,7 +221,16 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           <Button
             disabled={props.isSaving || taskName.length === 0}
             onClick={async () => {
+              const assignedUserId = taskAssigneeValue.startsWith("user:")
+                ? taskAssigneeValue.slice("user:".length)
+                : undefined;
+              const assignedAgentId = taskAssigneeValue.startsWith("agent:")
+                ? taskAssigneeValue.slice("agent:".length)
+                : undefined;
+
               await props.onCreate({
+                assignedAgentId,
+                assignedUserId,
                 name: taskName,
                 description: taskDescription.length > 0 ? taskDescription : undefined,
                 status: taskStatus,

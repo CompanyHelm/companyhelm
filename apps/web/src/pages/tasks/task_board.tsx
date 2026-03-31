@@ -5,6 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type TaskStatus = "draft" | "pending" | "in_progress" | "completed";
 
 export type TaskBoardTask = {
+  assignedAt: string | null;
+  assignee: {
+    email: string | null;
+    id: string;
+    kind: "agent" | "user";
+    name: string;
+  } | null;
   id: string;
   name: string;
   description: string | null;
@@ -136,7 +143,7 @@ export function TaskBoard(props: TaskBoardProps) {
               {column.tasks.map((task) => (
                 <article
                   key={task.id}
-                  className="h-32 shrink-0 cursor-grab rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing"
+                  className="h-36 shrink-0 cursor-grab rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing"
                   draggable
                   onDragStart={(event) => {
                     event.dataTransfer.effectAllowed = "move";
@@ -157,6 +164,11 @@ export function TaskBoard(props: TaskBoardProps) {
                     ) : (
                       <div className="mt-2 flex-1" />
                     )}
+                    {task.assignee ? (
+                      <p className="mt-2 truncate text-[0.6875rem] text-muted-foreground">
+                        Assigned to {task.assignee.name}
+                      </p>
+                    ) : null}
                     <p className="mt-auto text-[0.625rem] uppercase tracking-[0.18em] text-muted-foreground/80">
                       Created {formatTaskTimestamp(task.createdAt)}
                     </p>

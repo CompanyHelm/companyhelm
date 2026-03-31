@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e752a2c37edd960a538d24b9529efd4b>>
+ * @generated SignedSource<<ac9e3ed0bf8c30d5684edea55d9a9016>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,15 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type tasksPageQuery$variables = Record<PropertyKey, never>;
 export type tasksPageQuery$data = {
+  readonly Agents: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+  }>;
+  readonly TaskAssignableUsers: ReadonlyArray<{
+    readonly displayName: string;
+    readonly email: string;
+    readonly id: string;
+  }>;
   readonly TaskCategories: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
@@ -19,6 +28,13 @@ export type tasksPageQuery$data = {
     readonly updatedAt: string;
   }>;
   readonly Tasks: ReadonlyArray<{
+    readonly assignedAt: string | null | undefined;
+    readonly assignee: {
+      readonly email: string | null | undefined;
+      readonly id: string;
+      readonly kind: string;
+      readonly name: string;
+    } | null | undefined;
     readonly createdAt: string;
     readonly description: string | null | undefined;
     readonly id: string;
@@ -53,17 +69,57 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "email",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "updatedAt",
   "storageKey": null
 },
-v4 = [
+v5 = [
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Agent",
+    "kind": "LinkedField",
+    "name": "Agents",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "TaskAssignableUser",
+    "kind": "LinkedField",
+    "name": "TaskAssignableUsers",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "displayName",
+        "storageKey": null
+      },
+      (v2/*: any*/)
+    ],
+    "storageKey": null
+  },
   {
     "alias": null,
     "args": null,
@@ -81,8 +137,8 @@ v4 = [
         "name": "taskCount",
         "storageKey": null
       },
-      (v2/*: any*/),
-      (v3/*: any*/)
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "storageKey": null
   },
@@ -124,8 +180,36 @@ v4 = [
         "name": "taskCategoryName",
         "storageKey": null
       },
-      (v2/*: any*/),
-      (v3/*: any*/)
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "assignedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "TaskAssignee",
+        "kind": "LinkedField",
+        "name": "assignee",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "kind",
+            "storageKey": null
+          },
+          (v0/*: any*/),
+          (v1/*: any*/),
+          (v2/*: any*/)
+        ],
+        "storageKey": null
+      },
+      (v3/*: any*/),
+      (v4/*: any*/)
     ],
     "storageKey": null
   }
@@ -136,7 +220,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "tasksPageQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -145,19 +229,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "tasksPageQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "18c1f6d953358a4b5b6fdc4126cb4d59",
+    "cacheID": "aab477664fb9d8a1866d429c0b9bb8c0",
     "id": null,
     "metadata": {},
     "name": "tasksPageQuery",
     "operationKind": "query",
-    "text": "query tasksPageQuery {\n  TaskCategories {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n  Tasks {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query tasksPageQuery {\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskCategories {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n  Tasks {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c265c485eb93eb6a29ce888e1d078119";
+(node as any).hash = "41476f6968cbfb3f8a61aa32e856c60c";
 
 export default node;

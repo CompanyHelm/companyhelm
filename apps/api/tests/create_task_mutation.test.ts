@@ -140,6 +140,13 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
             status
             taskCategoryId
             taskCategoryName
+            assignedAt
+            assignee {
+              kind
+              id
+              name
+              email
+            }
           }
         }
       `,
@@ -163,6 +170,8 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
     status: "draft",
     taskCategoryId: "category-1",
     taskCategoryName: "Backlog",
+    assignedAt: null,
+    assignee: null,
   });
   assert.equal(database.insertedValues.length, 1);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");

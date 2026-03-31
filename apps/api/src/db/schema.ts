@@ -601,13 +601,24 @@ export const tasks = pgTable("tasks", {
   name: text("name").notNull(),
   description: text("description"),
   status: taskStatusEnum("status").notNull().default("draft"),
+  assignedUserId: uuid("assigned_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  assignedAgentId: uuid("assigned_agent_id")
+    .references(() => agents.id, { onDelete: "set null" }),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
   companyIdIndex: index("tasks_company_id_idx").on(table.companyId),
   companyTaskCategoryIdIndex: index("tasks_company_task_category_id_idx").on(table.companyId, table.taskCategoryId),
+  companyAssignedUserIdIndex: index("tasks_company_assigned_user_id_idx").on(table.companyId, table.assignedUserId),
+  companyAssignedAgentIdIndex: index("tasks_company_assigned_agent_id_idx").on(table.companyId, table.assignedAgentId),
   companyStatusCreatedAtIndex: index("tasks_company_status_created_at_idx").on(table.companyId, table.status, table.createdAt),
+  oneAssigneeCheck: check(
+    "tasks_one_assignee_check",
+    sql`num_nonnulls(${table.assignedUserId}, ${table.assignedAgentId}) <= 1`,
+  ),
 }));
 
 export const artifacts = pgTable("artifacts", {
