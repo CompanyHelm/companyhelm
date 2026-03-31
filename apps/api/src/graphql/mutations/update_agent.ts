@@ -1,11 +1,17 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agents, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  agents,
+  computeProviderDefinitions,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type UpdateAgentMutationArguments = {
   input: {
+    defaultComputeProviderDefinitionId: string;
     id: string;
     name: string;
     modelProviderCredentialId: string;
@@ -19,6 +25,7 @@ type AgentRecord = {
   id: string;
   name: string;
   defaultModelProviderCredentialModelId: string | null;
+  defaultComputeProviderDefinitionId: string | null;
   defaultReasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: Date;
@@ -34,19 +41,28 @@ type ModelRecord = {
 
 type CredentialRecord = {
   id: string;
-  modelProvider: "openai" | "anthropic";
+  modelProvider: "openai" | "anthropic" | "openai-codex";
 };
 
 type ExistingAgentRecord = {
   id: string;
 };
 
+type ComputeProviderDefinitionRecord = {
+  id: string;
+  name: string;
+  provider: "daytona" | "e2b";
+};
+
 type GraphqlAgentRecord = {
+  defaultComputeProvider: "daytona" | "e2b" | null;
+  defaultComputeProviderDefinitionId: string | null;
+  defaultComputeProviderDefinitionName: string | null;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
-  modelProvider: "openai" | "anthropic" | null;
+  modelProvider: "openai" | "anthropic" | "openai-codex" | null;
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;
@@ -97,6 +113,9 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     if (arguments_.input.modelProviderCredentialModelId.length === 0) {
       throw new Error("modelProviderCredentialModelId is required.");
     }
+    if (arguments_.input.defaultComputeProviderDefinitionId.length === 0) {
+      throw new Error("defaultComputeProviderDefinitionId is required.");
+    }
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
@@ -146,6 +165,21 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         throw new Error("Provider model does not belong to the selected credential.");
       }
 
+      const [computeProviderDefinitionRecord] = await databaseTransaction
+        .select({
+          id: computeProviderDefinitions.id,
+          name: computeProviderDefinitions.name,
+          provider: computeProviderDefinitions.provider,
+        })
+        .from(computeProviderDefinitions)
+        .where(and(
+          eq(computeProviderDefinitions.companyId, context.authSession.company.id),
+          eq(computeProviderDefinitions.id, arguments_.input.defaultComputeProviderDefinitionId),
+        )) as ComputeProviderDefinitionRecord[];
+      if (!computeProviderDefinitionRecord) {
+        throw new Error("Compute provider definition not found.");
+      }
+
       const reasoningLevel = UpdateAgentMutation.resolveReasoningLevel(
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
@@ -155,6 +189,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .set({
           name: arguments_.input.name,
           defaultModelProviderCredentialModelId: modelRecord.id,
+          defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           default_reasoning_level: reasoningLevel,
           system_prompt: UpdateAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
           updated_at: new Date(),
@@ -167,6 +202,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           id: agents.id,
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
+          defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -176,7 +212,12 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         throw new Error("Failed to update agent.");
       }
 
-      return UpdateAgentMutation.serializeRecord(agentRecord, modelRecord, credentialRecord);
+      return UpdateAgentMutation.serializeRecord(
+        agentRecord,
+        modelRecord,
+        credentialRecord,
+        computeProviderDefinitionRecord,
+      );
     });
   };
 
@@ -214,8 +255,12 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     agentRecord: AgentRecord,
     modelRecord: ModelRecord,
     credentialRecord: CredentialRecord,
+    computeProviderDefinitionRecord: ComputeProviderDefinitionRecord,
   ): GraphqlAgentRecord {
     return {
+      defaultComputeProvider: computeProviderDefinitionRecord.provider,
+      defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
+      defaultComputeProviderDefinitionName: computeProviderDefinitionRecord.name,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: credentialRecord.id,

@@ -9,6 +9,7 @@ import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
+import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
@@ -104,6 +105,12 @@ const environmentsRoute = createRoute({
   component: EnvironmentsPage,
 });
 
+const computeProvidersRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/compute-providers",
+  component: ComputeProviderDefinitionsPage,
+});
+
 const chatsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/chats",
@@ -173,6 +180,7 @@ const routeTree = rootRoute.addChildren([
       flagsRoute,
       agentsRoute,
       environmentsRoute,
+      computeProvidersRoute,
       chatsRoute,
       secretsRoute,
       githubInstallRoute,

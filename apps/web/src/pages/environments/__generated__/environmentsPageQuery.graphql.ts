@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<68369dff883c304f423d16fa4a0c6445>>
+ * @generated SignedSource<<0dc2fdd31a461e1218f77ac34c0af14d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,8 @@ export type environmentsPageQuery$data = {
     readonly memoryGb: number;
     readonly platform: string;
     readonly provider: string;
+    readonly providerDefinitionId: string | null | undefined;
+    readonly providerDefinitionName: string | null | undefined;
     readonly providerEnvironmentId: string;
     readonly status: string;
     readonly updatedAt: string;
@@ -68,6 +70,20 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "provider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "providerDefinitionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "providerDefinitionName",
         "storageKey": null
       },
       {
@@ -155,16 +171,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "637774c52314de803eab9257ba14db7c",
+    "cacheID": "4e4630ec0067a56ec5dc3999f27b22e1",
     "id": null,
     "metadata": {},
     "name": "environmentsPageQuery",
     "operationKind": "query",
-    "text": "query environmentsPageQuery {\n  Environments {\n    id\n    agentId\n    agentName\n    provider\n    providerEnvironmentId\n    displayName\n    platform\n    status\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    lastSeenAt\n    updatedAt\n  }\n}\n"
+    "text": "query environmentsPageQuery {\n  Environments {\n    id\n    agentId\n    agentName\n    provider\n    providerDefinitionId\n    providerDefinitionName\n    providerEnvironmentId\n    displayName\n    platform\n    status\n    cpuCount\n    memoryGb\n    diskSpaceGb\n    lastSeenAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "830d2599533adbb407920261ef831493";
+(node as any).hash = "1a0e79e979adf66bfb93b9b4d6b593e6";
 
 export default node;

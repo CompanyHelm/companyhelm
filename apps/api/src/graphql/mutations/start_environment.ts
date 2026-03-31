@@ -1,6 +1,8 @@
 import { inject, injectable } from "inversify";
-import { AgentComputeProviderInterface } from "../../services/agent/compute/provider_interface.ts";
+import { AgentComputeProviderRegistry } from "../../services/agent/compute/provider_registry.ts";
+import type { AgentComputeProviderInterface } from "../../services/agent/compute/provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "../../services/agent/environment/catalog_service.ts";
+import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -21,15 +23,17 @@ type GraphqlEnvironmentRecord = {
   lastSeenAt: string | null;
   memoryGb: number;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona";
+  provider: "daytona" | "e2b";
+  providerDefinitionId: string | null;
+  providerDefinitionName: string | null;
   providerEnvironmentId: string;
   status: "running";
   updatedAt: string;
 };
 
 /**
- * Starts one company-scoped environment through the configured provider so the inventory can bring
- * a stopped sandbox back online without requiring the chat/session flow to touch it first.
+ * Starts one company-scoped environment through its persisted compute provider so operators can
+ * bring an existing sandbox back online without touching the chat execution path.
  */
 @injectable()
 export class StartEnvironmentMutation extends Mutation<
@@ -37,40 +41,47 @@ export class StartEnvironmentMutation extends Mutation<
   GraphqlEnvironmentRecord
 > {
   private readonly catalogService: AgentEnvironmentCatalogService;
-  private readonly provider: AgentComputeProviderInterface;
+  private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService = new AgentEnvironmentCatalogService(),
-    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface = {
-      async createShell() {
-        throw new Error("Environment provider is not configured.");
+    @inject(ComputeProviderDefinitionService)
+    computeProviderDefinitionServiceOrProvider: ComputeProviderDefinitionService | AgentComputeProviderInterface = {
+      async loadDefinitionById() {
+        throw new Error("Compute provider definition service is not configured.");
       },
-      async deleteEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      async getEnvironmentStatus() {
-        return "unhealthy";
-      },
-      getProvider() {
-        return "daytona";
-      },
-      async provisionEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      supportsOnDemandProvisioning() {
-        return false;
-      },
-      async startEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      async stopEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-    },
+    } as never,
+    @inject(AgentComputeProviderRegistry) providerRegistry?: AgentComputeProviderRegistry,
   ) {
     super();
     this.catalogService = catalogService;
-    this.provider = provider;
+    if (providerRegistry) {
+      this.computeProviderDefinitionService = computeProviderDefinitionServiceOrProvider as ComputeProviderDefinitionService;
+      this.providerRegistry = providerRegistry;
+      return;
+    }
+
+    if (StartEnvironmentMutation.isProvider(computeProviderDefinitionServiceOrProvider)) {
+      this.computeProviderDefinitionService = {
+        async loadDefinitionById() {
+          return null;
+        },
+      } as never;
+      this.providerRegistry = {
+        get() {
+          return computeProviderDefinitionServiceOrProvider;
+        },
+      } as never;
+      return;
+    }
+
+    this.computeProviderDefinitionService = computeProviderDefinitionServiceOrProvider;
+    this.providerRegistry = {
+      get() {
+        throw new Error("Compute provider registry is not configured.");
+      },
+    } as never;
   }
 
   protected resolve = async (
@@ -95,11 +106,18 @@ export class StartEnvironmentMutation extends Mutation<
     if (!environment || environment.companyId !== context.authSession.company.id) {
       throw new Error("Environment not found.");
     }
-    if (environment.provider !== this.provider.getProvider()) {
-      throw new Error(`Environment provider ${environment.provider} is not configured.`);
-    }
 
-    await this.provider.startEnvironment(context.app_runtime_transaction_provider, environment);
+    await this.providerRegistry
+      .get(environment.provider)
+      .startEnvironment(context.app_runtime_transaction_provider, environment);
+
+    const providerDefinition = environment.providerDefinitionId
+      ? await this.computeProviderDefinitionService.loadDefinitionById(
+        context.app_runtime_transaction_provider,
+        context.authSession.company.id,
+        environment.providerDefinitionId,
+      )
+      : null;
 
     return {
       agentId: environment.agentId,
@@ -113,9 +131,18 @@ export class StartEnvironmentMutation extends Mutation<
       memoryGb: environment.memoryGb,
       platform: environment.platform,
       provider: environment.provider,
+      providerDefinitionId: environment.providerDefinitionId,
+      providerDefinitionName: providerDefinition?.name ?? null,
       providerEnvironmentId: environment.providerEnvironmentId,
       status: "running",
       updatedAt: environment.updatedAt.toISOString(),
     };
   };
+
+  private static isProvider(value: unknown): value is AgentComputeProviderInterface {
+    return typeof value === "object"
+      && value !== null
+      && "getProvider" in value
+      && typeof value.getProvider === "function";
+  }
 }

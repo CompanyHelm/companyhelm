@@ -1,24 +1,32 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PlusIcon, SendHorizonalIcon, WrenchIcon, XIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  ChevronRightIcon,
+  Loader2Icon,
+  MessageSquareIcon,
+  PlusIcon,
+  SendHorizonalIcon,
+  Settings2Icon,
+  WrenchIcon,
+  XIcon,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
-import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
+import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
-import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
-import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
 const chatsPageQueryNode = graphql`
@@ -99,16 +107,26 @@ const chatsPageTranscriptQueryNode = graphql`
   }
 `;
 
-const chatsPageQueuedMessagesQueryNode = graphql`
-  query chatsPageQueuedMessagesQuery($sessionId: ID!) {
-    SessionQueuedMessages(sessionId: $sessionId) {
-      id
-      sessionId
-      text
-      shouldSteer
-      status
-      createdAt
-      updatedAt
+const chatsPageSessionEnvironmentQueryNode = graphql`
+  query chatsPageSessionEnvironmentQuery($sessionId: ID!) {
+    SessionEnvironment(sessionId: $sessionId) {
+      currentEnvironment {
+        id
+        displayName
+        provider
+        providerDefinitionName
+        providerEnvironmentId
+        status
+        platform
+        cpuCount
+        memoryGb
+        diskSpaceGb
+      }
+      agentDefaultComputeProviderDefinition {
+        id
+        name
+        provider
+      }
     }
   }
 `;
@@ -168,20 +186,6 @@ const chatsPagePromptSessionMutationNode = graphql`
   }
 `;
 
-const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
-  mutation chatsPageSteerSessionQueuedMessageMutation($input: SteerSessionQueuedMessageInput!) {
-    SteerSessionQueuedMessage(input: $input) {
-      id
-      sessionId
-      text
-      shouldSteer
-      status
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
 const chatsPageSessionUpdatedSubscriptionNode = graphql`
   subscription chatsPageSessionUpdatedSubscription {
     SessionUpdated {
@@ -197,20 +201,6 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
       createdAt
       updatedAt
       userSetTitle
-    }
-  }
-`;
-
-const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
-  subscription chatsPageSessionQueuedMessagesUpdatedSubscription($sessionId: ID!) {
-    SessionQueuedMessagesUpdated(sessionId: $sessionId) {
-      id
-      sessionId
-      text
-      shouldSteer
-      status
-      createdAt
-      updatedAt
     }
   }
 `;
@@ -245,11 +235,11 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
-type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
 type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
 type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
 type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
 type SessionMessageContentRecord = SessionMessageRecord["contents"][number];
+type SessionEnvironmentInfoRecord = chatsPageSessionEnvironmentQuery["response"]["SessionEnvironment"];
 type ChatsPageSearch = {
   agentId?: string;
   sessionId?: string;
@@ -409,10 +399,8 @@ function resolveToolDisplayName(toolName: string): string {
   return toolName;
 }
 
-function sortQueuedMessages(queuedMessages: ReadonlyArray<QueuedMessageRecord>): QueuedMessageRecord[] {
-  return [...queuedMessages].sort((leftMessage, rightMessage) => {
-    return new Date(leftMessage.createdAt).getTime() - new Date(rightMessage.createdAt).getTime();
-  });
+function formatComputeProviderLabel(provider: "daytona" | "e2b" | string): string {
+  return provider === "e2b" ? "E2B" : provider === "daytona" ? "Daytona" : provider;
 }
 
 function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): CommandToolArgumentsRecord | null {
@@ -850,57 +838,6 @@ function ChatsThinkingIndicator({ visible }: { visible: boolean }) {
   );
 }
 
-function ChatsQueuedMessagesStrip(
-  {
-    isSteeringQueuedMessage,
-    onSteer,
-    queuedMessages,
-  }: {
-    isSteeringQueuedMessage: boolean;
-    onSteer(queuedMessage: QueuedMessageRecord): void;
-    queuedMessages: ReadonlyArray<QueuedMessageRecord>;
-  },
-) {
-  if (queuedMessages.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-2 border-b border-border/60 px-2.5 py-2.5">
-      {queuedMessages.map((queuedMessage) => (
-        <div
-          key={queuedMessage.id}
-          className="flex items-center gap-3 rounded-[1.15rem] bg-muted/25 px-3 py-2 ring-1 ring-border/60"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-foreground">{queuedMessage.text}</p>
-            <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {queuedMessage.shouldSteer ? "Steer: yes" : "Steer: no"}
-            </p>
-          </div>
-          {queuedMessage.shouldSteer ? (
-            <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-primary">
-              Steer
-            </span>
-          ) : (
-            <Button
-              className="h-8 shrink-0 rounded-full px-3 text-xs"
-              disabled={isSteeringQueuedMessage}
-              onClick={() => {
-                onSteer(queuedMessage);
-              }}
-              type="button"
-              variant="secondary"
-            >
-              Steer
-            </Button>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
 ) {
@@ -1164,12 +1101,13 @@ function ChatsPageContent() {
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
   const [isChatListHidden, setIsChatListHidden] = useState(false);
   const [isMobileChatListOpen, setIsMobileChatListOpen] = useState(false);
+  const [isEnvironmentPanelOpen, setIsEnvironmentPanelOpen] = useState(false);
+  const [isLoadingSessionEnvironment, setIsLoadingSessionEnvironment] = useState(false);
+  const [sessionEnvironmentInfo, setSessionEnvironmentInfo] = useState<SessionEnvironmentInfoRecord | null>(null);
+  const [sessionEnvironmentErrorMessage, setSessionEnvironmentErrorMessage] = useState<string | null>(null);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
   const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
-  const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
-  const [isLoadingQueuedMessages, setIsLoadingQueuedMessages] = useState(false);
-  const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [composerModelOptionId, setComposerModelOptionId] = useState("");
   const [composerReasoningLevel, setComposerReasoningLevel] = useState("");
   const resizeStartXRef = useRef(0);
@@ -1207,9 +1145,6 @@ function ChatsPageContent() {
   );
   const [commitPromptSession, isPromptSessionInFlight] = useMutation<chatsPagePromptSessionMutation>(
     chatsPagePromptSessionMutationNode,
-  );
-  const [commitSteerQueuedMessage, isSteerQueuedMessageInFlight] = useMutation<chatsPageSteerSessionQueuedMessageMutation>(
-    chatsPageSteerSessionQueuedMessageMutationNode,
   );
 
   const sortedAgents = useMemo(() => {
@@ -1275,7 +1210,6 @@ function ChatsPageContent() {
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
-  const isSteeringQueuedMessage = isSteerQueuedMessageInFlight || steeringQueuedMessageId !== null;
   const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
@@ -1299,6 +1233,47 @@ function ChatsPageContent() {
 
     setIsMobileChatListOpen(false);
   }, [isMobile, search.agentId, search.sessionId]);
+
+  const loadSessionEnvironmentInfo = useCallback(async (sessionId: string) => {
+    setIsLoadingSessionEnvironment(true);
+    setSessionEnvironmentErrorMessage(null);
+
+    try {
+      const response = await fetchQuery<chatsPageSessionEnvironmentQuery>(
+        environment,
+        chatsPageSessionEnvironmentQueryNode,
+        {
+          sessionId,
+        },
+        {
+          fetchPolicy: "network-only",
+        },
+      ).toPromise();
+
+      setSessionEnvironmentInfo(response?.SessionEnvironment ?? null);
+    } catch (error) {
+      setSessionEnvironmentInfo(null);
+      setSessionEnvironmentErrorMessage(error instanceof Error ? error.message : "Failed to load environment.");
+    } finally {
+      setIsLoadingSessionEnvironment(false);
+    }
+  }, [environment]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      setIsEnvironmentPanelOpen(false);
+      setSessionEnvironmentInfo(null);
+      setSessionEnvironmentErrorMessage(null);
+      setIsLoadingSessionEnvironment(false);
+      return;
+    }
+
+    if (!isEnvironmentPanelOpen) {
+      return;
+    }
+
+    void loadSessionEnvironmentInfo(selectedSession.id);
+  }, [isEnvironmentPanelOpen, loadSessionEnvironmentInfo, selectedSession]);
 
   const updateSessionTitleOverride = useCallback((sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => {
     const nextTitle = formatSessionTitle(messages);
@@ -1453,8 +1428,6 @@ function ChatsPageContent() {
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = true;
       setTranscriptMessages([]);
-      setQueuedMessages([]);
-      setIsLoadingQueuedMessages(false);
       setTranscriptHasNextPage(false);
       setTranscriptEndCursor(null);
       setIsLoadingTranscript(false);
@@ -1469,47 +1442,6 @@ function ChatsPageContent() {
       sessionId: selectedSession.id,
     });
   }, [loadTranscriptPage, selectedSession?.id]);
-
-  useEffect(() => {
-    if (!selectedSession) {
-      setQueuedMessages([]);
-      setIsLoadingQueuedMessages(false);
-      return;
-    }
-
-    let isCancelled = false;
-    setIsLoadingQueuedMessages(true);
-
-    void fetchQuery<chatsPageQueuedMessagesQuery>(
-      environment,
-      chatsPageQueuedMessagesQueryNode,
-      {
-        sessionId: selectedSession.id,
-      },
-    ).toPromise().then((response) => {
-      if (isCancelled) {
-        return;
-      }
-
-      setQueuedMessages(sortQueuedMessages(response?.SessionQueuedMessages ?? []));
-    }).catch((error: unknown) => {
-      if (isCancelled) {
-        return;
-      }
-
-      setErrorMessage((currentMessage) => currentMessage ?? (error instanceof Error ? error.message : "Failed to load queued messages."));
-    }).finally(() => {
-      if (isCancelled) {
-        return;
-      }
-
-      setIsLoadingQueuedMessages(false);
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [environment, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedAgent) {
@@ -1739,29 +1671,6 @@ function ChatsPageContent() {
     };
   }, [environment, selectedSession?.id, updateSessionTitleOverride]);
 
-  useEffect(() => {
-    if (!selectedSession) {
-      return;
-    }
-
-    const disposable = requestSubscription<chatsPageSessionQueuedMessagesUpdatedSubscription>(environment, {
-      subscription: chatsPageSessionQueuedMessagesUpdatedSubscriptionNode,
-      variables: {
-        sessionId: selectedSession.id,
-      },
-      onNext: (response) => {
-        setQueuedMessages(sortQueuedMessages(response?.SessionQueuedMessagesUpdated ?? []));
-      },
-      onError: (error) => {
-        setErrorMessage((currentMessage) => currentMessage ?? error.message);
-      },
-    });
-
-    return () => {
-      disposable.dispose();
-    };
-  }, [environment, selectedSession?.id]);
-
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
     setDraftMessage("");
@@ -1944,50 +1853,6 @@ function ChatsPageContent() {
     });
   };
 
-  const steerQueuedMessage = async (queuedMessage: QueuedMessageRecord) => {
-    setErrorMessage(null);
-    setSteeringQueuedMessageId(queuedMessage.id);
-
-    await new Promise<void>((resolve, reject) => {
-      commitSteerQueuedMessage({
-        variables: {
-          input: {
-            id: queuedMessage.id,
-          },
-        },
-        onCompleted: (response, errors) => {
-          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-          if (nextErrorMessage.length > 0) {
-            reject(new Error(nextErrorMessage));
-            return;
-          }
-
-          const steeredQueuedMessage = response.SteerSessionQueuedMessage;
-          if (!steeredQueuedMessage) {
-            reject(new Error("Failed to steer queued message."));
-            return;
-          }
-
-          setQueuedMessages((currentMessages) => {
-            return sortQueuedMessages(currentMessages.map((currentMessage) => {
-              if (currentMessage.id !== steeredQueuedMessage.id) {
-                return currentMessage;
-              }
-
-              return steeredQueuedMessage;
-            }));
-          });
-          resolve();
-        },
-        onError: reject,
-      });
-    }).catch((error: unknown) => {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to steer queued message.");
-    }).finally(() => {
-      setSteeringQueuedMessageId(null);
-    });
-  };
-
   const startChatListResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
     resizeStartXRef.current = event.clientX;
     resizeStartWidthRef.current = chatListWidth;
@@ -2062,23 +1927,48 @@ function ChatsPageContent() {
           ? "Choose an agent from the panel to start a chat."
           : "Choose an agent from the panel to start a chat.";
   const headerAction = useMemo(() => {
-    if (!shouldShowChatListButton) {
+    const actions: JSX.Element[] = [];
+
+    if (shouldShowChatListButton) {
+      actions.push(
+        <Button
+          key="chats-panel"
+          aria-label={isMobile ? "Show chats panel" : "Show chats list"}
+          className="text-muted-foreground hover:text-foreground"
+          onClick={showChatList}
+          size="icon-sm"
+          title={isMobile ? "Show chats panel" : "Show chats list"}
+          variant="ghost"
+        >
+          <MessageSquareIcon className="size-4" />
+        </Button>,
+      );
+    }
+
+    if (selectedSession) {
+      actions.push(
+        <Button
+          key="environment-panel"
+          aria-label="Show environment details"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            setIsEnvironmentPanelOpen(true);
+          }}
+          size="icon-sm"
+          title="Show environment details"
+          variant="ghost"
+        >
+          <Settings2Icon className="size-4" />
+        </Button>,
+      );
+    }
+
+    if (actions.length === 0) {
       return null;
     }
 
-    return (
-      <Button
-        aria-label={isMobile ? "Show chats panel" : "Show chats list"}
-        className="text-muted-foreground hover:text-foreground"
-        onClick={showChatList}
-        size="icon-sm"
-        title={isMobile ? "Show chats panel" : "Show chats list"}
-        variant="ghost"
-      >
-        <MessageSquareIcon className="size-4" />
-      </Button>
-    );
-  }, [isMobile, shouldShowChatListButton, showChatList]);
+    return <>{actions}</>;
+  }, [isMobile, selectedSession, shouldShowChatListButton, showChatList]);
   const headerContent = useMemo(() => {
     return (
       <div className="min-w-0">
@@ -2394,10 +2284,114 @@ function ChatsPageContent() {
       </SheetContent>
     </Sheet>
   ) : null;
+  const currentSessionEnvironment = sessionEnvironmentInfo?.currentEnvironment ?? null;
+  const agentDefaultComputeProviderDefinition = sessionEnvironmentInfo?.agentDefaultComputeProviderDefinition ?? null;
+  const environmentDetailsPanel = selectedSession ? (
+    <Sheet open={isEnvironmentPanelOpen} onOpenChange={setIsEnvironmentPanelOpen}>
+      <SheetContent
+        className={isMobile
+          ? "h-auto max-h-[80vh] border-t border-border bg-background"
+          : "w-full max-w-md border-l border-border bg-background"}
+        side={isMobile ? "bottom" : "right"}
+      >
+        <SheetHeader className="border-b border-border/60 px-6 py-5">
+          <SheetTitle>Environment</SheetTitle>
+          <SheetDescription>
+            Review the current reusable environment for this chat session and the agent&apos;s fallback compute provider.
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
+          {sessionEnvironmentErrorMessage ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {sessionEnvironmentErrorMessage}
+            </div>
+          ) : null}
+
+          <section className="grid gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Current environment
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                This is the reusable environment CompanyHelm would attach to the current session right now.
+              </p>
+            </div>
+
+            {isLoadingSessionEnvironment ? (
+              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+                <Loader2Icon className="size-4 animate-spin" />
+                Loading environment…
+              </div>
+            ) : currentSessionEnvironment ? (
+              <button
+                className="grid gap-3 rounded-xl border border-border/60 bg-card/50 p-4 text-left transition hover:border-border hover:bg-card"
+                onClick={() => {
+                  setIsEnvironmentPanelOpen(false);
+                  void navigate({
+                    to: "/environments",
+                  });
+                }}
+                type="button"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {currentSessionEnvironment.displayName ?? currentSessionEnvironment.providerEnvironmentId}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {currentSessionEnvironment.providerDefinitionName ?? "Unnamed definition"} • {formatComputeProviderLabel(currentSessionEnvironment.provider)}
+                    </p>
+                  </div>
+                  <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                </div>
+                <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                  <p>Status: {currentSessionEnvironment.status}</p>
+                  <p>Platform: {currentSessionEnvironment.platform}</p>
+                  <p>CPU: {currentSessionEnvironment.cpuCount}</p>
+                  <p>Memory: {currentSessionEnvironment.memoryGb} GB</p>
+                  <p>Disk: {currentSessionEnvironment.diskSpaceGb} GB</p>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+                No reusable environment is currently attached to this session.
+              </div>
+            )}
+          </section>
+
+          <section className="grid gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Agent default
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                This provider definition is used only if CompanyHelm needs to provision a fresh environment.
+              </p>
+            </div>
+
+            {agentDefaultComputeProviderDefinition ? (
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-sm font-medium text-foreground">{agentDefaultComputeProviderDefinition.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatComputeProviderLabel(agentDefaultComputeProviderDefinition.provider)}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+                No default compute provider is configured for this agent.
+              </div>
+            )}
+          </section>
+        </div>
+      </SheetContent>
+    </Sheet>
+  ) : null;
 
   return (
     <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {mobileChatListOverlay}
+      {environmentDetailsPanel}
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
         {errorMessage ? (
@@ -2466,23 +2460,6 @@ function ChatsPageContent() {
               type="button"
             />
             <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
-              {selectedSession && (queuedMessages.length > 0 || isLoadingQueuedMessages) ? (
-                <div>
-                  {queuedMessages.length > 0 ? (
-                    <ChatsQueuedMessagesStrip
-                      isSteeringQueuedMessage={isSteeringQueuedMessage}
-                      onSteer={steerQueuedMessage}
-                      queuedMessages={queuedMessages}
-                    />
-                  ) : null}
-                  {isLoadingQueuedMessages && queuedMessages.length === 0 ? (
-                    <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5 text-xs text-muted-foreground">
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                      Loading queued messages...
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
               <div>
                 <textarea
                   id="chat-draft-message"

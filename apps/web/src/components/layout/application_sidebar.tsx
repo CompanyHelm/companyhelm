@@ -4,6 +4,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import {
   BotIcon,
+  WrenchIcon,
   FolderGit2Icon,
   KeyRoundIcon,
   LayoutDashboardIcon,
@@ -134,6 +135,11 @@ export function ApplicationSidebar() {
       icon: ServerIcon,
       label: "Environments",
       to: "/environments",
+    },
+    {
+      icon: WrenchIcon,
+      label: "Compute Providers",
+      to: "/compute-providers",
     },
     {
       icon: FolderGit2Icon,

@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { injectable } from "inversify";
 import { agentEnvironments, agentSessions } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import type { AgentEnvironmentRecord } from "../compute/provider_interface.ts";
+import type { AgentEnvironmentRecord, ComputeProvider } from "../compute/provider_interface.ts";
 
 type SessionRow = {
   agentId: string;
@@ -62,7 +62,8 @@ export class AgentEnvironmentCatalogService {
       memoryGb: number;
       metadata: Record<string, unknown>;
       platform: "linux" | "macos" | "windows";
-      provider: "daytona";
+      provider: ComputeProvider;
+      providerDefinitionId: string | null;
       providerEnvironmentId: string;
     },
   ): Promise<AgentEnvironmentRecord> {
@@ -82,6 +83,7 @@ export class AgentEnvironmentCatalogService {
           metadata: input.metadata,
           platform: input.platform,
           provider: input.provider,
+          providerDefinitionId: input.providerDefinitionId,
           providerEnvironmentId: input.providerEnvironmentId,
           updatedAt: now,
         })
@@ -152,7 +154,7 @@ export class AgentEnvironmentCatalogService {
   async listAgentEnvironments(
     transactionProvider: TransactionProviderInterface,
     agentId: string,
-    provider: "daytona",
+    provider: ComputeProvider,
   ): Promise<AgentEnvironmentRecord[]> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -232,6 +234,7 @@ export class AgentEnvironmentCatalogService {
       metadata: agentEnvironments.metadata,
       platform: agentEnvironments.platform,
       provider: agentEnvironments.provider,
+      providerDefinitionId: agentEnvironments.providerDefinitionId,
       providerEnvironmentId: agentEnvironments.providerEnvironmentId,
       updatedAt: agentEnvironments.updatedAt,
     };

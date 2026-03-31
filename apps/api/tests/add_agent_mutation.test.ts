@@ -17,13 +17,6 @@ import type { ModelProviderModel } from "../src/services/ai_providers/model_serv
 class AddAgentMutationTestHarness {
   static createConfigMock(): Config {
     return {
-      daytona: {
-        api_key: "daytona-key",
-        api_url: "https://daytona.example.com/api",
-        cpu_count: 4,
-        disk_gb: 10,
-        memory_gb: 8,
-      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
@@ -88,7 +81,9 @@ class AddAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "agent-1",
+                        id: "compute-provider-definition-1",
+                        name: "Primary Daytona",
+                        provider: "daytona",
                       }];
                     },
                   };
@@ -97,6 +92,20 @@ class AddAgentMutationTestHarness {
             }
 
             if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "agent-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -116,7 +125,7 @@ class AddAgentMutationTestHarness {
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 6) {
               return {
                 from() {
                   return {
@@ -128,7 +137,7 @@ class AddAgentMutationTestHarness {
               };
             }
 
-            if (selectCallCount === 6) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -142,7 +151,7 @@ class AddAgentMutationTestHarness {
               };
             }
 
-            if (selectCallCount === 7) {
+            if (selectCallCount === 8) {
               return {
                 from() {
                   return {
@@ -182,6 +191,7 @@ class AddAgentMutationTestHarness {
                     return [{
                       id: "agent-1",
                       name: String(value.name),
+                      defaultComputeProviderDefinitionId: String(value.defaultComputeProviderDefinitionId),
                       defaultModelProviderCredentialModelId: String(value.defaultModelProviderCredentialModelId),
                       defaultReasoningLevel: value.default_reasoning_level ?? null,
                       systemPrompt: value.system_prompt ?? null,
@@ -269,6 +279,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
             minDiskSpaceGb: 30,
             minMemoryGb: 16,
           },
+          defaultComputeProviderDefinitionId: "compute-provider-definition-1",
           name: "Research Agent",
           modelProviderCredentialId: "credential-1",
           modelProviderCredentialModelId: "model-row-1",
@@ -292,6 +303,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
   });
   assert.equal(database.insertedValues.length, 3);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
+  assert.equal(database.insertedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
   assert.equal(database.insertedValues[0]?.default_reasoning_level, "high");
   assert.equal(database.insertedValues[0]?.system_prompt, "You are concise.");
   assert.deepEqual(database.insertedValues[1], {

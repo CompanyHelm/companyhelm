@@ -83,6 +83,22 @@ class UpdateAgentMutationTestHarness {
               };
             }
 
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "compute-provider-definition-1",
+                        name: "Primary E2B",
+                        provider: "e2b",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
           update() {
@@ -96,6 +112,7 @@ class UpdateAgentMutationTestHarness {
                         return [{
                           id: "agent-1",
                           name: String(value.name),
+                          defaultComputeProviderDefinitionId: String(value.defaultComputeProviderDefinitionId),
                           defaultModelProviderCredentialModelId: String(
                             value.defaultModelProviderCredentialModelId,
                           ),
@@ -186,6 +203,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
       variables: {
         input: {
           id: "agent-1",
+          defaultComputeProviderDefinitionId: "compute-provider-definition-1",
           name: "Executive Agent",
           modelProviderCredentialId: "credential-2",
           modelProviderCredentialModelId: "model-row-2",
@@ -209,6 +227,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
     updatedAt: "2026-03-24T10:30:00.000Z",
   });
   assert.equal(database.updatedValues.length, 1);
+  assert.equal(database.updatedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
   assert.equal(database.updatedValues[0]?.name, "Executive Agent");
   assert.equal(database.updatedValues[0]?.defaultModelProviderCredentialModelId, "model-row-2");
   assert.equal(database.updatedValues[0]?.default_reasoning_level, null);

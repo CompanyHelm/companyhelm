@@ -3,6 +3,7 @@ type Query {
   Me: Me!
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
+  ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
@@ -11,6 +12,7 @@ type Query {
   Secrets: [Secret!]!
   AgentSecrets(agentId: ID!): [Secret!]!
   Sessions: [Session!]!
+  SessionEnvironment(sessionId: ID!): SessionEnvironmentInfo!
   SessionSecrets(sessionId: ID!): [Secret!]!
   SessionMessages: [SessionMessage!]!
   SessionQueuedMessages(sessionId: ID!): [SessionQueuedMessage!]!
@@ -29,7 +31,9 @@ type Query {
 
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
+  AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
   DeleteEnvironment(input: DeleteEnvironmentInput!): Environment!
+  DeleteComputeProviderDefinition(input: DeleteComputeProviderDefinitionInput!): ComputeProviderDefinition!
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
@@ -55,6 +59,7 @@ type Mutation {
     input: UpdateAgentEnvironmentRequirementsInput!
   ): AgentEnvironmentRequirements!
   UpdateAgent(input: UpdateAgentInput!): Agent!
+  UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
   RefreshModelProviderCredentialModels(
@@ -174,6 +179,9 @@ type Me {
 }
 
 type Agent {
+  defaultComputeProvider: String
+  defaultComputeProviderDefinitionId: ID
+  defaultComputeProviderDefinitionName: String
   id: ID!
   name: String!
   modelProviderCredentialId: ID
@@ -198,6 +206,8 @@ type Environment {
   agentId: ID!
   agentName: String
   provider: String!
+  providerDefinitionId: ID
+  providerDefinitionName: String
   providerEnvironmentId: String!
   displayName: String
   platform: String!
@@ -208,6 +218,26 @@ type Environment {
   lastSeenAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type ComputeProviderDefinition {
+  id: ID!
+  companyId: ID!
+  name: String!
+  provider: String!
+  description: String
+  daytona: DaytonaComputeProviderDefinition
+  e2b: E2bComputeProviderDefinition
+  createdAt: String!
+  updatedAt: String!
+}
+
+type DaytonaComputeProviderDefinition {
+  apiUrl: String!
+}
+
+type E2bComputeProviderDefinition {
+  hasApiKey: Boolean!
 }
 
 type AgentCreateProviderOption {
@@ -240,6 +270,11 @@ type Session {
   createdAt: String!
   updatedAt: String!
   userSetTitle: String
+}
+
+type SessionEnvironmentInfo {
+  currentEnvironment: Environment
+  agentDefaultComputeProviderDefinition: ComputeProviderDefinition
 }
 
 type SessionMessage {
@@ -366,6 +401,7 @@ input AddGithubInstallationInput {
 }
 
 input AddAgentInput {
+  defaultComputeProviderDefinitionId: ID!
   name: String!
   modelProviderCredentialId: ID!
   modelProviderCredentialModelId: ID!
@@ -382,6 +418,7 @@ input AddAgentEnvironmentRequirementsInput {
 }
 
 input UpdateAgentInput {
+  defaultComputeProviderDefinitionId: ID!
   id: ID!
   name: String!
   modelProviderCredentialId: ID!
@@ -410,6 +447,23 @@ input DeleteEnvironmentInput {
   force: Boolean
 }
 
+input AddComputeProviderDefinitionInput {
+  name: String!
+  provider: String!
+  description: String
+  daytona: AddDaytonaComputeProviderDefinitionInput
+  e2b: AddE2bComputeProviderDefinitionInput
+}
+
+input AddDaytonaComputeProviderDefinitionInput {
+  apiUrl: String!
+  apiKey: String!
+}
+
+input AddE2bComputeProviderDefinitionInput {
+  apiKey: String!
+}
+
 input StartEnvironmentInput {
   id: ID!
 }
@@ -420,6 +474,10 @@ input StopEnvironmentInput {
 
 input DeleteGithubInstallationInput {
   installationId: ID!
+}
+
+input DeleteComputeProviderDefinitionInput {
+  id: ID!
 }
 
 input ArchiveSessionInput {
@@ -457,6 +515,23 @@ input CreateSecretInput {
   description: String
   envVarName: String
   value: String!
+}
+
+input UpdateComputeProviderDefinitionInput {
+  id: ID!
+  name: String!
+  description: String
+  daytona: UpdateDaytonaComputeProviderDefinitionInput
+  e2b: UpdateE2bComputeProviderDefinitionInput
+}
+
+input UpdateDaytonaComputeProviderDefinitionInput {
+  apiUrl: String!
+  apiKey: String
+}
+
+input UpdateE2bComputeProviderDefinitionInput {
+  apiKey: String
 }
 
 input DeleteSecretInput {

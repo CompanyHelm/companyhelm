@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<31d7c8227ad5d7309cbaebab8fd3162a>>
+ * @generated SignedSource<<b4376c0aacefead97c30e0bb7cb62a67>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,11 @@ export type agentsPageQuery$data = {
     readonly reasoningLevel: string | null | undefined;
     readonly systemPrompt: string | null | undefined;
     readonly updatedAt: string;
+  }>;
+  readonly ComputeProviderDefinitions: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+    readonly provider: string;
   }>;
   readonly Secrets: ReadonlyArray<{
     readonly description: string | null | undefined;
@@ -205,6 +210,26 @@ v3 = [
       }
     ],
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "ComputeProviderDefinition",
+    "kind": "LinkedField",
+    "name": "ComputeProviderDefinitions",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "provider",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -225,16 +250,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "300ff885ae555d0f1adceed03bf3efa6",
+    "cacheID": "4d7a8fa86e71419843b65dc64a9985fd",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5ca24a2afc4a444392dd156b58a19d24";
+(node as any).hash = "d01a1f8d57c0eb393f44df4d5afac92f";
 
 export default node;

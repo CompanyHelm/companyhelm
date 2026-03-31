@@ -1,9 +1,10 @@
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import {
+import type {
   AgentComputeProviderInterface,
-  type AgentEnvironmentRecord,
+  AgentEnvironmentRecord,
 } from "../compute/provider_interface.ts";
+import { AgentComputeProviderRegistry } from "../compute/provider_registry.ts";
 
 /**
  * Applies the shared post-create bootstrap steps for newly provisioned environments. The provider
@@ -12,22 +13,38 @@ import {
  */
 @injectable()
 export class AgentEnvironmentProvisioning {
-  private readonly provider: AgentComputeProviderInterface;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
 
   constructor(
-    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
+    @inject(AgentComputeProviderRegistry)
+    providerRegistryOrProvider: AgentComputeProviderRegistry | AgentComputeProviderInterface,
   ) {
-    this.provider = provider;
+    this.providerRegistry = AgentEnvironmentProvisioning.isProvider(providerRegistryOrProvider)
+      ? {
+          get() {
+            return providerRegistryOrProvider;
+          },
+        } as never
+      : providerRegistryOrProvider;
   }
 
   async provision(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<void> {
-    const environmentShell = await this.provider.createShell(transactionProvider, environment);
+    const environmentShell = await this.providerRegistry
+      .get(environment.provider)
+      .createShell(transactionProvider, environment);
     const result = await environmentShell.executeCommand("mkdir -p /workspace");
     if (result.exitCode !== 0) {
       throw new Error(`Failed to provision environment workspace: ${result.stdout}`);
     }
+  }
+
+  private static isProvider(value: unknown): value is AgentComputeProviderInterface {
+    return typeof value === "object"
+      && value !== null
+      && "getProvider" in value
+      && typeof value.getProvider === "function";
   }
 }

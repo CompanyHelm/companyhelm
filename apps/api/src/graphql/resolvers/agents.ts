@@ -1,6 +1,11 @@
 import { eq, inArray } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agents, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import {
+  agents,
+  computeProviderDefinitions,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -8,6 +13,7 @@ type AgentRecord = {
   id: string;
   name: string;
   defaultModelProviderCredentialModelId: string | null;
+  defaultComputeProviderDefinitionId: string | null;
   defaultReasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: Date;
@@ -22,15 +28,24 @@ type ModelRecord = {
 
 type CredentialRecord = {
   id: string;
-  modelProvider: "openai" | "anthropic";
+  modelProvider: "openai" | "anthropic" | "openai-codex";
+};
+
+type ComputeProviderDefinitionRecord = {
+  id: string;
+  name: string;
+  provider: "daytona" | "e2b";
 };
 
 type GraphqlAgentRecord = {
+  defaultComputeProvider: "daytona" | "e2b" | null;
+  defaultComputeProviderDefinitionId: string | null;
+  defaultComputeProviderDefinitionName: string | null;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
-  modelProvider: "openai" | "anthropic" | null;
+  modelProvider: "openai" | "anthropic" | "openai-codex" | null;
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;
@@ -67,6 +82,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           id: agents.id,
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
+          defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -78,8 +94,32 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
       const modelIds = agentRecords
         .map((agentRecord) => agentRecord.defaultModelProviderCredentialModelId)
         .filter((value): value is string => typeof value === "string");
+      const computeProviderDefinitionIds = agentRecords
+        .map((agentRecord) => agentRecord.defaultComputeProviderDefinitionId)
+        .filter((value): value is string => typeof value === "string");
       if (modelIds.length === 0) {
-        return agentRecords.map((agentRecord) => AgentsQueryResolver.serializeRecord(agentRecord, null, null));
+        const computeProviderDefinitionRecords = computeProviderDefinitionIds.length === 0
+          ? []
+          : await selectableDatabase
+            .select({
+              id: computeProviderDefinitions.id,
+              name: computeProviderDefinitions.name,
+              provider: computeProviderDefinitions.provider,
+            })
+            .from(computeProviderDefinitions)
+            .where(inArray(computeProviderDefinitions.id, computeProviderDefinitionIds)) as ComputeProviderDefinitionRecord[];
+        const computeProviderDefinitionById = new Map(
+          computeProviderDefinitionRecords.map((definition) => [definition.id, definition]),
+        );
+
+        return agentRecords.map((agentRecord) => AgentsQueryResolver.serializeRecord(
+          agentRecord,
+          null,
+          null,
+          agentRecord.defaultComputeProviderDefinitionId
+            ? computeProviderDefinitionById.get(agentRecord.defaultComputeProviderDefinitionId) ?? null
+            : null,
+        ));
       }
 
       const modelRecords = await selectableDatabase
@@ -100,10 +140,23 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           })
           .from(modelProviderCredentials)
           .where(inArray(modelProviderCredentials.id, credentialIds)) as CredentialRecord[];
+      const computeProviderDefinitionRecords = computeProviderDefinitionIds.length === 0
+        ? []
+        : await selectableDatabase
+          .select({
+            id: computeProviderDefinitions.id,
+            name: computeProviderDefinitions.name,
+            provider: computeProviderDefinitions.provider,
+          })
+          .from(computeProviderDefinitions)
+          .where(inArray(computeProviderDefinitions.id, computeProviderDefinitionIds)) as ComputeProviderDefinitionRecord[];
 
       const modelById = new Map(modelRecords.map((modelRecord) => [modelRecord.id, modelRecord]));
       const credentialById = new Map(
         credentialRecords.map((credentialRecord) => [credentialRecord.id, credentialRecord]),
+      );
+      const computeProviderDefinitionById = new Map(
+        computeProviderDefinitionRecords.map((definition) => [definition.id, definition]),
       );
 
       return agentRecords.map((agentRecord) => {
@@ -113,8 +166,16 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
         const credentialRecord = modelRecord
           ? credentialById.get(modelRecord.modelProviderCredentialId) ?? null
           : null;
+        const computeProviderDefinitionRecord = agentRecord.defaultComputeProviderDefinitionId
+          ? computeProviderDefinitionById.get(agentRecord.defaultComputeProviderDefinitionId) ?? null
+          : null;
 
-        return AgentsQueryResolver.serializeRecord(agentRecord, modelRecord, credentialRecord);
+        return AgentsQueryResolver.serializeRecord(
+          agentRecord,
+          modelRecord,
+          credentialRecord,
+          computeProviderDefinitionRecord,
+        );
       });
     });
   };
@@ -123,8 +184,12 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
     agentRecord: AgentRecord,
     modelRecord: ModelRecord | null,
     credentialRecord: CredentialRecord | null,
+    computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
   ): GraphqlAgentRecord {
     return {
+      defaultComputeProvider: computeProviderDefinitionRecord?.provider ?? null,
+      defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
+      defaultComputeProviderDefinitionName: computeProviderDefinitionRecord?.name ?? null,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: modelRecord?.modelProviderCredentialId ?? null,

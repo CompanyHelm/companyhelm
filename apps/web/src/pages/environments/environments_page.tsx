@@ -14,6 +14,8 @@ const environmentsPageQueryNode = graphql`
       agentId
       agentName
       provider
+      providerDefinitionId
+      providerDefinitionName
       providerEnvironmentId
       displayName
       platform
@@ -109,6 +111,7 @@ function EnvironmentsPageContent() {
     memoryGb: environment.memoryGb,
     platform: environment.platform,
     provider: environment.provider,
+    providerDefinitionName: environment.providerDefinitionName,
     providerEnvironmentId: environment.providerEnvironmentId,
     status: environment.status,
     updatedAt: environment.updatedAt,

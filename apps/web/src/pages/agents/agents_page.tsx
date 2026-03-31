@@ -6,6 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { AgentsTable, type AgentsTableRecord } from "./agents_table";
 import {
   CreateAgentDialog,
+  type AgentCreateComputeProviderDefinitionOption,
   type AgentCreateSecretOption,
   type AgentCreateProviderOption,
 } from "./create_agent_dialog";
@@ -44,6 +45,11 @@ const agentsPageQueryNode = graphql`
       description
       envVarName
     }
+    ComputeProviderDefinitions {
+      id
+      name
+      provider
+    }
   }
 `;
 
@@ -77,7 +83,7 @@ function AgentsPageFallback() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Configure company agents with a default provider, model, reasoning level, system prompt, and optional advanced defaults.
+              Configure company agents with a default environment provider, model provider, model, reasoning level, system prompt, and optional advanced defaults.
             </CardDescription>
           </div>
           <CardAction>
@@ -145,6 +151,12 @@ function AgentsPageContent() {
     id: secret.id,
     name: secret.name,
   }));
+  const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] =
+    data.ComputeProviderDefinitions.map((definition) => ({
+      id: definition.id,
+      label: `${definition.name} • ${definition.provider === "e2b" ? "E2B" : "Daytona"}`,
+      provider: definition.provider as "daytona" | "e2b",
+    }));
   const filterStoreRecords = (
     records: ReadonlyArray<unknown>,
   ): Array<{ getDataID(): string }> => {
@@ -162,12 +174,12 @@ function AgentsPageContent() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Configure company agents with a default provider, model, reasoning level, system prompt, and optional advanced defaults.
+              Configure company agents with a default environment provider, model provider, model, reasoning level, system prompt, and optional advanced defaults.
             </CardDescription>
           </div>
           <CardAction>
             <Button
-              disabled={providerOptions.length === 0}
+              disabled={providerOptions.length === 0 || computeProviderDefinitionOptions.length === 0}
               onClick={() => {
                 setCreateDialogOpen(true);
               }}
@@ -190,6 +202,15 @@ function AgentsPageContent() {
               <p className="text-sm font-medium text-foreground">No provider models available</p>
               <p className="mt-2 text-xs/relaxed text-muted-foreground">
                 Add an LLM credential and refresh its models before creating an agent.
+              </p>
+            </div>
+          ) : null}
+
+          {computeProviderDefinitionOptions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">No compute providers available</p>
+              <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                Add a compute provider definition before assigning an environment backend to an agent.
               </p>
             </div>
           ) : null}
@@ -249,6 +270,7 @@ function AgentsPageContent() {
       </Card>
 
       <CreateAgentDialog
+        computeProviderDefinitionOptions={computeProviderDefinitionOptions}
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateAgentInFlight}

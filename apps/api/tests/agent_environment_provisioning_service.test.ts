@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AgentEnvironmentProvisioning } from "../src/services/agent/environment/provisioning.ts";
 import { AgentEnvironmentProvisioningService } from "../src/services/agent/environment/provisioning_service.ts";
+import type { TransactionProviderInterface } from "../src/db/transaction_provider_interface.ts";
 
 const createdEnvironment = {
   agentId: "agent-1",
@@ -16,9 +17,35 @@ const createdEnvironment = {
   metadata: {},
   platform: "linux" as const,
   provider: "daytona" as const,
+  providerDefinitionId: "compute-provider-definition-1",
   providerEnvironmentId: "daytona-environment-1",
   updatedAt: new Date("2026-03-29T20:00:00.000Z"),
 };
+
+class AgentEnvironmentProvisioningServiceTestTransactions {
+  private readonly defaultComputeProviderDefinitionId: string | null;
+
+  constructor(defaultComputeProviderDefinitionId: string | null) {
+    this.defaultComputeProviderDefinitionId = defaultComputeProviderDefinitionId;
+  }
+
+  build(): TransactionProviderInterface {
+    const defaultComputeProviderDefinitionId = this.defaultComputeProviderDefinitionId;
+    return {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          select: () => ({
+            from: () => ({
+              where: async () => [{
+                defaultComputeProviderDefinitionId,
+              }],
+            }),
+          }),
+        });
+      },
+    } as never;
+  }
+}
 
 test("AgentEnvironmentProvisioning provisions the workspace directory through the provider shell", async () => {
   const executeCommand = vi.fn(async () => ({
@@ -29,7 +56,13 @@ test("AgentEnvironmentProvisioning provisions the workspace directory through th
     executeCommand,
   }));
   const provisioning = new AgentEnvironmentProvisioning({
-    createShell,
+    get() {
+      return {
+        async createShell(_transactionProvider, environment) {
+          return createShell(_transactionProvider, environment);
+        },
+      };
+    },
   } as never);
 
   await provisioning.provision({} as never, createdEnvironment);
@@ -52,17 +85,35 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
   }));
   const createEnvironment = vi.fn(async () => createdEnvironment);
   const bootstrapProvision = vi.fn(async () => undefined);
+  const transactions = new AgentEnvironmentProvisioningServiceTestTransactions(
+    "compute-provider-definition-1",
+  );
+  const transactionProvider = transactions.build();
   const service = new AgentEnvironmentProvisioningService(
     {
       createEnvironment,
     } as never,
     {
-      getProvider() {
-        return "daytona";
+      async loadDefinitionById() {
+        return {
+          id: "compute-provider-definition-1",
+          name: "Primary Daytona",
+          provider: "daytona" as const,
+        };
       },
-      provisionEnvironment: providerProvisionEnvironment,
-      supportsOnDemandProvisioning() {
-        return true;
+    } as never,
+    {
+      get(provider) {
+        assert.equal(provider, "daytona");
+        return {
+          getProvider() {
+            return "daytona" as const;
+          },
+          provisionEnvironment: providerProvisionEnvironment,
+          supportsOnDemandProvisioning() {
+            return true;
+          },
+        };
       },
     } as never,
     {
@@ -79,7 +130,7 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
     } as never,
   );
 
-  const environment = await service.provisionEnvironmentForSession({} as never, {
+  const environment = await service.provisionEnvironmentForSession(transactionProvider, {
     agentId: "agent-1",
     companyId: "company-1",
     sessionId: "session-1",
@@ -95,15 +146,20 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
       minDiskSpaceGb: 40,
       minMemoryGb: 12,
     },
+    providerDefinitionId: "compute-provider-definition-1",
     sessionId: "session-1",
   });
   assert.equal(createEnvironment.mock.calls.length, 1);
-  assert.deepEqual(bootstrapProvision.mock.calls, [[{}, createdEnvironment]]);
+  assert.deepEqual(bootstrapProvision.mock.calls, [[transactionProvider, createdEnvironment]]);
 });
 
 test("AgentEnvironmentProvisioningService deletes the catalog row and remote environment when bootstrap fails", async () => {
   const cleanup = vi.fn(async () => undefined);
   const deleteEnvironment = vi.fn(async () => createdEnvironment);
+  const transactions = new AgentEnvironmentProvisioningServiceTestTransactions(
+    "compute-provider-definition-1",
+  );
+  const transactionProvider = transactions.build();
   const service = new AgentEnvironmentProvisioningService(
     {
       async createEnvironment() {
@@ -112,23 +168,37 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
       deleteEnvironment,
     } as never,
     {
-      getProvider() {
-        return "daytona";
-      },
-      async provisionEnvironment() {
+      async loadDefinitionById() {
         return {
-          cleanup,
-          cpuCount: 2,
-          diskSpaceGb: 20,
-          displayName: null,
-          memoryGb: 4,
-          metadata: {},
-          platform: "linux" as const,
-          providerEnvironmentId: "daytona-environment-1",
+          id: "compute-provider-definition-1",
+          name: "Primary Daytona",
+          provider: "daytona" as const,
         };
       },
-      supportsOnDemandProvisioning() {
-        return true;
+    } as never,
+    {
+      get(provider) {
+        assert.equal(provider, "daytona");
+        return {
+          getProvider() {
+            return "daytona" as const;
+          },
+          async provisionEnvironment() {
+            return {
+              cleanup,
+              cpuCount: 2,
+              diskSpaceGb: 20,
+              displayName: null,
+              memoryGb: 4,
+              metadata: {},
+              platform: "linux" as const,
+              providerEnvironmentId: "daytona-environment-1",
+            };
+          },
+          supportsOnDemandProvisioning() {
+            return true;
+          },
+        };
       },
     } as never,
     {
@@ -148,7 +218,7 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
   );
 
   await assert.rejects(
-    service.provisionEnvironmentForSession({} as never, {
+    service.provisionEnvironmentForSession(transactionProvider, {
       agentId: "agent-1",
       companyId: "company-1",
       sessionId: "session-1",
@@ -158,7 +228,7 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
 
   assert.deepEqual(
     deleteEnvironment.mock.calls,
-    [[{}, createdEnvironment.id, "company-1"]],
+    [[transactionProvider, createdEnvironment.id, "company-1"]],
   );
   assert.equal(cleanup.mock.calls.length, 1);
 });

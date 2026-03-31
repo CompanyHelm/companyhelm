@@ -1,9 +1,10 @@
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import {
+import type {
   AgentComputeProviderInterface,
-  type AgentEnvironmentRecord,
+  AgentEnvironmentRecord,
 } from "../compute/provider_interface.ts";
+import { AgentComputeProviderRegistry } from "../compute/provider_registry.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 
@@ -17,27 +18,32 @@ import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 export class AgentEnvironmentSelectionService {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly leaseService: AgentEnvironmentLeaseService;
-  private readonly providerService: AgentComputeProviderInterface;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
-    @inject(AgentComputeProviderInterface) providerService: AgentComputeProviderInterface,
+    @inject(AgentComputeProviderRegistry)
+    providerRegistryOrProvider: AgentComputeProviderRegistry | AgentComputeProviderInterface,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
-    this.providerService = providerService;
+    this.providerRegistry = AgentEnvironmentSelectionService.isProvider(providerRegistryOrProvider)
+      ? {
+          get() {
+            return providerRegistryOrProvider;
+          },
+        } as never
+      : providerRegistryOrProvider;
   }
 
   async findReusableEnvironmentForAgentSession(
     transactionProvider: TransactionProviderInterface,
     agentId: string,
-    provider: "daytona",
     sessionId: string,
   ): Promise<AgentEnvironmentRecord | null> {
     const sessionEnvironment = await this.findReusableEnvironmentFromLeaseHistory(
       transactionProvider,
-      provider,
       await this.leaseService.listSessionLeaseHistory(transactionProvider, agentId, sessionId),
     );
     if (sessionEnvironment) {
@@ -46,14 +52,12 @@ export class AgentEnvironmentSelectionService {
 
     return this.findReusableEnvironmentFromLeaseHistory(
       transactionProvider,
-      provider,
       await this.leaseService.listAgentLeaseHistory(transactionProvider, agentId),
     );
   }
 
   private async findReusableEnvironmentFromLeaseHistory(
     transactionProvider: TransactionProviderInterface,
-    provider: "daytona",
     leaseHistory: Array<{ environmentId: string }>,
   ): Promise<AgentEnvironmentRecord | null> {
     const candidateEnvironmentIds = [...new Set(leaseHistory.map((lease) => lease.environmentId))];
@@ -71,9 +75,6 @@ export class AgentEnvironmentSelectionService {
     for (const environmentId of candidateEnvironmentIds) {
       const environment = environmentsById.get(environmentId);
       if (!environment) {
-        continue;
-      }
-      if (environment.provider !== provider) {
         continue;
       }
       if (openLeaseEnvironmentIds.has(environment.id)) {
@@ -94,9 +95,18 @@ export class AgentEnvironmentSelectionService {
     environment: AgentEnvironmentRecord,
   ): Promise<boolean> {
     try {
-      return await this.providerService.getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
+      return await this.providerRegistry
+        .get(environment.provider)
+        .getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
     } catch {
       return false;
     }
+  }
+
+  private static isProvider(value: unknown): value is AgentComputeProviderInterface {
+    return typeof value === "object"
+      && value !== null
+      && "getProvider" in value
+      && typeof value.getProvider === "function";
   }
 }

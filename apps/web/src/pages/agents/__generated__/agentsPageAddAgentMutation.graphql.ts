@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4b4f6d58c0d651c839b166bb5754e9d0>>
+ * @generated SignedSource<<b01ac41093fb20a90c0299bc255f1e41>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type AddAgentInput = {
+  defaultComputeProviderDefinitionId: string;
   environmentRequirements?: AddAgentEnvironmentRequirementsInput | null | undefined;
   modelProviderCredentialId: string;
   modelProviderCredentialModelId: string;

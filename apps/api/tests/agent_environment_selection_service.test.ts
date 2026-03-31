@@ -22,6 +22,7 @@ test("AgentEnvironmentSelectionService skips unhealthy environments and falls ba
           metadata: {},
           platform: "linux",
           provider: "daytona",
+          providerDefinitionId: "compute-provider-definition-1",
           providerEnvironmentId: "daytona-environment-1",
           updatedAt: new Date("2026-03-27T20:00:00.000Z"),
         }, {
@@ -37,6 +38,7 @@ test("AgentEnvironmentSelectionService skips unhealthy environments and falls ba
           metadata: {},
           platform: "linux",
           provider: "daytona",
+          providerDefinitionId: "compute-provider-definition-1",
           providerEnvironmentId: "daytona-environment-2",
           updatedAt: new Date("2026-03-27T20:00:00.000Z"),
         }];
@@ -60,14 +62,17 @@ test("AgentEnvironmentSelectionService skips unhealthy environments and falls ba
       },
     } as never,
     {
-      getEnvironmentStatus,
+      get() {
+        return {
+          getEnvironmentStatus,
+        };
+      },
     } as never,
   );
 
   const environment = await service.findReusableEnvironmentForAgentSession(
     {} as never,
     "agent-1",
-    "daytona",
     "session-1",
   );
 

@@ -35,6 +35,7 @@ export type EnvironmentsTableRecord = {
   memoryGb: number;
   platform: string;
   provider: string;
+  providerDefinitionName: string | null;
   providerEnvironmentId: string;
   status: string;
   updatedAt: string;
@@ -234,7 +235,14 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
               </div>
             </TableCell>
             <TableCell>
-              <Badge variant="outline">{formatProviderLabel(environment.provider)}</Badge>
+              <div className="flex min-w-0 flex-col gap-1">
+                <div>
+                  <Badge variant="outline">{formatProviderLabel(environment.provider)}</Badge>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                  {environment.providerDefinitionName ?? "No definition"}
+                </p>
+              </div>
             </TableCell>
             <TableCell className="capitalize">{environment.platform}</TableCell>
             <TableCell>

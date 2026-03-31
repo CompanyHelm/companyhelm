@@ -9,6 +9,7 @@ import { SecretService } from "../services/secrets/service.ts";
 import { RedisService } from "../services/redis/service.ts";
 import { RedisCompanyScopedService } from "../services/redis/company_scoped_service.ts";
 import { AddAgentMutation } from "./mutations/add_agent.ts";
+import { AddComputeProviderDefinitionMutation } from "./mutations/add_compute_provider_definition.ts";
 import { AddGithubInstallationMutation } from "./mutations/add_github_installation.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { AttachSecretToAgentMutation } from "./mutations/attach_secret_to_agent.ts";
@@ -19,6 +20,7 @@ import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSecretMutation } from "./mutations/create_secret.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
+import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_compute_provider_definition.ts";
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
@@ -35,6 +37,7 @@ import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
 import { UpdateAgentEnvironmentRequirementsMutation } from "./mutations/update_agent_environment_requirements.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
+import { UpdateComputeProviderDefinitionMutation } from "./mutations/update_compute_provider_definition.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
@@ -43,6 +46,7 @@ import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
+import { ComputeProviderDefinitionsQueryResolver } from "./resolvers/compute_provider_definitions.ts";
 import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
 import { GithubInstallationsQueryResolver } from "./resolvers/github_installations.ts";
@@ -61,6 +65,7 @@ import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
 import { SessionQueuedMessagesQueryResolver } from "./resolvers/session_queued_messages.ts";
 import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "./resolvers/session_queued_messages_updated.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "./resolvers/session_message_updated.ts";
+import { SessionEnvironmentQueryResolver } from "./resolvers/session_environment.ts";
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
@@ -73,6 +78,7 @@ import { AgentEnvironmentRequirementsService } from "../services/agent/environme
 export class GraphqlApplication {
   private readonly configDocument: Config;
   private readonly addAgentMutation: AddAgentMutation;
+  private readonly addComputeProviderDefinitionMutation: AddComputeProviderDefinitionMutation;
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly attachSecretToAgentMutation: AttachSecretToAgentMutation;
@@ -87,7 +93,9 @@ export class GraphqlApplication {
   private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSessionMutation: CreateSessionMutation;
+  private readonly computeProviderDefinitionsQueryResolver: ComputeProviderDefinitionsQueryResolver;
   private readonly deleteAgentMutation: DeleteAgentMutation;
+  private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
   private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
@@ -110,6 +118,7 @@ export class GraphqlApplication {
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
+  private readonly sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver;
   private readonly sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver;
   private readonly sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver;
   private readonly sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver;
@@ -125,6 +134,7 @@ export class GraphqlApplication {
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
   private readonly updateAgentEnvironmentRequirementsMutation: UpdateAgentEnvironmentRequirementsMutation;
+  private readonly updateComputeProviderDefinitionMutation: UpdateComputeProviderDefinitionMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly redisService: RedisService;
 
@@ -160,8 +170,6 @@ export class GraphqlApplication {
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(SessionMessagesQueryResolver)
     sessionMessagesQueryResolver: SessionMessagesQueryResolver = new SessionMessagesQueryResolver(),
-    @inject(SessionQueuedMessagesQueryResolver)
-    sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver = new SessionQueuedMessagesQueryResolver(),
     @inject(SessionTranscriptMessagesQueryResolver)
     sessionTranscriptMessagesQueryResolver: SessionTranscriptMessagesQueryResolver =
       new SessionTranscriptMessagesQueryResolver(),
@@ -175,9 +183,6 @@ export class GraphqlApplication {
     @inject(SessionMessageUpdatedSubscriptionResolver)
     sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver =
       new SessionMessageUpdatedSubscriptionResolver(),
-    @inject(SessionQueuedMessagesUpdatedSubscriptionResolver)
-    sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver =
-      new SessionQueuedMessagesUpdatedSubscriptionResolver(),
     @inject(SessionUpdatedSubscriptionResolver)
     sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver = new SessionUpdatedSubscriptionResolver(),
     @inject(PromptSessionMutation)
@@ -234,6 +239,36 @@ export class GraphqlApplication {
     agentEnvironmentRequirementsService?: AgentEnvironmentRequirementsService,
     @inject(UpdateAgentEnvironmentRequirementsMutation)
     updateAgentEnvironmentRequirementsMutation?: UpdateAgentEnvironmentRequirementsMutation,
+    @inject(AddComputeProviderDefinitionMutation)
+    addComputeProviderDefinitionMutation: AddComputeProviderDefinitionMutation = {
+      async execute() {
+        throw new Error("AddComputeProviderDefinition mutation is not configured.");
+      },
+    } as never,
+    @inject(DeleteComputeProviderDefinitionMutation)
+    deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation = {
+      async execute() {
+        throw new Error("DeleteComputeProviderDefinition mutation is not configured.");
+      },
+    } as never,
+    @inject(UpdateComputeProviderDefinitionMutation)
+    updateComputeProviderDefinitionMutation: UpdateComputeProviderDefinitionMutation = {
+      async execute() {
+        throw new Error("UpdateComputeProviderDefinition mutation is not configured.");
+      },
+    } as never,
+    @inject(ComputeProviderDefinitionsQueryResolver)
+    computeProviderDefinitionsQueryResolver: ComputeProviderDefinitionsQueryResolver = {
+      async execute() {
+        throw new Error("ComputeProviderDefinitions query is not configured.");
+      },
+    } as never,
+    @inject(SessionEnvironmentQueryResolver)
+    sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver = {
+      async execute() {
+        throw new Error("SessionEnvironment query is not configured.");
+      },
+    } as never,
     @inject(SteerSessionQueuedMessageMutation)
     steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation = new SteerSessionQueuedMessageMutation(),
     @inject(InboxHumanQuestionsQueryResolver)
@@ -248,6 +283,11 @@ export class GraphqlApplication {
         throw new Error("ResolveInboxHumanQuestion mutation is not configured.");
       },
     } as never),
+    @inject(SessionQueuedMessagesQueryResolver)
+    sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver = new SessionQueuedMessagesQueryResolver(),
+    @inject(SessionQueuedMessagesUpdatedSubscriptionResolver)
+    sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver =
+      new SessionQueuedMessagesUpdatedSubscriptionResolver(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -256,6 +296,7 @@ export class GraphqlApplication {
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation
       ?? new AddAgentMutation(defaultSecretService, defaultAgentEnvironmentRequirementsService);
+    this.addComputeProviderDefinitionMutation = addComputeProviderDefinitionMutation;
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.attachSecretToAgentMutation = attachSecretToAgentMutation
@@ -273,7 +314,9 @@ export class GraphqlApplication {
     this.createTaskMutation = createTaskMutation;
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSessionMutation = createSessionMutation;
+    this.computeProviderDefinitionsQueryResolver = computeProviderDefinitionsQueryResolver;
     this.deleteAgentMutation = deleteAgentMutation;
+    this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
     this.startEnvironmentMutation = startEnvironmentMutation;
     this.stopEnvironmentMutation = stopEnvironmentMutation;
@@ -301,6 +344,7 @@ export class GraphqlApplication {
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
+    this.sessionEnvironmentQueryResolver = sessionEnvironmentQueryResolver;
     this.sessionQueuedMessagesQueryResolver = sessionQueuedMessagesQueryResolver;
     this.sessionMessageUpdatedSubscriptionResolver = sessionMessageUpdatedSubscriptionResolver;
     this.sessionQueuedMessagesUpdatedSubscriptionResolver = sessionQueuedMessagesUpdatedSubscriptionResolver;
@@ -316,6 +360,7 @@ export class GraphqlApplication {
     this.updateAgentMutation = updateAgentMutation;
     this.updateAgentEnvironmentRequirementsMutation = updateAgentEnvironmentRequirementsMutation
       ?? new UpdateAgentEnvironmentRequirementsMutation(defaultAgentEnvironmentRequirementsService);
+    this.updateComputeProviderDefinitionMutation = updateComputeProviderDefinitionMutation;
     this.redisService = redisService;
   }
 
@@ -367,6 +412,7 @@ export class GraphqlApplication {
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
           AgentSecrets: this.agentSecretsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,
+          ComputeProviderDefinitions: this.computeProviderDefinitionsQueryResolver.execute,
           Environments: this.environmentsQueryResolver.execute,
           GithubAppConfig: this.githubAppConfigQueryResolver.execute,
           GithubInstallations: this.githubInstallationsQueryResolver.execute,
@@ -379,6 +425,7 @@ export class GraphqlApplication {
           ModelProviders: this.modelProvidersQueryResolver.execute,
           Secrets: this.secretsQueryResolver.execute,
           SessionQueuedMessages: this.sessionQueuedMessagesQueryResolver.execute,
+          SessionEnvironment: this.sessionEnvironmentQueryResolver.execute,
           TaskCategories: this.taskCategoriesQueryResolver.execute,
           Tasks: this.tasksQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,
@@ -388,7 +435,9 @@ export class GraphqlApplication {
         },
         Mutation: {
           AddAgent: this.addAgentMutation.execute,
+          AddComputeProviderDefinition: this.addComputeProviderDefinitionMutation.execute,
           DeleteEnvironment: this.deleteEnvironmentMutation.execute,
+          DeleteComputeProviderDefinition: this.deleteComputeProviderDefinitionMutation.execute,
           StartEnvironment: this.startEnvironmentMutation.execute,
           StopEnvironment: this.stopEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,
@@ -414,6 +463,7 @@ export class GraphqlApplication {
           SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,
           UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
+          UpdateComputeProviderDefinition: this.updateComputeProviderDefinitionMutation.execute,
           UpdateSecret: this.updateSecretMutation.execute,
         },
         Subscription: {

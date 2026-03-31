@@ -6,7 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { AgentEnvironmentRequirementsCard } from "./agent_environment_requirements_card";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
 import { EditableAgentField } from "./editable_agent_field";
-import type { AgentCreateProviderOption } from "./create_agent_dialog";
+import type {
+  AgentCreateComputeProviderDefinitionOption,
+  AgentCreateProviderOption,
+} from "./create_agent_dialog";
 import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.graphql";
 import type { agentDetailPageUpdateAgentMutation } from "./__generated__/agentDetailPageUpdateAgentMutation.graphql";
 
@@ -19,6 +22,9 @@ const agentDetailPageQueryNode = graphql`
       modelProviderCredentialModelId
       modelProvider
       modelName
+      defaultComputeProvider
+      defaultComputeProviderDefinitionId
+      defaultComputeProviderDefinitionName
       reasoningLevel
       systemPrompt
       environmentRequirements {
@@ -55,6 +61,11 @@ const agentDetailPageQueryNode = graphql`
       description
       envVarName
     }
+    ComputeProviderDefinitions {
+      id
+      name
+      provider
+    }
   }
 `;
 
@@ -67,6 +78,9 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
       modelProviderCredentialModelId
       modelProvider
       modelName
+      defaultComputeProvider
+      defaultComputeProviderDefinitionId
+      defaultComputeProviderDefinitionName
       reasoningLevel
       systemPrompt
       createdAt
@@ -105,6 +119,10 @@ function formatTimestamp(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+function formatComputeProviderLabel(provider: "daytona" | "e2b"): string {
+  return provider === "e2b" ? "E2B" : "Daytona";
 }
 
 function resolveProviderOption(
@@ -209,6 +227,13 @@ function AgentDetailPageContent() {
       })),
     }));
   }, [data.AgentCreateOptions]);
+  const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] = useMemo(() => {
+    return data.ComputeProviderDefinitions.map((definition) => ({
+      id: definition.id,
+      label: `${definition.name} • ${formatComputeProviderLabel(definition.provider as "daytona" | "e2b")}`,
+      provider: definition.provider as "daytona" | "e2b",
+    }));
+  }, [data.ComputeProviderDefinitions]);
 
   useEffect(() => {
     setDetailLabel(agent.name);
@@ -221,11 +246,15 @@ function AgentDetailPageContent() {
   const selectedProviderOption = agent.modelProviderCredentialId
     ? providerOptions.find((option) => option.id === agent.modelProviderCredentialId) ?? null
     : null;
+  const selectedComputeProviderDefinitionOption = agent.defaultComputeProviderDefinitionId
+    ? computeProviderDefinitionOptions.find((option) => option.id === agent.defaultComputeProviderDefinitionId) ?? null
+    : null;
   const selectedModelOption = selectedProviderOption && agent.modelProviderCredentialModelId
     ? selectedProviderOption.models.find((option) => option.id === agent.modelProviderCredentialModelId) ?? null
     : null;
 
   const saveAgent = async (patch: {
+    defaultComputeProviderDefinitionId?: string;
     modelProviderCredentialId?: string;
     modelProviderCredentialModelId?: string;
     name?: string;
@@ -235,6 +264,11 @@ function AgentDetailPageContent() {
     const nextProviderCredentialId = patch.modelProviderCredentialId ?? agent.modelProviderCredentialId;
     if (!nextProviderCredentialId) {
       throw new Error("Agent provider is required.");
+    }
+    const nextComputeProviderDefinitionId = patch.defaultComputeProviderDefinitionId
+      ?? agent.defaultComputeProviderDefinitionId;
+    if (!nextComputeProviderDefinitionId) {
+      throw new Error("Agent environment provider is required.");
     }
 
     const nextProviderOption = resolveProviderOption(providerOptions, nextProviderCredentialId);
@@ -257,6 +291,7 @@ function AgentDetailPageContent() {
         variables: {
           input: {
             id: agent.id,
+            defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
             name: patch.name ?? agent.name,
             modelProviderCredentialId: nextProviderOption.id,
             modelProviderCredentialModelId: nextModelOption.id,
@@ -283,7 +318,7 @@ function AgentDetailPageContent() {
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>
-            Update the agent name, provider, model, reasoning level, and system prompt inline.
+            Update the agent name, environment provider, model provider, model, reasoning level, and system prompt inline.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -297,6 +332,23 @@ function AgentDetailPageContent() {
               });
             }}
             value={agent.name}
+          />
+
+          <EditableAgentField
+            displayValue={selectedComputeProviderDefinitionOption?.label ?? agent.defaultComputeProviderDefinitionName ?? null}
+            emptyValueLabel="No environment provider selected"
+            fieldType="select"
+            label="Environment provider"
+            onSave={async (value) => {
+              await saveAgent({
+                defaultComputeProviderDefinitionId: value,
+              });
+            }}
+            options={computeProviderDefinitionOptions.map((option) => ({
+              label: option.label,
+              value: option.id,
+            }))}
+            value={agent.defaultComputeProviderDefinitionId}
           />
 
           <EditableAgentField

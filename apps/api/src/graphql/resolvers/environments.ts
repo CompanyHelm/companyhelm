@@ -1,10 +1,12 @@
 import { eq, inArray } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { agentEnvironments, agents } from "../../db/schema.ts";
-import {
+import { AgentComputeProviderRegistry } from "../../services/agent/compute/provider_registry.ts";
+import type {
   AgentComputeProviderInterface,
-  type AgentEnvironmentStatus,
+  AgentEnvironmentStatus,
 } from "../../services/agent/compute/provider_interface.ts";
+import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -18,7 +20,8 @@ type EnvironmentRecord = {
   lastSeenAt: Date | null;
   memoryGb: number;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona";
+  provider: "daytona" | "e2b";
+  providerDefinitionId: string | null;
   providerEnvironmentId: string;
   updatedAt: Date;
 };
@@ -39,7 +42,9 @@ type GraphqlEnvironmentRecord = {
   lastSeenAt: string | null;
   memoryGb: number;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona";
+  provider: "daytona" | "e2b";
+  providerDefinitionId: string | null;
+  providerDefinitionName: string | null;
   providerEnvironmentId: string;
   status: AgentEnvironmentStatus;
   updatedAt: string;
@@ -54,41 +59,50 @@ type SelectableDatabase = {
 };
 
 /**
- * Lists the environments owned by the authenticated company so the web UI can show the current
- * pool of agent-specific compute environments without coupling the client to provider internals.
+ * Lists the environments owned by the authenticated company so the UI can inspect the provider,
+ * backing definition, and live status of each reusable compute environment in one place.
  */
 @injectable()
 export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord[]> {
-  private readonly provider: AgentComputeProviderInterface;
+  private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
 
   constructor(
-    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface = {
-      async createShell() {
-        throw new Error("Environment provider is not configured.");
+    @inject(ComputeProviderDefinitionService)
+    computeProviderDefinitionServiceOrProvider: ComputeProviderDefinitionService | AgentComputeProviderInterface = {
+      async listDefinitions() {
+        return [];
       },
-      async deleteEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      getEnvironmentStatus: async () => "unhealthy",
-      getProvider() {
-        return "daytona";
-      },
-      async provisionEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      async startEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      async stopEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      supportsOnDemandProvisioning() {
-        return false;
-      },
-    },
+    } as never,
+    @inject(AgentComputeProviderRegistry) providerRegistry?: AgentComputeProviderRegistry,
   ) {
     super();
-    this.provider = provider;
+    if (providerRegistry) {
+      this.computeProviderDefinitionService = computeProviderDefinitionServiceOrProvider as ComputeProviderDefinitionService;
+      this.providerRegistry = providerRegistry;
+      return;
+    }
+
+    if (EnvironmentsQueryResolver.isProvider(computeProviderDefinitionServiceOrProvider)) {
+      this.computeProviderDefinitionService = {
+        async listDefinitions() {
+          return [];
+        },
+      } as never;
+      this.providerRegistry = {
+        get() {
+          return computeProviderDefinitionServiceOrProvider;
+        },
+      } as never;
+      return;
+    }
+
+    this.computeProviderDefinitionService = computeProviderDefinitionServiceOrProvider;
+    this.providerRegistry = {
+      get() {
+        throw new Error("Compute provider registry is not configured.");
+      },
+    } as never;
   }
 
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlEnvironmentRecord[]> => {
@@ -98,6 +112,14 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+
+    const providerDefinitions = await this.computeProviderDefinitionService.listDefinitions(
+      context.app_runtime_transaction_provider,
+      context.authSession.company.id,
+    );
+    const providerDefinitionNameById = new Map(
+      providerDefinitions.map((definition) => [definition.id, definition.name]),
+    );
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -113,6 +135,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
           memoryGb: agentEnvironments.memoryGb,
           platform: agentEnvironments.platform,
           provider: agentEnvironments.provider,
+          providerDefinitionId: agentEnvironments.providerDefinitionId,
           providerEnvironmentId: agentEnvironments.providerEnvironmentId,
           updatedAt: agentEnvironments.updatedAt,
         })
@@ -136,47 +159,48 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
       const statusesByEnvironmentId = new Map(
         await Promise.all(
           sortedEnvironmentRecords.map(async (environmentRecord) => {
-            if (environmentRecord.provider !== this.provider.getProvider()) {
-              throw new Error(`Environment provider ${environmentRecord.provider} is not configured.`);
+            try {
+              return [
+                environmentRecord.id,
+                await this.providerRegistry
+                  .get(environmentRecord.provider)
+                  .getEnvironmentStatus(context.app_runtime_transaction_provider, environmentRecord),
+              ] as const;
+            } catch {
+              return [environmentRecord.id, "unhealthy"] as const;
             }
-
-            return [
-              environmentRecord.id,
-              await this.provider.getEnvironmentStatus(context.app_runtime_transaction_provider, environmentRecord),
-            ] as const;
           }),
         ),
       );
 
       return sortedEnvironmentRecords
-        .map((environmentRecord) => EnvironmentsQueryResolver.serializeRecord(
-          environmentRecord,
-          agentNameById,
-          statusesByEnvironmentId.get(environmentRecord.id) ?? "unhealthy",
-        ));
+        .map((environmentRecord) => ({
+          agentId: environmentRecord.agentId,
+          agentName: agentNameById.get(environmentRecord.agentId) ?? null,
+          cpuCount: environmentRecord.cpuCount,
+          createdAt: environmentRecord.createdAt.toISOString(),
+          diskSpaceGb: environmentRecord.diskSpaceGb,
+          displayName: environmentRecord.displayName,
+          id: environmentRecord.id,
+          lastSeenAt: environmentRecord.lastSeenAt?.toISOString() ?? null,
+          memoryGb: environmentRecord.memoryGb,
+          platform: environmentRecord.platform,
+          provider: environmentRecord.provider,
+          providerDefinitionId: environmentRecord.providerDefinitionId,
+          providerDefinitionName: environmentRecord.providerDefinitionId
+            ? providerDefinitionNameById.get(environmentRecord.providerDefinitionId) ?? null
+            : null,
+          providerEnvironmentId: environmentRecord.providerEnvironmentId,
+          status: statusesByEnvironmentId.get(environmentRecord.id) ?? "unhealthy",
+          updatedAt: environmentRecord.updatedAt.toISOString(),
+        }));
     });
   };
 
-  private static serializeRecord(
-    environmentRecord: EnvironmentRecord,
-    agentNameById: Map<string, string>,
-    status: AgentEnvironmentStatus,
-  ): GraphqlEnvironmentRecord {
-    return {
-      agentId: environmentRecord.agentId,
-      agentName: agentNameById.get(environmentRecord.agentId) ?? null,
-      cpuCount: environmentRecord.cpuCount,
-      createdAt: environmentRecord.createdAt.toISOString(),
-      diskSpaceGb: environmentRecord.diskSpaceGb,
-      displayName: environmentRecord.displayName,
-      id: environmentRecord.id,
-      lastSeenAt: environmentRecord.lastSeenAt?.toISOString() ?? null,
-      memoryGb: environmentRecord.memoryGb,
-      platform: environmentRecord.platform,
-      provider: environmentRecord.provider,
-      providerEnvironmentId: environmentRecord.providerEnvironmentId,
-      status,
-      updatedAt: environmentRecord.updatedAt.toISOString(),
-    };
+  private static isProvider(value: unknown): value is AgentComputeProviderInterface {
+    return typeof value === "object"
+      && value !== null
+      && "getProvider" in value
+      && typeof value.getProvider === "function";
   }
 }

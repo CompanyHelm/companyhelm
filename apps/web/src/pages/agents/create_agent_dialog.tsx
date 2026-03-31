@@ -39,7 +39,14 @@ export type AgentCreateSecretOption = {
   name: string;
 };
 
+export type AgentCreateComputeProviderDefinitionOption = {
+  id: string;
+  label: string;
+  provider: "daytona" | "e2b";
+};
+
 interface CreateAgentDialogProps {
+  computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[];
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
@@ -47,10 +54,11 @@ interface CreateAgentDialogProps {
   secretOptions: AgentCreateSecretOption[];
   onCreate(input: {
     environmentRequirements?: {
-      minCpuCount: number;
-      minDiskSpaceGb: number;
-      minMemoryGb: number;
-    };
+        minCpuCount: number;
+        minDiskSpaceGb: number;
+        minMemoryGb: number;
+      };
+    defaultComputeProviderDefinitionId: string;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
     name: string;
@@ -69,6 +77,7 @@ interface CreateAgentDialogProps {
 export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [agentName, setAgentName] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [computeProviderDefinitionId, setComputeProviderDefinitionId] = useState("");
   const [providerOptionId, setProviderOptionId] = useState("");
   const [modelOptionId, setModelOptionId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
@@ -89,6 +98,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     if (!props.isOpen) {
       setAgentName("");
       setIsAdvancedOpen(false);
+      setComputeProviderDefinitionId("");
       setProviderOptionId("");
       setModelOptionId("");
       setReasoningLevel("");
@@ -150,6 +160,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   ].filter((value): value is string => Boolean(value)).join(" • ");
   const shouldScrollSecrets = props.secretOptions.length > 7;
   const isCreateDisabled = agentName.length === 0
+    || computeProviderDefinitionId.length === 0
     || providerOptionId.length === 0
     || modelOptionId.length === 0
     || (isReasoningLevelRequired && reasoningLevel.length === 0)
@@ -161,7 +172,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         <DialogHeader>
           <DialogTitle>Create agent</DialogTitle>
           <DialogDescription>
-            Set a default provider, model, reasoning level, and system prompt for this agent.
+            Set a default environment provider, model provider, model, reasoning level, and system prompt for this agent.
           </DialogDescription>
         </DialogHeader>
 
@@ -178,6 +189,33 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               placeholder="Research Agent"
               value={agentName}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="agent-compute-provider">
+              Environment provider
+            </label>
+            <Select
+              items={props.computeProviderDefinitionOptions.map((definitionOption) => ({
+                label: definitionOption.label,
+                value: definitionOption.id,
+              }))}
+              onValueChange={(value) => {
+                setComputeProviderDefinitionId(value);
+              }}
+              value={computeProviderDefinitionId}
+            >
+              <SelectTrigger id="agent-compute-provider">
+                <SelectValue placeholder="Select an environment provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {props.computeProviderDefinitionOptions.map((definitionOption) => (
+                  <SelectItem key={definitionOption.id} value={definitionOption.id}>
+                    {definitionOption.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-2">
@@ -466,6 +504,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                     minMemoryGb: parsedMinMemoryGb!,
                   }
                   : undefined,
+                defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 modelProviderCredentialId: providerOptionId,
                 modelProviderCredentialModelId: modelOptionId,
                 name: agentName,

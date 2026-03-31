@@ -1,7 +1,7 @@
 import { Daytona } from "@daytonaio/sdk";
 import { inject, injectable } from "inversify";
-import { Config } from "../../../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
 import {
   AgentComputeProviderInterface,
@@ -19,16 +19,16 @@ import { AgentComputeDaytonaShell } from "./daytona_shell.ts";
 @injectable()
 export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
   private readonly catalogService: AgentEnvironmentCatalogService;
-  private readonly config: Config;
-  private daytona?: Daytona;
+  private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
 
   constructor(
-    @inject(Config) config: Config,
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
+    @inject(ComputeProviderDefinitionService)
+    computeProviderDefinitionService: ComputeProviderDefinitionService,
   ) {
     super();
     this.catalogService = catalogService;
-    this.config = config;
+    this.computeProviderDefinitionService = computeProviderDefinitionService;
   }
 
   getProvider(): "daytona" {
@@ -44,6 +44,7 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     request: {
       agentId: string;
       companyId: string;
+      providerDefinitionId: string;
       requirements: {
         minCpuCount: number;
         minDiskSpaceGb: number;
@@ -52,8 +53,16 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       sessionId: string;
     },
   ) {
-    void transactionProvider;
-    const remoteSandbox = await this.getDaytonaClient().create({
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      request.companyId,
+      request.providerDefinitionId,
+    );
+    if (definition.provider !== "daytona") {
+      throw new Error("Compute provider definition does not belong to Daytona.");
+    }
+
+    const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).create({
       image: "node:20-slim",
       resources: {
         cpu: request.requirements.minCpuCount,
@@ -80,9 +89,20 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<AgentEnvironmentStatus> {
-    void transactionProvider;
+    if (!environment.providerDefinitionId) {
+      return "unhealthy";
+    }
 
-    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      environment.companyId,
+      environment.providerDefinitionId,
+    );
+    if (definition.provider !== "daytona") {
+      return "unhealthy";
+    }
+
+    const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).get(environment.providerEnvironmentId);
     await remoteSandbox.refreshData();
 
     return this.mapSandboxState(remoteSandbox.state);
@@ -92,10 +112,21 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<void> {
-    void transactionProvider;
+    if (!environment.providerDefinitionId) {
+      return;
+    }
+
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      environment.companyId,
+      environment.providerDefinitionId,
+    );
+    if (definition.provider !== "daytona") {
+      throw new Error("Compute provider definition does not belong to Daytona.");
+    }
 
     try {
-      const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+      const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).get(environment.providerEnvironmentId);
       await remoteSandbox.delete();
     } catch (error) {
       if (this.isMissingEnvironmentError(error)) {
@@ -110,9 +141,20 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<void> {
-    void transactionProvider;
+    if (!environment.providerDefinitionId) {
+      throw new Error("Environment provider definition is missing.");
+    }
 
-    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      environment.companyId,
+      environment.providerDefinitionId,
+    );
+    if (definition.provider !== "daytona") {
+      throw new Error("Compute provider definition does not belong to Daytona.");
+    }
+
+    const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).get(environment.providerEnvironmentId);
     await remoteSandbox.refreshData();
     if (remoteSandbox.state === "started") {
       return;
@@ -126,9 +168,20 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<void> {
-    void transactionProvider;
+    if (!environment.providerDefinitionId) {
+      throw new Error("Environment provider definition is missing.");
+    }
 
-    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      environment.companyId,
+      environment.providerDefinitionId,
+    );
+    if (definition.provider !== "daytona") {
+      throw new Error("Compute provider definition does not belong to Daytona.");
+    }
+
+    const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).get(environment.providerEnvironmentId);
     await remoteSandbox.refreshData();
     if (remoteSandbox.state === "stopped") {
       return;
@@ -142,7 +195,20 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<AgentEnvironmentShellInterface> {
-    const remoteSandbox = await this.getDaytonaClient().get(environment.providerEnvironmentId);
+    if (!environment.providerDefinitionId) {
+      throw new Error("Environment provider definition is missing.");
+    }
+
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      environment.companyId,
+      environment.providerDefinitionId,
+    );
+    if (definition.provider !== "daytona") {
+      throw new Error("Compute provider definition does not belong to Daytona.");
+    }
+
+    const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).get(environment.providerEnvironmentId);
     await remoteSandbox.refreshData();
     if (remoteSandbox.state !== "started") {
       await remoteSandbox.start();
@@ -165,17 +231,11 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     return new AgentComputeDaytonaShell(remoteSandbox);
   }
 
-  private getDaytonaClient(): Daytona {
-    if (this.daytona) {
-      return this.daytona;
-    }
-
-    this.daytona = new Daytona({
-      apiKey: this.config.daytona.api_key,
-      apiUrl: this.config.daytona.api_url,
+  private createDaytonaClient(apiKey: string, apiUrl: string): Daytona {
+    return new Daytona({
+      apiKey,
+      apiUrl,
     });
-
-    return this.daytona;
   }
 
   private mapSandboxState(state: string): AgentEnvironmentStatus {

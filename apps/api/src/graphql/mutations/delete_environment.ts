@@ -1,6 +1,8 @@
 import { inject, injectable } from "inversify";
-import { AgentComputeProviderInterface } from "../../services/agent/compute/provider_interface.ts";
+import { AgentComputeProviderRegistry } from "../../services/agent/compute/provider_registry.ts";
+import type { AgentComputeProviderInterface } from "../../services/agent/compute/provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "../../services/agent/environment/catalog_service.ts";
+import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -22,15 +24,17 @@ type GraphqlEnvironmentRecord = {
   lastSeenAt: string | null;
   memoryGb: number;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona";
+  provider: "daytona" | "e2b";
+  providerDefinitionId: string | null;
+  providerDefinitionName: string | null;
   providerEnvironmentId: string;
   status: "deleting";
   updatedAt: string;
 };
 
 /**
- * Deletes one company-scoped environment by tearing it down at the provider first and then
- * removing the local catalog row so the environment inventory and remote compute stay aligned.
+ * Deletes one company-scoped environment by delegating teardown to the provider that originally
+ * created it and then removing the persisted catalog row.
  */
 @injectable()
 export class DeleteEnvironmentMutation extends Mutation<
@@ -38,40 +42,47 @@ export class DeleteEnvironmentMutation extends Mutation<
   GraphqlEnvironmentRecord
 > {
   private readonly catalogService: AgentEnvironmentCatalogService;
-  private readonly provider: AgentComputeProviderInterface;
+  private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService = new AgentEnvironmentCatalogService(),
-    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface = {
-      async createShell() {
-        throw new Error("Environment provider is not configured.");
+    @inject(ComputeProviderDefinitionService)
+    computeProviderDefinitionServiceOrProvider: ComputeProviderDefinitionService | AgentComputeProviderInterface = {
+      async loadDefinitionById() {
+        throw new Error("Compute provider definition service is not configured.");
       },
-      async deleteEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      async getEnvironmentStatus() {
-        return "unhealthy";
-      },
-      getProvider() {
-        return "daytona";
-      },
-      async provisionEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      supportsOnDemandProvisioning() {
-        return false;
-      },
-      async startEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-      async stopEnvironment() {
-        throw new Error("Environment provider is not configured.");
-      },
-    },
+    } as never,
+    @inject(AgentComputeProviderRegistry) providerRegistry?: AgentComputeProviderRegistry,
   ) {
     super();
     this.catalogService = catalogService;
-    this.provider = provider;
+    if (providerRegistry) {
+      this.computeProviderDefinitionService = computeProviderDefinitionServiceOrProvider as ComputeProviderDefinitionService;
+      this.providerRegistry = providerRegistry;
+      return;
+    }
+
+    if (DeleteEnvironmentMutation.isProvider(computeProviderDefinitionServiceOrProvider)) {
+      this.computeProviderDefinitionService = {
+        async loadDefinitionById() {
+          return null;
+        },
+      } as never;
+      this.providerRegistry = {
+        get() {
+          return computeProviderDefinitionServiceOrProvider;
+        },
+      } as never;
+      return;
+    }
+
+    this.computeProviderDefinitionService = computeProviderDefinitionServiceOrProvider;
+    this.providerRegistry = {
+      get() {
+        throw new Error("Compute provider registry is not configured.");
+      },
+    } as never;
   }
 
   protected resolve = async (
@@ -97,12 +108,11 @@ export class DeleteEnvironmentMutation extends Mutation<
     if (!environment || environment.companyId !== context.authSession.company.id) {
       throw new Error("Environment not found.");
     }
-    if (environment.provider !== this.provider.getProvider()) {
-      throw new Error(`Environment provider ${environment.provider} is not configured.`);
-    }
 
     try {
-      await this.provider.deleteEnvironment(context.app_runtime_transaction_provider, environment);
+      await this.providerRegistry
+        .get(environment.provider)
+        .deleteEnvironment(context.app_runtime_transaction_provider, environment);
     } catch (error) {
       if (!forceDelete) {
         throw error;
@@ -118,6 +128,14 @@ export class DeleteEnvironmentMutation extends Mutation<
       throw new Error("Environment not found.");
     }
 
+    const providerDefinition = deletedEnvironment.providerDefinitionId
+      ? await this.computeProviderDefinitionService.loadDefinitionById(
+        context.app_runtime_transaction_provider,
+        context.authSession.company.id,
+        deletedEnvironment.providerDefinitionId,
+      )
+      : null;
+
     return {
       agentId: deletedEnvironment.agentId,
       agentName: null,
@@ -130,9 +148,18 @@ export class DeleteEnvironmentMutation extends Mutation<
       memoryGb: deletedEnvironment.memoryGb,
       platform: deletedEnvironment.platform,
       provider: deletedEnvironment.provider,
+      providerDefinitionId: deletedEnvironment.providerDefinitionId,
+      providerDefinitionName: providerDefinition?.name ?? null,
       providerEnvironmentId: deletedEnvironment.providerEnvironmentId,
       status: "deleting",
       updatedAt: deletedEnvironment.updatedAt.toISOString(),
     };
   };
+
+  private static isProvider(value: unknown): value is AgentComputeProviderInterface {
+    return typeof value === "object"
+      && value !== null
+      && "getProvider" in value
+      && typeof value.getProvider === "function";
+  }
 }

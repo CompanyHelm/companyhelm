@@ -1,12 +1,27 @@
 import { inject, injectable } from "inversify";
+import { and, eq } from "drizzle-orm";
+import { agents } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import {
-  AgentComputeProviderInterface,
   type AgentEnvironmentRecord,
 } from "../compute/provider_interface.ts";
+import { AgentComputeProviderRegistry } from "../compute/provider_registry.ts";
+import { ComputeProviderDefinitionService } from "../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentProvisioning } from "./provisioning.ts";
 import { AgentEnvironmentRequirementsService } from "./requirements_service.ts";
+
+type AgentRecord = {
+  defaultComputeProviderDefinitionId: string | null;
+};
+
+type SelectableDatabase = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
 
 /**
  * Owns on-demand environment provisioning. It delegates the provider-specific creation work to the
@@ -15,19 +30,23 @@ import { AgentEnvironmentRequirementsService } from "./requirements_service.ts";
 @injectable()
 export class AgentEnvironmentProvisioningService {
   private readonly catalogService: AgentEnvironmentCatalogService;
+  private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly environmentProvisioning: AgentEnvironmentProvisioning;
-  private readonly provider: AgentComputeProviderInterface;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
   private readonly requirementsService: AgentEnvironmentRequirementsService;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
-    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
+    @inject(ComputeProviderDefinitionService)
+    computeProviderDefinitionService: ComputeProviderDefinitionService,
+    @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
     @inject(AgentEnvironmentProvisioning) environmentProvisioning: AgentEnvironmentProvisioning,
     @inject(AgentEnvironmentRequirementsService) requirementsService: AgentEnvironmentRequirementsService,
   ) {
     this.catalogService = catalogService;
+    this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.environmentProvisioning = environmentProvisioning;
-    this.provider = provider;
+    this.providerRegistry = providerRegistry;
     this.requirementsService = requirementsService;
   }
 
@@ -39,8 +58,39 @@ export class AgentEnvironmentProvisioningService {
       sessionId: string;
     },
   ): Promise<AgentEnvironmentRecord> {
-    if (!this.provider.supportsOnDemandProvisioning()) {
-      throw new Error(`Provider ${this.provider.getProvider()} does not support on-demand environments.`);
+    const agent = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const agentRows = await selectableDatabase
+        .select({
+          defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+        })
+        .from(agents)
+        .where(and(
+          eq(agents.companyId, input.companyId),
+          eq(agents.id, input.agentId),
+        )) as AgentRecord[];
+
+      return agentRows[0] ?? null;
+    });
+    if (!agent) {
+      throw new Error("Agent not found.");
+    }
+    if (!agent.defaultComputeProviderDefinitionId) {
+      throw new Error("Agent does not have a default compute provider definition.");
+    }
+
+    const computeProviderDefinition = await this.computeProviderDefinitionService.loadDefinitionById(
+      transactionProvider,
+      input.companyId,
+      agent.defaultComputeProviderDefinitionId,
+    );
+    if (!computeProviderDefinition) {
+      throw new Error("Compute provider definition not found.");
+    }
+
+    const provider = this.providerRegistry.get(computeProviderDefinition.provider);
+    if (!provider.supportsOnDemandProvisioning()) {
+      throw new Error(`Provider ${provider.getProvider()} does not support on-demand environments.`);
     }
 
     const requirements = await this.requirementsService.getRequirements(
@@ -48,8 +98,9 @@ export class AgentEnvironmentProvisioningService {
       input.companyId,
       input.agentId,
     );
-    const provisionedEnvironment = await this.provider.provisionEnvironment(transactionProvider, {
+    const provisionedEnvironment = await provider.provisionEnvironment(transactionProvider, {
       ...input,
+      providerDefinitionId: agent.defaultComputeProviderDefinitionId,
       requirements,
     });
     let createdEnvironment: AgentEnvironmentRecord | null = null;
@@ -63,7 +114,8 @@ export class AgentEnvironmentProvisioningService {
         memoryGb: provisionedEnvironment.memoryGb,
         metadata: provisionedEnvironment.metadata,
         platform: provisionedEnvironment.platform,
-        provider: this.provider.getProvider(),
+        provider: provider.getProvider(),
+        providerDefinitionId: agent.defaultComputeProviderDefinitionId,
         providerEnvironmentId: provisionedEnvironment.providerEnvironmentId,
       });
 

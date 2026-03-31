@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<34df824145ace7a973dac9c350954a0c>>
+ * @generated SignedSource<<860e04aa0f8efdd98968609066c2ab09>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type UpdateAgentInput = {
+  defaultComputeProviderDefinitionId: string;
   id: string;
   modelProviderCredentialId: string;
   modelProviderCredentialModelId: string;
@@ -23,6 +24,9 @@ export type agentDetailPageUpdateAgentMutation$variables = {
 export type agentDetailPageUpdateAgentMutation$data = {
   readonly UpdateAgent: {
     readonly createdAt: string;
+    readonly defaultComputeProvider: string | null | undefined;
+    readonly defaultComputeProviderDefinitionId: string | null | undefined;
+    readonly defaultComputeProviderDefinitionName: string | null | undefined;
     readonly id: string;
     readonly modelName: string | null | undefined;
     readonly modelProvider: string | null | undefined;
@@ -108,6 +112,27 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "defaultComputeProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultComputeProviderDefinitionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultComputeProviderDefinitionName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevel",
         "storageKey": null
       },
@@ -154,16 +179,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "58947cf879f98a9082d809ba559790c8",
+    "cacheID": "79dc31e51ea253d3d539b7fad7fa577c",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageUpdateAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "511955fa213dba7747c866ac84de154d";
+(node as any).hash = "293fb6b1919af71ae7ae5fad9d71961e";
 
 export default node;

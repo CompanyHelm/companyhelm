@@ -30,7 +30,7 @@ export const agentInboxStatusEnum = pgEnum("agent_inbox_status", ["open", "resol
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
 export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
 export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
-export const computeProviderEnum = pgEnum("compute_provider", ["daytona"]);
+export const computeProviderEnum = pgEnum("compute_provider", ["daytona", "e2b"]);
 
 
 export const companies = pgTable("companies", {
@@ -88,6 +88,8 @@ export const agents = pgTable("agents", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
   defaultModelProviderCredentialModelId: uuid("default_model_provider_credential_model_id")
     .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
+  defaultComputeProviderDefinitionId: uuid("default_compute_provider_definition_id")
+    .references(() => computeProviderDefinitions.id, { onDelete: "restrict" }),
   default_reasoning_level: text("default_reasoning_level"),
   system_prompt: text("system_prompt"),
 },
@@ -397,6 +399,51 @@ export const companySecrets = pgTable("company_secrets", {
   ),
 }));
 
+export const computeProviderDefinitions = pgTable("compute_provider_definitions", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+  provider: computeProviderEnum("provider").notNull(),
+  description: text("description"),
+  createdByUserId: uuid("created_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  updatedByUserId: uuid("updated_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companyIdIndex: index("compute_provider_definitions_company_id_idx").on(table.companyId),
+  companyProviderIndex: index("compute_provider_definitions_company_provider_idx").on(
+    table.companyId,
+    table.provider,
+  ),
+  companyNameLowerUnique: uniqueIndex("compute_provider_definitions_company_name_lower_uidx")
+    .on(table.companyId, sql`lower(${table.name})`),
+}));
+
+export const daytonaComputeProviderDefinitions = pgTable("daytona_compute_provider_definitions", {
+  computeProviderDefinitionId: uuid("compute_provider_definition_id")
+    .primaryKey()
+    .references(() => computeProviderDefinitions.id, { onDelete: "cascade" }),
+  apiUrl: text("api_url").notNull(),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  encryptionKeyId: text("encryption_key_id").notNull(),
+}, (table) => ({
+  apiUrlIndex: index("daytona_compute_provider_definitions_api_url_idx").on(table.apiUrl),
+}));
+
+export const e2bComputeProviderDefinitions = pgTable("e2b_compute_provider_definitions", {
+  computeProviderDefinitionId: uuid("compute_provider_definition_id")
+    .primaryKey()
+    .references(() => computeProviderDefinitions.id, { onDelete: "cascade" }),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  encryptionKeyId: text("encryption_key_id").notNull(),
+});
+
 export const agentDefaultSecrets = pgTable("agent_default_secrets", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
@@ -547,6 +594,8 @@ export const agentEnvironments = pgTable("agent_environments", {
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
   provider: computeProviderEnum("provider").notNull(),
+  providerDefinitionId: uuid("provider_definition_id")
+    .references(() => computeProviderDefinitions.id, { onDelete: "restrict" }),
   providerEnvironmentId: text("provider_environment_id").notNull(),
   displayName: text("display_name"),
   platform: agentEnvironmentPlatformEnum("platform").notNull(),
@@ -561,6 +610,7 @@ export const agentEnvironments = pgTable("agent_environments", {
 (table) => ({
   companyIdIndex: index("agent_environments_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_environments_agent_id_idx").on(table.agentId),
+  providerDefinitionIdIndex: index("agent_environments_provider_definition_id_idx").on(table.providerDefinitionId),
   providerEnvironmentIdIndex: index("agent_environments_provider_environment_id_idx").on(table.provider, table.providerEnvironmentId),
 }));
 

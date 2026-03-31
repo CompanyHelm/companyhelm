@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentInterface } from "../compute/environment_interface.ts";
-import { AgentComputeProviderInterface, type AgentEnvironmentRecord } from "../compute/provider_interface.ts";
+import type {
+  AgentComputeProviderInterface,
+  AgentEnvironmentRecord,
+} from "../compute/provider_interface.ts";
+import { AgentComputeProviderRegistry } from "../compute/provider_registry.ts";
 import { AgentEnvironmentTmuxPty } from "../compute/tmux_pty.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
@@ -20,7 +24,7 @@ import { SecretService } from "../../secrets/service.ts";
 export class AgentEnvironmentAccessService {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly leaseService: AgentEnvironmentLeaseService;
-  private readonly provider: AgentComputeProviderInterface;
+  private readonly providerRegistry: AgentComputeProviderRegistry;
   private readonly provisioningService: AgentEnvironmentProvisioningService;
   private readonly selectionService: AgentEnvironmentSelectionService;
   private readonly secretService: SecretService;
@@ -28,14 +32,25 @@ export class AgentEnvironmentAccessService {
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
-    @inject(AgentComputeProviderInterface) provider: AgentComputeProviderInterface,
+    @inject(AgentComputeProviderRegistry)
+    providerRegistryOrProvider: AgentComputeProviderRegistry | AgentComputeProviderInterface,
     @inject(AgentEnvironmentProvisioningService) provisioningService: AgentEnvironmentProvisioningService,
     @inject(AgentEnvironmentSelectionService) selectionService: AgentEnvironmentSelectionService,
-    @inject(SecretService) secretService: SecretService,
+    @inject(SecretService) secretService: SecretService = {
+      async resolveSessionEnvironmentVariables() {
+        return {};
+      },
+    } as never,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
-    this.provider = provider;
+    this.providerRegistry = AgentEnvironmentAccessService.isProvider(providerRegistryOrProvider)
+      ? {
+          get() {
+            return providerRegistryOrProvider;
+          },
+        } as never
+      : providerRegistryOrProvider;
     this.provisioningService = provisioningService;
     this.selectionService = selectionService;
     this.secretService = secretService;
@@ -63,7 +78,9 @@ export class AgentEnvironmentAccessService {
 
       if (await this.canReuseEnvironment(transactionProvider, environment)) {
         const reactivatedLease = await this.leaseService.activateLease(transactionProvider, existingLease.id, ownerToken);
-        const environmentShell = await this.provider.createShell(transactionProvider, environment);
+        const environmentShell = await this.providerRegistry
+          .get(environment.provider)
+          .createShell(transactionProvider, environment);
         const pty = new AgentEnvironmentTmuxPty(environmentShell);
         return new AgentSessionEnvironment(
           transactionProvider,
@@ -83,7 +100,6 @@ export class AgentEnvironmentAccessService {
     const selectedEnvironment = await this.selectionService.findReusableEnvironmentForAgentSession(
       transactionProvider,
       agentId,
-      this.provider.getProvider(),
       sessionId,
     ) ?? await this.provisioningService.provisionEnvironmentForSession(transactionProvider, {
       agentId,
@@ -98,7 +114,9 @@ export class AgentEnvironmentAccessService {
       ownerToken,
       sessionId,
     });
-    const environmentShell = await this.provider.createShell(transactionProvider, selectedEnvironment);
+    const environmentShell = await this.providerRegistry
+      .get(selectedEnvironment.provider)
+      .createShell(transactionProvider, selectedEnvironment);
     const pty = new AgentEnvironmentTmuxPty(environmentShell);
 
     return new AgentSessionEnvironment(
@@ -118,9 +136,18 @@ export class AgentEnvironmentAccessService {
     environment: AgentEnvironmentRecord,
   ): Promise<boolean> {
     try {
-      return await this.provider.getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
+      return await this.providerRegistry
+        .get(environment.provider)
+        .getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
     } catch {
       return false;
     }
+  }
+
+  private static isProvider(value: unknown): value is AgentComputeProviderInterface {
+    return typeof value === "object"
+      && value !== null
+      && "getProvider" in value
+      && typeof value.getProvider === "function";
   }
 }

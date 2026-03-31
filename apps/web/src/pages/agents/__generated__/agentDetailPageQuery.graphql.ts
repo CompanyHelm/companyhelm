@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0ddd730c289332487c491ed10e5ca642>>
+ * @generated SignedSource<<3e0e3a386393119d2951d8940f5698da>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,9 @@ export type agentDetailPageQuery$variables = {
 export type agentDetailPageQuery$data = {
   readonly Agent: {
     readonly createdAt: string;
+    readonly defaultComputeProvider: string | null | undefined;
+    readonly defaultComputeProviderDefinitionId: string | null | undefined;
+    readonly defaultComputeProviderDefinitionName: string | null | undefined;
     readonly environmentRequirements: {
       readonly minCpuCount: number;
       readonly minDiskSpaceGb: number;
@@ -49,6 +52,11 @@ export type agentDetailPageQuery$data = {
     readonly envVarName: string;
     readonly id: string;
     readonly name: string;
+  }>;
+  readonly ComputeProviderDefinitions: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+    readonly provider: string;
   }>;
   readonly Secrets: ReadonlyArray<{
     readonly description: string | null | undefined;
@@ -147,6 +155,27 @@ v6 = [
         "args": null,
         "kind": "ScalarField",
         "name": "modelName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultComputeProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultComputeProviderDefinitionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultComputeProviderDefinitionName",
         "storageKey": null
       },
       {
@@ -299,6 +328,26 @@ v6 = [
     "plural": true,
     "selections": (v5/*: any*/),
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "ComputeProviderDefinition",
+    "kind": "LinkedField",
+    "name": "ComputeProviderDefinitions",
+    "plural": true,
+    "selections": [
+      (v1/*: any*/),
+      (v2/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "provider",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -319,16 +368,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "77131fd6ea5fcbc604f4922c24b42f2f",
+    "cacheID": "1f3ad9a2b57bae22885826397375b60e",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4bbaf5d545c35d2bc8fb3b4e2abc9e46";
+(node as any).hash = "369d46e003272d0dfbff887edb2e5ce1";
 
 export default node;

@@ -1,6 +1,7 @@
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
+export type ComputeProvider = "daytona" | "e2b";
 export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
 
 export type AgentEnvironmentRequirements = {
@@ -12,6 +13,7 @@ export type AgentEnvironmentRequirements = {
 export type AgentEnvironmentProvisionRequest = {
   agentId: string;
   companyId: string;
+  providerDefinitionId: string;
   requirements: AgentEnvironmentRequirements;
   sessionId: string;
 };
@@ -39,7 +41,8 @@ export type AgentEnvironmentRecord = {
   memoryGb: number;
   metadata: Record<string, unknown>;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona";
+  provider: ComputeProvider;
+  providerDefinitionId: string | null;
   providerEnvironmentId: string;
   updatedAt: Date;
 };
@@ -54,7 +57,7 @@ export abstract class AgentComputeProviderInterface {
    * Returns the stable provider identifier so selection and persistence can associate rows with the
    * implementation that knows how to operate them.
    */
-  abstract getProvider(): "daytona";
+  abstract getProvider(): ComputeProvider;
 
   /**
    * Reports whether the provider can create environments on demand when the lease layer cannot
