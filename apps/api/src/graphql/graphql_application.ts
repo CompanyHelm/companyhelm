@@ -26,6 +26,7 @@ import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
+import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_human_question.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
@@ -47,6 +48,7 @@ import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
 import { GithubInstallationsQueryResolver } from "./resolvers/github_installations.ts";
 import { GithubRepositoriesQueryResolver } from "./resolvers/github_repositories.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
+import { InboxHumanQuestionsQueryResolver } from "./resolvers/inbox_human_questions.ts";
 import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
@@ -92,7 +94,9 @@ export class GraphqlApplication {
   private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
+  private readonly inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver;
   private readonly promptSessionMutation: PromptSessionMutation;
+  private readonly resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
@@ -232,6 +236,18 @@ export class GraphqlApplication {
     updateAgentEnvironmentRequirementsMutation?: UpdateAgentEnvironmentRequirementsMutation,
     @inject(SteerSessionQueuedMessageMutation)
     steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation = new SteerSessionQueuedMessageMutation(),
+    @inject(InboxHumanQuestionsQueryResolver)
+    inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver = new InboxHumanQuestionsQueryResolver({
+      async listOpenHumanQuestions() {
+        throw new Error("InboxHumanQuestions query is not configured.");
+      },
+    } as never),
+    @inject(ResolveInboxHumanQuestionMutation)
+    resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation = new ResolveInboxHumanQuestionMutation({
+      async resolveHumanQuestion() {
+        throw new Error("ResolveInboxHumanQuestion mutation is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -269,7 +285,9 @@ export class GraphqlApplication {
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
+    this.inboxHumanQuestionsQueryResolver = inboxHumanQuestionsQueryResolver;
     this.promptSessionMutation = promptSessionMutation;
+    this.resolveInboxHumanQuestionMutation = resolveInboxHumanQuestionMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
@@ -354,6 +372,7 @@ export class GraphqlApplication {
           GithubInstallations: this.githubInstallationsQueryResolver.execute,
           GithubRepositories: this.githubRepositoriesQueryResolver.execute,
           health: this.healthQueryResolver.execute,
+          InboxHumanQuestions: this.inboxHumanQuestionsQueryResolver.execute,
           Me: this.meQueryResolver.execute,
           ModelProviderCredentialModels: this.modelProviderCredentialModelsQueryResolver.execute,
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
@@ -389,6 +408,7 @@ export class GraphqlApplication {
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,
+          ResolveInboxHumanQuestion: this.resolveInboxHumanQuestionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,
           SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,

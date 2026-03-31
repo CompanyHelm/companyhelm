@@ -134,6 +134,11 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       },
     } as never,
     {
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during ensureSession");
+      },
+    } as never,
+    {
       async listSecrets() {
         throw new Error("company secrets should not be loaded during ensureSession");
       },
@@ -262,6 +267,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_available_secrets",
       "list_github_installations",
       "gh_exec",
+      "ask_human_question",
     ],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
@@ -286,6 +292,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_available_secrets",
       "list_github_installations",
       "gh_exec",
+      "ask_human_question",
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
@@ -338,6 +345,11 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     {
       async getInstallationAccessToken() {
         throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during ensureSession");
       },
     } as never,
     {
@@ -434,6 +446,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "list_available_secrets",
       "list_github_installations",
       "gh_exec",
+      "ask_human_question",
     ]]],
   );
 });

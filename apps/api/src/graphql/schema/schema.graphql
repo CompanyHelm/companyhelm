@@ -7,6 +7,7 @@ type Query {
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
+  InboxHumanQuestions: [InboxHumanQuestion!]!
   Secrets: [Secret!]!
   AgentSecrets(agentId: ID!): [Secret!]!
   Sessions: [Session!]!
@@ -45,6 +46,7 @@ type Mutation {
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   PromptSession(input: PromptSessionInput!): Session!
+  ResolveInboxHumanQuestion(input: ResolveInboxHumanQuestionInput!): InboxHumanQuestion!
   SteerSessionQueuedMessage(input: SteerSessionQueuedMessageInput!): SessionQueuedMessage!
   RefreshGithubInstallationRepositories(
     input: RefreshGithubInstallationRepositoriesInput!
@@ -98,6 +100,42 @@ type GithubRepository {
   archived: Boolean!
   createdAt: String!
   updatedAt: String!
+}
+
+type InboxHumanQuestion {
+  id: ID!
+  sessionId: ID!
+  sessionTitle: String!
+  agentId: ID!
+  agentName: String!
+  title: String!
+  summary: String!
+  questionText: String!
+  allowCustomAnswer: Boolean!
+  status: String!
+  proposals: [InboxHumanQuestionProposal!]!
+  answer: InboxHumanQuestionAnswer
+  createdAt: String!
+  updatedAt: String!
+  resolvedAt: String
+  resolvedByUserId: ID
+}
+
+type InboxHumanQuestionProposal {
+  id: ID!
+  answerText: String!
+  rating: Int!
+  pros: [String!]!
+  cons: [String!]!
+}
+
+type InboxHumanQuestionAnswer {
+  id: ID!
+  selectedProposalId: ID
+  customAnswerText: String
+  finalAnswerText: String!
+  answeredByUserId: ID!
+  createdAt: String!
 }
 
 type AddGithubInstallationPayload {
@@ -402,6 +440,12 @@ input PromptSessionInput {
   reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!
+}
+
+input ResolveInboxHumanQuestionInput {
+  inboxItemId: ID!
+  proposalId: ID
+  customAnswerText: String
 }
 
 input SteerSessionQueuedMessageInput {

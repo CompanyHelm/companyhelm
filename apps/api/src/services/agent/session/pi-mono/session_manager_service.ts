@@ -18,6 +18,9 @@ import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
 import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
+import { AgentInboxService } from "../../inbox/service.ts";
+import { AgentInboxToolProvider } from "../../tools/inbox/provider.ts";
+import { AgentInboxToolService } from "../../tools/inbox/service.ts";
 import { AgentSecretToolProvider } from "../../tools/secrets/provider.ts";
 import { AgentSecretToolService } from "../../tools/secrets/service.ts";
 import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
@@ -67,6 +70,7 @@ type UpdatableDatabase = {
 export class PiMonoSessionManagerService {
   private readonly agentEnvironmentAccessService: AgentEnvironmentAccessService;
   private readonly githubClient: GithubClient;
+  private readonly inboxService: AgentInboxService;
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
@@ -75,11 +79,13 @@ export class PiMonoSessionManagerService {
     @inject(RedisService) redisService: RedisService,
     @inject(AgentEnvironmentAccessService) agentEnvironmentAccessService: AgentEnvironmentAccessService,
     @inject(GithubClient) githubClient: GithubClient,
+    @inject(AgentInboxService) inboxService: AgentInboxService,
     @inject(SecretService) secretService: SecretService,
   ) {
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
     this.githubClient = githubClient;
+    this.inboxService = inboxService;
     this.secretService = secretService;
   }
 
@@ -113,10 +119,18 @@ export class PiMonoSessionManagerService {
       sessionId,
       this.secretService,
     );
+    const inboxToolService = new AgentInboxToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
+      sessionId,
+      this.inboxService,
+    );
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
       new AgentSecretToolProvider(secretToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
+      new AgentInboxToolProvider(inboxToolService),
     ]);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {

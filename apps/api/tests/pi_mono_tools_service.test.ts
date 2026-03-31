@@ -7,6 +7,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
 import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
+import { AgentInboxToolProvider } from "../src/services/agent/tools/inbox/provider.ts";
 import { AgentSecretToolProvider } from "../src/services/agent/tools/secrets/provider.ts";
 import { AgentToolsService } from "../src/services/agent/tools/service.ts";
 import { AgentTerminalToolProvider } from "../src/services/agent/tools/terminal/provider.ts";
@@ -45,6 +46,11 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
         throw new Error("github installations should not be loaded during initialization");
       },
     } as never),
+    new AgentInboxToolProvider({
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during initialization");
+      },
+    } as never),
   ]);
 
   const tools = service.initializeTools();
@@ -63,6 +69,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "list_available_secrets",
       "list_github_installations",
       "gh_exec",
+      "ask_human_question",
     ],
   );
   assert.equal(service.initializeTools(), tools);
@@ -101,6 +108,11 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       },
       async listInstallations() {
         throw new Error("github installations should not be loaded during cleanup");
+      },
+    } as never),
+    new AgentInboxToolProvider({
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during cleanup");
       },
     } as never),
   ]);
@@ -153,6 +165,11 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("github installations should not be loaded during session creation");
       },
     } as never),
+    new AgentInboxToolProvider({
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during session creation");
+      },
+    } as never),
   ]);
 
   const sessionManager = SessionManager.inMemory();
@@ -185,6 +202,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "list_available_secrets",
       "list_github_installations",
       "gh_exec",
+      "ask_human_question",
     ],
   );
 

@@ -25,6 +25,8 @@ export const sessionMessageStatusEnum = pgEnum("session_message_status", ["runni
 // it will be deleted on completion of the message, so no completed or failed statuses
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
+export const agentInboxKindEnum = pgEnum("agent_inbox_kind", ["human_question"]);
+export const agentInboxStatusEnum = pgEnum("agent_inbox_status", ["open", "resolved"]);
 export const taskStatusEnum = pgEnum("task_status", ["draft", "pending", "in_progress", "completed"]);
 export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
 export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
@@ -254,6 +256,87 @@ export const sessionQueuedMessageImages = pgTable("session_queued_message_images
 (table) => ({
   companyIdIndex: index("session_queued_message_images_company_id_idx").on(table.companyId),
   sessionQueuedMessageIdIndex: index("session_queued_message_images_session_queued_message_id_idx").on(table.sessionQueuedMessageId),
+}));
+
+export const agentInboxItems = pgTable("agent_inbox_items", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+  toolCallId: text("tool_call_id"),
+  kind: agentInboxKindEnum("kind").notNull(),
+  status: agentInboxStatusEnum("status").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolvedByUserId: uuid("resolved_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+}, (table) => ({
+  companyIdIndex: index("agent_inbox_items_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("agent_inbox_items_session_id_idx").on(table.sessionId),
+  agentIdIndex: index("agent_inbox_items_agent_id_idx").on(table.agentId),
+  statusIndex: index("agent_inbox_items_status_idx").on(table.status),
+}));
+
+export const agentInboxHumanQuestions = pgTable("agent_inbox_human_questions", {
+  inboxItemId: uuid("inbox_item_id")
+    .references(() => agentInboxItems.id, { onDelete: "cascade" })
+    .primaryKey(),
+  questionText: text("question_text").notNull(),
+  allowCustomAnswer: boolean("allow_custom_answer").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  inboxItemIdIndex: index("agent_inbox_human_questions_inbox_item_id_idx").on(table.inboxItemId),
+}));
+
+export const agentInboxHumanQuestionProposals = pgTable("agent_inbox_human_question_proposals", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  inboxItemId: uuid("inbox_item_id")
+    .references(() => agentInboxItems.id, { onDelete: "cascade" })
+    .notNull(),
+  answerText: text("answer_text").notNull(),
+  rating: integer("rating").notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  pros: text("pros").array().notNull(),
+  cons: text("cons").array().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  inboxItemIdIndex: index("agent_inbox_human_question_proposals_inbox_item_id_idx").on(table.inboxItemId),
+  ratingCheck: check(
+    "agent_inbox_human_question_proposals_rating_check",
+    sql`${table.rating} >= 1 AND ${table.rating} <= 5`,
+  ),
+}));
+
+export const agentInboxHumanQuestionAnswers = pgTable("agent_inbox_human_question_answers", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  inboxItemId: uuid("inbox_item_id")
+    .references(() => agentInboxItems.id, { onDelete: "cascade" })
+    .notNull(),
+  selectedProposalId: uuid("selected_proposal_id")
+    .references(() => agentInboxHumanQuestionProposals.id, { onDelete: "set null" }),
+  customAnswerText: text("custom_answer_text"),
+  finalAnswerText: text("final_answer_text").notNull(),
+  answeredByUserId: uuid("answered_by_user_id")
+    .references(() => users.id, { onDelete: "restrict" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  inboxItemIdIndex: uniqueIndex("agent_inbox_human_question_answers_inbox_item_id_uidx").on(table.inboxItemId),
 }));
 
 export const modelProviderCredentials = pgTable("model_provider_credentials", {
