@@ -102,11 +102,11 @@ function KnowledgeBaseDetailPageContent() {
   const { artifactId } = useParams({ strict: false });
   const normalizedArtifactId = String(artifactId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
-  const [fetchKey, setFetchKey] = useState(0);
   const [editorState, setEditorState] = useState<KnowledgeBaseArtifactEditorState>(
     createArtifactEditorState,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   if (!normalizedArtifactId) {
     throw new Error("Artifact ID is required.");
   }
@@ -117,7 +117,6 @@ function KnowledgeBaseDetailPageContent() {
       artifactId: normalizedArtifactId,
     },
     {
-      fetchKey,
       fetchPolicy: "store-and-network",
     },
   );
@@ -132,7 +131,11 @@ function KnowledgeBaseDetailPageContent() {
   const artifact = data.Artifact;
   const isDocumentArtifact = artifact.type === "markdown_document";
   const isSaving = isUpdateArtifactInFlight || isUpdateMarkdownArtifactInFlight;
+  const hasUnsavedChanges = editorState.name !== artifact.name
+    || editorState.description !== (artifact.description ?? "")
+    || editorState.markdownContent !== (artifact.markdownContent ?? "");
   const isSaveDisabled = isSaving
+    || !hasUnsavedChanges
     || editorState.name.trim().length === 0
     || editorState.markdownContent.trim().length === 0;
 
@@ -156,12 +159,21 @@ function KnowledgeBaseDetailPageContent() {
     artifact.name,
   ]);
 
+  useEffect(() => {
+    setSavedMessage(null);
+  }, [
+    editorState.description,
+    editorState.markdownContent,
+    editorState.name,
+  ]);
+
   async function saveArtifact() {
     if (isSaveDisabled || !isDocumentArtifact) {
       return;
     }
 
     setErrorMessage(null);
+    setSavedMessage(null);
 
     try {
       await new Promise<void>((resolve, reject) => {
@@ -207,7 +219,7 @@ function KnowledgeBaseDetailPageContent() {
         });
       });
 
-      setFetchKey((currentFetchKey) => currentFetchKey + 1);
+      setSavedMessage(`Saved ${formatTimestamp(new Date().toISOString())}`);
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save document.");
     }
@@ -249,6 +261,11 @@ function KnowledgeBaseDetailPageContent() {
               {errorMessage}
             </div>
           ) : null}
+          {savedMessage && !errorMessage ? (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+              {savedMessage}
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-name">
@@ -257,6 +274,7 @@ function KnowledgeBaseDetailPageContent() {
             <Input
               id="knowledge-base-detail-name"
               onChange={(event) => {
+                setSavedMessage(null);
                 setEditorState((currentState) => ({
                   ...currentState,
                   name: event.target.value,
@@ -274,6 +292,7 @@ function KnowledgeBaseDetailPageContent() {
               className="min-h-24 w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               id="knowledge-base-detail-description"
               onChange={(event) => {
+                setSavedMessage(null);
                 setEditorState((currentState) => ({
                   ...currentState,
                   description: event.target.value,
@@ -292,6 +311,7 @@ function KnowledgeBaseDetailPageContent() {
               className="min-h-[520px] w-full rounded-xl border border-input bg-transparent px-3 py-2 font-mono text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               id="knowledge-base-detail-markdown"
               onChange={(event) => {
+                setSavedMessage(null);
                 setEditorState((currentState) => ({
                   ...currentState,
                   markdownContent: event.target.value,
@@ -309,7 +329,7 @@ function KnowledgeBaseDetailPageContent() {
               }}
               type="button"
             >
-              {isSaving ? "Saving…" : "Save changes"}
+              {isSaving ? "Saving…" : hasUnsavedChanges ? "Save changes" : "Saved"}
             </Button>
           </div>
         </CardContent>
