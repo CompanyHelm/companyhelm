@@ -39,8 +39,6 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
     const resolver = new EnvVarNameResolver();
     return resolver.resolveDefaultEnvVarName(name);
   }, [name]);
-  const explicitEnvVarName = envVarName.trim();
-  const hasExplicitEnvVarName = explicitEnvVarName.length > 0;
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -88,26 +86,12 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
               onChange={(event) => {
                 setEnvVarName(event.target.value);
               }}
-              placeholder="Defaults from the name, e.g. GITHUB_TOKEN"
+              placeholder={defaultEnvVarName ?? "Defaults from the name"}
               value={envVarName}
             />
-            {hasExplicitEnvVarName ? (
-              <p className="text-[11px] text-muted-foreground">
-                Using custom value:
-                {" "}
-                <span className="font-mono text-foreground/70">{explicitEnvVarName}</span>
-              </p>
-            ) : defaultEnvVarName ? (
-              <p className="text-[11px] text-muted-foreground">
-                Default:
-                {" "}
-                <span className="font-mono text-foreground/70">{defaultEnvVarName}</span>
-              </p>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                Defaults to the secret name in uppercase with spaces and hyphens converted to underscores.
-              </p>
-            )}
+            <p className="text-[11px] text-muted-foreground">
+              Leave empty to use the default env var derived from the secret name.
+            </p>
           </div>
 
           <div className="grid gap-2">
