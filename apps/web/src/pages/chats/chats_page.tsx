@@ -660,14 +660,18 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
           </a>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-border/70 pl-4 text-muted-foreground">
+          <blockquote className="border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
             {children}
           </blockquote>
         ),
         code: ({ children, className, ...codeProps }) => (
           <code
             {...codeProps}
-            className={className || "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground"}
+            className={[
+              className,
+              "max-w-full break-words whitespace-pre-wrap [overflow-wrap:anywhere]",
+              className ? "" : "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
+            ].filter(Boolean).join(" ")}
           >
             {children}
           </code>
@@ -677,9 +681,13 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
         h3: ({ children }) => <h3 className="text-sm font-semibold text-foreground">{children}</h3>,
         li: ({ children }) => <li className="pl-1">{children}</li>,
         ol: ({ children }) => <ol className="ml-5 grid list-decimal gap-2">{children}</ol>,
-        p: ({ children }) => <p className="text-sm leading-7 text-pretty text-foreground">{children}</p>,
+        p: ({ children }) => (
+          <p className="text-sm leading-7 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
+            {children}
+          </p>
+        ),
         pre: ({ children }) => (
-          <pre className="my-1 overflow-x-auto rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground">
+          <pre className="my-1 max-w-full overflow-hidden whitespace-pre-wrap break-words rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
             {children}
           </pre>
         ),
@@ -744,7 +752,7 @@ function ToolTranscriptMessage(
   const collapsedSummary = isCommandTool ? commandToolArguments.command : defaultToolName;
 
   return (
-    <div className="w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+    <div className="min-w-0 w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           {isCommandTool ? (
@@ -783,7 +791,7 @@ function ToolTranscriptMessage(
             <div className="border-b border-border/60 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
               Arguments
             </div>
-            <pre className="whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground">
+            <pre className="whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
               {defaultArgumentsText}
             </pre>
           </div>
@@ -816,7 +824,7 @@ function ToolTranscriptMessage(
                       : null}
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
-                  <pre className="border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground">
+                  <pre className="border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
                     {terminalOutputText.length > 0
                       ? terminalOutputText
                       : terminalStructuredContent.completed
@@ -841,7 +849,7 @@ function ToolTranscriptMessage(
             return (
               <pre
                 key={`${message.id}-content-${contentIndex}`}
-                className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground"
+                className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]"
               >
                 {content.text}
               </pre>
@@ -922,7 +930,7 @@ function ChatsTranscript({
   return (
     <div
       ref={transcriptScrollRef}
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto pr-1"
       onScroll={onScroll}
     >
       {(hasOlderMessages || isLoadingOlderMessages) ? (
@@ -940,26 +948,26 @@ function ChatsTranscript({
         return (
           <div
             key={message.id}
-            className={`w-full ${isUserMessage ? "flex justify-end" : CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS}`}
+            className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS}`}
           >
             <div
               className={`${
                 isUserMessage
-                  ? "w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
+                  ? "min-w-0 w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
                   : isToolMessage
-                  ? "w-full px-0 py-0 text-foreground"
-                  : "w-full px-0 py-0 text-foreground"
+                  ? "min-w-0 w-full px-0 py-0 text-foreground"
+                  : "min-w-0 w-full px-0 py-0 text-foreground"
               }`}
             >
               {isUserMessage ? (
-                <p className="whitespace-pre-wrap text-right text-sm">{message.text}</p>
+                <p className="whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">{message.text}</p>
               ) : isToolMessage ? (
                 <ToolTranscriptMessage
                   message={message}
                   toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                 />
               ) : (
-                <div className="grid w-full gap-4 text-left">
+                <div className="grid min-w-0 w-full gap-4 text-left">
                   {assistantDisplayContents.map((content, contentIndex) => (
                     <div
                       key={`${message.id}-assistant-content-${contentIndex}`}
