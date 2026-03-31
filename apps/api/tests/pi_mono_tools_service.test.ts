@@ -6,6 +6,7 @@ import {
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
+import { AgentArtifactToolProvider } from "../src/services/agent/tools/artifacts/provider.ts";
 import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
 import { AgentInboxToolProvider } from "../src/services/agent/tools/inbox/provider.ts";
 import { AgentSecretToolProvider } from "../src/services/agent/tools/secrets/provider.ts";
@@ -51,6 +52,35 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
         throw new Error("inbox questions should not be created during initialization");
       },
     } as never),
+    new AgentArtifactToolProvider({
+      async archiveArtifact() {
+        throw new Error("artifact archive should not run during initialization");
+      },
+      async createExternalLinkArtifact() {
+        throw new Error("artifact create should not run during initialization");
+      },
+      async createMarkdownArtifact() {
+        throw new Error("artifact create should not run during initialization");
+      },
+      async createPullRequestArtifact() {
+        throw new Error("artifact create should not run during initialization");
+      },
+      async getArtifact() {
+        throw new Error("artifact reads should not run during initialization");
+      },
+      async listArtifacts() {
+        throw new Error("artifact listing should not run during initialization");
+      },
+      async updateArtifactMetadata() {
+        throw new Error("artifact updates should not run during initialization");
+      },
+      async updateExternalLinkArtifact() {
+        throw new Error("artifact updates should not run during initialization");
+      },
+      async updateMarkdownArtifact() {
+        throw new Error("artifact updates should not run during initialization");
+      },
+    } as never),
   ]);
 
   const tools = service.initializeTools();
@@ -70,6 +100,15 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "list_artifacts",
+      "get_artifact",
+      "create_markdown_artifact",
+      "create_external_link_artifact",
+      "create_pull_request_artifact",
+      "update_artifact_metadata",
+      "update_markdown_artifact",
+      "update_external_link_artifact",
+      "archive_artifact",
     ],
   );
   assert.equal(service.initializeTools(), tools);
@@ -113,6 +152,35 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     new AgentInboxToolProvider({
       async createHumanQuestion() {
         throw new Error("inbox questions should not be created during cleanup");
+      },
+    } as never),
+    new AgentArtifactToolProvider({
+      async archiveArtifact() {
+        throw new Error("artifact archive should not run during cleanup");
+      },
+      async createExternalLinkArtifact() {
+        throw new Error("artifact create should not run during cleanup");
+      },
+      async createMarkdownArtifact() {
+        throw new Error("artifact create should not run during cleanup");
+      },
+      async createPullRequestArtifact() {
+        throw new Error("artifact create should not run during cleanup");
+      },
+      async getArtifact() {
+        throw new Error("artifact reads should not run during cleanup");
+      },
+      async listArtifacts() {
+        throw new Error("artifact listing should not run during cleanup");
+      },
+      async updateArtifactMetadata() {
+        throw new Error("artifact updates should not run during cleanup");
+      },
+      async updateExternalLinkArtifact() {
+        throw new Error("artifact updates should not run during cleanup");
+      },
+      async updateMarkdownArtifact() {
+        throw new Error("artifact updates should not run during cleanup");
       },
     } as never),
   ]);
@@ -170,6 +238,35 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("inbox questions should not be created during session creation");
       },
     } as never),
+    new AgentArtifactToolProvider({
+      async archiveArtifact() {
+        throw new Error("artifact archive should not run during session creation");
+      },
+      async createExternalLinkArtifact() {
+        throw new Error("artifact create should not run during session creation");
+      },
+      async createMarkdownArtifact() {
+        throw new Error("artifact create should not run during session creation");
+      },
+      async createPullRequestArtifact() {
+        throw new Error("artifact create should not run during session creation");
+      },
+      async getArtifact() {
+        throw new Error("artifact reads should not run during session creation");
+      },
+      async listArtifacts() {
+        throw new Error("artifact listing should not run during session creation");
+      },
+      async updateArtifactMetadata() {
+        throw new Error("artifact updates should not run during session creation");
+      },
+      async updateExternalLinkArtifact() {
+        throw new Error("artifact updates should not run during session creation");
+      },
+      async updateMarkdownArtifact() {
+        throw new Error("artifact updates should not run during session creation");
+      },
+    } as never),
   ]);
 
   const sessionManager = SessionManager.inMemory();
@@ -203,6 +300,15 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "list_artifacts",
+      "get_artifact",
+      "create_markdown_artifact",
+      "create_external_link_artifact",
+      "create_pull_request_artifact",
+      "update_artifact_metadata",
+      "update_markdown_artifact",
+      "update_external_link_artifact",
+      "archive_artifact",
     ],
   );
 

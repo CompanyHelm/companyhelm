@@ -21,6 +21,8 @@ type Query {
     first: Int!
     after: String
   ): SessionTranscriptMessageConnection!
+  Artifact(id: ID!): Artifact!
+  Artifacts(input: ArtifactsInput!): [Artifact!]!
   AgentCreateOptions: [AgentCreateProviderOption!]!
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
@@ -41,8 +43,12 @@ type Mutation {
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
   AttachSecretToSession(input: AttachSecretToSessionInput!): Secret!
   ArchiveSession(input: ArchiveSessionInput!): Session!
+  ArchiveArtifact(input: ArchiveArtifactInput!): Artifact!
   CreateSecret(input: CreateSecretInput!): Secret!
   CreateSession(input: CreateSessionInput!): Session!
+  CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
+  CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
+  CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
@@ -66,6 +72,9 @@ type Mutation {
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
   SetTaskCategory(input: SetTaskCategoryInput!): Task!
+  UpdateArtifact(input: UpdateArtifactInput!): Artifact!
+  UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
+  UpdateMarkdownArtifact(input: UpdateMarkdownArtifactInput!): Artifact!
   UpdateSecret(input: UpdateSecretInput!): Secret!
 }
 
@@ -370,6 +379,23 @@ type ModelProvider {
   authorizationInstructionsMarkdown: String
 }
 
+type Artifact {
+  id: ID!
+  taskId: ID
+  scopeType: String!
+  type: String!
+  state: String!
+  name: String!
+  description: String
+  markdownContent: String
+  url: String
+  pullRequestProvider: String
+  pullRequestRepository: String
+  pullRequestNumber: Int
+  createdAt: String!
+  updatedAt: String!
+}
+
 type TaskCategory {
   id: ID!
   name: String!
@@ -572,8 +598,43 @@ input RefreshModelProviderCredentialModelsInput {
   modelProviderCredentialId: ID!
 }
 
+input ArtifactsInput {
+  scopeType: String!
+  taskId: ID
+}
+
 input CreateTaskCategoryInput {
   name: String!
+}
+
+input CreateMarkdownArtifactInput {
+  scopeType: String!
+  taskId: ID
+  name: String!
+  description: String
+  state: String
+  contentMarkdown: String!
+}
+
+input CreateExternalLinkArtifactInput {
+  scopeType: String!
+  taskId: ID
+  name: String!
+  description: String
+  state: String
+  url: String!
+}
+
+input CreatePullRequestArtifactInput {
+  scopeType: String!
+  taskId: ID
+  name: String!
+  description: String
+  state: String
+  provider: String
+  repository: String
+  pullRequestNumber: Int
+  url: String!
 }
 
 input CreateTaskInput {
@@ -581,6 +642,27 @@ input CreateTaskInput {
   description: String
   status: String
   taskCategoryId: ID
+}
+
+input UpdateArtifactInput {
+  id: ID!
+  name: String
+  description: String
+  state: String
+}
+
+input UpdateMarkdownArtifactInput {
+  id: ID!
+  contentMarkdown: String!
+}
+
+input UpdateExternalLinkArtifactInput {
+  id: ID!
+  url: String!
+}
+
+input ArchiveArtifactInput {
+  id: ID!
 }
 
 input SetTaskCategoryInput {

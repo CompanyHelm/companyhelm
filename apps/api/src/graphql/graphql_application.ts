@@ -12,9 +12,13 @@ import { AddAgentMutation } from "./mutations/add_agent.ts";
 import { AddComputeProviderDefinitionMutation } from "./mutations/add_compute_provider_definition.ts";
 import { AddGithubInstallationMutation } from "./mutations/add_github_installation.ts";
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
+import { ArchiveArtifactMutation } from "./mutations/archive_artifact.ts";
 import { AttachSecretToAgentMutation } from "./mutations/attach_secret_to_agent.ts";
 import { AttachSecretToSessionMutation } from "./mutations/attach_secret_to_session.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
+import { CreateExternalLinkArtifactMutation } from "./mutations/create_external_link_artifact.ts";
+import { CreateMarkdownArtifactMutation } from "./mutations/create_markdown_artifact.ts";
+import { CreatePullRequestArtifactMutation } from "./mutations/create_pull_request_artifact.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSecretMutation } from "./mutations/create_secret.ts";
@@ -37,7 +41,10 @@ import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
 import { UpdateAgentEnvironmentRequirementsMutation } from "./mutations/update_agent_environment_requirements.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
+import { UpdateArtifactMutation } from "./mutations/update_artifact.ts";
 import { UpdateComputeProviderDefinitionMutation } from "./mutations/update_compute_provider_definition.ts";
+import { UpdateExternalLinkArtifactMutation } from "./mutations/update_external_link_artifact.ts";
+import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_artifact.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
@@ -46,6 +53,8 @@ import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
+import { ArtifactQueryResolver } from "./resolvers/artifact.ts";
+import { ArtifactsQueryResolver } from "./resolvers/artifacts.ts";
 import { ComputeProviderDefinitionsQueryResolver } from "./resolvers/compute_provider_definitions.ts";
 import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
@@ -81,14 +90,20 @@ export class GraphqlApplication {
   private readonly addComputeProviderDefinitionMutation: AddComputeProviderDefinitionMutation;
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
+  private readonly archiveArtifactMutation: ArchiveArtifactMutation;
   private readonly attachSecretToAgentMutation: AttachSecretToAgentMutation;
   private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentSecretsQueryResolver: AgentSecretsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
+  private readonly artifactQueryResolver: ArtifactQueryResolver;
+  private readonly artifactsQueryResolver: ArtifactsQueryResolver;
   private readonly environmentsQueryResolver: EnvironmentsQueryResolver;
   private readonly archiveSessionMutation: ArchiveSessionMutation;
+  private readonly createExternalLinkArtifactMutation: CreateExternalLinkArtifactMutation;
+  private readonly createMarkdownArtifactMutation: CreateMarkdownArtifactMutation;
+  private readonly createPullRequestArtifactMutation: CreatePullRequestArtifactMutation;
   private readonly createTaskCategoryMutation: CreateTaskCategoryMutation;
   private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSecretMutation: CreateSecretMutation;
@@ -133,8 +148,11 @@ export class GraphqlApplication {
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
+  private readonly updateArtifactMutation: UpdateArtifactMutation;
   private readonly updateAgentEnvironmentRequirementsMutation: UpdateAgentEnvironmentRequirementsMutation;
   private readonly updateComputeProviderDefinitionMutation: UpdateComputeProviderDefinitionMutation;
+  private readonly updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation;
+  private readonly updateMarkdownArtifactMutation: UpdateMarkdownArtifactMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly redisService: RedisService;
 
@@ -288,6 +306,24 @@ export class GraphqlApplication {
     @inject(SessionQueuedMessagesUpdatedSubscriptionResolver)
     sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver =
       new SessionQueuedMessagesUpdatedSubscriptionResolver(),
+    @inject(ArtifactQueryResolver)
+    artifactQueryResolver: ArtifactQueryResolver = new ArtifactQueryResolver(),
+    @inject(ArtifactsQueryResolver)
+    artifactsQueryResolver: ArtifactsQueryResolver = new ArtifactsQueryResolver(),
+    @inject(CreateMarkdownArtifactMutation)
+    createMarkdownArtifactMutation: CreateMarkdownArtifactMutation = new CreateMarkdownArtifactMutation(),
+    @inject(CreateExternalLinkArtifactMutation)
+    createExternalLinkArtifactMutation: CreateExternalLinkArtifactMutation = new CreateExternalLinkArtifactMutation(),
+    @inject(CreatePullRequestArtifactMutation)
+    createPullRequestArtifactMutation: CreatePullRequestArtifactMutation = new CreatePullRequestArtifactMutation(),
+    @inject(UpdateArtifactMutation)
+    updateArtifactMutation: UpdateArtifactMutation = new UpdateArtifactMutation(),
+    @inject(UpdateMarkdownArtifactMutation)
+    updateMarkdownArtifactMutation: UpdateMarkdownArtifactMutation = new UpdateMarkdownArtifactMutation(),
+    @inject(UpdateExternalLinkArtifactMutation)
+    updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation = new UpdateExternalLinkArtifactMutation(),
+    @inject(ArchiveArtifactMutation)
+    archiveArtifactMutation: ArchiveArtifactMutation = new ArchiveArtifactMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -299,6 +335,7 @@ export class GraphqlApplication {
     this.addComputeProviderDefinitionMutation = addComputeProviderDefinitionMutation;
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
+    this.archiveArtifactMutation = archiveArtifactMutation;
     this.attachSecretToAgentMutation = attachSecretToAgentMutation
       ?? new AttachSecretToAgentMutation(defaultSecretService);
     this.attachSecretToSessionMutation = attachSecretToSessionMutation
@@ -308,8 +345,13 @@ export class GraphqlApplication {
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
     this.agentsQueryResolver = agentsQueryResolver;
+    this.artifactQueryResolver = artifactQueryResolver;
+    this.artifactsQueryResolver = artifactsQueryResolver;
     this.environmentsQueryResolver = environmentsQueryResolver;
     this.archiveSessionMutation = archiveSessionMutation;
+    this.createExternalLinkArtifactMutation = createExternalLinkArtifactMutation;
+    this.createMarkdownArtifactMutation = createMarkdownArtifactMutation;
+    this.createPullRequestArtifactMutation = createPullRequestArtifactMutation;
     this.createTaskCategoryMutation = createTaskCategoryMutation;
     this.createTaskMutation = createTaskMutation;
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
@@ -358,9 +400,12 @@ export class GraphqlApplication {
     this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
     this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
+    this.updateArtifactMutation = updateArtifactMutation;
     this.updateAgentEnvironmentRequirementsMutation = updateAgentEnvironmentRequirementsMutation
       ?? new UpdateAgentEnvironmentRequirementsMutation(defaultAgentEnvironmentRequirementsService);
     this.updateComputeProviderDefinitionMutation = updateComputeProviderDefinitionMutation;
+    this.updateExternalLinkArtifactMutation = updateExternalLinkArtifactMutation;
+    this.updateMarkdownArtifactMutation = updateMarkdownArtifactMutation;
     this.redisService = redisService;
   }
 
@@ -412,6 +457,8 @@ export class GraphqlApplication {
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
           AgentSecrets: this.agentSecretsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,
+          Artifact: this.artifactQueryResolver.execute,
+          Artifacts: this.artifactsQueryResolver.execute,
           ComputeProviderDefinitions: this.computeProviderDefinitionsQueryResolver.execute,
           Environments: this.environmentsQueryResolver.execute,
           GithubAppConfig: this.githubAppConfigQueryResolver.execute,
@@ -442,9 +489,13 @@ export class GraphqlApplication {
           StopEnvironment: this.stopEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
+          ArchiveArtifact: this.archiveArtifactMutation.execute,
           AttachSecretToAgent: this.attachSecretToAgentMutation.execute,
           AttachSecretToSession: this.attachSecretToSessionMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
+          CreateExternalLinkArtifact: this.createExternalLinkArtifactMutation.execute,
+          CreateMarkdownArtifact: this.createMarkdownArtifactMutation.execute,
+          CreatePullRequestArtifact: this.createPullRequestArtifactMutation.execute,
           CreateSecret: this.createSecretMutation.execute,
           CreateTask: this.createTaskMutation.execute,
           CreateTaskCategory: this.createTaskCategoryMutation.execute,
@@ -463,7 +514,10 @@ export class GraphqlApplication {
           SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,
           UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
+          UpdateArtifact: this.updateArtifactMutation.execute,
           UpdateComputeProviderDefinition: this.updateComputeProviderDefinitionMutation.execute,
+          UpdateExternalLinkArtifact: this.updateExternalLinkArtifactMutation.execute,
+          UpdateMarkdownArtifact: this.updateMarkdownArtifactMutation.execute,
           UpdateSecret: this.updateSecretMutation.execute,
         },
         Subscription: {

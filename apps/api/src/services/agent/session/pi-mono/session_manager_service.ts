@@ -16,6 +16,8 @@ import { AgentEnvironmentAccessService } from "../../environment/access_service.
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
+import { AgentArtifactToolProvider } from "../../tools/artifacts/provider.ts";
+import { AgentArtifactToolService } from "../../tools/artifacts/service.ts";
 import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
 import { AgentInboxService } from "../../inbox/service.ts";
@@ -24,6 +26,7 @@ import { AgentInboxToolService } from "../../tools/inbox/service.ts";
 import { AgentSecretToolProvider } from "../../tools/secrets/provider.ts";
 import { AgentSecretToolService } from "../../tools/secrets/service.ts";
 import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
+import { ArtifactService } from "../../../artifact_service.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
@@ -126,11 +129,18 @@ export class PiMonoSessionManagerService {
       sessionId,
       this.inboxService,
     );
+    const artifactToolService = new AgentArtifactToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
+      new ArtifactService(),
+    );
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
       new AgentSecretToolProvider(secretToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
       new AgentInboxToolProvider(inboxToolService),
+      new AgentArtifactToolProvider(artifactToolService),
     ]);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
     if (!model) {

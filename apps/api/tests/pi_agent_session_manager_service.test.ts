@@ -268,6 +268,15 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "list_artifacts",
+      "get_artifact",
+      "create_markdown_artifact",
+      "create_external_link_artifact",
+      "create_pull_request_artifact",
+      "update_artifact_metadata",
+      "update_markdown_artifact",
+      "update_external_link_artifact",
+      "archive_artifact",
     ],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
@@ -293,6 +302,15 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "list_artifacts",
+      "get_artifact",
+      "create_markdown_artifact",
+      "create_external_link_artifact",
+      "create_pull_request_artifact",
+      "update_artifact_metadata",
+      "update_markdown_artifact",
+      "update_external_link_artifact",
+      "archive_artifact",
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
@@ -447,6 +465,15 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "list_artifacts",
+      "get_artifact",
+      "create_markdown_artifact",
+      "create_external_link_artifact",
+      "create_pull_request_artifact",
+      "update_artifact_metadata",
+      "update_markdown_artifact",
+      "update_external_link_artifact",
+      "archive_artifact",
     ]]],
   );
 });
