@@ -51,6 +51,7 @@ type Mutation {
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
   SetTaskCategory(input: SetTaskCategoryInput!): Task!
+  UpdateSecret(input: UpdateSecretInput!): Secret!
 }
 
 type Subscription {
@@ -370,6 +371,13 @@ input CreateSecretInput {
 
 input DeleteSecretInput {
   id: ID!
+}
+
+input UpdateSecretInput {
+  id: ID!
+  name: String
+  envVarName: String
+  value: String
 }
 
 input AttachSecretToSessionInput {

@@ -1,18 +1,3 @@
-import { Trash2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelButton,
-  AlertDialogCancelAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -32,9 +17,8 @@ export type SecretsTableRecord = {
 };
 
 interface SecretsTableProps {
-  deletingSecretId: string | null;
   isLoading: boolean;
-  onDelete(secretId: string): Promise<void>;
+  onSelect(secretId: string): void;
   secrets: SecretsTableRecord[];
 }
 
@@ -85,12 +69,17 @@ export function SecretsTable(props: SecretsTableProps) {
           <TableHead>Description</TableHead>
           <TableHead>Created</TableHead>
           <TableHead>Updated</TableHead>
-          <TableHead className="w-16 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {props.secrets.map((secret) => (
-          <TableRow key={secret.id}>
+          <TableRow
+            className="cursor-pointer transition hover:bg-muted/40"
+            key={secret.id}
+            onClick={() => {
+              props.onSelect(secret.id);
+            }}
+          >
             <TableCell className="font-medium text-foreground">{secret.name}</TableCell>
             <TableCell className="font-mono text-xs text-muted-foreground">{secret.envVarName}</TableCell>
             <TableCell className="max-w-sm text-sm text-muted-foreground">
@@ -98,46 +87,6 @@ export function SecretsTable(props: SecretsTableProps) {
             </TableCell>
             <TableCell>{formatTimestamp(secret.createdAt)}</TableCell>
             <TableCell>{formatTimestamp(secret.updatedAt)}</TableCell>
-            <TableCell className="text-right">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    disabled={props.deletingSecretId === secret.id}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                    }}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Trash2Icon className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete secret</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently delete the secret and remove any session attachments that reference it.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancelAction asChild>
-                      <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
-                    </AlertDialogCancelAction>
-                    <AlertDialogPrimaryAction asChild>
-                      <AlertDialogActionButton
-                        disabled={props.deletingSecretId === secret.id}
-                        onClick={async () => {
-                          await props.onDelete(secret.id);
-                        }}
-                        variant="destructive"
-                      >
-                        Delete
-                      </AlertDialogActionButton>
-                    </AlertDialogPrimaryAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </TableCell>
           </TableRow>
         ))}
       </TableBody>

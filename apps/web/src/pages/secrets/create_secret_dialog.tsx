@@ -51,7 +51,11 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
   }, [props.isOpen]);
 
   return (
-    <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
+    <Dialog
+      disablePointerDismissal
+      onOpenChange={props.onOpenChange}
+      open={props.isOpen}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create secret</DialogTitle>

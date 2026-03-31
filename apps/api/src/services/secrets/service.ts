@@ -54,6 +54,16 @@ type DeletableDatabase = {
   };
 };
 
+type UpdatableDatabase = {
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): {
+        returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+      };
+    };
+  };
+};
+
 /**
  * Owns the company secret catalog plus session attachments. It keeps secret values encrypted at
  * rest, resolves session-scoped environment variables just in time, and never exposes plaintext
@@ -192,6 +202,55 @@ export class SecretService {
     });
   }
 
+  async updateSecret(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      envVarName?: string | null;
+      name?: string | null;
+      secretId: string;
+      userId: string;
+      value?: string | null;
+    },
+  ): Promise<SecretRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingSecret = await this.requireSecret(selectableDatabase, input.companyId, input.secretId);
+      const nextName = input.name === undefined
+        ? existingSecret.name
+        : this.requireNonEmptyName(input.name);
+      const nextEnvVarName = input.envVarName === undefined
+        ? existingSecret.envVarName
+        : this.resolveEnvVarName(nextName, input.envVarName);
+      const nextValue = input.value === undefined
+        ? null
+        : this.requireNonEmptyValue(input.value);
+      const encryptedSecret = nextValue === null ? null : this.encryptionService.encrypt(nextValue);
+      const [updatedSecret] = await updatableDatabase
+        .update(companySecrets)
+        .set({
+          encryptedValue: encryptedSecret?.encryptedValue ?? undefined,
+          encryptionKeyId: encryptedSecret?.encryptionKeyId ?? undefined,
+          envVarName: nextEnvVarName,
+          name: nextName,
+          updatedAt: new Date(),
+          updatedByUserId: input.userId,
+        })
+        .where(and(
+          eq(companySecrets.companyId, input.companyId),
+          eq(companySecrets.id, input.secretId),
+        ))
+        .returning?.(this.secretSelection()) as SecretRecord[];
+
+      if (!updatedSecret) {
+        throw new Error("Failed to update secret.");
+      }
+
+      return updatedSecret;
+    });
+  }
+
   async attachSecretToSession(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -313,6 +372,24 @@ export class SecretService {
   private normalizeOptionalText(value?: string | null): string | null {
     const normalizedValue = value?.trim() ?? "";
     return normalizedValue.length > 0 ? normalizedValue : null;
+  }
+
+  private requireNonEmptyName(value: string): string {
+    const normalizedValue = value.trim();
+    if (normalizedValue.length === 0) {
+      throw new Error("Secret name is required.");
+    }
+
+    return normalizedValue;
+  }
+
+  private requireNonEmptyValue(value: string): string {
+    const normalizedValue = value.trim();
+    if (normalizedValue.length === 0) {
+      throw new Error("Secret value is required.");
+    }
+
+    return normalizedValue;
   }
 
   private resolveEnvVarName(name: string, envVarName?: string | null): string {

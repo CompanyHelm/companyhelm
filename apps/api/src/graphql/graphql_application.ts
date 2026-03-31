@@ -30,6 +30,7 @@ import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
+import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -105,6 +106,7 @@ export class GraphqlApplication {
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
+  private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly redisService: RedisService;
 
   constructor(
@@ -190,6 +192,8 @@ export class GraphqlApplication {
     createSecretMutation?: CreateSecretMutation,
     @inject(DeleteSecretMutation)
     deleteSecretMutation?: DeleteSecretMutation,
+    @inject(UpdateSecretMutation)
+    updateSecretMutation?: UpdateSecretMutation,
     @inject(DetachSecretFromSessionMutation)
     detachSecretFromSessionMutation?: DetachSecretFromSessionMutation,
     @inject(SecretsQueryResolver)
@@ -221,6 +225,7 @@ export class GraphqlApplication {
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
     this.promptSessionMutation = promptSessionMutation;
@@ -337,6 +342,7 @@ export class GraphqlApplication {
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
+          UpdateSecret: this.updateSecretMutation.execute,
         },
         Subscription: {
           SessionMessageUpdated: {
