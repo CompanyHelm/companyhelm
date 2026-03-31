@@ -14,6 +14,7 @@ export class GraphqlSubscriptionConnectionStore {
   private activeOperationCount = 0;
   private hasConnected = false;
   private listeners = new Set<GraphqlSubscriptionConnectionListener>();
+  private activeSocket: unknown = null;
   private status: GraphqlSubscriptionConnectionStatus = "idle";
 
   getSnapshot(): GraphqlSubscriptionConnectionStatus {
@@ -51,12 +52,22 @@ export class GraphqlSubscriptionConnectionStore {
     this.setStatus(isRetry || this.hasConnected ? "reconnecting" : "connecting");
   }
 
-  handleConnected(): void {
+  handleOpened(socket: unknown): void {
+    this.activeSocket = socket;
+  }
+
+  handleConnected(socket: unknown): void {
+    this.activeSocket = socket;
     this.hasConnected = true;
     this.setStatus(this.activeOperationCount > 0 ? "connected" : "idle");
   }
 
-  handleConnectionClosed(): void {
+  handleConnectionClosed(event: unknown): void {
+    if (!this.isCurrentSocketEvent(event)) {
+      return;
+    }
+
+    this.activeSocket = null;
     if (this.activeOperationCount === 0) {
       this.setStatus("idle");
       return;
@@ -69,6 +80,24 @@ export class GraphqlSubscriptionConnectionStore {
     for (const listener of this.listeners) {
       listener();
     }
+  }
+
+  private isCurrentSocketEvent(event: unknown): boolean {
+    if (!this.activeSocket) {
+      return true;
+    }
+
+    if (typeof event !== "object" || event === null) {
+      return true;
+    }
+
+    const eventTarget = (event as { currentTarget?: unknown; target?: unknown }).currentTarget
+      ?? (event as { target?: unknown }).target;
+    if (!eventTarget) {
+      return true;
+    }
+
+    return eventTarget === this.activeSocket;
   }
 
   private setStatus(nextStatus: GraphqlSubscriptionConnectionStatus): void {

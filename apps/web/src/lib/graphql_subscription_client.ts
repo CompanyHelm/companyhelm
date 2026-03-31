@@ -40,17 +40,17 @@ export class GraphqlSubscriptionClient {
     },
     shouldRetry: () => true,
     on: {
-      closed: () => {
-        this.connectionStore.handleConnectionClosed();
+      closed: (event) => {
+        this.connectionStore.handleConnectionClosed(event);
       },
-      connected: () => {
-        this.connectionStore.handleConnected();
+      connected: (socket) => {
+        this.connectionStore.handleConnected(socket);
       },
       connecting: (isRetry) => {
         this.connectionStore.handleConnecting(isRetry);
       },
-      error: () => {
-        this.connectionStore.handleConnectionClosed();
+      opened: (socket) => {
+        this.connectionStore.handleOpened(socket);
       },
     },
   });
