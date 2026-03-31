@@ -14,6 +14,7 @@ import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
 import { InboxPage } from "./pages/inbox/inbox_page";
+import { KnowledgeBaseDetailPage } from "./pages/knowledge-base/knowledge_base_detail_page";
 import { KnowledgeBasePage } from "./pages/knowledge-base/knowledge_base_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
@@ -165,6 +166,12 @@ const knowledgeBaseRoute = createRoute({
   component: KnowledgeBasePage,
 });
 
+const knowledgeBaseDetailRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/knowledge-base/$artifactId",
+  component: KnowledgeBaseDetailPage,
+});
+
 const tasksRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/tasks",
@@ -216,6 +223,7 @@ const routeTree = rootRoute.addChildren([
       githubInstallRoute,
       repositoriesRoute,
       knowledgeBaseRoute,
+      knowledgeBaseDetailRoute,
       tasksRoute,
       settingsRoute,
       agentDetailRoute,

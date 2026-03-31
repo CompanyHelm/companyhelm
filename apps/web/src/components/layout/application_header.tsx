@@ -16,6 +16,7 @@ export function ApplicationHeader() {
   const { detailLabel, headerActions, headerContent } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
+  const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(pathname);
   const pageTitle = pathname.startsWith("/model-provider-credentials")
     ? "LLM Credentials"
     : pathname.startsWith("/compute-providers")
@@ -39,13 +40,16 @@ export function ApplicationHeader() {
             : pathname.startsWith("/agents")
               ? "Agents"
               : "Dashboard";
-  const detailPageTitle = detailLabel || (isAgentDetailPage ? "Agent" : "Credential");
+  const detailPageTitle = detailLabel
+    || (isAgentDetailPage ? "Agent" : isKnowledgeBaseDetailPage ? "Artifact" : "Credential");
   const detailPageHref = isCredentialDetailPage
     ? "/model-provider-credentials"
     : isAgentDetailPage
       ? "/agents"
+      : isKnowledgeBaseDetailPage
+        ? "/knowledge-base"
       : null;
-  const isDetailPage = isCredentialDetailPage || isAgentDetailPage;
+  const isDetailPage = isCredentialDetailPage || isAgentDetailPage || isKnowledgeBaseDetailPage;
 
   return (
     <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">
