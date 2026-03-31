@@ -647,55 +647,57 @@ function ChatsPageFallback() {
 
 function AssistantTranscriptMessage({ text }: { text: string }) {
   return (
-    <ReactMarkdown
-      components={{
-        a: ({ children, ...anchorProps }) => (
-          <a
-            {...anchorProps}
-            className="font-medium text-foreground underline underline-offset-4"
-            rel="noreferrer"
-            target="_blank"
-          >
-            {children}
-          </a>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
-            {children}
-          </blockquote>
-        ),
-        code: ({ children, className, ...codeProps }) => (
-          <code
-            {...codeProps}
-            className={[
-              className,
-              "max-w-full break-words [overflow-wrap:anywhere]",
-              "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
-            ].filter(Boolean).join(" ")}
-          >
-            {children}
-          </code>
-        ),
-        h1: ({ children }) => <h1 className="text-lg font-semibold text-foreground">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-base font-semibold text-foreground">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-sm font-semibold text-foreground">{children}</h3>,
-        li: ({ children }) => <li className="pl-1">{children}</li>,
-        ol: ({ children }) => <ol className="ml-5 grid list-decimal gap-2">{children}</ol>,
-        p: ({ children }) => (
-          <p className="text-sm leading-7 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
-            {children}
-          </p>
-        ),
-        pre: ({ children }) => (
-          <pre className="my-1 max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
-            {children}
-          </pre>
-        ),
-        ul: ({ children }) => <ul className="ml-5 grid list-disc gap-2">{children}</ul>,
-      }}
-    >
-      {text}
-    </ReactMarkdown>
+    <div className="min-w-0 w-full">
+      <ReactMarkdown
+        components={{
+          a: ({ children, ...anchorProps }) => (
+            <a
+              {...anchorProps}
+              className="font-medium text-foreground underline underline-offset-4"
+              rel="noreferrer"
+              target="_blank"
+            >
+              {children}
+            </a>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="min-w-0 border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
+              {children}
+            </blockquote>
+          ),
+          code: ({ children, className, ...codeProps }) => (
+            <code
+              {...codeProps}
+              className={[
+                className,
+                "max-w-full break-words [overflow-wrap:anywhere]",
+                "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
+              ].filter(Boolean).join(" ")}
+            >
+              {children}
+            </code>
+          ),
+          h1: ({ children }) => <h1 className="min-w-0 text-lg font-semibold text-foreground">{children}</h1>,
+          h2: ({ children }) => <h2 className="min-w-0 text-base font-semibold text-foreground">{children}</h2>,
+          h3: ({ children }) => <h3 className="min-w-0 text-sm font-semibold text-foreground">{children}</h3>,
+          li: ({ children }) => <li className="min-w-0 pl-1">{children}</li>,
+          ol: ({ children }) => <ol className="ml-5 grid min-w-0 list-decimal gap-2">{children}</ol>,
+          p: ({ children }) => (
+            <p className="min-w-0 text-sm leading-7 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
+              {children}
+            </p>
+          ),
+          pre: ({ children }) => (
+            <pre className="my-1 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
+              {children}
+            </pre>
+          ),
+          ul: ({ children }) => <ul className="ml-5 grid min-w-0 list-disc gap-2">{children}</ul>,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
   );
 }
 
@@ -930,7 +932,7 @@ function ChatsTranscript({
   return (
     <div
       ref={transcriptScrollRef}
-      className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto pr-1"
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1"
       onScroll={onScroll}
     >
       {(hasOlderMessages || isLoadingOlderMessages) ? (
@@ -971,7 +973,7 @@ function ChatsTranscript({
                   {assistantDisplayContents.map((content, contentIndex) => (
                     <div
                       key={`${message.id}-assistant-content-${contentIndex}`}
-                      className={content.type === "thinking" ? "opacity-80" : ""}
+                      className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
                     >
                       <AssistantTranscriptMessage text={content.text} />
                     </div>
