@@ -94,41 +94,16 @@ export function ApplicationSidebar() {
     sidebarState.setOpenMobile(false);
   }
 
-  const navigationItems: NavigationItem[] = [
+  const primaryNavigationItems: NavigationItem[] = [
     {
       icon: LayoutDashboardIcon,
       label: "Dashboard",
       to: "/",
     },
     {
-      icon: KeyRoundIcon,
-      label: "LLM Credentials",
-      to: "/model-provider-credentials",
-    },
-    {
-      icon: BotIcon,
-      label: "Agents",
-      to: "/agents",
-    },
-    {
-      icon: ServerIcon,
-      label: "Environments",
-      to: "/environments",
-    },
-    {
-      icon: LockKeyholeIcon,
-      label: "Secrets",
-      to: "/secrets",
-    },
-    {
       icon: MessageSquareIcon,
       label: "Chats",
       to: "/chats",
-    },
-    {
-      icon: FolderGit2Icon,
-      label: "Repositories",
-      to: "/repositories",
     },
     ...(featureFlags.isEnabled("tasks_management")
       ? [{
@@ -137,6 +112,34 @@ export function ApplicationSidebar() {
         to: "/tasks",
       }]
       : []),
+  ];
+
+  const resourceNavigationItems: NavigationItem[] = [
+    {
+      icon: BotIcon,
+      label: "Agents",
+      to: "/agents",
+    },
+    {
+      icon: KeyRoundIcon,
+      label: "Model Credentials",
+      to: "/model-provider-credentials",
+    },
+    {
+      icon: LockKeyholeIcon,
+      label: "Secrets",
+      to: "/secrets",
+    },
+    {
+      icon: ServerIcon,
+      label: "Environments",
+      to: "/environments",
+    },
+    {
+      icon: FolderGit2Icon,
+      label: "Repositories",
+      to: "/repositories",
+    },
   ];
 
   return (
@@ -165,7 +168,32 @@ export function ApplicationSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => {
+              {primaryNavigationItems.map((item) => {
+                const ItemIcon = item.icon;
+
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      isActive={isNavigationItemActive(pathname, item.to)}
+                      onClick={handleNavigationClick}
+                      render={<Link to={item.to} />}
+                      tooltip={item.label}
+                    >
+                      <ItemIcon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Resources</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {resourceNavigationItems.map((item) => {
                 const ItemIcon = item.icon;
 
                 return (
