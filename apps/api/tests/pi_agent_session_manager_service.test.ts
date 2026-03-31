@@ -152,12 +152,20 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
+          insert() {
+            return {
+              async values() {
+                return undefined;
+              },
+            };
+          },
           select() {
             return {
               from() {
                 return {
                   async where() {
                     return [{
+                      companyId: "company-1",
                       contextMessages: storedMessages,
                     }];
                   },
@@ -195,6 +203,26 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   await service.prompt({
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback({
+        insert() {
+          return {
+            async values() {
+              return undefined;
+            },
+          };
+        },
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [{
+                    companyId: "company-1",
+                  }];
+                },
+              };
+            },
+          };
+        },
         update() {
           return {
             set(value: Record<string, unknown>) {
@@ -337,9 +365,11 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
   assert.equal(piAgentMocks.abortMock.mock.calls.length, 1);
-  assert.equal(persistedContextUpdates.length, 2);
+  assert.equal(persistedContextUpdates.filter((value) => "context_messages" in value).length, 2);
   assert.deepEqual(
-    persistedContextUpdates.map((value) => value.context_messages),
+    persistedContextUpdates
+      .filter((value) => "context_messages" in value)
+      .map((value) => value.context_messages),
     [createdSession.agent.state.messages, createdSession.agent.state.messages],
   );
 });

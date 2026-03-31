@@ -126,6 +126,23 @@ class SessionMessagesQueryTestHarness {
               };
             }
 
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "turn-1",
+                        sessionId: "session-1",
+                        startedAt: new Date("2026-03-24T08:00:00.000Z"),
+                        endedAt: new Date("2026-03-24T08:02:00.000Z"),
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
         } as never;
@@ -191,6 +208,12 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
             id
             sessionId
             turnId
+            turn {
+              id
+              sessionId
+              startedAt
+              endedAt
+            }
             role
             status
             toolCallId
@@ -222,6 +245,12 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       id: "message-1",
       sessionId: "session-1",
       turnId: "turn-1",
+      turn: {
+        id: "turn-1",
+        sessionId: "session-1",
+        startedAt: "2026-03-24T08:00:00.000Z",
+        endedAt: "2026-03-24T08:02:00.000Z",
+      },
       role: "user",
       status: "completed",
       toolCallId: null,
@@ -247,6 +276,12 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
       id: "message-2",
       sessionId: "session-1",
       turnId: "turn-1",
+      turn: {
+        id: "turn-1",
+        sessionId: "session-1",
+        startedAt: "2026-03-24T08:00:00.000Z",
+        endedAt: "2026-03-24T08:02:00.000Z",
+      },
       role: "assistant",
       status: "completed",
       toolCallId: null,

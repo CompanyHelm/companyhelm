@@ -297,6 +297,7 @@ type SessionMessage {
   id: ID!
   sessionId: ID!
   turnId: ID!
+  turn: SessionTurn!
   role: String!
   status: String!
   toolCallId: String
@@ -306,6 +307,13 @@ type SessionMessage {
   isError: Boolean!
   createdAt: String!
   updatedAt: String!
+}
+
+type SessionTurn {
+  id: ID!
+  sessionId: ID!
+  startedAt: String!
+  endedAt: String
 }
 
 type SessionQueuedMessage {

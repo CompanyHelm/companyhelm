@@ -156,6 +156,25 @@ export const agentSessions = pgTable("agent_sessions", {
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
 }));
 
+export const sessionTurns = pgTable("session_turns", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+},
+(table) => ({
+  companyIdIndex: index("session_turns_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("session_turns_session_id_idx").on(table.sessionId),
+  sessionStartedAtIndex: index("session_turns_session_started_at_idx").on(table.sessionId, table.startedAt),
+}));
+
 export const userSessionReads = pgTable("user_session_reads", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
@@ -205,7 +224,9 @@ export const sessionMessages = pgTable("session_messages", {
   sessionId: uuid("session_id")
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
-  turnId: uuid("turn_id").notNull(),
+  turnId: uuid("turn_id")
+    .references(() => sessionTurns.id, { onDelete: "cascade" })
+    .notNull(),
   role: sessionMessageRoleEnum("role").notNull(),
   status: sessionMessageStatusEnum("status").notNull(),
   toolCallId: text("tool_call_id"),

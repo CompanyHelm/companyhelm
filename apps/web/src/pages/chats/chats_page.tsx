@@ -91,6 +91,12 @@ const chatsPageTranscriptQueryNode = graphql`
           id
           sessionId
           turnId
+          turn {
+            id
+            sessionId
+            startedAt
+            endedAt
+          }
           role
           status
           toolCallId
@@ -304,6 +310,12 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
       id
       sessionId
       turnId
+      turn {
+        id
+        sessionId
+        startedAt
+        endedAt
+      }
       role
       status
       toolCallId
@@ -762,7 +774,7 @@ function buildTranscriptTurns(
   const groupedTurns: Array<{ messages: SessionMessageRecord[]; turnId: string }> = [];
 
   for (const message of messages) {
-    const normalizedTurnId = message.turnId.trim().length > 0 ? message.turnId : message.id;
+    const normalizedTurnId = resolveTurnIdentifier(message);
     const lastGroupedTurn = groupedTurns.at(-1);
     if (!lastGroupedTurn || lastGroupedTurn.turnId !== normalizedTurnId) {
       groupedTurns.push({
@@ -807,11 +819,10 @@ function buildTranscriptTurns(
       inlineMessageIds.add(renderableMessages.at(-1)?.id ?? renderableMessages[0]!.id);
     }
 
-    const startedAt = Math.min(...turnMessages.map((message) => new Date(message.createdAt).getTime()));
-    const endedAt = Math.max(...turnMessages.map((message) => new Date(message.updatedAt).getTime()));
+    const turnWindow = resolveTurnWindow(turnMessages);
 
     return {
-      durationLabel: formatTurnDuration(endedAt - startedAt),
+      durationLabel: formatTurnDuration(turnWindow.endedAt - turnWindow.startedAt),
       hiddenMessages: renderableMessages.filter((message) => !inlineMessageIds.has(message.id)),
       inlineMessages: renderableMessages.filter((message) => inlineMessageIds.has(message.id)),
       isRunning: false,
@@ -825,6 +836,32 @@ function toTranscriptMessagesFromConnection(connection: SessionTranscriptConnect
     .map((edge) => edge?.node)
     .filter((message): message is SessionMessageRecord => Boolean(message))
     .sort(compareSessionMessagesByTimestamp);
+}
+
+function resolveTurnIdentifier(message: Pick<SessionMessageRecord, "turn" | "turnId" | "id">): string {
+  if (message.turn && typeof message.turn.id === "string" && message.turn.id.trim().length > 0) {
+    return message.turn.id;
+  }
+  if (message.turnId.trim().length > 0) {
+    return message.turnId;
+  }
+
+  return message.id;
+}
+
+function resolveTurnWindow(
+  messages: ReadonlyArray<Pick<SessionMessageRecord, "createdAt" | "turn" | "updatedAt">>,
+): { endedAt: number; startedAt: number } {
+  const firstTurn = messages.find((message) => message.turn)?.turn ?? null;
+  const startedAt = firstTurn ? new Date(firstTurn.startedAt).getTime() : Math.min(...messages.map((message) => new Date(message.createdAt).getTime()));
+  const endedAt = firstTurn?.endedAt
+    ? new Date(firstTurn.endedAt).getTime()
+    : Math.max(...messages.map((message) => new Date(message.updatedAt).getTime()));
+
+  return {
+    endedAt,
+    startedAt,
+  };
 }
 
 function mergeTranscriptMessages(

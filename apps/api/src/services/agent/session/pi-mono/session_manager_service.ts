@@ -223,7 +223,12 @@ export class PiMonoSessionManagerService {
     }
 
     const session = runtime.session;
-    await session.prompt(message, images && images.length > 0 ? { images } : undefined);
+    await runtime.eventHandler.startPromptTurn(new Date());
+    try {
+      await session.prompt(message, images && images.length > 0 ? { images } : undefined);
+    } finally {
+      await runtime.eventHandler.finishPromptTurn(new Date());
+    }
     await this.persistContextMessages(transactionProvider, sessionId, session.agent.state.messages);
   }
 

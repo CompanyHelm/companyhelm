@@ -5,6 +5,7 @@ import {
   messageContents,
   modelProviderCredentialModels,
   sessionMessages,
+  sessionTurns,
   userSessionReads,
 } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
@@ -37,6 +38,13 @@ type SessionMessageRow = {
   isError: boolean;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type SessionTurnRow = {
+  id: string;
+  sessionId: string;
+  startedAt: Date;
+  endedAt: Date | null;
 };
 
 type MessageContentRow = {
@@ -91,6 +99,7 @@ export type SessionMessageGraphqlRecord = {
   id: string;
   sessionId: string;
   turnId: string;
+  turn: SessionTurnGraphqlRecord;
   role: string;
   status: string;
   toolCallId: string | null;
@@ -100,6 +109,13 @@ export type SessionMessageGraphqlRecord = {
   isError: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type SessionTurnGraphqlRecord = {
+  id: string;
+  sessionId: string;
+  startedAt: string;
+  endedAt: string | null;
 };
 
 export type SessionMessageContentGraphqlRecord = {
@@ -334,9 +350,14 @@ export class SessionReadService {
         companyId,
         pageMessages.map((message) => message.id),
       );
+      const turnsById = await this.loadTurnsById(
+        selectableDatabase,
+        companyId,
+        pageMessages.map((message) => message.turnId),
+      );
 
       const edges = pageMessages.map((message) => {
-        const node = this.serializeMessage(message, contentsByMessageId);
+        const node = this.serializeMessage(message, contentsByMessageId, turnsById);
         return {
           cursor: encodeSessionMessageCursor(node.createdAt, node.id),
           node,
@@ -385,7 +406,8 @@ export class SessionReadService {
       }
 
       const contentsByMessageId = await this.loadContentsByMessageId(selectableDatabase, companyId, [persistedMessage.id]);
-      return this.serializeMessage(persistedMessage, contentsByMessageId);
+      const turnsById = await this.loadTurnsById(selectableDatabase, companyId, [persistedMessage.turnId]);
+      return this.serializeMessage(persistedMessage, contentsByMessageId, turnsById);
     });
   }
 
@@ -426,11 +448,49 @@ export class SessionReadService {
         companyId,
         persistedMessages.map((message) => message.id),
       );
+      const turnsById = await this.loadTurnsById(
+        selectableDatabase,
+        companyId,
+        persistedMessages.map((message) => message.turnId),
+      );
 
       return [...persistedMessages]
         .sort((leftMessage, rightMessage) => leftMessage.createdAt.getTime() - rightMessage.createdAt.getTime())
-        .map((message) => this.serializeMessage(message, contentsByMessageId));
+        .map((message) => this.serializeMessage(message, contentsByMessageId, turnsById));
     });
+  }
+
+  private async loadTurnsById(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    turnIds: ReadonlyArray<string>,
+  ): Promise<Map<string, SessionTurnGraphqlRecord>> {
+    const uniqueTurnIds = [...new Set(turnIds)];
+    if (uniqueTurnIds.length === 0) {
+      return new Map();
+    }
+
+    const turnRows = await selectableDatabase
+      .select({
+        endedAt: sessionTurns.endedAt,
+        id: sessionTurns.id,
+        sessionId: sessionTurns.sessionId,
+        startedAt: sessionTurns.startedAt,
+      })
+      .from(sessionTurns)
+      .where(and(
+        eq(sessionTurns.companyId, companyId),
+        inArray(sessionTurns.id, uniqueTurnIds),
+      )) as SessionTurnRow[];
+
+    return new Map(
+      turnRows.map((turnRow) => [turnRow.id, {
+        endedAt: turnRow.endedAt?.toISOString() ?? null,
+        id: turnRow.id,
+        sessionId: turnRow.sessionId,
+        startedAt: turnRow.startedAt.toISOString(),
+      }]),
+    );
   }
 
   private async loadContentsByMessageId(
@@ -565,6 +625,7 @@ export class SessionReadService {
   private serializeMessage(
     messageRow: SessionMessageRow,
     contentsByMessageId: Map<string, SessionMessageContentGraphqlRecord[]>,
+    turnsById: Map<string, SessionTurnGraphqlRecord>,
   ): SessionMessageGraphqlRecord {
     const contents = contentsByMessageId.get(messageRow.id) ?? [];
     const text = contents
@@ -572,10 +633,16 @@ export class SessionReadService {
       .map((content) => content.text as string)
       .join("\n");
 
+    const turn = turnsById.get(messageRow.turnId);
+    if (!turn) {
+      throw new Error("Session turn not found.");
+    }
+
     return {
       contents,
       id: messageRow.id,
       sessionId: messageRow.sessionId,
+      turn,
       turnId: messageRow.turnId,
       role: messageRow.role,
       status: messageRow.status,

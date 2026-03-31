@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
-import { agentSessions, messageContents, sessionMessages } from "../../../../db/schema.ts";
+import { agentSessions, messageContents, sessionMessages, sessionTurns } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
@@ -163,6 +163,45 @@ export class PiMonoSessionEventHandler {
     this.queuedUserMessageTimestamps.push(timestamp);
   }
 
+  async startPromptTurn(startedAt: Date = new Date()): Promise<string> {
+    if (this.currentTurnId) {
+      return this.currentTurnId;
+    }
+
+    const companyId = await this.resolveCompanyId();
+    const turnId = randomUUID();
+    await this.transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      await insertableDatabase.insert(sessionTurns).values({
+        companyId,
+        endedAt: null,
+        id: turnId,
+        sessionId: this.sessionId,
+        startedAt,
+      });
+    });
+    this.currentTurnId = turnId;
+    return turnId;
+  }
+
+  async finishPromptTurn(endedAt: Date = new Date()): Promise<void> {
+    const currentTurnId = this.currentTurnId;
+    if (!currentTurnId) {
+      return;
+    }
+
+    await this.transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(sessionTurns)
+        .set({
+          endedAt,
+        })
+        .where(eq(sessionTurns.id, currentTurnId));
+    });
+    this.currentTurnId = null;
+  }
+
   private async handleEvent(event: unknown): Promise<void> {
     const sessionEvent = event as SessionEvent;
     switch (sessionEvent.type) {
@@ -173,11 +212,9 @@ export class PiMonoSessionEventHandler {
         await this.handleAgentEnd(sessionEvent);
         return;
       case "turn_start":
-        this.currentTurnId = randomUUID();
         this.logInfo("pi mono turn started", sessionEvent);
         return;
       case "turn_end":
-        this.currentTurnId = null;
         this.logInfo("pi mono turn ended", sessionEvent);
         return;
       case "message_start":
@@ -220,13 +257,11 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleAgentStart(sessionEvent: SessionEvent): Promise<void> {
-    this.currentTurnId = null;
     this.logInfo("pi mono agent started", sessionEvent);
     await this.updateSessionStatus("running");
   }
 
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
-    this.currentTurnId = null;
     this.logInfo("pi mono agent ended", sessionEvent);
     const companyId = await this.resolveCompanyId();
     await this.userSessionReadService.clearSessionReads(this.transactionProvider, {
@@ -324,12 +359,14 @@ export class PiMonoSessionEventHandler {
       timestampOverride ?? this.resolveMessageTimestamp(eventMessage.timestamp),
     );
     const companyId = await this.resolveCompanyId();
+    const turnId = await this.resolveTurnId(companyId, timestamp);
     const messageRecord = this.buildSessionMessageRecord(
       companyId,
       messageId,
       status,
       eventMessage,
       timestamp,
+      turnId,
     );
 
     await this.transactionProvider.transaction(async (tx) => {
@@ -439,6 +476,7 @@ export class PiMonoSessionEventHandler {
     status: "running" | "completed",
     message: SessionMessage,
     timestamp: Date,
+    turnId: string,
   ): Record<string, unknown> {
     return {
       companyId,
@@ -450,18 +488,18 @@ export class PiMonoSessionEventHandler {
       status,
       toolCallId: this.resolveMessageToolCallId(message),
       toolName: this.resolveMessageToolName(message),
-      turnId: this.resolveTurnId(),
+      turnId,
       updatedAt: timestamp,
     };
   }
 
-  private resolveTurnId(): string {
+  private async resolveTurnId(companyId: string, timestamp: Date): Promise<string> {
     if (this.currentTurnId) {
       return this.currentTurnId;
     }
 
-    this.currentTurnId = randomUUID();
-    return this.currentTurnId;
+    await this.startPromptTurn(timestamp);
+    return this.currentTurnId as string;
   }
 
   private buildMessageContentRecords(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { agentSessions, messageContents, sessionMessages, userSessionReads } from "../src/db/schema.ts";
+import { agentSessions, messageContents, sessionMessages, sessionTurns, userSessionReads } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
 type SessionMessageRecord = Record<string, unknown> & {
@@ -16,10 +16,16 @@ type MessageContentRecord = Record<string, unknown> & {
   type: string;
 };
 
+type SessionTurnRecord = Record<string, unknown> & {
+  id: string;
+  sessionId: string;
+};
+
 class PiMonoSessionEventHandlerTestHarness {
   static create() {
     const sessionStatusUpdates: Array<Record<string, unknown>> = [];
     const sessionMessageRecords = new Map<string, SessionMessageRecord>();
+    const sessionTurnRecords = new Map<string, SessionTurnRecord>();
     const messageContentRecordsByMessageId = new Map<string, MessageContentRecord[]>();
     const publishCalls: Array<{ channel: string; message: string }> = [];
     const clearedSessionReadSessionIds: string[] = [];
@@ -70,6 +76,7 @@ class PiMonoSessionEventHandlerTestHarness {
       },
       sessionMessageRecords,
       sessionStatusUpdates,
+      sessionTurnRecords,
       sessionState,
       transactionProvider: {
         async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
@@ -80,6 +87,12 @@ class PiMonoSessionEventHandlerTestHarness {
                   if (table === sessionMessages) {
                     const sessionMessageRecord = value as SessionMessageRecord;
                     sessionMessageRecords.set(sessionMessageRecord.id, sessionMessageRecord);
+                    return undefined;
+                  }
+
+                  if (table === sessionTurns) {
+                    const sessionTurnRecord = value as SessionTurnRecord;
+                    sessionTurnRecords.set(sessionTurnRecord.id, sessionTurnRecord);
                     return undefined;
                   }
 
@@ -177,6 +190,31 @@ class PiMonoSessionEventHandlerTestHarness {
 
                         sessionMessageRecords.set(messageId, {
                           ...existingMessageRecord,
+                          ...value,
+                        });
+                      },
+                    };
+                  },
+                };
+              }
+
+              if (table === sessionTurns) {
+                return {
+                  set(value: Record<string, unknown>) {
+                    return {
+                      async where() {
+                        const [turnId] = Array.from(sessionTurnRecords.keys()).slice(-1);
+                        if (!turnId) {
+                          return undefined;
+                        }
+
+                        const existingTurnRecord = sessionTurnRecords.get(turnId);
+                        if (!existingTurnRecord) {
+                          return undefined;
+                        }
+
+                        sessionTurnRecords.set(turnId, {
+                          ...existingTurnRecord,
                           ...value,
                         });
                       },
@@ -435,6 +473,7 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
 
   assert.equal(harness.errorLogs.length, 0);
   assert.equal(harness.sessionMessageRecords.size, 1);
+  assert.equal(harness.sessionTurnRecords.size, 1);
   assert.equal(harness.publishCalls.length, 4);
   assert.match(harness.publishCalls[0]?.channel ?? "", /^company:company-1:session:session-1:message:[^:]+:update$/);
   assert.equal(harness.publishCalls[0]?.message, "");
@@ -446,6 +485,10 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   assert.equal(harness.publishCalls[3]?.message, "");
 
   const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  const [turnRecord] = Array.from(harness.sessionTurnRecords.values());
+  assert.equal(turnRecord?.sessionId, "session-1");
+  assert.ok(turnRecord?.startedAt instanceof Date);
+  assert.equal(turnRecord?.endedAt, null);
   assert.equal(messageRecord?.companyId, "company-1");
   assert.equal(messageRecord?.role, "assistant");
   assert.equal(messageRecord?.sessionId, "session-1");
@@ -499,9 +542,7 @@ test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rota
   );
 
   try {
-    await handler.handle({
-      type: "turn_start",
-    });
+    await handler.startPromptTurn(new Date("2026-03-31T18:00:00.000Z"));
     await handler.handle({
       message: {
         content: "first question",
@@ -510,13 +551,9 @@ test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rota
       },
       type: "message_end",
     });
-    await handler.handle({
-      type: "turn_end",
-    });
+    await handler.finishPromptTurn(new Date("2026-03-31T18:00:01.000Z"));
 
-    await handler.handle({
-      type: "turn_start",
-    });
+    await handler.startPromptTurn(new Date("2026-03-31T18:00:02.000Z"));
     await handler.handle({
       message: {
         content: "second question",
@@ -531,10 +568,15 @@ test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rota
 
   const persistedMessages = [...harness.sessionMessageRecords.values()]
     .sort((leftMessage, rightMessage) => String(leftMessage.id).localeCompare(String(rightMessage.id)));
+  const persistedTurns = [...harness.sessionTurnRecords.values()]
+    .sort((leftTurn, rightTurn) => String(leftTurn.id).localeCompare(String(rightTurn.id)));
   assert.equal(persistedMessages.length, 2);
+  assert.equal(persistedTurns.length, 2);
   assert.equal(typeof persistedMessages[0]?.turnId, "string");
   assert.equal(typeof persistedMessages[1]?.turnId, "string");
   assert.notEqual(persistedMessages[0]?.turnId, persistedMessages[1]?.turnId);
+  assert.equal(persistedTurns[0]?.endedAt instanceof Date, true);
+  assert.equal(persistedTurns[1]?.endedAt, null);
 });
 
 test("PiMonoSessionEventHandler captures context snapshots when auto compaction starts and ends", async () => {
