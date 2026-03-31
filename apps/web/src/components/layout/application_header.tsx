@@ -28,6 +28,8 @@ export function ApplicationHeader() {
       ? "Chats"
       : pathname.startsWith("/repositories")
         ? "Repositories"
+        : pathname.startsWith("/knowledge-base")
+          ? "Knowledge Base"
         : pathname.startsWith("/tasks")
           ? "Tasks"
           : pathname.startsWith("/flags")

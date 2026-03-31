@@ -4,6 +4,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import {
   BotIcon,
+  BookOpenIcon,
   WrenchIcon,
   FolderGit2Icon,
   InboxIcon,
@@ -180,6 +181,11 @@ export function ApplicationSidebar() {
       icon: FolderGit2Icon,
       label: "Repositories",
       to: "/repositories",
+    },
+    {
+      icon: BookOpenIcon,
+      label: "Knowledge Base",
+      to: "/knowledge-base",
     },
   ];
 

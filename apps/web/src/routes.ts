@@ -14,6 +14,7 @@ import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
 import { InboxPage } from "./pages/inbox/inbox_page";
+import { KnowledgeBasePage } from "./pages/knowledge-base/knowledge_base_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
@@ -33,6 +34,10 @@ type TasksRouteSearch = {
   category?: string;
 };
 
+type KnowledgeBaseRouteSearch = {
+  tab?: string;
+};
+
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -48,6 +53,16 @@ function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSe
   return {
     category: typeof search.category === "string" && search.category.trim().length > 0
       ? search.category.trim()
+      : undefined,
+  };
+}
+
+function validateKnowledgeBaseRouteSearch(
+  search: Record<string, unknown>,
+): KnowledgeBaseRouteSearch {
+  return {
+    tab: typeof search.tab === "string" && search.tab.trim().length > 0
+      ? search.tab.trim()
       : undefined,
   };
 }
@@ -143,6 +158,13 @@ const repositoriesRoute = createRoute({
   component: RepositoriesPage,
 });
 
+const knowledgeBaseRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/knowledge-base",
+  validateSearch: validateKnowledgeBaseRouteSearch,
+  component: KnowledgeBasePage,
+});
+
 const tasksRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/tasks",
@@ -193,6 +215,7 @@ const routeTree = rootRoute.addChildren([
       secretsRoute,
       githubInstallRoute,
       repositoriesRoute,
+      knowledgeBaseRoute,
       tasksRoute,
       settingsRoute,
       agentDetailRoute,
