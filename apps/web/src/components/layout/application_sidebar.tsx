@@ -232,19 +232,21 @@ export function ApplicationSidebar() {
             </span>
           </Button>
 
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={isNavigationItemActive(pathname, "/settings")}
-                onClick={handleNavigationClick}
-                render={<Link to="/settings" />}
-                tooltip="Settings"
-              >
-                <Settings2Icon />
-                <span>Settings</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          {featureFlags.isEnabled("tasks_management") ? (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isNavigationItemActive(pathname, "/settings")}
+                  onClick={handleNavigationClick}
+                  render={<Link to="/settings" />}
+                  tooltip="Settings"
+                >
+                  <Settings2Icon />
+                  <span>Settings</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          ) : null}
 
           <div className="flex h-8 items-center gap-3 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <UserButton />
