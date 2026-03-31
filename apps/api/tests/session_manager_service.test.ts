@@ -964,6 +964,73 @@ test("SessionManagerService steerQueuedMessage marks the queued row and publishe
   }]);
 });
 
+test("SessionManagerService deleteQueuedMessage publishes the queue update", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while deleting an existing queued row.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async deletePendingUserMessage() {
+        return {
+          createdAt: new Date("2026-03-31T17:00:00.000Z"),
+          id: "queued-1",
+          images: [],
+          sessionId: "session-1",
+          shouldSteer: false,
+          status: "pending",
+          text: "Drop the stale queued prompt before it reaches the worker.",
+          updatedAt: new Date("2026-03-31T17:01:00.000Z"),
+        };
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  const queuedMessage = await service.deleteQueuedMessage(
+    SessionManagerServiceTestHarness.createTransactionProviderMock({}) as never,
+    "company-1",
+    "queued-1",
+  );
+
+  assert.equal(queuedMessage.shouldSteer, false);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+  ]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "deleted queued session message",
+    payload: {
+      companyId: "company-1",
+      queuedMessageId: "queued-1",
+      sessionId: "session-1",
+    },
+  }]);
+});
+
 test("SessionManagerService prompt rejects archived sessions without queueing work", async () => {
   const queuedMessages: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];

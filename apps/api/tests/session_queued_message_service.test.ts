@@ -223,3 +223,48 @@ test("SessionQueuedMessageService marks one pending queued row as steer", async 
   assert.equal(harness.queuedMessages[0]?.shouldSteer, true);
   assert.ok(harness.queuedMessages[0]?.updatedAt instanceof Date);
 });
+
+test("SessionQueuedMessageService deletes one pending non-steer queued row", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+
+  const queuedMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Use the lighter reproduction case while the worker is still queued.",
+  });
+
+  const deletedQueuedMessage = await service.deletePendingUserMessage(
+    harness.transactionProvider as never,
+    "company-1",
+    queuedMessage.id,
+  );
+
+  assert.equal(deletedQueuedMessage.id, queuedMessage.id);
+  assert.equal(deletedQueuedMessage.shouldSteer, false);
+  assert.equal(harness.queuedMessages.length, 0);
+});
+
+test("SessionQueuedMessageService rejects deleting steer queued rows", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+
+  const queuedMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: true,
+    text: "Escalate this to a steer message instead of deleting it.",
+  });
+
+  await assert.rejects(
+    () => service.deletePendingUserMessage(
+      harness.transactionProvider as never,
+      "company-1",
+      queuedMessage.id,
+    ),
+    /Steer queued messages cannot be deleted\./u,
+  );
+
+  assert.equal(harness.queuedMessages.length, 1);
+});

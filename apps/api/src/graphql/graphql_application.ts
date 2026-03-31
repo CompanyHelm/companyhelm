@@ -28,6 +28,7 @@ import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_comp
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
@@ -116,6 +117,7 @@ export class GraphqlApplication {
   private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
@@ -235,6 +237,8 @@ export class GraphqlApplication {
       new AddGithubInstallationMutation(new GithubClient(config)),
     @inject(DeleteGithubInstallationMutation)
     deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
+    @inject(DeleteSessionQueuedMessageMutation)
+    deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation = new DeleteSessionQueuedMessageMutation(),
     @inject(RefreshGithubInstallationRepositoriesMutation)
     refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
@@ -376,6 +380,7 @@ export class GraphqlApplication {
     this.stopEnvironmentMutation = stopEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.deleteSessionQueuedMessageMutation = deleteSessionQueuedMessageMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
     this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
       ?? new DetachSecretFromAgentMutation(defaultSecretService);
@@ -518,6 +523,7 @@ export class GraphqlApplication {
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,
           DeleteSecret: this.deleteSecretMutation.execute,
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,

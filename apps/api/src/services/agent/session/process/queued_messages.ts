@@ -215,6 +215,82 @@ export class SessionQueuedMessageService {
     return queuedMessage;
   }
 
+  async deletePendingUserMessage(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    queuedMessageId: string,
+  ): Promise<QueuedSessionMessageRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      const [queuedMessage] = await selectableDatabase
+        .select({
+          companyId: sessionQueuedMessages.companyId,
+          createdAt: sessionQueuedMessages.createdAt,
+          id: sessionQueuedMessages.id,
+          sessionId: sessionQueuedMessages.sessionId,
+          shouldSteer: sessionQueuedMessages.shouldSteer,
+          status: sessionQueuedMessages.status,
+          text: sessionQueuedMessages.text,
+          updatedAt: sessionQueuedMessages.updatedAt,
+        })
+        .from(sessionQueuedMessages)
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          eq(sessionQueuedMessages.id, queuedMessageId),
+        )) as QueuedMessageRow[];
+      if (!queuedMessage) {
+        throw new Error("Queued message not found.");
+      }
+      if (queuedMessage.status !== "pending") {
+        throw new Error("Only pending queued messages can be deleted.");
+      }
+      if (queuedMessage.shouldSteer) {
+        throw new Error("Steer queued messages cannot be deleted.");
+      }
+
+      const queuedMessageImages = await selectableDatabase
+        .select({
+          base64EncodedImage: sessionQueuedMessageImages.base64EncodedImage,
+          companyId: sessionQueuedMessageImages.companyId,
+          createdAt: sessionQueuedMessageImages.createdAt,
+          id: sessionQueuedMessageImages.id,
+          mimeType: sessionQueuedMessageImages.mimeType,
+          sessionQueuedMessageId: sessionQueuedMessageImages.sessionQueuedMessageId,
+          updatedAt: sessionQueuedMessageImages.updatedAt,
+        })
+        .from(sessionQueuedMessageImages)
+        .where(and(
+          eq(sessionQueuedMessageImages.companyId, companyId),
+          eq(sessionQueuedMessageImages.sessionQueuedMessageId, queuedMessageId),
+        )) as QueuedMessageImageRow[];
+
+      await deletableDatabase
+        .delete(sessionQueuedMessages)
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          eq(sessionQueuedMessages.id, queuedMessageId),
+        ));
+
+      return {
+        createdAt: queuedMessage.createdAt,
+        id: queuedMessage.id,
+        images: queuedMessageImages
+          .filter((queuedMessageImage) => queuedMessageImage.sessionQueuedMessageId === queuedMessageId)
+          .map((queuedMessageImage) => ({
+            base64EncodedImage: queuedMessageImage.base64EncodedImage,
+            id: queuedMessageImage.id,
+            mimeType: queuedMessageImage.mimeType,
+          })),
+        sessionId: queuedMessage.sessionId,
+        shouldSteer: queuedMessage.shouldSteer,
+        status: queuedMessage.status,
+        text: queuedMessage.text,
+        updatedAt: queuedMessage.updatedAt,
+      };
+    });
+  }
+
   async markPending(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

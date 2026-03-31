@@ -468,6 +468,28 @@ export class SessionManagerService {
     return queuedMessage;
   }
 
+  async deleteQueuedMessage(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    queuedMessageId: string,
+  ): Promise<QueuedSessionMessageRecord> {
+    const queuedMessage = await this.sessionQueuedMessageService.deletePendingUserMessage(
+      transactionProvider,
+      companyId,
+      queuedMessageId,
+    );
+
+    await this.publishQueuedMessagesUpdate(companyId, queuedMessage.sessionId);
+
+    this.logger.info({
+      companyId,
+      queuedMessageId,
+      sessionId: queuedMessage.sessionId,
+    }, "deleted queued session message");
+
+    return queuedMessage;
+  }
+
   private async resolveDefaultModelRecord(
     selectableDatabase: SelectableDatabase,
     companyId: string,

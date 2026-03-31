@@ -9,6 +9,7 @@ import {
   PlusIcon,
   SendHorizonalIcon,
   Settings2Icon,
+  Trash2Icon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
@@ -26,9 +27,12 @@ import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageA
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageMarkSessionReadMutation } from "./__generated__/chatsPageMarkSessionReadMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
+import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
+import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDeleteSessionQueuedMessageMutation.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
+import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
 import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 
@@ -115,6 +119,20 @@ const chatsPageTranscriptQueryNode = graphql`
   }
 `;
 
+const chatsPageQueuedMessagesQueryNode = graphql`
+  query chatsPageQueuedMessagesQuery($sessionId: ID!) {
+    SessionQueuedMessages(sessionId: $sessionId) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const chatsPageSessionEnvironmentQueryNode = graphql`
   query chatsPageSessionEnvironmentQuery($sessionId: ID!) {
     SessionEnvironment(sessionId: $sessionId) {
@@ -135,6 +153,20 @@ const chatsPageSessionEnvironmentQueryNode = graphql`
         name
         provider
       }
+    }
+  }
+`;
+
+const chatsPageDeleteSessionQueuedMessageMutationNode = graphql`
+  mutation chatsPageDeleteSessionQueuedMessageMutation($input: DeleteSessionQueuedMessageInput!) {
+    DeleteSessionQueuedMessage(input: $input) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -252,6 +284,20 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
   }
 `;
 
+const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
+  subscription chatsPageSessionQueuedMessagesUpdatedSubscription($sessionId: ID!) {
+    SessionQueuedMessagesUpdated(sessionId: $sessionId) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
   subscription chatsPageSessionMessageUpdatedSubscription($sessionId: ID!) {
     SessionMessageUpdated(sessionId: $sessionId) {
@@ -282,6 +328,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 
 type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
+type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
 type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
@@ -659,6 +706,16 @@ function compareSessionMessagesByTimestamp(leftMessage: SessionMessageRecord, ri
   return leftMessage.id.localeCompare(rightMessage.id);
 }
 
+function compareQueuedMessagesByTimestamp(leftMessage: QueuedMessageRecord, rightMessage: QueuedMessageRecord): number {
+  const leftTimestamp = new Date(leftMessage.createdAt).getTime();
+  const rightTimestamp = new Date(rightMessage.createdAt).getTime();
+  if (leftTimestamp !== rightTimestamp) {
+    return leftTimestamp - rightTimestamp;
+  }
+
+  return leftMessage.id.localeCompare(rightMessage.id);
+}
+
 function hasVisibleTranscriptMessage(
   message: SessionMessageRecord,
   options: { includeThinking?: boolean } = {},
@@ -1002,6 +1059,72 @@ function ChatsThinkingIndicator({ visible }: { visible: boolean }) {
         ) : null}
       </div>
     </>
+  );
+}
+
+function ChatsQueuedMessagesComposerList({
+  deletingQueuedMessageId,
+  isLoading,
+  onDelete,
+  queuedMessages,
+}: {
+  deletingQueuedMessageId: string | null;
+  isLoading: boolean;
+  onDelete: (queuedMessageId: string) => void;
+  queuedMessages: ReadonlyArray<QueuedMessageRecord>;
+}) {
+  if (!isLoading && queuedMessages.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="border-b border-border/60 px-2.5 pt-2.5 pb-2">
+      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Pending queue
+        </p>
+        {isLoading ? <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" /> : null}
+      </div>
+      <div className="grid gap-2">
+        {queuedMessages.map((queuedMessage) => {
+          const canDelete = !queuedMessage.shouldSteer && queuedMessage.status.trim().toLowerCase() === "pending";
+          const isDeleting = deletingQueuedMessageId === queuedMessage.id;
+
+          return (
+            <div
+              className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/70 px-3 py-2.5"
+              key={queuedMessage.id}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {queuedMessage.shouldSteer ? "Steer" : "Queued"}
+                  </span>
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    {formatTimestamp(queuedMessage.createdAt)}
+                  </span>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground [overflow-wrap:anywhere]">
+                  {queuedMessage.text}
+                </p>
+              </div>
+              {canDelete ? (
+                <button
+                  aria-label="Delete queued message"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isDeleting}
+                  onClick={() => onDelete(queuedMessage.id)}
+                  title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
+                  type="button"
+                >
+                  {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1393,11 +1516,16 @@ function ChatsPageContent() {
   const activeTranscriptSessionIdRef = useRef<string | null>(null);
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
+  const [isLoadingQueuedMessages, setIsLoadingQueuedMessages] = useState(false);
+  const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
   const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
   const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
   const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
   const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
   const [isLoadingOlderTranscript, setIsLoadingOlderTranscript] = useState(false);
+  const queuedMessagesRequestIdRef = useRef(0);
+  const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
   const data = useLazyLoadQuery<chatsPageQuery>(
     chatsPageQueryNode,
     {},
@@ -1413,6 +1541,9 @@ function ChatsPageContent() {
   );
   const [commitPromptSession, isPromptSessionInFlight] = useMutation<chatsPagePromptSessionMutation>(
     chatsPagePromptSessionMutationNode,
+  );
+  const [commitDeleteQueuedMessage] = useMutation<chatsPageDeleteSessionQueuedMessageMutation>(
+    chatsPageDeleteSessionQueuedMessageMutationNode,
   );
   const [commitMarkSessionRead] = useMutation<chatsPageMarkSessionReadMutation>(
     chatsPageMarkSessionReadMutationNode,
@@ -1565,6 +1696,44 @@ function ChatsPageContent() {
       setSessionEnvironmentErrorMessage(error instanceof Error ? error.message : "Failed to load environment.");
     } finally {
       setIsLoadingSessionEnvironment(false);
+    }
+  }, [environment]);
+
+  const loadQueuedMessages = useCallback(async (sessionId: string) => {
+    const requestId = queuedMessagesRequestIdRef.current + 1;
+    queuedMessagesRequestIdRef.current = requestId;
+    activeQueuedMessagesSessionIdRef.current = sessionId;
+    setIsLoadingQueuedMessages(true);
+
+    try {
+      const response = await fetchQuery<chatsPageQueuedMessagesQuery>(
+        environment,
+        chatsPageQueuedMessagesQueryNode,
+        {
+          sessionId,
+        },
+        {
+          fetchPolicy: "network-only",
+        },
+      ).toPromise();
+
+      if (queuedMessagesRequestIdRef.current !== requestId || activeQueuedMessagesSessionIdRef.current !== sessionId) {
+        return;
+      }
+
+      const nextQueuedMessages = [...(response?.SessionQueuedMessages ?? [])].sort(compareQueuedMessagesByTimestamp);
+      setQueuedMessages(nextQueuedMessages);
+    } catch (error) {
+      if (queuedMessagesRequestIdRef.current !== requestId || activeQueuedMessagesSessionIdRef.current !== sessionId) {
+        return;
+      }
+
+      setQueuedMessages([]);
+      setErrorMessage((currentMessage) => currentMessage ?? (error instanceof Error ? error.message : "Failed to load queued messages."));
+    } finally {
+      if (queuedMessagesRequestIdRef.current === requestId && activeQueuedMessagesSessionIdRef.current === sessionId) {
+        setIsLoadingQueuedMessages(false);
+      }
     }
   }, [environment]);
 
@@ -1751,6 +1920,19 @@ function ChatsPageContent() {
       sessionId: selectedSession.id,
     });
   }, [loadTranscriptPage, selectedSession?.id]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      queuedMessagesRequestIdRef.current += 1;
+      activeQueuedMessagesSessionIdRef.current = null;
+      setQueuedMessages([]);
+      setIsLoadingQueuedMessages(false);
+      setDeletingQueuedMessageId(null);
+      return;
+    }
+
+    void loadQueuedMessages(selectedSession.id);
+  }, [loadQueuedMessages, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedAgent) {
@@ -1994,6 +2176,34 @@ function ChatsPageContent() {
     };
   }, [environment, selectedSession?.id, updateSessionTitleOverride]);
 
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+
+    const subscriptionVariables = { sessionId: selectedSession.id };
+    const disposable = requestSubscription<chatsPageSessionQueuedMessagesUpdatedSubscription>(environment, {
+      subscription: chatsPageSessionQueuedMessagesUpdatedSubscriptionNode,
+      variables: subscriptionVariables,
+      onNext: (response) => {
+        const nextQueuedMessages = response?.SessionQueuedMessagesUpdated;
+        if (!nextQueuedMessages) {
+          return;
+        }
+
+        setQueuedMessages([...nextQueuedMessages].sort(compareQueuedMessagesByTimestamp));
+        setIsLoadingQueuedMessages(false);
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [environment, selectedSession?.id]);
+
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
     setDraftMessage("");
@@ -2173,6 +2383,43 @@ function ChatsPageContent() {
       });
     }).catch((error: unknown) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to send message.");
+    });
+  };
+
+  const deleteQueuedMessage = async (queuedMessageId: string) => {
+    const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
+    if (!queuedMessage || queuedMessage.shouldSteer) {
+      return;
+    }
+
+    setDeletingQueuedMessageId(queuedMessageId);
+    await new Promise<void>((resolve, reject) => {
+      commitDeleteQueuedMessage({
+        variables: {
+          input: {
+            id: queuedMessageId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          setQueuedMessages((currentQueuedMessages) => {
+            return currentQueuedMessages.filter((currentQueuedMessage) => currentQueuedMessage.id !== queuedMessageId);
+          });
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to delete queued message.");
+    }).finally(() => {
+      setDeletingQueuedMessageId((currentDeletingQueuedMessageId) => {
+        return currentDeletingQueuedMessageId === queuedMessageId ? null : currentDeletingQueuedMessageId;
+      });
     });
   };
 
@@ -2791,6 +3038,16 @@ function ChatsPageContent() {
               type="button"
             />
             <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+              {selectedSession ? (
+                <ChatsQueuedMessagesComposerList
+                  deletingQueuedMessageId={deletingQueuedMessageId}
+                  isLoading={isLoadingQueuedMessages}
+                  onDelete={(queuedMessageId) => {
+                    void deleteQueuedMessage(queuedMessageId);
+                  }}
+                  queuedMessages={queuedMessages}
+                />
+              ) : null}
               <div>
                 <textarea
                   id="chat-draft-message"

@@ -53,6 +53,7 @@ type Mutation {
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
@@ -561,6 +562,10 @@ input ResolveInboxHumanQuestionInput {
 }
 
 input SteerSessionQueuedMessageInput {
+  id: ID!
+}
+
+input DeleteSessionQueuedMessageInput {
   id: ID!
 }
 
