@@ -601,6 +601,32 @@ function captureTranscriptScrollRestoreRecord(transcriptNode: HTMLDivElement): T
   };
 }
 
+function restoreTranscriptScrollPosition(
+  transcriptNode: HTMLDivElement,
+  restoreRecord: TranscriptScrollRestoreRecord,
+) {
+  const {
+    anchorMessageId,
+    anchorOffsetTop,
+    previousScrollHeight,
+    previousScrollTop,
+  } = restoreRecord;
+  const anchorElement = anchorMessageId
+    ? [...transcriptNode.querySelectorAll<HTMLElement>(CHAT_TRANSCRIPT_MESSAGE_SELECTOR)]
+      .find((transcriptMessageElement) => transcriptMessageElement.dataset.transcriptMessageId === anchorMessageId)
+    : null;
+
+  if (anchorElement) {
+    const transcriptRect = transcriptNode.getBoundingClientRect();
+    const anchorRect = anchorElement.getBoundingClientRect();
+    transcriptNode.scrollTop += (anchorRect.top - transcriptRect.top) - anchorOffsetTop;
+    return;
+  }
+
+  const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
+  transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
+}
+
 function resolveSessionTitleOverride(
   session: Pick<SessionRecord, "id" | "inferredTitle" | "userSetTitle">,
   titleOverridesBySessionId: Readonly<Record<string, string>>,
@@ -1051,6 +1077,7 @@ function ChatsPageContent() {
   const draftTextareaResizeStartHeightRef = useRef(0);
   const draftTextareaResizeStartYRef = useRef(0);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const transcriptScrollRestoreAnimationFrameRef = useRef<number | null>(null);
   const pendingTranscriptScrollRestoreRef = useRef<TranscriptScrollRestoreRecord | null>(
     null,
   );
@@ -1310,6 +1337,10 @@ function ChatsPageContent() {
 
   useEffect(() => {
     if (!selectedSession) {
+      if (transcriptScrollRestoreAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
+        transcriptScrollRestoreAnimationFrameRef.current = null;
+      }
       transcriptRequestIdRef.current += 1;
       activeTranscriptSessionIdRef.current = null;
       pendingTranscriptScrollRestoreRef.current = null;
@@ -1454,28 +1485,26 @@ function ChatsPageContent() {
       return;
     }
 
-    if (pendingTranscriptScrollRestoreRef.current) {
-      const {
-        anchorMessageId,
-        anchorOffsetTop,
-        previousScrollHeight,
-        previousScrollTop,
-      } = pendingTranscriptScrollRestoreRef.current;
-      const anchorElement = anchorMessageId
-        ? [...transcriptNode.querySelectorAll<HTMLElement>(CHAT_TRANSCRIPT_MESSAGE_SELECTOR)]
-          .find((transcriptMessageElement) => transcriptMessageElement.dataset.transcriptMessageId === anchorMessageId)
-        : null;
+    if (transcriptScrollRestoreAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
+      transcriptScrollRestoreAnimationFrameRef.current = null;
+    }
 
-      if (anchorElement) {
-        const transcriptRect = transcriptNode.getBoundingClientRect();
-        const anchorRect = anchorElement.getBoundingClientRect();
-        transcriptNode.scrollTop += (anchorRect.top - transcriptRect.top) - anchorOffsetTop;
-      } else {
-        const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
-        transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
-      }
+    if (pendingTranscriptScrollRestoreRef.current) {
+      const restoreRecord = pendingTranscriptScrollRestoreRef.current;
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = false;
+      restoreTranscriptScrollPosition(transcriptNode, restoreRecord);
+      transcriptScrollRestoreAnimationFrameRef.current = requestAnimationFrame(() => {
+        const currentTranscriptNode = transcriptScrollRef.current;
+        if (!currentTranscriptNode) {
+          transcriptScrollRestoreAnimationFrameRef.current = null;
+          return;
+        }
+
+        restoreTranscriptScrollPosition(currentTranscriptNode, restoreRecord);
+        transcriptScrollRestoreAnimationFrameRef.current = null;
+      });
       return;
     }
 
@@ -1484,7 +1513,7 @@ function ChatsPageContent() {
     }
 
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
-  }, [transcriptMessages]);
+  }, [isLoadingOlderTranscript, transcriptMessages]);
 
   const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const transcriptNode = event.currentTarget;
