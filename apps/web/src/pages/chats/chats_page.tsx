@@ -767,10 +767,7 @@ function formatTurnDuration(milliseconds: number): string {
   return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
 }
 
-function buildTranscriptTurns(
-  messages: ReadonlyArray<SessionMessageRecord>,
-  session: Pick<SessionRecord, "status">,
-): TranscriptTurnRecord[] {
+function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecord>): TranscriptTurnRecord[] {
   const groupedTurns: Array<{ messages: SessionMessageRecord[]; turnId: string }> = [];
 
   for (const message of messages) {
@@ -787,14 +784,9 @@ function buildTranscriptTurns(
     lastGroupedTurn.messages.push(message);
   }
 
-  const runningTurnId = isRunningSession(session)
-    ? [...groupedTurns]
-      .reverse()
-      .find(({ messages: turnMessages }) => turnMessages.some((message) => message.status === "running"))
-      ?.turnId ?? null
-    : null;
   return groupedTurns.map(({ messages: turnMessages, turnId }) => {
-    const isRunning = runningTurnId === turnId;
+    const turnRecord = turnMessages.find((message) => message.turn)?.turn ?? null;
+    const isRunning = turnRecord?.endedAt == null;
     if (isRunning) {
       return {
         durationLabel: "",
@@ -1401,8 +1393,8 @@ function ChatsTranscript({
     return buildToolCallSummaryById(sessionMessages);
   }, [sessionMessages]);
   const transcriptTurns = useMemo(() => {
-    return buildTranscriptTurns(sessionMessages, session);
-  }, [session, sessionMessages]);
+    return buildTranscriptTurns(sessionMessages);
+  }, [sessionMessages]);
   const [expandedTurnIds, setExpandedTurnIds] = useState<Record<string, boolean>>({});
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
   const showTranscriptLoader = isLoadingTranscript || isLoadingOlderMessages;
