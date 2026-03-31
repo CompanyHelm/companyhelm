@@ -6,6 +6,7 @@ import { Mutation } from "./mutation.ts";
 
 type DeleteEnvironmentMutationArguments = {
   input: {
+    force?: boolean | null;
     id: string;
   };
 };
@@ -78,6 +79,7 @@ export class DeleteEnvironmentMutation extends Mutation<
     context: GraphqlRequestContext,
   ): Promise<GraphqlEnvironmentRecord> => {
     const environmentId = String(arguments_.input.id || "").trim();
+    const forceDelete = arguments_.input.force === true;
     if (environmentId.length === 0) {
       throw new Error("id is required.");
     }
@@ -99,7 +101,13 @@ export class DeleteEnvironmentMutation extends Mutation<
       throw new Error(`Environment provider ${environment.provider} is not configured.`);
     }
 
-    await this.provider.deleteEnvironment(context.app_runtime_transaction_provider, environment);
+    try {
+      await this.provider.deleteEnvironment(context.app_runtime_transaction_provider, environment);
+    } catch (error) {
+      if (!forceDelete) {
+        throw error;
+      }
+    }
 
     const deletedEnvironment = await this.catalogService.deleteEnvironment(
       context.app_runtime_transaction_provider,

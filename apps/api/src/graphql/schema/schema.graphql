@@ -348,6 +348,7 @@ input DeleteAgentInput {
 
 input DeleteEnvironmentInput {
   id: ID!
+  force: Boolean
 }
 
 input StartEnvironmentInput {

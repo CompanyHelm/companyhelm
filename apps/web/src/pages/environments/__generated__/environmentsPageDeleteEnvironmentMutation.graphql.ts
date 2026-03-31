@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c94e6faf6f56dcb975bd22e3d8ba4682>>
+ * @generated SignedSource<<b04f50d3fba6dfeeba91f7e9443d1a20>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type DeleteEnvironmentInput = {
+  force?: boolean | null | undefined;
   id: string;
 };
 export type environmentsPageDeleteEnvironmentMutation$variables = {

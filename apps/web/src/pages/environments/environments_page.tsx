@@ -159,7 +159,7 @@ function EnvironmentsPageContent() {
             deletingEnvironmentId={deletingEnvironmentId}
             environments={environments}
             isLoading={false}
-            onDelete={async (environmentId) => {
+            onDelete={async (environmentId, force) => {
               if (isDeleteEnvironmentInFlight) {
                 return;
               }
@@ -171,6 +171,7 @@ function EnvironmentsPageContent() {
                 commitDeleteEnvironment({
                   variables: {
                     input: {
+                      force,
                       id: environmentId,
                     },
                   },
