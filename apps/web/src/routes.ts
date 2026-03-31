@@ -16,6 +16,7 @@ import { ModelProviderCredentialDetailPage } from "./pages/model-provider-creden
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
+import { SecretsPage } from "./pages/secrets/secrets_page";
 import { SettingsPage } from "./pages/settings/settings_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
@@ -110,6 +111,12 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const secretsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/secrets",
+  component: SecretsPage,
+});
+
 const githubInstallRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/github/install",
@@ -167,6 +174,7 @@ const routeTree = rootRoute.addChildren([
       agentsRoute,
       environmentsRoute,
       chatsRoute,
+      secretsRoute,
       githubInstallRoute,
       repositoriesRoute,
       tasksRoute,

@@ -7,6 +7,7 @@ import {
   FolderGit2Icon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  LockKeyholeIcon,
   MessageSquareIcon,
   MoonIcon,
   ServerIcon,
@@ -113,6 +114,11 @@ export function ApplicationSidebar() {
       icon: ServerIcon,
       label: "Environments",
       to: "/environments",
+    },
+    {
+      icon: LockKeyholeIcon,
+      label: "Secrets",
+      to: "/secrets",
     },
     {
       icon: MessageSquareIcon,
