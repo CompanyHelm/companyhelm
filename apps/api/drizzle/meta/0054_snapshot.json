@@ -1,6 +1,6 @@
 {
-  "id": "1c8c7835-9892-4a63-8f5c-42dc8256583d",
-  "prevId": "4b4b7344-facb-4c35-b31c-a84a512f19a2",
+  "id": "32265f00-38b1-4173-99ac-963352e63141",
+  "prevId": "1c8c7835-9892-4a63-8f5c-42dc8256583d",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4048,6 +4048,129 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_session_reads": {
+      "name": "user_session_reads",
+      "schema": "",
+      "columns": {
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "user_session_reads_company_user_id_idx": {
+          "name": "user_session_reads_company_user_id_idx",
+          "columns": [
+            {
+              "expression": "company_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "user_session_reads_session_id_idx": {
+          "name": "user_session_reads_session_id_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_session_reads_company_id_companies_id_fk": {
+          "name": "user_session_reads_company_id_companies_id_fk",
+          "tableFrom": "user_session_reads",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_session_reads_user_id_users_id_fk": {
+          "name": "user_session_reads_user_id_users_id_fk",
+          "tableFrom": "user_session_reads",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_session_reads_session_id_agent_sessions_id_fk": {
+          "name": "user_session_reads_session_id_agent_sessions_id_fk",
+          "tableFrom": "user_session_reads",
+          "tableTo": "agent_sessions",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_session_reads_company_id_user_id_session_id_pk": {
+          "name": "user_session_reads_company_id_user_id_session_id_pk",
+          "columns": [
+            "company_id",
+            "user_id",
+            "session_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

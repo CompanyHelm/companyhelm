@@ -20,7 +20,7 @@ export class SessionsQueryResolver extends Resolver<SessionGraphqlRecord[]> {
   }
 
   protected resolve = async (context: GraphqlRequestContext): Promise<SessionGraphqlRecord[]> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -30,6 +30,7 @@ export class SessionsQueryResolver extends Resolver<SessionGraphqlRecord[]> {
     return this.sessionReadService.listSessions(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
+      context.authSession.user.id,
     );
   };
 }

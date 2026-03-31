@@ -17,6 +17,7 @@ type GraphqlSessionRecord = {
   id: string;
   agentId: string;
   currentContextTokens: number | null;
+  hasUnread: boolean;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
@@ -98,6 +99,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
       currentContextTokens: sessionRecord.currentContextTokens,
+      hasUnread: false,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,

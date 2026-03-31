@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8635cb200926f6ba7fdbca73dc3cc38a>>
+ * @generated SignedSource<<a0d38faf5294bd018ffac2485aab8b48>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -38,6 +38,7 @@ export type chatsPageQuery$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
     readonly isCompacting: boolean;
@@ -213,6 +214,13 @@ v6 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "hasUnread",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "currentContextTokens",
         "storageKey": null
       },
@@ -304,16 +312,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "fb09c3cb6a3b317b75f793e1c0217d65",
+    "cacheID": "7ecaf10ebddcbaa498b4290e2d5ebe74",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Sessions {\n    id\n    agentId\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f73d5816879d4e48f77e6aedfefd3364";
+(node as any).hash = "ef5966e3e75a3120ba4774d0aead3052";
 
 export default node;

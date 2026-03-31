@@ -156,6 +156,24 @@ export const agentSessions = pgTable("agent_sessions", {
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
 }));
 
+export const userSessionReads = pgTable("user_session_reads", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  pk: primaryKey({ columns: [table.companyId, table.userId, table.sessionId] }),
+  companyUserIdIndex: index("user_session_reads_company_user_id_idx").on(table.companyId, table.userId),
+  sessionIdIndex: index("user_session_reads_session_id_idx").on(table.sessionId),
+}));
+
 export const sessionTools = pgTable("session_tools", {
   id: uuid("id")
     .primaryKey()

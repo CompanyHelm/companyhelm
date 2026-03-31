@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b743710f4706ad930ae92311864e7ea>>
+ * @generated SignedSource<<3f83823b4c5366db6a9b5c3acfab458a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,19 +9,20 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type ArchiveSessionInput = {
-  id: string;
+export type MarkSessionReadInput = {
+  sessionId: string;
 };
-export type chatsPageArchiveSessionMutation$variables = {
-  input: ArchiveSessionInput;
+export type chatsPageMarkSessionReadMutation$variables = {
+  input: MarkSessionReadInput;
 };
-export type chatsPageArchiveSessionMutation$data = {
-  readonly ArchiveSession: {
+export type chatsPageMarkSessionReadMutation$data = {
+  readonly MarkSessionRead: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
+    readonly inferredTitle: string | null | undefined;
     readonly isCompacting: boolean;
     readonly isThinking: boolean;
     readonly maxContextTokens: number | null | undefined;
@@ -31,11 +32,12 @@ export type chatsPageArchiveSessionMutation$data = {
     readonly status: string;
     readonly thinkingText: string | null | undefined;
     readonly updatedAt: string;
+    readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageArchiveSessionMutation = {
-  response: chatsPageArchiveSessionMutation$data;
-  variables: chatsPageArchiveSessionMutation$variables;
+export type chatsPageMarkSessionReadMutation = {
+  response: chatsPageMarkSessionReadMutation$data;
+  variables: chatsPageMarkSessionReadMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -58,7 +60,7 @@ v1 = [
     ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "ArchiveSession",
+    "name": "MarkSessionRead",
     "plural": false,
     "selections": [
       {
@@ -128,6 +130,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "inferredTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "isThinking",
         "storageKey": null
       },
@@ -158,6 +167,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "updatedAt",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userSetTitle",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -168,7 +184,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageArchiveSessionMutation",
+    "name": "chatsPageMarkSessionReadMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -177,20 +193,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageArchiveSessionMutation",
+    "name": "chatsPageMarkSessionReadMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "9d3822127b5735c6b66dbb9ccc06b344",
+    "cacheID": "1f88bec60c596f5616e1ce684ab25c44",
     "id": null,
     "metadata": {},
-    "name": "chatsPageArchiveSessionMutation",
+    "name": "chatsPageMarkSessionReadMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageMarkSessionReadMutation(\n  $input: MarkSessionReadInput!\n) {\n  MarkSessionRead(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6711dc687b1df707ef39ec360c212bd4";
+(node as any).hash = "4fd8ffc3d3e3b3697dfa9feb930a4d48";
 
 export default node;

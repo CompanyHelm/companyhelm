@@ -5,6 +5,7 @@ import type { TransactionProviderInterface } from "../../../../db/transaction_pr
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
+import { UserSessionReadService } from "../user_session_read_service.ts";
 
 type InsertableDatabase = {
   insert(table: unknown): {
@@ -104,6 +105,7 @@ type PiMonoSessionContextSnapshot = {
 type PiMonoSessionEventHandlerDependencies = {
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
+  userSessionReadService?: UserSessionReadService;
 };
 
 /**
@@ -116,6 +118,7 @@ export class PiMonoSessionEventHandler {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
+  private readonly userSessionReadService: UserSessionReadService;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
   private readonly messageIdByEventKey = new Map<string, string>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
@@ -144,6 +147,7 @@ export class PiMonoSessionEventHandler {
       maxContextTokens: null,
     }));
     this.sessionProcessPubSubNames = dependencies.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
+    this.userSessionReadService = dependencies.userSessionReadService ?? new UserSessionReadService();
   }
 
   async handle(event: unknown): Promise<void> {
@@ -219,6 +223,11 @@ export class PiMonoSessionEventHandler {
 
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
     this.logInfo("pi mono agent ended", sessionEvent);
+    const companyId = await this.resolveCompanyId();
+    await this.userSessionReadService.clearSessionReads(this.transactionProvider, {
+      companyId,
+      sessionId: this.sessionId,
+    });
     await this.updateSessionStatus("stopped");
   }
 

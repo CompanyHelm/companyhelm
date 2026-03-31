@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { agentSessions, messageContents, sessionMessages } from "../src/db/schema.ts";
+import { agentSessions, messageContents, sessionMessages, userSessionReads } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
 type SessionMessageRecord = Record<string, unknown> & {
@@ -22,6 +22,7 @@ class PiMonoSessionEventHandlerTestHarness {
     const sessionMessageRecords = new Map<string, SessionMessageRecord>();
     const messageContentRecordsByMessageId = new Map<string, MessageContentRecord[]>();
     const publishCalls: Array<{ channel: string; message: string }> = [];
+    const clearedSessionReadSessionIds: string[] = [];
     const infoLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
     const contextSnapshot = {
@@ -50,6 +51,7 @@ class PiMonoSessionEventHandlerTestHarness {
     return {
       errorLogs,
       contextSnapshot,
+      clearedSessionReadSessionIds,
       infoLogs,
       messageContentRecordsByMessageId,
       publishCalls,
@@ -222,6 +224,15 @@ class PiMonoSessionEventHandlerTestHarness {
               throw new Error("Unexpected update table.");
             },
             delete(table: unknown) {
+              if (table === userSessionReads) {
+                return {
+                  async where() {
+                    clearedSessionReadSessionIds.push("session-1");
+                    return undefined;
+                  },
+                };
+              }
+
               if (table === messageContents) {
                 return {
                   async where() {
@@ -343,6 +354,7 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
 
   assert.equal(harness.sessionStatusUpdates.length, 1);
   assert.equal(harness.sessionStatusUpdates[0]?.status, "stopped");
+  assert.deepEqual(harness.clearedSessionReadSessionIds, ["session-1"]);
   assert.equal(harness.sessionStatusUpdates[0]?.currentContextTokens, 4096);
   assert.equal(harness.sessionStatusUpdates[0]?.isThinking, false);
   assert.equal(harness.sessionStatusUpdates[0]?.isCompacting, false);

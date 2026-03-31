@@ -103,6 +103,22 @@ class SessionsQueryTestHarness {
               };
             }
 
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          sessionId: "session-older",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
         } as never;
@@ -168,6 +184,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
           Sessions {
             id
             agentId
+            hasUnread
             currentContextTokens
             isCompacting
             modelId
@@ -190,6 +207,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     {
       id: "session-newer",
       agentId: "agent-2",
+      hasUnread: true,
       currentContextTokens: null,
       isCompacting: true,
       modelId: "claude-3.7-sonnet",
@@ -204,6 +222,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     {
       id: "session-older",
       agentId: "agent-1",
+      hasUnread: false,
       currentContextTokens: 32000,
       isCompacting: false,
       modelId: "gpt-5.4",

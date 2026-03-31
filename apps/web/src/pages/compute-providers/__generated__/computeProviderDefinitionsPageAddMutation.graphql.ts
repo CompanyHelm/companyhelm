@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6bd368710a5b50c39aea8699ec63a243>>
+ * @generated SignedSource<<15026cc16dbbcfea5206f836bd363e98>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,7 +18,7 @@ export type AddComputeProviderDefinitionInput = {
 };
 export type AddDaytonaComputeProviderDefinitionInput = {
   apiKey: string;
-  apiUrl: string;
+  apiUrl?: string | null | undefined;
 };
 export type AddE2bComputeProviderDefinitionInput = {
   apiKey: string;

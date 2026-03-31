@@ -13,6 +13,7 @@ type GraphqlSessionRecord = {
   id: string;
   agentId: string;
   currentContextTokens: number | null;
+  hasUnread: boolean;
   isCompacting: boolean;
   modelId: string;
   maxContextTokens: number | null;
@@ -77,6 +78,7 @@ export class ArchiveSessionMutation extends Mutation<ArchiveSessionMutationArgum
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
       currentContextTokens: sessionRecord.currentContextTokens,
+      hasUnread: false,
       isCompacting: sessionRecord.isCompacting,
       modelId: sessionRecord.currentModelId,
       maxContextTokens: sessionRecord.maxContextTokens,

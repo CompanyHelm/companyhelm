@@ -34,6 +34,7 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
       id: "session-1",
       agentId: "agent-1",
       currentContextTokens: 160000,
+      hasUnread: true,
       isCompacting: false,
       modelId: "gpt-5.4",
       maxContextTokens: 200000,
@@ -50,6 +51,9 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     authSession: {
       company: {
         id: "company-1",
+      },
+      user: {
+        id: "user-1",
       },
     },
     app_runtime_transaction_provider: {
@@ -71,6 +75,7 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
       id: "session-1",
       agentId: "agent-1",
       currentContextTokens: 160000,
+      hasUnread: true,
       isCompacting: false,
       modelId: "gpt-5.4",
       maxContextTokens: 200000,
@@ -87,6 +92,7 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     context.app_runtime_transaction_provider,
     "company-1",
     "session-1",
+    "user-1",
   ]);
 
   await iterator.return();
@@ -106,6 +112,7 @@ test("SessionUpdated subscription still works when Mercurius calls subscribe wit
       id: "session-1",
       agentId: "agent-1",
       currentContextTokens: null,
+      hasUnread: false,
       isCompacting: false,
       modelId: "gpt-5.4",
       maxContextTokens: 200000,
@@ -124,6 +131,9 @@ test("SessionUpdated subscription still works when Mercurius calls subscribe wit
       authSession: {
         company: {
           id: "company-1",
+        },
+        user: {
+          id: "user-1",
         },
       },
       app_runtime_transaction_provider: {

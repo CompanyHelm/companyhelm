@@ -379,6 +379,13 @@
       "when": 1774990200000,
       "tag": "0053_session_context_usage_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1774987599170,
+      "tag": "0054_classy_shard",
+      "breakpoints": true
     }
   ]
 }

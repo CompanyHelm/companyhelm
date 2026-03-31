@@ -24,6 +24,7 @@ import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_co
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
+import type { chatsPageMarkSessionReadMutation } from "./__generated__/chatsPageMarkSessionReadMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
@@ -59,6 +60,7 @@ const chatsPageQueryNode = graphql`
     Sessions {
       id
       agentId
+      hasUnread
       currentContextTokens
       isCompacting
       maxContextTokens
@@ -141,6 +143,7 @@ const chatsPageCreateSessionMutationNode = graphql`
     CreateSession(input: $input) {
       id
       agentId
+      hasUnread
       currentContextTokens
       isCompacting
       maxContextTokens
@@ -163,6 +166,7 @@ const chatsPageArchiveSessionMutationNode = graphql`
     ArchiveSession(input: $input) {
       id
       agentId
+      hasUnread
       currentContextTokens
       isCompacting
       maxContextTokens
@@ -183,6 +187,30 @@ const chatsPagePromptSessionMutationNode = graphql`
     PromptSession(input: $input) {
       id
       agentId
+      hasUnread
+      currentContextTokens
+      isCompacting
+      maxContextTokens
+      modelProviderCredentialModelId
+      modelId
+      reasoningLevel
+      inferredTitle
+      isThinking
+      status
+      thinkingText
+      createdAt
+      updatedAt
+      userSetTitle
+    }
+  }
+`;
+
+const chatsPageMarkSessionReadMutationNode = graphql`
+  mutation chatsPageMarkSessionReadMutation($input: MarkSessionReadInput!) {
+    MarkSessionRead(input: $input) {
+      id
+      agentId
+      hasUnread
       currentContextTokens
       isCompacting
       maxContextTokens
@@ -205,6 +233,7 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
     SessionUpdated {
       id
       agentId
+      hasUnread
       currentContextTokens
       isCompacting
       maxContextTokens
@@ -1157,6 +1186,7 @@ function ChatsPageContent() {
   const shouldStickTranscriptToBottomRef = useRef(true);
   const transcriptRequestIdRef = useRef(0);
   const activeTranscriptSessionIdRef = useRef<string | null>(null);
+  const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
   const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
   const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
@@ -1178,6 +1208,9 @@ function ChatsPageContent() {
   );
   const [commitPromptSession, isPromptSessionInFlight] = useMutation<chatsPagePromptSessionMutation>(
     chatsPagePromptSessionMutationNode,
+  );
+  const [commitMarkSessionRead] = useMutation<chatsPageMarkSessionReadMutation>(
+    chatsPageMarkSessionReadMutationNode,
   );
 
   const sortedAgents = useMemo(() => {
@@ -1249,6 +1282,35 @@ function ChatsPageContent() {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
 
+  const markSessionRead = useCallback((sessionId: string) => {
+    if (sessionId.length === 0 || markSessionReadInFlightSessionIdRef.current === sessionId) {
+      return;
+    }
+
+    markSessionReadInFlightSessionIdRef.current = sessionId;
+    commitMarkSessionRead({
+      variables: {
+        input: {
+          sessionId,
+        },
+      },
+      updater: (store) => {
+        upsertRootLinkedRecord(store, "Sessions", "MarkSessionRead");
+      },
+      onCompleted: () => {
+        if (markSessionReadInFlightSessionIdRef.current === sessionId) {
+          markSessionReadInFlightSessionIdRef.current = null;
+        }
+      },
+      onError: (error) => {
+        if (markSessionReadInFlightSessionIdRef.current === sessionId) {
+          markSessionReadInFlightSessionIdRef.current = null;
+        }
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+  }, [commitMarkSessionRead]);
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -1267,6 +1329,14 @@ function ChatsPageContent() {
 
     setIsMobileChatListOpen(false);
   }, [isMobile, search.agentId, search.sessionId]);
+
+  useEffect(() => {
+    if (!selectedSession?.hasUnread) {
+      return;
+    }
+
+    markSessionRead(selectedSession.id);
+  }, [markSessionRead, selectedSession?.hasUnread, selectedSession?.id]);
 
   const loadSessionEnvironmentInfo = useCallback(async (sessionId: string) => {
     setIsLoadingSessionEnvironment(true);
@@ -1664,6 +1734,20 @@ function ChatsPageContent() {
       updater: (store) => {
         upsertRootLinkedRecord(store, "Sessions", "SessionUpdated");
       },
+      onNext: (response) => {
+        const nextSession = response?.SessionUpdated;
+        if (!nextSession) {
+          return;
+        }
+        if (nextSession.id !== selectedSession?.id) {
+          return;
+        }
+        if (nextSession.status !== "stopped" || !nextSession.hasUnread) {
+          return;
+        }
+
+        markSessionRead(nextSession.id);
+      },
       onError: (error) => {
         setErrorMessage((currentMessage) => currentMessage ?? error.message);
       },
@@ -1672,7 +1756,7 @@ function ChatsPageContent() {
     return () => {
       disposable.dispose();
     };
-  }, [environment]);
+  }, [environment, markSessionRead, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedSession) {
@@ -2117,11 +2201,14 @@ function ChatsPageContent() {
                                   >
                                     <div className="flex min-w-0 items-center gap-2">
                                       <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                                        <Loader2Icon
-                                          aria-hidden={!isSessionRunning}
-                                          className={`size-3.5 text-sidebar-foreground/70 ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
-                                          title={isSessionRunning ? "Session running" : undefined}
-                                        />
+                                        {isSessionRunning ? (
+                                          <Loader2Icon
+                                            className="size-3.5 animate-spin text-sidebar-foreground/70"
+                                            title="Session running"
+                                          />
+                                        ) : session.hasUnread ? (
+                                          <span className="size-2 rounded-full bg-blue-500" />
+                                        ) : null}
                                       </span>
                                       <p className="block min-w-0 truncate text-xs font-medium text-sidebar-foreground">
                                         {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
@@ -2256,11 +2343,14 @@ function ChatsPageContent() {
                                   >
                                     <div className="flex min-w-0 items-center gap-2">
                                       <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                                        <Loader2Icon
-                                          aria-hidden={!isSessionRunning}
-                                          className={`size-3.5 text-muted-foreground ${isSessionRunning ? "animate-spin opacity-100" : "opacity-0"}`}
-                                          title={isSessionRunning ? "Session running" : undefined}
-                                        />
+                                        {isSessionRunning ? (
+                                          <Loader2Icon
+                                            className="size-3.5 animate-spin text-muted-foreground"
+                                            title="Session running"
+                                          />
+                                        ) : session.hasUnread ? (
+                                          <span className="size-2 rounded-full bg-blue-500" />
+                                        ) : null}
                                       </span>
                                       <p className="block min-w-0 truncate text-xs font-medium text-foreground">
                                         {resolveSessionTitleOverride(session, sessionTitleOverridesById)}

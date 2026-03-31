@@ -31,6 +31,7 @@ import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
+import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_human_question.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
@@ -128,6 +129,7 @@ export class GraphqlApplication {
   private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
   private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
+  private readonly markSessionReadMutation: MarkSessionReadMutation;
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
@@ -324,6 +326,12 @@ export class GraphqlApplication {
     updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation = new UpdateExternalLinkArtifactMutation(),
     @inject(ArchiveArtifactMutation)
     archiveArtifactMutation: ArchiveArtifactMutation = new ArchiveArtifactMutation(),
+    @inject(MarkSessionReadMutation)
+    markSessionReadMutation: MarkSessionReadMutation = {
+      async execute() {
+        throw new Error("MarkSessionRead mutation is not configured.");
+      },
+    } as never,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -381,6 +389,7 @@ export class GraphqlApplication {
     this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
     this.meQueryResolver = meQueryResolver;
+    this.markSessionReadMutation = markSessionReadMutation;
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
@@ -506,6 +515,7 @@ export class GraphqlApplication {
           DeleteSecret: this.deleteSecretMutation.execute,
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
+          MarkSessionRead: this.markSessionReadMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,
           ResolveInboxHumanQuestion: this.resolveInboxHumanQuestionMutation.execute,

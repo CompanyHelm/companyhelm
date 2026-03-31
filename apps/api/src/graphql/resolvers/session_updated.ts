@@ -41,7 +41,7 @@ export class SessionUpdatedSubscriptionResolver {
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionUpdated: SessionGraphqlRecord }> {
     const requestContext = await this.resolveRequestContext(context);
-    if (!requestContext.authSession?.company) {
+    if (!requestContext.authSession?.company || !requestContext.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!requestContext.app_runtime_transaction_provider) {
@@ -67,6 +67,7 @@ export class SessionUpdatedSubscriptionResolver {
           requestContext.app_runtime_transaction_provider,
           requestContext.authSession.company.id,
           sessionId,
+          requestContext.authSession.user.id,
         );
         if (!sessionRecord) {
           continue;

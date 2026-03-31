@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7e2ea9c684766c35f1a06815189ae78f>>
+ * @generated SignedSource<<31243ff90de901a9cc842c68ddfd1fbb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type chatsPageSessionUpdatedSubscription$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
     readonly isCompacting: boolean;
@@ -56,6 +57,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "hasUnread",
         "storageKey": null
       },
       {
@@ -171,16 +179,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "1df8bf5e46529ad5bf576a28c251e8b2",
+    "cacheID": "4936efb9a180acd922ff409a658dac27",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0a97bb5ff0939d4ab80e891d07ab5587";
+(node as any).hash = "96d7430725dcf69803da27ade9ad85f5";
 
 export default node;

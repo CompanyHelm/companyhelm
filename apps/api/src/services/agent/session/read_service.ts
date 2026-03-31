@@ -1,6 +1,12 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agentSessions, messageContents, modelProviderCredentialModels, sessionMessages } from "../../../db/schema.ts";
+import {
+  agentSessions,
+  messageContents,
+  modelProviderCredentialModels,
+  sessionMessages,
+  userSessionReads,
+} from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 
 type SessionRow = {
@@ -65,6 +71,7 @@ export type SessionGraphqlRecord = {
   id: string;
   agentId: string;
   currentContextTokens: number | null;
+  hasUnread: boolean;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
@@ -164,6 +171,7 @@ export class SessionReadService {
   async listSessions(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
+    userId: string,
   ): Promise<SessionGraphqlRecord[]> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -191,10 +199,20 @@ export class SessionReadService {
         companyId,
         sessionRows,
       );
+      const readSessionIds = await this.loadReadSessionIds(
+        selectableDatabase,
+        companyId,
+        userId,
+        sessionRows.map((sessionRow) => sessionRow.id),
+      );
 
       return [...sessionRows]
         .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
-        .map((sessionRow) => this.serializeSession(sessionRow, modelOptionIdBySessionKey));
+        .map((sessionRow) => this.serializeSession(
+          sessionRow,
+          modelOptionIdBySessionKey,
+          readSessionIds.has(sessionRow.id),
+        ));
     });
   }
 
@@ -202,6 +220,7 @@ export class SessionReadService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    userId: string,
   ): Promise<SessionGraphqlRecord | null> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -238,7 +257,8 @@ export class SessionReadService {
         companyId,
         [sessionRow],
       );
-      return this.serializeSession(sessionRow, modelOptionIdBySessionKey);
+      const readSessionIds = await this.loadReadSessionIds(selectableDatabase, companyId, userId, [sessionId]);
+      return this.serializeSession(sessionRow, modelOptionIdBySessionKey, readSessionIds.has(sessionId));
     });
   }
 
@@ -483,9 +503,34 @@ export class SessionReadService {
     );
   }
 
+  private async loadReadSessionIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    userId: string,
+    sessionIds: ReadonlyArray<string>,
+  ): Promise<Set<string>> {
+    if (sessionIds.length === 0) {
+      return new Set();
+    }
+
+    const readRows = await selectableDatabase
+      .select({
+        sessionId: userSessionReads.sessionId,
+      })
+      .from(userSessionReads)
+      .where(and(
+        eq(userSessionReads.companyId, companyId),
+        eq(userSessionReads.userId, userId),
+        inArray(userSessionReads.sessionId, [...sessionIds]),
+      )) as Array<{ sessionId: string }>;
+
+    return new Set(readRows.map((readRow) => readRow.sessionId));
+  }
+
   private serializeSession(
     sessionRow: SessionRow,
     modelIdByModelRecordId: Map<string, string>,
+    isRead: boolean,
   ): SessionGraphqlRecord {
     const modelId = modelIdByModelRecordId.get(sessionRow.currentModelProviderCredentialModelId);
     if (!modelId) {
@@ -496,6 +541,7 @@ export class SessionReadService {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
       currentContextTokens: sessionRow.currentContextTokens,
+      hasUnread: !isRead,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,
       reasoningLevel: sessionRow.currentReasoningLevel,

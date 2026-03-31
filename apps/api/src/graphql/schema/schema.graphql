@@ -55,6 +55,7 @@ type Mutation {
   DeleteSecret(input: DeleteSecretInput!): Secret!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
+  MarkSessionRead(input: MarkSessionReadInput!): Session!
   PromptSession(input: PromptSessionInput!): Session!
   ResolveInboxHumanQuestion(input: ResolveInboxHumanQuestionInput!): InboxHumanQuestion!
   SteerSessionQueuedMessage(input: SteerSessionQueuedMessageInput!): SessionQueuedMessage!
@@ -270,6 +271,7 @@ type Session {
   id: ID!
   agentId: ID!
   currentContextTokens: Int
+  hasUnread: Boolean!
   modelProviderCredentialModelId: ID
   modelId: String!
   reasoningLevel: String!
@@ -485,7 +487,7 @@ input AddComputeProviderDefinitionInput {
 }
 
 input AddDaytonaComputeProviderDefinitionInput {
-  apiUrl: String!
+  apiUrl: String
   apiKey: String!
 }
 
@@ -511,6 +513,10 @@ input DeleteComputeProviderDefinitionInput {
 
 input ArchiveSessionInput {
   id: ID!
+}
+
+input MarkSessionReadInput {
+  sessionId: ID!
 }
 
 input CreateSessionInput {
@@ -555,7 +561,7 @@ input UpdateComputeProviderDefinitionInput {
 }
 
 input UpdateDaytonaComputeProviderDefinitionInput {
-  apiUrl: String!
+  apiUrl: String
   apiKey: String
 }
 

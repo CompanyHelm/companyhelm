@@ -17,6 +17,7 @@ type GraphqlSessionRecord = {
   agentId: string;
   createdAt: string;
   currentContextTokens: number | null;
+  hasUnread: boolean;
   id: string;
   inferredTitle: string | null;
   isCompacting: boolean;
@@ -97,6 +98,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       id: sessionRecord.id,
       agentId: sessionRecord.agentId,
       currentContextTokens: sessionRecord.currentContextTokens,
+      hasUnread: false,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,
