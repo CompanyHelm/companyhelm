@@ -1,7 +1,7 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PanelLeftIcon, PlusIcon, SendHorizonalIcon, WrenchIcon, XIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, Loader2Icon, MessageSquareIcon, PlusIcon, SendHorizonalIcon, WrenchIcon, XIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
@@ -1390,7 +1390,7 @@ function ChatsPageContent() {
 
     const handlePointerMove = (event: PointerEvent) => {
       const delta = event.clientX - resizeStartXRef.current;
-      setChatListWidth(clampChatListWidth(resizeStartWidthRef.current + delta));
+      setChatListWidth(clampChatListWidth(resizeStartWidthRef.current - delta));
     };
     const handlePointerUp = () => {
       setIsResizingChatList(false);
@@ -1827,7 +1827,7 @@ function ChatsPageContent() {
           : "Show the chats list to start a chat."
         : isMobile
           ? "Choose an agent from the panel to start a chat."
-          : "Choose an agent from the sidebar to start a chat.";
+          : "Choose an agent from the panel to start a chat.";
   const headerAction = useMemo(() => {
     if (!shouldShowChatListButton) {
       return null;
@@ -2021,7 +2021,7 @@ function ChatsPageContent() {
                 title={hideButtonLabel}
                 variant="ghost"
               >
-                <PanelLeftIcon className="size-4" />
+                <XIcon className="size-4" />
               </Button>
             </div>
 
@@ -2166,25 +2166,6 @@ function ChatsPageContent() {
     <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {mobileChatListOverlay}
 
-      {isDesktopChatListVisible ? (
-        <div
-          className="relative min-h-0 overflow-hidden w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
-          style={chatListPanelStyle}
-        >
-          {renderChatListPanel("desktop")}
-          <button
-            aria-label="Resize chats list"
-            className={`absolute inset-y-0 -right-3 z-10 hidden w-6 items-center justify-center !cursor-ew-resize lg:flex ${
-              isResizingChatList ? "bg-muted/30" : ""
-            }`}
-            onPointerDown={startChatListResize}
-            type="button"
-          >
-            <span className="h-full w-px cursor-ew-resize bg-border/70" />
-          </button>
-        </div>
-      ) : null}
-
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
         {errorMessage ? (
           <div className="shrink-0 px-2 pt-4 md:px-3 md:pt-5">
@@ -2297,6 +2278,25 @@ function ChatsPageContent() {
           </div>
         ) : null}
       </Card>
+
+      {isDesktopChatListVisible ? (
+        <div
+          className="relative min-h-0 overflow-hidden w-full lg:w-[var(--chats-list-width)] lg:shrink-0"
+          style={chatListPanelStyle}
+        >
+          <button
+            aria-label="Resize chats list"
+            className={`absolute inset-y-0 -left-3 z-10 hidden w-6 items-center justify-center !cursor-ew-resize lg:flex ${
+              isResizingChatList ? "bg-muted/30" : ""
+            }`}
+            onPointerDown={startChatListResize}
+            type="button"
+          >
+            <span className="h-full w-px cursor-ew-resize bg-border/70" />
+          </button>
+          {renderChatListPanel("desktop")}
+        </div>
+      ) : null}
     </main>
   );
 }
