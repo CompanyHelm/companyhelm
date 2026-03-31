@@ -1,25 +1,32 @@
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import type { AgentEnvironmentRecord } from "../compute/provider_interface.ts";
+import {
+  AgentComputeProviderInterface,
+  type AgentEnvironmentRecord,
+} from "../compute/provider_interface.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 
 /**
  * Implements the environment reuse policy. It prefers the current session's most recent
  * environment history first, then falls back to the broader agent history, while never reusing an
- * environment that is still held by another open lease.
+ * environment that is still held by another open lease or already marked unhealthy by the
+ * provider.
  */
 @injectable()
 export class AgentEnvironmentSelectionService {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly leaseService: AgentEnvironmentLeaseService;
+  private readonly providerService: AgentComputeProviderInterface;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
+    @inject(AgentComputeProviderInterface) providerService: AgentComputeProviderInterface,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
+    this.providerService = providerService;
   }
 
   async findReusableEnvironmentForAgentSession(
@@ -72,10 +79,24 @@ export class AgentEnvironmentSelectionService {
       if (openLeaseEnvironmentIds.has(environment.id)) {
         continue;
       }
+      if (!await this.isReusableEnvironment(transactionProvider, environment)) {
+        continue;
+      }
 
       return environment;
     }
 
     return null;
+  }
+
+  private async isReusableEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<boolean> {
+    try {
+      return await this.providerService.getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
+    } catch {
+      return false;
+    }
   }
 }

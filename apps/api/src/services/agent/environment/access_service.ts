@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentInterface } from "../compute/environment_interface.ts";
-import { AgentComputeProviderInterface } from "../compute/provider_interface.ts";
+import { AgentComputeProviderInterface, type AgentEnvironmentRecord } from "../compute/provider_interface.ts";
 import { AgentEnvironmentTmuxPty } from "../compute/tmux_pty.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
@@ -61,19 +61,23 @@ export class AgentEnvironmentAccessService {
         throw new Error("Leased environment not found.");
       }
 
-      const reactivatedLease = await this.leaseService.activateLease(transactionProvider, existingLease.id, ownerToken);
-      const environmentShell = await this.provider.createShell(transactionProvider, environment);
-      const pty = new AgentEnvironmentTmuxPty(environmentShell);
-      return new AgentSessionEnvironment(
-        transactionProvider,
-        session.companyId,
-        sessionId,
-        this.leaseService,
-        this.secretService,
-        pty,
-        reactivatedLease.id,
-        ownerToken,
-      );
+      if (await this.canReuseEnvironment(transactionProvider, environment)) {
+        const reactivatedLease = await this.leaseService.activateLease(transactionProvider, existingLease.id, ownerToken);
+        const environmentShell = await this.provider.createShell(transactionProvider, environment);
+        const pty = new AgentEnvironmentTmuxPty(environmentShell);
+        return new AgentSessionEnvironment(
+          transactionProvider,
+          session.companyId,
+          sessionId,
+          this.leaseService,
+          this.secretService,
+          pty,
+          reactivatedLease.id,
+          ownerToken,
+        );
+      }
+
+      await this.leaseService.releaseLease(transactionProvider, existingLease.id, "unhealthy");
     }
 
     const selectedEnvironment = await this.selectionService.findReusableEnvironmentForAgentSession(
@@ -107,5 +111,16 @@ export class AgentEnvironmentAccessService {
       lease.id,
       ownerToken,
     );
+  }
+
+  private async canReuseEnvironment(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<boolean> {
+    try {
+      return await this.provider.getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
+    } catch {
+      return false;
+    }
   }
 }

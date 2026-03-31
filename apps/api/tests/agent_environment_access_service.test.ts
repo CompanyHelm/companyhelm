@@ -65,9 +65,15 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
           id: "lease-1",
         };
       },
+      async releaseLease() {
+        throw new Error("releaseLease should not run for a healthy leased environment");
+      },
     } as never,
     {
       createShell,
+      async getEnvironmentStatus() {
+        return "running";
+      },
       getProvider() {
         return "daytona";
       },
@@ -133,9 +139,15 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
       async markLeaseIdle() {
         return undefined;
       },
+      async releaseLease() {
+        return undefined;
+      },
     } as never,
     {
       createShell,
+      async getEnvironmentStatus() {
+        return "running";
+      },
       getProvider() {
         return "daytona";
       },
@@ -157,6 +169,105 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
   assert.equal(acquireLease.mock.calls.length, 1);
   assert.equal(createShell.mock.calls.length, 1);
   assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-2");
+  await environment.dispose();
+});
+
+test("AgentEnvironmentAccessService provisions a new environment instead of reusing an unhealthy session lease", async () => {
+  const provisionedEnvironment = {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 2,
+    createdAt: new Date("2026-03-27T20:00:00.000Z"),
+    diskSpaceGb: 20,
+    displayName: null,
+    id: "environment-4",
+    lastSeenAt: null,
+    memoryGb: 4,
+    metadata: {},
+    platform: "linux" as const,
+    provider: "daytona" as const,
+    providerEnvironmentId: "daytona-environment-4",
+    updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+  };
+  const activateLease = vi.fn(async () => ({
+    id: "lease-1",
+  }));
+  const releaseLease = vi.fn(async () => undefined);
+  const acquireLease = vi.fn(async () => ({
+    id: "lease-4",
+  }));
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
+  const provisionEnvironmentForSession = vi.fn(async () => provisionedEnvironment);
+  const service = new AgentEnvironmentAccessService(
+    {
+      async loadEnvironmentById() {
+        return {
+          agentId: "agent-1",
+          companyId: "company-1",
+          cpuCount: 2,
+          createdAt: new Date("2026-03-27T20:00:00.000Z"),
+          diskSpaceGb: 20,
+          displayName: null,
+          id: "environment-1",
+          lastSeenAt: null,
+          memoryGb: 4,
+          metadata: {},
+          platform: "linux",
+          provider: "daytona",
+          providerEnvironmentId: "daytona-environment-1",
+          updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+        };
+      },
+      async loadSession() {
+        return {
+          agentId: "agent-1",
+          companyId: "company-1",
+          id: "session-1",
+        };
+      },
+    } as never,
+    {
+      acquireLease,
+      activateLease,
+      async expireElapsedLeases() {
+        return undefined;
+      },
+      async findOpenLeaseForSession() {
+        return {
+          environmentId: "environment-1",
+          id: "lease-1",
+        };
+      },
+      async markLeaseIdle() {
+        return undefined;
+      },
+      releaseLease,
+    } as never,
+    {
+      createShell,
+      async getEnvironmentStatus() {
+        return "unhealthy";
+      },
+      getProvider() {
+        return "daytona";
+      },
+    } as never,
+    {
+      provisionEnvironmentForSession,
+    } as never,
+    {
+      async findReusableEnvironmentForAgentSession() {
+        return null;
+      },
+    } as never,
+  );
+
+  const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
+
+  assert.equal(activateLease.mock.calls.length, 0);
+  assert.equal(releaseLease.mock.calls.length, 1);
+  assert.equal(provisionEnvironmentForSession.mock.calls.length, 1);
+  assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-4");
   await environment.dispose();
 });
 
@@ -203,9 +314,15 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
       async markLeaseIdle() {
         return undefined;
       },
+      async releaseLease() {
+        return undefined;
+      },
     } as never,
     {
       createShell,
+      async getEnvironmentStatus() {
+        return "running";
+      },
       getProvider() {
         return "daytona";
       },
