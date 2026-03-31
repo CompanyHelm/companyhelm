@@ -14,9 +14,12 @@ import type { TransactionProviderInterface } from "../../../../db/transaction_pr
 import { GithubClient } from "../../../../github/client.ts";
 import { AgentEnvironmentAccessService } from "../../environment/access_service.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
 import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
+import { AgentSecretToolProvider } from "../../tools/secrets/provider.ts";
+import { AgentSecretToolService } from "../../tools/secrets/service.ts";
 import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
@@ -66,15 +69,18 @@ export class PiMonoSessionManagerService {
   private readonly githubClient: GithubClient;
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
+  private readonly secretService: SecretService;
 
   constructor(
     @inject(RedisService) redisService: RedisService,
     @inject(AgentEnvironmentAccessService) agentEnvironmentAccessService: AgentEnvironmentAccessService,
     @inject(GithubClient) githubClient: GithubClient,
+    @inject(SecretService) secretService: SecretService,
   ) {
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
     this.githubClient = githubClient;
+    this.secretService = secretService;
   }
 
   async ensureSession(
@@ -101,8 +107,15 @@ export class PiMonoSessionManagerService {
       runtimeConfig.companyId,
       this.githubClient,
     );
+    const secretToolService = new AgentSecretToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      sessionId,
+      this.secretService,
+    );
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
+      new AgentSecretToolProvider(secretToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
     ]);
     const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);

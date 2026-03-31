@@ -133,6 +133,14 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("github installation tokens should not be loaded during ensureSession");
       },
     } as never,
+    {
+      async listSecrets() {
+        throw new Error("company secrets should not be loaded during ensureSession");
+      },
+      async listSessionSecrets() {
+        throw new Error("session secrets should not be loaded during ensureSession");
+      },
+    } as never,
   );
 
   const session = await service.ensureSession(
@@ -250,6 +258,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_assigned_secrets",
+      "list_available_secrets",
       "list_github_installations",
       "gh_exec",
     ],
@@ -272,6 +282,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_assigned_secrets",
+      "list_available_secrets",
       "list_github_installations",
       "gh_exec",
     ]]],
@@ -326,6 +338,14 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     {
       async getInstallationAccessToken() {
         throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async listSecrets() {
+        throw new Error("company secrets should not be loaded during ensureSession");
+      },
+      async listSessionSecrets() {
+        throw new Error("session secrets should not be loaded during ensureSession");
       },
     } as never,
   );
@@ -410,6 +430,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "resize_pty",
       "kill_session",
       "close_session",
+      "list_assigned_secrets",
+      "list_available_secrets",
       "list_github_installations",
       "gh_exec",
     ]]],
