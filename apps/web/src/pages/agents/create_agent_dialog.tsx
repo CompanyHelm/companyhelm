@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,31 +32,51 @@ export type AgentCreateProviderOption = {
   }>;
 };
 
+export type AgentCreateSecretOption = {
+  description: string | null;
+  envVarName: string;
+  id: string;
+  name: string;
+};
+
 interface CreateAgentDialogProps {
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
   providerOptions: AgentCreateProviderOption[];
+  secretOptions: AgentCreateSecretOption[];
   onCreate(input: {
+    environmentRequirements?: {
+      minCpuCount: number;
+      minDiskSpaceGb: number;
+      minMemoryGb: number;
+    };
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
     name: string;
     reasoningLevel?: string;
+    secretIds?: string[];
     systemPrompt?: string;
   }): Promise<void>;
   onOpenChange(open: boolean): void;
 }
 
 /**
- * Collects the minimum agent configuration needed to persist an agent with a provider-backed
- * default model, optional reasoning level, and optional system prompt.
+ * Collects the baseline agent configuration plus optional advanced defaults. The advanced section
+ * lets users attach reusable company secrets and override the minimum compute shape for future
+ * environments without forcing those fields on every agent creation.
  */
 export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [agentName, setAgentName] = useState("");
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [providerOptionId, setProviderOptionId] = useState("");
   const [modelOptionId, setModelOptionId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
+  const [minCpuCount, setMinCpuCount] = useState("");
+  const [minMemoryGb, setMinMemoryGb] = useState("");
+  const [minDiskSpaceGb, setMinDiskSpaceGb] = useState("");
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
   }, [props.providerOptions, providerOptionId]);
@@ -67,10 +88,15 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   useEffect(() => {
     if (!props.isOpen) {
       setAgentName("");
+      setIsAdvancedOpen(false);
       setProviderOptionId("");
       setModelOptionId("");
       setReasoningLevel("");
       setSystemPrompt("");
+      setSelectedSecretIds([]);
+      setMinCpuCount("");
+      setMinMemoryGb("");
+      setMinDiskSpaceGb("");
     }
   }, [props.isOpen]);
 
@@ -109,10 +135,24 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   }, [reasoningLevel, selectedProviderOption?.defaultReasoningLevel, selectedReasoningLevels]);
 
   const isReasoningLevelRequired = selectedReasoningLevels.length > 0;
+  const hasAnyComputeRequirement = minCpuCount.length > 0 || minMemoryGb.length > 0 || minDiskSpaceGb.length > 0;
+  const hasCompleteComputeRequirements = minCpuCount.length > 0 && minMemoryGb.length > 0 && minDiskSpaceGb.length > 0;
+  const parsedMinCpuCount = minCpuCount.length > 0 ? Number(minCpuCount) : null;
+  const parsedMinMemoryGb = minMemoryGb.length > 0 ? Number(minMemoryGb) : null;
+  const parsedMinDiskSpaceGb = minDiskSpaceGb.length > 0 ? Number(minDiskSpaceGb) : null;
+  const hasInvalidComputeRequirement = (hasAnyComputeRequirement && !hasCompleteComputeRequirements)
+    || (parsedMinCpuCount !== null && (!Number.isInteger(parsedMinCpuCount) || parsedMinCpuCount <= 0))
+    || (parsedMinMemoryGb !== null && (!Number.isInteger(parsedMinMemoryGb) || parsedMinMemoryGb <= 0))
+    || (parsedMinDiskSpaceGb !== null && (!Number.isInteger(parsedMinDiskSpaceGb) || parsedMinDiskSpaceGb <= 0));
+  const advancedSummary = [
+    selectedSecretIds.length > 0 ? `${selectedSecretIds.length} secret${selectedSecretIds.length === 1 ? "" : "s"}` : null,
+    hasAnyComputeRequirement ? "custom compute" : null,
+  ].filter((value): value is string => Boolean(value)).join(" • ");
   const isCreateDisabled = agentName.length === 0
     || providerOptionId.length === 0
     || modelOptionId.length === 0
-    || (isReasoningLevelRequired && reasoningLevel.length === 0);
+    || (isReasoningLevelRequired && reasoningLevel.length === 0)
+    || hasInvalidComputeRequirement;
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -238,6 +278,163 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             />
           </div>
 
+          <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-3">
+            <button
+              className="flex w-full items-center justify-between gap-3 text-left"
+              onClick={() => {
+                setIsAdvancedOpen((currentValue) => !currentValue);
+              }}
+              type="button"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Advanced</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Add default secrets or override the minimum compute requirements for new environments.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {advancedSummary.length > 0 ? (
+                  <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {advancedSummary}
+                  </span>
+                ) : null}
+                {isAdvancedOpen ? (
+                  <ChevronDownIcon className="size-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRightIcon className="size-4 text-muted-foreground" />
+                )}
+              </div>
+            </button>
+
+            {isAdvancedOpen ? (
+              <div className="grid gap-4 border-t border-border/60 pt-3">
+                <div className="grid gap-2">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Default secrets
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Selected secrets are attached to future sessions created from this agent.
+                    </p>
+                  </div>
+
+                  {props.secretOptions.length > 0 ? (
+                    <div className="grid gap-2">
+                      {props.secretOptions.map((secretOption) => {
+                        const isSelected = selectedSecretIds.includes(secretOption.id);
+
+                        return (
+                          <button
+                            key={secretOption.id}
+                            aria-pressed={isSelected}
+                            className={`rounded-lg border px-3 py-3 text-left transition ${
+                              isSelected
+                                ? "border-primary/60 bg-primary/10"
+                                : "border-border/60 bg-background/40 hover:border-border hover:bg-background/70"
+                            }`}
+                            onClick={() => {
+                              setSelectedSecretIds((currentValue) => {
+                                if (currentValue.includes(secretOption.id)) {
+                                  return currentValue.filter((secretId) => secretId !== secretOption.id);
+                                }
+
+                                return [...currentValue, secretOption.id];
+                              });
+                            }}
+                            type="button"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-medium text-foreground">{secretOption.name}</p>
+                              <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                {secretOption.envVarName}
+                              </span>
+                            </div>
+                            {secretOption.description ? (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {secretOption.description}
+                              </p>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No reusable company secrets are available yet.
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Minimum compute
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Leave all three fields blank to use workspace defaults.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-2">
+                      <label className="text-xs font-medium text-foreground" htmlFor="agent-min-cpu">
+                        CPU
+                      </label>
+                      <Input
+                        id="agent-min-cpu"
+                        min={1}
+                        onChange={(event) => {
+                          setMinCpuCount(event.target.value);
+                        }}
+                        placeholder="Default"
+                        type="number"
+                        value={minCpuCount}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-xs font-medium text-foreground" htmlFor="agent-min-memory">
+                        Memory (GB)
+                      </label>
+                      <Input
+                        id="agent-min-memory"
+                        min={1}
+                        onChange={(event) => {
+                          setMinMemoryGb(event.target.value);
+                        }}
+                        placeholder="Default"
+                        type="number"
+                        value={minMemoryGb}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <label className="text-xs font-medium text-foreground" htmlFor="agent-min-disk">
+                        Disk (GB)
+                      </label>
+                      <Input
+                        id="agent-min-disk"
+                        min={1}
+                        onChange={(event) => {
+                          setMinDiskSpaceGb(event.target.value);
+                        }}
+                        placeholder="Default"
+                        type="number"
+                        value={minDiskSpaceGb}
+                      />
+                    </div>
+                  </div>
+
+                  {hasInvalidComputeRequirement ? (
+                    <p className="text-xs text-destructive">
+                      Enter positive integers for CPU, memory, and disk together, or leave all three blank.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           {props.errorMessage ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {props.errorMessage}
@@ -259,11 +456,19 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             disabled={props.isSaving || isCreateDisabled}
             onClick={async () => {
               await props.onCreate({
+                environmentRequirements: hasCompleteComputeRequirements
+                  ? {
+                    minCpuCount: parsedMinCpuCount!,
+                    minDiskSpaceGb: parsedMinDiskSpaceGb!,
+                    minMemoryGb: parsedMinMemoryGb!,
+                  }
+                  : undefined,
                 modelProviderCredentialId: providerOptionId,
                 modelProviderCredentialModelId: modelOptionId,
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
-                systemPrompt,
+                secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,
+                systemPrompt: systemPrompt.length === 0 ? undefined : systemPrompt,
               });
             }}
             type="button"

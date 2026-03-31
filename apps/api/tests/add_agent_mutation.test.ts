@@ -17,12 +17,25 @@ import type { ModelProviderModel } from "../src/services/ai_providers/model_serv
 class AddAgentMutationTestHarness {
   static createConfigMock(): Config {
     return {
+      daytona: {
+        api_key: "daytona-key",
+        api_url: "https://daytona.example.com/api",
+        cpu_count: 4,
+        disk_gb: 10,
+        memory_gb: 8,
+      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
       },
       auth: {
         provider: "clerk",
+      },
+      security: {
+        encryption: {
+          key: "super-secret-key",
+          key_id: "key-1",
+        },
       },
     } as Config;
   }
@@ -69,7 +82,79 @@ class AddAgentMutationTestHarness {
               };
             }
 
-            throw new Error("Unexpected select call.");
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "agent-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        companyId: "company-123",
+                        createdAt: new Date("2026-03-24T12:00:00.000Z"),
+                        description: "Used for repository access",
+                        envVarName: "GITHUB_TOKEN",
+                        id: "secret-1",
+                        name: "GitHub token",
+                        updatedAt: new Date("2026-03-24T12:00:00.000Z"),
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "agent-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 7) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error(`Unexpected select call: ${selectCallCount}`);
           },
           insert() {
             return {
@@ -77,6 +162,23 @@ class AddAgentMutationTestHarness {
                 insertedValues.push(value);
                 return {
                   async returning() {
+                    if ("secretId" in value) {
+                      return [];
+                    }
+
+                    if ("minCpuCount" in value) {
+                      return [{
+                        id: "requirements-1",
+                        agentId: "agent-1",
+                        companyId: "company-123",
+                        createdAt: new Date("2026-03-24T12:00:00.000Z"),
+                        minCpuCount: Number(value.minCpuCount),
+                        minDiskSpaceGb: Number(value.minDiskSpaceGb),
+                        minMemoryGb: Number(value.minMemoryGb),
+                        updatedAt: new Date("2026-03-24T12:00:00.000Z"),
+                      }];
+                    }
+
                     return [{
                       id: "agent-1",
                       name: String(value.name),
@@ -100,7 +202,7 @@ class AddAgentMutationTestHarness {
   }
 }
 
-test("GraphQL AddAgent mutation creates an agent with the selected model and reasoning level", async () => {
+test("GraphQL AddAgent mutation creates an agent with optional advanced defaults", async () => {
   const app = Fastify();
   const config = AddAgentMutationTestHarness.createConfigMock();
   const database = AddAgentMutationTestHarness.createDatabaseMock();
@@ -162,10 +264,16 @@ test("GraphQL AddAgent mutation creates an agent with the selected model and rea
       `,
       variables: {
         input: {
+          environmentRequirements: {
+            minCpuCount: 6,
+            minDiskSpaceGb: 30,
+            minMemoryGb: 16,
+          },
           name: "Research Agent",
           modelProviderCredentialId: "credential-1",
           modelProviderCredentialModelId: "model-row-1",
           reasoningLevel: "high",
+          secretIds: ["secret-1"],
           systemPrompt: "You are concise.",
         },
       },
@@ -182,10 +290,26 @@ test("GraphQL AddAgent mutation creates an agent with the selected model and rea
     reasoningLevel: "high",
     systemPrompt: "You are concise.",
   });
-  assert.equal(database.insertedValues.length, 1);
+  assert.equal(database.insertedValues.length, 3);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.default_reasoning_level, "high");
   assert.equal(database.insertedValues[0]?.system_prompt, "You are concise.");
+  assert.deepEqual(database.insertedValues[1], {
+    agentId: "agent-1",
+    companyId: "company-123",
+    createdAt: database.insertedValues[1]?.createdAt,
+    createdByUserId: "user-123",
+    secretId: "secret-1",
+  });
+  assert.deepEqual(database.insertedValues[2], {
+    agentId: "agent-1",
+    companyId: "company-123",
+    createdAt: database.insertedValues[2]?.createdAt,
+    minCpuCount: 6,
+    minDiskSpaceGb: 30,
+    minMemoryGb: 16,
+    updatedAt: database.insertedValues[2]?.updatedAt,
+  });
 
   await app.close();
 });

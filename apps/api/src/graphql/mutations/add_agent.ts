@@ -1,15 +1,24 @@
 import { and, eq } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { agents, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import { AgentEnvironmentRequirementsService } from "../../services/agent/environment/requirements_service.ts";
+import { SecretService } from "../../services/secrets/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type AddAgentMutationArguments = {
   input: {
+    environmentRequirements?: {
+      minCpuCount: number;
+      minDiskSpaceGb: number;
+      minMemoryGb: number;
+    } | null;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
     name: string;
     reasoningLevel?: string | null;
+    secretIds?: string[] | null;
     systemPrompt?: string | null;
   };
 };
@@ -33,7 +42,7 @@ type ModelRecord = {
 
 type CredentialRecord = {
   id: string;
-  modelProvider: "openai" | "anthropic";
+  modelProvider: "openai" | "anthropic" | "openai-codex";
 };
 
 type GraphqlAgentRecord = {
@@ -41,7 +50,7 @@ type GraphqlAgentRecord = {
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
-  modelProvider: "openai" | "anthropic" | null;
+  modelProvider: "openai" | "anthropic" | "openai-codex" | null;
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;
@@ -68,6 +77,19 @@ type DatabaseTransaction = {
  */
 @injectable()
 export class AddAgentMutation extends Mutation<AddAgentMutationArguments, GraphqlAgentRecord> {
+  private readonly secretService: SecretService;
+  private readonly requirementsService: AgentEnvironmentRequirementsService;
+
+  constructor(
+    @inject(SecretService) secretService: SecretService,
+    @inject(AgentEnvironmentRequirementsService)
+    requirementsService: AgentEnvironmentRequirementsService,
+  ) {
+    super();
+    this.secretService = secretService;
+    this.requirementsService = requirementsService;
+  }
+
   protected resolve = async (
     arguments_: AddAgentMutationArguments,
     context: GraphqlRequestContext,
@@ -90,6 +112,11 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
+      const transactionProvider: TransactionProviderInterface = {
+        async transaction(transaction) {
+          return transaction(tx as never);
+        },
+      };
       const [credentialRecord] = await databaseTransaction
         .select({
           id: modelProviderCredentials.id,
@@ -152,6 +179,28 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         throw new Error("Failed to create agent.");
       }
 
+      for (const secretId of AddAgentMutation.resolveSecretIds(arguments_.input.secretIds)) {
+        await this.secretService.attachSecretToAgent(transactionProvider, {
+          agentId: agentRecord.id,
+          companyId: context.authSession.company.id,
+          secretId,
+          userId: context.authSession.user.id,
+        });
+      }
+
+      const environmentRequirements = AddAgentMutation.resolveEnvironmentRequirements(
+        arguments_.input.environmentRequirements,
+      );
+      if (environmentRequirements) {
+        await this.requirementsService.updateRequirements(transactionProvider, {
+          agentId: agentRecord.id,
+          companyId: context.authSession.company.id,
+          minCpuCount: environmentRequirements.minCpuCount,
+          minDiskSpaceGb: environmentRequirements.minDiskSpaceGb,
+          minMemoryGb: environmentRequirements.minMemoryGb,
+        });
+      }
+
       return AddAgentMutation.serializeRecord(agentRecord, modelRecord, credentialRecord);
     });
   };
@@ -184,6 +233,24 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     }
 
     return systemPrompt;
+  }
+
+  private static resolveSecretIds(secretIds: string[] | null | undefined): string[] {
+    if (!secretIds || secretIds.length === 0) {
+      return [];
+    }
+
+    return [...new Set(secretIds.filter((secretId) => secretId.length > 0))];
+  }
+
+  private static resolveEnvironmentRequirements(
+    environmentRequirements: AddAgentMutationArguments["input"]["environmentRequirements"],
+  ): AddAgentMutationArguments["input"]["environmentRequirements"] {
+    if (!environmentRequirements) {
+      return null;
+    }
+
+    return environmentRequirements;
   }
 
   private static serializeRecord(

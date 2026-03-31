@@ -131,7 +131,7 @@ export class GraphqlApplication {
     @inject(ModelProviderCredentialModelsQueryResolver)
     modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver,
     @inject(ModelProviderCredentialsQueryResolver) modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver,
-    @inject(AddAgentMutation) addAgentMutation: AddAgentMutation = new AddAgentMutation(),
+    @inject(AddAgentMutation) addAgentMutation?: AddAgentMutation,
     @inject(CreateSessionMutation)
     createSessionMutation: CreateSessionMutation = new CreateSessionMutation({
       async createSession() {
@@ -225,7 +225,8 @@ export class GraphqlApplication {
       ?? new AgentEnvironmentRequirementsService(config);
 
     this.configDocument = config;
-    this.addAgentMutation = addAgentMutation;
+    this.addAgentMutation = addAgentMutation
+      ?? new AddAgentMutation(defaultSecretService, defaultAgentEnvironmentRequirementsService);
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.attachSecretToAgentMutation = attachSecretToAgentMutation

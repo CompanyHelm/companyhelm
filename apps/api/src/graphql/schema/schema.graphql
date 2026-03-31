@@ -320,6 +320,14 @@ input AddAgentInput {
   modelProviderCredentialModelId: ID!
   reasoningLevel: String
   systemPrompt: String
+  secretIds: [ID!]
+  environmentRequirements: AddAgentEnvironmentRequirementsInput
+}
+
+input AddAgentEnvironmentRequirementsInput {
+  minCpuCount: Int!
+  minMemoryGb: Int!
+  minDiskSpaceGb: Int!
 }
 
 input UpdateAgentInput {

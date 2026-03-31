@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5a53274962cdf4bff98693fa6aee30fc>>
+ * @generated SignedSource<<4b4f6d58c0d651c839b166bb5754e9d0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,11 +10,18 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type AddAgentInput = {
+  environmentRequirements?: AddAgentEnvironmentRequirementsInput | null | undefined;
   modelProviderCredentialId: string;
   modelProviderCredentialModelId: string;
   name: string;
   reasoningLevel?: string | null | undefined;
+  secretIds?: ReadonlyArray<string> | null | undefined;
   systemPrompt?: string | null | undefined;
+};
+export type AddAgentEnvironmentRequirementsInput = {
+  minCpuCount: number;
+  minDiskSpaceGb: number;
+  minMemoryGb: number;
 };
 export type agentsPageAddAgentMutation$variables = {
   input: AddAgentInput;

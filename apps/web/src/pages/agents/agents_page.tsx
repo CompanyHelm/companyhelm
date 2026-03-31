@@ -6,6 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { AgentsTable, type AgentsTableRecord } from "./agents_table";
 import {
   CreateAgentDialog,
+  type AgentCreateSecretOption,
   type AgentCreateProviderOption,
 } from "./create_agent_dialog";
 import type { agentsPageAddAgentMutation } from "./__generated__/agentsPageAddAgentMutation.graphql";
@@ -36,6 +37,12 @@ const agentsPageQueryNode = graphql`
         name
         reasoningLevels
       }
+    }
+    Secrets {
+      id
+      name
+      description
+      envVarName
     }
   }
 `;
@@ -70,7 +77,7 @@ function AgentsPageFallback() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Configure company agents with a default provider, model, reasoning level, and system prompt.
+              Configure company agents with a default provider, model, reasoning level, system prompt, and optional advanced defaults.
             </CardDescription>
           </div>
           <CardAction>
@@ -132,6 +139,12 @@ function AgentsPageContent() {
       reasoningLevels: [...modelOption.reasoningLevels],
     })),
   }));
+  const secretOptions: AgentCreateSecretOption[] = data.Secrets.map((secret) => ({
+    description: secret.description,
+    envVarName: secret.envVarName,
+    id: secret.id,
+    name: secret.name,
+  }));
   const filterStoreRecords = (
     records: ReadonlyArray<unknown>,
   ): Array<{ getDataID(): string }> => {
@@ -149,7 +162,7 @@ function AgentsPageContent() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Configure company agents with a default provider, model, reasoning level, and system prompt.
+              Configure company agents with a default provider, model, reasoning level, system prompt, and optional advanced defaults.
             </CardDescription>
           </div>
           <CardAction>
@@ -240,6 +253,7 @@ function AgentsPageContent() {
         isOpen={isCreateDialogOpen}
         isSaving={isCreateAgentInFlight}
         providerOptions={providerOptions}
+        secretOptions={secretOptions}
         onCreate={async (input) => {
           setErrorMessage(null);
 

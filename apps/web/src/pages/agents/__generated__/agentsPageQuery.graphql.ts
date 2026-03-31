@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c1f21bd8317be9e82fa513f664225dae>>
+ * @generated SignedSource<<31d7c8227ad5d7309cbaebab8fd3162a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,12 @@ export type agentsPageQuery$data = {
     readonly reasoningLevel: string | null | undefined;
     readonly systemPrompt: string | null | undefined;
     readonly updatedAt: string;
+  }>;
+  readonly Secrets: ReadonlyArray<{
+    readonly description: string | null | undefined;
+    readonly envVarName: string;
+    readonly id: string;
+    readonly name: string;
   }>;
 };
 export type agentsPageQuery = {
@@ -172,6 +178,33 @@ v3 = [
       }
     ],
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Secret",
+    "kind": "LinkedField",
+    "name": "Secrets",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "description",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "envVarName",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -192,16 +225,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "a663e5a5697c2e4b4517e20f8c54f689",
+    "cacheID": "300ff885ae555d0f1adceed03bf3efa6",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7331c0c573f1ddfa1ce5e5254678399b";
+(node as any).hash = "5ca24a2afc4a444392dd156b58a19d24";
 
 export default node;
