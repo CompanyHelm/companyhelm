@@ -5,11 +5,13 @@
 export class SystemPromptTemplateContext {
   readonly agentId: string;
   readonly agentName: string;
+  readonly companyName: string;
   readonly sessionId: string;
 
-  constructor(agentId: string, agentName: string, sessionId: string) {
+  constructor(agentId: string, agentName: string, companyName: string, sessionId: string) {
     this.agentId = agentId;
     this.agentName = agentName;
+    this.companyName = companyName;
     this.sessionId = sessionId;
   }
 }

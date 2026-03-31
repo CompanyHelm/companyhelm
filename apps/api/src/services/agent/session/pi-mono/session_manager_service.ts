@@ -40,6 +40,7 @@ type SessionRuntimeConfig = {
   agentName: string;
   apiKey: string;
   companyId: string;
+  companyName: string;
   modelId: string;
   providerId: string;
   reasoningLevel?: string | null;
@@ -168,6 +169,7 @@ export class PiMonoSessionManagerService {
       new SystemPromptTemplateContext(
         runtimeConfig.agentId,
         runtimeConfig.agentName,
+        runtimeConfig.companyName,
         sessionId,
       ),
     );

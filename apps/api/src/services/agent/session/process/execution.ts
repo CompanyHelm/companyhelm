@@ -4,7 +4,7 @@ import type { ImageContent } from "@mariozechner/pi-ai";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { agentSessions, agents, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
+import { agentSessions, agents, companies, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
@@ -26,6 +26,10 @@ type SessionRuntimeRow = {
 };
 
 type AgentRow = {
+  name: string;
+};
+
+type CompanyRow = {
   name: string;
 };
 
@@ -286,6 +290,7 @@ export class SessionProcessExecutionService {
     agentName: string;
     apiKey: string;
     companyId: string;
+    companyName: string;
     modelId: string;
     providerId: string;
     reasoningLevel: string;
@@ -324,6 +329,16 @@ export class SessionProcessExecutionService {
         throw new Error("Session agent not found.");
       }
 
+      const [companyRow] = await selectableDatabase
+        .select({
+          name: companies.name,
+        })
+        .from(companies)
+        .where(eq(companies.id, companyId)) as CompanyRow[];
+      if (!companyRow) {
+        throw new Error("Session company not found.");
+      }
+
       const [modelRow] = await selectableDatabase
         .select({
           modelId: modelProviderCredentialModels.modelId,
@@ -357,6 +372,7 @@ export class SessionProcessExecutionService {
         agentName: agentRow.name,
         apiKey: credentialRow.encryptedApiKey,
         companyId,
+        companyName: companyRow.name,
         modelId: modelRow.modelId,
         providerId: credentialRow.modelProvider,
         reasoningLevel: sessionRow.currentReasoningLevel,

@@ -8,6 +8,7 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
   const promptContext = new SystemPromptTemplateContext(
     "agent-1",
     "My Agent",
+    "My Organization",
     "session-1",
   );
   const loader = new CompanyHelmResourceLoader(promptContext);
@@ -34,4 +35,5 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
   assert.equal(loader.getExtensions().extensions.length, 0);
   assert.ok(loader.getExtensions().runtime);
   assert.equal(loader.getSystemPrompt(), new SystemPromptTemplate().render(promptContext));
+  assert.match(loader.getSystemPrompt(), /Company name: My Organization/u);
 });

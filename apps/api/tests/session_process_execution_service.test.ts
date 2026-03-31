@@ -110,6 +110,20 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                   return {
                     async where() {
                       return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         modelId: "gpt-5.4",
                         modelProviderCredentialId: "credential-1",
                       }];
@@ -119,7 +133,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
               };
             }
 
-            if (selectCallCount === 4) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -247,6 +261,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       agentName: "Support Agent",
       apiKey: "sk-openai",
       companyId: "company-1",
+      companyName: "My Organization",
       modelId: "gpt-5.4",
       providerId: "openai",
       reasoningLevel: "high",
@@ -331,7 +346,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                   return {
                     async where() {
                       return [{
-                        name: "Support Agent",
+                        name: "My Organization",
                       }];
                     },
                   };
@@ -354,7 +369,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
               };
             }
 
-            if (selectCallCount === 4) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -542,6 +557,20 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
                   return {
                     async where() {
                       return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         modelId: "gpt-5.4",
                         modelProviderCredentialId: "credential-1",
                       }];
@@ -551,7 +580,7 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
               };
             }
 
-            if (selectCallCount === 4) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
