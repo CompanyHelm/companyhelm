@@ -165,7 +165,7 @@ export function ApplicationSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Operate</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {primaryNavigationItems.map((item) => {
