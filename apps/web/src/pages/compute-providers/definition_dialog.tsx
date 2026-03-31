@@ -36,7 +36,7 @@ interface ComputeProviderDefinitionDialogProps {
         description?: string;
         daytona: {
           apiKey: string;
-          apiUrl: string;
+          apiUrl?: string;
         };
         name: string;
         provider: "daytona";
@@ -52,7 +52,7 @@ interface ComputeProviderDefinitionDialogProps {
     | {
         daytona: {
           apiKey?: string;
-          apiUrl: string;
+          apiUrl?: string;
         };
         description?: string;
         id: string;
@@ -118,13 +118,9 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
   const descriptionText = isEditing
     ? "Update the shared company definition that agents can use for environment provisioning."
     : "Add a shared Daytona or E2B definition that agents can use as their environment backend.";
-  const apiKeyLabel = isEditing ? "API key (leave blank to keep current value)" : "API key";
+  const apiKeyLabel = isEditing ? "API key (optional)" : "API key";
   const isSaveDisabled = useMemo(() => {
     if (name.trim().length === 0) {
-      return true;
-    }
-
-    if (provider === "daytona" && daytonaApiUrl.trim().length === 0) {
       return true;
     }
 
@@ -189,7 +185,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="compute-provider-description">
-              Description
+              Description (optional)
             </label>
             <Input
               id="compute-provider-description"
@@ -204,7 +200,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
           {provider === "daytona" ? (
             <div className="grid gap-2">
               <label className="text-xs font-medium text-foreground" htmlFor="compute-provider-api-url">
-                API URL
+                API URL (optional)
               </label>
               <Input
                 id="compute-provider-api-url"
@@ -214,6 +210,9 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                 placeholder="https://app.daytona.io/api"
                 value={daytonaApiUrl}
               />
+              <p className="text-xs text-muted-foreground">
+                Leave empty to use the default Daytona API endpoint.
+              </p>
             </div>
           ) : null}
 
@@ -230,6 +229,11 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
               type="password"
               value={apiKey}
             />
+            {isEditing ? (
+              <p className="text-xs text-muted-foreground">
+                Leave empty to keep the current API key.
+              </p>
+            ) : null}
           </div>
 
           {props.errorMessage ? (
@@ -251,7 +255,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                   ? {
                       daytona: {
                         apiKey,
-                        apiUrl: daytonaApiUrl,
+                        apiUrl: daytonaApiUrl.trim() ? daytonaApiUrl : undefined,
                       },
                       description,
                       id: props.definition.id,
@@ -261,7 +265,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                   : {
                       daytona: {
                         apiKey,
-                        apiUrl: daytonaApiUrl,
+                        apiUrl: daytonaApiUrl.trim() ? daytonaApiUrl : undefined,
                       },
                       description,
                       name,

@@ -7,7 +7,7 @@ type UpdateComputeProviderDefinitionMutationArguments = {
   input: {
     daytona?: {
       apiKey?: string | null;
-      apiUrl: string;
+      apiUrl?: string | null;
     } | null;
     description?: string | null;
     e2b?: {

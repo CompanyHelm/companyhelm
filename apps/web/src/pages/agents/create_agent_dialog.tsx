@@ -419,7 +419,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                   <div className="grid gap-3 md:grid-cols-3">
                     <div className="grid gap-2">
                       <label className="text-xs font-medium text-foreground" htmlFor="agent-min-cpu">
-                        CPU
+                        CPU (optional)
                       </label>
                       <Input
                         id="agent-min-cpu"
@@ -435,7 +435,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
                     <div className="grid gap-2">
                       <label className="text-xs font-medium text-foreground" htmlFor="agent-min-memory">
-                        Memory (GB)
+                        Memory (GB) (optional)
                       </label>
                       <Input
                         id="agent-min-memory"
@@ -451,7 +451,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
                     <div className="grid gap-2">
                       <label className="text-xs font-medium text-foreground" htmlFor="agent-min-disk">
-                        Disk (GB)
+                        Disk (GB) (optional)
                       </label>
                       <Input
                         id="agent-min-disk"

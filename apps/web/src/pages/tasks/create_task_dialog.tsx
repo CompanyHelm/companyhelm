@@ -86,7 +86,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="task-category">
-              Category
+              Category (optional)
             </label>
             <Select
               items={[
@@ -145,7 +145,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
 
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="task-description">
-              Description
+              Description (optional)
             </label>
             <textarea
               id="task-description"

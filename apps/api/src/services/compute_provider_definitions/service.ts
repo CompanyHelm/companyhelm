@@ -111,7 +111,7 @@ type CreateComputeProviderDefinitionInput =
       createdByUserId: string;
       daytona: {
         apiKey: string;
-        apiUrl: string;
+        apiUrl?: string | null;
       };
       description?: string | null;
       name: string;
@@ -133,7 +133,7 @@ type UpdateComputeProviderDefinitionInput =
       companyId: string;
       daytona: {
         apiKey?: string | null;
-        apiUrl: string;
+        apiUrl?: string | null;
       };
       definitionId: string;
       description?: string | null;
@@ -160,6 +160,7 @@ type UpdateComputeProviderDefinitionInput =
  */
 @injectable()
 export class ComputeProviderDefinitionService {
+  private static readonly DEFAULT_DAYTONA_API_URL = "https://app.daytona.io/api";
   private readonly secretEncryptionService: SecretEncryptionService;
 
   constructor(
@@ -246,7 +247,7 @@ export class ComputeProviderDefinitionService {
             daytonaDefinition.encryptedApiKey,
             daytonaDefinition.encryptionKeyId,
           ),
-          apiUrl: daytonaDefinition.apiUrl,
+          apiUrl: this.resolveDaytonaApiUrl(daytonaDefinition.apiUrl),
           companyId: baseDefinition.companyId,
           description: baseDefinition.description,
           id: baseDefinition.id,
@@ -317,7 +318,7 @@ export class ComputeProviderDefinitionService {
         await insertableDatabase
           .insert(daytonaComputeProviderDefinitions)
           .values({
-            apiUrl: input.daytona.apiUrl.trim(),
+            apiUrl: this.resolveDaytonaApiUrl(input.daytona.apiUrl),
             computeProviderDefinitionId: createdDefinition.id,
             encryptedApiKey: encryptedApiKey.encryptedValue,
             encryptionKeyId: encryptedApiKey.encryptionKeyId,
@@ -406,7 +407,7 @@ export class ComputeProviderDefinitionService {
         await updatableDatabase
           .update(daytonaComputeProviderDefinitions)
           .set({
-            apiUrl: input.daytona.apiUrl.trim(),
+            apiUrl: this.resolveDaytonaApiUrl(input.daytona.apiUrl),
             encryptedApiKey: encryptedApiKey.encryptedValue,
             encryptionKeyId: encryptedApiKey.encryptionKeyId,
           })
@@ -553,7 +554,7 @@ export class ComputeProviderDefinitionService {
         createdAt: definition.createdAt,
         daytona: definition.provider === "daytona"
           ? {
-              apiUrl: daytonaByDefinitionId.get(definition.id)?.apiUrl ?? "",
+              apiUrl: this.resolveDaytonaApiUrl(daytonaByDefinitionId.get(definition.id)?.apiUrl),
             }
           : null,
         description: definition.description,
@@ -587,5 +588,18 @@ export class ComputeProviderDefinitionService {
     }
 
     return value.length === 0 ? null : value;
+  }
+
+  private resolveDaytonaApiUrl(value: string | null | undefined): string {
+    if (!value) {
+      return ComputeProviderDefinitionService.DEFAULT_DAYTONA_API_URL;
+    }
+
+    const trimmedValue = value.trim();
+    if (trimmedValue.length === 0) {
+      return ComputeProviderDefinitionService.DEFAULT_DAYTONA_API_URL;
+    }
+
+    return trimmedValue;
   }
 }
