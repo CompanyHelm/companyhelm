@@ -30,6 +30,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -48,6 +49,14 @@ const applicationSidebarVersionQueryNode = graphql`
   query applicationSidebarVersionQuery {
     Me {
       serverVersion
+    }
+  }
+`;
+
+const applicationSidebarInboxCountQueryNode = graphql`
+  query applicationSidebarInboxCountQuery {
+    InboxHumanQuestions {
+      id
     }
   }
 `;
@@ -73,6 +82,26 @@ function ApplicationSidebarVersion() {
     <div className="flex h-8 items-center justify-center group-data-[collapsible=icon]:hidden">
       <span className="app-shell-sidebar__meta text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
     </div>
+  );
+}
+
+function ApplicationSidebarInboxBadge() {
+  const data = useLazyLoadQuery(
+    applicationSidebarInboxCountQueryNode,
+    {},
+    {
+      fetchPolicy: "store-or-network",
+    },
+  );
+  const openInboxCount = data.InboxHumanQuestions.length;
+  if (openInboxCount === 0) {
+    return null;
+  }
+
+  return (
+    <SidebarMenuBadge className="right-2 rounded-full bg-sidebar-primary/15 px-1.5 text-[11px] font-semibold text-sidebar-primary peer-data-active/menu-button:bg-sidebar-primary peer-data-active/menu-button:text-sidebar-primary-foreground">
+      {openInboxCount}
+    </SidebarMenuBadge>
   );
 }
 
@@ -194,6 +223,11 @@ export function ApplicationSidebar() {
                       <ItemIcon />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
+                    {item.to === "/inbox" ? (
+                      <Suspense fallback={null}>
+                        <ApplicationSidebarInboxBadge />
+                      </Suspense>
+                    ) : null}
                   </SidebarMenuItem>
                 );
               })}
