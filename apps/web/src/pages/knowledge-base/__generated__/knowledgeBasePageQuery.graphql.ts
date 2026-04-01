@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<805cb3491502b9c52aa183cc950a7dc3>>
+ * @generated SignedSource<<62ebc6630cb8269ad15a2bc971784993>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,7 @@ export type knowledgeBasePageQuery$data = {
     readonly id: string;
     readonly markdownContent: string | null | undefined;
     readonly name: string;
+    readonly state: string;
     readonly type: string;
     readonly updatedAt: string;
   }>;
@@ -48,6 +49,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "state",
         "storageKey": null
       },
       {
@@ -107,16 +115,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "04c75057e601e991b68388cd79a49112",
+    "cacheID": "276600a4db1978ec2218be5fd205cfb2",
     "id": null,
     "metadata": {},
     "name": "knowledgeBasePageQuery",
     "operationKind": "query",
-    "text": "query knowledgeBasePageQuery {\n  Artifacts(input: {scopeType: \"company\"}) {\n    id\n    type\n    name\n    description\n    markdownContent\n    updatedAt\n  }\n}\n"
+    "text": "query knowledgeBasePageQuery {\n  Artifacts(input: {scopeType: \"company\"}) {\n    id\n    state\n    type\n    name\n    description\n    markdownContent\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1c159b6667c14b168a038a61d241660f";
+(node as any).hash = "4e5580618e463a54acb840d43f7b3238";
 
 export default node;

@@ -1,20 +1,35 @@
 import { Suspense, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FileTextIcon, PlusIcon } from "lucide-react";
+import { FileTextIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelAction,
+  AlertDialogCancelButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CreateDocumentDialog,
   type CreateDocumentDialogEditorState,
 } from "./create_document_dialog";
 import type { knowledgeBasePageCreateMarkdownArtifactMutation } from "./__generated__/knowledgeBasePageCreateMarkdownArtifactMutation.graphql";
+import type { knowledgeBasePageDeleteArtifactMutation } from "./__generated__/knowledgeBasePageDeleteArtifactMutation.graphql";
 import type { knowledgeBasePageQuery } from "./__generated__/knowledgeBasePageQuery.graphql";
 
 const knowledgeBasePageQueryNode = graphql`
   query knowledgeBasePageQuery {
     Artifacts(input: { scopeType: "company" }) {
       id
+      state
       type
       name
       description
@@ -39,6 +54,14 @@ const knowledgeBasePageCreateMarkdownArtifactMutationNode = graphql`
   }
 `;
 
+const knowledgeBasePageDeleteArtifactMutationNode = graphql`
+  mutation knowledgeBasePageDeleteArtifactMutation($input: DeleteArtifactInput!) {
+    DeleteArtifact(input: $input) {
+      id
+    }
+  }
+`;
+
 type KnowledgeBaseArtifact = knowledgeBasePageQuery["response"]["Artifacts"][number];
 
 function createEmptyDocumentEditorState(): CreateDocumentDialogEditorState {
@@ -54,8 +77,8 @@ function getGraphQLErrorMessage(
   return errorMessage || null;
 }
 
-function isDocumentArtifact(artifact: KnowledgeBaseArtifact): boolean {
-  return artifact.type === "markdown_document";
+function isActiveDocumentArtifact(artifact: KnowledgeBaseArtifact): boolean {
+  return artifact.type === "markdown_document" && artifact.state !== "archived";
 }
 
 function summarizeArtifactText(value: string): string {
@@ -139,6 +162,9 @@ function KnowledgeBasePageContent() {
     createEmptyDocumentEditorState,
   );
   const [createDocumentErrorMessage, setCreateDocumentErrorMessage] = useState<string | null>(null);
+  const [deleteDocumentErrorMessage, setDeleteDocumentErrorMessage] = useState<string | null>(null);
+  const [deletedArtifactIds, setDeletedArtifactIds] = useState<Set<string>>(() => new Set());
+  const [deletingArtifactId, setDeletingArtifactId] = useState<string | null>(null);
   const data = useLazyLoadQuery<knowledgeBasePageQuery>(
     knowledgeBasePageQueryNode,
     {},
@@ -150,7 +176,14 @@ function KnowledgeBasePageContent() {
     useMutation<knowledgeBasePageCreateMarkdownArtifactMutation>(
       knowledgeBasePageCreateMarkdownArtifactMutationNode,
     );
-  const documentArtifacts = [...data.Artifacts.filter(isDocumentArtifact)].sort(compareArtifactsByUpdatedAt);
+  const [commitDeleteArtifact, isDeleteArtifactInFlight] =
+    useMutation<knowledgeBasePageDeleteArtifactMutation>(
+      knowledgeBasePageDeleteArtifactMutationNode,
+    );
+  const documentArtifacts = [...data.Artifacts
+    .filter(isActiveDocumentArtifact)
+    .filter((artifact) => !deletedArtifactIds.has(artifact.id))]
+    .sort(compareArtifactsByUpdatedAt);
   const isCreateDocumentDisabled = isCreateMarkdownArtifactInFlight
     || createDocumentState.name.trim().length === 0;
 
@@ -201,6 +234,49 @@ function KnowledgeBasePageContent() {
     }
   }
 
+  async function deleteDocumentArtifact(artifactId: string) {
+    if (isDeleteArtifactInFlight) {
+      return;
+    }
+
+    setDeleteDocumentErrorMessage(null);
+    setDeletingArtifactId(artifactId);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitDeleteArtifact({
+          variables: {
+            input: {
+              id: artifactId,
+            },
+          },
+          onCompleted: (_mutationResponse, errors) => {
+            const mutationErrorMessage = getGraphQLErrorMessage(errors);
+            if (mutationErrorMessage) {
+              reject(new Error(mutationErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+
+      setDeletedArtifactIds((currentDeletedArtifactIds) => {
+        const nextDeletedArtifactIds = new Set(currentDeletedArtifactIds);
+        nextDeletedArtifactIds.add(artifactId);
+        return nextDeletedArtifactIds;
+      });
+    } catch (error: unknown) {
+      setDeleteDocumentErrorMessage(
+        error instanceof Error ? error.message : "Failed to delete document.",
+      );
+    } finally {
+      setDeletingArtifactId(null);
+    }
+  }
+
   return (
     <>
       <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
@@ -224,6 +300,12 @@ function KnowledgeBasePageContent() {
           </Button>
         </div>
 
+        {deleteDocumentErrorMessage ? (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {deleteDocumentErrorMessage}
+          </div>
+        ) : null}
+
         {documentArtifacts.length === 0 ? (
           <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 text-center">
             <p className="text-sm font-medium text-foreground">No documents yet</p>
@@ -234,33 +316,77 @@ function KnowledgeBasePageContent() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {documentArtifacts.map((artifact) => (
-              <Link
-                key={artifact.id}
-                className="group block"
-                params={{ artifactId: artifact.id }}
-                to="/knowledge-base/$artifactId"
-              >
-                <Card className="h-full rounded-2xl border border-border/60 bg-card/70 shadow-sm transition group-hover:border-border/80 group-hover:bg-card group-hover:shadow-md">
-                  <CardHeader className="border-b border-border/40">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-md bg-muted p-1.5 text-muted-foreground">
-                        <FileTextIcon className="size-3.5" />
+              <div key={artifact.id} className="relative">
+                <Link
+                  className="group block"
+                  params={{ artifactId: artifact.id }}
+                  to="/knowledge-base/$artifactId"
+                >
+                  <Card className="h-full rounded-2xl border border-border/60 bg-card/70 shadow-sm transition group-hover:border-border/80 group-hover:bg-card group-hover:shadow-md">
+                    <CardHeader className="border-b border-border/40 pr-14">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-md bg-muted p-1.5 text-muted-foreground">
+                          <FileTextIcon className="size-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <CardTitle className="truncate">{artifact.name}</CardTitle>
+                          <CardDescription className="mt-1">
+                            Updated {formatTimestamp(artifact.updatedAt)}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="truncate">{artifact.name}</CardTitle>
-                        <CardDescription className="mt-1">
-                          Updated {formatTimestamp(artifact.updatedAt)}
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4">
-                    <p className="line-clamp-6 text-sm/relaxed text-muted-foreground">
-                      {getDocumentPreview(artifact) || "Open this document to start writing."}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <p className="line-clamp-6 text-sm/relaxed text-muted-foreground">
+                        {getDocumentPreview(artifact) || "Open this document to start writing."}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      aria-label={`Delete ${artifact.name}`}
+                      className="absolute right-4 top-4 z-10"
+                      disabled={isDeleteArtifactInFlight}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </AlertDialogTrigger>
+
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete document?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently deletes <span className="font-medium text-foreground">{artifact.name}</span>.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancelAction>
+                        <AlertDialogCancelButton type="button" variant="outline">
+                          Cancel
+                        </AlertDialogCancelButton>
+                      </AlertDialogCancelAction>
+                      <AlertDialogPrimaryAction>
+                        <AlertDialogActionButton
+                          disabled={isDeleteArtifactInFlight}
+                          onClick={() => {
+                            void deleteDocumentArtifact(artifact.id);
+                          }}
+                          type="button"
+                          variant="destructive"
+                        >
+                          {deletingArtifactId === artifact.id ? "Deleting…" : "Delete"}
+                        </AlertDialogActionButton>
+                      </AlertDialogPrimaryAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             ))}
           </div>
         )}

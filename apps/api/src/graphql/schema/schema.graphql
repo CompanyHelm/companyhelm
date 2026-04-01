@@ -51,6 +51,7 @@ type Mutation {
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
   DeleteAgent(input: DeleteAgentInput!): Agent!
+  DeleteArtifact(input: DeleteArtifactInput!): Artifact!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
@@ -702,6 +703,10 @@ input UpdateExternalLinkArtifactInput {
 }
 
 input ArchiveArtifactInput {
+  id: ID!
+}
+
+input DeleteArtifactInput {
   id: ID!
 }
 

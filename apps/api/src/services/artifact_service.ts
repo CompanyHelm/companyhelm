@@ -352,6 +352,28 @@ export class ArtifactService {
     });
   }
 
+  async deleteArtifact(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      artifactId: string;
+      companyId: string;
+    },
+  ): Promise<ArtifactRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const existingArtifact = await this.requireArtifact(tx, input.companyId, input.artifactId);
+      const hydratedArtifact = await this.getHydratedArtifact(tx, existingArtifact);
+
+      await tx
+        .delete(artifacts)
+        .where(and(
+          eq(artifacts.companyId, input.companyId),
+          eq(artifacts.id, input.artifactId),
+        ));
+
+      return hydratedArtifact;
+    });
+  }
+
   private async getHydratedArtifact(
     tx: AppRuntimeTransaction,
     artifact: ArtifactBaseRecord,

@@ -23,6 +23,7 @@ import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts"
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSecretMutation } from "./mutations/create_secret.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
+import { DeleteArtifactMutation } from "./mutations/delete_artifact.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
 import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_compute_provider_definition.ts";
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
@@ -112,6 +113,7 @@ export class GraphqlApplication {
   private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly computeProviderDefinitionsQueryResolver: ComputeProviderDefinitionsQueryResolver;
+  private readonly deleteArtifactMutation: DeleteArtifactMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
   private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
@@ -326,6 +328,8 @@ export class GraphqlApplication {
     createExternalLinkArtifactMutation: CreateExternalLinkArtifactMutation = new CreateExternalLinkArtifactMutation(),
     @inject(CreatePullRequestArtifactMutation)
     createPullRequestArtifactMutation: CreatePullRequestArtifactMutation = new CreatePullRequestArtifactMutation(),
+    @inject(DeleteArtifactMutation)
+    deleteArtifactMutation: DeleteArtifactMutation = new DeleteArtifactMutation(),
     @inject(UpdateArtifactMutation)
     updateArtifactMutation: UpdateArtifactMutation = new UpdateArtifactMutation(),
     @inject(UpdateMarkdownArtifactMutation)
@@ -373,6 +377,7 @@ export class GraphqlApplication {
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSessionMutation = createSessionMutation;
     this.computeProviderDefinitionsQueryResolver = computeProviderDefinitionsQueryResolver;
+    this.deleteArtifactMutation = deleteArtifactMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
@@ -520,6 +525,7 @@ export class GraphqlApplication {
           CreateTask: this.createTaskMutation.execute,
           CreateTaskCategory: this.createTaskCategoryMutation.execute,
           CreateSession: this.createSessionMutation.execute,
+          DeleteArtifact: this.deleteArtifactMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
