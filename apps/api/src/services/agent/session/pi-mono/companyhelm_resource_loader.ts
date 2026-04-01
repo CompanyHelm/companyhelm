@@ -2,8 +2,8 @@ import {
   type ResourceLoader,
   createExtensionRuntime,
 } from "@mariozechner/pi-coding-agent";
-import { SystemPromptTemplate } from "../../../../templates/system_prompt_template.ts";
-import { SystemPromptTemplateContext } from "../../../../templates/system_prompt_template_context.ts";
+import { SystemPromptTemplate } from "../../../../prompts/system_prompt_template.ts";
+import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 
 /**
  * Owns the CompanyHelm PI Mono resource surface. Its scope is replacing the upstream default

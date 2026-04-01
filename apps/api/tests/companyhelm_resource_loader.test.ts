@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { SystemPromptTemplate } from "../src/prompts/system_prompt_template.ts";
+import { SystemPromptTemplateContext } from "../src/prompts/system_prompt_template_context.ts";
 import { CompanyHelmResourceLoader } from "../src/services/agent/session/pi-mono/companyhelm_resource_loader.ts";
-import { SystemPromptTemplate } from "../src/templates/system_prompt_template.ts";
-import { SystemPromptTemplateContext } from "../src/templates/system_prompt_template_context.ts";
 
 test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables local project discovery", async () => {
   const promptContext = new SystemPromptTemplateContext(

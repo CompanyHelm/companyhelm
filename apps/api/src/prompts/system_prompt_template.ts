@@ -8,7 +8,7 @@ import { SystemPromptTemplateContext } from "./system_prompt_template_context.ts
  */
 export class SystemPromptTemplate {
   private readonly templateSource = readFileSync(
-    new URL("./system_prompt.njk", import.meta.url),
+    new URL("../templates/system_prompt.njk", import.meta.url),
     "utf8",
   ).trim();
 

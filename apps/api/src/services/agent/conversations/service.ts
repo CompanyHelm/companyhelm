@@ -11,7 +11,7 @@ import {
   agents,
 } from "../../../db/schema.ts";
 import { ApiLogger } from "../../../log/api_logger.ts";
-import { AgentConversationDeliveryPrompt } from "./delivery_prompt.ts";
+import { AgentConversationMessageTemplate } from "../../../prompts/agent_conversation_message_template.ts";
 import { SessionManagerService } from "../session/session_manager_service.ts";
 
 export type AgentConversationSendMessageInput = {
@@ -108,7 +108,7 @@ type PlannedDelivery = {
  */
 @injectable()
 export class AgentConversationService {
-  private readonly deliveryPrompt: AgentConversationDeliveryPrompt;
+  private readonly deliveryPrompt: AgentConversationMessageTemplate;
   private readonly logger: PinoLogger;
   private readonly sessionManagerService: SessionManagerService;
 
@@ -116,7 +116,7 @@ export class AgentConversationService {
     @inject(ApiLogger) logger: ApiLogger,
     @inject(SessionManagerService) sessionManagerService: SessionManagerService,
   ) {
-    this.deliveryPrompt = new AgentConversationDeliveryPrompt();
+    this.deliveryPrompt = new AgentConversationMessageTemplate();
     this.logger = logger.child({
       component: "agent_conversation_service",
     });
@@ -361,7 +361,7 @@ export class AgentConversationService {
     input: AgentConversationSendMessageInput,
     sourceAgent: AgentRow,
   ): Promise<PlannedDelivery> {
-    const deliveryText = this.deliveryPrompt.format({
+    const deliveryText = this.deliveryPrompt.render({
       sourceAgentId: input.sourceAgentId,
       sourceAgentName: sourceAgent.name,
       sourceSessionId: input.sourceSessionId,

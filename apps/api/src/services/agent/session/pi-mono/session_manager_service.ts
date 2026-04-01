@@ -34,9 +34,9 @@ import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { ArtifactService } from "../../../artifact_service.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { TaskService } from "../../../task_service.ts";
+import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
-import { SystemPromptTemplateContext } from "../../../../templates/system_prompt_template_context.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
