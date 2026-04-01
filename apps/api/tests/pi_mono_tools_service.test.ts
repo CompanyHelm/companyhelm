@@ -7,6 +7,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
 import { AgentArtifactToolProvider } from "../src/services/agent/tools/artifacts/provider.ts";
+import { AgentConversationToolProvider } from "../src/services/agent/tools/conversations/provider.ts";
 import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
 import { AgentInboxToolProvider } from "../src/services/agent/tools/inbox/provider.ts";
 import { AgentSecretToolProvider } from "../src/services/agent/tools/secrets/provider.ts";
@@ -51,6 +52,11 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
     new AgentInboxToolProvider({
       async createHumanQuestion() {
         throw new Error("inbox questions should not be created during initialization");
+      },
+    } as never),
+    new AgentConversationToolProvider({
+      async sendMessage() {
+        throw new Error("agent messages should not be sent during initialization");
       },
     } as never),
     new AgentTaskToolProvider({
@@ -115,6 +121,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "send_agent_message",
       "list_tasks",
       "list_assigned_tasks",
       "create_task",
@@ -171,6 +178,11 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     new AgentInboxToolProvider({
       async createHumanQuestion() {
         throw new Error("inbox questions should not be created during cleanup");
+      },
+    } as never),
+    new AgentConversationToolProvider({
+      async sendMessage() {
+        throw new Error("agent messages should not be sent during cleanup");
       },
     } as never),
     new AgentTaskToolProvider({
@@ -271,6 +283,11 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("inbox questions should not be created during session creation");
       },
     } as never),
+    new AgentConversationToolProvider({
+      async sendMessage() {
+        throw new Error("agent messages should not be sent during session creation");
+      },
+    } as never),
     new AgentTaskToolProvider({
       async createTask() {
         throw new Error("tasks should not be created during session creation");
@@ -347,6 +364,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "send_agent_message",
       "list_tasks",
       "list_assigned_tasks",
       "create_task",

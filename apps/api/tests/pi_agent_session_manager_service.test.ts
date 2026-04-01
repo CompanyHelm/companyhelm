@@ -146,6 +146,11 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("session secrets should not be loaded during ensureSession");
       },
     } as never,
+    {
+      async sendMessage() {
+        throw new Error("agent conversations should not be sent during ensureSession");
+      },
+    } as never,
   );
 
   const session = await service.ensureSession(
@@ -298,6 +303,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "send_agent_message",
       "list_tasks",
       "list_assigned_tasks",
       "create_task",
@@ -348,6 +354,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "send_agent_message",
       "list_tasks",
       "list_assigned_tasks",
       "create_task",
@@ -428,6 +435,11 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       },
       async listSessionSecrets() {
         throw new Error("session secrets should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async sendMessage() {
+        throw new Error("agent conversations should not be sent during ensureSession");
       },
     } as never,
   );
@@ -521,6 +533,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
+      "send_agent_message",
       "list_tasks",
       "list_assigned_tasks",
       "create_task",

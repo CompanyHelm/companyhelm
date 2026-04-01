@@ -18,6 +18,9 @@ import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
 import { AgentArtifactToolProvider } from "../../tools/artifacts/provider.ts";
 import { AgentArtifactToolService } from "../../tools/artifacts/service.ts";
+import { AgentConversationService } from "../../conversations/service.ts";
+import { AgentConversationToolProvider } from "../../tools/conversations/provider.ts";
+import { AgentConversationToolService } from "../../tools/conversations/service.ts";
 import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
 import { AgentInboxService } from "../../inbox/service.ts";
@@ -83,6 +86,7 @@ export class PiMonoSessionManagerService {
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
+  private readonly agentConversationService: AgentConversationService;
 
   constructor(
     @inject(RedisService) redisService: RedisService,
@@ -90,12 +94,14 @@ export class PiMonoSessionManagerService {
     @inject(GithubClient) githubClient: GithubClient,
     @inject(AgentInboxService) inboxService: AgentInboxService,
     @inject(SecretService) secretService: SecretService,
+    @inject(AgentConversationService) agentConversationService: AgentConversationService,
   ) {
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
     this.githubClient = githubClient;
     this.inboxService = inboxService;
     this.secretService = secretService;
+    this.agentConversationService = agentConversationService;
   }
 
   async ensureSession(
@@ -135,6 +141,13 @@ export class PiMonoSessionManagerService {
       sessionId,
       this.inboxService,
     );
+    const conversationToolService = new AgentConversationToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
+      sessionId,
+      this.agentConversationService,
+    );
     const artifactToolService = new AgentArtifactToolService(
       transactionProvider,
       runtimeConfig.companyId,
@@ -152,6 +165,7 @@ export class PiMonoSessionManagerService {
       new AgentSecretToolProvider(secretToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
       new AgentInboxToolProvider(inboxToolService),
+      new AgentConversationToolProvider(conversationToolService),
       new AgentTaskToolProvider(taskToolService),
       new AgentArtifactToolProvider(artifactToolService),
     ]);

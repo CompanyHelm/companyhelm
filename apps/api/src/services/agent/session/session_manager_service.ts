@@ -64,6 +64,20 @@ type SessionRecord = {
   userSetTitle: string | null;
 };
 
+export type SessionManagerCreateSessionOptions = {
+  modelProviderCredentialModelId?: string | null;
+  reasoningLevel?: string | null;
+  sessionId?: string | null;
+  shouldSteer?: boolean;
+  userId?: string | null;
+};
+
+export type SessionManagerQueuePromptOptions = {
+  modelProviderCredentialModelId?: string | null;
+  reasoningLevel?: string | null;
+  shouldSteer?: boolean;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -139,90 +153,22 @@ export class SessionManagerService {
     userId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const insertableDatabase = tx as InsertableDatabase;
-      const [agentRecord] = await selectableDatabase
-        .select({
-          id: agents.id,
-          defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
-          defaultReasoningLevel: agents.default_reasoning_level,
-        })
-        .from(agents)
-        .where(and(
-          eq(agents.companyId, companyId),
-          eq(agents.id, agentId),
-        )) as AgentRecord[];
-      if (!agentRecord) {
-        throw new Error("Agent not found.");
-      }
-
-      const selectedModelRecord = modelProviderCredentialModelId
-        ? await this.resolveModelRecordById(
-          selectableDatabase,
-          companyId,
-          modelProviderCredentialModelId,
-        )
-        : await this.resolveDefaultModelRecord(
-          selectableDatabase,
-          companyId,
-          agentRecord,
-        );
-      const resolvedReasoningLevel = this.resolveReasoningLevel(
-        selectedModelRecord.reasoningLevels,
-        reasoningLevel,
-        agentRecord.defaultReasoningLevel,
-      );
-      const inferredTitle = this.inferTitle(userMessage);
-      const resolvedSessionId = String(sessionId || "").trim();
-      const now = new Date();
-      const [createdSessionRecord] = await insertableDatabase
-        .insert(agentSessions)
-        .values({
-          ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
-          companyId,
-          currentContextTokens: null,
-          agentId,
-          currentModelProviderCredentialModelId: selectedModelRecord.id,
-          currentReasoningLevel: resolvedReasoningLevel,
-          inferredTitle,
-          isCompacting: false,
-          isThinking: false,
-          maxContextTokens: null,
-          status: "queued",
-          thinkingText: null,
-          created_at: now,
-          updated_at: now,
-        })
-        .returning?.(this.sessionSelection()) as SessionRecord[];
-      if (!createdSessionRecord) {
-        throw new Error("Failed to create session.");
-      }
-
-      await this.copyAgentDefaultSecretsToSession(
-        selectableDatabase,
-        insertableDatabase,
+      return this.createSessionInTransaction(
+        tx as SelectableDatabase,
+        tx as InsertableDatabase,
         companyId,
         agentId,
-        createdSessionRecord.id,
-        userId,
+        userMessage,
+        {
+          modelProviderCredentialModelId,
+          reasoningLevel,
+          sessionId,
+          userId,
+        },
       );
-
-      await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
-        companyId,
-        sessionId: createdSessionRecord.id,
-        shouldSteer: false,
-        text: userMessage,
-      });
-
-      return {
-        ...createdSessionRecord,
-        currentModelId: selectedModelRecord.modelId,
-      };
     });
 
-    await this.publishQueuedMessagesUpdate(companyId, sessionRecord.id);
-    await this.publishSessionUpdate(companyId, sessionRecord.id);
-    await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionRecord.id);
+    await this.notifyQueuedSessionMessage(companyId, sessionRecord.id, false);
 
     this.logger.info({
       agentId,
@@ -233,6 +179,93 @@ export class SessionManagerService {
     }, "created agent session");
 
     return sessionRecord;
+  }
+
+  async createSessionInTransaction(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+    agentId: string,
+    userMessage: string,
+    options: SessionManagerCreateSessionOptions = {},
+  ): Promise<SessionRecord> {
+    const [agentRecord] = await selectableDatabase
+      .select({
+        id: agents.id,
+        defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
+        defaultReasoningLevel: agents.default_reasoning_level,
+      })
+      .from(agents)
+      .where(and(
+        eq(agents.companyId, companyId),
+        eq(agents.id, agentId),
+      )) as AgentRecord[];
+    if (!agentRecord) {
+      throw new Error("Agent not found.");
+    }
+
+    const selectedModelRecord = options.modelProviderCredentialModelId
+      ? await this.resolveModelRecordById(
+        selectableDatabase,
+        companyId,
+        options.modelProviderCredentialModelId,
+      )
+      : await this.resolveDefaultModelRecord(
+        selectableDatabase,
+        companyId,
+        agentRecord,
+      );
+    const resolvedReasoningLevel = this.resolveReasoningLevel(
+      selectedModelRecord.reasoningLevels,
+      options.reasoningLevel,
+      agentRecord.defaultReasoningLevel,
+    );
+    const inferredTitle = this.inferTitle(userMessage);
+    const resolvedSessionId = String(options.sessionId || "").trim();
+    const now = new Date();
+    const [createdSessionRecord] = await insertableDatabase
+      .insert(agentSessions)
+      .values({
+        ...(resolvedSessionId.length > 0 ? { id: resolvedSessionId } : {}),
+        companyId,
+        currentContextTokens: null,
+        agentId,
+        currentModelProviderCredentialModelId: selectedModelRecord.id,
+        currentReasoningLevel: resolvedReasoningLevel,
+        inferredTitle,
+        isCompacting: false,
+        isThinking: false,
+        maxContextTokens: null,
+        status: "queued",
+        thinkingText: null,
+        created_at: now,
+        updated_at: now,
+      })
+      .returning?.(this.sessionSelection()) as SessionRecord[];
+    if (!createdSessionRecord) {
+      throw new Error("Failed to create session.");
+    }
+
+    await this.copyAgentDefaultSecretsToSession(
+      selectableDatabase,
+      insertableDatabase,
+      companyId,
+      agentId,
+      createdSessionRecord.id,
+      options.userId,
+    );
+
+    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+      companyId,
+      sessionId: createdSessionRecord.id,
+      shouldSteer: options.shouldSteer ?? false,
+      text: userMessage,
+    });
+
+    return {
+      ...createdSessionRecord,
+      currentModelId: selectedModelRecord.modelId,
+    };
   }
 
   private async copyAgentDefaultSecretsToSession(
@@ -357,82 +390,22 @@ export class SessionManagerService {
     shouldSteer = false,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
-      const selectableDatabase = tx as SelectableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
-      const [existingSession] = await selectableDatabase
-        .select({
-          agentId: agentSessions.agentId,
-          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
-          currentReasoningLevel: agentSessions.currentReasoningLevel,
-          id: agentSessions.id,
-          status: agentSessions.status,
-        })
-        .from(agentSessions)
-        .where(and(
-          eq(agentSessions.companyId, companyId),
-          eq(agentSessions.id, sessionId),
-        )) as ExistingSessionRow[];
-      if (!existingSession) {
-        throw new Error("Session not found.");
-      }
-      if (existingSession.status === "archived") {
-        throw new Error("Archived sessions cannot receive new messages.");
-      }
-
-      const selectedModelRecord = modelProviderCredentialModelId
-        ? await this.resolveModelRecordById(
-          selectableDatabase,
-          companyId,
-          modelProviderCredentialModelId,
-        )
-        : await this.resolveCurrentModelRecord(
-          selectableDatabase,
-          companyId,
-          existingSession,
-        );
-      const resolvedReasoningLevel = this.resolveReasoningLevel(
-        selectedModelRecord.reasoningLevels,
-        reasoningLevel,
-        existingSession.currentReasoningLevel,
-      );
-      const now = new Date();
-      const [updatedSessionRecord] = await updatableDatabase
-        .update(agentSessions)
-        .set({
-          currentModelProviderCredentialModelId: selectedModelRecord.id,
-          currentReasoningLevel: resolvedReasoningLevel,
-          status: existingSession.status === "running" ? "running" : "queued",
-          updated_at: now,
-        })
-        .where(and(
-          eq(agentSessions.companyId, companyId),
-          eq(agentSessions.id, sessionId),
-        ))
-        .returning?.(this.sessionSelection()) as SessionRecord[];
-      if (!updatedSessionRecord) {
-        throw new Error("Failed to update session.");
-      }
-
-      await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+      return this.queuePromptInTransaction(
+        tx as SelectableDatabase,
+        tx as InsertableDatabase,
+        tx as UpdatableDatabase,
         companyId,
         sessionId,
-        shouldSteer,
-        text: userMessage,
-      });
-
-      return {
-        ...updatedSessionRecord,
-        currentModelId: selectedModelRecord.modelId,
-      };
+        userMessage,
+        {
+          modelProviderCredentialModelId,
+          reasoningLevel,
+          shouldSteer,
+        },
+      );
     });
 
-    await this.publishQueuedMessagesUpdate(companyId, sessionId);
-    await this.publishSessionUpdate(companyId, sessionId);
-    await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
-    if (shouldSteer) {
-      await this.publishSteer(companyId, sessionId);
-    }
+    await this.notifyQueuedSessionMessage(companyId, sessionId, shouldSteer);
 
     this.logger.info({
       companyId,
@@ -443,6 +416,82 @@ export class SessionManagerService {
     }, "queued session prompt");
 
     return sessionRecord;
+  }
+
+  async queuePromptInTransaction(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    sessionId: string,
+    userMessage: string,
+    options: SessionManagerQueuePromptOptions = {},
+  ): Promise<SessionRecord> {
+    const [existingSession] = await selectableDatabase
+      .select({
+        agentId: agentSessions.agentId,
+        currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+        currentReasoningLevel: agentSessions.currentReasoningLevel,
+        id: agentSessions.id,
+        status: agentSessions.status,
+      })
+      .from(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        eq(agentSessions.id, sessionId),
+      )) as ExistingSessionRow[];
+    if (!existingSession) {
+      throw new Error("Session not found.");
+    }
+    if (existingSession.status === "archived") {
+      throw new Error("Archived sessions cannot receive new messages.");
+    }
+
+    const selectedModelRecord = options.modelProviderCredentialModelId
+      ? await this.resolveModelRecordById(
+        selectableDatabase,
+        companyId,
+        options.modelProviderCredentialModelId,
+      )
+      : await this.resolveCurrentModelRecord(
+        selectableDatabase,
+        companyId,
+        existingSession,
+      );
+    const resolvedReasoningLevel = this.resolveReasoningLevel(
+      selectedModelRecord.reasoningLevels,
+      options.reasoningLevel,
+      existingSession.currentReasoningLevel,
+    );
+    const now = new Date();
+    const [updatedSessionRecord] = await updatableDatabase
+      .update(agentSessions)
+      .set({
+        currentModelProviderCredentialModelId: selectedModelRecord.id,
+        currentReasoningLevel: resolvedReasoningLevel,
+        status: existingSession.status === "running" ? "running" : "queued",
+        updated_at: now,
+      })
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        eq(agentSessions.id, sessionId),
+      ))
+      .returning?.(this.sessionSelection()) as SessionRecord[];
+    if (!updatedSessionRecord) {
+      throw new Error("Failed to update session.");
+    }
+
+    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+      companyId,
+      sessionId,
+      shouldSteer: options.shouldSteer ?? false,
+      text: userMessage,
+    });
+
+    return {
+      ...updatedSessionRecord,
+      currentModelId: selectedModelRecord.modelId,
+    };
   }
 
   async steerQueuedMessage(
@@ -488,6 +537,19 @@ export class SessionManagerService {
     }, "deleted queued session message");
 
     return queuedMessage;
+  }
+
+  async notifyQueuedSessionMessage(
+    companyId: string,
+    sessionId: string,
+    shouldSteer: boolean,
+  ): Promise<void> {
+    await this.publishQueuedMessagesUpdate(companyId, sessionId);
+    await this.publishSessionUpdate(companyId, sessionId);
+    await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
+    if (shouldSteer) {
+      await this.publishSteer(companyId, sessionId);
+    }
   }
 
   private async resolveDefaultModelRecord(
