@@ -52,6 +52,8 @@ import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
+import { AgentConversationMessagesQueryResolver } from "./resolvers/agent_conversation_messages.ts";
+import { AgentConversationsQueryResolver } from "./resolvers/agent_conversations.ts";
 import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
@@ -97,6 +99,8 @@ export class GraphqlApplication {
   private readonly archiveArtifactMutation: ArchiveArtifactMutation;
   private readonly attachSecretToAgentMutation: AttachSecretToAgentMutation;
   private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
+  private readonly agentConversationMessagesQueryResolver: AgentConversationMessagesQueryResolver;
+  private readonly agentConversationsQueryResolver: AgentConversationsQueryResolver;
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentSecretsQueryResolver: AgentSecretsQueryResolver;
@@ -184,6 +188,31 @@ export class GraphqlApplication {
         throw new Error("CreateSession mutation is not configured.");
       },
     } as never),
+    @inject(AgentConversationsQueryResolver)
+    agentConversationsQueryResolver: AgentConversationsQueryResolver = new AgentConversationsQueryResolver({
+      async listConversations() {
+        throw new Error("AgentConversations query is not configured.");
+      },
+      async listMessages() {
+        throw new Error("AgentConversationMessages query is not configured.");
+      },
+      async sendMessage() {
+        throw new Error("AgentConversation service is not configured.");
+      },
+    } as never),
+    @inject(AgentConversationMessagesQueryResolver)
+    agentConversationMessagesQueryResolver: AgentConversationMessagesQueryResolver =
+      new AgentConversationMessagesQueryResolver({
+        async listConversations() {
+          throw new Error("AgentConversations query is not configured.");
+        },
+        async listMessages() {
+          throw new Error("AgentConversationMessages query is not configured.");
+        },
+        async sendMessage() {
+          throw new Error("AgentConversation service is not configured.");
+        },
+      } as never),
     @inject(AgentQueryResolver) agentQueryResolver?: AgentQueryResolver,
     @inject(AgentCreateOptionsQueryResolver)
     agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver = new AgentCreateOptionsQueryResolver(),
@@ -360,6 +389,8 @@ export class GraphqlApplication {
       ?? new AttachSecretToAgentMutation(defaultSecretService);
     this.attachSecretToSessionMutation = attachSecretToSessionMutation
       ?? new AttachSecretToSessionMutation(defaultSecretService);
+    this.agentConversationMessagesQueryResolver = agentConversationMessagesQueryResolver;
+    this.agentConversationsQueryResolver = agentConversationsQueryResolver;
     this.agentQueryResolver = agentQueryResolver ?? new AgentQueryResolver(defaultAgentEnvironmentRequirementsService);
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
@@ -478,6 +509,8 @@ export class GraphqlApplication {
         JSON: GraphQLJSON,
         Query: {
           Agent: this.agentQueryResolver.execute,
+          AgentConversationMessages: this.agentConversationMessagesQueryResolver.execute,
+          AgentConversations: this.agentConversationsQueryResolver.execute,
           AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
           AgentSecrets: this.agentSecretsQueryResolver.execute,
           Agents: this.agentsQueryResolver.execute,

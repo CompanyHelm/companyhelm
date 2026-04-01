@@ -27,6 +27,8 @@ export function ApplicationHeader() {
           ? "Secrets"
     : pathname.startsWith("/chats")
       ? "Chats"
+      : pathname.startsWith("/conversations")
+        ? "Agent Conversations"
       : pathname.startsWith("/repositories")
         ? "Repositories"
         : pathname.startsWith("/knowledge-base")

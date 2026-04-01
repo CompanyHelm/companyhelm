@@ -10,6 +10,7 @@ import { AgentsPage } from "./pages/agents/agents_page";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
+import { ConversationsPage } from "./pages/conversations/conversations_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
@@ -35,6 +36,10 @@ type TasksRouteSearch = {
   category?: string;
 };
 
+type ConversationsRouteSearch = {
+  conversationId?: string;
+};
+
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -50,6 +55,14 @@ function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSe
   return {
     category: typeof search.category === "string" && search.category.trim().length > 0
       ? search.category.trim()
+      : undefined,
+  };
+}
+
+function validateConversationsRouteSearch(search: Record<string, unknown>): ConversationsRouteSearch {
+  return {
+    conversationId: typeof search.conversationId === "string" && search.conversationId.trim().length > 0
+      ? search.conversationId.trim()
       : undefined,
   };
 }
@@ -125,6 +138,13 @@ const inboxRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/inbox",
   component: InboxPage,
+});
+
+const conversationsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/conversations",
+  validateSearch: validateConversationsRouteSearch,
+  component: ConversationsPage,
 });
 
 const secretsRoute = createRoute({
@@ -204,6 +224,7 @@ const routeTree = rootRoute.addChildren([
       computeProvidersRoute,
       chatsRoute,
       inboxRoute,
+      conversationsRoute,
       secretsRoute,
       githubInstallRoute,
       repositoriesRoute,

@@ -31,6 +31,35 @@ export type AgentConversationSendMessageResult = {
   targetSessionId: string;
 };
 
+export type AgentConversationParticipantRecord = {
+  agentId: string;
+  agentName: string;
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+};
+
+export type AgentConversationRecord = {
+  createdAt: Date;
+  id: string;
+  latestMessageAt: Date | null;
+  latestMessagePreview: string | null;
+  participants: AgentConversationParticipantRecord[];
+  updatedAt: Date;
+};
+
+export type AgentConversationMessageRecord = {
+  authorAgentId: string;
+  authorAgentName: string;
+  authorParticipantId: string;
+  authorSessionId: string;
+  authorSessionTitle: string;
+  conversationId: string;
+  createdAt: Date;
+  id: string;
+  text: string;
+};
+
 type AgentRow = {
   id: string;
   name: string;
@@ -44,14 +73,25 @@ type AgentConversationParticipantRow = {
 };
 
 type AgentConversationRow = {
+  createdAt: Date;
   id: string;
   updatedAt: Date;
+};
+
+type AgentConversationMessageRow = {
+  authorParticipantId: string;
+  conversationId: string;
+  createdAt: Date;
+  id: string;
+  text: string;
 };
 
 type SessionRow = {
   agentId: string;
   id: string;
+  inferredTitle?: string | null;
   status: string;
+  userSetTitle?: string | null;
 };
 
 type PlannedDelivery = {
@@ -161,6 +201,146 @@ export class AgentConversationService {
       targetAgentId: persistedMessage.targetAgentId,
       targetSessionId: persistedMessage.targetSessionId,
     };
+  }
+
+  async listConversations(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+  ): Promise<AgentConversationRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const conversationRows = await tx
+        .select({
+          createdAt: agentConversations.createdAt,
+          id: agentConversations.id,
+          updatedAt: agentConversations.updatedAt,
+        })
+        .from(agentConversations)
+        .where(eq(agentConversations.companyId, companyId)) as AgentConversationRow[];
+      if (conversationRows.length === 0) {
+        return [];
+      }
+
+      const conversationIds = conversationRows.map((conversationRow) => conversationRow.id);
+      const participantRows = await tx
+        .select({
+          agentId: agentConversationParticipants.agentId,
+          conversationId: agentConversationParticipants.conversationId,
+          id: agentConversationParticipants.id,
+          sessionId: agentConversationParticipants.sessionId,
+        })
+        .from(agentConversationParticipants)
+        .where(and(
+          eq(agentConversationParticipants.companyId, companyId),
+          inArray(agentConversationParticipants.conversationId, conversationIds),
+        )) as AgentConversationParticipantRow[];
+      const messageRows = await tx
+        .select({
+          authorParticipantId: agentConversationMessages.authorParticipantId,
+          conversationId: agentConversationMessages.conversationId,
+          createdAt: agentConversationMessages.createdAt,
+          id: agentConversationMessages.id,
+          text: agentConversationMessages.text,
+        })
+        .from(agentConversationMessages)
+        .where(and(
+          eq(agentConversationMessages.companyId, companyId),
+          inArray(agentConversationMessages.conversationId, conversationIds),
+        )) as AgentConversationMessageRow[];
+      const participantDetails = await this.loadParticipantDetails(tx, companyId, participantRows);
+      const latestMessageByConversationId = this.buildLatestMessageByConversationId(messageRows);
+
+      const conversations = conversationRows.map((conversationRow) => ({
+        createdAt: conversationRow.createdAt,
+        id: conversationRow.id,
+        latestMessageAt: latestMessageByConversationId.get(conversationRow.id)?.createdAt ?? null,
+        latestMessagePreview: latestMessageByConversationId.get(conversationRow.id)?.text ?? null,
+        participants: participantRows
+          .filter((participantRow) => participantRow.conversationId === conversationRow.id)
+          .map((participantRow) => participantDetails.get(participantRow.id))
+          .filter((participant): participant is AgentConversationParticipantRecord => participant !== undefined),
+        updatedAt: conversationRow.updatedAt,
+      }));
+      conversations.sort((left, right) => {
+        const leftTimestamp = left.latestMessageAt?.getTime() ?? left.updatedAt.getTime();
+        const rightTimestamp = right.latestMessageAt?.getTime() ?? right.updatedAt.getTime();
+        return rightTimestamp - leftTimestamp;
+      });
+      return conversations;
+    });
+  }
+
+  async listMessages(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    conversationId?: string | null,
+  ): Promise<AgentConversationMessageRecord[]> {
+    if (!conversationId) {
+      return [];
+    }
+
+    return transactionProvider.transaction(async (tx) => {
+      const [conversationRow] = await tx
+        .select({
+          createdAt: agentConversations.createdAt,
+          id: agentConversations.id,
+          updatedAt: agentConversations.updatedAt,
+        })
+        .from(agentConversations)
+        .where(and(
+          eq(agentConversations.companyId, companyId),
+          eq(agentConversations.id, conversationId),
+        )) as AgentConversationRow[];
+      if (!conversationRow) {
+        throw new Error("Conversation not found.");
+      }
+
+      const participantRows = await tx
+        .select({
+          agentId: agentConversationParticipants.agentId,
+          conversationId: agentConversationParticipants.conversationId,
+          id: agentConversationParticipants.id,
+          sessionId: agentConversationParticipants.sessionId,
+        })
+        .from(agentConversationParticipants)
+        .where(and(
+          eq(agentConversationParticipants.companyId, companyId),
+          eq(agentConversationParticipants.conversationId, conversationId),
+        )) as AgentConversationParticipantRow[];
+      const participantDetails = await this.loadParticipantDetails(tx, companyId, participantRows);
+      const messageRows = await tx
+        .select({
+          authorParticipantId: agentConversationMessages.authorParticipantId,
+          conversationId: agentConversationMessages.conversationId,
+          createdAt: agentConversationMessages.createdAt,
+          id: agentConversationMessages.id,
+          text: agentConversationMessages.text,
+        })
+        .from(agentConversationMessages)
+        .where(and(
+          eq(agentConversationMessages.companyId, companyId),
+          eq(agentConversationMessages.conversationId, conversationId),
+        )) as AgentConversationMessageRow[];
+      messageRows.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+
+      return messageRows.map((messageRow) => {
+        const authorParticipant = participantDetails.get(messageRow.authorParticipantId);
+        if (!authorParticipant) {
+          throw new Error("Conversation participant not found.");
+        }
+
+        return {
+          authorAgentId: authorParticipant.agentId,
+          authorAgentName: authorParticipant.agentName,
+          authorParticipantId: messageRow.authorParticipantId,
+          authorSessionId: authorParticipant.sessionId,
+          authorSessionTitle: authorParticipant.sessionTitle,
+          conversationId: messageRow.conversationId,
+          createdAt: messageRow.createdAt,
+          id: messageRow.id,
+          text: messageRow.text,
+        };
+      });
+    });
   }
 
   private validateInput(input: AgentConversationSendMessageInput): void {
@@ -459,6 +639,80 @@ export class AgentConversationService {
 
     conversationRows.sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
     return conversationRows[0] ?? null;
+  }
+
+  private buildLatestMessageByConversationId(
+    messageRows: AgentConversationMessageRow[],
+  ): Map<string, AgentConversationMessageRow> {
+    const latestMessageByConversationId = new Map<string, AgentConversationMessageRow>();
+    for (const messageRow of messageRows) {
+      const currentLatest = latestMessageByConversationId.get(messageRow.conversationId);
+      if (!currentLatest || currentLatest.createdAt.getTime() < messageRow.createdAt.getTime()) {
+        latestMessageByConversationId.set(messageRow.conversationId, messageRow);
+      }
+    }
+
+    return latestMessageByConversationId;
+  }
+
+  private async loadParticipantDetails(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    participantRows: AgentConversationParticipantRow[],
+  ): Promise<Map<string, AgentConversationParticipantRecord>> {
+    if (participantRows.length === 0) {
+      return new Map();
+    }
+
+    const agentRows = await tx
+      .select({
+        id: agents.id,
+        name: agents.name,
+      })
+      .from(agents)
+      .where(and(
+        eq(agents.companyId, companyId),
+        inArray(agents.id, [...new Set(participantRows.map((participantRow) => participantRow.agentId))]),
+      )) as AgentRow[];
+    const sessionRows = await tx
+      .select({
+        agentId: agentSessions.agentId,
+        id: agentSessions.id,
+        inferredTitle: agentSessions.inferredTitle,
+        status: agentSessions.status,
+        userSetTitle: agentSessions.userSetTitle,
+      })
+      .from(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        inArray(agentSessions.id, [...new Set(participantRows.map((participantRow) => participantRow.sessionId))]),
+      )) as SessionRow[];
+
+    const agentNameById = new Map(agentRows.map((agentRow) => [agentRow.id, agentRow.name]));
+    const sessionById = new Map(sessionRows.map((sessionRow) => [sessionRow.id, sessionRow]));
+
+    return new Map(participantRows.map((participantRow) => {
+      return [participantRow.id, {
+        agentId: participantRow.agentId,
+        agentName: agentNameById.get(participantRow.agentId) ?? "Unknown agent",
+        id: participantRow.id,
+        sessionId: participantRow.sessionId,
+        sessionTitle: this.resolveSessionTitle(sessionById.get(participantRow.sessionId)),
+      }];
+    }));
+  }
+
+  private resolveSessionTitle(session: SessionRow | undefined): string {
+    if (!session) {
+      return "Unknown chat";
+    }
+
+    const preferredTitle = session.userSetTitle ?? session.inferredTitle ?? "";
+    if (preferredTitle.trim().length > 0) {
+      return preferredTitle;
+    }
+
+    return "Untitled chat";
   }
 
   private async loadAgent(

@@ -12,6 +12,7 @@ import {
   LayoutDashboardIcon,
   LockKeyholeIcon,
   MessageSquareIcon,
+  MessagesSquareIcon,
   MoonIcon,
   ServerIcon,
   Settings2Icon,
@@ -141,6 +142,11 @@ export function ApplicationSidebar() {
       icon: InboxIcon,
       label: "Inbox",
       to: "/inbox",
+    },
+    {
+      icon: MessagesSquareIcon,
+      label: "Agent Conversations",
+      to: "/conversations",
     },
     ...(featureFlags.isEnabled("tasks_management")
       ? [{

@@ -239,3 +239,146 @@ test("AgentConversationService creates a new target session when targeting an ag
     shouldSteer: false,
   });
 });
+
+test("AgentConversationService lists conversations with participant and preview metadata", async () => {
+  const transaction = new AgentConversationServiceTestTransaction([
+    [{
+      createdAt: new Date("2026-03-31T10:00:00.000Z"),
+      id: "conversation-1",
+      updatedAt: new Date("2026-03-31T10:15:00.000Z"),
+    }],
+    [
+      {
+        agentId: "agent-1",
+        conversationId: "conversation-1",
+        id: "participant-1",
+        sessionId: "session-1",
+      },
+      {
+        agentId: "agent-2",
+        conversationId: "conversation-1",
+        id: "participant-2",
+        sessionId: "session-2",
+      },
+    ],
+    [{
+      authorParticipantId: "participant-1",
+      conversationId: "conversation-1",
+      createdAt: new Date("2026-03-31T10:10:00.000Z"),
+      id: "message-1",
+      text: "Can you review the migration?",
+    }],
+    [
+      { id: "agent-1", name: "Manager" },
+      { id: "agent-2", name: "Reviewer" },
+    ],
+    [
+      { agentId: "agent-1", id: "session-1", inferredTitle: "Manager thread", status: "running", userSetTitle: null },
+      { agentId: "agent-2", id: "session-2", inferredTitle: null, status: "queued", userSetTitle: "Review session" },
+    ],
+  ]);
+  const service = new AgentConversationService(
+    {
+      child() {
+        return {
+          info() {
+            return undefined;
+          },
+        };
+      },
+    } as never,
+    {} as never,
+  );
+
+  const conversations = await service.listConversations({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(transaction as never),
+  } as never, "company-1");
+
+  assert.equal(conversations.length, 1);
+  assert.equal(conversations[0]?.latestMessagePreview, "Can you review the migration?");
+  assert.deepEqual(
+    conversations[0]?.participants.map((participant) => ({
+      agentName: participant.agentName,
+      sessionTitle: participant.sessionTitle,
+    })),
+    [
+      { agentName: "Manager", sessionTitle: "Manager thread" },
+      { agentName: "Reviewer", sessionTitle: "Review session" },
+    ],
+  );
+});
+
+test("AgentConversationService lists canonical messages for one conversation in chronological order", async () => {
+  const transaction = new AgentConversationServiceTestTransaction([
+    [{
+      createdAt: new Date("2026-03-31T10:00:00.000Z"),
+      id: "conversation-1",
+      updatedAt: new Date("2026-03-31T10:15:00.000Z"),
+    }],
+    [
+      {
+        agentId: "agent-1",
+        conversationId: "conversation-1",
+        id: "participant-1",
+        sessionId: "session-1",
+      },
+      {
+        agentId: "agent-2",
+        conversationId: "conversation-1",
+        id: "participant-2",
+        sessionId: "session-2",
+      },
+    ],
+    [
+      { id: "agent-1", name: "Manager" },
+      { id: "agent-2", name: "Reviewer" },
+    ],
+    [
+      { agentId: "agent-1", id: "session-1", inferredTitle: "Manager thread", status: "running", userSetTitle: null },
+      { agentId: "agent-2", id: "session-2", inferredTitle: "Review thread", status: "queued", userSetTitle: null },
+    ],
+    [
+      {
+        authorParticipantId: "participant-2",
+        conversationId: "conversation-1",
+        createdAt: new Date("2026-03-31T10:12:00.000Z"),
+        id: "message-2",
+        text: "Yes, I am on it.",
+      },
+      {
+        authorParticipantId: "participant-1",
+        conversationId: "conversation-1",
+        createdAt: new Date("2026-03-31T10:10:00.000Z"),
+        id: "message-1",
+        text: "Can you review the migration?",
+      },
+    ],
+  ]);
+  const service = new AgentConversationService(
+    {
+      child() {
+        return {
+          info() {
+            return undefined;
+          },
+        };
+      },
+    } as never,
+    {} as never,
+  );
+
+  const messages = await service.listMessages({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(transaction as never),
+  } as never, "company-1", "conversation-1");
+
+  assert.deepEqual(
+    messages.map((message) => ({
+      authorAgentName: message.authorAgentName,
+      text: message.text,
+    })),
+    [
+      { authorAgentName: "Manager", text: "Can you review the migration?" },
+      { authorAgentName: "Reviewer", text: "Yes, I am on it." },
+    ],
+  );
+});

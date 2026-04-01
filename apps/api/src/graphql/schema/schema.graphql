@@ -3,6 +3,8 @@ type Query {
   Me: Me!
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
+  AgentConversations: [AgentConversation!]!
+  AgentConversationMessages(conversationId: ID): [AgentConversationMessage!]!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
   GithubAppConfig: GithubAppConfig!
@@ -137,6 +139,35 @@ type InboxHumanQuestion {
   updatedAt: String!
   resolvedAt: String
   resolvedByUserId: ID
+}
+
+type AgentConversation {
+  id: ID!
+  participants: [AgentConversationParticipant!]!
+  latestMessagePreview: String
+  latestMessageAt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type AgentConversationParticipant {
+  id: ID!
+  agentId: ID!
+  agentName: String!
+  sessionId: ID!
+  sessionTitle: String!
+}
+
+type AgentConversationMessage {
+  id: ID!
+  conversationId: ID!
+  authorParticipantId: ID!
+  authorAgentId: ID!
+  authorAgentName: String!
+  authorSessionId: ID!
+  authorSessionTitle: String!
+  text: String!
+  createdAt: String!
 }
 
 type InboxHumanQuestionProposal {
