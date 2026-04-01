@@ -1,6 +1,8 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import ReactMarkdown from "react-markdown";
+import { PencilIcon } from "lucide-react";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +47,8 @@ const knowledgeBaseDetailPageUpdateMarkdownArtifactMutationNode = graphql`
   }
 `;
 
+type EditableField = "name" | "description" | "markdownContent";
+
 type KnowledgeBaseArtifactEditorState = {
   description: string;
   markdownContent: string;
@@ -81,14 +85,90 @@ function formatTimestamp(value: string): string {
   }).format(timestamp);
 }
 
+function renderSavedTimestamp(): string {
+  return `Saved ${formatTimestamp(new Date().toISOString())}`;
+}
+
+function KnowledgeBaseMarkdown({ content, emptyLabel }: { content: string; emptyLabel: string }) {
+  if (content.trim().length === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="min-w-0 w-full [&>*:first-child]:mt-0">
+      <ReactMarkdown
+        components={{
+          a: ({ children, ...anchorProps }) => (
+            <a
+              {...anchorProps}
+              className="font-medium text-foreground underline underline-offset-4"
+              rel="noreferrer"
+              target="_blank"
+            >
+              {children}
+            </a>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="mt-4 min-w-0 border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
+              {children}
+            </blockquote>
+          ),
+          code: ({ children, className, ...codeProps }) => (
+            <code
+              {...codeProps}
+              className={[
+                className,
+                "max-w-full break-words [overflow-wrap:anywhere]",
+                "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
+              ].filter(Boolean).join(" ")}
+            >
+              {children}
+            </code>
+          ),
+          h1: ({ children }) => (
+            <h1 className="mt-6 min-w-0 text-xl font-semibold leading-8 text-foreground">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="mt-5 min-w-0 text-lg font-semibold leading-7 text-foreground">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="mt-4 min-w-0 text-base font-semibold leading-6 text-foreground">{children}</h3>
+          ),
+          li: ({ children }) => (
+            <li className="min-w-0 pl-1 leading-6 marker:text-muted-foreground [&>p]:my-0 [&>ul]:mt-2 [&>ol]:mt-2">
+              {children}
+            </li>
+          ),
+          ol: ({ children }) => <ol className="mt-4 ml-5 grid min-w-0 list-decimal gap-1.5">{children}</ol>,
+          p: ({ children }) => (
+            <p className="mt-3 min-w-0 text-sm leading-6 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
+              {children}
+            </p>
+          ),
+          pre: ({ children }) => (
+            <pre className="mt-4 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
+              {children}
+            </pre>
+          ),
+          ul: ({ children }) => <ul className="mt-4 ml-5 grid min-w-0 list-disc gap-1.5">{children}</ul>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function KnowledgeBaseDetailPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6">
+    <main className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle>Loading document…</CardTitle>
         </CardHeader>
-        <CardContent>
+      </Card>
+      <Card className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
+        <CardContent className="flex min-h-0 flex-1 flex-col pt-4">
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
             Loading document…
           </div>
@@ -105,8 +185,10 @@ function KnowledgeBaseDetailPageContent() {
   const [editorState, setEditorState] = useState<KnowledgeBaseArtifactEditorState>(
     createArtifactEditorState,
   );
+  const [editingField, setEditingField] = useState<EditableField | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const pendingSaveFieldRef = useRef<EditableField | null>(null);
   if (!normalizedArtifactId) {
     throw new Error("Artifact ID is required.");
   }
@@ -131,13 +213,6 @@ function KnowledgeBaseDetailPageContent() {
   const artifact = data.Artifact;
   const isDocumentArtifact = artifact.type === "markdown_document";
   const isSaving = isUpdateArtifactInFlight || isUpdateMarkdownArtifactInFlight;
-  const hasUnsavedChanges = editorState.name !== artifact.name
-    || editorState.description !== (artifact.description ?? "")
-    || editorState.markdownContent !== (artifact.markdownContent ?? "");
-  const isSaveDisabled = isSaving
-    || !hasUnsavedChanges
-    || editorState.name.trim().length === 0
-    || editorState.markdownContent.trim().length === 0;
 
   useEffect(() => {
     setDetailLabel(artifact.name);
@@ -159,45 +234,79 @@ function KnowledgeBaseDetailPageContent() {
     artifact.name,
   ]);
 
-  useEffect(() => {
+  function startEditing(field: EditableField) {
+    setErrorMessage(null);
     setSavedMessage(null);
-  }, [
-    editorState.description,
-    editorState.markdownContent,
-    editorState.name,
-  ]);
+    setEditingField(field);
+  }
 
-  async function saveArtifact() {
-    if (isSaveDisabled || !isDocumentArtifact) {
+  async function saveField(field: EditableField) {
+    if (!isDocumentArtifact || pendingSaveFieldRef.current === field) {
       return;
     }
 
     setErrorMessage(null);
-    setSavedMessage(null);
+
+    if (field === "name" || field === "description") {
+      if (editorState.name.trim().length === 0) {
+        setErrorMessage("Title is required.");
+        return;
+      }
+
+      const hasMetadataChanges = editorState.name !== artifact.name
+        || editorState.description !== (artifact.description ?? "");
+      if (!hasMetadataChanges) {
+        setEditingField((currentField) => (currentField === field ? null : currentField));
+        return;
+      }
+
+      try {
+        pendingSaveFieldRef.current = field;
+        await new Promise<void>((resolve, reject) => {
+          commitUpdateArtifact({
+            variables: {
+              input: {
+                description: editorState.description || null,
+                id: artifact.id,
+                name: editorState.name,
+              },
+            },
+            onCompleted: (_mutationResponse, errors) => {
+              const mutationErrorMessage = getGraphQLErrorMessage(errors);
+              if (mutationErrorMessage) {
+                reject(new Error(mutationErrorMessage));
+                return;
+              }
+
+              resolve();
+            },
+            onError: reject,
+          });
+        });
+
+        setSavedMessage(renderSavedTimestamp());
+        setEditingField((currentField) => (currentField === field ? null : currentField));
+      } catch (error: unknown) {
+        setErrorMessage(error instanceof Error ? error.message : "Failed to save document.");
+      } finally {
+        pendingSaveFieldRef.current = null;
+      }
+
+      return;
+    }
+
+    if (editorState.markdownContent.trim().length === 0) {
+      setErrorMessage("Content is required.");
+      return;
+    }
+
+    if (editorState.markdownContent === (artifact.markdownContent ?? "")) {
+      setEditingField((currentField) => (currentField === field ? null : currentField));
+      return;
+    }
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        commitUpdateArtifact({
-          variables: {
-            input: {
-              description: editorState.description || null,
-              id: artifact.id,
-              name: editorState.name,
-            },
-          },
-          onCompleted: (_mutationResponse, errors) => {
-            const mutationErrorMessage = getGraphQLErrorMessage(errors);
-            if (mutationErrorMessage) {
-              reject(new Error(mutationErrorMessage));
-              return;
-            }
-
-            resolve();
-          },
-          onError: reject,
-        });
-      });
-
+      pendingSaveFieldRef.current = field;
       await new Promise<void>((resolve, reject) => {
         commitUpdateMarkdownArtifact({
           variables: {
@@ -219,15 +328,33 @@ function KnowledgeBaseDetailPageContent() {
         });
       });
 
-      setSavedMessage(`Saved ${formatTimestamp(new Date().toISOString())}`);
+      setSavedMessage(renderSavedTimestamp());
+      setEditingField((currentField) => (currentField === field ? null : currentField));
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save document.");
+    } finally {
+      pendingSaveFieldRef.current = null;
     }
+  }
+
+  function handleFieldKeyDown(field: EditableField, event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    if (field === "markdownContent" || field === "description") {
+      if (event.shiftKey) {
+        return;
+      }
+    }
+
+    event.preventDefault();
+    void saveField(field);
   }
 
   if (!isDocumentArtifact) {
     return (
-      <main className="flex flex-1 flex-col gap-6">
+      <main className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden">
         <Card className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Document not available</CardTitle>
@@ -246,70 +373,148 @@ function KnowledgeBaseDetailPageContent() {
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <main className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+      <Card className="shrink-0 rounded-2xl border border-border/60 shadow-sm">
         <CardHeader className="border-b border-border/50">
-          <CardTitle>{editorState.name || "Document"}</CardTitle>
-          <CardDescription>
-            Updated {formatTimestamp(artifact.updatedAt)}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Title
+              </p>
+              {editingField === "name" ? (
+                <Input
+                  autoFocus
+                  className="mt-2 h-10 text-lg font-semibold"
+                  onBlur={() => {
+                    void saveField("name");
+                  }}
+                  onChange={(event) => {
+                    setSavedMessage(null);
+                    setEditorState((currentState) => ({
+                      ...currentState,
+                      name: event.target.value,
+                    }));
+                  }}
+                  onKeyDown={(event) => {
+                    handleFieldKeyDown("name", event);
+                  }}
+                  value={editorState.name}
+                />
+              ) : (
+                <CardTitle className="mt-2 text-lg">{artifact.name}</CardTitle>
+              )}
+            </div>
+
+            <Button
+              aria-label="Edit title"
+              disabled={isSaving}
+              onClick={() => {
+                startEditing("name");
+              }}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <PencilIcon />
+            </Button>
+          </div>
+
+          <div className="mt-4 flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                Description
+              </p>
+              {editingField === "description" ? (
+                <textarea
+                  autoFocus
+                  className="mt-2 min-h-24 w-full resize-none rounded-xl border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onBlur={() => {
+                    void saveField("description");
+                  }}
+                  onChange={(event) => {
+                    setSavedMessage(null);
+                    setEditorState((currentState) => ({
+                      ...currentState,
+                      description: event.target.value,
+                    }));
+                  }}
+                  onKeyDown={(event) => {
+                    handleFieldKeyDown("description", event);
+                  }}
+                  placeholder="Short summary for this document."
+                  value={editorState.description}
+                />
+              ) : (
+                <div className="mt-2">
+                  <KnowledgeBaseMarkdown
+                    content={artifact.description ?? ""}
+                    emptyLabel="Add a short summary for this document."
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button
+              aria-label="Edit description"
+              disabled={isSaving}
+              onClick={() => {
+                startEditing("description");
+              }}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <PencilIcon />
+            </Button>
+          </div>
+
+          <CardDescription className="mt-4 flex items-center justify-between gap-4 border-t border-border/50 pt-4">
+            <span>Updated {formatTimestamp(artifact.updatedAt)}</span>
+            <span>{isSaving ? "Saving…" : savedMessage || ""}</span>
           </CardDescription>
         </CardHeader>
+      </Card>
 
-        <CardContent className="flex flex-col gap-4 pt-4">
+      <Card className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
+        <CardHeader className="border-b border-border/50">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle>Content</CardTitle>
+              <CardDescription className="mt-1">
+                {editingField === "markdownContent"
+                  ? "Press Enter to save. Use Shift+Enter for a new line."
+                  : "Rendered markdown document."}
+              </CardDescription>
+            </div>
+            <Button
+              aria-label="Edit content"
+              disabled={isSaving}
+              onClick={() => {
+                startEditing("markdownContent");
+              }}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <PencilIcon />
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="flex min-h-0 flex-1 flex-col gap-4 pt-4">
           {errorMessage ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}
             </div>
           ) : null}
-          {savedMessage && !errorMessage ? (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
-              {savedMessage}
-            </div>
-          ) : null}
 
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-name">
-              Title
-            </label>
-            <Input
-              id="knowledge-base-detail-name"
-              onChange={(event) => {
-                setSavedMessage(null);
-                setEditorState((currentState) => ({
-                  ...currentState,
-                  name: event.target.value,
-                }));
-              }}
-              value={editorState.name}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-description">
-              Description
-            </label>
+          {editingField === "markdownContent" ? (
             <textarea
-              className="min-h-24 w-full rounded-xl border border-input bg-transparent px-3 py-2 text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              id="knowledge-base-detail-description"
-              onChange={(event) => {
-                setSavedMessage(null);
-                setEditorState((currentState) => ({
-                  ...currentState,
-                  description: event.target.value,
-                }));
+              autoFocus
+              className="min-h-0 flex-1 resize-none rounded-xl border border-input bg-transparent px-4 py-3 font-mono text-sm leading-6 text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              onBlur={() => {
+                void saveField("markdownContent");
               }}
-              placeholder="Short summary for this document."
-              value={editorState.description}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="knowledge-base-detail-markdown">
-              Markdown
-            </label>
-            <textarea
-              className="min-h-[520px] w-full rounded-xl border border-input bg-transparent px-3 py-2 font-mono text-sm text-foreground shadow-xs outline-none transition placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              id="knowledge-base-detail-markdown"
               onChange={(event) => {
                 setSavedMessage(null);
                 setEditorState((currentState) => ({
@@ -317,21 +522,19 @@ function KnowledgeBaseDetailPageContent() {
                   markdownContent: event.target.value,
                 }));
               }}
+              onKeyDown={(event) => {
+                handleFieldKeyDown("markdownContent", event);
+              }}
               value={editorState.markdownContent}
             />
-          </div>
-
-          <div className="flex justify-end border-t border-border/50 pt-4">
-            <Button
-              disabled={isSaveDisabled}
-              onClick={() => {
-                void saveArtifact();
-              }}
-              type="button"
-            >
-              {isSaving ? "Saving…" : hasUnsavedChanges ? "Save changes" : "Saved"}
-            </Button>
-          </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+              <KnowledgeBaseMarkdown
+                content={artifact.markdownContent ?? ""}
+                emptyLabel="This document is empty."
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
     </main>
