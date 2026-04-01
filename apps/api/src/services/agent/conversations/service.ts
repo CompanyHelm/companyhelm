@@ -399,6 +399,10 @@ export class AgentConversationService {
     }
 
     const targetAgentId = input.targetAgentId as string;
+    if (targetAgentId === input.sourceAgentId) {
+      throw new Error("Cannot send an agent message to the same agent without an explicit target session.");
+    }
+
     await this.loadAgent(tx, input.companyId, targetAgentId);
     const reusableTarget = await this.findReusableTargetSession(
       tx,

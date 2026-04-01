@@ -240,6 +240,47 @@ test("AgentConversationService creates a new target session when targeting an ag
   });
 });
 
+test("AgentConversationService rejects targetAgentId when it matches the source agent", async () => {
+  const transaction = new AgentConversationServiceTestTransaction([
+    [{ agentId: "agent-1", id: "session-1", status: "running" }],
+    [{ id: "agent-1", name: "Manager" }],
+  ]);
+  const service = new AgentConversationService(
+    {
+      child() {
+        return {
+          info() {
+            return undefined;
+          },
+        };
+      },
+    } as never,
+    {
+      async createSessionInTransaction() {
+        throw new Error("same-agent targetAgentId should fail before creating a session");
+      },
+      async notifyQueuedSessionMessage() {
+        throw new Error("same-agent targetAgentId should fail before notifying delivery");
+      },
+      async queuePromptInTransaction() {
+        throw new Error("same-agent targetAgentId should fail before queueing delivery");
+      },
+    } as never,
+  );
+
+  await assert.rejects(async () => {
+    await service.sendMessage({
+      transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(transaction as never),
+    } as never, {
+      companyId: "company-1",
+      sourceAgentId: "agent-1",
+      sourceSessionId: "session-1",
+      targetAgentId: "agent-1",
+      text: "Ping yourself through agent routing.",
+    });
+  }, /Cannot send an agent message to the same agent without an explicit target session/);
+});
+
 test("AgentConversationService lists conversations with participant and preview metadata", async () => {
   const transaction = new AgentConversationServiceTestTransaction([
     [{
