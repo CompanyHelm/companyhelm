@@ -8,7 +8,6 @@ export type AgentCompanyDirectoryAgent = {
 };
 
 export type AgentCompanyDirectoryMember = {
-  email: string;
   id: string;
   name: string;
 };
@@ -23,7 +22,6 @@ type MembershipRow = {
 };
 
 type UserRow = {
-  email: string;
   firstName: string;
   id: string;
   lastName: string | null;
@@ -74,7 +72,6 @@ export class AgentCompanyDirectoryToolService {
 
       const userRows = await tx
         .select({
-          email: users.email,
           firstName: users.first_name,
           id: users.id,
           lastName: users.last_name,
@@ -84,7 +81,6 @@ export class AgentCompanyDirectoryToolService {
 
       return [...userRows]
         .map((userRow) => ({
-          email: userRow.email,
           id: userRow.id,
           name: AgentCompanyDirectoryToolService.formatMemberName(userRow),
         }))

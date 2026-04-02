@@ -24,7 +24,6 @@ test("AgentListCompanyMembersTool renders the human company directory", async ()
   const tool = new AgentListCompanyMembersTool({
     async listCompanyMembers() {
       return [{
-        email: "jane@example.com",
         id: "user-1",
         name: "Jane Doe",
       }];
@@ -38,7 +37,6 @@ test("AgentListCompanyMembersTool renders the human company directory", async ()
       text: [
         "id: user-1",
         "name: Jane Doe",
-        "email: jane@example.com",
       ].join("\n"),
       type: "text",
     }],

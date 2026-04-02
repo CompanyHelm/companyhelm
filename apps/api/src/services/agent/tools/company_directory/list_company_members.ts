@@ -18,7 +18,7 @@ export class AgentListCompanyMembersTool {
 
   createDefinition(): ToolDefinition<typeof AgentListCompanyMembersTool.parameters> {
     return {
-      description: "List the human company members with their ids, names, and email addresses.",
+      description: "List the human company members with their ids and names.",
       execute: async () => {
         const members = await this.companyDirectoryToolService.listCompanyMembers();
         return {
