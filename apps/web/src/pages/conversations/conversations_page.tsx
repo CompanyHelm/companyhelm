@@ -62,9 +62,9 @@ const conversationsPageMessagesQueryNode = graphql`
 
 function ConversationsPageFallback() {
   return (
-    <main className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_352px]">
-      <div className="min-h-0 rounded-2xl border border-border/60 bg-card" />
-      <div className="min-h-0 rounded-2xl border border-border/60 bg-card" />
+    <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <div className="min-h-0 flex-1 rounded-2xl border border-border/60 bg-card" />
+      <div className="hidden min-h-0 w-[352px] shrink-0 rounded-2xl border border-border/60 bg-card lg:block" />
     </main>
   );
 }
@@ -399,24 +399,22 @@ function ConversationsPageContent() {
   return (
     <>
       {mobileConversationListOverlay}
-      <main
-        className={`grid min-h-0 flex-1 gap-4 ${
-          isDesktopConversationListVisible ? "lg:grid-cols-[minmax(0,1fr)_var(--conversations-list-width)]" : ""
-        }`}
-        style={isDesktopConversationListVisible ? conversationListPanelStyle : undefined}
-      >
-        <div className={isDesktopConversationListVisible ? "min-h-0 min-w-0 lg:pl-2" : "min-h-0 min-w-0"}>
+      <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <ConversationTranscript
             conversation={selectedConversation}
             messages={messages}
           />
         </div>
         {isDesktopConversationListVisible ? (
-          <div className="relative hidden min-h-0 lg:flex">
+          <div
+            className="relative hidden min-h-0 overflow-hidden w-full lg:flex lg:w-[var(--conversations-list-width)] lg:shrink-0"
+            style={conversationListPanelStyle}
+          >
             <button
               aria-label="Resize conversations list"
               className={`absolute inset-y-0 -left-3 z-10 hidden w-6 items-center justify-center !cursor-ew-resize lg:flex ${
-                isResizingConversationList ? "opacity-100" : "opacity-0 transition group-hover:opacity-100"
+                isResizingConversationList ? "bg-muted/30" : ""
               }`}
               onPointerDown={startConversationListResize}
               type="button"
