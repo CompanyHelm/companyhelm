@@ -18,8 +18,10 @@ export type ConversationListRecord = {
 
 type ConversationListProperties = {
   conversations: ConversationListRecord[];
+  emptyStateTone?: "desktop" | "mobile";
   onSelect: (conversationId: string) => void;
   selectedConversationId?: string;
+  tone?: "desktop" | "mobile";
 };
 
 function formatConversationTimestamp(conversation: ConversationListRecord): string {
@@ -41,15 +43,39 @@ function formatConversationSessions(conversation: ConversationListRecord): strin
 }
 
 export function ConversationList(properties: ConversationListProperties) {
+  const tone = properties.tone ?? "desktop";
+  const emptyStateTone = properties.emptyStateTone ?? tone;
+
   if (properties.conversations.length === 0) {
     return (
-      <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 text-center">
+      <div
+        className={cn(
+          "flex min-h-[280px] items-center justify-center rounded-xl border px-4 text-center",
+          emptyStateTone === "mobile"
+            ? "border-dashed border-sidebar-border bg-sidebar-accent/25"
+            : "border-dashed border-border/60 bg-muted/10",
+        )}
+      >
         <div className="grid gap-2">
-          <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-border/70 bg-background">
-            <MessageSquareTextIcon className="size-4 text-muted-foreground" />
+          <div
+            className={cn(
+              "mx-auto flex size-10 items-center justify-center rounded-full border",
+              emptyStateTone === "mobile"
+                ? "border-sidebar-border bg-sidebar"
+                : "border-border/70 bg-background",
+            )}
+          >
+            <MessageSquareTextIcon
+              className={cn(
+                "size-4",
+                emptyStateTone === "mobile" ? "text-sidebar-foreground/70" : "text-muted-foreground",
+              )}
+            />
           </div>
-          <div className="text-sm font-medium text-foreground">No agent conversations yet</div>
-          <div className="max-w-xs text-xs text-muted-foreground">
+          <div className={cn("text-sm font-medium", emptyStateTone === "mobile" ? "text-sidebar-foreground" : "text-foreground")}>
+            No agent conversations yet
+          </div>
+          <div className={cn("max-w-xs text-xs", emptyStateTone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground")}>
             Agent-to-agent threads will appear here after an agent uses the send_agent_message tool.
           </div>
         </div>
@@ -66,10 +92,14 @@ export function ConversationList(properties: ConversationListProperties) {
           <button
             key={conversation.id}
             className={cn(
-              "grid w-full gap-2 rounded-xl border px-4 py-3 text-left transition",
-              isSelected
-                ? "border-primary/50 bg-primary/10 shadow-sm"
-                : "border-border/60 bg-card hover:border-border hover:bg-muted/30",
+              "grid w-full gap-2 rounded-xl px-3 py-3 text-left transition",
+              tone === "mobile"
+                ? isSelected
+                  ? "bg-sidebar-accent"
+                  : "bg-transparent hover:bg-sidebar-accent/70"
+                : isSelected
+                  ? "bg-muted/45"
+                  : "bg-transparent hover:bg-muted/30",
             )}
             onClick={() => {
               properties.onSelect(conversation.id);
@@ -78,18 +108,38 @@ export function ConversationList(properties: ConversationListProperties) {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-foreground">
+                <div
+                  className={cn(
+                    "truncate text-sm font-medium",
+                    tone === "mobile" ? "text-sidebar-foreground" : "text-foreground",
+                  )}
+                >
                   {formatConversationTitle(conversation)}
                 </div>
-                <div className="truncate text-xs text-muted-foreground">
+                <div
+                  className={cn(
+                    "truncate text-xs",
+                    tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
+                  )}
+                >
                   {formatConversationSessions(conversation)}
                 </div>
               </div>
-              <div className="shrink-0 text-[11px] text-muted-foreground">
+              <div
+                className={cn(
+                  "shrink-0 text-[11px]",
+                  tone === "mobile" ? "text-sidebar-foreground/55" : "text-muted-foreground",
+                )}
+              >
                 {formatConversationTimestamp(conversation)}
               </div>
             </div>
-            <div className="line-clamp-2 text-xs text-muted-foreground">
+            <div
+              className={cn(
+                "line-clamp-2 text-xs",
+                tone === "mobile" ? "text-sidebar-foreground/60" : "text-muted-foreground",
+              )}
+            >
               {conversation.latestMessagePreview ?? "No messages yet."}
             </div>
           </button>

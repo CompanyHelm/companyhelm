@@ -27,14 +27,14 @@ function formatMessageTimestamp(timestamp: string): string {
 export function ConversationTranscript(properties: ConversationTranscriptProperties) {
   if (!properties.conversation) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 px-6 text-center">
+      <div className="flex h-full min-h-0 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 px-6 text-center">
         <div className="grid gap-2">
           <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-border/70 bg-background">
             <MessageSquareTextIcon className="size-4 text-muted-foreground" />
           </div>
           <div className="text-sm font-medium text-foreground">Select an agent conversation</div>
           <div className="max-w-sm text-xs text-muted-foreground">
-            Choose an agent-to-agent thread from the left to inspect the canonical conversation transcript.
+            Choose an agent-to-agent thread from the right to inspect the canonical conversation transcript.
           </div>
         </div>
       </div>
@@ -42,7 +42,7 @@ export function ConversationTranscript(properties: ConversationTranscriptPropert
   }
 
   return (
-    <Card className="flex min-h-[420px] flex-col rounded-2xl border border-border/60 shadow-sm">
+    <Card className="flex h-full min-h-0 flex-col rounded-2xl border border-border/60 shadow-sm">
       <CardHeader className="gap-3 border-b border-border/60">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="grid gap-2">
