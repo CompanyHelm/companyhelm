@@ -30,6 +30,7 @@ import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePr
 import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDeleteSessionQueuedMessageMutation.graphql";
+import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
@@ -166,6 +167,20 @@ const chatsPageSessionEnvironmentQueryNode = graphql`
 const chatsPageDeleteSessionQueuedMessageMutationNode = graphql`
   mutation chatsPageDeleteSessionQueuedMessageMutation($input: DeleteSessionQueuedMessageInput!) {
     DeleteSessionQueuedMessage(input: $input) {
+      id
+      sessionId
+      text
+      shouldSteer
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
+  mutation chatsPageSteerSessionQueuedMessageMutation($input: SteerSessionQueuedMessageInput!) {
+    SteerSessionQueuedMessage(input: $input) {
       id
       sessionId
       text
@@ -1102,13 +1117,17 @@ function ChatsThinkingIndicator({ visible }: { visible: boolean }) {
 }
 
 function ChatsQueuedMessagesComposerList({
+  steeringQueuedMessageId,
   deletingQueuedMessageId,
   isLoading,
+  onSteer,
   onDelete,
   queuedMessages,
 }: {
+  steeringQueuedMessageId: string | null;
   deletingQueuedMessageId: string | null;
   isLoading: boolean;
+  onSteer: (queuedMessageId: string) => void;
   onDelete: (queuedMessageId: string) => void;
   queuedMessages: ReadonlyArray<QueuedMessageRecord>;
 }) {
@@ -1126,7 +1145,9 @@ function ChatsQueuedMessagesComposerList({
       </div>
       <div className="grid gap-2">
         {queuedMessages.map((queuedMessage) => {
+          const canSteer = !queuedMessage.shouldSteer && queuedMessage.status.trim().toLowerCase() === "pending";
           const canDelete = !queuedMessage.shouldSteer && queuedMessage.status.trim().toLowerCase() === "pending";
+          const isSteering = steeringQueuedMessageId === queuedMessage.id;
           const isDeleting = deletingQueuedMessageId === queuedMessage.id;
 
           return (
@@ -1147,17 +1168,33 @@ function ChatsQueuedMessagesComposerList({
                   {queuedMessage.text}
                 </p>
               </div>
-              {canDelete ? (
-                <button
-                  aria-label="Delete queued message"
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={isDeleting}
-                  onClick={() => onDelete(queuedMessage.id)}
-                  title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
-                  type="button"
-                >
-                  {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
-                </button>
+              {canSteer || canDelete ? (
+                <div className="flex shrink-0 items-center gap-1">
+                  {canSteer ? (
+                    <button
+                      aria-label="Steer queued message"
+                      className="inline-flex h-8 items-center justify-center rounded-full px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isSteering}
+                      onClick={() => onSteer(queuedMessage.id)}
+                      title={isSteering ? "Steering queued message..." : "Steer queued message"}
+                      type="button"
+                    >
+                      {isSteering ? <Loader2Icon className="size-4 animate-spin" /> : "Steer"}
+                    </button>
+                  ) : null}
+                  {canDelete ? (
+                    <button
+                      aria-label="Delete queued message"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isDeleting}
+                      onClick={() => onDelete(queuedMessage.id)}
+                      title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
+                      type="button"
+                    >
+                      {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           );
@@ -1562,6 +1599,7 @@ function ChatsPageContent() {
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
   const [isLoadingQueuedMessages, setIsLoadingQueuedMessages] = useState(false);
+  const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
   const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
   const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
@@ -1589,6 +1627,9 @@ function ChatsPageContent() {
   );
   const [commitDeleteQueuedMessage] = useMutation<chatsPageDeleteSessionQueuedMessageMutation>(
     chatsPageDeleteSessionQueuedMessageMutationNode,
+  );
+  const [commitSteerQueuedMessage] = useMutation<chatsPageSteerSessionQueuedMessageMutation>(
+    chatsPageSteerSessionQueuedMessageMutationNode,
   );
   const [commitMarkSessionRead] = useMutation<chatsPageMarkSessionReadMutation>(
     chatsPageMarkSessionReadMutationNode,
@@ -2484,6 +2525,58 @@ function ChatsPageContent() {
     });
   };
 
+  const steerQueuedMessage = async (queuedMessageId: string) => {
+    const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
+    if (!queuedMessage || queuedMessage.shouldSteer || queuedMessage.status.trim().toLowerCase() !== "pending") {
+      return;
+    }
+
+    setSteeringQueuedMessageId(queuedMessageId);
+    await new Promise<void>((resolve, reject) => {
+      commitSteerQueuedMessage({
+        variables: {
+          input: {
+            id: queuedMessageId,
+          },
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const updatedQueuedMessage = response.SteerSessionQueuedMessage;
+          if (!updatedQueuedMessage) {
+            reject(new Error("Failed to steer queued message."));
+            return;
+          }
+
+          setQueuedMessages((currentQueuedMessages) => {
+            return currentQueuedMessages.map((currentQueuedMessage) => {
+              return currentQueuedMessage.id === queuedMessageId
+                ? {
+                  ...currentQueuedMessage,
+                  shouldSteer: updatedQueuedMessage.shouldSteer,
+                  status: updatedQueuedMessage.status,
+                  updatedAt: updatedQueuedMessage.updatedAt,
+                }
+                : currentQueuedMessage;
+            });
+          });
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to steer queued message.");
+    }).finally(() => {
+      setSteeringQueuedMessageId((currentSteeringQueuedMessageId) => {
+        return currentSteeringQueuedMessageId === queuedMessageId ? null : currentSteeringQueuedMessageId;
+      });
+    });
+  };
+
   const startChatListResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
     resizeStartXRef.current = event.clientX;
     resizeStartWidthRef.current = chatListWidth;
@@ -3101,8 +3194,12 @@ function ChatsPageContent() {
             <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
               {selectedSession ? (
                 <ChatsQueuedMessagesComposerList
+                  steeringQueuedMessageId={steeringQueuedMessageId}
                   deletingQueuedMessageId={deletingQueuedMessageId}
                   isLoading={isLoadingQueuedMessages}
+                  onSteer={(queuedMessageId) => {
+                    void steerQueuedMessage(queuedMessageId);
+                  }}
                   onDelete={(queuedMessageId) => {
                     void deleteQueuedMessage(queuedMessageId);
                   }}
