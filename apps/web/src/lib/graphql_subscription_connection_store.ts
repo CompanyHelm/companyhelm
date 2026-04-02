@@ -32,7 +32,7 @@ export class GraphqlSubscriptionConnectionStore {
   beginOperation(): void {
     this.activeOperationCount += 1;
     if (this.activeOperationCount === 1) {
-      this.setStatus(this.hasConnected ? "reconnecting" : "connecting");
+      this.setStatus(this.activeSocket ? "connected" : "connecting");
     }
   }
 
@@ -49,7 +49,7 @@ export class GraphqlSubscriptionConnectionStore {
       return;
     }
 
-    this.setStatus(isRetry || this.hasConnected ? "reconnecting" : "connecting");
+    this.setStatus(isRetry ? "reconnecting" : "connecting");
   }
 
   handleOpened(socket: unknown): void {
