@@ -24,24 +24,6 @@ type ConversationListProperties = {
   tone?: "desktop" | "mobile";
 };
 
-function formatConversationTimestamp(conversation: ConversationListRecord): string {
-  const timestamp = conversation.latestMessageAt ?? conversation.updatedAt ?? conversation.createdAt;
-  return new Date(timestamp).toLocaleString();
-}
-
-function formatConversationTitle(conversation: ConversationListRecord): string {
-  const agentNames = [...new Set(conversation.participants.map((participant) => participant.agentName))];
-  if (agentNames.length === 0) {
-    return "Untitled conversation";
-  }
-
-  return agentNames.join(" / ");
-}
-
-function formatConversationSessions(conversation: ConversationListRecord): string {
-  return conversation.participants.map((participant) => participant.sessionTitle).join(" · ");
-}
-
 export function ConversationList(properties: ConversationListProperties) {
   const tone = properties.tone ?? "desktop";
   const emptyStateTone = properties.emptyStateTone ?? tone;
@@ -106,41 +88,36 @@ export function ConversationList(properties: ConversationListProperties) {
             }}
             type="button"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div
-                  className={cn(
-                    "truncate text-sm font-medium",
-                    tone === "mobile" ? "text-sidebar-foreground" : "text-foreground",
-                  )}
-                >
-                  {formatConversationTitle(conversation)}
+            <div className="grid gap-2">
+              {conversation.participants.length > 0 ? conversation.participants.map((participant) => (
+                <div key={participant.id} className="min-w-0">
+                  <div
+                    className={cn(
+                      "truncate text-sm font-medium",
+                      tone === "mobile" ? "text-sidebar-foreground" : "text-foreground",
+                    )}
+                  >
+                    {participant.agentName}
+                  </div>
+                  <div
+                    className={cn(
+                      "truncate text-xs",
+                      tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
+                    )}
+                  >
+                    {participant.sessionTitle}
+                  </div>
                 </div>
+              )) : (
                 <div
                   className={cn(
-                    "truncate text-xs",
+                    "text-sm font-medium",
                     tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
                   )}
                 >
-                  {formatConversationSessions(conversation)}
+                  Untitled conversation
                 </div>
-              </div>
-              <div
-                className={cn(
-                  "shrink-0 text-[11px]",
-                  tone === "mobile" ? "text-sidebar-foreground/55" : "text-muted-foreground",
-                )}
-              >
-                {formatConversationTimestamp(conversation)}
-              </div>
-            </div>
-            <div
-              className={cn(
-                "line-clamp-2 text-xs",
-                tone === "mobile" ? "text-sidebar-foreground/60" : "text-muted-foreground",
               )}
-            >
-              {conversation.latestMessagePreview ?? "No messages yet."}
             </div>
           </button>
         );
