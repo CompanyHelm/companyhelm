@@ -15,6 +15,7 @@ import { AgentSecretToolProvider } from "../src/services/agent/tools/secrets/pro
 import { AgentToolsService } from "../src/services/agent/tools/service.ts";
 import { AgentTaskToolProvider } from "../src/services/agent/tools/tasks/provider.ts";
 import { AgentTerminalToolProvider } from "../src/services/agent/tools/terminal/provider.ts";
+import { AgentWebToolProvider } from "../src/services/agent/tools/web/provider.ts";
 
 test("AgentToolsService initializes the environment-backed terminal tool catalog once per prompt scope", () => {
   const service = new AgentToolsService({
@@ -56,6 +57,14 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       },
       async listInstallations() {
         throw new Error("github installations should not be loaded during initialization");
+      },
+    } as never),
+    new AgentWebToolProvider({
+      async fetchPages() {
+        throw new Error("web pages should not be fetched during initialization");
+      },
+      async searchWeb() {
+        throw new Error("web searches should not be run during initialization");
       },
     } as never),
     new AgentInboxToolProvider({
@@ -131,6 +140,8 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "list_company_agents",
       "list_github_installations",
       "gh_exec",
+      "web_search",
+      "web_fetch",
       "ask_human_question",
       "send_agent_message",
       "list_tasks",
@@ -192,6 +203,14 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       },
       async listInstallations() {
         throw new Error("github installations should not be loaded during cleanup");
+      },
+    } as never),
+    new AgentWebToolProvider({
+      async fetchPages() {
+        throw new Error("web pages should not be fetched during cleanup");
+      },
+      async searchWeb() {
+        throw new Error("web searches should not be run during cleanup");
       },
     } as never),
     new AgentInboxToolProvider({
@@ -305,6 +324,14 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("github installations should not be loaded during session creation");
       },
     } as never),
+    new AgentWebToolProvider({
+      async fetchPages() {
+        throw new Error("web pages should not be fetched during session creation");
+      },
+      async searchWeb() {
+        throw new Error("web searches should not run during session creation");
+      },
+    } as never),
     new AgentInboxToolProvider({
       async createHumanQuestion() {
         throw new Error("inbox questions should not be created during session creation");
@@ -392,6 +419,8 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "list_company_agents",
       "list_github_installations",
       "gh_exec",
+      "web_search",
+      "web_fetch",
       "ask_human_question",
       "send_agent_message",
       "list_tasks",

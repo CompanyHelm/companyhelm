@@ -29,6 +29,7 @@ class AppConfigTestHarness {
     const githubClientVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
+    const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
 
     process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
@@ -36,6 +37,7 @@ class AppConfigTestHarness {
     process.env[githubClientVariableName] = "client-id";
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
+    process.env[exaApiKeyVariableName] = "exa-local-api-key";
 
     mkdirSync(configDirectoryPath, { recursive: true });
     writeFileSync(
@@ -44,6 +46,7 @@ class AppConfigTestHarness {
         githubClientVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
+        exaApiKeyVariableName,
         clerkSecretKeyVariableName,
         clerkPublishableKeyVariableName,
         clerkJwksUrlVariableName,
@@ -59,6 +62,7 @@ class AppConfigTestHarness {
       githubClientVariableName,
       githubKeyVariableName,
       githubUrlVariableName,
+      exaApiKeyVariableName,
     };
   }
 
@@ -66,6 +70,7 @@ class AppConfigTestHarness {
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
+    exaApiKeyVariableName: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
     clerkJwksUrlVariableName: string;
@@ -119,6 +124,9 @@ redis:
 workers:
   session_process:
     concurrency: 4
+web_search:
+  exa:
+    api_key: "\${${params.exaApiKeyVariableName}}"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
@@ -188,6 +196,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     key_id: "companyhelm-local-key",
   });
   assert.equal(document.github.app_client_id, "client-id");
+  assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
 });

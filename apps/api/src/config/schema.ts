@@ -57,6 +57,11 @@ export const ConfigDocument = z.object({
       concurrency: PositiveIntegerSchema,
     }),
   }),
+  web_search: z.object({
+    exa: z.object({
+      api_key: NonEmptyStringSchema,
+    }),
+  }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,
     app_private_key_pem: NonEmptyStringSchema,

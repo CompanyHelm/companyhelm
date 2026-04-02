@@ -33,12 +33,15 @@ import { AgentSecretToolService } from "../../tools/secrets/service.ts";
 import { AgentTaskToolProvider } from "../../tools/tasks/provider.ts";
 import { AgentTaskToolService } from "../../tools/tasks/service.ts";
 import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
+import { AgentWebToolProvider } from "../../tools/web/provider.ts";
+import { AgentWebToolService } from "../../tools/web/service.ts";
 import { ArtifactService } from "../../../artifact_service.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { TaskService } from "../../../task_service.ts";
 import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
+import { ExaWebClient } from "../../../web_search/exa_client.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -89,6 +92,7 @@ export class PiMonoSessionManagerService {
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
   private readonly agentConversationService: AgentConversationService;
+  private readonly exaWebClient: ExaWebClient;
 
   constructor(
     @inject(RedisService) redisService: RedisService,
@@ -97,6 +101,7 @@ export class PiMonoSessionManagerService {
     @inject(AgentInboxService) inboxService: AgentInboxService,
     @inject(SecretService) secretService: SecretService,
     @inject(AgentConversationService) agentConversationService: AgentConversationService,
+    @inject(ExaWebClient) exaWebClient: ExaWebClient,
   ) {
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
@@ -104,6 +109,7 @@ export class PiMonoSessionManagerService {
     this.inboxService = inboxService;
     this.secretService = secretService;
     this.agentConversationService = agentConversationService;
+    this.exaWebClient = exaWebClient;
   }
 
   async ensureSession(
@@ -166,11 +172,13 @@ export class PiMonoSessionManagerService {
       runtimeConfig.agentId,
       new TaskService(),
     );
+    const webToolService = new AgentWebToolService(this.exaWebClient);
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
       new AgentSecretToolProvider(secretToolService),
       new AgentCompanyDirectoryToolProvider(companyDirectoryToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
+      new AgentWebToolProvider(webToolService),
       new AgentInboxToolProvider(inboxToolService),
       new AgentConversationToolProvider(conversationToolService),
       new AgentTaskToolProvider(taskToolService),

@@ -35,6 +35,9 @@ redis:
 workers:
   session_process:
     concurrency: 100
+web_search:
+  exa:
+    api_key: "${EXA_API_KEY}"
 daytona:
   api_key: "${DAYTONA_API_KEY}"
   api_url: "https://app.daytona.io/api"

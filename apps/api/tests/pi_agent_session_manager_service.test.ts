@@ -151,6 +151,17 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("agent conversations should not be sent during ensureSession");
       },
     } as never,
+    {
+      async fetchHtmlContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async fetchMarkdownContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async search() {
+        throw new Error("web searches should not run during ensureSession");
+      },
+    } as never,
   );
 
   const session = await service.ensureSession(
@@ -304,6 +315,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_company_agents",
       "list_github_installations",
       "gh_exec",
+      "web_search",
+      "web_fetch",
       "ask_human_question",
       "send_agent_message",
       "list_tasks",
@@ -357,6 +370,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_company_agents",
       "list_github_installations",
       "gh_exec",
+      "web_search",
+      "web_fetch",
       "ask_human_question",
       "send_agent_message",
       "list_tasks",
@@ -444,6 +459,17 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     {
       async sendMessage() {
         throw new Error("agent conversations should not be sent during ensureSession");
+      },
+    } as never,
+    {
+      async fetchHtmlContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async fetchMarkdownContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async search() {
+        throw new Error("web searches should not run during ensureSession");
       },
     } as never,
   );
@@ -538,6 +564,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "list_company_agents",
       "list_github_installations",
       "gh_exec",
+      "web_search",
+      "web_fetch",
       "ask_human_question",
       "send_agent_message",
       "list_tasks",
