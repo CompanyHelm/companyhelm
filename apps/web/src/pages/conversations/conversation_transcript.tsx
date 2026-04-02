@@ -27,7 +27,7 @@ function formatMessageTimestamp(timestamp: string): string {
 export function ConversationTranscript(properties: ConversationTranscriptProperties) {
   if (!properties.conversation) {
     return (
-      <div className="flex h-full min-h-0 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 px-6 text-center">
+      <div className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border/60 bg-muted/10 px-6 text-center">
         <div className="grid gap-2">
           <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-border/70 bg-background">
             <MessageSquareTextIcon className="size-4 text-muted-foreground" />
@@ -42,8 +42,8 @@ export function ConversationTranscript(properties: ConversationTranscriptPropert
   }
 
   return (
-    <Card className="flex h-full min-h-0 flex-col rounded-2xl border border-border/60 shadow-sm">
-      <CardHeader className="gap-3 border-b border-border/60">
+    <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm">
+      <CardHeader className="shrink-0 gap-3 border-b border-border/60">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="grid gap-2">
             <CardTitle className="text-base font-semibold">
