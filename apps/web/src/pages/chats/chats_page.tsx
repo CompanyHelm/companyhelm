@@ -1698,6 +1698,7 @@ function ChatsPageContent() {
   const selectedSessionId = selectedSession?.id ?? null;
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
+  const isSelectedSessionRunning = selectedSession?.status === "running";
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
   const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting"
@@ -2447,7 +2448,7 @@ function ChatsPageContent() {
     });
   };
 
-  const promptSession = async () => {
+  const promptSession = async (shouldSteer: boolean) => {
     if (!selectedSession || !selectedComposerModelOption) {
       return;
     }
@@ -2464,7 +2465,7 @@ function ChatsPageContent() {
             id: selectedSession.id,
             modelProviderCredentialModelId: selectedComposerModelOption.id,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
-            shouldSteer: false,
+            shouldSteer,
             userMessage,
           },
         },
@@ -2618,20 +2619,31 @@ function ChatsPageContent() {
 
   const submitDraft = async () => {
     if (selectedSession) {
-      await promptSession();
+      await promptSession(isSelectedSessionRunning);
       return;
     }
 
     await startSession();
   };
 
+  const queueDraftMessage = async () => {
+    if (!selectedSession || !isSelectedSessionRunning) {
+      return;
+    }
+
+    await promptSession(false);
+  };
+
   const draftSubmitAriaLabel = selectedSession
     ? isPromptSessionInFlight
       ? "Sending message"
-      : "Send message"
+      : isSelectedSessionRunning
+        ? "Steer message"
+        : "Send message"
     : isCreateSessionInFlight
       ? "Creating chat"
       : "Start chat";
+  const queueDraftAriaLabel = isPromptSessionInFlight ? "Queueing message" : "Queue message";
   const isDesktopChatListVisible = !isMobile && !isChatListHidden;
   const shouldShowChatListButton = isMobile ? !isMobileChatListOpen : isChatListHidden;
   const chatsHeaderTitle = selectedSession
@@ -3244,17 +3256,35 @@ function ChatsPageContent() {
                     />
                   ) : null}
                 </div>
-                <Button
-                  aria-label={draftSubmitAriaLabel}
-                  className="h-10 w-10 shrink-0 rounded-full px-0"
-                  disabled={!canSubmitDraft}
-                  onClick={() => {
-                    void submitDraft();
-                  }}
-                  type="button"
-                >
-                  <SendHorizonalIcon className="size-4" />
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {isSelectedSessionRunning ? (
+                    <Button
+                      aria-label={queueDraftAriaLabel}
+                      className="h-10 rounded-full px-4 text-[11px] font-medium uppercase tracking-[0.14em]"
+                      disabled={!canSubmitDraft}
+                      onClick={() => {
+                        void queueDraftMessage();
+                      }}
+                      title={queueDraftAriaLabel}
+                      type="button"
+                      variant="outline"
+                    >
+                      Queue
+                    </Button>
+                  ) : null}
+                  <Button
+                    aria-label={draftSubmitAriaLabel}
+                    className="h-10 w-10 shrink-0 rounded-full px-0"
+                    disabled={!canSubmitDraft}
+                    onClick={() => {
+                      void submitDraft();
+                    }}
+                    title={draftSubmitAriaLabel}
+                    type="button"
+                  >
+                    <SendHorizonalIcon className="size-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
