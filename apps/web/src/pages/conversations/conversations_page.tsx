@@ -213,7 +213,7 @@ function ConversationsPageContent() {
 
     const handlePointerMove = (event: PointerEvent) => {
       const delta = event.clientX - resizeStartXRef.current;
-      setConversationListWidth(clampConversationListWidth(resizeStartWidthRef.current + delta));
+      setConversationListWidth(clampConversationListWidth(resizeStartWidthRef.current - delta));
     };
     const finishResize = () => {
       setIsResizingConversationList(false);
