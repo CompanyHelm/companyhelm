@@ -30,7 +30,6 @@ export class AgentCompanyDirectoryResultFormatter {
       return [
         `id: ${member.id}`,
         `name: ${member.name}`,
-        `email: ${member.email}`,
       ].join("\n");
     }).join("\n\n");
   }

@@ -46,7 +46,7 @@ export class AgentSendAgentMessageTool {
       name: "send_agent_message",
       parameters: AgentSendAgentMessageTool.parameters,
       promptGuidelines: [
-        "Use send_agent_message to delegate work, ping another running agent session, or reply to an agent message using the targetSessionId from the delivery metadata.",
+        "Use send_agent_message to delegate work, ping another running agent session, or reply to an agent message using the targetSessionId from the delivery metadata. Answering back to the source agent is optional, only answer if you are adding meaningful information to the conversation.",
       ],
       promptSnippet: "Send a message to another agent",
     };
