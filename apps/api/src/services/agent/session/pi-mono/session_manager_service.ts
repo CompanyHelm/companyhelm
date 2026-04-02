@@ -18,6 +18,8 @@ import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
 import { AgentArtifactToolProvider } from "../../tools/artifacts/provider.ts";
 import { AgentArtifactToolService } from "../../tools/artifacts/service.ts";
+import { AgentCompanyDirectoryToolProvider } from "../../tools/company_directory/provider.ts";
+import { AgentCompanyDirectoryToolService } from "../../tools/company_directory/service.ts";
 import { AgentConversationService } from "../../conversations/service.ts";
 import { AgentConversationToolProvider } from "../../tools/conversations/provider.ts";
 import { AgentConversationToolService } from "../../tools/conversations/service.ts";
@@ -134,6 +136,10 @@ export class PiMonoSessionManagerService {
       sessionId,
       this.secretService,
     );
+    const companyDirectoryToolService = new AgentCompanyDirectoryToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+    );
     const inboxToolService = new AgentInboxToolService(
       transactionProvider,
       runtimeConfig.companyId,
@@ -163,6 +169,7 @@ export class PiMonoSessionManagerService {
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope),
       new AgentSecretToolProvider(secretToolService),
+      new AgentCompanyDirectoryToolProvider(companyDirectoryToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
       new AgentInboxToolProvider(inboxToolService),
       new AgentConversationToolProvider(conversationToolService),

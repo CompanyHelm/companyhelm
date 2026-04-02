@@ -7,6 +7,7 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
 import { AgentArtifactToolProvider } from "../src/services/agent/tools/artifacts/provider.ts";
+import { AgentCompanyDirectoryToolProvider } from "../src/services/agent/tools/company_directory/provider.ts";
 import { AgentConversationToolProvider } from "../src/services/agent/tools/conversations/provider.ts";
 import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
 import { AgentInboxToolProvider } from "../src/services/agent/tools/inbox/provider.ts";
@@ -35,6 +36,14 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       },
       async listAvailableSecrets() {
         throw new Error("available secrets should not be loaded during initialization");
+      },
+    } as never),
+    new AgentCompanyDirectoryToolProvider({
+      async listCompanyAgents() {
+        throw new Error("company agents should not be loaded during initialization");
+      },
+      async listCompanyMembers() {
+        throw new Error("company members should not be loaded during initialization");
       },
     } as never),
     new AgentGithubToolProvider({
@@ -118,6 +127,8 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "close_session",
       "list_assigned_secrets",
       "list_available_secrets",
+      "list_company_members",
+      "list_company_agents",
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
@@ -161,6 +172,14 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       },
       async listAvailableSecrets() {
         throw new Error("available secrets should not be loaded during cleanup");
+      },
+    } as never),
+    new AgentCompanyDirectoryToolProvider({
+      async listCompanyAgents() {
+        throw new Error("company agents should not be loaded during cleanup");
+      },
+      async listCompanyMembers() {
+        throw new Error("company members should not be loaded during cleanup");
       },
     } as never),
     new AgentGithubToolProvider({
@@ -266,6 +285,14 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
         throw new Error("available secrets should not be loaded during session creation");
       },
     } as never),
+    new AgentCompanyDirectoryToolProvider({
+      async listCompanyAgents() {
+        throw new Error("company agents should not be loaded during session creation");
+      },
+      async listCompanyMembers() {
+        throw new Error("company members should not be loaded during session creation");
+      },
+    } as never),
     new AgentGithubToolProvider({
       async getEnvironment() {
         throw new Error("session creation should not eagerly acquire the environment");
@@ -361,6 +388,8 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "close_session",
       "list_assigned_secrets",
       "list_available_secrets",
+      "list_company_members",
+      "list_company_agents",
       "list_github_installations",
       "gh_exec",
       "ask_human_question",
