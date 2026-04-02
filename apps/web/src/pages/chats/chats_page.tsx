@@ -1568,6 +1568,7 @@ function ChatsPageContent() {
   const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
   const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
   const [isLoadingOlderTranscript, setIsLoadingOlderTranscript] = useState(false);
+  const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
   const queuedMessagesRequestIdRef = useRef(0);
   const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
   const data = useLazyLoadQuery<chatsPageQuery>(
@@ -1658,10 +1659,21 @@ function ChatsPageContent() {
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
-  const isReconnectingLiveUpdates = selectedSessionId !== null && subscriptionConnectionStatus === "reconnecting";
+  const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting"
+    && reconnectingSessionId !== null
+    && reconnectingSessionId === selectedSessionId;
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
+
+  useEffect(() => {
+    if (subscriptionConnectionStatus === "reconnecting") {
+      setReconnectingSessionId((currentSessionId) => currentSessionId ?? selectedSessionId);
+      return;
+    }
+
+    setReconnectingSessionId(null);
+  }, [selectedSessionId, subscriptionConnectionStatus]);
 
   const markSessionRead = useCallback((sessionId: string) => {
     if (sessionId.length === 0 || markSessionReadInFlightSessionIdRef.current === sessionId) {
