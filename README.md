@@ -86,6 +86,69 @@ A few notes:
 - Replace the placeholders with real secrets before using auth, GitHub install flows, or Daytona-backed features.
 - `DATABASE_URL` is used by Drizzle tooling. The API runtime itself reads database credentials from `apps/api/config/local.yaml`.
 
+## Container images
+
+`companyhelm-ng` now ships separate Docker builds for the API and web apps:
+
+- API image: `docker/api/Dockerfile`
+- Web image: `docker/web/Dockerfile`
+
+Build them from the repository root:
+
+```bash
+docker build -f docker/api/Dockerfile -t companyhelm-ng-api .
+docker build \
+  -f docker/web/Dockerfile \
+  --build-arg VITE_CLERK_PUBLISHABLE_KEY=pk_test_example \
+  --build-arg VITE_GRAPHQL_URL=https://api.example.com/graphql \
+  -t companyhelm-ng-web .
+```
+
+### API runtime config
+
+The API image defaults to `apps/api/config/container.yaml`. That config expects these runtime environment variables:
+
+- `COMPANYHELM_API_PUBLIC_URL`
+- `COMPANYHELM_WEB_PUBLIC_URL`
+- `DATABASE_NAME`
+- `DATABASE_HOST`
+- `DATABASE_APP_RUNTIME_USERNAME`
+- `DATABASE_APP_RUNTIME_PASSWORD`
+- `DATABASE_ADMIN_USERNAME`
+- `DATABASE_ADMIN_PASSWORD`
+- `REDIS_HOST`
+- `EXA_API_KEY`
+- `GITHUB_APP_CLIENT_ID`
+- `GITHUB_APP_PRIVATE_KEY_PEM`
+- `GITHUB_APP_URL`
+- `CLERK_SECRET_KEY`
+- `CLERK_PUBLISHABLE_KEY`
+- `CLERK_JWKS_URL`
+- `COMPANYHELM_ENCRYPTION_KEY`
+- `COMPANYHELM_ENCRYPTION_KEY_ID`
+
+If you want to source the full API config from S3 instead, set `COMPANYHELM_API_CONFIG_S3_URI`. The entrypoint will download that file before starting the server.
+
+### Web config timing
+
+The web app still reads `VITE_*` values through Vite in `apps/web/src/config.ts`. That means those values are embedded into the static bundle at image build time, not container runtime. Setting `VITE_CLERK_PUBLISHABLE_KEY` or `VITE_GRAPHQL_URL` on `docker run` will not change an already-built image.
+
+If you want one immutable web image reused across environments, the next step would be adding a runtime config injection layer similar to the legacy `companyhelm-web` repo.
+
+### GitHub Actions publish flow
+
+`.github/workflows/publish_app_images.yml` publishes both images to private ECR when a `v*` tag is pushed. Before using it, configure these repository variables:
+
+- `COMPANYHELM_NG_API_IMAGE_PUBLISHER_ROLE_ARN`
+- `COMPANYHELM_NG_WEB_IMAGE_PUBLISHER_ROLE_ARN`
+- `COMPANYHELM_NG_WEB_VITE_CLERK_PUBLISHABLE_KEY`
+- `COMPANYHELM_NG_WEB_VITE_GRAPHQL_URL`
+
+The workflow expects these private ECR repositories to already exist in `us-west-2`:
+
+- `companyhelm-ng-api`
+- `companyhelm-ng-web`
+
 ## Common commands
 
 ### Development

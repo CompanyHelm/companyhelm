@@ -1,0 +1,13 @@
+.git
+.github
+.agents
+.claude
+.vscode
+node_modules
+apps/*/node_modules
+dist
+apps/*/dist
+.turbo
+.env
+.env.local
+docs

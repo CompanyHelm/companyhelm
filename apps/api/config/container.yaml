@@ -1,0 +1,60 @@
+host: "0.0.0.0"
+port: 4000
+cors:
+  origin:
+    - "${COMPANYHELM_WEB_PUBLIC_URL}"
+    - "${COMPANYHELM_API_PUBLIC_URL}"
+  credentials: true
+  methods:
+    - "GET"
+    - "POST"
+    - "OPTIONS"
+  allowed_headers:
+    - "content-type"
+    - "authorization"
+graphql:
+  endpoint: "/graphql"
+  graphiql: false
+publicUrl: "${COMPANYHELM_API_PUBLIC_URL}"
+database:
+  name: "${DATABASE_NAME}"
+  host: "${DATABASE_HOST}"
+  port: 5432
+  roles:
+    app_runtime:
+      username: "${DATABASE_APP_RUNTIME_USERNAME}"
+      password: "${DATABASE_APP_RUNTIME_PASSWORD}"
+    admin:
+      username: "${DATABASE_ADMIN_USERNAME}"
+      password: "${DATABASE_ADMIN_PASSWORD}"
+redis:
+  host: "${REDIS_HOST}"
+  port: 6379
+  username: ""
+  password: ""
+workers:
+  session_process:
+    concurrency: 100
+web_search:
+  exa:
+    api_key: "${EXA_API_KEY}"
+github:
+  app_client_id: "${GITHUB_APP_CLIENT_ID}"
+  app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
+  app_link: "${GITHUB_APP_URL}"
+auth:
+  provider: "clerk"
+  clerk:
+    secret_key: "${CLERK_SECRET_KEY}"
+    publishable_key: "${CLERK_PUBLISHABLE_KEY}"
+    jwks_url: "${CLERK_JWKS_URL}"
+    authorized_parties:
+      - "${COMPANYHELM_WEB_PUBLIC_URL}"
+      - "${COMPANYHELM_API_PUBLIC_URL}"
+security:
+  encryption:
+    key: "${COMPANYHELM_ENCRYPTION_KEY}"
+    key_id: "${COMPANYHELM_ENCRYPTION_KEY_ID}"
+log:
+  level: "info"
+  json: true

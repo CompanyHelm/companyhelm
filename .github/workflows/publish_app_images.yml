@@ -1,0 +1,186 @@
+name: Publish CompanyHelm NG App Images
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  publish-api:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.COMPANYHELM_NG_API_IMAGE_PUBLISHER_ROLE_ARN }}
+          role-session-name: github-actions-companyhelm-ng-api-image-publish
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve API repository URI
+        id: repository
+        run: |
+          REPOSITORY_URI="$(aws ecr describe-repositories \
+            --region "$AWS_REGION" \
+            --repository-names companyhelm-ng-api \
+            --query 'repositories[0].repositoryUri' \
+            --output text)"
+
+          if [ -z "$REPOSITORY_URI" ] || [ "$REPOSITORY_URI" = "None" ]; then
+            echo "companyhelm-ng-api private ECR repository was not found" >&2
+            exit 1
+          fi
+
+          echo "repository_uri=$REPOSITORY_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        env:
+          ECR_REPOSITORY: ${{ steps.repository.outputs.repository_uri }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo "Unsupported ref: $GITHUB_REF" >&2
+            exit 1
+          fi
+
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+          IMAGE_TAGS=("$ECR_REPOSITORY:${GITHUB_REF_NAME#v}")
+
+          TAG_ARGS=()
+          echo "Publishing image tags:"
+          for image_tag in "${IMAGE_TAGS[@]}"; do
+            echo "  $image_tag"
+            TAG_ARGS+=(-t "$image_tag")
+          done
+
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f docker/api/Dockerfile \
+            "${TAG_ARGS[@]}" \
+            --push \
+            .
+
+  publish-web:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.COMPANYHELM_NG_WEB_IMAGE_PUBLISHER_ROLE_ARN }}
+          role-session-name: github-actions-companyhelm-ng-web-image-publish
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve web repository URI
+        id: repository
+        run: |
+          REPOSITORY_URI="$(aws ecr describe-repositories \
+            --region "$AWS_REGION" \
+            --repository-names companyhelm-ng-web \
+            --query 'repositories[0].repositoryUri' \
+            --output text)"
+
+          if [ -z "$REPOSITORY_URI" ] || [ "$REPOSITORY_URI" = "None" ]; then
+            echo "companyhelm-ng-web private ECR repository was not found" >&2
+            exit 1
+          fi
+
+          echo "repository_uri=$REPOSITORY_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Validate required web build variables
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.COMPANYHELM_NG_WEB_VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_GRAPHQL_URL: ${{ vars.COMPANYHELM_NG_WEB_VITE_GRAPHQL_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$VITE_CLERK_PUBLISHABLE_KEY" ]; then
+            echo "Missing repository variable COMPANYHELM_NG_WEB_VITE_CLERK_PUBLISHABLE_KEY" >&2
+            exit 1
+          fi
+
+          if [ -z "$VITE_GRAPHQL_URL" ]; then
+            echo "Missing repository variable COMPANYHELM_NG_WEB_VITE_GRAPHQL_URL" >&2
+            exit 1
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push web image
+        env:
+          ECR_REPOSITORY: ${{ steps.repository.outputs.repository_uri }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.COMPANYHELM_NG_WEB_VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_GRAPHQL_URL: ${{ vars.COMPANYHELM_NG_WEB_VITE_GRAPHQL_URL }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
+            echo "Unsupported ref: $GITHUB_REF" >&2
+            exit 1
+          fi
+
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+          IMAGE_TAGS=("$ECR_REPOSITORY:${GITHUB_REF_NAME#v}")
+
+          TAG_ARGS=()
+          echo "Publishing image tags:"
+          for image_tag in "${IMAGE_TAGS[@]}"; do
+            echo "  $image_tag"
+            TAG_ARGS+=(-t "$image_tag")
+          done
+
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f docker/web/Dockerfile \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="$VITE_CLERK_PUBLISHABLE_KEY" \
+            --build-arg VITE_GRAPHQL_URL="$VITE_GRAPHQL_URL" \
+            "${TAG_ARGS[@]}" \
+            --push \
+            .
