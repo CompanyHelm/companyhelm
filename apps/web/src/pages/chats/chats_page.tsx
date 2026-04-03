@@ -372,7 +372,7 @@ const CHAT_LIST_MIN_WIDTH = 280;
 const CHAT_LIST_MAX_WIDTH = 520;
 const CHAT_LIST_DEFAULT_WIDTH = 352;
 const CHAT_LIST_WIDTH_STORAGE_KEY = "companyhelm.chats.listWidth";
-const CHAT_DRAFT_MIN_LINES = 3;
+const CHAT_DRAFT_MIN_LINES = 1;
 const CHAT_DRAFT_MAX_LINES = 10;
 const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
 const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
@@ -3229,7 +3229,7 @@ function ChatsPageContent() {
                 <textarea
                   id="chat-draft-message"
                   ref={draftTextareaRef}
-                  className="min-h-[4.5rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-3 pb-3 pr-14 text-sm outline-none"
+                  className="min-h-[2.625rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-3 pb-3 pr-14 text-sm outline-none"
                   onChange={(event) => {
                     setDraftMessage(event.target.value);
                   }}
