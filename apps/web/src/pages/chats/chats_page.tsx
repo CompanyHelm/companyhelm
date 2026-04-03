@@ -2875,7 +2875,7 @@ function ChatsPageContent() {
     }
 
     return (
-      <div>
+      <div className="flex h-full min-h-0 flex-col">
         <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
           <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
             <div className="mb-2 flex items-center justify-end pr-1">
