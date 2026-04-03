@@ -354,7 +354,6 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
   }
 `;
 
-type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
 type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
@@ -644,13 +643,6 @@ function formatTimestamp(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
-}
-
-function formatAgentMeta(agent: Pick<AgentRecord, "modelProvider" | "modelName" | "reasoningLevel">): string {
-  const segments = [agent.modelProvider, agent.modelName, agent.reasoningLevel].filter(
-    (value): value is string => typeof value === "string" && value.trim().length > 0,
-  );
-  return segments.length > 0 ? segments.join(" • ") : "No default model configured";
 }
 
 function resolveComposerModelOptionId(
@@ -2761,14 +2753,13 @@ function ChatsPageContent() {
                         type="button"
                       >
                         <p className="truncate text-sm font-medium text-sidebar-foreground">{agent.name}</p>
-                        <p className="mt-1 text-xs/relaxed text-sidebar-foreground/65">{formatAgentMeta(agent)}</p>
                       </button>
                     </div>
 
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
-                        className={`flex w-full items-center justify-center rounded-lg px-2 py-3 text-sm font-medium transition ${
+                        className={`flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm font-medium transition ${
                           isAgentSelected && !selectedSession
                             ? "bg-sidebar-primary text-sidebar-primary-foreground"
                             : "bg-transparent text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -2782,7 +2773,7 @@ function ChatsPageContent() {
                       </button>
 
                       {agentSessions.length > 0 ? (
-                        <ul className="mt-1.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-1 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
@@ -2898,14 +2889,13 @@ function ChatsPageContent() {
                         type="button"
                       >
                         <p className="truncate text-sm font-medium text-foreground">{agent.name}</p>
-                        <p className="mt-1 text-xs/relaxed text-muted-foreground/85">{formatAgentMeta(agent)}</p>
                       </button>
                     </div>
 
-                    <div className="mt-3">
+                    <div className="mt-2">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
-                        className={`flex w-full items-center justify-center rounded-lg px-2 py-3 text-sm font-medium transition ${
+                        className={`flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm font-medium transition ${
                           isAgentSelected && !selectedSession
                             ? "bg-primary/12 text-primary"
                             : "bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
@@ -2919,7 +2909,7 @@ function ChatsPageContent() {
                       </button>
 
                       {agentSessions.length > 0 ? (
-                        <ul className="mt-1.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-1 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
