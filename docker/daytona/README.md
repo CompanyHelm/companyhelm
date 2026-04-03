@@ -27,6 +27,10 @@ This image bakes in the CA certificate update and adds common tooling so agents 
 - `xz-utils`
 - `zip`
 
+## User behavior
+
+This Dockerfile does not set a custom `USER`. It keeps the default user from `daytonaio/sandbox:0.6.0` and uses `sudo` during build only when elevated package installation is needed.
+
 ## Build
 
 From the repository root:

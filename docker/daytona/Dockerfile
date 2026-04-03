@@ -4,12 +4,11 @@ LABEL org.opencontainers.image.title="companyhelm/daytona" \
   org.opencontainers.image.description="CompanyHelm Daytona sandbox image with trusted CA certificates and core developer tooling." \
   org.opencontainers.image.version="latest"
 
-USER root
-
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
+RUN if command -v sudo >/dev/null 2>&1; then SUDO=sudo; else SUDO=; fi \
+  && $SUDO apt-get update \
+  && $SUDO apt-get install -y --no-install-recommends \
     bash \
     ca-certificates \
     curl \
@@ -25,12 +24,12 @@ RUN apt-get update \
     unzip \
     xz-utils \
     zip \
-  && update-ca-certificates \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && $SUDO update-ca-certificates \
+  && $SUDO apt-get clean \
+  && $SUDO rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /workspace \
-  && chown -R daytona:daytona /workspace /home/daytona
+RUN if command -v sudo >/dev/null 2>&1; then SUDO=sudo; else SUDO=; fi \
+  && $SUDO mkdir -p /workspace \
+  && $SUDO chown -R "$(id -un)":"$(id -gn)" /workspace "$HOME"
 
-USER daytona
 WORKDIR /workspace
