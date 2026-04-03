@@ -1,14 +1,25 @@
 import { Suspense, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { PlusIcon, Settings2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { EditableField } from "@/components/editable_field";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { TaskCategoryDialog } from "./task_category_dialog";
 import type { settingsPageCreateTaskCategoryMutation } from "./__generated__/settingsPageCreateTaskCategoryMutation.graphql";
 import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphql";
+import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
+
+type SettingsPageSearch = {
+  tab?: "tasks" | "AI";
+};
 
 const settingsPageQueryNode = graphql`
   query settingsPageQuery {
+    CompanySettings {
+      companyId
+      baseSystemPrompt
+    }
     TaskCategories {
       id
       name
@@ -31,6 +42,15 @@ const settingsPageCreateTaskCategoryMutationNode = graphql`
   }
 `;
 
+const settingsPageUpdateCompanySettingsMutationNode = graphql`
+  mutation settingsPageUpdateCompanySettingsMutation($input: UpdateCompanySettingsInput!) {
+    UpdateCompanySettings(input: $input) {
+      companyId
+      baseSystemPrompt
+    }
+  }
+`;
+
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
   return records.filter((record): record is { getDataID(): string } => {
     return typeof record === "object"
@@ -47,7 +67,7 @@ function SettingsPageFallback() {
         <CardHeader>
           <div className="min-w-0">
             <CardTitle>Settings</CardTitle>
-            <CardDescription>Loading task category settings...</CardDescription>
+            <CardDescription>Loading task and agent AI settings...</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -61,8 +81,10 @@ function SettingsPageFallback() {
 }
 
 function SettingsPageContent() {
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as SettingsPageSearch;
+  const [taskErrorMessage, setTaskErrorMessage] = useState<string | null>(null);
+  const [isTaskCategoryDialogOpen, setTaskCategoryDialogOpen] = useState(false);
   const data = useLazyLoadQuery<settingsPageQuery>(
     settingsPageQueryNode,
     {},
@@ -73,6 +95,10 @@ function SettingsPageContent() {
   const [commitCreateTaskCategory, isCreateTaskCategoryInFlight] = useMutation<settingsPageCreateTaskCategoryMutation>(
     settingsPageCreateTaskCategoryMutationNode,
   );
+  const [commitUpdateCompanySettings] = useMutation<settingsPageUpdateCompanySettingsMutation>(
+    settingsPageUpdateCompanySettingsMutationNode,
+  );
+  const selectedTab = search.tab === "AI" ? "AI" : "tasks";
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -84,85 +110,86 @@ function SettingsPageContent() {
               Settings
             </CardTitle>
             <CardDescription>
-              Manage the categories that define the kanban lanes shown on the tasks board.
+              Manage task lanes and the company-wide prompt inherited by all agent sessions.
             </CardDescription>
           </div>
-          <CardAction>
-            <Button
-              disabled={isCreateTaskCategoryInFlight || newCategoryName.length === 0}
-              onClick={async () => {
-                setErrorMessage(null);
-
-                await new Promise<void>((resolve, reject) => {
-                  commitCreateTaskCategory({
-                    variables: {
-                      input: {
-                        name: newCategoryName,
-                      },
-                    },
-                    updater: (store) => {
-                      const createdCategory = store.getRootField("CreateTaskCategory");
-                      if (!createdCategory) {
-                        return;
-                      }
-
-                      const rootRecord = store.getRoot();
-                      const currentCategories = filterStoreRecords(rootRecord.getLinkedRecords("TaskCategories") || []);
-                      rootRecord.setLinkedRecords([...currentCategories, createdCategory], "TaskCategories");
-                    },
-                    onCompleted: (_response, errors) => {
-                      const nextErrorMessage = errors?.[0]?.message;
-                      if (nextErrorMessage) {
-                        reject(new Error(nextErrorMessage));
-                        return;
-                      }
-
-                      setNewCategoryName("");
-                      resolve();
-                    },
-                    onError: reject,
-                  });
-                }).catch((error: unknown) => {
-                  setErrorMessage(error instanceof Error ? error.message : "Failed to create task category.");
-                });
-              }}
-              size="sm"
-            >
-              <PlusIcon />
-              Add lane
-            </Button>
-          </CardAction>
         </CardHeader>
         <CardContent className="grid gap-5">
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="task-category-name">
-              Category name
-            </label>
-            <Input
-              id="task-category-name"
-              onChange={(event) => {
-                setNewCategoryName(event.target.value);
-              }}
-              placeholder="Backlog"
-              value={newCategoryName}
-            />
-            <p className="text-xs text-muted-foreground">
-              New categories appear as dedicated board lanes immediately after creation.
-            </p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              {
+                description: "Manage kanban categories used on the tasks board.",
+                key: "tasks" as const,
+                label: "Tasks",
+              },
+              {
+                description: "Set the shared base prompt inherited by every agent.",
+                key: "AI" as const,
+                label: "Agents / AI",
+              },
+            ].map((tab) => {
+              const isSelected = selectedTab === tab.key;
+
+              return (
+                <Button
+                  key={tab.key}
+                  className={`h-auto min-w-44 justify-start rounded-xl border px-4 py-3 text-left ${
+                    isSelected
+                      ? "border-border/70 bg-muted text-foreground hover:bg-muted"
+                      : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                  }`}
+                  onClick={() => {
+                    void navigate({
+                      search: {
+                        tab: tab.key,
+                      },
+                      to: "/settings",
+                    });
+                  }}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <span className="flex flex-col items-start gap-1">
+                    <span className="text-sm font-medium">{tab.label}</span>
+                    <span className="text-xs/relaxed text-muted-foreground">{tab.description}</span>
+                  </span>
+                </Button>
+              );
+            })}
           </div>
+        </CardContent>
+      </Card>
 
-          {errorMessage ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {errorMessage}
+      {selectedTab === "tasks" ? (
+        <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Task Categories</CardTitle>
+              <CardDescription>
+                Categories appear as dedicated lanes on the tasks board and stay available for all
+                future tasks.
+              </CardDescription>
             </div>
-          ) : null}
-
-          <div className="grid gap-3">
+            <CardAction>
+              <Button
+                onClick={() => {
+                  setTaskErrorMessage(null);
+                  setTaskCategoryDialogOpen(true);
+                }}
+                size="sm"
+              >
+                <PlusIcon />
+                Add category
+              </Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-3">
             {data.TaskCategories.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">No categories yet</p>
                 <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                  Create your first lane here, or keep using the built-in uncategorized column on the tasks page.
+                  Create your first lane here, or keep using the built-in uncategorized column on
+                  the tasks page.
                 </p>
               </div>
             ) : null}
@@ -183,16 +210,119 @@ function SettingsPageContent() {
                 </p>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {selectedTab === "AI" ? (
+        <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Agents / AI</CardTitle>
+              <CardDescription>
+                Configure the company-wide prompt layer that is appended after the static
+                CompanyHelm system prompt and before each agent prompt override.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <EditableField
+              emptyValueLabel="No company base prompt configured"
+              fieldType="textarea"
+              label="Company base prompt"
+              onSave={async (value) => {
+                await new Promise<void>((resolve, reject) => {
+                  commitUpdateCompanySettings({
+                    variables: {
+                      input: {
+                        baseSystemPrompt: value.length === 0 ? null : value,
+                      },
+                    },
+                    updater: (store) => {
+                      const updatedSettings = store.getRootField("UpdateCompanySettings");
+                      if (!updatedSettings) {
+                        return;
+                      }
+
+                      store.getRoot().setLinkedRecord(updatedSettings, "CompanySettings");
+                    },
+                    onCompleted: (_response, errors) => {
+                      const nextErrorMessage = errors?.[0]?.message;
+                      if (nextErrorMessage) {
+                        reject(new Error(nextErrorMessage));
+                        return;
+                      }
+
+                      resolve();
+                    },
+                    onError: reject,
+                  });
+                });
+              }}
+              value={data.CompanySettings.baseSystemPrompt}
+            />
+
+            <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Prompt order
+              </p>
+              <p className="mt-3 text-sm text-foreground">Static CompanyHelm prompt</p>
+              <p className="text-sm text-foreground">Company base prompt</p>
+              <p className="text-sm text-foreground">Agent prompt override</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <TaskCategoryDialog
+        errorMessage={isTaskCategoryDialogOpen ? taskErrorMessage : null}
+        isOpen={isTaskCategoryDialogOpen}
+        isSaving={isCreateTaskCategoryInFlight}
+        onCreate={async (name) => {
+          setTaskErrorMessage(null);
+
+          await new Promise<void>((resolve, reject) => {
+            commitCreateTaskCategory({
+              variables: {
+                input: {
+                  name,
+                },
+              },
+              updater: (store) => {
+                const createdCategory = store.getRootField("CreateTaskCategory");
+                if (!createdCategory) {
+                  return;
+                }
+
+                const rootRecord = store.getRoot();
+                const currentCategories = filterStoreRecords(rootRecord.getLinkedRecords("TaskCategories") || []);
+                rootRecord.setLinkedRecords([...currentCategories, createdCategory], "TaskCategories");
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = errors?.[0]?.message;
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          }).then(() => {
+            setTaskCategoryDialogOpen(false);
+          }).catch((error: unknown) => {
+            setTaskErrorMessage(error instanceof Error ? error.message : "Failed to create task category.");
+          });
+        }}
+        onOpenChange={setTaskCategoryDialogOpen}
+      />
     </main>
   );
 }
 
 /**
- * Hosts the minimal settings surface requested for the initial tasks migration: category creation
- * and visibility into how many tasks currently sit in each persisted lane.
+ * Hosts the company settings surface for task categories and shared agent AI configuration.
  */
 export function SettingsPage() {
   return (

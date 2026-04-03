@@ -45,6 +45,7 @@ import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
 import { UpdateAgentEnvironmentRequirementsMutation } from "./mutations/update_agent_environment_requirements.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { UpdateArtifactMutation } from "./mutations/update_artifact.ts";
+import { UpdateCompanySettingsMutation } from "./mutations/update_company_settings.ts";
 import { UpdateComputeProviderDefinitionMutation } from "./mutations/update_compute_provider_definition.ts";
 import { UpdateExternalLinkArtifactMutation } from "./mutations/update_external_link_artifact.ts";
 import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_artifact.ts";
@@ -60,6 +61,7 @@ import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
 import { ArtifactQueryResolver } from "./resolvers/artifact.ts";
 import { ArtifactsQueryResolver } from "./resolvers/artifacts.ts";
+import { CompanySettingsQueryResolver } from "./resolvers/company_settings.ts";
 import { ComputeProviderDefinitionsQueryResolver } from "./resolvers/compute_provider_definitions.ts";
 import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
@@ -117,6 +119,7 @@ export class GraphqlApplication {
   private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly computeProviderDefinitionsQueryResolver: ComputeProviderDefinitionsQueryResolver;
+  private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly deleteArtifactMutation: DeleteArtifactMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
@@ -162,6 +165,7 @@ export class GraphqlApplication {
   private readonly updateAgentMutation: UpdateAgentMutation;
   private readonly updateArtifactMutation: UpdateArtifactMutation;
   private readonly updateAgentEnvironmentRequirementsMutation: UpdateAgentEnvironmentRequirementsMutation;
+  private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateComputeProviderDefinitionMutation: UpdateComputeProviderDefinitionMutation;
   private readonly updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation;
   private readonly updateMarkdownArtifactMutation: UpdateMarkdownArtifactMutation;
@@ -256,6 +260,8 @@ export class GraphqlApplication {
     @inject(TaskCategoriesQueryResolver)
     taskCategoriesQueryResolver: TaskCategoriesQueryResolver = new TaskCategoriesQueryResolver(),
     @inject(TasksQueryResolver) tasksQueryResolver: TasksQueryResolver = new TasksQueryResolver(),
+    @inject(CompanySettingsQueryResolver)
+    companySettingsQueryResolver: CompanySettingsQueryResolver = new CompanySettingsQueryResolver(),
     @inject(GithubAppConfigQueryResolver)
     githubAppConfigQueryResolver: GithubAppConfigQueryResolver =
       new GithubAppConfigQueryResolver(new GithubClient(config)),
@@ -367,6 +373,8 @@ export class GraphqlApplication {
     updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation = new UpdateExternalLinkArtifactMutation(),
     @inject(ArchiveArtifactMutation)
     archiveArtifactMutation: ArchiveArtifactMutation = new ArchiveArtifactMutation(),
+    @inject(UpdateCompanySettingsMutation)
+    updateCompanySettingsMutation: UpdateCompanySettingsMutation = new UpdateCompanySettingsMutation(),
     @inject(MarkSessionReadMutation)
     markSessionReadMutation: MarkSessionReadMutation = {
       async execute() {
@@ -408,6 +416,7 @@ export class GraphqlApplication {
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSessionMutation = createSessionMutation;
     this.computeProviderDefinitionsQueryResolver = computeProviderDefinitionsQueryResolver;
+    this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.deleteArtifactMutation = deleteArtifactMutation;
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
@@ -458,6 +467,7 @@ export class GraphqlApplication {
     this.updateArtifactMutation = updateArtifactMutation;
     this.updateAgentEnvironmentRequirementsMutation = updateAgentEnvironmentRequirementsMutation
       ?? new UpdateAgentEnvironmentRequirementsMutation(defaultAgentEnvironmentRequirementsService);
+    this.updateCompanySettingsMutation = updateCompanySettingsMutation;
     this.updateComputeProviderDefinitionMutation = updateComputeProviderDefinitionMutation;
     this.updateExternalLinkArtifactMutation = updateExternalLinkArtifactMutation;
     this.updateMarkdownArtifactMutation = updateMarkdownArtifactMutation;
@@ -516,6 +526,7 @@ export class GraphqlApplication {
           Agents: this.agentsQueryResolver.execute,
           Artifact: this.artifactQueryResolver.execute,
           Artifacts: this.artifactsQueryResolver.execute,
+          CompanySettings: this.companySettingsQueryResolver.execute,
           ComputeProviderDefinitions: this.computeProviderDefinitionsQueryResolver.execute,
           Environments: this.environmentsQueryResolver.execute,
           GithubAppConfig: this.githubAppConfigQueryResolver.execute,
@@ -576,6 +587,7 @@ export class GraphqlApplication {
           UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
           UpdateArtifact: this.updateArtifactMutation.execute,
+          UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
           UpdateComputeProviderDefinition: this.updateComputeProviderDefinitionMutation.execute,
           UpdateExternalLinkArtifact: this.updateExternalLinkArtifactMutation.execute,
           UpdateMarkdownArtifact: this.updateMarkdownArtifactMutation.execute,

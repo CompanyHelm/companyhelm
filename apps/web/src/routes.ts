@@ -40,6 +40,10 @@ type ConversationsRouteSearch = {
   conversationId?: string;
 };
 
+type SettingsRouteSearch = {
+  tab?: "tasks" | "AI";
+};
+
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
   return {
     agentId: typeof search.agentId === "string" && search.agentId.trim().length > 0
@@ -64,6 +68,18 @@ function validateConversationsRouteSearch(search: Record<string, unknown>): Conv
     conversationId: typeof search.conversationId === "string" && search.conversationId.trim().length > 0
       ? search.conversationId.trim()
       : undefined,
+  };
+}
+
+function validateSettingsRouteSearch(search: Record<string, unknown>): SettingsRouteSearch {
+  if (search.tab === "AI") {
+    return {
+      tab: "AI",
+    };
+  }
+
+  return {
+    tab: search.tab === "tasks" ? "tasks" : undefined,
   };
 }
 
@@ -187,6 +203,7 @@ const tasksRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/settings",
+  validateSearch: validateSettingsRouteSearch,
   component: SettingsPage,
 });
 

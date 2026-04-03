@@ -1,11 +1,11 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { AgentEnvironmentRequirementsCard } from "./agent_environment_requirements_card";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
-import { EditableAgentField } from "./editable_agent_field";
 import type {
   AgentCreateComputeProviderDefinitionOption,
   AgentCreateProviderOption,
@@ -34,6 +34,10 @@ const agentDetailPageQueryNode = graphql`
       }
       createdAt
       updatedAt
+    }
+    CompanySettings {
+      companyId
+      baseSystemPrompt
     }
     AgentSecrets(agentId: $agentId) {
       id
@@ -252,6 +256,7 @@ function AgentDetailPageContent() {
   const selectedModelOption = selectedProviderOption && agent.modelProviderCredentialModelId
     ? selectedProviderOption.models.find((option) => option.id === agent.modelProviderCredentialModelId) ?? null
     : null;
+  const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
 
   const saveAgent = async (patch: {
     defaultComputeProviderDefinitionId?: string;
@@ -259,7 +264,7 @@ function AgentDetailPageContent() {
     modelProviderCredentialModelId?: string;
     name?: string;
     reasoningLevel?: string | null;
-    systemPrompt?: string;
+    systemPrompt?: string | null;
   }) => {
     const nextProviderCredentialId = patch.modelProviderCredentialId ?? agent.modelProviderCredentialId;
     if (!nextProviderCredentialId) {
@@ -296,7 +301,9 @@ function AgentDetailPageContent() {
             modelProviderCredentialId: nextProviderOption.id,
             modelProviderCredentialModelId: nextModelOption.id,
             reasoningLevel: nextReasoningLevel,
-            systemPrompt: patch.systemPrompt ?? (agent.systemPrompt ?? ""),
+            systemPrompt: patch.systemPrompt === undefined
+              ? agent.systemPrompt
+              : (patch.systemPrompt === "" ? null : patch.systemPrompt),
           },
         },
         onCompleted: (_response, errors) => {
@@ -318,11 +325,13 @@ function AgentDetailPageContent() {
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>
-            Update the agent name, environment provider, model provider, model, reasoning level, and system prompt inline.
+            Update the agent name, environment provider, model provider, model, reasoning level,
+            and agent prompt override inline. Sessions apply the static CompanyHelm prompt first,
+            then the inherited company prompt, then this agent prompt override.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <EditableAgentField
+          <EditableField
             emptyValueLabel="Unnamed agent"
             fieldType="text"
             label="Name"
@@ -334,7 +343,7 @@ function AgentDetailPageContent() {
             value={agent.name}
           />
 
-          <EditableAgentField
+          <EditableField
             displayValue={selectedComputeProviderDefinitionOption?.label ?? agent.defaultComputeProviderDefinitionName ?? null}
             emptyValueLabel="No environment provider selected"
             fieldType="select"
@@ -351,7 +360,7 @@ function AgentDetailPageContent() {
             value={agent.defaultComputeProviderDefinitionId}
           />
 
-          <EditableAgentField
+          <EditableField
             displayValue={selectedProviderOption?.label ?? null}
             emptyValueLabel="No provider selected"
             fieldType="select"
@@ -372,7 +381,7 @@ function AgentDetailPageContent() {
             value={agent.modelProviderCredentialId}
           />
 
-          <EditableAgentField
+          <EditableField
             displayValue={selectedModelOption?.name ?? null}
             emptyValueLabel="No model selected"
             fieldType="select"
@@ -389,7 +398,7 @@ function AgentDetailPageContent() {
             value={agent.modelProviderCredentialModelId}
           />
 
-          <EditableAgentField
+          <EditableField
             displayValue={agent.reasoningLevel}
             emptyValueLabel="Not supported by this model"
             fieldType="select"
@@ -406,10 +415,25 @@ function AgentDetailPageContent() {
             value={agent.reasoningLevel}
           />
 
-          <EditableAgentField
-            emptyValueLabel="No system prompt configured"
+          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Inherited company prompt
+            </p>
+            <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">
+              {companyBaseSystemPrompt && companyBaseSystemPrompt.length > 0
+                ? companyBaseSystemPrompt
+                : "No company base prompt configured"}
+            </p>
+            <p className="mt-3 text-xs/relaxed text-muted-foreground">
+              Manage this layer from Settings, on the Agents / AI tab. It is applied before this
+              agent prompt override.
+            </p>
+          </div>
+
+          <EditableField
+            emptyValueLabel="No agent-specific prompt override"
             fieldType="textarea"
-            label="System prompt"
+            label="Agent prompt override"
             onSave={async (value) => {
               await saveAgent({
                 systemPrompt: value,

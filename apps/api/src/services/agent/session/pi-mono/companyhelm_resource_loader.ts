@@ -5,14 +5,19 @@ import {
 import { SystemPromptTemplate } from "../../../../prompts/system_prompt_template.ts";
 import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 
+type CompanyHelmPromptLayers = {
+  agentSystemPrompt?: string | null;
+  companyBaseSystemPrompt?: string | null;
+};
+
 /**
  * Owns the CompanyHelm PI Mono resource surface. Its scope is replacing the upstream default
  * resource discovery so one session never auto-loads local AGENTS files, skills, themes, prompt
- * templates, or extensions from disk, while also supplying a system prompt that does not imply
- * local filesystem or shell access unless a CompanyHelm tool explicitly provides it.
+ * templates, or extensions from disk, while also supplying a system prompt stack that keeps the
+ * product template, company base prompt, and per-agent override as separate layers.
  */
 export class CompanyHelmResourceLoader implements ResourceLoader {
-  private readonly appendSystemPrompt: string[] = [];
+  private readonly appendSystemPrompt: string[];
   private readonly agentsFiles = {
     agentsFiles: [] as Array<{
       content: string;
@@ -52,9 +57,16 @@ export class CompanyHelmResourceLoader implements ResourceLoader {
 
   constructor(
     systemPromptContext: SystemPromptTemplateContext,
+    promptLayers: CompanyHelmPromptLayers = {},
     systemPromptTemplate: SystemPromptTemplate = new SystemPromptTemplate(),
   ) {
     this.systemPrompt = systemPromptTemplate.render(systemPromptContext);
+    this.appendSystemPrompt = [
+      promptLayers.companyBaseSystemPrompt,
+      promptLayers.agentSystemPrompt,
+    ].filter((promptLayer): promptLayer is string => {
+      return typeof promptLayer === "string" && promptLayer.length > 0;
+    });
   }
 
   getExtensions(): ReturnType<ResourceLoader["getExtensions"]> {

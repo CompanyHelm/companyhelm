@@ -46,7 +46,9 @@ import { ExaWebClient } from "../../../web_search/exa_client.ts";
 type SessionRuntimeConfig = {
   agentId: string;
   agentName: string;
+  agentSystemPrompt?: string | null;
   apiKey: string;
+  companyBaseSystemPrompt?: string | null;
   companyId: string;
   companyName: string;
   modelId: string;
@@ -201,6 +203,10 @@ export class PiMonoSessionManagerService {
         runtimeConfig.companyName,
         sessionId,
       ),
+      {
+        agentSystemPrompt: runtimeConfig.agentSystemPrompt,
+        companyBaseSystemPrompt: runtimeConfig.companyBaseSystemPrompt,
+      },
     );
     await resourceLoader.reload();
 

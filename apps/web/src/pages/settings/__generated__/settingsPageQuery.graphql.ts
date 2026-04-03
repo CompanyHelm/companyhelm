@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<274b6326bd38da3b7308ce215da7c750>>
+ * @generated SignedSource<<ba05d6cbe925306239bed2822883c6e5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,10 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type settingsPageQuery$variables = Record<PropertyKey, never>;
 export type settingsPageQuery$data = {
+  readonly CompanySettings: {
+    readonly baseSystemPrompt: string | null | undefined;
+    readonly companyId: string;
+  };
   readonly TaskCategories: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
@@ -26,6 +30,31 @@ export type settingsPageQuery = {
 
 const node: ConcreteRequest = (function(){
 var v0 = [
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "CompanySettings",
+    "kind": "LinkedField",
+    "name": "CompanySettings",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "companyId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "baseSystemPrompt",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
   {
     "alias": null,
     "args": null,
@@ -91,16 +120,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "45b297b50d0cdabc9cdff77390e0617b",
+    "cacheID": "3b424d3012e54ca5e342f7d12717a76f",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  TaskCategories {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskCategories {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0fd2e756672f47c1351066be90d4d9b5";
+(node as any).hash = "f6a3c91ed06625f786a41517e24c16c6";
 
 export default node;

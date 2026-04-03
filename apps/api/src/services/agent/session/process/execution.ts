@@ -7,6 +7,7 @@ import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transa
 import { agentSessions, agents, companies, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
+import { CompanySettingsService } from "../../../company_settings_service.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisSubscriptionHandle } from "../../../redis/subscription_handle.ts";
 import { RedisService } from "../../../redis/service.ts";
@@ -27,6 +28,7 @@ type SessionRuntimeRow = {
 
 type AgentRow = {
   name: string;
+  systemPrompt: string | null;
 };
 
 type CompanyRow = {
@@ -59,6 +61,7 @@ type SelectableDatabase = {
 @injectable()
 export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
+  private readonly companySettingsService: CompanySettingsService;
   private readonly logger: PinoLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
   private readonly redisService: RedisService;
@@ -81,8 +84,11 @@ export class SessionProcessExecutionService {
     sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
     @inject(SessionProcessPubSubNames)
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+    @inject(CompanySettingsService)
+    companySettingsService: CompanySettingsService = new CompanySettingsService(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
+    this.companySettingsService = companySettingsService;
     this.logger = logger.child({
       component: "session_process_execution_service",
     });
@@ -131,10 +137,14 @@ export class SessionProcessExecutionService {
         await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
         return;
       }
+      const companySettings = await this.companySettingsService.getSettings(transactionProvider, companyId);
       await this.piMonoSessionManagerService.ensureSession(
         transactionProvider,
         sessionId,
-        runtimeConfig,
+        {
+          ...runtimeConfig,
+          companyBaseSystemPrompt: companySettings.baseSystemPrompt,
+        },
       );
 
       heartbeatHandle = this.startLeaseHeartbeat(lease, async (error) => {
@@ -288,6 +298,7 @@ export class SessionProcessExecutionService {
   ): Promise<{
     agentId: string;
     agentName: string;
+    agentSystemPrompt: string | null;
     apiKey: string;
     companyId: string;
     companyName: string;
@@ -319,6 +330,7 @@ export class SessionProcessExecutionService {
       const [agentRow] = await selectableDatabase
         .select({
           name: agents.name,
+          systemPrompt: agents.system_prompt,
         })
         .from(agents)
         .where(and(
@@ -370,6 +382,7 @@ export class SessionProcessExecutionService {
       return {
         agentId: sessionRow.agentId,
         agentName: agentRow.name,
+        agentSystemPrompt: agentRow.systemPrompt,
         apiKey: credentialRow.encryptedApiKey,
         companyId,
         companyName: companyRow.name,

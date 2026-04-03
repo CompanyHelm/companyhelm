@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3e0e3a386393119d2951d8940f5698da>>
+ * @generated SignedSource<<cba9d4a43eec9f1ad8578d96cd46fd3c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -53,6 +53,10 @@ export type agentDetailPageQuery$data = {
     readonly id: string;
     readonly name: string;
   }>;
+  readonly CompanySettings: {
+    readonly baseSystemPrompt: string | null | undefined;
+    readonly companyId: string;
+  };
   readonly ComputeProviderDefinitions: ReadonlyArray<{
     readonly id: string;
     readonly name: string;
@@ -243,6 +247,31 @@ v6 = [
   },
   {
     "alias": null,
+    "args": null,
+    "concreteType": "CompanySettings",
+    "kind": "LinkedField",
+    "name": "CompanySettings",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "companyId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "baseSystemPrompt",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
     "args": [
       {
         "kind": "Variable",
@@ -368,16 +397,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "1f3ad9a2b57bae22885826397375b60e",
+    "cacheID": "c1364f7971550fd688ebf3fa41a5cb47",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "369d46e003272d0dfbff887edb2e5ce1";
+(node as any).hash = "4099ca0bfc6e3b3b5820ae5238641d7c";
 
 export default node;

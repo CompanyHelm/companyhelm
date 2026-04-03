@@ -244,7 +244,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
   }
 
   private static resolveSystemPrompt(systemPrompt: string | null | undefined): string | null {
-    if (systemPrompt === undefined || systemPrompt === null) {
+    if (systemPrompt === undefined || systemPrompt === null || systemPrompt === "") {
       return null;
     }
 

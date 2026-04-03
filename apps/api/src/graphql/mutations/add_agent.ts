@@ -269,7 +269,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   }
 
   private static resolveSystemPrompt(systemPrompt: string | null | undefined): string | null {
-    if (systemPrompt === undefined || systemPrompt === null) {
+    if (systemPrompt === undefined || systemPrompt === null || systemPrompt === "") {
       return null;
     }
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { graphql, useMutation } from "react-relay";
+import { EditableField } from "@/components/editable_field";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { EditableAgentField } from "./editable_agent_field";
 import type { agentEnvironmentRequirementsCardUpdateMutation } from "./__generated__/agentEnvironmentRequirementsCardUpdateMutation.graphql";
 
 const agentEnvironmentRequirementsCardUpdateMutationNode = graphql`
@@ -91,7 +91,7 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-3">
-        <EditableAgentField
+        <EditableField
           displayValue={`${requirements.minCpuCount} vCPU`}
           emptyValueLabel="No minimum CPU configured"
           fieldType="number"
@@ -104,7 +104,7 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
           value={String(requirements.minCpuCount)}
         />
 
-        <EditableAgentField
+        <EditableField
           displayValue={`${requirements.minMemoryGb} GB`}
           emptyValueLabel="No minimum memory configured"
           fieldType="number"
@@ -117,7 +117,7 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
           value={String(requirements.minMemoryGb)}
         />
 
-        <EditableAgentField
+        <EditableField
           displayValue={`${requirements.minDiskSpaceGb} GB`}
           emptyValueLabel="No minimum disk configured"
           fieldType="number"

@@ -10,12 +10,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type EditableAgentFieldOption = {
+type EditableFieldOption = {
   label: string;
   value: string;
 };
 
-type EditableAgentFieldTextProps = {
+type EditableFieldTextProps = {
   displayValue?: string | null;
   emptyValueLabel: string;
   fieldType: "number" | "text" | "textarea";
@@ -24,23 +24,23 @@ type EditableAgentFieldTextProps = {
   value: string | null;
 };
 
-type EditableAgentFieldSelectProps = {
+type EditableFieldSelectProps = {
   displayValue?: string | null;
   emptyValueLabel: string;
   fieldType: "select";
   label: string;
   onSave: (value: string) => Promise<void>;
-  options: EditableAgentFieldOption[];
+  options: EditableFieldOption[];
   value: string | null;
 };
 
-type EditableAgentFieldProps = EditableAgentFieldTextProps | EditableAgentFieldSelectProps;
+type EditableFieldProps = EditableFieldTextProps | EditableFieldSelectProps;
 
 /**
- * Renders one editable agent field with a shared inline-edit interaction: click the pencil,
- * swap the display value for an editor, then autosave on blur, enter, or select change.
+ * Renders one inline-edit card that toggles between a read-only value and an editor while keeping
+ * save, cancel, and feedback behavior consistent across settings and agent configuration pages.
  */
-export function EditableAgentField(props: EditableAgentFieldProps) {
+export function EditableField(props: EditableFieldProps) {
   const [draftValue, setDraftValue] = useState(props.value ?? "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEditing, setEditing] = useState(false);
@@ -187,8 +187,9 @@ export function EditableAgentField(props: EditableAgentFieldProps) {
               }
             }}
             onValueChange={async (value) => {
-              setDraftValue(value);
-              await commitValue(value);
+              const nextValue = value ?? "";
+              setDraftValue(nextValue);
+              await commitValue(nextValue);
             }}
             open={isOpen}
             value={draftValue}

@@ -5,6 +5,7 @@ type Query {
   Agents: [Agent!]!
   AgentConversations: [AgentConversation!]!
   AgentConversationMessages(conversationId: ID): [AgentConversationMessage!]!
+  CompanySettings: CompanySettings!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
   GithubAppConfig: GithubAppConfig!
@@ -41,6 +42,7 @@ type Mutation {
   DeleteComputeProviderDefinition(input: DeleteComputeProviderDefinitionInput!): ComputeProviderDefinition!
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
+  UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
@@ -95,6 +97,11 @@ scalar JSON
 type AuthenticatedCompany {
   id: ID!
   name: String!
+}
+
+type CompanySettings {
+  companyId: ID!
+  baseSystemPrompt: String
 }
 
 type GithubAppConfig {
@@ -523,6 +530,10 @@ input UpdateAgentEnvironmentRequirementsInput {
   minCpuCount: Int!
   minMemoryGb: Int!
   minDiskSpaceGb: Int!
+}
+
+input UpdateCompanySettingsInput {
+  baseSystemPrompt: String
 }
 
 input DeleteModelProviderCredentialInput {

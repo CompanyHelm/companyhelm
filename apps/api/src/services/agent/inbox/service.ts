@@ -260,7 +260,6 @@ export class AgentInboxService {
     },
   ): Promise<AgentInboxHumanQuestionRecord> {
     const { finalAnswerText, questionRecord } = await transactionProvider.transaction(async (tx) => {
-      const deletableDatabase = tx as DeletableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;

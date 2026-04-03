@@ -37,3 +37,23 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
   assert.equal(loader.getSystemPrompt(), new SystemPromptTemplate().render(promptContext));
   assert.match(loader.getSystemPrompt(), /Company name: My Organization/u);
 });
+
+test("CompanyHelmResourceLoader keeps company and agent prompt overrides as separate append layers", async () => {
+  const promptContext = new SystemPromptTemplateContext(
+    "agent-1",
+    "My Agent",
+    "My Organization",
+    "session-1",
+  );
+  const loader = new CompanyHelmResourceLoader(promptContext, {
+    agentSystemPrompt: "Prefer concise implementation plans.",
+    companyBaseSystemPrompt: "Always align work with company priorities.",
+  });
+
+  await loader.reload();
+
+  assert.deepEqual(loader.getAppendSystemPrompt(), [
+    "Always align work with company priorities.",
+    "Prefer concise implementation plans.",
+  ]);
+});

@@ -47,6 +47,14 @@ export const companies = pgTable("companies", {
   clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
 }));
 
+export const companySettings = pgTable("company_settings", {
+  companyId: uuid("company_id")
+    .primaryKey()
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  base_system_prompt: text("base_system_prompt"),
+});
+
 export const users = pgTable("users", {
   id: uuid("id")
     .primaryKey()
