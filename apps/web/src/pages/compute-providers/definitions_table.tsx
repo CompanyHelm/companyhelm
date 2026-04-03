@@ -161,7 +161,7 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
             </TableCell>
             <TableCell className="text-sm text-muted-foreground">
               {CompanyHelmComputeProvider.isManagedDefinition(definition)
-                ? "Managed in api config"
+                ? "Managed"
                 : definition.provider === "daytona"
                 ? (definition.daytonaApiUrl ?? "Missing API URL")
                 : definition.hasApiKey
