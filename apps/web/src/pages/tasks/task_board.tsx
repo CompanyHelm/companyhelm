@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -32,6 +32,7 @@ interface TaskBoardProps {
   tasks: TaskBoardTask[];
   includeUncategorizedColumn?: boolean;
   onMoveTask(taskId: string, taskCategoryId: string | null): Promise<void>;
+  onOpenTask(taskId: string): void;
 }
 
 type TaskBoardColumn = {
@@ -95,6 +96,7 @@ function formatTaskTimestamp(value: string): string {
  */
 export function TaskBoard(props: TaskBoardProps) {
   const [dropTargetKey, setDropTargetKey] = useState("");
+  const suppressOpenTaskIdRef = useRef<string | null>(null);
   const columns = buildTaskBoardColumns(props.categories, props.tasks, props.includeUncategorizedColumn ?? true);
 
   async function handleDrop(event: DragEvent<HTMLDivElement>, taskCategoryId: string | null, columnKey: string) {
@@ -145,10 +147,35 @@ export function TaskBoard(props: TaskBoardProps) {
                   key={task.id}
                   className="h-36 shrink-0 cursor-grab rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing"
                   draggable
+                  onClick={() => {
+                    if (suppressOpenTaskIdRef.current === task.id) {
+                      return;
+                    }
+
+                    props.onOpenTask(task.id);
+                  }}
                   onDragStart={(event) => {
+                    suppressOpenTaskIdRef.current = task.id;
                     event.dataTransfer.effectAllowed = "move";
                     event.dataTransfer.setData("text/task-id", task.id);
                   }}
+                  onDragEnd={() => {
+                    window.setTimeout(() => {
+                      if (suppressOpenTaskIdRef.current === task.id) {
+                        suppressOpenTaskIdRef.current = null;
+                      }
+                    }, 0);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    props.onOpenTask(task.id);
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <div className="flex h-full flex-col">
                     <div className="flex items-start justify-between gap-3">

@@ -17,6 +17,7 @@ export function ApplicationHeader() {
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
   const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(pathname);
+  const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(pathname);
   const pageTitle = pathname.startsWith("/model-provider-credentials")
     ? "LLM Credentials"
     : pathname.startsWith("/compute-providers")
@@ -45,15 +46,23 @@ export function ApplicationHeader() {
                   ? "Agents"
                   : "Dashboard";
   const detailPageTitle = detailLabel
-    || (isAgentDetailPage ? "Agent" : isKnowledgeBaseDetailPage ? "Artifact" : "Credential");
+    || (isAgentDetailPage
+      ? "Agent"
+      : isKnowledgeBaseDetailPage
+        ? "Artifact"
+        : isTaskDetailPage
+          ? "Task"
+          : "Credential");
   const detailPageHref = isCredentialDetailPage
     ? "/model-provider-credentials"
     : isAgentDetailPage
       ? "/agents"
       : isKnowledgeBaseDetailPage
         ? "/knowledge-base"
+        : isTaskDetailPage
+          ? "/tasks"
       : null;
-  const isDetailPage = isCredentialDetailPage || isAgentDetailPage || isKnowledgeBaseDetailPage;
+  const isDetailPage = isCredentialDetailPage || isAgentDetailPage || isKnowledgeBaseDetailPage || isTaskDetailPage;
 
   return (
     <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">

@@ -15,8 +15,8 @@ export function PageContainer(props: PageContainerProps) {
     select: (state) => state.location.pathname,
   });
   const isChatsPage = pathname.startsWith("/chats");
-  const isTasksPage = pathname.startsWith("/tasks");
-  const isFullHeightBoardPage = isChatsPage || isTasksPage;
+  const isTasksBoardPage = pathname === "/tasks";
+  const isFullHeightBoardPage = isChatsPage || isTasksBoardPage;
 
   return (
     <ApplicationBreadcrumbProvider>
@@ -34,7 +34,7 @@ export function PageContainer(props: PageContainerProps) {
               "flex flex-1 flex-col",
               isChatsPage
                 ? "min-h-0 overflow-hidden px-0 pb-0 pt-0"
-                : isTasksPage
+                : isTasksBoardPage
                   ? "min-h-0 overflow-hidden px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-4 lg:px-5"
                 : "px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8",
             )}

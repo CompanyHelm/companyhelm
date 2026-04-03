@@ -50,6 +50,7 @@ import { UpdateComputeProviderDefinitionMutation } from "./mutations/update_comp
 import { UpdateExternalLinkArtifactMutation } from "./mutations/update_external_link_artifact.ts";
 import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_artifact.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
+import { UpdateTaskMutation } from "./mutations/update_task.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -75,6 +76,7 @@ import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provide
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
 import { SecretsQueryResolver } from "./resolvers/secrets.ts";
 import { SessionSecretsQueryResolver } from "./resolvers/session_secrets.ts";
+import { TaskQueryResolver } from "./resolvers/task.ts";
 import { TaskAssignableUsersQueryResolver } from "./resolvers/task_assignable_users.ts";
 import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
@@ -159,6 +161,7 @@ export class GraphqlApplication {
   private readonly startEnvironmentMutation: StartEnvironmentMutation;
   private readonly steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation;
   private readonly stopEnvironmentMutation: StopEnvironmentMutation;
+  private readonly taskQueryResolver: TaskQueryResolver;
   private readonly taskAssignableUsersQueryResolver: TaskAssignableUsersQueryResolver;
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
@@ -170,6 +173,7 @@ export class GraphqlApplication {
   private readonly updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation;
   private readonly updateMarkdownArtifactMutation: UpdateMarkdownArtifactMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
+  private readonly updateTaskMutation: UpdateTaskMutation;
   private readonly redisService: RedisService;
 
   constructor(
@@ -381,6 +385,8 @@ export class GraphqlApplication {
         throw new Error("MarkSessionRead mutation is not configured.");
       },
     } as never,
+    @inject(TaskQueryResolver) taskQueryResolver: TaskQueryResolver = new TaskQueryResolver(),
+    @inject(UpdateTaskMutation) updateTaskMutation: UpdateTaskMutation = new UpdateTaskMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -460,6 +466,7 @@ export class GraphqlApplication {
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
     this.setTaskCategoryMutation = setTaskCategoryMutation;
     this.steerSessionQueuedMessageMutation = steerSessionQueuedMessageMutation;
+    this.taskQueryResolver = taskQueryResolver;
     this.taskAssignableUsersQueryResolver = taskAssignableUsersQueryResolver;
     this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
     this.tasksQueryResolver = tasksQueryResolver;
@@ -471,15 +478,21 @@ export class GraphqlApplication {
     this.updateComputeProviderDefinitionMutation = updateComputeProviderDefinitionMutation;
     this.updateExternalLinkArtifactMutation = updateExternalLinkArtifactMutation;
     this.updateMarkdownArtifactMutation = updateMarkdownArtifactMutation;
+    this.updateTaskMutation = updateTaskMutation;
     this.redisService = redisService;
   }
 
   async register(app: FastifyInstance): Promise<void> {
-    await app.register(mercurius, {
+    const graphqlPluginOptions = {
       schema: GraphqlSchema.getDocument(),
-      context: (request) => this.graphqlRequestContextResolver.resolve(request),
+      context: (
+        request: Parameters<GraphqlRequestContextResolver["resolve"]>[0],
+      ) => this.graphqlRequestContextResolver.resolve(request),
       subscription: {
-        context: async (_socket, request) => {
+        context: async (
+          _socket: unknown,
+          request: Parameters<GraphqlRequestContextResolver["resolve"]>[0],
+        ): Promise<GraphqlRequestContext> => {
           let resolvedContextPromise: Promise<GraphqlRequestContext> | null = null;
 
           return {
@@ -510,7 +523,7 @@ export class GraphqlApplication {
           };
         },
         onConnect: () => true,
-        onDisconnect: async (context) => {
+        onDisconnect: async (context: GraphqlRequestContext) => {
           const resolvedContext = await context.resolveSubscriptionContext?.();
           await resolvedContext?.redisCompanyScopedService?.disconnect();
         },
@@ -541,6 +554,7 @@ export class GraphqlApplication {
           Secrets: this.secretsQueryResolver.execute,
           SessionQueuedMessages: this.sessionQueuedMessagesQueryResolver.execute,
           SessionEnvironment: this.sessionEnvironmentQueryResolver.execute,
+          Task: this.taskQueryResolver.execute,
           TaskAssignableUsers: this.taskAssignableUsersQueryResolver.execute,
           TaskCategories: this.taskCategoriesQueryResolver.execute,
           Tasks: this.tasksQueryResolver.execute,
@@ -592,6 +606,7 @@ export class GraphqlApplication {
           UpdateExternalLinkArtifact: this.updateExternalLinkArtifactMutation.execute,
           UpdateMarkdownArtifact: this.updateMarkdownArtifactMutation.execute,
           UpdateSecret: this.updateSecretMutation.execute,
+          UpdateTask: this.updateTaskMutation.execute,
         },
         Subscription: {
           SessionMessageUpdated: {
@@ -610,6 +625,8 @@ export class GraphqlApplication {
       },
       path: this.configDocument.graphql.endpoint,
       graphiql: this.configDocument.graphql.graphiql,
-    });
+    };
+
+    await app.register(mercurius as never, graphqlPluginOptions as never);
   }
 }

@@ -231,6 +231,14 @@ function TasksPageContent() {
         <TaskBoard
           categories={visibleCategories}
           includeUncategorizedColumn={selectedCategoryKey === undefined || selectedCategoryKey === "uncategorized"}
+          onOpenTask={(taskId) => {
+            void navigate({
+              to: "/tasks/$taskId",
+              params: {
+                taskId,
+              },
+            });
+          }}
           tasks={visibleTasks.map((task) => ({
             assignedAt: task.assignedAt,
             assignee: task.assignee

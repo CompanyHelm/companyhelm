@@ -23,6 +23,7 @@ import { GithubInstallCallbackPage } from "./pages/repositories/github_install_c
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
 import { SettingsPage } from "./pages/settings/settings_page";
+import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
@@ -200,6 +201,12 @@ const tasksRoute = createRoute({
   component: TasksPage,
 });
 
+const taskDetailRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/tasks/$taskId",
+  component: TaskDetailPage,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/settings",
@@ -248,6 +255,7 @@ const routeTree = rootRoute.addChildren([
       knowledgeBaseRoute,
       knowledgeBaseDetailRoute,
       tasksRoute,
+      taskDetailRoute,
       settingsRoute,
       agentDetailRoute,
       modelProviderCredentialsRoute,

@@ -44,10 +44,26 @@ export type TaskServiceListTasksInput = {
   status?: string | null;
 };
 
+export type TaskServiceGetTaskInput = {
+  companyId: string;
+  taskId: string;
+};
+
 export type TaskServiceListTasksResult = {
   nextOffset: number | null;
   tasks: TaskServiceTask[];
   totalCount: number;
+};
+
+export type TaskServiceUpdateTaskInput = {
+  assignedAgentId?: string | null;
+  assignedUserId?: string | null;
+  companyId: string;
+  description?: string | null;
+  name?: string | null;
+  status?: string | null;
+  taskCategoryId?: string | null;
+  taskId: string;
 };
 
 export type TaskServiceUpdateTaskStatusInput = {
@@ -201,16 +217,71 @@ export class TaskService {
     });
   }
 
-  async updateTaskStatus(
+  async getTask(
     transactionProvider: TransactionProviderInterface,
-    input: TaskServiceUpdateTaskStatusInput,
+    input: TaskServiceGetTaskInput,
   ): Promise<TaskServiceTask> {
     return transactionProvider.transaction(async (tx) => {
-      const [taskRecord] = await tx
+      const taskRow = await this.requireTaskRow(tx, input.companyId, input.taskId);
+      return this.loadSerializedTask(tx, taskRow);
+    });
+  }
+
+  async updateTask(
+    transactionProvider: TransactionProviderInterface,
+    input: TaskServiceUpdateTaskInput,
+  ): Promise<TaskServiceTask> {
+    return transactionProvider.transaction(async (tx) => {
+      const existingTaskRow = await this.requireTaskRow(tx, input.companyId, input.taskId);
+      const nextName = input.name === undefined
+        ? existingTaskRow.name
+        : this.resolveName(input.name);
+      const nextDescription = input.description === undefined
+        ? existingTaskRow.description
+        : input.description;
+      const nextStatus = input.status === undefined
+        ? existingTaskRow.status
+        : this.resolveStatus(input.status);
+      const taskCategoryRecord = input.taskCategoryId === undefined
+        ? null
+        : await this.resolveTaskCategoryRecord(tx, input.companyId, input.taskCategoryId ?? null);
+      const nextTaskCategoryId = input.taskCategoryId === undefined
+        ? existingTaskRow.taskCategoryId
+        : taskCategoryRecord?.id ?? null;
+      const assignee = input.assignedAgentId === undefined && input.assignedUserId === undefined
+        ? null
+        : await this.resolveAssignee(tx, {
+          assignedAgentId: input.assignedAgentId ?? null,
+          assignedUserId: input.assignedUserId ?? null,
+          companyId: input.companyId,
+        });
+      const nextAssignedAgentId = input.assignedAgentId === undefined && input.assignedUserId === undefined
+        ? existingTaskRow.assignedAgentId
+        : assignee?.kind === "agent"
+          ? assignee.id
+          : null;
+      const nextAssignedUserId = input.assignedAgentId === undefined && input.assignedUserId === undefined
+        ? existingTaskRow.assignedUserId
+        : assignee?.kind === "user"
+          ? assignee.id
+          : null;
+      const didAssigneeChange = nextAssignedAgentId !== existingTaskRow.assignedAgentId
+        || nextAssignedUserId !== existingTaskRow.assignedUserId;
+      const now = new Date();
+
+      const [updatedTaskRow] = await tx
         .update(tasks)
         .set({
-          status: this.resolveStatus(input.status),
-          updatedAt: new Date(),
+          assignedAgentId: nextAssignedAgentId,
+          assignedAt: nextAssignedAgentId || nextAssignedUserId
+            ? (didAssigneeChange ? now : existingTaskRow.assignedAt)
+            : null,
+          assignedUserId: nextAssignedUserId,
+          description: nextDescription,
+          name: nextName,
+          status: nextStatus,
+          taskCategoryId: nextTaskCategoryId,
+          updatedAt: now,
         })
         .where(and(
           eq(tasks.companyId, input.companyId),
@@ -228,15 +299,22 @@ export class TaskService {
           taskCategoryId: tasks.taskCategoryId,
           updatedAt: tasks.updatedAt,
         }) as TaskRow[];
-      if (!taskRecord) {
+      if (!updatedTaskRow) {
         throw new Error("Task not found.");
       }
 
-      const taskCategoryNameById = await this.loadTaskCategoryNameById(tx, [taskRecord]);
-      const userAssigneeById = await this.loadUserAssigneeById(tx, [taskRecord]);
-      const agentAssigneeById = await this.loadAgentAssigneeById(tx, [taskRecord]);
+      return this.loadSerializedTask(tx, updatedTaskRow);
+    });
+  }
 
-      return this.serializeTaskRecord(taskRecord, taskCategoryNameById, userAssigneeById, agentAssigneeById);
+  async updateTaskStatus(
+    transactionProvider: TransactionProviderInterface,
+    input: TaskServiceUpdateTaskStatusInput,
+  ): Promise<TaskServiceTask> {
+    return this.updateTask(transactionProvider, {
+      companyId: input.companyId,
+      status: input.status,
+      taskId: input.taskId,
     });
   }
 
@@ -356,6 +434,14 @@ export class TaskService {
     return status as TaskStatus;
   }
 
+  private resolveName(name: string | null): string {
+    if (!name || !/\S/.test(name)) {
+      throw new Error("name is required.");
+    }
+
+    return name;
+  }
+
   private async resolveTaskCategoryRecord(
     tx: AppRuntimeTransaction,
     companyId: string,
@@ -467,6 +553,46 @@ export class TaskService {
       kind: "user",
       name: this.formatUserName(userRecord),
     };
+  }
+
+  private async requireTaskRow(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    taskId: string,
+  ): Promise<TaskRow> {
+    const [taskRow] = await tx
+      .select({
+        assignedAgentId: tasks.assignedAgentId,
+        assignedAt: tasks.assignedAt,
+        assignedUserId: tasks.assignedUserId,
+        createdAt: tasks.createdAt,
+        description: tasks.description,
+        id: tasks.id,
+        name: tasks.name,
+        status: tasks.status,
+        taskCategoryId: tasks.taskCategoryId,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .where(and(
+        eq(tasks.companyId, companyId),
+        eq(tasks.id, taskId),
+      )) as TaskRow[];
+    if (!taskRow) {
+      throw new Error("Task not found.");
+    }
+
+    return taskRow;
+  }
+
+  private async loadSerializedTask(
+    tx: AppRuntimeTransaction,
+    taskRow: TaskRow,
+  ): Promise<TaskServiceTask> {
+    const taskCategoryNameById = await this.loadTaskCategoryNameById(tx, [taskRow]);
+    const userAssigneeById = await this.loadUserAssigneeById(tx, [taskRow]);
+    const agentAssigneeById = await this.loadAgentAssigneeById(tx, [taskRow]);
+    return this.serializeTaskRecord(taskRow, taskCategoryNameById, userAssigneeById, agentAssigneeById);
   }
 
   private serializeTaskRecord(

@@ -30,6 +30,7 @@ type Query {
   ModelProviderCredentialModels(modelProviderCredentialId: ID!): [ModelProviderCredentialModel!]!
   ModelProviderCredentials: [ModelProviderCredential!]!
   ModelProviders: [ModelProvider!]!
+  Task(id: ID!): Task!
   TaskAssignableUsers: [TaskAssignableUser!]!
   TaskCategories: [TaskCategory!]!
   Tasks: [Task!]!
@@ -80,6 +81,7 @@ type Mutation {
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
   SetTaskCategory(input: SetTaskCategoryInput!): Task!
+  UpdateTask(input: UpdateTaskInput!): Task!
   UpdateArtifact(input: UpdateArtifactInput!): Artifact!
   UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
   UpdateMarkdownArtifact(input: UpdateMarkdownArtifactInput!): Artifact!
@@ -755,6 +757,16 @@ input DeleteArtifactInput {
 input SetTaskCategoryInput {
   taskId: ID!
   taskCategoryId: ID
+}
+
+input UpdateTaskInput {
+  taskId: ID!
+  name: String
+  description: String
+  status: String
+  taskCategoryId: ID
+  assignedUserId: ID
+  assignedAgentId: ID
 }
 
 input RefreshGithubInstallationRepositoriesInput {
