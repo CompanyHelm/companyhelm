@@ -2725,7 +2725,7 @@ function ChatsPageContent() {
             </Button>
           </div>
 
-          <div className="no-scrollbar flex-1 overflow-y-auto px-4 py-4">
+          <div className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
             {sortedAgents.length === 0 ? (
               <div className="rounded-xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-sidebar-foreground">No agents yet</p>
@@ -2735,7 +2735,7 @@ function ChatsPageContent() {
               </div>
             ) : null}
 
-            <ul className="grid gap-3" role="list" aria-label="Agents">
+            <ul className="grid min-w-0 gap-3" role="list" aria-label="Agents">
               {sortedAgents.map((agent) => {
                 const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
                 const isAgentSelected = selectedAgent?.id === agent.id;
@@ -2743,7 +2743,7 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className="px-0 py-2"
+                    className="min-w-0 px-0 py-2"
                   >
                     <div className="flex items-center gap-2">
                       <button
@@ -2772,7 +2772,7 @@ function ChatsPageContent() {
                     </div>
 
                       {agentSessions.length > 0 && (
-                        <ul className="mt-0.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-0.5 grid min-w-0 gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
@@ -2843,7 +2843,7 @@ function ChatsPageContent() {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-          <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
+          <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
             <div className="mb-2 flex items-center justify-end pr-1">
               <Button
                 aria-label={hideButtonLabel}
@@ -2866,7 +2866,7 @@ function ChatsPageContent() {
               </div>
             ) : null}
 
-            <ul className="grid gap-3" role="list" aria-label="Agents">
+            <ul className="grid min-w-0 gap-3" role="list" aria-label="Agents">
               {sortedAgents.map((agent) => {
                 const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
                 const isAgentSelected = selectedAgent?.id === agent.id;
@@ -2874,7 +2874,7 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className="px-0 py-2"
+                    className="min-w-0 px-0 py-2"
                   >
                     <div className="flex items-center gap-2">
                       <button
@@ -2903,7 +2903,7 @@ function ChatsPageContent() {
                     </div>
 
                       {agentSessions.length > 0 && (
-                        <ul className="mt-0.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-0.5 grid min-w-0 gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
