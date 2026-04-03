@@ -2772,7 +2772,7 @@ function ChatsPageContent() {
                           aria-controls={agentSessionListId}
                           aria-expanded={isAgentExpanded}
                           aria-label={`${isAgentExpanded ? "Collapse" : "Expand"} chats for ${agent.name}`}
-                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          className="inline-flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                           onClick={() => {
                             toggleChatListAgentExpanded(agent.id);
                           }}
@@ -2781,10 +2781,10 @@ function ChatsPageContent() {
                           <ChevronRightIcon className={`size-4 transition-transform ${isAgentExpanded ? "rotate-90" : ""}`} />
                         </button>
                       ) : (
-                        <span className="inline-flex h-8 w-8 shrink-0" aria-hidden="true" />
+                        <span className="inline-flex h-8 w-6 shrink-0" aria-hidden="true" />
                       )}
                       <button
-                        className="min-w-0 flex-1 rounded-md px-1 py-1 text-left"
+                        className="min-w-0 flex-1 rounded-md py-1 text-left"
                         onClick={() => {
                           expandChatListAgent(agent.id);
                           void openDraftForAgent(agent.id);
@@ -2825,7 +2825,7 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-lg px-1 py-1 transition ${
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-lg pr-1 py-1 transition ${
                                     isSessionSelected
                                       ? "bg-sidebar-accent"
                                       : "bg-transparent hover:bg-sidebar-accent/70"
@@ -2839,7 +2839,7 @@ function ChatsPageContent() {
                                     }}
                                     type="button"
                                   >
-                                    <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                    <span className="flex h-8 w-6 shrink-0 items-center justify-center">
                                       {isSessionRunning ? (
                                         <Loader2Icon
                                           className="size-3.5 animate-spin text-sidebar-foreground/70"
@@ -2928,7 +2928,7 @@ function ChatsPageContent() {
                           aria-controls={agentSessionListId}
                           aria-expanded={isAgentExpanded}
                           aria-label={`${isAgentExpanded ? "Collapse" : "Expand"} chats for ${agent.name}`}
-                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
+                          className="inline-flex h-8 w-6 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
                           onClick={() => {
                             toggleChatListAgentExpanded(agent.id);
                           }}
@@ -2937,10 +2937,10 @@ function ChatsPageContent() {
                           <ChevronRightIcon className={`size-4 transition-transform ${isAgentExpanded ? "rotate-90" : ""}`} />
                         </button>
                       ) : (
-                        <span className="inline-flex h-8 w-8 shrink-0" aria-hidden="true" />
+                        <span className="inline-flex h-8 w-6 shrink-0" aria-hidden="true" />
                       )}
                       <button
-                        className="min-w-0 flex-1 pl-1 text-left"
+                        className="min-w-0 flex-1 py-1 text-left"
                         onClick={() => {
                           expandChatListAgent(agent.id);
                           void openDraftForAgent(agent.id);
@@ -2981,7 +2981,7 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-lg px-1 py-1 transition ${
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-lg pr-1 py-1 transition ${
                                     isSessionSelected
                                       ? "bg-muted/45"
                                       : "bg-transparent hover:bg-muted/30"
@@ -2995,7 +2995,7 @@ function ChatsPageContent() {
                                     }}
                                     type="button"
                                   >
-                                    <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                    <span className="flex h-8 w-6 shrink-0 items-center justify-center">
                                       {isSessionRunning ? (
                                         <Loader2Icon
                                           className="size-3.5 animate-spin text-muted-foreground"
