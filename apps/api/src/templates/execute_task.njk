@@ -1,0 +1,14 @@
+Execute the following task.
+
+Task ID: {{ id }}
+
+Task: {{ name }}
+{% if taskCategoryName %}
+
+Category: {{ taskCategoryName }}
+{% endif %}
+
+Description:
+{{ description if description else "(no description provided)" }}
+
+Work the task directly in this session. When you refer to this task elsewhere, include the task id above. If you need review or approval, request it here before considering the work done.

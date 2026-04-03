@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 import { agents, taskCategories, taskRuns, tasks } from "../db/schema.ts";
+import { ExecuteTaskTemplate } from "../prompts/execute_task_template.ts";
 import { SessionManagerService } from "./agent/session/session_manager_service.ts";
 
 export type TaskRunStatus = "queued" | "running" | "completed" | "failed" | "canceled";
@@ -56,11 +57,13 @@ type AgentRow = {
  */
 @injectable()
 export class TaskRunService {
+  private readonly executeTaskTemplate: ExecuteTaskTemplate;
   private readonly sessionManagerService: SessionManagerService;
 
   constructor(
     @inject(SessionManagerService) sessionManagerService: SessionManagerService,
   ) {
+    this.executeTaskTemplate = new ExecuteTaskTemplate();
     this.sessionManagerService = sessionManagerService;
   }
 
@@ -163,7 +166,12 @@ export class TaskRunService {
         tx as never,
         input.companyId,
         taskRow.assignedAgentId,
-        this.buildExecutionPrompt(taskRow, taskCategoryName),
+        this.executeTaskTemplate.render({
+          description: taskRow.description,
+          id: taskRow.id,
+          name: taskRow.name,
+          taskCategoryName,
+        }),
         {
           userId: input.userId,
         },
@@ -224,19 +232,6 @@ export class TaskRunService {
 
     return taskRun;
   }
-
-  private buildExecutionPrompt(taskRow: TaskExecutionRow, taskCategoryName: string | null): string {
-    const sections = [
-      "Execute the following task.",
-      `Task: ${taskRow.name}`,
-      taskCategoryName ? `Category: ${taskCategoryName}` : null,
-      taskRow.description ? `Description:\n${taskRow.description}` : "Description:\n(no description provided)",
-      "Work the task directly in this session. If you need review or approval, request it here before considering the work done.",
-    ];
-
-    return sections.filter((section): section is string => section !== null).join("\n\n");
-  }
-
   private async loadSerializedTaskRuns(
     tx: AppRuntimeTransaction,
     taskRunRows: TaskRunRow[],
