@@ -6,6 +6,7 @@ import type {
   AgentEnvironmentTerminalSession,
 } from "./environment_interface.ts";
 import { AgentEnvironmentPtyInterface } from "./pty_interface.ts";
+import { AgentEnvironmentShellPrivilegeProbe, type AgentEnvironmentShellPrivilegeMode } from "./shell_privilege_probe.ts";
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 type TmuxCommandRun = {
@@ -27,12 +28,14 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly SESSION_LIST_FIELD_SEPARATOR = "|";
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
   private readonly environmentShell: AgentEnvironmentShellInterface;
+  private readonly privilegeProbe: AgentEnvironmentShellPrivilegeProbe;
   private homeDirectory: string | null = null;
   private tmuxPrepared = false;
 
   constructor(environmentShell: AgentEnvironmentShellInterface) {
     super();
     this.environmentShell = environmentShell;
+    this.privilegeProbe = new AgentEnvironmentShellPrivilegeProbe(environmentShell);
   }
 
   async executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {
@@ -225,12 +228,13 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       return this.homeDirectory;
     }
 
-    const result = await this.environmentShell.executeCommand(`sh -lc 'printf %s "$HOME"'`);
-    if (result.exitCode !== 0 || result.stdout.length === 0) {
+    const result = await this.environmentShell.executeCommand("printenv HOME");
+    const homeDirectory = result.stdout.trim();
+    if (result.exitCode !== 0 || homeDirectory.length === 0) {
       throw new Error(`Failed to resolve environment home directory: ${result.stdout}`);
     }
 
-    this.homeDirectory = result.stdout;
+    this.homeDirectory = homeDirectory;
     return this.homeDirectory;
   }
 
@@ -239,17 +243,50 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       return;
     }
 
-    const result = await this.environmentShell.executeCommand(
-      "sh -lc 'command -v tmux >/dev/null 2>&1 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y tmux)'",
+    if (await this.hasTmuxInstalled()) {
+      this.tmuxPrepared = true;
+      return;
+    }
+
+    const privilegeMode = await this.privilegeProbe.getPrivilegeMode();
+    if (privilegeMode === "unprivileged") {
+      throw new Error(
+        "Failed to prepare tmux in environment: tmux is missing and the environment user is neither root nor passwordless sudo.",
+      );
+    }
+
+    await this.installTmux(privilegeMode);
+    this.tmuxPrepared = true;
+  }
+
+  private async hasTmuxInstalled(): Promise<boolean> {
+    const result = await this.environmentShell.executeCommand("tmux -V");
+    return result.exitCode === 0;
+  }
+
+  private async installTmux(
+    privilegeMode: Exclude<AgentEnvironmentShellPrivilegeMode, "unprivileged">,
+  ): Promise<void> {
+    const commandPrefix = privilegeMode === "root" ? "" : "sudo -n ";
+    const updateResult = await this.environmentShell.executeCommand(
+      `${commandPrefix}apt-get update`,
       undefined,
       undefined,
       300,
     );
-    if (result.exitCode !== 0) {
-      throw new Error(`Failed to prepare tmux in environment: ${result.stdout}`);
+    if (updateResult.exitCode !== 0) {
+      throw new Error(`Failed to prepare tmux in environment: ${updateResult.stdout}`);
     }
 
-    this.tmuxPrepared = true;
+    const installResult = await this.environmentShell.executeCommand(
+      `${commandPrefix}env DEBIAN_FRONTEND=noninteractive apt-get install -y tmux`,
+      undefined,
+      undefined,
+      300,
+    );
+    if (installResult.exitCode !== 0) {
+      throw new Error(`Failed to prepare tmux in environment: ${installResult.stdout}`);
+    }
   }
 
   private async startTmuxCommand(

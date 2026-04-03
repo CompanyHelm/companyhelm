@@ -16,21 +16,72 @@ class FakeEnvironmentShell {
   readonly sessions = new Map<string, FakeTmuxSession>();
   autoCompleteCommands = false;
   listedSessionsOutput: string | null = null;
+  passwordlessSudo = false;
+  rootUser = false;
+  tmuxInstalled = true;
 
   async executeCommand(command: string) {
     this.executedCommands.push(command);
 
-    if (command === `sh -lc 'printf %s "$HOME"'`) {
+    if (command === "printenv HOME") {
       return {
         exitCode: 0,
         stdout: "/home/sandbox",
       };
     }
 
-    if (command.includes("command -v tmux")) {
+    if (command === "tmux -V") {
+      return {
+        exitCode: this.tmuxInstalled ? 0 : 127,
+        stdout: this.tmuxInstalled ? "tmux 3.4\n" : "",
+      };
+    }
+
+    if (command === "id -u") {
       return {
         exitCode: 0,
+        stdout: this.rootUser ? "0\n" : "1001\n",
+      };
+    }
+
+    if (command === "sudo -n true") {
+      return {
+        exitCode: this.passwordlessSudo ? 0 : 1,
         stdout: "",
+      };
+    }
+
+    if (command === "apt-get update") {
+      assert.equal(this.rootUser, true);
+      return {
+        exitCode: 0,
+        stdout: "updated\n",
+      };
+    }
+
+    if (command === "sudo -n apt-get update") {
+      assert.equal(this.passwordlessSudo, true);
+      return {
+        exitCode: 0,
+        stdout: "updated\n",
+      };
+    }
+
+    if (command === "env DEBIAN_FRONTEND=noninteractive apt-get install -y tmux") {
+      assert.equal(this.rootUser, true);
+      this.tmuxInstalled = true;
+      return {
+        exitCode: 0,
+        stdout: "installed\n",
+      };
+    }
+
+    if (command === "sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y tmux") {
+      assert.equal(this.passwordlessSudo, true);
+      this.tmuxInstalled = true;
+      return {
+        exitCode: 0,
+        stdout: "installed\n",
       };
     }
 
@@ -59,6 +110,7 @@ class FakeEnvironmentShell {
     }
 
     if (command.includes("tmux new-session -d")) {
+      assert.equal(this.tmuxInstalled, true);
       const sessionId = /-s '([^']+)'/.exec(command)?.[1];
       assert.ok(sessionId);
       const width = Number(/-x (\d+)/.exec(command)?.[1] ?? "80");
@@ -308,6 +360,63 @@ test("AgentEnvironmentTmuxPty expands home-relative working directories before c
   );
   const commandFileContents = [...fakeEnvironmentShell.commandFiles.values()][0];
   assert.equal(commandFileContents?.includes(`cd '/home/sandbox/workspace/project'`), true);
+});
+
+test("AgentEnvironmentTmuxPty installs tmux directly when the environment user is root", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.rootUser = true;
+  fakeEnvironmentShell.tmuxInstalled = false;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  await pty.executeCommand({
+    command: "pwd",
+    yield_time_ms: 0,
+  });
+
+  assert.ok(fakeEnvironmentShell.executedCommands.includes("id -u"));
+  assert.ok(fakeEnvironmentShell.executedCommands.includes("apt-get update"));
+  assert.ok(
+    fakeEnvironmentShell.executedCommands.includes(
+      "env DEBIAN_FRONTEND=noninteractive apt-get install -y tmux",
+    ),
+  );
+});
+
+test("AgentEnvironmentTmuxPty installs tmux through passwordless sudo when root is unavailable", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.passwordlessSudo = true;
+  fakeEnvironmentShell.tmuxInstalled = false;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  await pty.executeCommand({
+    command: "pwd",
+    yield_time_ms: 0,
+  });
+
+  assert.ok(fakeEnvironmentShell.executedCommands.includes("id -u"));
+  assert.ok(fakeEnvironmentShell.executedCommands.includes("sudo -n true"));
+  assert.ok(fakeEnvironmentShell.executedCommands.includes("sudo -n apt-get update"));
+  assert.ok(
+    fakeEnvironmentShell.executedCommands.includes(
+      "sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y tmux",
+    ),
+  );
+});
+
+test("AgentEnvironmentTmuxPty fails clearly when tmux is missing and the environment is unprivileged", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.tmuxInstalled = false;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  await assert.rejects(
+    async () => {
+      await pty.executeCommand({
+        command: "pwd",
+        yield_time_ms: 0,
+      });
+    },
+    /tmux is missing and the environment user is neither root nor passwordless sudo/,
+  );
 });
 
 test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusable session ids", async () => {
