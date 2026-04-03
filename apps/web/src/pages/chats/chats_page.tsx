@@ -3163,7 +3163,7 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-1 pb-3 md:pt-1 md:pb-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-0 pb-3 md:pt-0 md:pb-4">
             <ChatsTranscript
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
