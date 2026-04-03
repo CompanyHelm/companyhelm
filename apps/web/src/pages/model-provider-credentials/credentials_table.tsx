@@ -3,6 +3,19 @@ import { Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogCancelAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -98,17 +111,50 @@ export function CredentialsTable(props: CredentialsTableProps) {
             <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
             <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
             <TableCell className="text-right">
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={props.deletingCredentialId === credential.id}
-                onClick={async (event) => {
-                  event.stopPropagation();
-                  await props.onDelete(credential.id);
-                }}
-              >
-                <Trash2Icon className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={props.deletingCredentialId === credential.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
+                >
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete credential</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the credential and its stored models. This action
+                      cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancelAction asChild>
+                      <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
+                    </AlertDialogCancelAction>
+                    <AlertDialogPrimaryAction asChild>
+                      <AlertDialogActionButton
+                        variant="destructive"
+                        disabled={props.deletingCredentialId === credential.id}
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          await props.onDelete(credential.id);
+                        }}
+                      >
+                        Delete
+                      </AlertDialogActionButton>
+                    </AlertDialogPrimaryAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </TableCell>
           </TableRow>
         ))}

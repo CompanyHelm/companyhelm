@@ -3,6 +3,19 @@ import { Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogCancelAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -110,17 +123,50 @@ export function AgentsTable(props: AgentsTableProps) {
             <TableCell>{formatTimestamp(agent.createdAt)}</TableCell>
             <TableCell>{formatTimestamp(agent.updatedAt)}</TableCell>
             <TableCell className="text-right">
-              <Button
-                variant="ghost"
-                size="icon"
-                disabled={props.deletingAgentId === agent.id}
-                onClick={async (event) => {
-                  event.stopPropagation();
-                  await props.onDelete(agent.id);
-                }}
-              >
-                <Trash2Icon className="h-4 w-4" />
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={props.deletingAgentId === agent.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <Trash2Icon className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
+                >
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete agent</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete the agent configuration. This action cannot be
+                      undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancelAction asChild>
+                      <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
+                    </AlertDialogCancelAction>
+                    <AlertDialogPrimaryAction asChild>
+                      <AlertDialogActionButton
+                        variant="destructive"
+                        disabled={props.deletingAgentId === agent.id}
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          await props.onDelete(agent.id);
+                        }}
+                      >
+                        Delete
+                      </AlertDialogActionButton>
+                    </AlertDialogPrimaryAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </TableCell>
           </TableRow>
         ))}

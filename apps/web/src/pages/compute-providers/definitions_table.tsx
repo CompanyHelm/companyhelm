@@ -1,8 +1,22 @@
+import { useState } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelButton,
+  AlertDialogCancelAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -30,6 +44,12 @@ interface ComputeProviderDefinitionsTableProps {
   onEdit: (definition: ComputeProviderDefinitionTableRecord) => void;
 }
 
+interface DeleteDefinitionDialogProps {
+  definition: ComputeProviderDefinitionTableRecord;
+  deletingDefinitionId: string | null;
+  onDelete: (definitionId: string) => Promise<void>;
+}
+
 function formatTimestamp(value: string): string {
   const timestamp = new Date(value);
   if (Number.isNaN(timestamp.getTime())) {
@@ -43,6 +63,56 @@ function formatTimestamp(value: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
+}
+
+/**
+ * Wraps compute-provider-definition deletion so the table stays focused on scan-friendly metadata
+ * instead of inlining destructive confirmation UI into every row.
+ */
+function DeleteDefinitionDialog(props: DeleteDefinitionDialogProps) {
+  const [isOpen, setOpen] = useState(false);
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          disabled={props.deletingDefinitionId === props.definition.id}
+          size="icon"
+          variant="ghost"
+        >
+          <Trash2Icon className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete compute provider</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes the company-level compute provider definition. Definitions that are still
+            referenced by agents or environments cannot be deleted.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelAction asChild>
+            <AlertDialogCancelButton variant="outline">
+              Cancel
+            </AlertDialogCancelButton>
+          </AlertDialogCancelAction>
+          <AlertDialogPrimaryAction asChild>
+            <AlertDialogActionButton
+              disabled={props.deletingDefinitionId === props.definition.id}
+              onClick={async () => {
+                await props.onDelete(props.definition.id);
+                setOpen(false);
+              }}
+              variant="destructive"
+            >
+              Delete
+            </AlertDialogActionButton>
+          </AlertDialogPrimaryAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 /**
@@ -130,16 +200,11 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
                   >
                     <PencilIcon className="size-4" />
                   </Button>
-                  <Button
-                    disabled={props.deletingDefinitionId === definition.id}
-                    onClick={async () => {
-                      await props.onDelete(definition.id);
-                    }}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
+                  <DeleteDefinitionDialog
+                    definition={definition}
+                    deletingDefinitionId={props.deletingDefinitionId}
+                    onDelete={props.onDelete}
+                  />
                 </div>
               )}
             </TableCell>
