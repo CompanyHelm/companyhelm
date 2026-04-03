@@ -2754,7 +2754,7 @@ function ChatsPageContent() {
               </div>
             ) : null}
 
-            <ul className="grid min-w-0 gap-1.5" role="list" aria-label="Agents">
+            <ul className="grid min-w-0 gap-[3px]" role="list" aria-label="Agents">
               {sortedAgents.map((agent) => {
                 const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
                 const isAgentSelected = selectedAgent?.id === agent.id;
@@ -2764,7 +2764,7 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className="min-w-0 px-0 py-1"
+                    className="min-w-0 px-0 py-0.5"
                   >
                     <div className="flex items-center gap-2">
                       {agentSessions.length > 0 ? (
@@ -2910,7 +2910,7 @@ function ChatsPageContent() {
               </div>
             ) : null}
 
-            <ul className="grid min-w-0 gap-1.5" role="list" aria-label="Agents">
+            <ul className="grid min-w-0 gap-[3px]" role="list" aria-label="Agents">
               {sortedAgents.map((agent) => {
                 const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
                 const isAgentSelected = selectedAgent?.id === agent.id;
@@ -2920,7 +2920,7 @@ function ChatsPageContent() {
                 return (
                   <li
                     key={agent.id}
-                    className="min-w-0 px-0 py-1"
+                    className="min-w-0 px-0 py-0.5"
                   >
                     <div className="flex items-center gap-2">
                       {agentSessions.length > 0 ? (
