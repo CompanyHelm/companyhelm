@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -89,6 +90,11 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
   }, [props.providerOptions, providerOptionId]);
+  const selectedComputeProviderDefinitionOption = useMemo(() => {
+    return props.computeProviderDefinitionOptions.find(
+      (definitionOption) => definitionOption.id === computeProviderDefinitionId,
+    );
+  }, [computeProviderDefinitionId, props.computeProviderDefinitionOptions]);
   const selectedModelOption = useMemo(() => {
     return selectedProviderOption?.models.find((modelOption) => modelOption.id === modelOptionId);
   }, [modelOptionId, selectedProviderOption]);
@@ -414,6 +420,18 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                     <p className="mt-1 text-xs text-muted-foreground">
                       Leave all three fields blank to use the default minimum of 1 CPU, 3 GB RAM, and 10 GB disk.
                     </p>
+                    {selectedComputeProviderDefinitionOption ? (
+                      <>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Published range: {ComputeProviderLimitsCatalog.formatPublishedRangeSummary(
+                            selectedComputeProviderDefinitionOption.provider,
+                          )}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {ComputeProviderLimitsCatalog.getPublishedRangeDisclaimer()}
+                        </p>
+                      </>
+                    ) : null}
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-3">

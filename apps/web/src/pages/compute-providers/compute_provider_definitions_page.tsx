@@ -1,6 +1,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { useToast } from "@/components/toast_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -93,7 +94,7 @@ function ComputeProviderDefinitionsPageFallback() {
           <div className="min-w-0">
             <CardDescription>
               Manage company-scoped compute backends that agents can use for environment
-              provisioning.
+              provisioning. Published CPU, memory, and disk ranges are shown for planning.
             </CardDescription>
           </div>
           <CardAction>
@@ -159,7 +160,7 @@ function ComputeProviderDefinitionsPageContent() {
           <div className="min-w-0">
             <CardDescription>
               Manage company-scoped compute backends that agents can use for environment
-              provisioning.
+              provisioning. Published CPU, memory, and disk ranges are shown for planning.
             </CardDescription>
           </div>
           <CardAction>
@@ -177,6 +178,10 @@ function ComputeProviderDefinitionsPageContent() {
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
+          <p className="text-xs text-muted-foreground">
+            {ComputeProviderLimitsCatalog.getPublishedRangeDisclaimer()}
+          </p>
+
           {errorMessage && !isDialogOpen ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}

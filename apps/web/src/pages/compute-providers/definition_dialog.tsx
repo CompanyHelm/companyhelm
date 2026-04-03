@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import {
   Dialog,
   DialogContent,
@@ -181,6 +182,12 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                 Provider type is fixed after creation.
               </p>
             ) : null}
+            <p className="text-xs text-muted-foreground">
+              Published range: {ComputeProviderLimitsCatalog.formatPublishedRangeSummary(provider)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {ComputeProviderLimitsCatalog.getPublishedRangeDisclaimer()}
+            </p>
           </div>
 
           <div className="grid gap-2">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { graphql, useMutation } from "react-relay";
+import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { EditableField } from "@/components/editable_field";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import type { agentEnvironmentRequirementsCardUpdateMutation } from "./__generated__/agentEnvironmentRequirementsCardUpdateMutation.graphql";
@@ -21,6 +22,7 @@ type AgentEnvironmentRequirementsCardProps = {
   minCpuCount: number;
   minDiskSpaceGb: number;
   minMemoryGb: number;
+  provider: "daytona" | "e2b" | null;
 };
 
 /**
@@ -89,6 +91,16 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
         <CardDescription>
           Minimum compute requirements used when provisioning new environments for this agent.
         </CardDescription>
+        {props.provider ? (
+          <>
+            <CardDescription>
+              Published range: {ComputeProviderLimitsCatalog.formatPublishedRangeSummary(props.provider)}
+            </CardDescription>
+            <CardDescription>
+              {ComputeProviderLimitsCatalog.getPublishedRangeDisclaimer()}
+            </CardDescription>
+          </>
+        ) : null}
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-3">
         <EditableField

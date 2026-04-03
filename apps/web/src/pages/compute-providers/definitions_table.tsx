@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
+import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -116,7 +117,8 @@ function DeleteDefinitionDialog(props: DeleteDefinitionDialogProps) {
 
 /**
  * Shows company compute provider definitions in one table so operators can inspect provider type,
- * connection summary, and last update time before assigning them to agents.
+ * connection summary, published resource ranges, and last update time before assigning them to
+ * agents.
  */
 export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinitionsTableProps) {
   if (props.isLoading) {
@@ -144,6 +146,7 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Provider</TableHead>
+          <TableHead>Published Range</TableHead>
           <TableHead>Connection</TableHead>
           <TableHead>Description</TableHead>
           <TableHead>Updated</TableHead>
@@ -158,6 +161,13 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
             </TableCell>
             <TableCell>
               <Badge variant="outline">{CompanyHelmComputeProvider.formatProviderLabel(definition)}</Badge>
+            </TableCell>
+            <TableCell className="min-w-56">
+              <div className="grid gap-1 text-xs text-muted-foreground">
+                <p>CPU: {ComputeProviderLimitsCatalog.formatCpuRange(definition.provider)}</p>
+                <p>Memory: {ComputeProviderLimitsCatalog.formatMemoryRange(definition.provider)}</p>
+                <p>Disk: {ComputeProviderLimitsCatalog.formatDiskRange(definition.provider)}</p>
+              </div>
             </TableCell>
             <TableCell className="text-sm text-muted-foreground">
               {CompanyHelmComputeProvider.isManagedDefinition(definition)

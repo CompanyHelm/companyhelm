@@ -213,6 +213,12 @@ function AgentDetailPageContent() {
     id: secret.id,
     name: secret.name,
   }));
+  const selectedComputeProviderDefinition = data.ComputeProviderDefinitions.find((definition: {
+    id: string;
+    provider: string;
+  }) => {
+    return definition.id === agent.defaultComputeProviderDefinitionId;
+  }) ?? null;
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
@@ -452,6 +458,7 @@ function AgentDetailPageContent() {
         minCpuCount={agent.environmentRequirements.minCpuCount}
         minDiskSpaceGb={agent.environmentRequirements.minDiskSpaceGb}
         minMemoryGb={agent.environmentRequirements.minMemoryGb}
+        provider={selectedComputeProviderDefinition?.provider as "daytona" | "e2b" | null}
       />
 
       <Card className="rounded-2xl border border-border/60 shadow-sm">
