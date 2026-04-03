@@ -63,19 +63,22 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 function SettingsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle>Settings</CardTitle>
-            <CardDescription>Loading task and agent AI settings...</CardDescription>
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Settings2Icon className="size-4" />
+            <span>Settings</span>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
-            Loading settings...
-          </div>
-        </CardContent>
-      </Card>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Loading task and agent AI settings...
+          </p>
+        </div>
+        <div className="border-b border-border/60" />
+      </div>
+
+      <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
+        Loading settings...
+      </div>
     </main>
   );
 }
@@ -102,28 +105,25 @@ function SettingsPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <div className="min-w-0">
-            <CardTitle className="flex items-center gap-2">
-              <Settings2Icon className="size-4" />
-              Settings
-            </CardTitle>
-            <CardDescription>
-              Manage task lanes and the company-wide prompt inherited by all agent sessions.
-            </CardDescription>
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Settings2Icon className="size-4" />
+            <span>Settings</span>
           </div>
-        </CardHeader>
-        <CardContent className="grid gap-5">
-          <div className="flex flex-wrap gap-2">
+          <p className="mt-2 text-sm text-muted-foreground">
+            Manage task lanes and the company-wide prompt inherited by all agent sessions.
+          </p>
+        </div>
+
+        <div className="border-b border-border/60">
+          <div className="flex items-center gap-6 overflow-x-auto">
             {[
               {
-                description: "Manage kanban categories used on the tasks board.",
                 key: "tasks" as const,
                 label: "Tasks",
               },
               {
-                description: "Set the shared base prompt inherited by every agent.",
                 key: "AI" as const,
                 label: "Agents / AI",
               },
@@ -131,12 +131,12 @@ function SettingsPageContent() {
               const isSelected = selectedTab === tab.key;
 
               return (
-                <Button
+                <button
                   key={tab.key}
-                  className={`h-auto min-w-44 justify-start rounded-xl border px-4 py-3 text-left ${
+                  className={`-mb-px shrink-0 border-b-2 px-0 py-3 text-sm font-medium transition ${
                     isSelected
-                      ? "border-border/70 bg-muted text-foreground hover:bg-muted"
-                      : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground hover:border-border/80 hover:text-foreground"
                   }`}
                   onClick={() => {
                     void navigate({
@@ -146,19 +146,15 @@ function SettingsPageContent() {
                       to: "/settings",
                     });
                   }}
-                  size="sm"
-                  variant="ghost"
+                  type="button"
                 >
-                  <span className="flex flex-col items-start gap-1">
-                    <span className="text-sm font-medium">{tab.label}</span>
-                    <span className="text-xs/relaxed text-muted-foreground">{tab.description}</span>
-                  </span>
-                </Button>
+                  {tab.label}
+                </button>
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {selectedTab === "tasks" ? (
         <Card className="rounded-2xl border border-border/60 shadow-sm">
