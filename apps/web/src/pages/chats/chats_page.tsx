@@ -2782,7 +2782,7 @@ function ChatsPageContent() {
                       </button>
 
                       {agentSessions.length > 0 ? (
-                        <ul className="mt-2 grid gap-2" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-1.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
@@ -2791,43 +2791,38 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-1 py-2 transition ${
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-lg px-1 py-1 transition ${
                                     isSessionSelected
                                       ? "bg-sidebar-accent"
                                       : "bg-transparent hover:bg-sidebar-accent/70"
                                   }`}
                                 >
                                   <button
-                                    className="min-w-0 overflow-hidden pr-1 text-left"
+                                    className="flex min-w-0 items-center gap-2 overflow-hidden pr-1 text-left"
                                     disabled={isSessionArchiving}
                                     onClick={() => {
                                       void openSession(agent.id, session.id);
                                     }}
                                     type="button"
                                   >
-                                    <div className="flex min-w-0 items-center gap-2">
-                                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                                        {isSessionRunning ? (
-                                          <Loader2Icon
-                                            className="size-3.5 animate-spin text-sidebar-foreground/70"
-                                            title="Session running"
-                                          />
-                                        ) : session.hasUnread ? (
-                                          <span className="size-2 rounded-full bg-blue-500" />
-                                        ) : null}
-                                      </span>
-                                      <p className="block min-w-0 truncate text-xs font-medium text-sidebar-foreground">
-                                        {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
-                                      </p>
-                                    </div>
-                                    <p className="mt-1 block w-full truncate pl-6 text-[0.7rem] text-sidebar-foreground/55">
-                                      {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
+                                    <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                      {isSessionRunning ? (
+                                        <Loader2Icon
+                                          className="size-3.5 animate-spin text-sidebar-foreground/70"
+                                          title="Session running"
+                                        />
+                                      ) : session.hasUnread ? (
+                                        <span className="size-2 rounded-full bg-blue-500" />
+                                      ) : null}
+                                    </span>
+                                    <p className="block min-w-0 truncate text-xs font-medium text-sidebar-foreground">
+                                      {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
                                     </p>
                                   </button>
                                   <div className="flex shrink-0 items-start gap-2">
                                     <button
                                       aria-label={`Archive ${resolveSessionTitleOverride(session, sessionTitleOverridesById)}`}
-                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-transparent text-sidebar-foreground/60 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-transparent text-sidebar-foreground/60 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                       disabled={isSessionArchiving}
                                       onClick={(event) => {
                                         event.preventDefault();
@@ -2924,7 +2919,7 @@ function ChatsPageContent() {
                       </button>
 
                       {agentSessions.length > 0 ? (
-                        <ul className="mt-2 grid gap-2" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-1.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
@@ -2933,43 +2928,38 @@ function ChatsPageContent() {
                             return (
                               <li key={session.id}>
                                 <div
-                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-lg px-1 py-2 transition ${
+                                  className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1 rounded-lg px-1 py-1 transition ${
                                     isSessionSelected
                                       ? "bg-muted/45"
                                       : "bg-transparent hover:bg-muted/30"
                                   }`}
                                 >
                                   <button
-                                    className="min-w-0 overflow-hidden pr-1 text-left"
+                                    className="flex min-w-0 items-center gap-2 overflow-hidden pr-1 text-left"
                                     disabled={isSessionArchiving}
                                     onClick={() => {
                                       void openSession(agent.id, session.id);
                                     }}
                                     type="button"
                                   >
-                                    <div className="flex min-w-0 items-center gap-2">
-                                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                                        {isSessionRunning ? (
-                                          <Loader2Icon
-                                            className="size-3.5 animate-spin text-muted-foreground"
-                                            title="Session running"
-                                          />
-                                        ) : session.hasUnread ? (
-                                          <span className="size-2 rounded-full bg-blue-500" />
-                                        ) : null}
-                                      </span>
-                                      <p className="block min-w-0 truncate text-xs font-medium text-foreground">
-                                        {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
-                                      </p>
-                                    </div>
-                                    <p className="mt-1 block w-full truncate pl-6 text-[0.7rem] text-muted-foreground">
-                                      {isSessionArchiving ? "Archiving..." : formatTimestamp(session.updatedAt)}
+                                    <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                                      {isSessionRunning ? (
+                                        <Loader2Icon
+                                          className="size-3.5 animate-spin text-muted-foreground"
+                                          title="Session running"
+                                        />
+                                      ) : session.hasUnread ? (
+                                        <span className="size-2 rounded-full bg-blue-500" />
+                                      ) : null}
+                                    </span>
+                                    <p className="block min-w-0 truncate text-xs font-medium text-foreground">
+                                      {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
                                     </p>
                                   </button>
                                   <div className="flex shrink-0 items-start gap-2">
                                     <button
                                       aria-label={`Archive ${resolveSessionTitleOverride(session, sessionTitleOverridesById)}`}
-                                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground transition hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                                       disabled={isSessionArchiving}
                                       onClick={(event) => {
                                         event.preventDefault();
@@ -3173,7 +3163,7 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3 md:py-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-1 pb-3 md:pt-1 md:pb-4">
             <ChatsTranscript
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
