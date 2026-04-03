@@ -20,6 +20,8 @@ type EditableFieldTextProps = {
   emptyValueLabel: string;
   fieldType: "number" | "text" | "textarea";
   label: string;
+  max?: number;
+  min?: number;
   onSave: (value: string) => Promise<void>;
   value: string | null;
 };
@@ -118,7 +120,8 @@ export function EditableField(props: EditableFieldProps) {
       <div className="mt-3">
         {(props.fieldType === "text" || props.fieldType === "number") && isEditing ? (
           <Input
-            min={props.fieldType === "number" ? 1 : undefined}
+            max={props.fieldType === "number" ? props.max : undefined}
+            min={props.fieldType === "number" ? (props.min ?? 1) : undefined}
             onBlur={async (event) => {
               await commitValue(event.target.value);
             }}

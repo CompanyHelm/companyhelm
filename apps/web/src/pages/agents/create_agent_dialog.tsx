@@ -99,6 +99,24 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     return selectedProviderOption?.models.find((modelOption) => modelOption.id === modelOptionId);
   }, [modelOptionId, selectedProviderOption]);
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
+  const selectedComputeProviderCpuBounds = selectedComputeProviderDefinitionOption
+    ? ComputeProviderLimitsCatalog.getCpuBounds(selectedComputeProviderDefinitionOption.provider)
+    : {
+        max: undefined,
+        min: 1,
+      };
+  const selectedComputeProviderMemoryBounds = selectedComputeProviderDefinitionOption
+    ? ComputeProviderLimitsCatalog.getMemoryBounds(selectedComputeProviderDefinitionOption.provider)
+    : {
+        max: undefined,
+        min: 1,
+      };
+  const selectedComputeProviderDiskBounds = selectedComputeProviderDefinitionOption
+    ? ComputeProviderLimitsCatalog.getDiskBounds(selectedComputeProviderDefinitionOption.provider)
+    : {
+        max: undefined,
+        min: 1,
+      };
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -156,10 +174,24 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const parsedMinCpuCount = minCpuCount.length > 0 ? Number(minCpuCount) : null;
   const parsedMinMemoryGb = minMemoryGb.length > 0 ? Number(minMemoryGb) : null;
   const parsedMinDiskSpaceGb = minDiskSpaceGb.length > 0 ? Number(minDiskSpaceGb) : null;
-  const hasInvalidComputeRequirement = (hasAnyComputeRequirement && !hasCompleteComputeRequirements)
-    || (parsedMinCpuCount !== null && (!Number.isInteger(parsedMinCpuCount) || parsedMinCpuCount <= 0))
-    || (parsedMinMemoryGb !== null && (!Number.isInteger(parsedMinMemoryGb) || parsedMinMemoryGb <= 0))
-    || (parsedMinDiskSpaceGb !== null && (!Number.isInteger(parsedMinDiskSpaceGb) || parsedMinDiskSpaceGb <= 0));
+  const computeRequirementErrorMessage = (hasAnyComputeRequirement && !hasCompleteComputeRequirements)
+    ? "Enter CPU, memory, and disk together, or leave all three blank."
+    : (parsedMinCpuCount !== null && (!Number.isInteger(parsedMinCpuCount) || parsedMinCpuCount <= 0))
+      ? "CPU must be a positive integer."
+      : (parsedMinMemoryGb !== null && (!Number.isInteger(parsedMinMemoryGb) || parsedMinMemoryGb <= 0))
+        ? "Memory must be a positive integer."
+        : (parsedMinDiskSpaceGb !== null && (!Number.isInteger(parsedMinDiskSpaceGb) || parsedMinDiskSpaceGb <= 0))
+          ? "Disk must be a positive integer."
+          : (hasCompleteComputeRequirements && selectedComputeProviderDefinitionOption)
+            ? ComputeProviderLimitsCatalog.getValidationMessage(
+              selectedComputeProviderDefinitionOption.provider,
+              {
+                minCpuCount: parsedMinCpuCount!,
+                minDiskSpaceGb: parsedMinDiskSpaceGb!,
+                minMemoryGb: parsedMinMemoryGb!,
+              },
+            )
+            : null;
   const advancedSummary = [
     selectedSecretIds.length > 0 ? `${selectedSecretIds.length} secret${selectedSecretIds.length === 1 ? "" : "s"}` : null,
     hasAnyComputeRequirement ? "custom compute" : null,
@@ -170,7 +202,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     || providerOptionId.length === 0
     || modelOptionId.length === 0
     || (isReasoningLevelRequired && reasoningLevel.length === 0)
-    || hasInvalidComputeRequirement;
+    || computeRequirementErrorMessage !== null;
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -441,7 +473,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                       </label>
                       <Input
                         id="agent-min-cpu"
-                        min={1}
+                        max={selectedComputeProviderCpuBounds.max}
+                        min={selectedComputeProviderCpuBounds.min}
                         onChange={(event) => {
                           setMinCpuCount(event.target.value);
                         }}
@@ -457,7 +490,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                       </label>
                       <Input
                         id="agent-min-memory"
-                        min={1}
+                        max={selectedComputeProviderMemoryBounds.max}
+                        min={selectedComputeProviderMemoryBounds.min}
                         onChange={(event) => {
                           setMinMemoryGb(event.target.value);
                         }}
@@ -473,7 +507,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                       </label>
                       <Input
                         id="agent-min-disk"
-                        min={1}
+                        max={selectedComputeProviderDiskBounds.max}
+                        min={selectedComputeProviderDiskBounds.min}
                         onChange={(event) => {
                           setMinDiskSpaceGb(event.target.value);
                         }}
@@ -484,9 +519,9 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                     </div>
                   </div>
 
-                  {hasInvalidComputeRequirement ? (
+                  {computeRequirementErrorMessage ? (
                     <p className="text-xs text-destructive">
-                      Enter positive integers for CPU, memory, and disk together, or leave all three blank.
+                      {computeRequirementErrorMessage}
                     </p>
                   ) : null}
                 </div>

@@ -1,11 +1,17 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agentEnvironmentRequirements, agents } from "../../../db/schema.ts";
+import { agentEnvironmentRequirements, agents, computeProviderDefinitions } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import type { AgentEnvironmentRequirements } from "../compute/provider_interface.ts";
+import { ComputeProviderLimitsCatalog } from "../../compute_provider_definitions/provider_limits_catalog.ts";
 
 type AgentRecord = {
+  defaultComputeProviderDefinitionId: string | null;
   id: string;
+};
+
+type ComputeProviderDefinitionRecord = {
+  provider: "daytona" | "e2b";
 };
 
 type AgentEnvironmentRequirementsRecord = AgentEnvironmentRequirements & {
@@ -92,13 +98,17 @@ export class AgentEnvironmentRequirementsService {
       minMemoryGb: number;
     },
   ): Promise<AgentEnvironmentRequirements> {
-    this.validateRequirements(input);
-
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
-      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const agent = await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const provider = await this.requireProvider(
+        selectableDatabase,
+        input.companyId,
+        agent.defaultComputeProviderDefinitionId,
+      );
+      ComputeProviderLimitsCatalog.validateRequirements(provider.provider, input);
 
       const [existingRequirements] = await selectableDatabase
         .select({
@@ -160,22 +170,6 @@ export class AgentEnvironmentRequirementsService {
     });
   }
 
-  private validateRequirements(input: {
-    minCpuCount: number;
-    minDiskSpaceGb: number;
-    minMemoryGb: number;
-  }): void {
-    if (!Number.isInteger(input.minCpuCount) || input.minCpuCount <= 0) {
-      throw new Error("minCpuCount must be a positive integer.");
-    }
-    if (!Number.isInteger(input.minMemoryGb) || input.minMemoryGb <= 0) {
-      throw new Error("minMemoryGb must be a positive integer.");
-    }
-    if (!Number.isInteger(input.minDiskSpaceGb) || input.minDiskSpaceGb <= 0) {
-      throw new Error("minDiskSpaceGb must be a positive integer.");
-    }
-  }
-
   private async requireAgent(
     selectableDatabase: SelectableDatabase,
     companyId: string,
@@ -183,6 +177,7 @@ export class AgentEnvironmentRequirementsService {
   ): Promise<AgentRecord> {
     const [agent] = await selectableDatabase
       .select({
+        defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
         id: agents.id,
       })
       .from(agents)
@@ -196,6 +191,32 @@ export class AgentEnvironmentRequirementsService {
     }
 
     return agent;
+  }
+
+  private async requireProvider(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    definitionId: string | null,
+  ): Promise<ComputeProviderDefinitionRecord> {
+    if (!definitionId) {
+      throw new Error("Agent environment provider is required.");
+    }
+
+    const [definition] = await selectableDatabase
+      .select({
+        provider: computeProviderDefinitions.provider,
+      })
+      .from(computeProviderDefinitions)
+      .where(and(
+        eq(computeProviderDefinitions.companyId, companyId),
+        eq(computeProviderDefinitions.id, definitionId),
+      )) as ComputeProviderDefinitionRecord[];
+
+    if (!definition) {
+      throw new Error("Compute provider definition not found.");
+    }
+
+    return definition;
   }
 
   private requirementsSelection(): Record<string, unknown> {

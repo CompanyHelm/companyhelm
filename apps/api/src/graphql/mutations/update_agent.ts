@@ -1,11 +1,13 @@
 import { and, eq } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import {
   agents,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
+import { AgentEnvironmentRequirementsService } from "../../services/agent/environment/requirements_service.ts";
+import { ComputeProviderLimitsCatalog } from "../../services/compute_provider_definitions/provider_limits_catalog.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -91,6 +93,16 @@ type DatabaseTransaction = {
  */
 @injectable()
 export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, GraphqlAgentRecord> {
+  private readonly requirementsService: AgentEnvironmentRequirementsService;
+
+  constructor(
+    @inject(AgentEnvironmentRequirementsService)
+    requirementsService: AgentEnvironmentRequirementsService = new AgentEnvironmentRequirementsService(),
+  ) {
+    super();
+    this.requirementsService = requirementsService;
+  }
+
   protected resolve = async (
     arguments_: UpdateAgentMutationArguments,
     context: GraphqlRequestContext,
@@ -119,6 +131,11 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
+      const transactionProvider = {
+        async transaction<T>(transaction: (databaseTransaction: DatabaseTransaction) => Promise<T>): Promise<T> {
+          return transaction(databaseTransaction);
+        },
+      };
       const [existingAgent] = await databaseTransaction
         .select({
           id: agents.id,
@@ -179,6 +196,15 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       if (!computeProviderDefinitionRecord) {
         throw new Error("Compute provider definition not found.");
       }
+      const currentRequirements = await this.requirementsService.getRequirements(
+        transactionProvider as never,
+        context.authSession.company.id,
+        existingAgent.id,
+      );
+      ComputeProviderLimitsCatalog.validateRequirements(
+        computeProviderDefinitionRecord.provider,
+        currentRequirements,
+      );
 
       const reasoningLevel = UpdateAgentMutation.resolveReasoningLevel(
         arguments_.input.reasoningLevel,

@@ -65,6 +65,7 @@ class UpdateAgentEnvironmentRequirementsMutationTestHarness {
                   return {
                     async where() {
                       return [{
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
                         id: "agent-1",
                       }];
                     },
@@ -74,6 +75,20 @@ class UpdateAgentEnvironmentRequirementsMutationTestHarness {
             }
 
             if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        provider: "e2b",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -160,8 +175,8 @@ test("GraphQL UpdateAgentEnvironmentRequirements mutation upserts the persisted 
         input: {
           agentId: "agent-1",
           minCpuCount: 6,
-          minMemoryGb: 16,
-          minDiskSpaceGb: 120,
+          minMemoryGb: 8,
+          minDiskSpaceGb: 20,
         },
       },
     },
@@ -171,13 +186,13 @@ test("GraphQL UpdateAgentEnvironmentRequirements mutation upserts the persisted 
   const document = response.json();
   assert.deepEqual(document.data.UpdateAgentEnvironmentRequirements, {
     minCpuCount: 6,
-    minMemoryGb: 16,
-    minDiskSpaceGb: 120,
+    minMemoryGb: 8,
+    minDiskSpaceGb: 20,
   });
   assert.equal(database.insertedValues.length, 1);
   assert.equal(database.insertedValues[0]?.minCpuCount, 6);
-  assert.equal(database.insertedValues[0]?.minMemoryGb, 16);
-  assert.equal(database.insertedValues[0]?.minDiskSpaceGb, 120);
+  assert.equal(database.insertedValues[0]?.minMemoryGb, 8);
+  assert.equal(database.insertedValues[0]?.minDiskSpaceGb, 20);
 
   await app.close();
 });

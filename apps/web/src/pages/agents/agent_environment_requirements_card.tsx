@@ -33,6 +33,9 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
   const [commitUpdateRequirements] = useMutation<agentEnvironmentRequirementsCardUpdateMutation>(
     agentEnvironmentRequirementsCardUpdateMutationNode,
   );
+  const cpuBounds = props.provider ? ComputeProviderLimitsCatalog.getCpuBounds(props.provider) : null;
+  const memoryBounds = props.provider ? ComputeProviderLimitsCatalog.getMemoryBounds(props.provider) : null;
+  const diskBounds = props.provider ? ComputeProviderLimitsCatalog.getDiskBounds(props.provider) : null;
   const [requirements, setRequirements] = useState({
     minCpuCount: props.minCpuCount,
     minDiskSpaceGb: props.minDiskSpaceGb,
@@ -55,6 +58,16 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
     const nextMinCpuCount = patch.minCpuCount ?? requirements.minCpuCount;
     const nextMinMemoryGb = patch.minMemoryGb ?? requirements.minMemoryGb;
     const nextMinDiskSpaceGb = patch.minDiskSpaceGb ?? requirements.minDiskSpaceGb;
+    if (props.provider) {
+      const validationMessage = ComputeProviderLimitsCatalog.getValidationMessage(props.provider, {
+        minCpuCount: nextMinCpuCount,
+        minDiskSpaceGb: nextMinDiskSpaceGb,
+        minMemoryGb: nextMinMemoryGb,
+      });
+      if (validationMessage) {
+        throw new Error(validationMessage);
+      }
+    }
 
     await new Promise<void>((resolve, reject) => {
       commitUpdateRequirements({
@@ -108,6 +121,8 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
           emptyValueLabel="No minimum CPU configured"
           fieldType="number"
           label="Minimum CPU"
+          max={cpuBounds?.max}
+          min={cpuBounds?.min}
           onSave={async (value) => {
             await saveRequirements({
               minCpuCount: Number.parseInt(value, 10),
@@ -121,6 +136,8 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
           emptyValueLabel="No minimum memory configured"
           fieldType="number"
           label="Minimum memory"
+          max={memoryBounds?.max}
+          min={memoryBounds?.min}
           onSave={async (value) => {
             await saveRequirements({
               minMemoryGb: Number.parseInt(value, 10),
@@ -134,6 +151,8 @@ export function AgentEnvironmentRequirementsCard(props: AgentEnvironmentRequirem
           emptyValueLabel="No minimum disk configured"
           fieldType="number"
           label="Minimum disk"
+          max={diskBounds?.max}
+          min={diskBounds?.min}
           onSave={async (value) => {
             await saveRequirements({
               minDiskSpaceGb: Number.parseInt(value, 10),

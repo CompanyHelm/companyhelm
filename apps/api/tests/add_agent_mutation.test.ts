@@ -82,8 +82,8 @@ class AddAgentMutationTestHarness {
                     async where() {
                       return [{
                         id: "compute-provider-definition-1",
-                        name: "Primary Daytona",
-                        provider: "daytona",
+                        name: "Primary E2B",
+                        provider: "e2b",
                       }];
                     },
                   };
@@ -143,6 +143,7 @@ class AddAgentMutationTestHarness {
                   return {
                     async where() {
                       return [{
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
                         id: "agent-1",
                       }];
                     },
@@ -152,6 +153,20 @@ class AddAgentMutationTestHarness {
             }
 
             if (selectCallCount === 8) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        provider: "e2b",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 9) {
               return {
                 from() {
                   return {
@@ -276,8 +291,8 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
         input: {
           environmentRequirements: {
             minCpuCount: 6,
-            minDiskSpaceGb: 30,
-            minMemoryGb: 16,
+            minDiskSpaceGb: 20,
+            minMemoryGb: 8,
           },
           defaultComputeProviderDefinitionId: "compute-provider-definition-1",
           name: "Research Agent",
@@ -318,8 +333,8 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
     companyId: "company-123",
     createdAt: database.insertedValues[2]?.createdAt,
     minCpuCount: 6,
-    minDiskSpaceGb: 30,
-    minMemoryGb: 16,
+    minDiskSpaceGb: 20,
+    minMemoryGb: 8,
     updatedAt: database.insertedValues[2]?.updatedAt,
   });
 

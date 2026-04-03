@@ -17,6 +17,7 @@ test("AgentEnvironmentRequirementsService falls back to the default minimum comp
                 return {
                   async where() {
                     return [{
+                      defaultComputeProviderDefinitionId: "compute-provider-definition-1",
                       id: "agent-1",
                     }];
                   },
@@ -83,6 +84,7 @@ test("AgentEnvironmentRequirementsService creates requirements on the first upda
                 return {
                   async where() {
                     return [{
+                      defaultComputeProviderDefinitionId: "compute-provider-definition-1",
                       id: "agent-1",
                     }];
                   },
@@ -92,6 +94,20 @@ test("AgentEnvironmentRequirementsService creates requirements on the first upda
           }
 
           if (selectCallCount === 2) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      provider: "e2b",
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 3) {
             return {
               from() {
                 return {
@@ -110,19 +126,79 @@ test("AgentEnvironmentRequirementsService creates requirements on the first upda
         },
       });
     },
-  } as never, {
-    agentId: "agent-1",
-    companyId: "company-1",
-    minCpuCount: 6,
-    minDiskSpaceGb: 120,
-    minMemoryGb: 24,
-  });
+    } as never, {
+      agentId: "agent-1",
+      companyId: "company-1",
+      minCpuCount: 6,
+      minDiskSpaceGb: 20,
+      minMemoryGb: 8,
+    });
 
   assert.deepEqual(requirements, {
     minCpuCount: 6,
-    minDiskSpaceGb: 120,
-    minMemoryGb: 24,
+    minDiskSpaceGb: 20,
+    minMemoryGb: 8,
   });
   assert.equal(insertedValues.length, 1);
   assert.equal(insertedValues[0]?.minCpuCount, 6);
+});
+
+test("AgentEnvironmentRequirementsService rejects compute settings outside the selected provider range", async () => {
+  let selectCallCount = 0;
+  const service = new AgentEnvironmentRequirementsService();
+
+  await assert.rejects(
+    service.updateRequirements({
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          insert() {
+            throw new Error("insert should not be reached for invalid requirements");
+          },
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+                        id: "agent-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        provider: "daytona",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error(`Unexpected select call: ${selectCallCount}`);
+          },
+          update() {
+            throw new Error("update should not be reached for invalid requirements");
+          },
+        });
+      },
+    } as never, {
+      agentId: "agent-1",
+      companyId: "company-1",
+      minCpuCount: 5,
+      minDiskSpaceGb: 10,
+      minMemoryGb: 4,
+    }),
+    /CPU must be between 1 and 4 for Daytona\./,
+  );
 });
