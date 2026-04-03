@@ -278,6 +278,7 @@ export function TaskBoard(props: TaskBoardProps) {
                               </AlertDialogCancelAction>
                               <AlertDialogPrimaryAction asChild>
                                 <AlertDialogActionButton
+                                  autoFocus
                                   disabled={props.deletingTaskId === task.id}
                                   onClick={async (event) => {
                                     event.stopPropagation();
