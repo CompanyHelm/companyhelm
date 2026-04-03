@@ -115,6 +115,15 @@ const taskDetailPageExecuteTaskMutationNode = graphql`
 const uncategorizedValue = "__uncategorized__";
 const unassignedValue = "__unassigned__";
 
+function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
+  return records.filter((record): record is { getDataID(): string } => {
+    return typeof record === "object"
+      && record !== null
+      && "getDataID" in record
+      && typeof record.getDataID === "function";
+  });
+}
+
 function TaskDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -305,8 +314,41 @@ function TaskDetailPageContent() {
             taskId: task.id,
           },
         },
+        updater: (store: {
+          get(taskRecordId: string): { setValue(value: unknown, fieldName: string): void } | null | undefined;
+          getRoot(): {
+            getLinkedRecords(
+              name: string,
+              variables?: Record<string, unknown>,
+            ): ReadonlyArray<unknown> | null | undefined;
+            setLinkedRecords(
+              records: Array<{ getDataID(): string }>,
+              name: string,
+              variables?: Record<string, unknown>,
+            ): void;
+          };
+          getRootField(name: string): { getDataID(): string } | null | undefined;
+        }) => {
+          store.get(task.id)?.setValue("in_progress", "status");
+          const createdTaskRun = store.getRootField("ExecuteTask");
+          if (!createdTaskRun) {
+            return;
+          }
+
+          const rootRecord = store.getRoot();
+          const currentTaskRuns = filterStoreRecords(rootRecord.getLinkedRecords("TaskRuns", {
+            taskId: task.id,
+          }) || []);
+          if (currentTaskRuns.some((taskRunRecord) => taskRunRecord.getDataID() === createdTaskRun.getDataID())) {
+            return;
+          }
+
+          rootRecord.setLinkedRecords([createdTaskRun, ...currentTaskRuns], "TaskRuns", {
+            taskId: task.id,
+          });
+        },
         onCompleted: async (
-          response: taskDetailPageExecuteTaskMutation["response"],
+          _response: taskDetailPageExecuteTaskMutation["response"],
           errors: ReadonlyArray<{ message: string }> | null | undefined,
         ) => {
           const errorMessage = String(errors?.[0]?.message || "").trim();
@@ -315,24 +357,7 @@ function TaskDetailPageContent() {
             return;
           }
 
-          const taskRun = response.ExecuteTask;
-          if (!taskRun?.sessionId) {
-            reject(new Error("Task run did not return a session."));
-            return;
-          }
-
-          try {
-            await navigate({
-              search: {
-                agentId: taskRun.agentId,
-                sessionId: taskRun.sessionId,
-              },
-              to: "/chats",
-            });
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
+          resolve();
         },
         onError: reject,
       });
@@ -412,7 +437,7 @@ function TaskDetailPageContent() {
                   type="button"
                 >
                   <PlayIcon />
-                  {isExecuteTaskInFlight ? "Opening..." : "Execute Task"}
+                  {isExecuteTaskInFlight ? "Starting..." : "Execute Task"}
                 </Button>
               </CardAction>
             </CardHeader>

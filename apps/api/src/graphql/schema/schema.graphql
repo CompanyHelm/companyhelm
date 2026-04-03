@@ -78,6 +78,7 @@ type Mutation {
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
+  DeleteTask(input: DeleteTaskInput!): Task!
   ExecuteTask(input: ExecuteTaskInput!): TaskRun!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
@@ -769,6 +770,10 @@ input ArchiveArtifactInput {
 
 input DeleteArtifactInput {
   id: ID!
+}
+
+input DeleteTaskInput {
+  taskId: ID!
 }
 
 input SetTaskCategoryInput {

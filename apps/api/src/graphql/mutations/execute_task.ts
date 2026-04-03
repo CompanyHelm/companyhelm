@@ -26,7 +26,7 @@ type GraphqlTaskRunRecord = {
 
 /**
  * Starts one agent-backed execution attempt for a task and returns the linked run/session record so
- * the web UI can jump directly into the chat that owns the work.
+ * task screens can reflect the active execution state without an extra query round-trip.
  */
 @injectable()
 export class ExecuteTaskMutation extends Mutation<ExecuteTaskMutationArguments, GraphqlTaskRunRecord> {

@@ -31,6 +31,7 @@ import { DeleteGithubInstallationMutation } from "./mutations/delete_github_inst
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
 import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
+import { DeleteTaskMutation } from "./mutations/delete_task.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
@@ -132,6 +133,7 @@ export class GraphqlApplication {
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
+  private readonly deleteTaskMutation: DeleteTaskMutation;
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly executeTaskMutation: ExecuteTaskMutation;
@@ -284,6 +286,7 @@ export class GraphqlApplication {
     deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
     @inject(DeleteSessionQueuedMessageMutation)
     deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation = new DeleteSessionQueuedMessageMutation(),
+    @inject(DeleteTaskMutation) deleteTaskMutation: DeleteTaskMutation = new DeleteTaskMutation(),
     @inject(RefreshGithubInstallationRepositoriesMutation)
     refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
@@ -455,6 +458,7 @@ export class GraphqlApplication {
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
     this.deleteSessionQueuedMessageMutation = deleteSessionQueuedMessageMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.deleteTaskMutation = deleteTaskMutation;
     this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
       ?? new DetachSecretFromAgentMutation(defaultSecretService);
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
@@ -614,6 +618,7 @@ export class GraphqlApplication {
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,
           DeleteSecret: this.deleteSecretMutation.execute,
+          DeleteTask: this.deleteTaskMutation.execute,
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           ExecuteTask: this.executeTaskMutation.execute,

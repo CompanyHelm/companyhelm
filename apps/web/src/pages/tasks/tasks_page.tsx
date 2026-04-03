@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { CreateTaskDialog } from "./create_task_dialog";
 import { TaskBoard } from "./task_board";
 import type { tasksPageCreateTaskMutation } from "./__generated__/tasksPageCreateTaskMutation.graphql";
+import type { tasksPageDeleteTaskMutation } from "./__generated__/tasksPageDeleteTaskMutation.graphql";
+import type { tasksPageExecuteTaskMutation } from "./__generated__/tasksPageExecuteTaskMutation.graphql";
 import type { tasksPageQuery } from "./__generated__/tasksPageQuery.graphql";
 import type { tasksPageSetTaskCategoryMutation } from "./__generated__/tasksPageSetTaskCategoryMutation.graphql";
 
@@ -89,6 +91,25 @@ const tasksPageSetTaskCategoryMutationNode = graphql`
   }
 `;
 
+const tasksPageDeleteTaskMutationNode = graphql`
+  mutation tasksPageDeleteTaskMutation($input: DeleteTaskInput!) {
+    DeleteTask(input: $input) {
+      id
+    }
+  }
+`;
+
+const tasksPageExecuteTaskMutationNode = graphql`
+  mutation tasksPageExecuteTaskMutation($input: ExecuteTaskInput!) {
+    ExecuteTask(input: $input) {
+      id
+      taskId
+      status
+      sessionId
+    }
+  }
+`;
+
 type TasksPageSearch = {
   category?: string;
 };
@@ -132,8 +153,10 @@ function TasksPageFallback() {
 function TasksPageContent() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as TasksPageSearch;
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [executingTaskId, setExecutingTaskId] = useState<string | null>(null);
   const data = useLazyLoadQuery<tasksPageQuery>(
     tasksPageQueryNode,
     {},
@@ -146,6 +169,12 @@ function TasksPageContent() {
   );
   const [commitSetTaskCategory] = useMutation<tasksPageSetTaskCategoryMutation>(
     tasksPageSetTaskCategoryMutationNode,
+  );
+  const [commitDeleteTask] = useMutation<tasksPageDeleteTaskMutation>(
+    tasksPageDeleteTaskMutationNode,
+  );
+  const [commitExecuteTask] = useMutation<tasksPageExecuteTaskMutation>(
+    tasksPageExecuteTaskMutationNode,
   );
   const allCategories = data.TaskCategories.map((category: TasksPageCategory) => ({
     id: category.id,
@@ -235,7 +264,102 @@ function TasksPageContent() {
       <div className="min-h-0 flex-1">
         <TaskBoard
           categories={visibleCategories}
+          deletingTaskId={deletingTaskId}
+          executingTaskId={executingTaskId}
           includeUncategorizedColumn={selectedCategoryKey === undefined || selectedCategoryKey === "uncategorized"}
+          onDeleteTask={async (taskId) => {
+            setDeletingTaskId(taskId);
+            setErrorMessage(null);
+
+            try {
+              await new Promise<void>((resolve, reject) => {
+                commitDeleteTask({
+                  variables: {
+                    input: {
+                      taskId,
+                    },
+                  },
+                  updater: (store: {
+                    delete?(dataId: string): void;
+                    getRoot(): {
+                      getLinkedRecords(name: string): ReadonlyArray<unknown> | null | undefined;
+                      setLinkedRecords(records: Array<{ getDataID(): string }>, name: string): void;
+                    };
+                    getRootField(name: string): { getDataID(): string } | null | undefined;
+                  }) => {
+                    const deletedTask = store.getRootField("DeleteTask");
+                    if (!deletedTask) {
+                      return;
+                    }
+
+                    const deletedTaskId = deletedTask.getDataID();
+                    const rootRecord = store.getRoot();
+                    const currentTasks = filterStoreRecords(rootRecord.getLinkedRecords("Tasks") || []);
+                    rootRecord.setLinkedRecords(
+                      currentTasks.filter((taskRecord) => taskRecord.getDataID() !== deletedTaskId),
+                      "Tasks",
+                    );
+                    store.delete?.(deletedTaskId);
+                  },
+                  onCompleted: (
+                    _response: tasksPageDeleteTaskMutation["response"],
+                    errors: ReadonlyArray<{ message: string }> | null | undefined,
+                  ) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              });
+            } catch (error: unknown) {
+              setErrorMessage(error instanceof Error ? error.message : "Failed to delete task.");
+            } finally {
+              setDeletingTaskId(null);
+            }
+          }}
+          onExecuteTask={async (taskId) => {
+            setExecutingTaskId(taskId);
+            setErrorMessage(null);
+
+            try {
+              await new Promise<void>((resolve, reject) => {
+                commitExecuteTask({
+                  variables: {
+                    input: {
+                      taskId,
+                    },
+                  },
+                  updater: (store: {
+                    get(taskRecordId: string): { setValue(value: unknown, fieldName: string): void } | null | undefined;
+                  }) => {
+                    store.get(taskId)?.setValue("in_progress", "status");
+                  },
+                  onCompleted: (
+                    _response: tasksPageExecuteTaskMutation["response"],
+                    errors: ReadonlyArray<{ message: string }> | null | undefined,
+                  ) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              });
+            } catch (error: unknown) {
+              setErrorMessage(error instanceof Error ? error.message : "Failed to execute task.");
+            } finally {
+              setExecutingTaskId(null);
+            }
+          }}
           onOpenTask={(taskId) => {
             void navigate({
               to: "/tasks/$taskId",

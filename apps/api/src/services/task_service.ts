@@ -52,6 +52,11 @@ export type TaskServiceGetTaskInput = {
   taskId: string;
 };
 
+export type TaskServiceDeleteTaskInput = {
+  companyId: string;
+  taskId: string;
+};
+
 export type TaskServiceListTasksResult = {
   nextOffset: number | null;
   tasks: TaskServiceTask[];
@@ -242,6 +247,25 @@ export class TaskService {
     return transactionProvider.transaction(async (tx) => {
       const taskRow = await this.requireTaskRow(tx, input.companyId, input.taskId);
       return this.loadSerializedTask(tx, taskRow);
+    });
+  }
+
+  async deleteTask(
+    transactionProvider: TransactionProviderInterface,
+    input: TaskServiceDeleteTaskInput,
+  ): Promise<TaskServiceTask> {
+    return transactionProvider.transaction(async (tx) => {
+      const taskRow = await this.requireTaskRow(tx, input.companyId, input.taskId);
+      const serializedTask = await this.loadSerializedTask(tx, taskRow);
+
+      await tx
+        .delete(tasks)
+        .where(and(
+          eq(tasks.companyId, input.companyId),
+          eq(tasks.id, input.taskId),
+        ));
+
+      return serializedTask;
     });
   }
 
