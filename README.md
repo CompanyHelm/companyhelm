@@ -97,11 +97,7 @@ Build them from the repository root:
 
 ```bash
 docker build -f docker/api/Dockerfile -t companyhelm-ng-api .
-docker build \
-  -f docker/web/Dockerfile \
-  --build-arg VITE_CLERK_PUBLISHABLE_KEY=pk_test_example \
-  --build-arg VITE_GRAPHQL_URL=https://api.example.com/graphql \
-  -t companyhelm-ng-web .
+docker build -f docker/web/Dockerfile -t companyhelm-ng-web .
 ```
 
 ### API runtime config
@@ -129,11 +125,33 @@ The API image defaults to `apps/api/config/container.yaml`. That config expects 
 
 If you want to source the full API config from S3 instead, set `COMPANYHELM_API_CONFIG_S3_URI`. The entrypoint will download that file before starting the server.
 
-### Web config timing
+### Web runtime config
 
-The web app still reads `VITE_*` values through Vite in `apps/web/src/config.ts`. That means those values are embedded into the static bundle at image build time, not container runtime. Setting `VITE_CLERK_PUBLISHABLE_KEY` or `VITE_GRAPHQL_URL` on `docker run` will not change an already-built image.
+The web image is now environment-agnostic. It builds the static assets once, and the container
+entrypoint writes `/runtime-config.js` before Caddy starts. That file is loaded by
+`apps/web/index.html`, and `apps/web/src/config.ts` reads the injected values before falling back
+to local Vite variables.
 
-If you want one immutable web image reused across environments, the next step would be adding a runtime config injection layer similar to the legacy `companyhelm-web` repo.
+Provide these public runtime environment variables when you run the web container:
+
+- `COMPANYHELM_WEB_CLERK_PUBLISHABLE_KEY`
+- `COMPANYHELM_WEB_GRAPHQL_URL`
+
+Optional:
+
+- `COMPANYHELM_WEB_RUNTIME_CONFIG_PATH`
+
+Example:
+
+```bash
+docker run --rm -p 4173:4173 \
+  -e COMPANYHELM_WEB_CLERK_PUBLISHABLE_KEY=pk_live_example \
+  -e COMPANYHELM_WEB_GRAPHQL_URL=https://api.example.com/graphql \
+  companyhelm-ng-web
+```
+
+Local Vite development still uses `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_GRAPHQL_URL` from your
+local environment.
 
 ### GitHub Actions publish flow
 
@@ -141,8 +159,6 @@ If you want one immutable web image reused across environments, the next step wo
 
 - `COMPANYHELM_NG_API_IMAGE_PUBLISHER_ROLE_ARN`
 - `COMPANYHELM_NG_WEB_IMAGE_PUBLISHER_ROLE_ARN`
-- `COMPANYHELM_NG_WEB_VITE_CLERK_PUBLISHABLE_KEY`
-- `COMPANYHELM_NG_WEB_VITE_GRAPHQL_URL`
 
 The workflow expects these private ECR repositories to already exist in `us-west-2`:
 
