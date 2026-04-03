@@ -510,7 +510,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
 
   private async readExitCodeIfPresent(path: string): Promise<number | null> {
     const output = await this.runRemoteCommand(
-      `sh -lc 'if [ -f ${AgentEnvironmentTmuxPty.shellQuote(path)} ]; then cat ${AgentEnvironmentTmuxPty.shellQuote(path)}; fi'`,
+      `sh -lc 'if [ -f ${AgentEnvironmentTmuxPty.shellQuote(path)} ]; then cat ${AgentEnvironmentTmuxPty.shellQuote(path)}; fi' 2>/dev/null`,
     );
     const trimmedOutput = output.stdout.trim();
     if (trimmedOutput.length === 0) {

@@ -1,6 +1,14 @@
 import { Sandbox } from "e2b";
 import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
 
+type E2bCommandExitError = {
+  result?: {
+    exitCode?: number;
+    stderr?: string;
+    stdout?: string;
+  };
+};
+
 /**
  * Adapts the E2B sandbox SDK into the shared shell contract used by tmux orchestration and other
  * tool runners. It intentionally narrows the provider surface down to direct command execution so
@@ -20,18 +28,34 @@ export class AgentComputeE2bShell extends AgentEnvironmentShellInterface {
     environment?: Record<string, string>,
     timeoutSeconds?: number,
   ): Promise<{
-    exitCode: number;
-    stdout: string;
+      exitCode: number;
+      stdout: string;
   }> {
-    const result = await this.sandbox.commands.run(command, {
-      cwd: workingDirectory,
-      envs: environment,
-      timeoutMs: timeoutSeconds ? timeoutSeconds * 1000 : undefined,
-    });
+    try {
+      const result = await this.sandbox.commands.run(command, {
+        cwd: workingDirectory,
+        envs: environment,
+        timeoutMs: timeoutSeconds ? timeoutSeconds * 1000 : undefined,
+      });
 
-    return {
-      exitCode: result.exitCode,
-      stdout: [result.stdout, result.stderr].filter((value) => value.length > 0).join(""),
-    };
+      return {
+        exitCode: result.exitCode,
+        stdout: [result.stdout, result.stderr].filter((value) => value.length > 0).join(""),
+      };
+    } catch (error) {
+      const commandExitError = error as E2bCommandExitError;
+      const exitCode = commandExitError.result?.exitCode;
+      if (typeof exitCode !== "number") {
+        throw error;
+      }
+
+      return {
+        exitCode,
+        stdout: [
+          commandExitError.result?.stdout ?? "",
+          commandExitError.result?.stderr ?? "",
+        ].filter((value) => value.length > 0).join(""),
+      };
+    }
   }
 }

@@ -17,6 +17,7 @@ class FakeEnvironmentShell {
   autoCompleteCommands = false;
   listedSessionsOutput: string | null = null;
   passwordlessSudo = false;
+  noisyRcRead = false;
   rootUser = false;
   tmuxInstalled = true;
 
@@ -207,7 +208,7 @@ class FakeEnvironmentShell {
       const content = filePath ? (this.rcFiles.get(filePath) ?? "") : "";
       return {
         exitCode: 0,
-        stdout: content,
+        stdout: this.noisyRcRead && !command.endsWith("2>/dev/null") ? `${content}sh: 36: source: not found\n` : content,
       };
     }
 
@@ -416,6 +417,26 @@ test("AgentEnvironmentTmuxPty fails clearly when tmux is missing and the environ
       });
     },
     /tmux is missing and the environment user is neither root nor passwordless sudo/,
+  );
+});
+
+test("AgentEnvironmentTmuxPty suppresses stderr noise while reading tmux rc files", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.autoCompleteCommands = true;
+  fakeEnvironmentShell.noisyRcRead = true;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  const result = await pty.executeCommand({
+    command: "echo done",
+    yield_time_ms: 5_000,
+  });
+
+  assert.equal(result.completed, true);
+  assert.equal(result.exitCode, 0);
+  assert.ok(
+    fakeEnvironmentShell.executedCommands.some((command) => {
+      return command.includes(".rc") && command.endsWith("2>/dev/null");
+    }),
   );
 });
 
