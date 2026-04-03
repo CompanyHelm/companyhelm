@@ -3,9 +3,11 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 type ApplicationBreadcrumbContextValue = {
   detailLabel: string | null;
   headerActions: ReactNode | null;
+  headerClassName: string | null;
   headerContent: ReactNode | null;
   setDetailLabel: (label: string | null) => void;
   setHeaderActions: (actions: ReactNode | null) => void;
+  setHeaderClassName: (className: string | null) => void;
   setHeaderContent: (content: ReactNode | null) => void;
 };
 
@@ -18,17 +20,20 @@ interface ApplicationBreadcrumbProviderProps {
 export function ApplicationBreadcrumbProvider(props: ApplicationBreadcrumbProviderProps) {
   const [detailLabel, setDetailLabel] = useState<string | null>(null);
   const [headerActions, setHeaderActions] = useState<ReactNode | null>(null);
+  const [headerClassName, setHeaderClassName] = useState<string | null>(null);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const value = useMemo<ApplicationBreadcrumbContextValue>(() => {
     return {
       detailLabel,
       headerActions,
+      headerClassName,
       headerContent,
       setDetailLabel,
       setHeaderActions,
+      setHeaderClassName,
       setHeaderContent,
     };
-  }, [detailLabel, headerActions, headerContent]);
+  }, [detailLabel, headerActions, headerClassName, headerContent]);
 
   return (
     <ApplicationBreadcrumbContext.Provider
@@ -56,13 +61,16 @@ export function useApplicationHeaderActions(actions: ReactNode | null) {
 
 export function useApplicationHeader(options: {
   actions?: ReactNode | null;
+  className?: string | null;
   content?: ReactNode | null;
 }) {
   const {
     setHeaderActions,
+    setHeaderClassName,
     setHeaderContent,
   } = useApplicationBreadcrumb();
   const actions = options.actions ?? null;
+  const className = options.className ?? null;
   const content = options.content ?? null;
 
   useEffect(() => {
@@ -80,4 +88,12 @@ export function useApplicationHeader(options: {
       setHeaderActions(null);
     };
   }, [actions, setHeaderActions]);
+
+  useEffect(() => {
+    setHeaderClassName(className);
+
+    return () => {
+      setHeaderClassName(null);
+    };
+  }, [className, setHeaderClassName]);
 }

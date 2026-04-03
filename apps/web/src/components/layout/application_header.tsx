@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { cn } from "@/lib/utils";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   Breadcrumb,
@@ -13,7 +14,7 @@ export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const { detailLabel, headerActions, headerContent } = useApplicationBreadcrumb();
+  const { detailLabel, headerActions, headerClassName, headerContent } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
   const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(pathname);
@@ -65,7 +66,10 @@ export function ApplicationHeader() {
   const isDetailPage = isCredentialDetailPage || isAgentDetailPage || isKnowledgeBaseDetailPage || isTaskDetailPage;
 
   return (
-    <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8">
+    <header className={cn(
+      "sticky top-0 z-20 flex min-h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/85 px-4 backdrop-blur md:px-6 lg:px-8",
+      headerClassName,
+    )}>
       <div className="flex min-w-0 items-center gap-3">
         <SidebarTrigger className="-ml-1 shrink-0 md:hidden" size="icon-lg" />
         <div className="min-w-0">
