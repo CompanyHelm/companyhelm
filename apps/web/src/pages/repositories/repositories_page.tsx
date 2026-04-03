@@ -18,19 +18,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelAction,
-  AlertDialogCancelButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
   Table,
   TableBody,
   TableCell,
@@ -433,109 +420,84 @@ function RepositoriesPageContent() {
                             <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
                           </Button>
 
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isRefreshing || isDeleting || isDeleteInstallationInFlight}
-                              >
-                                <Trash2Icon className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete installation</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This removes installation #{installation.installationId} and deletes its cached repositories from CompanyHelm.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancelAction asChild>
-                                  <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
-                                </AlertDialogCancelAction>
-                                <AlertDialogPrimaryAction asChild>
-                                  <AlertDialogActionButton
-                                    variant="destructive"
-                                    disabled={isDeleting || isDeleteInstallationInFlight}
-                                    onClick={async () => {
-                                      if (isDeleteInstallationInFlight) {
-                                        return;
-                                      }
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isRefreshing || isDeleting || isDeleteInstallationInFlight}
+                            onClick={async () => {
+                              if (isDeleteInstallationInFlight) {
+                                return;
+                              }
 
-                                      setErrorMessage(null);
-                                      setNoticeMessage(null);
-                                      setRefreshedInstallationId(null);
-                                      setDeletingInstallationId(installation.installationId);
+                              setErrorMessage(null);
+                              setNoticeMessage(null);
+                              setRefreshedInstallationId(null);
+                              setDeletingInstallationId(installation.installationId);
 
-                                      await new Promise<void>((resolve, reject) => {
-                                        commitDeleteInstallation({
-                                          variables: {
-                                            input: {
-                                              installationId: installation.installationId,
-                                            },
-                                          },
-                                          updater: (store) => {
-                                            const payload = store.getRootField("DeleteGithubInstallation");
-                                            const deletedInstallationId = String(
-                                              payload?.getValue("deletedInstallationId") || "",
-                                            );
-                                            if (!deletedInstallationId) {
-                                              return;
-                                            }
+                              await new Promise<void>((resolve, reject) => {
+                                commitDeleteInstallation({
+                                  variables: {
+                                    input: {
+                                      installationId: installation.installationId,
+                                    },
+                                  },
+                                  updater: (store) => {
+                                    const payload = store.getRootField("DeleteGithubInstallation");
+                                    const deletedInstallationId = String(
+                                      payload?.getValue("deletedInstallationId") || "",
+                                    );
+                                    if (!deletedInstallationId) {
+                                      return;
+                                    }
 
-                                            const rootRecord = store.getRoot();
-                                            const currentInstallations = filterStoreRecords(
-                                              rootRecord.getLinkedRecords("GithubInstallations") || [],
-                                            );
-                                            const currentRepositories = filterStoreRecords(
-                                              rootRecord.getLinkedRecords("GithubRepositories") || [],
-                                            );
+                                    const rootRecord = store.getRoot();
+                                    const currentInstallations = filterStoreRecords(
+                                      rootRecord.getLinkedRecords("GithubInstallations") || [],
+                                    );
+                                    const currentRepositories = filterStoreRecords(
+                                      rootRecord.getLinkedRecords("GithubRepositories") || [],
+                                    );
 
-                                            rootRecord.setLinkedRecords(
-                                              currentInstallations.filter((currentInstallation) => {
-                                                return String(currentInstallation.getValue("installationId") || "")
-                                                  !== deletedInstallationId;
-                                              }),
-                                              "GithubInstallations",
-                                            );
-                                            rootRecord.setLinkedRecords(
-                                              currentRepositories.filter((repository) => {
-                                                return String(repository.getValue("githubInstallationId") || "")
-                                                  !== deletedInstallationId;
-                                              }),
-                                              "GithubRepositories",
-                                            );
-                                          },
-                                          onCompleted: (_response, errors) => {
-                                            const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                                            if (nextErrorMessage) {
-                                              reject(new Error(nextErrorMessage));
-                                              return;
-                                            }
+                                    rootRecord.setLinkedRecords(
+                                      currentInstallations.filter((currentInstallation) => {
+                                        return String(currentInstallation.getValue("installationId") || "")
+                                          !== deletedInstallationId;
+                                      }),
+                                      "GithubInstallations",
+                                    );
+                                    rootRecord.setLinkedRecords(
+                                      currentRepositories.filter((repository) => {
+                                        return String(repository.getValue("githubInstallationId") || "")
+                                          !== deletedInstallationId;
+                                      }),
+                                      "GithubRepositories",
+                                    );
+                                  },
+                                  onCompleted: (_response, errors) => {
+                                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                                    if (nextErrorMessage) {
+                                      reject(new Error(nextErrorMessage));
+                                      return;
+                                    }
 
-                                            setNoticeMessage(`Deleted installation ${installation.installationId}.`);
-                                            resolve();
-                                          },
-                                          onError: reject,
-                                        });
-                                      }).catch((error: unknown) => {
-                                        setErrorMessage(
-                                          error instanceof Error
-                                            ? error.message
-                                            : "Failed to delete GitHub installation.",
-                                        );
-                                      });
+                                    setNoticeMessage(`Deleted installation ${installation.installationId}.`);
+                                    resolve();
+                                  },
+                                  onError: reject,
+                                });
+                              }).catch((error: unknown) => {
+                                setErrorMessage(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Failed to delete GitHub installation.",
+                                );
+                              });
 
-                                      setDeletingInstallationId(null);
-                                    }}
-                                  >
-                                    Delete
-                                  </AlertDialogActionButton>
-                                </AlertDialogPrimaryAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                              setDeletingInstallationId(null);
+                            }}
+                          >
+                            <Trash2Icon className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

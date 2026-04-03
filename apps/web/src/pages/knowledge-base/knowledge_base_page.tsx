@@ -3,19 +3,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { FileTextIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelAction,
-  AlertDialogCancelButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CreateDocumentDialog,
@@ -164,7 +151,6 @@ function KnowledgeBasePageContent() {
   const [createDocumentErrorMessage, setCreateDocumentErrorMessage] = useState<string | null>(null);
   const [deleteDocumentErrorMessage, setDeleteDocumentErrorMessage] = useState<string | null>(null);
   const [deletedArtifactIds, setDeletedArtifactIds] = useState<Set<string>>(() => new Set());
-  const [deletingArtifactId, setDeletingArtifactId] = useState<string | null>(null);
   const data = useLazyLoadQuery<knowledgeBasePageQuery>(
     knowledgeBasePageQueryNode,
     {},
@@ -240,7 +226,6 @@ function KnowledgeBasePageContent() {
     }
 
     setDeleteDocumentErrorMessage(null);
-    setDeletingArtifactId(artifactId);
 
     try {
       await new Promise<void>((resolve, reject) => {
@@ -272,8 +257,6 @@ function KnowledgeBasePageContent() {
       setDeleteDocumentErrorMessage(
         error instanceof Error ? error.message : "Failed to delete document.",
       );
-    } finally {
-      setDeletingArtifactId(null);
     }
   }
 
@@ -344,48 +327,21 @@ function KnowledgeBasePageContent() {
                   </Card>
                 </Link>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      aria-label={`Delete ${artifact.name}`}
-                      className="absolute right-4 top-4 z-10"
-                      disabled={isDeleteArtifactInFlight}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Trash2Icon />
-                    </Button>
-                  </AlertDialogTrigger>
-
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete document?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This permanently deletes <span className="font-medium text-foreground">{artifact.name}</span>.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancelAction>
-                        <AlertDialogCancelButton type="button" variant="outline">
-                          Cancel
-                        </AlertDialogCancelButton>
-                      </AlertDialogCancelAction>
-                      <AlertDialogPrimaryAction>
-                        <AlertDialogActionButton
-                          disabled={isDeleteArtifactInFlight}
-                          onClick={() => {
-                            void deleteDocumentArtifact(artifact.id);
-                          }}
-                          type="button"
-                          variant="destructive"
-                        >
-                          {deletingArtifactId === artifact.id ? "Deleting…" : "Delete"}
-                        </AlertDialogActionButton>
-                      </AlertDialogPrimaryAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button
+                  aria-label={`Delete ${artifact.name}`}
+                  className="absolute right-4 top-4 z-10"
+                  disabled={isDeleteArtifactInFlight}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void deleteDocumentArtifact(artifact.id);
+                  }}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2Icon />
+                </Button>
               </div>
             ))}
           </div>
