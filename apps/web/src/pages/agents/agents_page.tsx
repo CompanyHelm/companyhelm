@@ -1,6 +1,7 @@
 import { Suspense, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { AgentsTable, type AgentsTableRecord } from "./agents_table";
@@ -154,7 +155,7 @@ function AgentsPageContent() {
   const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] =
     data.ComputeProviderDefinitions.map((definition) => ({
       id: definition.id,
-      label: `${definition.name} • ${definition.provider === "e2b" ? "E2B" : "Daytona"}`,
+      label: CompanyHelmComputeProvider.formatDefinitionOptionLabel(definition),
       provider: definition.provider as "daytona" | "e2b",
     }));
   const filterStoreRecords = (

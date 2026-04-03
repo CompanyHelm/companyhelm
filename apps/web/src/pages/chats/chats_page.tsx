@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { useGraphqlSubscriptionConnectionStatus } from "@/components/relay_environment_provider";
 import { Button } from "@/components/ui/button";
@@ -529,8 +530,11 @@ function resolveToolDisplayName(toolName: string): string {
   return toolName;
 }
 
-function formatComputeProviderLabel(provider: "daytona" | "e2b" | string): string {
-  return provider === "e2b" ? "E2B" : provider === "daytona" ? "Daytona" : provider;
+function formatComputeProviderLabel(definition: {
+  name?: string | null;
+  provider: "daytona" | "e2b" | string;
+}): string {
+  return CompanyHelmComputeProvider.formatProviderLabel(definition);
 }
 
 function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): CommandToolArgumentsRecord | null {
@@ -3082,7 +3086,10 @@ function ChatsPageContent() {
                       {currentSessionEnvironment.displayName ?? currentSessionEnvironment.providerEnvironmentId}
                     </p>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {currentSessionEnvironment.providerDefinitionName ?? "Unnamed definition"} • {formatComputeProviderLabel(currentSessionEnvironment.provider)}
+                      {currentSessionEnvironment.providerDefinitionName ?? "Unnamed definition"} • {formatComputeProviderLabel({
+                        name: currentSessionEnvironment.providerDefinitionName,
+                        provider: currentSessionEnvironment.provider,
+                      })}
                     </p>
                   </div>
                   <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -3116,7 +3123,7 @@ function ChatsPageContent() {
               <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                 <p className="text-sm font-medium text-foreground">{agentDefaultComputeProviderDefinition.name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatComputeProviderLabel(agentDefaultComputeProviderDefinition.provider)}
+                  {formatComputeProviderLabel(agentDefaultComputeProviderDefinition)}
                 </p>
               </div>
             ) : (

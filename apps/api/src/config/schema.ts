@@ -62,6 +62,11 @@ export const ConfigDocument = z.object({
       api_key: NonEmptyStringSchema,
     }),
   }),
+  companyhelm: z.object({
+    e2b: z.object({
+      api_key: NonEmptyStringSchema,
+    }),
+  }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,
     app_private_key_pem: NonEmptyStringSchema,

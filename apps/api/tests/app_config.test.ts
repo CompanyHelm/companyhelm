@@ -12,10 +12,12 @@ import { ConfigDocument } from "../src/config/schema.ts";
  */
 class AppConfigTestHarness {
   static createFixtureConfigPath(): {
+    companyHelmE2bApiKeyVariableName: string;
     configPath: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
     clerkJwksUrlVariableName: string;
+    exaApiKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
@@ -30,6 +32,7 @@ class AppConfigTestHarness {
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
     const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
+    const companyHelmE2bApiKeyVariableName = "COMPANYHELM_TEST_E2B_API_KEY";
 
     process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
@@ -38,11 +41,13 @@ class AppConfigTestHarness {
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
     process.env[exaApiKeyVariableName] = "exa-local-api-key";
+    process.env[companyHelmE2bApiKeyVariableName] = "e2b-local-api-key";
 
     mkdirSync(configDirectoryPath, { recursive: true });
     writeFileSync(
       configPath,
       AppConfigTestHarness.createConfigDocument({
+        companyHelmE2bApiKeyVariableName,
         githubClientVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
@@ -55,6 +60,7 @@ class AppConfigTestHarness {
     );
 
     return {
+      companyHelmE2bApiKeyVariableName,
       configPath,
       clerkSecretKeyVariableName,
       clerkPublishableKeyVariableName,
@@ -67,6 +73,7 @@ class AppConfigTestHarness {
   }
 
   private static createConfigDocument(params: {
+    companyHelmE2bApiKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
@@ -127,6 +134,9 @@ workers:
 web_search:
   exa:
     api_key: "\${${params.exaApiKeyVariableName}}"
+companyhelm:
+  e2b:
+    api_key: "\${${params.companyHelmE2bApiKeyVariableName}}"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
@@ -195,6 +205,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     key: "companyhelm-local-encryption-key",
     key_id: "companyhelm-local-key",
   });
+  assert.equal(document.companyhelm.e2b.api_key, "e2b-local-api-key");
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");

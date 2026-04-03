@@ -38,6 +38,9 @@ workers:
 web_search:
   exa:
     api_key: "${EXA_API_KEY}"
+companyhelm:
+  e2b:
+    api_key: "${E2B_API_KEY}"
 daytona:
   api_key: "${DAYTONA_API_KEY}"
   api_url: "https://app.daytona.io/api"

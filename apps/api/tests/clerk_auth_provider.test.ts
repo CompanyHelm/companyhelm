@@ -19,6 +19,11 @@ class ClerkAuthProviderTestHarness {
           authorized_parties: ["http://localhost:5173"],
         },
       },
+      companyhelm: {
+        e2b: {
+          api_key: "e2b-local-api-key",
+        },
+      },
     } as Config;
   }
 
@@ -34,7 +39,7 @@ class ClerkAuthProviderTestHarness {
       },
       select() {
         selectCallCount += 1;
-        if (selectCallCount <= 4) {
+        if (selectCallCount <= 5) {
           return {
             from() {
               return {
@@ -370,11 +375,14 @@ test("clerk auth provider provisions missing local user, company, and membership
       name: "Example Org",
     },
   });
-  assert.equal(db.insertedValues.length, 3);
+  assert.equal(db.insertedValues.length, 4);
   assert.equal(db.insertedValues[0]?.clerkUserId, "user_clerk_1");
   assert.equal(db.insertedValues[1]?.clerkOrganizationId, "org_clerk_1");
   assert.equal(db.insertedValues[2]?.companyId, "local-company-1");
-  assert.equal(db.insertedValues[2]?.userId, "local-user-1");
+  assert.equal(db.insertedValues[2]?.name, "CompanyHelm");
+  assert.equal(db.insertedValues[2]?.provider, "e2b");
+  assert.equal(db.insertedValues[3]?.companyId, "local-company-1");
+  assert.equal(db.insertedValues[3]?.userId, "local-user-1");
   assert.deepEqual(db.scopedCompanyIds, ["local-company-1"]);
 });
 

@@ -7,7 +7,8 @@ import type {
   DatabaseClientInterface,
   DatabaseTransactionInterface,
 } from "../../db/database_interface.ts";
-import { companies, companyMembers, users } from "../../db/schema.ts";
+import { companies, companyMembers, computeProviderDefinitions, users } from "../../db/schema.ts";
+import { CompanyHelmComputeProviderService } from "../../services/compute_provider_definitions/companyhelm_service.ts";
 import {
   AuthProvider,
   type AuthenticateBearerTokenHeaders,
@@ -247,6 +248,7 @@ export class ClerkAuthProvider extends AuthProvider {
     if (!createdCompany) {
       throw new Error("Failed to provision Clerk company.");
     }
+    await this.ensureCompanyHelmComputeProviderDefinition(transaction, createdCompany.id);
 
     return createdCompany;
   }
@@ -277,6 +279,37 @@ export class ClerkAuthProvider extends AuthProvider {
     await transaction.insert(companyMembers).values({
       companyId: params.companyId,
       userId: params.userId,
+    });
+  }
+
+  private async ensureCompanyHelmComputeProviderDefinition(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<void> {
+    const [existingDefinition] = await transaction
+      .select({
+        id: computeProviderDefinitions.id,
+      })
+      .from(computeProviderDefinitions)
+      .where(and(
+        eq(computeProviderDefinitions.companyId, companyId),
+        eq(computeProviderDefinitions.name, CompanyHelmComputeProviderService.DEFINITION_NAME),
+      ))
+      .limit(1) as Array<{ id: string }>;
+    if (existingDefinition) {
+      return;
+    }
+
+    const now = new Date();
+    await transaction.insert(computeProviderDefinitions).values({
+      companyId,
+      createdAt: now,
+      createdByUserId: null,
+      description: CompanyHelmComputeProviderService.DEFINITION_DESCRIPTION,
+      name: CompanyHelmComputeProviderService.DEFINITION_NAME,
+      provider: "e2b",
+      updatedAt: now,
+      updatedByUserId: null,
     });
   }
 

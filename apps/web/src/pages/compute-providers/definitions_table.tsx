@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
+import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,10 +47,6 @@ interface DeleteDefinitionDialogProps {
   definition: ComputeProviderDefinitionTableRecord;
   deletingDefinitionId: string | null;
   onDelete: (definitionId: string) => Promise<void>;
-}
-
-function formatProviderLabel(provider: string): string {
-  return provider === "e2b" ? "E2B" : "Daytona";
 }
 
 function formatTimestamp(value: string): string {
@@ -160,10 +157,12 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
               <p className="font-medium text-foreground">{definition.name}</p>
             </TableCell>
             <TableCell>
-              <Badge variant="outline">{formatProviderLabel(definition.provider)}</Badge>
+              <Badge variant="outline">{CompanyHelmComputeProvider.formatProviderLabel(definition)}</Badge>
             </TableCell>
             <TableCell className="text-sm text-muted-foreground">
-              {definition.provider === "daytona"
+              {CompanyHelmComputeProvider.isManagedDefinition(definition)
+                ? "Managed in api config"
+                : definition.provider === "daytona"
                 ? (definition.daytonaApiUrl ?? "Missing API URL")
                 : definition.hasApiKey
                   ? "API key configured"
@@ -176,22 +175,28 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
             </TableCell>
             <TableCell>{formatTimestamp(definition.updatedAt)}</TableCell>
             <TableCell>
-              <div className="flex items-center justify-end gap-1">
-                <Button
-                  onClick={() => {
-                    props.onEdit(definition);
-                  }}
-                  size="icon"
-                  variant="ghost"
-                >
-                  <PencilIcon className="size-4" />
-                </Button>
-                <DeleteDefinitionDialog
-                  definition={definition}
-                  deletingDefinitionId={props.deletingDefinitionId}
-                  onDelete={props.onDelete}
-                />
-              </div>
+              {CompanyHelmComputeProvider.isManagedDefinition(definition) ? (
+                <div className="flex items-center justify-end">
+                  <span className="text-xs text-muted-foreground">Managed</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    onClick={() => {
+                      props.onEdit(definition);
+                    }}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <PencilIcon className="size-4" />
+                  </Button>
+                  <DeleteDefinitionDialog
+                    definition={definition}
+                    deletingDefinitionId={props.deletingDefinitionId}
+                    onDelete={props.onDelete}
+                  />
+                </div>
+              )}
             </TableCell>
           </TableRow>
         ))}

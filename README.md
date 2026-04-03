@@ -81,9 +81,9 @@ The root `.env.example` file contains the variables used by local development.
 
 A few notes:
 
-- `apps/api/config/local.yaml` reads Clerk, GitHub, and Daytona values from environment variables.
+- `apps/api/config/local.yaml` reads Clerk, GitHub, and CompanyHelm E2B values from environment variables.
 - The placeholder values in `.env.example` are enough to boot the app locally.
-- Replace the placeholders with real secrets before using auth, GitHub install flows, or Daytona-backed features.
+- Replace the placeholders with real secrets before using auth, GitHub install flows, or CompanyHelm-backed compute.
 - `DATABASE_URL` is used by Drizzle tooling. The API runtime itself reads database credentials from `apps/api/config/local.yaml`.
 
 ## Container images

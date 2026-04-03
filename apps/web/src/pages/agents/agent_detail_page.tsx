@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -125,10 +126,6 @@ function formatTimestamp(value: string): string {
   }).format(timestamp);
 }
 
-function formatComputeProviderLabel(provider: "daytona" | "e2b"): string {
-  return provider === "e2b" ? "E2B" : "Daytona";
-}
-
 function resolveProviderOption(
   providerOptions: AgentCreateProviderOption[],
   providerCredentialId: string,
@@ -234,7 +231,7 @@ function AgentDetailPageContent() {
   const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] = useMemo(() => {
     return data.ComputeProviderDefinitions.map((definition) => ({
       id: definition.id,
-      label: `${definition.name} • ${formatComputeProviderLabel(definition.provider as "daytona" | "e2b")}`,
+      label: CompanyHelmComputeProvider.formatDefinitionOptionLabel(definition),
       provider: definition.provider as "daytona" | "e2b",
     }));
   }, [data.ComputeProviderDefinitions]);

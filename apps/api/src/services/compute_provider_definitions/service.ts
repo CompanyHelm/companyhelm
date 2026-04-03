@@ -10,6 +10,7 @@ import {
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import type { ComputeProvider } from "../agent/compute/provider_interface.ts";
 import { SecretEncryptionService } from "../secrets/encryption.ts";
+import { CompanyHelmComputeProviderService } from "./companyhelm_service.ts";
 
 type BaseDefinitionRecord = {
   companyId: string;
@@ -161,11 +162,15 @@ type UpdateComputeProviderDefinitionInput =
 @injectable()
 export class ComputeProviderDefinitionService {
   private static readonly DEFAULT_DAYTONA_API_URL = "https://app.daytona.io/api";
+  private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly secretEncryptionService: SecretEncryptionService;
 
   constructor(
+    @inject(CompanyHelmComputeProviderService)
+    companyHelmComputeProviderService: CompanyHelmComputeProviderService,
     @inject(SecretEncryptionService) secretEncryptionService: SecretEncryptionService,
   ) {
+    this.companyHelmComputeProviderService = companyHelmComputeProviderService;
     this.secretEncryptionService = secretEncryptionService;
   }
 
@@ -174,7 +179,9 @@ export class ComputeProviderDefinitionService {
     companyId: string,
   ): Promise<ComputeProviderDefinitionRecord[]> {
     return transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
       const selectableDatabase = tx as SelectableDatabase;
+      await this.ensureCompanyHelmDefinition(selectableDatabase, insertableDatabase, companyId);
       const baseDefinitions = await selectableDatabase
         .select(this.baseSelection())
         .from(computeProviderDefinitions)
@@ -225,6 +232,13 @@ export class ComputeProviderDefinitionService {
       const baseDefinition = baseDefinitions[0];
       if (!baseDefinition) {
         throw new Error("Compute provider definition not found.");
+      }
+      if (this.companyHelmComputeProviderService.matchesDefinition(baseDefinition)) {
+        return this.companyHelmComputeProviderService.createRuntimeDefinition({
+          companyId: baseDefinition.companyId,
+          description: baseDefinition.description,
+          id: baseDefinition.id,
+        });
       }
 
       if (baseDefinition.provider === "daytona") {
@@ -290,6 +304,9 @@ export class ComputeProviderDefinitionService {
     const definitionName = input.name.trim();
     if (definitionName.length === 0) {
       throw new Error("name is required.");
+    }
+    if (this.companyHelmComputeProviderService.isReservedName(definitionName)) {
+      throw new Error("CompanyHelm compute provider is managed by the system.");
     }
 
     return transactionProvider.transaction(async (tx) => {
@@ -366,8 +383,14 @@ export class ComputeProviderDefinitionService {
       if (!baseDefinition) {
         throw new Error("Compute provider definition not found.");
       }
+      if (this.companyHelmComputeProviderService.matchesDefinition(baseDefinition)) {
+        throw new Error("CompanyHelm compute provider is managed by the system.");
+      }
       if (baseDefinition.provider !== input.provider) {
         throw new Error("Compute provider definition provider mismatch.");
+      }
+      if (this.companyHelmComputeProviderService.isReservedName(definitionName)) {
+        throw new Error("CompanyHelm compute provider is managed by the system.");
       }
 
       await updatableDatabase
@@ -470,6 +493,9 @@ export class ComputeProviderDefinitionService {
     if (!definition) {
       return null;
     }
+    if (this.companyHelmComputeProviderService.matchesDefinition(definition)) {
+      throw new Error("CompanyHelm compute provider is managed by the system.");
+    }
 
     await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -560,7 +586,8 @@ export class ComputeProviderDefinitionService {
         description: definition.description,
         e2b: definition.provider === "e2b"
           ? {
-              hasApiKey: Boolean(e2bByDefinitionId.get(definition.id)?.encryptedApiKey),
+              hasApiKey: this.companyHelmComputeProviderService.matchesDefinition(definition)
+                || Boolean(e2bByDefinitionId.get(definition.id)?.encryptedApiKey),
             }
           : null,
         id: definition.id,
@@ -580,6 +607,42 @@ export class ComputeProviderDefinitionService {
       provider: computeProviderDefinitions.provider,
       updatedAt: computeProviderDefinitions.updatedAt,
     };
+  }
+
+  private async ensureCompanyHelmDefinition(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+  ): Promise<void> {
+    const existingDefinitions = await selectableDatabase
+      .select(this.baseSelection())
+      .from(computeProviderDefinitions)
+      .where(and(
+        eq(computeProviderDefinitions.companyId, companyId),
+        eq(computeProviderDefinitions.name, this.companyHelmComputeProviderService.getDefinitionName()),
+      )) as BaseDefinitionRecord[];
+    const existingDefinition = existingDefinitions[0];
+    if (existingDefinition) {
+      if (!this.companyHelmComputeProviderService.matchesDefinition(existingDefinition)) {
+        throw new Error("Reserved CompanyHelm compute provider name is assigned to another provider.");
+      }
+
+      return;
+    }
+
+    const now = new Date();
+    await insertableDatabase
+      .insert(computeProviderDefinitions)
+      .values({
+        companyId,
+        createdAt: now,
+        createdByUserId: null,
+        description: this.companyHelmComputeProviderService.getDefinitionDescription(),
+        name: this.companyHelmComputeProviderService.getDefinitionName(),
+        provider: this.companyHelmComputeProviderService.getProvider(),
+        updatedAt: now,
+        updatedByUserId: null,
+      });
   }
 
   private resolveNullableText(value: string | null | undefined): string | null {
