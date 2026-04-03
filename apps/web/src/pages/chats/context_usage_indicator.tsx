@@ -27,15 +27,15 @@ export function ChatsContextUsageIndicator(props: ChatsContextUsageIndicatorProp
     <Tooltip>
       <TooltipTrigger
         aria-label={`Context usage ${usagePercent}%`}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/60 text-muted-foreground transition hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/60 text-muted-foreground transition hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
         type="button"
       >
         <span
           aria-hidden="true"
-          className="relative block size-3.5 rounded-full"
+          className="relative block size-3 rounded-full"
           style={indicatorStyle}
         >
-          <span className="absolute inset-[3px] rounded-full bg-background/90" />
+          <span className="absolute inset-[2.5px] rounded-full bg-background/90" />
         </span>
       </TooltipTrigger>
       <TooltipContent className="grid gap-1.5">

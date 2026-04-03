@@ -35,7 +35,7 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 text-xs text-muted-foreground">
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
       <Select
         items={props.modelOptions.map((modelOption) => ({
           label: `${modelOption.providerLabel} ${modelOption.name}`,
@@ -45,7 +45,7 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
         value={props.selectedModelOptionId}
       >
         <SelectTrigger
-          className="h-8 w-auto max-w-[24rem] min-w-0 rounded-full border-0 bg-background/60 px-3 text-xs text-muted-foreground shadow-none focus-visible:ring-1 focus-visible:ring-ring/30"
+          className="h-7 w-auto max-w-[24rem] min-w-0 rounded-full border-0 bg-background/60 px-2.5 text-xs text-muted-foreground shadow-none focus-visible:ring-1 focus-visible:ring-ring/30"
           icon={<ChevronDownIcon className="size-3.5" />}
         >
           <SelectValue placeholder="Select model" />
@@ -76,7 +76,7 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
           value={props.reasoningLevel}
         >
           <SelectTrigger
-            className="h-8 w-auto rounded-full border-0 bg-background/60 px-3 text-xs text-muted-foreground shadow-none focus-visible:ring-1 focus-visible:ring-ring/30"
+            className="h-7 w-auto rounded-full border-0 bg-background/60 px-2.5 text-xs text-muted-foreground shadow-none focus-visible:ring-1 focus-visible:ring-ring/30"
             icon={<ChevronDownIcon className="size-3.5" />}
           >
             <SelectValue placeholder="Reasoning" />

@@ -3213,7 +3213,7 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-0 pb-3 md:pt-0 md:pb-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-0 pb-0 md:pt-0 md:pb-0">
             <ChatsTranscript
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
@@ -3227,14 +3227,14 @@ function ChatsPageContent() {
         ) : null}
 
         {selectedAgent ? (
-          <div className="relative shrink-0 border-t border-border/60 px-3 pt-3 pb-2 md:px-4 md:pt-3 md:pb-3">
+          <div className="relative shrink-0 border-t border-border/60 px-2 pt-2 pb-0 md:px-3 md:pt-2 md:pb-0">
             <button
               aria-label="Resize message input"
-              className="absolute inset-x-0 -top-3 z-10 h-6 cursor-move bg-transparent"
+              className="absolute inset-x-0 -top-2 z-10 h-4 cursor-move bg-transparent"
               onPointerDown={startDraftTextareaResize}
               type="button"
             />
-            <div className="mb-px rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+            <div className="rounded-[1.35rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
               {selectedSession ? (
                 <ChatsQueuedMessagesComposerList
                   steeringQueuedMessageId={steeringQueuedMessageId}
@@ -3253,7 +3253,7 @@ function ChatsPageContent() {
                 <textarea
                   id="chat-draft-message"
                   ref={draftTextareaRef}
-                  className="min-h-[2.625rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-3 pb-3 pr-14 text-sm outline-none"
+                  className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-2 pb-1.5 text-sm leading-5 outline-none"
                   onChange={(event) => {
                     setDraftMessage(event.target.value);
                   }}
@@ -3270,8 +3270,8 @@ function ChatsPageContent() {
                   value={draftMessage}
                 />
               </div>
-              <div className="flex items-center justify-between gap-3 px-2.5 py-3">
-                <div className="flex min-w-0 items-center gap-2">
+              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                <div className="flex min-w-0 items-center gap-1.5">
                   <ChatComposerModelPicker
                     modelOptions={composerModelOptions}
                     onModelChange={setComposerModelOptionId}
@@ -3291,7 +3291,7 @@ function ChatsPageContent() {
                   {isSelectedSessionRunning ? (
                     <Button
                       aria-label={queueDraftAriaLabel}
-                      className="h-10 rounded-full px-4 text-[11px] font-medium uppercase tracking-[0.14em]"
+                      className="h-8 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.14em]"
                       disabled={!canSubmitDraft}
                       onClick={() => {
                         void queueDraftMessage();
@@ -3305,7 +3305,7 @@ function ChatsPageContent() {
                   ) : null}
                   <Button
                     aria-label={draftSubmitAriaLabel}
-                    className="h-10 w-10 shrink-0 rounded-full px-0"
+                    className="h-8 w-8 shrink-0 rounded-full px-0"
                     disabled={!canSubmitDraft}
                     onClick={() => {
                       void submitDraft();
@@ -3313,7 +3313,7 @@ function ChatsPageContent() {
                     title={draftSubmitAriaLabel}
                     type="button"
                   >
-                    <SendHorizonalIcon className="size-4" />
+                    <SendHorizonalIcon className="size-3.5" />
                   </Button>
                 </div>
               </div>
