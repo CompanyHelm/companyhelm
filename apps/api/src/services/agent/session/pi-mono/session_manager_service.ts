@@ -39,6 +39,7 @@ import { ArtifactService } from "../../../artifact_service.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { TaskService } from "../../../task_service.ts";
 import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
+import { AgentEnvironmentWorkspacePath } from "../../environment/workspace_path.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 import { ExaWebClient } from "../../../web_search/exa_client.ts";
@@ -62,7 +63,7 @@ type SessionRuntime = {
   toolsService: AgentToolsService;
 };
 
-const DEFAULT_PI_WORKING_DIRECTORY = "/workspace";
+const DEFAULT_PI_WORKING_DIRECTORY = AgentEnvironmentWorkspacePath.get();
 
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {

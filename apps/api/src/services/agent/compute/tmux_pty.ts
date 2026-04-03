@@ -27,6 +27,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly SESSION_LIST_FIELD_SEPARATOR = "|";
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
   private readonly environmentShell: AgentEnvironmentShellInterface;
+  private homeDirectory: string | null = null;
   private tmuxPrepared = false;
 
   constructor(environmentShell: AgentEnvironmentShellInterface) {
@@ -40,11 +41,15 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       throw new Error("command is required.");
     }
 
+    const resolvedInput = await this.resolveInputWorkingDirectory(input);
     const sessionId = AgentEnvironmentTmuxPty.resolveSessionId(input.sessionId);
-    await this.ensureTmuxSession(sessionId, input);
+    await this.ensureTmuxSession(sessionId, resolvedInput);
     const startOffset = await this.captureTmuxOutputLength(sessionId);
-    const commandRun = await this.startTmuxCommand(sessionId, input);
-    const waitResult = await this.waitForTmuxCommand(commandRun.rcFile, this.resolveYieldTimeMilliseconds(input));
+    const commandRun = await this.startTmuxCommand(sessionId, resolvedInput);
+    const waitResult = await this.waitForTmuxCommand(
+      commandRun.rcFile,
+      this.resolveYieldTimeMilliseconds(resolvedInput),
+    );
     const output = this.sanitizeCommandOutput(
       await this.captureTmuxOutputSince(sessionId, startOffset),
       commandRun.outputStartMarker,
@@ -188,6 +193,45 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
 
     throw new Error(`Sandbox session ${sessionId} was not found.`);
+  }
+
+  private async resolveInputWorkingDirectory(
+    input: AgentEnvironmentCommandInput,
+  ): Promise<AgentEnvironmentCommandInput> {
+    const resolvedWorkingDirectory = await this.resolveWorkingDirectory(input.workingDirectory);
+    if (!resolvedWorkingDirectory || resolvedWorkingDirectory === input.workingDirectory) {
+      return input;
+    }
+
+    return {
+      ...input,
+      workingDirectory: resolvedWorkingDirectory,
+    };
+  }
+
+  private async resolveWorkingDirectory(workingDirectory?: string): Promise<string | undefined> {
+    if (!workingDirectory || !workingDirectory.startsWith("~")) {
+      return workingDirectory;
+    }
+
+    const homeDirectory = await this.getHomeDirectory();
+    return workingDirectory === "~"
+      ? homeDirectory
+      : `${homeDirectory}${workingDirectory.slice(1)}`;
+  }
+
+  private async getHomeDirectory(): Promise<string> {
+    if (this.homeDirectory) {
+      return this.homeDirectory;
+    }
+
+    const result = await this.environmentShell.executeCommand(`sh -lc 'printf %s "$HOME"'`);
+    if (result.exitCode !== 0 || result.stdout.length === 0) {
+      throw new Error(`Failed to resolve environment home directory: ${result.stdout}`);
+    }
+
+    this.homeDirectory = result.stdout;
+    return this.homeDirectory;
   }
 
   private async ensureTmuxPrepared(): Promise<void> {

@@ -12,11 +12,21 @@ type FakeTmuxSession = {
 class FakeEnvironmentShell {
   readonly commandFiles = new Map<string, string>();
   readonly rcFiles = new Map<string, string>();
+  readonly executedCommands = [] as string[];
   readonly sessions = new Map<string, FakeTmuxSession>();
   autoCompleteCommands = false;
   listedSessionsOutput: string | null = null;
 
   async executeCommand(command: string) {
+    this.executedCommands.push(command);
+
+    if (command === `sh -lc 'printf %s "$HOME"'`) {
+      return {
+        exitCode: 0,
+        stdout: "/home/sandbox",
+      };
+    }
+
     if (command.includes("command -v tmux")) {
       return {
         exitCode: 0,
@@ -276,6 +286,28 @@ test("AgentEnvironmentTmuxPty reuses tmux sessions by session id across PTY inst
 
   await secondPty.killSession(createdSession.sessionId);
   assert.equal(fakeEnvironmentShell.sessions.has(createdSession.sessionId), false);
+});
+
+test("AgentEnvironmentTmuxPty expands home-relative working directories before creating tmux sessions", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  await pty.executeCommand({
+    command: "pwd",
+    sessionId: "workspace",
+    workingDirectory: "~/workspace/project",
+    yield_time_ms: 0,
+  });
+
+  const tmuxCreationCommand = fakeEnvironmentShell.executedCommands.find((command) => {
+    return command.includes("tmux new-session -d");
+  });
+  assert.equal(
+    tmuxCreationCommand?.includes(`-c '/home/sandbox/workspace/project'`),
+    true,
+  );
+  const commandFileContents = [...fakeEnvironmentShell.commandFiles.values()][0];
+  assert.equal(commandFileContents?.includes(`cd '/home/sandbox/workspace/project'`), true);
 });
 
 test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusable session ids", async () => {

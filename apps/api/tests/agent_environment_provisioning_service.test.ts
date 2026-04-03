@@ -69,7 +69,7 @@ test("AgentEnvironmentProvisioning provisions the workspace directory through th
 
   assert.equal(createShell.mock.calls.length, 1);
   assert.deepEqual(createShell.mock.calls[0]?.[1], createdEnvironment);
-  assert.deepEqual(executeCommand.mock.calls, [["mkdir -p /workspace"]]);
+  assert.deepEqual(executeCommand.mock.calls, [[`sh -lc 'mkdir -p ~/workspace'`]]);
 });
 
 test("AgentEnvironmentProvisioningService bootstraps the created environment before returning it", async () => {

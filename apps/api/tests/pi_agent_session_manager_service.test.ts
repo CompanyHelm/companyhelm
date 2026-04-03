@@ -297,7 +297,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       getSystemPrompt(): string | undefined;
     };
   };
-  assert.equal(createAgentSessionOptions.cwd, "/workspace");
+  assert.equal(createAgentSessionOptions.cwd, "~/workspace");
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),

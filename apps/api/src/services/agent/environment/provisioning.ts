@@ -5,6 +5,7 @@ import type {
   AgentEnvironmentRecord,
 } from "../compute/provider_interface.ts";
 import { AgentComputeProviderRegistry } from "../compute/provider_registry.ts";
+import { AgentEnvironmentWorkspacePath } from "./workspace_path.ts";
 
 /**
  * Applies the shared post-create bootstrap steps for newly provisioned environments. The provider
@@ -35,7 +36,9 @@ export class AgentEnvironmentProvisioning {
     const environmentShell = await this.providerRegistry
       .get(environment.provider)
       .createShell(transactionProvider, environment);
-    const result = await environmentShell.executeCommand("mkdir -p /workspace");
+    const result = await environmentShell.executeCommand(
+      `sh -lc 'mkdir -p ${AgentEnvironmentWorkspacePath.get()}'`,
+    );
     if (result.exitCode !== 0) {
       throw new Error(`Failed to provision environment workspace: ${result.stdout}`);
     }
