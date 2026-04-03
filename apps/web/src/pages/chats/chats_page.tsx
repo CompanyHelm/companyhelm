@@ -2699,6 +2699,7 @@ function ChatsPageContent() {
   }, [chatsHeaderTitle]);
   useApplicationHeader({
     actions: headerAction,
+    className: "min-h-12",
     content: headerContent,
   });
   const renderChatListPanel = (panelMode: "desktop" | "mobile") => {
@@ -2744,7 +2745,7 @@ function ChatsPageContent() {
                     key={agent.id}
                     className="px-0 py-2"
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-2">
                       <button
                         className="min-w-0 flex-1 rounded-md px-1 py-1 text-left"
                         onClick={() => {
@@ -2754,12 +2755,9 @@ function ChatsPageContent() {
                       >
                         <p className="truncate text-sm font-medium text-sidebar-foreground">{agent.name}</p>
                       </button>
-                    </div>
-
-                    <div className="mt-2">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
-                        className={`flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm font-medium transition ${
+                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
                           isAgentSelected && !selectedSession
                             ? "bg-sidebar-primary text-sidebar-primary-foreground"
                             : "bg-transparent text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -2771,9 +2769,10 @@ function ChatsPageContent() {
                       >
                         <PlusIcon className="size-5" />
                       </button>
+                    </div>
 
                       {agentSessions.length > 0 ? (
-                        <ul className="mt-1 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-0.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
@@ -2834,7 +2833,6 @@ function ChatsPageContent() {
                       ) : (
                         <p className="mt-2 text-xs text-sidebar-foreground/55">No chats yet.</p>
                       )}
-                    </div>
                   </li>
                 );
               })}
@@ -2880,7 +2878,7 @@ function ChatsPageContent() {
                     key={agent.id}
                     className="px-0 py-2"
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-2">
                       <button
                         className="min-w-0 flex-1 pl-1 text-left"
                         onClick={() => {
@@ -2890,12 +2888,9 @@ function ChatsPageContent() {
                       >
                         <p className="truncate text-sm font-medium text-foreground">{agent.name}</p>
                       </button>
-                    </div>
-
-                    <div className="mt-2">
                       <button
                         aria-label={`Create chat for ${agent.name}`}
-                        className={`flex w-full items-center justify-center rounded-lg px-2 py-2 text-sm font-medium transition ${
+                        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
                           isAgentSelected && !selectedSession
                             ? "bg-primary/12 text-primary"
                             : "bg-transparent text-muted-foreground hover:bg-muted/30 hover:text-foreground"
@@ -2907,9 +2902,10 @@ function ChatsPageContent() {
                       >
                         <PlusIcon className="size-5" />
                       </button>
+                    </div>
 
                       {agentSessions.length > 0 ? (
-                        <ul className="mt-1 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
+                        <ul className="mt-0.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
@@ -2970,7 +2966,6 @@ function ChatsPageContent() {
                       ) : (
                         <p className="mt-2 text-xs text-muted-foreground">No chats yet.</p>
                       )}
-                    </div>
                   </li>
                 );
               })}
