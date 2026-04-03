@@ -76,3 +76,41 @@ test("ApiServer does not expose a default root endpoint", async () => {
   await app.close();
 });
 
+test("ApiServer exposes a health endpoint", async () => {
+  const server = new ApiServer({
+    host: "127.0.0.1",
+    port: 0,
+    cors: {
+      origin: ["http://localhost:5173"],
+      credentials: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowed_headers: ["content-type", "authorization"],
+    },
+  } as never, {
+    close: async () => {},
+  } as never, {
+    close: async () => {},
+  } as never, {
+    register: async () => {},
+  } as never, {
+    getLogger: () => pino({ level: "silent" }),
+  } as never, {
+    start: () => {},
+    stop: () => {},
+  } as never, {
+    start: () => {},
+    stop: async () => {},
+  } as never);
+
+  await server.start();
+
+  const app = Reflect.get(server, "app");
+  const address = app.server.address() as AddressInfo;
+  const response = await fetch(`http://127.0.0.1:${address.port}/health`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: "ok" });
+
+  await app.close();
+});
+

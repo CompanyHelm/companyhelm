@@ -4,3 +4,4 @@ dist/
 
 # environment variables/secrets
 .env*
+!.env.example
