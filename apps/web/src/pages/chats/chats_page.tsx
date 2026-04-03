@@ -2771,7 +2771,7 @@ function ChatsPageContent() {
                       </button>
                     </div>
 
-                      {agentSessions.length > 0 ? (
+                      {agentSessions.length > 0 && (
                         <ul className="mt-0.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
@@ -2830,8 +2830,6 @@ function ChatsPageContent() {
                             );
                           })}
                         </ul>
-                      ) : (
-                        <p className="mt-2 text-xs text-sidebar-foreground/55">No chats yet.</p>
                       )}
                   </li>
                 );
@@ -2904,7 +2902,7 @@ function ChatsPageContent() {
                       </button>
                     </div>
 
-                      {agentSessions.length > 0 ? (
+                      {agentSessions.length > 0 && (
                         <ul className="mt-0.5 grid gap-1" role="list" aria-label={`${agent.name} sessions`}>
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
@@ -2963,8 +2961,6 @@ function ChatsPageContent() {
                             );
                           })}
                         </ul>
-                      ) : (
-                        <p className="mt-2 text-xs text-muted-foreground">No chats yet.</p>
                       )}
                   </li>
                 );
