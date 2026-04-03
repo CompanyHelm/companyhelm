@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .turbo/
+.worktrees/
 
 # environment variables/secrets
 .env*
