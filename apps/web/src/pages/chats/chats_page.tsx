@@ -2655,17 +2655,6 @@ function ChatsPageContent() {
     : selectedAgent
       ? selectedAgent.name
       : "Chat";
-  const chatsHeaderDescription = selectedSession
-    ? `Updated ${formatTimestamp(selectedSession.updatedAt)}`
-    : selectedAgent
-      ? "New chat"
-      : shouldShowChatListButton
-        ? isMobile
-          ? "Show the chats panel to start a chat."
-          : "Show the chats list to start a chat."
-        : isMobile
-          ? "Choose an agent from the panel to start a chat."
-          : "Choose an agent from the panel to start a chat.";
   const headerAction = useMemo(() => {
     const actions: JSX.Element[] = [];
 
@@ -2713,14 +2702,9 @@ function ChatsPageContent() {
     return (
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-foreground">{chatsHeaderTitle}</p>
-        {chatsHeaderDescription ? (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {chatsHeaderDescription}
-          </p>
-        ) : null}
       </div>
     );
-  }, [chatsHeaderDescription, chatsHeaderTitle]);
+  }, [chatsHeaderTitle]);
   useApplicationHeader({
     actions: headerAction,
     content: headerContent,
@@ -3210,7 +3194,7 @@ function ChatsPageContent() {
               onPointerDown={startDraftTextareaResize}
               type="button"
             />
-            <div className="rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+            <div className="mb-px rounded-[1.5rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
               {selectedSession ? (
                 <ChatsQueuedMessagesComposerList
                   steeringQueuedMessageId={steeringQueuedMessageId}
