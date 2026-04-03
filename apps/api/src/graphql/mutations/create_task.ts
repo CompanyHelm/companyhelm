@@ -28,7 +28,7 @@ type GraphqlTaskRecord = {
   description: string | null;
   id: string;
   name: string;
-  status: "draft" | "pending" | "in_progress" | "completed";
+  status: "draft" | "in_progress" | "completed";
   taskCategoryId: string | null;
   taskCategoryName: string | null;
   updatedAt: string;
@@ -64,6 +64,7 @@ export class CreateTaskMutation extends Mutation<CreateTaskMutationArguments, Gr
       assignedAgentId: arguments_.input.assignedAgentId,
       assignedUserId: arguments_.input.assignedUserId,
       companyId: context.authSession.company.id,
+      createdByUserId: context.authSession.user.id,
       description: arguments_.input.description,
       name: arguments_.input.name,
       status: arguments_.input.status,

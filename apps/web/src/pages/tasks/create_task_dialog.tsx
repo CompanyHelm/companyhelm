@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type TaskStatus = "draft" | "pending" | "in_progress" | "completed";
+type TaskStatus = "draft" | "in_progress" | "completed";
 
 export type CreateTaskDialogCategory = {
   id: string;
@@ -108,7 +108,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
                 })),
               ]}
               onValueChange={(value) => {
-                setTaskCategoryId(value);
+                setTaskCategoryId(value ?? uncategorizedValue);
               }}
               value={taskCategoryId}
             >
@@ -139,7 +139,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
                 })),
               ]}
               onValueChange={(value) => {
-                setTaskAssigneeValue(value);
+                setTaskAssigneeValue(value ?? unassignedValue);
               }}
               value={taskAssigneeValue}
             >
@@ -164,7 +164,6 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
             <Select
               items={[
                 { label: "Draft", value: "draft" },
-                { label: "Pending", value: "pending" },
                 { label: "In Progress", value: "in_progress" },
                 { label: "Completed", value: "completed" },
               ]}
@@ -178,7 +177,6 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>

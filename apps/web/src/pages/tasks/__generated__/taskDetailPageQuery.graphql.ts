@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b8102fcdeb75f1c1d7d457f365e12f5>>
+ * @generated SignedSource<<0068c3ccfd2804dd357dbef197f8a4b3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -43,6 +43,20 @@ export type taskDetailPageQuery$data = {
     readonly id: string;
     readonly name: string;
   }>;
+  readonly TaskRuns: ReadonlyArray<{
+    readonly agentId: string;
+    readonly agentName: string;
+    readonly createdAt: string;
+    readonly endedReason: string | null | undefined;
+    readonly finishedAt: string | null | undefined;
+    readonly id: string;
+    readonly lastActivityAt: string;
+    readonly sessionId: string | null | undefined;
+    readonly startedAt: string | null | undefined;
+    readonly status: string;
+    readonly taskId: string;
+    readonly updatedAt: string;
+  }>;
 };
 export type taskDetailPageQuery = {
   response: taskDetailPageQuery$data;
@@ -75,14 +89,35 @@ v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "email",
   "storageKey": null
 },
-v4 = [
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "updatedAt",
+  "storageKey": null
+},
+v7 = [
   (v1/*: any*/),
   (v2/*: any*/)
 ],
-v5 = [
+v8 = [
   {
     "alias": null,
     "args": [
@@ -106,13 +141,7 @@ v5 = [
         "name": "description",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -151,24 +180,89 @@ v5 = [
           },
           (v1/*: any*/),
           (v2/*: any*/),
-          (v3/*: any*/)
+          (v4/*: any*/)
         ],
         "storageKey": null
       },
+      (v5/*: any*/),
+      (v6/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "taskId",
+        "variableName": "taskId"
+      }
+    ],
+    "concreteType": "TaskRun",
+    "kind": "LinkedField",
+    "name": "TaskRuns",
+    "plural": true,
+    "selections": [
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "createdAt",
+        "name": "taskId",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "updatedAt",
+        "name": "agentId",
         "storageKey": null
-      }
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "agentName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "sessionId",
+        "storageKey": null
+      },
+      (v3/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "startedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "finishedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "lastActivityAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "endedReason",
+        "storageKey": null
+      },
+      (v5/*: any*/),
+      (v6/*: any*/)
     ],
     "storageKey": null
   },
@@ -179,7 +273,7 @@ v5 = [
     "kind": "LinkedField",
     "name": "Agents",
     "plural": true,
-    "selections": (v4/*: any*/),
+    "selections": (v7/*: any*/),
     "storageKey": null
   },
   {
@@ -198,7 +292,7 @@ v5 = [
         "name": "displayName",
         "storageKey": null
       },
-      (v3/*: any*/)
+      (v4/*: any*/)
     ],
     "storageKey": null
   },
@@ -209,7 +303,7 @@ v5 = [
     "kind": "LinkedField",
     "name": "TaskCategories",
     "plural": true,
-    "selections": (v4/*: any*/),
+    "selections": (v7/*: any*/),
     "storageKey": null
   }
 ];
@@ -219,7 +313,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "taskDetailPageQuery",
-    "selections": (v5/*: any*/),
+    "selections": (v8/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -228,19 +322,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "taskDetailPageQuery",
-    "selections": (v5/*: any*/)
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "b6c51f78df529df1ec077887b8b46d46",
+    "cacheID": "eea63f57965d78d48fcef9c52f41e20e",
     "id": null,
     "metadata": {},
     "name": "taskDetailPageQuery",
     "operationKind": "query",
-    "text": "query taskDetailPageQuery(\n  $taskId: ID!\n) {\n  Task(id: $taskId) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskCategories {\n    id\n    name\n  }\n}\n"
+    "text": "query taskDetailPageQuery(\n  $taskId: ID!\n) {\n  Task(id: $taskId) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n  TaskRuns(taskId: $taskId) {\n    id\n    taskId\n    agentId\n    agentName\n    sessionId\n    status\n    startedAt\n    finishedAt\n    lastActivityAt\n    endedReason\n    createdAt\n    updatedAt\n  }\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskCategories {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "044a4b673630d2c6a05051448d15b3e1";
+(node as any).hash = "caaf0c6bd345cf4534afaeda7da2fec2";
 
 export default node;

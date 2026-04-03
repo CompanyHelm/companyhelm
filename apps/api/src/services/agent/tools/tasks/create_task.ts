@@ -15,7 +15,6 @@ export class AgentCreateTaskTool {
     name: Type.String(),
     status: Type.Optional(Type.Union([
       Type.Literal("draft"),
-      Type.Literal("pending"),
       Type.Literal("in_progress"),
       Type.Literal("completed"),
     ])),

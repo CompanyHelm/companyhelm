@@ -48,7 +48,7 @@ class TaskQueryTestHarness {
                         description: "Keep the artifact scope narrow.",
                         id: "task-1",
                         name: "Review launch notes",
-                        status: "pending",
+                        status: "in_progress",
                         taskCategoryId: "category-1",
                         updatedAt: new Date("2026-04-02T18:30:00.000Z"),
                       }];
@@ -182,7 +182,7 @@ test("GraphQL Task query loads one task with category and assignee metadata", as
     id: "task-1",
     name: "Review launch notes",
     description: "Keep the artifact scope narrow.",
-    status: "pending",
+    status: "in_progress",
     taskCategoryId: "category-1",
     taskCategoryName: "Backlog",
     assignedAt: "2026-04-02T18:00:00.000Z",

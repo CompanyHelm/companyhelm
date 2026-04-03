@@ -117,7 +117,7 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
-    new GraphqlRequestContextResolver(authProvider as never, database),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
     new HealthQueryResolver(),
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
@@ -175,7 +175,9 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
   });
   assert.equal(database.insertedValues.length, 1);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
+  assert.equal(database.insertedValues[0]?.createdByUserId, "user-123");
   assert.equal(database.insertedValues[0]?.taskCategoryId, "category-1");
+  assert.equal(database.insertedValues[0]?.rootTaskId, database.insertedValues[0]?.id);
 
   await app.close();
 });

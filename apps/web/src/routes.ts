@@ -37,6 +37,10 @@ type TasksRouteSearch = {
   category?: string;
 };
 
+type TaskDetailRouteSearch = {
+  tab?: "runs";
+};
+
 type ConversationsRouteSearch = {
   conversationId?: string;
 };
@@ -61,6 +65,12 @@ function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSe
     category: typeof search.category === "string" && search.category.trim().length > 0
       ? search.category.trim()
       : undefined,
+  };
+}
+
+function validateTaskDetailRouteSearch(search: Record<string, unknown>): TaskDetailRouteSearch {
+  return {
+    tab: search.tab === "runs" ? "runs" : undefined,
   };
 }
 
@@ -204,6 +214,7 @@ const tasksRoute = createRoute({
 const taskDetailRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/tasks/$taskId",
+  validateSearch: validateTaskDetailRouteSearch,
   component: TaskDetailPage,
 });
 

@@ -29,7 +29,7 @@ type GraphqlTaskRecord = {
   description: string | null;
   id: string;
   name: string;
-  status: "draft" | "pending" | "in_progress" | "completed";
+  status: "draft" | "in_progress" | "completed";
   taskCategoryId: string | null;
   taskCategoryName: string | null;
   updatedAt: string;

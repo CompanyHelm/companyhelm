@@ -33,6 +33,7 @@ import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_q
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
+import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
 import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_human_question.ts";
@@ -79,6 +80,7 @@ import { SessionSecretsQueryResolver } from "./resolvers/session_secrets.ts";
 import { TaskQueryResolver } from "./resolvers/task.ts";
 import { TaskAssignableUsersQueryResolver } from "./resolvers/task_assignable_users.ts";
 import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
+import { TaskRunsQueryResolver } from "./resolvers/task_runs.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
 import { SessionQueuedMessagesQueryResolver } from "./resolvers/session_queued_messages.ts";
@@ -132,6 +134,7 @@ export class GraphqlApplication {
   private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
+  private readonly executeTaskMutation: ExecuteTaskMutation;
   private readonly inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation;
@@ -164,6 +167,7 @@ export class GraphqlApplication {
   private readonly taskQueryResolver: TaskQueryResolver;
   private readonly taskAssignableUsersQueryResolver: TaskAssignableUsersQueryResolver;
   private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver;
+  private readonly taskRunsQueryResolver: TaskRunsQueryResolver;
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
   private readonly updateArtifactMutation: UpdateArtifactMutation;
@@ -387,6 +391,24 @@ export class GraphqlApplication {
     } as never,
     @inject(TaskQueryResolver) taskQueryResolver: TaskQueryResolver = new TaskQueryResolver(),
     @inject(UpdateTaskMutation) updateTaskMutation: UpdateTaskMutation = new UpdateTaskMutation(),
+    @inject(TaskRunsQueryResolver)
+    taskRunsQueryResolver: TaskRunsQueryResolver = new TaskRunsQueryResolver({
+      async executeTask() {
+        throw new Error("TaskRun service is not configured.");
+      },
+      async listTaskRuns() {
+        throw new Error("TaskRuns query is not configured.");
+      },
+    } as never),
+    @inject(ExecuteTaskMutation)
+    executeTaskMutation: ExecuteTaskMutation = new ExecuteTaskMutation({
+      async executeTask() {
+        throw new Error("ExecuteTask mutation is not configured.");
+      },
+      async listTaskRuns() {
+        throw new Error("TaskRun service is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -438,6 +460,7 @@ export class GraphqlApplication {
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
+    this.executeTaskMutation = executeTaskMutation;
     this.inboxHumanQuestionsQueryResolver = inboxHumanQuestionsQueryResolver;
     this.promptSessionMutation = promptSessionMutation;
     this.resolveInboxHumanQuestionMutation = resolveInboxHumanQuestionMutation;
@@ -469,6 +492,7 @@ export class GraphqlApplication {
     this.taskQueryResolver = taskQueryResolver;
     this.taskAssignableUsersQueryResolver = taskAssignableUsersQueryResolver;
     this.taskCategoriesQueryResolver = taskCategoriesQueryResolver;
+    this.taskRunsQueryResolver = taskRunsQueryResolver;
     this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
     this.updateArtifactMutation = updateArtifactMutation;
@@ -557,6 +581,7 @@ export class GraphqlApplication {
           Task: this.taskQueryResolver.execute,
           TaskAssignableUsers: this.taskAssignableUsersQueryResolver.execute,
           TaskCategories: this.taskCategoriesQueryResolver.execute,
+          TaskRuns: this.taskRunsQueryResolver.execute,
           Tasks: this.tasksQueryResolver.execute,
           SessionMessages: this.sessionMessagesQueryResolver.execute,
           SessionSecrets: this.sessionSecretsQueryResolver.execute,
@@ -591,6 +616,7 @@ export class GraphqlApplication {
           DeleteSecret: this.deleteSecretMutation.execute,
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
+          ExecuteTask: this.executeTaskMutation.execute,
           MarkSessionRead: this.markSessionReadMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,

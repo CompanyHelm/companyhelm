@@ -9,6 +9,11 @@ import type { tasksPageCreateTaskMutation } from "./__generated__/tasksPageCreat
 import type { tasksPageQuery } from "./__generated__/tasksPageQuery.graphql";
 import type { tasksPageSetTaskCategoryMutation } from "./__generated__/tasksPageSetTaskCategoryMutation.graphql";
 
+type TasksPageCategory = tasksPageQuery["response"]["TaskCategories"][number];
+type TasksPageTask = tasksPageQuery["response"]["Tasks"][number];
+type TasksPageAssignableUser = tasksPageQuery["response"]["TaskAssignableUsers"][number];
+type TasksPageAgent = tasksPageQuery["response"]["Agents"][number];
+
 const tasksPageQueryNode = graphql`
   query tasksPageQuery {
     Agents {
@@ -142,21 +147,21 @@ function TasksPageContent() {
   const [commitSetTaskCategory] = useMutation<tasksPageSetTaskCategoryMutation>(
     tasksPageSetTaskCategoryMutationNode,
   );
-  const allCategories = data.TaskCategories.map((category) => ({
+  const allCategories = data.TaskCategories.map((category: TasksPageCategory) => ({
     id: category.id,
     name: category.name,
   }));
-  const uncategorizedTaskCount = data.Tasks.filter((task) => task.taskCategoryId === null).length;
+  const uncategorizedTaskCount = data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === null).length;
   const categoryFilterOptions = [
     {
       key: undefined,
       label: "All tasks",
       count: data.Tasks.length,
     },
-    ...allCategories.map((category) => ({
+    ...allCategories.map((category: { id: string; name: string }) => ({
       key: category.id,
       label: category.name,
-      count: data.Tasks.filter((task) => task.taskCategoryId === category.id).length,
+      count: data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === category.id).length,
     })),
     ...(uncategorizedTaskCount > 0
       ? [{
@@ -173,12 +178,12 @@ function TasksPageContent() {
     ? allCategories
     : selectedCategoryKey === "uncategorized"
       ? []
-      : allCategories.filter((category) => category.id === selectedCategoryKey);
+      : allCategories.filter((category: { id: string; name: string }) => category.id === selectedCategoryKey);
   const visibleTasks = selectedCategoryKey === undefined
     ? data.Tasks
     : selectedCategoryKey === "uncategorized"
-      ? data.Tasks.filter((task) => task.taskCategoryId === null)
-      : data.Tasks.filter((task) => task.taskCategoryId === selectedCategoryKey);
+      ? data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === null)
+      : data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === selectedCategoryKey);
 
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
@@ -239,7 +244,7 @@ function TasksPageContent() {
               },
             });
           }}
-          tasks={visibleTasks.map((task) => ({
+          tasks={visibleTasks.map((task: TasksPageTask) => ({
             assignedAt: task.assignedAt,
             assignee: task.assignee
               ? {
@@ -252,7 +257,7 @@ function TasksPageContent() {
             id: task.id,
             name: task.name,
             description: task.description,
-            status: task.status as "draft" | "pending" | "in_progress" | "completed",
+            status: task.status as "draft" | "in_progress" | "completed",
             taskCategoryId: task.taskCategoryId,
             taskCategoryName: task.taskCategoryName,
             createdAt: task.createdAt,
@@ -269,7 +274,10 @@ function TasksPageContent() {
                     taskCategoryId,
                   },
                 },
-                onCompleted: (_response, errors) => {
+                onCompleted: (
+                  _response: tasksPageSetTaskCategoryMutation["response"],
+                  errors: ReadonlyArray<{ message: string }> | null | undefined,
+                ) => {
                   const nextErrorMessage = errors?.[0]?.message;
                   if (nextErrorMessage) {
                     reject(new Error(nextErrorMessage));
@@ -289,16 +297,16 @@ function TasksPageContent() {
 
       <CreateTaskDialog
         assignees={[
-          ...data.TaskAssignableUsers.map((user) => ({
+          ...data.TaskAssignableUsers.map((user: TasksPageAssignableUser) => ({
             label: `Human · ${user.displayName}`,
             value: `user:${user.id}`,
           })),
-          ...data.Agents.map((agent) => ({
+          ...data.Agents.map((agent: TasksPageAgent) => ({
             label: `Agent · ${agent.name}`,
             value: `agent:${agent.id}`,
           })),
         ]}
-        categories={data.TaskCategories.map((category) => ({
+        categories={data.TaskCategories.map((category: TasksPageCategory) => ({
           id: category.id,
           name: category.name,
         }))}
@@ -313,7 +321,13 @@ function TasksPageContent() {
               variables: {
                 input,
               },
-              updater: (store) => {
+              updater: (store: {
+                getRoot(): {
+                  getLinkedRecords(name: string): ReadonlyArray<unknown> | null | undefined;
+                  setLinkedRecords(records: Array<{ getDataID(): string }>, name: string): void;
+                };
+                getRootField(name: string): { getDataID(): string } | null | undefined;
+              }) => {
                 const createdTask = store.getRootField("CreateTask");
                 if (!createdTask) {
                   return;
@@ -323,7 +337,10 @@ function TasksPageContent() {
                 const currentTasks = filterStoreRecords(rootRecord.getLinkedRecords("Tasks") || []);
                 rootRecord.setLinkedRecords([createdTask, ...currentTasks], "Tasks");
               },
-              onCompleted: (_response, errors) => {
+              onCompleted: (
+                _response: tasksPageCreateTaskMutation["response"],
+                errors: ReadonlyArray<{ message: string }> | null | undefined,
+              ) => {
                 const nextErrorMessage = errors?.[0]?.message;
                 if (nextErrorMessage) {
                   reject(new Error(nextErrorMessage));

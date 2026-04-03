@@ -48,6 +48,7 @@ export class AgentTaskToolService {
       assignedAgentId: input.assignedAgentId,
       assignedUserId: input.assignedUserId,
       companyId: this.companyId,
+      createdByAgentId: this.agentId,
       description: input.description,
       name: input.name,
       status: input.status,

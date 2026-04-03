@@ -1,10 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
-import { agents, companyMembers, taskCategories, tasks, users } from "../db/schema.ts";
+import { agents, companyMembers, taskCategories, taskRuns, tasks, users } from "../db/schema.ts";
 
-export type TaskStatus = "draft" | "pending" | "in_progress" | "completed";
+export type TaskStatus = "draft" | "in_progress" | "completed";
 
 export type TaskServiceTaskAssignee = {
   email: string | null;
@@ -30,6 +31,8 @@ export type TaskServiceCreateTaskInput = {
   assignedAgentId?: string | null;
   assignedUserId?: string | null;
   companyId: string;
+  createdByAgentId?: string | null;
+  createdByUserId?: string | null;
   description?: string | null;
   name: string;
   status?: string | null;
@@ -85,6 +88,12 @@ type TaskRow = {
   updatedAt: Date;
 };
 
+type OpenTaskRunRow = {
+  agentId: string;
+  finishedAt: Date | null;
+  id: string;
+};
+
 type TaskCategoryRow = {
   id: string;
   name: string;
@@ -104,11 +113,11 @@ type UserRow = {
 
 /**
  * Centralizes task persistence and validation so GraphQL handlers and agent tools share the same
- * rules for assignee validation, category checks, status transitions, and task serialization.
+ * rules for assignee validation, category checks, task tree defaults, and task-run synchronization.
  */
 @injectable()
 export class TaskService {
-  private static readonly supportedStatuses: TaskStatus[] = ["draft", "pending", "in_progress", "completed"];
+  private static readonly supportedStatuses: TaskStatus[] = ["draft", "in_progress", "completed"];
 
   async createTask(
     transactionProvider: TransactionProviderInterface,
@@ -116,6 +125,9 @@ export class TaskService {
   ): Promise<TaskServiceTask> {
     if (!/\S/.test(input.name)) {
       throw new Error("name is required.");
+    }
+    if (input.createdByUserId && input.createdByAgentId) {
+      throw new Error("A task can only have one creator.");
     }
 
     return transactionProvider.transaction(async (tx) => {
@@ -126,6 +138,7 @@ export class TaskService {
         companyId: input.companyId,
       });
       const now = new Date();
+      const taskId = randomUUID();
       const [taskRecord] = await tx
         .insert(tasks)
         .values({
@@ -134,8 +147,13 @@ export class TaskService {
           assignedUserId: assignee?.kind === "user" ? assignee.id : null,
           companyId: input.companyId,
           createdAt: now,
+          createdByAgentId: input.createdByAgentId ?? null,
+          createdByUserId: input.createdByUserId ?? null,
           description: input.description ?? null,
+          id: taskId,
           name: input.name,
+          parentTaskId: null,
+          rootTaskId: taskId,
           status: this.resolveStatus(input.status),
           taskCategoryId: taskCategoryRecord?.id ?? null,
           updatedAt: now,
@@ -151,7 +169,7 @@ export class TaskService {
           status: tasks.status,
           taskCategoryId: tasks.taskCategoryId,
           updatedAt: tasks.updatedAt,
-        });
+        }) as TaskRow[];
       if (!taskRecord) {
         throw new Error("Failed to create task.");
       }
@@ -302,6 +320,15 @@ export class TaskService {
       if (!updatedTaskRow) {
         throw new Error("Task not found.");
       }
+
+      await this.synchronizeOpenTaskRun(tx, {
+        companyId: input.companyId,
+        didAssigneeChange,
+        nextAssignedAgentId,
+        nextAssignedUserId,
+        nextStatus,
+        taskId: input.taskId,
+      });
 
       return this.loadSerializedTask(tx, updatedTaskRow);
     });
@@ -553,6 +580,75 @@ export class TaskService {
       kind: "user",
       name: this.formatUserName(userRecord),
     };
+  }
+
+  private async synchronizeOpenTaskRun(
+    tx: AppRuntimeTransaction,
+    input: {
+      companyId: string;
+      didAssigneeChange: boolean;
+      nextAssignedAgentId: string | null;
+      nextAssignedUserId: string | null;
+      nextStatus: TaskStatus;
+      taskId: string;
+    },
+  ): Promise<void> {
+    const [openTaskRun] = await tx
+      .select({
+        agentId: taskRuns.agentId,
+        finishedAt: taskRuns.finishedAt,
+        id: taskRuns.id,
+      })
+      .from(taskRuns)
+      .where(and(
+        eq(taskRuns.companyId, input.companyId),
+        eq(taskRuns.taskId, input.taskId),
+        isNull(taskRuns.finishedAt),
+      )) as OpenTaskRunRow[];
+    if (!openTaskRun) {
+      return;
+    }
+
+    const now = new Date();
+    if (input.nextStatus === "completed") {
+      await tx
+        .update(taskRuns)
+        .set({
+          endedReason: null,
+          finishedAt: openTaskRun.finishedAt ?? now,
+          lastActivityAt: now,
+          status: "completed",
+          updatedAt: now,
+        })
+        .where(and(
+          eq(taskRuns.companyId, input.companyId),
+          eq(taskRuns.id, openTaskRun.id),
+        ));
+      return;
+    }
+
+    const shouldCancelRun = input.nextStatus === "draft"
+      || input.didAssigneeChange
+      || input.nextAssignedUserId !== null
+      || input.nextAssignedAgentId === null
+      || openTaskRun.agentId !== input.nextAssignedAgentId;
+    if (!shouldCancelRun) {
+      return;
+    }
+
+    await tx
+      .update(taskRuns)
+      .set({
+        endedReason: input.nextStatus === "draft" ? "task_reset_to_draft" : "task_reassigned",
+        finishedAt: openTaskRun.finishedAt ?? now,
+        lastActivityAt: now,
+        status: "canceled",
+        updatedAt: now,
+      })
+      .where(and(
+        eq(taskRuns.companyId, input.companyId),
+        eq(taskRuns.id, openTaskRun.id),
+      ));
   }
 
   private async requireTaskRow(

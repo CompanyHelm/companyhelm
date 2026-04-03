@@ -5,13 +5,12 @@ import { AgentTaskToolService } from "./service.ts";
 
 /**
  * Updates the lifecycle status of an existing task so the agent can move tracked work between
- * draft, pending, active, and completed states from within the current session.
+ * draft, active, and completed states from within the current session.
  */
 export class AgentUpdateTaskStatusTool {
   private static readonly parameters = Type.Object({
     status: Type.Union([
       Type.Literal("draft"),
-      Type.Literal("pending"),
       Type.Literal("in_progress"),
       Type.Literal("completed"),
     ]),

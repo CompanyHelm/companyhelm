@@ -421,6 +421,13 @@
       "when": 1775237454142,
       "tag": "0059_greedy_black_cat",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1775253961725,
+      "tag": "0060_wakeful_snowbird",
+      "breakpoints": true
     }
   ]
 }

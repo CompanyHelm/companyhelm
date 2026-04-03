@@ -31,6 +31,7 @@ type Query {
   ModelProviderCredentials: [ModelProviderCredential!]!
   ModelProviders: [ModelProvider!]!
   Task(id: ID!): Task!
+  TaskRuns(taskId: ID!): [TaskRun!]!
   TaskAssignableUsers: [TaskAssignableUser!]!
   TaskCategories: [TaskCategory!]!
   Tasks: [Task!]!
@@ -77,6 +78,7 @@ type Mutation {
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateTask(input: CreateTaskInput!): Task!
   CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
+  ExecuteTask(input: ExecuteTaskInput!): TaskRun!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
@@ -471,6 +473,21 @@ type Task {
   updatedAt: String!
 }
 
+type TaskRun {
+  id: ID!
+  taskId: ID!
+  agentId: ID!
+  agentName: String!
+  sessionId: ID
+  status: String!
+  startedAt: String
+  finishedAt: String
+  lastActivityAt: String!
+  endedReason: String
+  createdAt: String!
+  updatedAt: String!
+}
+
 type TaskAssignee {
   kind: String!
   id: ID!
@@ -767,6 +784,10 @@ input UpdateTaskInput {
   taskCategoryId: ID
   assignedUserId: ID
   assignedAgentId: ID
+}
+
+input ExecuteTaskInput {
+  taskId: ID!
 }
 
 input RefreshGithubInstallationRepositoriesInput {

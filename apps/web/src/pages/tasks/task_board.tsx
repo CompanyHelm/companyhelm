@@ -2,7 +2,7 @@ import { useRef, useState, type DragEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type TaskStatus = "draft" | "pending" | "in_progress" | "completed";
+type TaskStatus = "draft" | "in_progress" | "completed";
 
 export type TaskBoardTask = {
   assignedAt: string | null;

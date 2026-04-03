@@ -6,6 +6,17 @@ import { AgentListTasksTool } from "../src/services/agent/tools/tasks/list_tasks
 import { AgentTaskToolProvider } from "../src/services/agent/tools/tasks/provider.ts";
 import { AgentUpdateTaskStatusTool } from "../src/services/agent/tools/tasks/update_task_status.ts";
 
+type AgentToolExecutionResult = {
+  content: Array<{
+    text?: string;
+  }>;
+  details?: {
+    nextOffset?: number | null;
+    taskId?: string;
+    totalCount?: number;
+  };
+};
+
 test("AgentTaskToolProvider contributes the task management tools", () => {
   const provider = new AgentTaskToolProvider({
     async createTask() {
@@ -45,7 +56,7 @@ test("AgentListTasksTool renders paginated task summaries", async () => {
           description: "Capture the first draft.",
           id: "task-1",
           name: "Write launch post",
-          status: "pending",
+          status: "in_progress",
           taskCategoryId: null,
           taskCategoryName: null,
           updatedAt: new Date("2026-03-31T20:00:00.000Z"),
@@ -55,7 +66,14 @@ test("AgentListTasksTool renders paginated task summaries", async () => {
     },
   } as never);
 
-  const result = await tool.createDefinition().execute("tool-call-1", {});
+  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
+  const result = await execute(
+    "tool-call-1",
+    {},
+    undefined,
+    undefined,
+    undefined,
+  );
 
   assert.equal(result.details?.nextOffset, 1);
   assert.equal(result.details?.totalCount, 2);
@@ -74,7 +92,14 @@ test("AgentListAssignedTasksTool scopes task listing to the running agent", asyn
     },
   } as never);
 
-  const result = await tool.createDefinition().execute("tool-call-1", {});
+  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
+  const result = await execute(
+    "tool-call-1",
+    {},
+    undefined,
+    undefined,
+    undefined,
+  );
 
   assert.equal(result.content[0]?.text, [
     "totalCount: 0",
@@ -101,9 +126,16 @@ test("AgentCreateTaskTool returns the created task summary", async () => {
     },
   } as never);
 
-  const result = await tool.createDefinition().execute("tool-call-1", {
-    name: "Review rollout copy",
-  });
+  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
+  const result = await execute(
+    "tool-call-1",
+    {
+      name: "Review rollout copy",
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
 
   assert.equal(result.details?.taskId, "task-2");
   assert.match(result.content[0]?.text ?? "", /status: draft/);
@@ -127,10 +159,17 @@ test("AgentUpdateTaskStatusTool returns the updated task summary", async () => {
     },
   } as never);
 
-  const result = await tool.createDefinition().execute("tool-call-1", {
-    status: "completed",
-    taskId: "task-3",
-  });
+  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
+  const result = await execute(
+    "tool-call-1",
+    {
+      status: "completed",
+      taskId: "task-3",
+    },
+    undefined,
+    undefined,
+    undefined,
+  );
 
   assert.equal(result.details?.taskId, "task-3");
   assert.match(result.content[0]?.text ?? "", /status: completed/);

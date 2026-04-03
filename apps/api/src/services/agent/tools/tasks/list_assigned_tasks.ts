@@ -13,7 +13,6 @@ export class AgentListAssignedTasksTool {
     offset: Type.Optional(Type.Integer({ minimum: 0 })),
     status: Type.Optional(Type.Union([
       Type.Literal("draft"),
-      Type.Literal("pending"),
       Type.Literal("in_progress"),
       Type.Literal("completed"),
     ])),

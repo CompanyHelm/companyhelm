@@ -111,6 +111,18 @@ class UpdateTaskMutationTestHarness {
                 from() {
                   return {
                     async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
                       return [{
                         id: "category-2",
                         name: "In Progress",
@@ -121,7 +133,7 @@ class UpdateTaskMutationTestHarness {
               };
             }
 
-            if (selectCallCount === 6) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
