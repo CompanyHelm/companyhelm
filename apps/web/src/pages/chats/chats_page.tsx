@@ -34,6 +34,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
 import { ChatComposerImage, type ChatComposerImageDraft } from "./chat_composer_image";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
+import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageMarkSessionReadMutation } from "./__generated__/chatsPageMarkSessionReadMutation.graphql";
@@ -42,6 +43,7 @@ import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueu
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDeleteSessionQueuedMessageMutation.graphql";
 import type { chatsPageInterruptSessionMutation } from "./__generated__/chatsPageInterruptSessionMutation.graphql";
+import type { chatsPageResolveInboxHumanQuestionMutation } from "./__generated__/chatsPageResolveInboxHumanQuestionMutation.graphql";
 import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
@@ -73,6 +75,19 @@ const chatsPageQueryNode = graphql`
         name
         description
         reasoningLevels
+      }
+    }
+    InboxHumanQuestions {
+      id
+      sessionId
+      title
+      questionText
+      allowCustomAnswer
+      createdAt
+      proposals {
+        id
+        answerText
+        rating
       }
     }
     Sessions {
@@ -300,6 +315,18 @@ const chatsPageInterruptSessionMutationNode = graphql`
   }
 `;
 
+const chatsPageResolveInboxHumanQuestionMutationNode = graphql`
+  mutation chatsPageResolveInboxHumanQuestionMutation($input: ResolveInboxHumanQuestionInput!) {
+    ResolveInboxHumanQuestion(input: $input) {
+      id
+      status
+      answer {
+        id
+      }
+    }
+  }
+`;
+
 const chatsPageMarkSessionReadMutationNode = graphql`
   mutation chatsPageMarkSessionReadMutation($input: MarkSessionReadInput!) {
     MarkSessionRead(input: $input) {
@@ -423,6 +450,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 `;
 
 type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
+type InboxHumanQuestionRecord = chatsPageQuery["response"]["InboxHumanQuestions"][number];
 type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
 type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
@@ -855,6 +883,16 @@ function compareSessionsByLatestActivity(leftSession: SessionRecord, rightSessio
   return leftSession.id.localeCompare(rightSession.id);
 }
 
+function compareInboxHumanQuestionsByCreatedAt(leftQuestion: InboxHumanQuestionRecord, rightQuestion: InboxHumanQuestionRecord): number {
+  const leftTimestamp = new Date(leftQuestion.createdAt).getTime();
+  const rightTimestamp = new Date(rightQuestion.createdAt).getTime();
+  if (leftTimestamp !== rightTimestamp) {
+    return rightTimestamp - leftTimestamp;
+  }
+
+  return leftQuestion.id.localeCompare(rightQuestion.id);
+}
+
 function hasVisibleTranscriptMessage(
   message: SessionMessageRecord,
   options: { includeThinking?: boolean } = {},
@@ -1124,6 +1162,37 @@ function upsertRootLinkedRecord(
   }
 
   rootRecord.setLinkedRecords([...currentRecords, nextRecord], fieldName, args);
+}
+
+function removeRootLinkedRecord(
+  store: {
+    getRoot(): {
+      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
+      setLinkedRecords(
+        records: ReadonlyArray<{ getDataID(): string }>,
+        name: string,
+        args?: Record<string, unknown>,
+      ): void;
+    };
+    getRootField(name: string): { getDataID(): string } | null;
+  },
+  fieldName: string,
+  rootFieldName: string,
+  args?: Record<string, unknown>,
+): void {
+  const rootRecord = store.getRoot();
+  const resolvedRecord = store.getRootField(rootFieldName);
+  const resolvedRecordId = resolvedRecord?.getDataID();
+  if (!resolvedRecordId) {
+    return;
+  }
+
+  const currentRecords = filterStoreRecords(rootRecord.getLinkedRecords(fieldName, args) || []);
+  rootRecord.setLinkedRecords(
+    currentRecords.filter((record) => record.getDataID() !== resolvedRecordId),
+    fieldName,
+    args,
+  );
 }
 
 function ChatsPageFallback() {
@@ -1801,6 +1870,9 @@ function ChatsPageContent() {
   const [commitInterruptSession, isInterruptSessionInFlight] = useMutation<chatsPageInterruptSessionMutation>(
     chatsPageInterruptSessionMutationNode,
   );
+  const [commitResolveInboxHumanQuestion, isResolveInboxHumanQuestionInFlight] = useMutation<chatsPageResolveInboxHumanQuestionMutation>(
+    chatsPageResolveInboxHumanQuestionMutationNode,
+  );
   const [commitDeleteQueuedMessage] = useMutation<chatsPageDeleteSessionQueuedMessageMutation>(
     chatsPageDeleteSessionQueuedMessageMutationNode,
   );
@@ -1876,23 +1948,43 @@ function ChatsPageContent() {
     ? resolvedSelectedSession
     : null;
   const selectedSessionId = selectedSession?.id ?? null;
+  const selectedSessionHumanQuestion = useMemo<InboxHumanQuestionRecord | null>(() => {
+    if (!selectedSessionId) {
+      return null;
+    }
+
+    return [...data.InboxHumanQuestions]
+      .filter((question) => question.sessionId === selectedSessionId)
+      .sort(compareInboxHumanQuestionsByCreatedAt)[0] ?? null;
+  }, [data.InboxHumanQuestions, selectedSessionId]);
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const shouldUseCompactComposerSettings = isMobile;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSelectedSessionRunning = selectedSession?.status === "running";
   const hasDraftInput = draftMessage.trim().length > 0 || draftImages.length > 0;
-  const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
-  const canSubmitDraft = Boolean(
+  const shouldUseComposerForHumanQuestionAnswer = Boolean(selectedSessionHumanQuestion?.allowCustomAnswer)
+    && draftMessage.trim().length > 0
+    && draftImages.length === 0;
+  const canSubmitPromptDraft = Boolean(
     selectedAgent
       && selectedComposerModelOption
       && hasDraftInput,
+  );
+  const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight || isResolveInboxHumanQuestionInFlight;
+  const canSubmitDraft = Boolean(
+    shouldUseComposerForHumanQuestionAnswer || canSubmitPromptDraft,
   ) && !isSubmittingDraft && !isInterruptSessionInFlight;
   const canInterruptSelectedSession = Boolean(selectedSession && isSelectedSessionRunning)
     && !hasDraftInput
     && !isSubmittingDraft
     && !isInterruptSessionInFlight;
   const shouldShowInterruptComposerAction = Boolean(selectedSession && isSelectedSessionRunning && !hasDraftInput);
-  const shouldShowQueueComposerAction = Boolean(selectedSession && isSelectedSessionRunning && hasDraftInput);
+  const shouldShowQueueComposerAction = Boolean(
+    selectedSession
+      && isSelectedSessionRunning
+      && hasDraftInput
+      && !shouldUseComposerForHumanQuestionAnswer,
+  );
   const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting"
     && reconnectingSessionId !== null
     && reconnectingSessionId === selectedSessionId;
@@ -2909,6 +3001,43 @@ function ChatsPageContent() {
     });
   };
 
+  const resolveHumanQuestion = async (
+    input: {
+      customAnswerText?: string;
+      inboxItemId: string;
+      proposalId?: string;
+    },
+  ): Promise<boolean> => {
+    setErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitResolveInboxHumanQuestion({
+          variables: {
+            input,
+          },
+          updater: (store) => {
+            removeRootLinkedRecord(store, "InboxHumanQuestions", "ResolveInboxHumanQuestion");
+          },
+          onCompleted: (_response, errors) => {
+            const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+            if (nextErrorMessage.length > 0) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+      return true;
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to send answer.");
+      return false;
+    }
+  };
+
   const deleteQueuedMessage = async (queuedMessageId: string) => {
     const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
     if (!queuedMessage || queuedMessage.shouldSteer) {
@@ -3043,6 +3172,19 @@ function ChatsPageContent() {
       return;
     }
 
+    if (selectedSessionHumanQuestion && shouldUseComposerForHumanQuestionAnswer) {
+      const customAnswerText = draftMessage.trim();
+      const didResolveHumanQuestion = await resolveHumanQuestion({
+        customAnswerText,
+        inboxItemId: selectedSessionHumanQuestion.id,
+      });
+      if (!didResolveHumanQuestion) {
+        return;
+      }
+      setDraftMessage("");
+      return;
+    }
+
     if (selectedSession) {
       await promptSession(isSelectedSessionRunning);
       return;
@@ -3062,9 +3204,11 @@ function ChatsPageContent() {
   const draftSubmitAriaLabel = selectedSession
     ? shouldShowInterruptComposerAction
       ? (isInterruptSessionInFlight ? "Interrupting session" : "Interrupt session")
-      : isPromptSessionInFlight
-        ? "Sending message"
-        : "Send message"
+      : shouldUseComposerForHumanQuestionAnswer
+        ? (isResolveInboxHumanQuestionInFlight ? "Sending answer" : "Send answer")
+        : isPromptSessionInFlight
+          ? "Sending message"
+          : "Send message"
     : isCreateSessionInFlight
       ? "Creating chat"
       : "Start chat";
@@ -3744,6 +3888,30 @@ function ChatsPageContent() {
               ) : null}
               <div className={`transition ${isComposerDragActive ? "opacity-35" : "opacity-100"}`}>
                 {selectedSession ? (
+                  selectedSessionHumanQuestion ? (
+                    <SessionHumanQuestionSnippet
+                      isResolving={isResolveInboxHumanQuestionInFlight}
+                      onSelectProposal={(proposalId) => {
+                        void resolveHumanQuestion({
+                          inboxItemId: selectedSessionHumanQuestion.id,
+                          proposalId,
+                        });
+                      }}
+                      question={{
+                        allowCustomAnswer: selectedSessionHumanQuestion.allowCustomAnswer,
+                        id: selectedSessionHumanQuestion.id,
+                        proposals: selectedSessionHumanQuestion.proposals.map((proposal) => ({
+                          answerText: proposal.answerText,
+                          id: proposal.id,
+                          rating: proposal.rating,
+                        })),
+                        questionText: selectedSessionHumanQuestion.questionText,
+                        title: selectedSessionHumanQuestion.title,
+                      }}
+                    />
+                  ) : null
+                ) : null}
+                {selectedSession ? (
                   <ChatsQueuedMessagesComposerList
                     steeringQueuedMessageId={steeringQueuedMessageId}
                     deletingQueuedMessageId={deletingQueuedMessageId}
@@ -3788,7 +3956,9 @@ function ChatsPageContent() {
                       event.preventDefault();
                       void submitDraft();
                     }}
-                    placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
+                    placeholder={selectedSessionHumanQuestion?.allowCustomAnswer
+                      ? "Type your own answer to the pending question or choose one of the options above."
+                      : "Ask the agent to summarize a repo, draft a plan, or investigate a problem."}
                     rows={CHAT_DRAFT_MIN_LINES}
                     value={draftMessage}
                   />

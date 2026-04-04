@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a0d38faf5294bd018ffac2485aab8b48>>
+ * @generated SignedSource<<c6fc959e7088d532047e7dd208317889>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,19 @@ export type chatsPageQuery$data = {
     readonly modelProviderCredentialModelId: string | null | undefined;
     readonly name: string;
     readonly reasoningLevel: string | null | undefined;
+  }>;
+  readonly InboxHumanQuestions: ReadonlyArray<{
+    readonly allowCustomAnswer: boolean;
+    readonly createdAt: string;
+    readonly id: string;
+    readonly proposals: ReadonlyArray<{
+      readonly answerText: string;
+      readonly id: string;
+      readonly rating: number;
+    }>;
+    readonly questionText: string;
+    readonly sessionId: string;
+    readonly title: string;
   }>;
   readonly Sessions: ReadonlyArray<{
     readonly agentId: string;
@@ -101,7 +114,14 @@ v5 = {
   "name": "modelId",
   "storageKey": null
 },
-v6 = [
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v7 = [
   {
     "alias": null,
     "args": null,
@@ -197,6 +217,73 @@ v6 = [
   {
     "alias": null,
     "args": null,
+    "concreteType": "InboxHumanQuestion",
+    "kind": "LinkedField",
+    "name": "InboxHumanQuestions",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "sessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "title",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "questionText",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "allowCustomAnswer",
+        "storageKey": null
+      },
+      (v6/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "InboxHumanQuestionProposal",
+        "kind": "LinkedField",
+        "name": "proposals",
+        "plural": true,
+        "selections": [
+          (v0/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "answerText",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "rating",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
     "concreteType": "Session",
     "kind": "LinkedField",
     "name": "Sessions",
@@ -269,13 +356,7 @@ v6 = [
         "name": "thinkingText",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
-        "storageKey": null
-      },
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -300,7 +381,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageQuery",
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -309,19 +390,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageQuery",
-    "selections": (v6/*: any*/)
+    "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "7ecaf10ebddcbaa498b4290e2d5ebe74",
+    "cacheID": "437834a9582b65d2226c7e0749848e53",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ef5966e3e75a3120ba4774d0aead3052";
+(node as any).hash = "86d8dd469fde2f38de7143ef6b3cfd76";
 
 export default node;
