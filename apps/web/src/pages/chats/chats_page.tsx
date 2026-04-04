@@ -1463,7 +1463,7 @@ function ToolTranscriptMessage(
                       : null}
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
-                  <pre className="border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
                     {terminalOutputText.length > 0
                       ? terminalOutputText
                       : terminalStructuredContent.completed
@@ -1488,7 +1488,7 @@ function ToolTranscriptMessage(
             return (
               <pre
                 key={`${message.id}-content-${contentIndex}`}
-                className="whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]"
+                className="max-h-[calc(30*1.5rem)] overflow-y-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]"
               >
                 {content.text}
               </pre>
