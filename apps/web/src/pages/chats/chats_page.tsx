@@ -795,6 +795,16 @@ function compareQueuedMessagesByTimestamp(leftMessage: QueuedMessageRecord, righ
   return leftMessage.id.localeCompare(rightMessage.id);
 }
 
+function compareSessionsByLatestActivity(leftSession: SessionRecord, rightSession: SessionRecord): number {
+  const leftTimestamp = new Date(leftSession.updatedAt).getTime();
+  const rightTimestamp = new Date(rightSession.updatedAt).getTime();
+  if (leftTimestamp !== rightTimestamp) {
+    return rightTimestamp - leftTimestamp;
+  }
+
+  return leftSession.id.localeCompare(rightSession.id);
+}
+
 function hasVisibleTranscriptMessage(
   message: SessionMessageRecord,
   options: { includeThinking?: boolean } = {},
@@ -1843,6 +1853,9 @@ function ChatsPageContent() {
   const activeSessions = useMemo(() => {
     return data.Sessions.filter((session) => !isArchivedSession(session));
   }, [data.Sessions]);
+  const latestActiveSession = useMemo(() => {
+    return [...activeSessions].sort(compareSessionsByLatestActivity)[0] ?? null;
+  }, [activeSessions]);
   const sessionsByAgentId = useMemo(() => {
     const nextMap = new Map<string, SessionRecord[]>();
 
@@ -1853,9 +1866,7 @@ function ChatsPageContent() {
     }
 
     for (const sessions of nextMap.values()) {
-      sessions.sort((leftSession, rightSession) => {
-        return new Date(rightSession.updatedAt).getTime() - new Date(leftSession.updatedAt).getTime();
-      });
+      sessions.sort(compareSessionsByLatestActivity);
     }
 
     return nextMap;
@@ -1932,6 +1943,21 @@ function ChatsPageContent() {
 
     window.localStorage.setItem(CHAT_LIST_WIDTH_STORAGE_KEY, String(chatListWidth));
   }, [chatListWidth]);
+
+  useEffect(() => {
+    if (search.agentId || search.sessionId || !latestActiveSession) {
+      return;
+    }
+
+    void navigate({
+      replace: true,
+      to: "/chats",
+      search: {
+        agentId: latestActiveSession.agentId,
+        sessionId: latestActiveSession.id,
+      },
+    });
+  }, [latestActiveSession, navigate, search.agentId, search.sessionId]);
 
   useEffect(() => {
     const hasSelectedChatTarget = Boolean(search.agentId || search.sessionId);
