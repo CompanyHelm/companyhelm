@@ -10,6 +10,7 @@ import { AgentEnvironmentShellPrivilegeProbe, type AgentEnvironmentShellPrivileg
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 type TmuxCommandRun = {
+  completionChannel: string;
   rcFile: string;
   outputEndMarker: string;
   outputStartMarker: string;
@@ -23,11 +24,11 @@ type TmuxCommandRun = {
 export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly DEFAULT_EXECUTE_COMMAND_YIELD_MS = 1_000;
   private static readonly DEFAULT_READ_OUTPUT_LIMIT = 4_000;
-  private static readonly POLL_INTERVAL_MILLISECONDS = 100;
   private static readonly REMOTE_COMMAND_TIMEOUT_BUFFER_SECONDS = 10;
   private static readonly REMOTE_COMMAND_TIMEOUT_SECONDS = 30;
   private static readonly SESSION_LIST_FIELD_SEPARATOR = "|";
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
+  private static readonly WAIT_TIMEOUT_EXIT_CODE = 124;
   private readonly environmentShell: AgentEnvironmentShellInterface;
   private readonly privilegeProbe: AgentEnvironmentShellPrivilegeProbe;
   private homeDirectory: string | null = null;
@@ -59,7 +60,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       interactionTimeoutSeconds,
     );
     const waitResult = await this.waitForTmuxCommand(
-      commandRun.rcFile,
+      commandRun,
       yieldTimeMilliseconds,
       interactionTimeoutSeconds,
     );
@@ -96,18 +97,15 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     await this.ensureExistingTmuxSession(sessionId, interactionTimeoutSeconds);
     const startOffset = await this.captureTmuxOutputLength(sessionId, interactionTimeoutSeconds);
     await this.sendInputToTmuxSession(sessionId, input, false, interactionTimeoutSeconds);
-    const waitResult = await this.waitForSessionExit(
-      sessionId,
-      resolvedYieldTimeMilliseconds,
-      interactionTimeoutSeconds,
-    );
-    const output = waitResult.completed
+    await AgentEnvironmentTmuxPty.delay(resolvedYieldTimeMilliseconds);
+    const completed = !await this.hasTmuxSession(sessionId, interactionTimeoutSeconds);
+    const output = completed
       ? ""
       : await this.captureTmuxOutputSince(sessionId, startOffset, interactionTimeoutSeconds);
 
     return {
-      completed: waitResult.completed,
-      exitCode: waitResult.exitCode,
+      completed,
+      exitCode: null,
       output,
       sessionId,
     };
@@ -312,6 +310,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   ): Promise<TmuxCommandRun> {
     const commandRunId = randomUUID().replaceAll("-", "");
     const commandFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.command.sh`;
+    const completionChannel = `companyhelm-command-${commandRunId}`;
     const rcFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.rc`;
     const outputStartMarker = `__COMPANYHELM_OUTPUT_START_${commandRunId}__`;
     const outputEndMarker = `__COMPANYHELM_OUTPUT_END_${commandRunId}__`;
@@ -326,10 +325,12 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       "rc=$?",
       `rm -f ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
       `printf '%s' "$rc" > ${AgentEnvironmentTmuxPty.shellQuote(rcFile)}`,
+      `tmux wait-for -S ${AgentEnvironmentTmuxPty.shellQuote(completionChannel)}`,
     ].join("; ");
     await this.sendInputToTmuxSession(sessionId, wrapperCommand, true, timeoutSeconds);
 
     return {
+      completionChannel,
       rcFile,
       outputEndMarker,
       outputStartMarker,
@@ -337,16 +338,15 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   }
 
   private async waitForTmuxCommand(
-    rcFile: string,
+    commandRun: TmuxCommandRun,
     yieldTimeMilliseconds: number,
     timeoutSeconds: number,
   ): Promise<{
     completed: boolean;
     exitCode: number | null;
   }> {
-    const deadline = Date.now() + yieldTimeMilliseconds;
-    while (true) {
-      const exitCode = await this.readExitCodeIfPresent(rcFile, timeoutSeconds);
+    if (yieldTimeMilliseconds <= 0) {
+      const exitCode = await this.readExitCodeIfPresent(commandRun.rcFile, timeoutSeconds);
       if (exitCode !== null) {
         return {
           completed: true,
@@ -354,51 +354,40 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
         };
       }
 
-      const remainingMilliseconds = deadline - Date.now();
-      if (remainingMilliseconds <= 0) {
-        return {
-          completed: false,
-          exitCode: null,
-        };
-      }
-
-      await AgentEnvironmentTmuxPty.delay(Math.min(
-        AgentEnvironmentTmuxPty.POLL_INTERVAL_MILLISECONDS,
-        remainingMilliseconds,
-      ));
+      return {
+        completed: false,
+        exitCode: null,
+      };
     }
-  }
 
-  private async waitForSessionExit(
-    sessionId: string,
-    yieldTimeMilliseconds: number,
-    timeoutSeconds: number,
-  ): Promise<{
-    completed: boolean;
-    exitCode: number | null;
-  }> {
-    const deadline = Date.now() + yieldTimeMilliseconds;
-    while (true) {
-      if (!await this.hasTmuxSession(sessionId, timeoutSeconds)) {
-        return {
-          completed: true,
-          exitCode: null,
-        };
+    const waitResult = await this.runRemoteCommand(
+      `timeout ${AgentEnvironmentTmuxPty.formatWaitTimeoutDuration(yieldTimeMilliseconds)}s tmux wait-for ${AgentEnvironmentTmuxPty.shellQuote(commandRun.completionChannel)}`,
+      timeoutSeconds,
+    );
+    if (waitResult.exitCode === 0) {
+      const exitCode = await this.readExitCodeIfPresent(commandRun.rcFile, timeoutSeconds);
+      if (exitCode === null) {
+        throw new Error(
+          `tmux command signaled completion without an exit code file: ${commandRun.rcFile}`,
+        );
       }
 
-      const remainingMilliseconds = deadline - Date.now();
-      if (remainingMilliseconds <= 0) {
-        return {
-          completed: false,
-          exitCode: null,
-        };
-      }
-
-      await AgentEnvironmentTmuxPty.delay(Math.min(
-        AgentEnvironmentTmuxPty.POLL_INTERVAL_MILLISECONDS,
-        remainingMilliseconds,
-      ));
+      return {
+        completed: true,
+        exitCode,
+      };
     }
+
+    if (waitResult.exitCode === AgentEnvironmentTmuxPty.WAIT_TIMEOUT_EXIT_CODE) {
+      return {
+        completed: false,
+        exitCode: null,
+      };
+    }
+
+    throw new Error(
+      `Sandbox command failed (${waitResult.exitCode}): ${waitResult.stdout || commandRun.completionChannel}`,
+    );
   }
 
   private async captureTmuxOutput(sessionId: string, timeoutSeconds: number): Promise<string> {
@@ -636,6 +625,10 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     await new Promise((resolve) => {
       setTimeout(resolve, milliseconds);
     });
+  }
+
+  private static formatWaitTimeoutDuration(yieldTimeMilliseconds: number): string {
+    return (yieldTimeMilliseconds / 1000).toString();
   }
 
   private static shellQuote(value: string): string {

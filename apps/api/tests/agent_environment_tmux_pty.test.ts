@@ -12,6 +12,7 @@ type FakeTmuxSession = {
 class FakeEnvironmentShell {
   readonly commandFiles = new Map<string, string>();
   readonly commandTimeouts = [] as Array<{ command: string; timeoutSeconds?: number }>;
+  readonly completionChannels = new Set<string>();
   readonly rcFiles = new Map<string, string>();
   readonly executedCommands = [] as string[];
   readonly sessions = new Map<string, FakeTmuxSession>();
@@ -168,6 +169,7 @@ class FakeEnvironmentShell {
       const session = this.sessions.get(sessionId);
       assert.ok(session);
       const commandFilePath = command.match(/\/tmp\/companyhelm\/[A-Za-z0-9-]+\.command\.sh/)?.[0];
+      const completionChannel = command.match(/companyhelm-command-[A-Za-z0-9]+/)?.[0];
       const rcFilePath = command.match(/\/tmp\/companyhelm\/[A-Za-z0-9-]+\.rc/)?.[0];
 
       if (commandFilePath && rcFilePath) {
@@ -198,6 +200,9 @@ class FakeEnvironmentShell {
             session.output += `${outputEndMarker}\n\n`;
           }
           this.rcFiles.set(rcFilePath, "0");
+          if (completionChannel) {
+            this.completionChannels.add(completionChannel);
+          }
         }
       } else {
         const literalInput = /-l -- '([^']*)'/.exec(command)?.[1] ?? "";
@@ -209,6 +214,15 @@ class FakeEnvironmentShell {
 
       return {
         exitCode: 0,
+        stdout: "",
+      };
+    }
+
+    if (command.startsWith("timeout ") && command.includes(" tmux wait-for ")) {
+      const completionChannel = /tmux wait-for '([^']+)'/.exec(command)?.[1];
+      assert.ok(completionChannel);
+      return {
+        exitCode: this.completionChannels.has(completionChannel) ? 0 : 124,
         stdout: "",
       };
     }
@@ -314,6 +328,9 @@ test("AgentEnvironmentTmuxPty returns immediately when a tmux command completes 
   assert.equal(result.completed, true);
   assert.equal(result.exitCode, 0);
   assert.equal(result.output, "ran: echo done");
+  assert.ok(fakeEnvironmentShell.executedCommands.some((command) => {
+    return command.startsWith("timeout 5s tmux wait-for ");
+  }));
 });
 
 test("AgentEnvironmentTmuxPty uses the provided logical session name when creating tmux sessions", async () => {
@@ -460,11 +477,30 @@ test("AgentEnvironmentTmuxPty keeps remote helper timeouts above the requested y
     yield_time_ms: 35_000,
   });
 
-  const rcReadCommand = fakeEnvironmentShell.commandTimeouts.find((call) => {
-    return call.command.includes(".rc");
+  const waitForCommand = fakeEnvironmentShell.commandTimeouts.find((call) => {
+    return call.command.includes("tmux wait-for ");
   });
 
-  assert.equal(rcReadCommand?.timeoutSeconds, 45);
+  assert.equal(waitForCommand?.timeoutSeconds, 45);
+});
+
+test("AgentEnvironmentTmuxPty waits for the yield window once when sending input instead of polling session state", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  const createdSession = await pty.executeCommand({
+    command: "tail -f log.txt",
+    yield_time_ms: 0,
+  });
+  fakeEnvironmentShell.executedCommands.length = 0;
+
+  await pty.sendInput(createdSession.sessionId, "q\n", 1);
+
+  const hasSessionCalls = fakeEnvironmentShell.executedCommands.filter((command) => {
+    return command.startsWith("tmux has-session -t ");
+  });
+
+  assert.equal(hasSessionCalls.length, 2);
 });
 
 test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusable session ids", async () => {
