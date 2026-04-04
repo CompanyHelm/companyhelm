@@ -1157,25 +1157,33 @@ function AssistantTranscriptMessage({ text }: { text: string }) {
   );
 }
 
-function ChatsThinkingIndicator({ visible }: { visible: boolean }) {
+function ChatsThinkingIndicator({
+  className,
+  visible,
+}: {
+  className?: string;
+  visible: boolean;
+}) {
+  if (!visible) {
+    return null;
+  }
+
   return (
     <>
       <style>{CHATS_THINKING_GRADIENT_KEYFRAMES}</style>
-      <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex h-9 shrink-0 items-end pt-2`}>
-        {visible ? (
-          <p
-            className="whitespace-pre-wrap text-sm font-medium text-transparent"
-            style={{
-              animation: "chats-thinking-gradient 2.2s linear infinite",
-              backgroundClip: "text",
-              backgroundImage: "linear-gradient(90deg, rgba(250,250,250,0.32) 0%, rgba(250,250,250,0.95) 48%, rgba(250,250,250,0.32) 100%)",
-              backgroundSize: "200% 100%",
-              WebkitBackgroundClip: "text",
-            }}
-          >
-            Thinking...
-          </p>
-        ) : null}
+      <div className={className}>
+        <p
+          className="whitespace-pre-wrap text-sm font-medium text-transparent"
+          style={{
+            animation: "chats-thinking-gradient 2.2s linear infinite",
+            backgroundClip: "text",
+            backgroundImage: "linear-gradient(90deg, rgba(250,250,250,0.32) 0%, rgba(250,250,250,0.95) 48%, rgba(250,250,250,0.32) 100%)",
+            backgroundSize: "200% 100%",
+            WebkitBackgroundClip: "text",
+          }}
+        >
+          Thinking...
+        </p>
       </div>
     </>
   );
@@ -3526,7 +3534,6 @@ function ChatsPageContent() {
               sessionMessages={selectedSessionMessages}
               transcriptScrollRef={transcriptScrollRef}
             />
-            <ChatsThinkingIndicator visible={selectedSession.isThinking} />
           </CardContent>
         ) : null}
 
@@ -3633,6 +3640,10 @@ function ChatsPageContent() {
                     ) : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    <ChatsThinkingIndicator
+                      className="flex h-8 items-center"
+                      visible={selectedSession?.isThinking ?? false}
+                    />
                     {isSelectedSessionRunning ? (
                       <Button
                         aria-label={queueDraftAriaLabel}
