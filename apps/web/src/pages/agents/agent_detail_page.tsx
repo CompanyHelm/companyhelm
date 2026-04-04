@@ -442,6 +442,7 @@ function AgentDetailPageContent() {
                 systemPrompt: value,
               });
             }}
+            readOnlyFormat="markdown"
             value={agent.systemPrompt}
           />
         </CardContent>
