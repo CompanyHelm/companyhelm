@@ -2,6 +2,8 @@ name: Publish CompanyHelm NG App Images
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -37,12 +39,12 @@ jobs:
         run: |
           REPOSITORY_URI="$(aws ecr describe-repositories \
             --region "$AWS_REGION" \
-            --repository-names companyhelm-ng-api \
+            --repository-names companyhelm/api \
             --query 'repositories[0].repositoryUri' \
             --output text)"
 
           if [ -z "$REPOSITORY_URI" ] || [ "$REPOSITORY_URI" = "None" ]; then
-            echo "companyhelm-ng-api private ECR repository was not found" >&2
+            echo "companyhelm/api private ECR repository was not found" >&2
             exit 1
           fi
 
@@ -63,15 +65,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
-            echo "Unsupported ref: $GITHUB_REF" >&2
-            exit 1
-          fi
-
-          git fetch origin main --depth=1
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-
-          IMAGE_TAGS=("$ECR_REPOSITORY:${GITHUB_REF_NAME#v}")
+          case "$GITHUB_REF" in
+            refs/heads/main)
+              SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
+              IMAGE_TAGS=("$ECR_REPOSITORY:main-$SHORT_SHA")
+              ;;
+            refs/tags/v*)
+              git fetch origin main --depth=1
+              git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+              IMAGE_TAGS=("$ECR_REPOSITORY:${GITHUB_REF_NAME#v}")
+              ;;
+            *)
+              echo "Unsupported ref: $GITHUB_REF" >&2
+              exit 1
+              ;;
+          esac
 
           TAG_ARGS=()
           echo "Publishing image tags:"
@@ -114,12 +122,12 @@ jobs:
         run: |
           REPOSITORY_URI="$(aws ecr describe-repositories \
             --region "$AWS_REGION" \
-            --repository-names companyhelm-ng-web \
+            --repository-names companyhelm/web \
             --query 'repositories[0].repositoryUri' \
             --output text)"
 
           if [ -z "$REPOSITORY_URI" ] || [ "$REPOSITORY_URI" = "None" ]; then
-            echo "companyhelm-ng-web private ECR repository was not found" >&2
+            echo "companyhelm/web private ECR repository was not found" >&2
             exit 1
           fi
 
@@ -140,15 +148,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "$GITHUB_REF" != refs/tags/v* ]]; then
-            echo "Unsupported ref: $GITHUB_REF" >&2
-            exit 1
-          fi
-
-          git fetch origin main --depth=1
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-
-          IMAGE_TAGS=("$ECR_REPOSITORY:${GITHUB_REF_NAME#v}")
+          case "$GITHUB_REF" in
+            refs/heads/main)
+              SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
+              IMAGE_TAGS=("$ECR_REPOSITORY:main-$SHORT_SHA")
+              ;;
+            refs/tags/v*)
+              git fetch origin main --depth=1
+              git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+              IMAGE_TAGS=("$ECR_REPOSITORY:${GITHUB_REF_NAME#v}")
+              ;;
+            *)
+              echo "Unsupported ref: $GITHUB_REF" >&2
+              exit 1
+              ;;
+          esac
 
           TAG_ARGS=()
           echo "Publishing image tags:"
