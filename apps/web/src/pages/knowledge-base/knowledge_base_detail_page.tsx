@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
-import ReactMarkdown from "react-markdown";
 import { PencilIcon } from "lucide-react";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -90,73 +90,7 @@ function renderSavedTimestamp(): string {
 }
 
 function KnowledgeBaseMarkdown({ content, emptyLabel }: { content: string; emptyLabel: string }) {
-  if (content.trim().length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
-  }
-
-  return (
-    <div className="min-w-0 w-full [&>*:first-child]:mt-0">
-      <ReactMarkdown
-        components={{
-          a: ({ children, ...anchorProps }) => (
-            <a
-              {...anchorProps}
-              className="font-medium text-foreground underline underline-offset-4"
-              rel="noreferrer"
-              target="_blank"
-            >
-              {children}
-            </a>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="mt-4 min-w-0 border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
-              {children}
-            </blockquote>
-          ),
-          code: ({ children, className, ...codeProps }) => (
-            <code
-              {...codeProps}
-              className={[
-                className,
-                "max-w-full break-words [overflow-wrap:anywhere]",
-                "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
-              ].filter(Boolean).join(" ")}
-            >
-              {children}
-            </code>
-          ),
-          h1: ({ children }) => (
-            <h1 className="mt-6 min-w-0 text-xl font-semibold leading-8 text-foreground">{children}</h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="mt-5 min-w-0 text-lg font-semibold leading-7 text-foreground">{children}</h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="mt-4 min-w-0 text-base font-semibold leading-6 text-foreground">{children}</h3>
-          ),
-          li: ({ children }) => (
-            <li className="min-w-0 pl-1 leading-6 marker:text-muted-foreground [&>p]:my-0 [&>ul]:mt-2 [&>ol]:mt-2">
-              {children}
-            </li>
-          ),
-          ol: ({ children }) => <ol className="mt-4 ml-5 grid min-w-0 list-decimal gap-1.5">{children}</ol>,
-          p: ({ children }) => (
-            <p className="mt-3 min-w-0 text-sm leading-6 text-pretty text-foreground break-words [overflow-wrap:anywhere]">
-              {children}
-            </p>
-          ),
-          pre: ({ children }) => (
-            <pre className="mt-4 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
-              {children}
-            </pre>
-          ),
-          ul: ({ children }) => <ul className="mt-4 ml-5 grid min-w-0 list-disc gap-1.5">{children}</ul>,
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
+  return <MarkdownContent content={content} emptyClassName="text-muted-foreground" emptyLabel={emptyLabel} />;
 }
 
 function KnowledgeBaseDetailPageFallback() {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -122,46 +122,11 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             <div className="grid gap-2">
               <p className="text-xs font-medium text-foreground">Instructions</p>
               <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs/relaxed text-muted-foreground">
-                <ReactMarkdown
-                  components={{
-                    a: ({ children, ...anchorProps }) => (
-                      <a
-                        {...anchorProps}
-                        className="font-medium text-foreground underline underline-offset-4"
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        {children}
-                      </a>
-                    ),
-                    code: ({ children, className, ...codeProps }) => {
-                      const inline = !className;
-                      if (inline) {
-                        return (
-                          <code
-                            {...codeProps}
-                            className="rounded bg-background px-1 py-0.5 font-mono text-[11px] text-foreground"
-                          >
-                            {children}
-                          </code>
-                        );
-                      }
-
-                      return (
-                        <code
-                          {...codeProps}
-                          className="block overflow-x-auto rounded-md bg-background px-3 py-2 font-mono text-[11px] text-foreground"
-                        >
-                          {children}
-                        </code>
-                      );
-                    },
-                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                    pre: ({ children }) => <div className="my-2 last:mb-0">{children}</div>,
-                  }}
-                >
-                  {selectedProvider.authorizationInstructionsMarkdown}
-                </ReactMarkdown>
+                <MarkdownContent
+                  content={selectedProvider.authorizationInstructionsMarkdown}
+                  tone="muted"
+                  variant="compact"
+                />
               </div>
             </div>
           ) : null}

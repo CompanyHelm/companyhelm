@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2Icon, PencilIcon } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -217,56 +217,7 @@ export function EditableField(props: EditableFieldProps) {
           (renderedValue && renderedValue.length > 0) ? (
             shouldRenderMarkdown ? (
               <div className="min-w-0 text-sm text-foreground">
-                <ReactMarkdown
-                  components={{
-                    a: ({ children, ...anchorProps }) => (
-                      <a
-                        {...anchorProps}
-                        className="font-medium text-foreground underline underline-offset-4"
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        {children}
-                      </a>
-                    ),
-                    blockquote: ({ children }) => (
-                      <blockquote className="mt-3 min-w-0 border-l-2 border-border/70 pl-4 text-muted-foreground [overflow-wrap:anywhere]">
-                        {children}
-                      </blockquote>
-                    ),
-                    code: ({ children, className, ...codeProps }) => (
-                      <code
-                        {...codeProps}
-                        className={[
-                          className,
-                          "max-w-full break-words [overflow-wrap:anywhere]",
-                          "rounded bg-muted px-1 py-0.5 font-mono text-[13px] text-foreground",
-                        ].filter(Boolean).join(" ")}
-                      >
-                        {children}
-                      </code>
-                    ),
-                    li: ({ children }) => (
-                      <li className="min-w-0 pl-1 leading-6 marker:text-muted-foreground [&>p]:my-0 [&>ul]:mt-2 [&>ol]:mt-2">
-                        {children}
-                      </li>
-                    ),
-                    ol: ({ children }) => <ol className="mt-3 ml-5 grid min-w-0 list-decimal gap-1.5">{children}</ol>,
-                    p: ({ children }) => (
-                      <p className="mt-3 min-w-0 whitespace-pre-wrap leading-6 text-foreground break-words [overflow-wrap:anywhere] first:mt-0">
-                        {children}
-                      </p>
-                    ),
-                    pre: ({ children }) => (
-                      <pre className="mt-3 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 bg-muted/30 px-4 py-3 font-mono text-[13px] leading-6 text-foreground [&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]">
-                        {children}
-                      </pre>
-                    ),
-                    ul: ({ children }) => <ul className="mt-3 ml-5 grid min-w-0 list-disc gap-1.5">{children}</ul>,
-                  }}
-                >
-                  {renderedValue}
-                </ReactMarkdown>
+                <MarkdownContent content={renderedValue} />
               </div>
             ) : (
               <p className="whitespace-pre-wrap text-sm text-foreground">
