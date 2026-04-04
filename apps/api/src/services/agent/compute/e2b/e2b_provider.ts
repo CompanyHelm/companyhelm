@@ -225,16 +225,6 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       apiKey: definition.apiKey,
       timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
     });
-    const info = await sandbox.getInfo();
-    const nextMemoryGb = Math.max(1, Math.ceil(info.memoryMB / 1024)) || environment.memoryGb;
-    if (environment.cpuCount !== info.cpuCount || environment.memoryGb !== nextMemoryGb) {
-      await this.catalogService.updateEnvironmentResources(transactionProvider, environment.id, {
-        cpuCount: info.cpuCount || environment.cpuCount,
-        diskSpaceGb: environment.diskSpaceGb,
-        memoryGb: nextMemoryGb,
-        metadata: environment.metadata,
-      });
-    }
 
     return new AgentComputeE2bShell(sandbox);
   }
