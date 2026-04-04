@@ -1,3 +1,4 @@
+import type { Logger as PinoLogger } from "pino";
 import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
 
 type DaytonaRemoteSandbox = {
@@ -17,6 +18,20 @@ type DaytonaRemoteSandbox = {
   };
 };
 
+type DaytonaCommandError = {
+  code?: number | string;
+  message?: string;
+  name?: string;
+};
+
+type ShellLogger = Pick<PinoLogger, "warn">;
+
+const NOOP_LOGGER = {
+  warn() {
+    return undefined;
+  },
+} as ShellLogger;
+
 /**
  * Adapts the Daytona sandbox SDK into the generic environment shell contract. It intentionally
  * exposes only direct remote command execution so shared PTY/session managers can be layered on
@@ -24,10 +39,12 @@ type DaytonaRemoteSandbox = {
  */
 export class AgentComputeDaytonaShell extends AgentEnvironmentShellInterface {
   private readonly remoteSandbox: DaytonaRemoteSandbox;
+  private readonly logger: ShellLogger;
 
-  constructor(remoteSandbox: DaytonaRemoteSandbox) {
+  constructor(remoteSandbox: DaytonaRemoteSandbox, logger: ShellLogger = NOOP_LOGGER) {
     super();
     this.remoteSandbox = remoteSandbox;
+    this.logger = logger;
   }
 
   async executeCommand(
@@ -39,16 +56,40 @@ export class AgentComputeDaytonaShell extends AgentEnvironmentShellInterface {
     exitCode: number;
     stdout: string;
   }> {
-    const result = await this.remoteSandbox.process.executeCommand(
-      command,
-      workingDirectory,
-      environment,
-      timeoutSeconds,
-    );
+    try {
+      const result = await this.remoteSandbox.process.executeCommand(
+        command,
+        workingDirectory,
+        environment,
+        timeoutSeconds,
+      );
 
-    return {
-      exitCode: result.exitCode,
-      stdout: result.artifacts?.stdout ?? result.result,
-    };
+      return {
+        exitCode: result.exitCode,
+        stdout: result.artifacts?.stdout ?? result.result,
+      };
+    } catch (error) {
+      if (this.isTimeoutError(error as DaytonaCommandError)) {
+        this.logger.warn({
+          command,
+          err: error,
+          timeoutSeconds: timeoutSeconds ?? null,
+          workingDirectory: workingDirectory ?? null,
+        }, "daytona shell command timed out");
+      }
+      throw error;
+    }
+  }
+
+  private isTimeoutError(error: DaytonaCommandError): boolean {
+    const code = typeof error.code === "string" ? error.code.toLowerCase() : "";
+    const name = typeof error.name === "string" ? error.name.toLowerCase() : "";
+    const message = typeof error.message === "string" ? error.message.toLowerCase() : "";
+
+    return code.includes("timeout")
+      || code.includes("deadline")
+      || name.includes("timeout")
+      || message.includes("timed out")
+      || message.includes("deadline exceeded");
   }
 }

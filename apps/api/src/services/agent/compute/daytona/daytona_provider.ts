@@ -1,6 +1,7 @@
 import { Daytona } from "@daytonaio/sdk";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import { ApiLogger } from "../../../../log/api_logger.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
 import {
@@ -20,15 +21,18 @@ import { AgentComputeDaytonaShell } from "./daytona_shell.ts";
 export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly logger: ApiLogger;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
+    @inject(ApiLogger) logger: ApiLogger,
   ) {
     super();
     this.catalogService = catalogService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
+    this.logger = logger;
   }
 
   getProvider(): "daytona" {
@@ -228,7 +232,11 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       });
     }
 
-    return new AgentComputeDaytonaShell(remoteSandbox);
+    return new AgentComputeDaytonaShell(remoteSandbox, this.logger.child({
+      component: "agent_compute_daytona_shell",
+      provider: "daytona",
+      providerEnvironmentId: environment.providerEnvironmentId,
+    }));
   }
 
   private createDaytonaClient(apiKey: string, apiUrl: string): Daytona {

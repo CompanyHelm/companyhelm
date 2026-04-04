@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { AgentComputeE2bShell } from "../src/services/agent/compute/e2b/e2b_shell.ts";
 
 test("AgentComputeE2bShell returns command output on successful execution", async () => {
@@ -76,4 +76,27 @@ test("AgentComputeE2bShell rethrows unexpected sandbox errors", async () => {
     },
     /network down/,
   );
+});
+
+test("AgentComputeE2bShell warns when the E2B command request times out", async () => {
+  const warn = vi.fn();
+  const shell = new AgentComputeE2bShell({
+    commands: {
+      async run() {
+        throw new Error("[deadline_exceeded] the operation timed out: This error is likely due to exceeding 'timeoutMs'.");
+      },
+    },
+  } as never, {
+    warn,
+  });
+
+  await assert.rejects(
+    async () => {
+      await shell.executeCommand("pwd", "/home/user/workspace", undefined, 30);
+    },
+    /deadline_exceeded/,
+  );
+
+  assert.equal(warn.mock.calls.length, 1);
+  assert.equal(warn.mock.calls[0]?.[1], "e2b shell command timed out");
 });
