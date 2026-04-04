@@ -459,6 +459,20 @@ function resolveInlineImageDataUrl(image: {
   return `data:${image.mimeType};base64,${image.base64EncodedImage}`;
 }
 
+function hasDraggedFiles(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) {
+    return false;
+  }
+  if (dataTransfer.files.length > 0) {
+    return true;
+  }
+  if (dataTransfer.items.length > 0) {
+    return Array.from(dataTransfer.items).some((item) => item.kind === "file");
+  }
+
+  return Array.from(dataTransfer.types).includes("Files");
+}
+
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
   const lineHeight = Number.parseFloat(computedStyle.lineHeight) || 20;
@@ -2585,7 +2599,7 @@ function ChatsPageContent() {
     event.target.value = "";
   }, [addDraftImageFiles]);
   const handleComposerDragEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (event.dataTransfer.files.length === 0) {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
@@ -2594,7 +2608,7 @@ function ChatsPageContent() {
     setIsComposerDragActive(true);
   }, []);
   const handleComposerDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (event.dataTransfer.files.length === 0) {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
@@ -2602,7 +2616,7 @@ function ChatsPageContent() {
     event.dataTransfer.dropEffect = "copy";
   }, []);
   const handleComposerDragLeave = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (event.dataTransfer.files.length === 0) {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
@@ -2613,7 +2627,7 @@ function ChatsPageContent() {
     }
   }, []);
   const handleComposerDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (event.dataTransfer.files.length === 0) {
+    if (!hasDraggedFiles(event.dataTransfer)) {
       return;
     }
 
