@@ -3525,9 +3525,9 @@ function ChatsPageContent() {
               type="button"
             />
             <div
-              className={`rounded-[1.35rem] bg-input/20 ring-1 transition focus-within:ring-ring/40 ${
+              className={`relative overflow-hidden rounded-[1.35rem] bg-input/20 ring-1 transition focus-within:ring-ring/40 ${
                 isComposerDragActive
-                  ? "bg-primary/6 ring-primary/40"
+                  ? "bg-primary/8 ring-primary/50"
                   : "ring-input"
               }`}
               onDragEnter={handleComposerDragEnter}
@@ -3535,108 +3535,118 @@ function ChatsPageContent() {
               onDragOver={handleComposerDragOver}
               onDrop={handleComposerDrop}
             >
-              {selectedSession ? (
-                <ChatsQueuedMessagesComposerList
-                  steeringQueuedMessageId={steeringQueuedMessageId}
-                  deletingQueuedMessageId={deletingQueuedMessageId}
-                  isLoading={isLoadingQueuedMessages}
-                  onSteer={(queuedMessageId) => {
-                    void steerQueuedMessage(queuedMessageId);
-                  }}
-                  onDelete={(queuedMessageId) => {
-                    void deleteQueuedMessage(queuedMessageId);
-                  }}
-                  queuedMessages={queuedMessages}
-                />
-              ) : null}
-              <ChatsDraftImagesPreview
-                draftImages={draftImages}
-                onRemove={removeDraftImage}
-              />
-              <div>
-                <input
-                  ref={draftImageFileInputRef}
-                  accept={CHAT_IMAGE_INPUT_ACCEPT}
-                  className="hidden"
-                  multiple
-                  onChange={handleDraftImageInputChange}
-                  type="file"
-                />
-                <textarea
-                  id="chat-draft-message"
-                  ref={draftTextareaRef}
-                  className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-2 pb-1.5 text-sm leading-5 outline-none"
-                  onChange={(event) => {
-                    setDraftMessage(event.target.value);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
-                      return;
-                    }
-
-                    event.preventDefault();
-                    void submitDraft();
-                  }}
-                  placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
-                  rows={CHAT_DRAFT_MIN_LINES}
-                  value={draftMessage}
-                />
-              </div>
-              <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Button
-                    aria-label="Add images"
-                    className="h-7 w-7 shrink-0 rounded-full bg-background/60 px-0 text-muted-foreground shadow-none hover:bg-background/80 hover:text-foreground"
-                    onClick={openDraftImagePicker}
-                    title="Add JPEG or PNG images"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <PlusIcon className="size-3.5" />
-                  </Button>
-                  <ChatComposerModelPicker
-                    modelOptions={composerModelOptions}
-                    onModelChange={setComposerModelOptionId}
-                    onReasoningLevelChange={setComposerReasoningLevel}
-                    reasoningLevel={composerReasoningLevel}
-                    selectedModelOptionId={composerModelOptionId}
-                  />
-                  {selectedSession ? (
-                    <ChatsContextUsageIndicator
-                      currentContextTokens={selectedSession.currentContextTokens}
-                      isCompacting={selectedSession.isCompacting}
-                      maxContextTokens={selectedSession.maxContextTokens}
-                    />
-                  ) : null}
+              {isComposerDragActive ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[1.35rem] border border-dashed border-primary/60 bg-primary/10 px-6 text-center">
+                  <div className="grid gap-1">
+                    <p className="text-sm font-medium text-foreground">Drop JPEG or PNG images here</p>
+                    <p className="text-xs text-muted-foreground">They&apos;ll be attached to your next message.</p>
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {isSelectedSessionRunning ? (
-                    <Button
-                      aria-label={queueDraftAriaLabel}
-                      className="h-8 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.14em]"
-                      disabled={!canSubmitDraft}
-                      onClick={() => {
-                        void queueDraftMessage();
-                      }}
-                      title={queueDraftAriaLabel}
-                      type="button"
-                      variant="outline"
-                    >
-                      Queue
-                    </Button>
-                  ) : null}
-                  <Button
-                    aria-label={draftSubmitAriaLabel}
-                    className="h-8 w-8 shrink-0 rounded-full px-0"
-                    disabled={!canSubmitDraft}
-                    onClick={() => {
+              ) : null}
+              <div className={`transition ${isComposerDragActive ? "opacity-35" : "opacity-100"}`}>
+                {selectedSession ? (
+                  <ChatsQueuedMessagesComposerList
+                    steeringQueuedMessageId={steeringQueuedMessageId}
+                    deletingQueuedMessageId={deletingQueuedMessageId}
+                    isLoading={isLoadingQueuedMessages}
+                    onSteer={(queuedMessageId) => {
+                      void steerQueuedMessage(queuedMessageId);
+                    }}
+                    onDelete={(queuedMessageId) => {
+                      void deleteQueuedMessage(queuedMessageId);
+                    }}
+                    queuedMessages={queuedMessages}
+                  />
+                ) : null}
+                <ChatsDraftImagesPreview
+                  draftImages={draftImages}
+                  onRemove={removeDraftImage}
+                />
+                <div>
+                  <input
+                    ref={draftImageFileInputRef}
+                    accept={CHAT_IMAGE_INPUT_ACCEPT}
+                    className="hidden"
+                    multiple
+                    onChange={handleDraftImageInputChange}
+                    type="file"
+                  />
+                  <textarea
+                    id="chat-draft-message"
+                    ref={draftTextareaRef}
+                    className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-2 pb-1.5 text-sm leading-5 outline-none"
+                    onChange={(event) => {
+                      setDraftMessage(event.target.value);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+                        return;
+                      }
+
+                      event.preventDefault();
                       void submitDraft();
                     }}
-                    title={draftSubmitAriaLabel}
-                    type="button"
-                  >
-                    <SendHorizonalIcon className="size-3.5" />
-                  </Button>
+                    placeholder="Ask the agent to summarize a repo, draft a plan, or investigate a problem."
+                    rows={CHAT_DRAFT_MIN_LINES}
+                    value={draftMessage}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <Button
+                      aria-label="Add images"
+                      className="h-7 w-7 shrink-0 rounded-full bg-background/60 px-0 text-muted-foreground shadow-none hover:bg-background/80 hover:text-foreground"
+                      onClick={openDraftImagePicker}
+                      title="Add JPEG or PNG images"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <PlusIcon className="size-3.5" />
+                    </Button>
+                    <ChatComposerModelPicker
+                      modelOptions={composerModelOptions}
+                      onModelChange={setComposerModelOptionId}
+                      onReasoningLevelChange={setComposerReasoningLevel}
+                      reasoningLevel={composerReasoningLevel}
+                      selectedModelOptionId={composerModelOptionId}
+                    />
+                    {selectedSession ? (
+                      <ChatsContextUsageIndicator
+                        currentContextTokens={selectedSession.currentContextTokens}
+                        isCompacting={selectedSession.isCompacting}
+                        maxContextTokens={selectedSession.maxContextTokens}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {isSelectedSessionRunning ? (
+                      <Button
+                        aria-label={queueDraftAriaLabel}
+                        className="h-8 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.14em]"
+                        disabled={!canSubmitDraft}
+                        onClick={() => {
+                          void queueDraftMessage();
+                        }}
+                        title={queueDraftAriaLabel}
+                        type="button"
+                        variant="outline"
+                      >
+                        Queue
+                      </Button>
+                    ) : null}
+                    <Button
+                      aria-label={draftSubmitAriaLabel}
+                      className="h-8 w-8 shrink-0 rounded-full px-0"
+                      disabled={!canSubmitDraft}
+                      onClick={() => {
+                        void submitDraft();
+                      }}
+                      title={draftSubmitAriaLabel}
+                      type="button"
+                    >
+                      <SendHorizonalIcon className="size-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
