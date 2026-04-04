@@ -1,3 +1,5 @@
+import { ChatImageResize } from "./chat_image_resize";
+
 export type ChatComposerImageDraft = {
   base64EncodedImage: string;
   fileName: string;
@@ -21,7 +23,7 @@ export class ChatComposerImage {
       throw new Error("Only JPEG and PNG images are supported.");
     }
 
-    const dataUrl = await ChatComposerImage.readFileAsDataUrl(file);
+    const dataUrl = await ChatImageResize.toUploadDataUrl(file);
     const base64EncodedImage = ChatComposerImage.extractBase64Payload(dataUrl, file.type);
     if (base64EncodedImage.length === 0) {
       throw new Error(`Failed to read ${file.name}.`);
@@ -46,23 +48,5 @@ export class ChatComposerImage {
     }
 
     return dataUrl.slice(prefix.length);
-  }
-
-  private static readFileAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.onerror = () => {
-        reject(new Error(`Failed to read ${file.name}.`));
-      };
-      fileReader.onload = () => {
-        if (typeof fileReader.result !== "string") {
-          reject(new Error(`Failed to read ${file.name}.`));
-          return;
-        }
-
-        resolve(fileReader.result);
-      };
-      fileReader.readAsDataURL(file);
-    });
   }
 }
