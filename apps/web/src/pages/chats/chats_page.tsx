@@ -1565,6 +1565,9 @@ function ChatsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
+  const [pendingCreatedSessionTranscriptReloadId, setPendingCreatedSessionTranscriptReloadId] = useState<string | null>(
+    null,
+  );
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
   const [isChatListHidden, setIsChatListHidden] = useState(false);
   const [isMobileChatListOpen, setIsMobileChatListOpen] = useState(false);
@@ -2018,6 +2021,32 @@ function ChatsPageContent() {
   }, [loadTranscriptPage, selectedSession?.id]);
 
   useEffect(() => {
+    if (!selectedSession || pendingCreatedSessionTranscriptReloadId !== selectedSession.id) {
+      return;
+    }
+
+    // A brand-new session can miss its very first SessionMessageUpdated event because the backend
+    // materializes the queued initial user prompt asynchronously, while the websocket subscription
+    // only starts after the created session record is available in Relay. Re-fetch once after
+    // creation so the transcript catches that first persisted message even if the event raced past
+    // the subscription handshake.
+    const timeoutId = globalThis.setTimeout(() => {
+      void loadTranscriptPage({
+        mode: "replace",
+        sessionId: selectedSession.id,
+      }).finally(() => {
+        setPendingCreatedSessionTranscriptReloadId((currentSessionId) => {
+          return currentSessionId === selectedSession.id ? null : currentSessionId;
+        });
+      });
+    }, 250);
+
+    return () => {
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [loadTranscriptPage, pendingCreatedSessionTranscriptReloadId, selectedSession?.id]);
+
+  useEffect(() => {
     if (!selectedSession) {
       queuedMessagesRequestIdRef.current += 1;
       activeQueuedMessagesSessionIdRef.current = null;
@@ -2436,6 +2465,7 @@ function ChatsPageContent() {
           }
 
           setDraftMessage("");
+          setPendingCreatedSessionTranscriptReloadId(createdSession.id);
 
           try {
             setPendingCreatedSessionId(null);
