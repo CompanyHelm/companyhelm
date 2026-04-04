@@ -2185,6 +2185,33 @@ function ChatsPageContent() {
     transcriptNode.scrollTop = transcriptNode.scrollHeight;
   }, [transcriptMessages]);
 
+  useLayoutEffect(() => {
+    const transcriptNode = transcriptScrollRef.current;
+    if (!selectedSession || !transcriptNode || isLoadingTranscript || isLoadingOlderTranscript || !transcriptHasNextPage || !transcriptEndCursor) {
+      return;
+    }
+
+    const transcriptHasScrollableOverflow = transcriptNode.scrollHeight > transcriptNode.clientHeight + 1;
+    if (transcriptHasScrollableOverflow) {
+      return;
+    }
+
+    shouldStickTranscriptToBottomRef.current = false;
+    void loadTranscriptPage({
+      after: transcriptEndCursor,
+      mode: "prepend",
+      sessionId: selectedSession.id,
+    });
+  }, [
+    isLoadingOlderTranscript,
+    isLoadingTranscript,
+    loadTranscriptPage,
+    selectedSession,
+    transcriptEndCursor,
+    transcriptHasNextPage,
+    transcriptMessages,
+  ]);
+
   const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const transcriptNode = event.currentTarget;
     const distanceFromBottom =
