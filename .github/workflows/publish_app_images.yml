@@ -6,7 +6,7 @@ on:
       - "v*"
 
 env:
-  AWS_REGION: us-west-2
+  PUBLIC_ECR_REGION: us-east-1
 
 jobs:
   publish-api:
@@ -26,22 +26,24 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsApiImagePublisherRole
           role-session-name: github-actions-api-image-publish
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ env.PUBLIC_ECR_REGION }}
 
-      - name: Login to Amazon ECR
+      - name: Login to Amazon ECR Public
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
 
-      - name: Resolve API repository URI
+      - name: Resolve API public repository URI
         id: repository
         run: |
-          REPOSITORY_URI="$(aws ecr describe-repositories \
-            --region "$AWS_REGION" \
-            --repository-names companyhelm/api \
+          REPOSITORY_URI="$(aws ecr-public describe-repositories \
+            --region "$PUBLIC_ECR_REGION" \
+            --repository-names companyhelm-api \
             --query 'repositories[0].repositoryUri' \
             --output text)"
 
           if [ -z "$REPOSITORY_URI" ] || [ "$REPOSITORY_URI" = "None" ]; then
-            echo "companyhelm/api private ECR repository was not found" >&2
+            echo "companyhelm-api public ECR repository was not found" >&2
             exit 1
           fi
 
@@ -112,24 +114,26 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsWebImagePublisherRole
+          role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsFrontendImagePublisherRole
           role-session-name: github-actions-web-image-publish
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ env.PUBLIC_ECR_REGION }}
 
-      - name: Login to Amazon ECR
+      - name: Login to Amazon ECR Public
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
 
-      - name: Resolve web repository URI
+      - name: Resolve web public repository URI
         id: repository
         run: |
-          REPOSITORY_URI="$(aws ecr describe-repositories \
-            --region "$AWS_REGION" \
-            --repository-names companyhelm/web \
+          REPOSITORY_URI="$(aws ecr-public describe-repositories \
+            --region "$PUBLIC_ECR_REGION" \
+            --repository-names companyhelm-web \
             --query 'repositories[0].repositoryUri' \
             --output text)"
 
           if [ -z "$REPOSITORY_URI" ] || [ "$REPOSITORY_URI" = "None" ]; then
-            echo "companyhelm/web private ECR repository was not found" >&2
+            echo "companyhelm-web public ECR repository was not found" >&2
             exit 1
           fi
 
