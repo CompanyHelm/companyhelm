@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { inject, injectable } from "inversify";
+import type { Logger as PinoLogger } from "pino";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
+import { ApiLogger } from "../../../log/api_logger.ts";
 import { AgentEnvironmentInterface } from "../compute/environment_interface.ts";
 import type {
   AgentComputeProviderInterface,
@@ -24,6 +26,7 @@ import { SecretService } from "../../secrets/service.ts";
 export class AgentEnvironmentAccessService {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly leaseService: AgentEnvironmentLeaseService;
+  private readonly logger: PinoLogger;
   private readonly providerRegistry: AgentComputeProviderRegistry;
   private readonly provisioningService: AgentEnvironmentProvisioningService;
   private readonly selectionService: AgentEnvironmentSelectionService;
@@ -41,9 +44,21 @@ export class AgentEnvironmentAccessService {
         return {};
       },
     } as never,
+    @inject(ApiLogger) logger: ApiLogger = {
+      child() {
+        return {
+          warn() {
+            return undefined;
+          },
+        } as never;
+      },
+    } as never,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
+    this.logger = logger.child({
+      component: "agent_environment_access_service",
+    });
     this.providerRegistry = AgentEnvironmentAccessService.isProvider(providerRegistryOrProvider)
       ? {
           get() {
@@ -78,9 +93,13 @@ export class AgentEnvironmentAccessService {
 
       if (await this.canReuseEnvironment(transactionProvider, environment)) {
         const reactivatedLease = await this.leaseService.activateLease(transactionProvider, existingLease.id, ownerToken);
-        const environmentShell = await this.providerRegistry
-          .get(environment.provider)
-          .createShell(transactionProvider, environment);
+        const environmentShell = await this.createEnvironmentShell(
+          transactionProvider,
+          agentId,
+          sessionId,
+          environment,
+          true,
+        );
         const pty = new AgentEnvironmentTmuxPty(environmentShell);
         return new AgentSessionEnvironment(
           transactionProvider,
@@ -114,9 +133,13 @@ export class AgentEnvironmentAccessService {
       ownerToken,
       sessionId,
     });
-    const environmentShell = await this.providerRegistry
-      .get(selectedEnvironment.provider)
-      .createShell(transactionProvider, selectedEnvironment);
+    const environmentShell = await this.createEnvironmentShell(
+      transactionProvider,
+      agentId,
+      sessionId,
+      selectedEnvironment,
+      false,
+    );
     const pty = new AgentEnvironmentTmuxPty(environmentShell);
 
     return new AgentSessionEnvironment(
@@ -141,6 +164,37 @@ export class AgentEnvironmentAccessService {
         .getEnvironmentStatus(transactionProvider, environment) !== "unhealthy";
     } catch {
       return false;
+    }
+  }
+
+  private async createEnvironmentShell(
+    transactionProvider: TransactionProviderInterface,
+    agentId: string,
+    sessionId: string,
+    environment: AgentEnvironmentRecord,
+    reusedLease: boolean,
+  ) {
+    try {
+      return await this.providerRegistry
+        .get(environment.provider)
+        .createShell(transactionProvider, environment);
+    } catch (error) {
+      this.logger.warn({
+        agentId,
+        companyId: environment.companyId,
+        environmentId: environment.id,
+        err: error,
+        provider: environment.provider,
+        providerEnvironmentId: environment.providerEnvironmentId,
+        reusedLease,
+        sessionId,
+      }, "failed to connect to provider environment shell");
+      throw new Error(
+        `Failed to connect to ${environment.provider} environment ${environment.providerEnvironmentId} for session ${sessionId}.`,
+        {
+          cause: error,
+        },
+      );
     }
   }
 

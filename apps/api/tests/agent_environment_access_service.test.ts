@@ -4,7 +4,7 @@ import { AgentEnvironmentAccessService } from "../src/services/agent/environment
 
 class FakeEnvironmentShell {
   async executeCommand(command: string) {
-    if (command.includes("command -v tmux")) {
+    if (command.includes("tmux -V")) {
       return {
         exitCode: 0,
         stdout: "",
@@ -343,4 +343,105 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
   assert.equal(acquireLease.mock.calls.length, 1);
   assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-3");
   await environment.dispose();
+});
+
+test("AgentEnvironmentAccessService logs and wraps provider shell connection failures", async () => {
+  const connectError = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+  const warn = vi.fn();
+  const service = new AgentEnvironmentAccessService(
+    {
+      async loadSession() {
+        return {
+          agentId: "agent-1",
+          companyId: "company-1",
+          id: "session-1",
+        };
+      },
+    } as never,
+    {
+      async acquireLease() {
+        return {
+          id: "lease-3",
+        };
+      },
+      async expireElapsedLeases() {
+        return undefined;
+      },
+      async findOpenLeaseForSession() {
+        return null;
+      },
+      async markLeaseIdle() {
+        return undefined;
+      },
+      async releaseLease() {
+        return undefined;
+      },
+    } as never,
+    {
+      async createShell() {
+        throw connectError;
+      },
+      async getEnvironmentStatus() {
+        return "running";
+      },
+      getProvider() {
+        return "e2b";
+      },
+    } as never,
+    {
+      async provisionEnvironmentForSession() {
+        return {
+          agentId: "agent-1",
+          companyId: "company-1",
+          cpuCount: 2,
+          createdAt: new Date("2026-03-27T20:00:00.000Z"),
+          diskSpaceGb: 20,
+          displayName: null,
+          id: "environment-3",
+          lastSeenAt: null,
+          memoryGb: 4,
+          metadata: {},
+          platform: "linux" as const,
+          provider: "e2b" as const,
+          providerEnvironmentId: "sandbox-123",
+          updatedAt: new Date("2026-03-27T20:00:00.000Z"),
+        };
+      },
+    } as never,
+    {
+      async findReusableEnvironmentForAgentSession() {
+        return null;
+      },
+    } as never,
+    undefined,
+    {
+      child() {
+        return {
+          warn,
+        } as never;
+      },
+    } as never,
+  );
+
+  await assert.rejects(async () => {
+    await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
+  }, (error) => {
+    assert.equal(
+      error instanceof Error ? error.message : "",
+      "Failed to connect to e2b environment sandbox-123 for session session-1.",
+    );
+    assert.equal(error instanceof Error ? error.cause : null, connectError);
+    return true;
+  });
+
+  assert.deepEqual(warn.mock.calls, [[{
+    agentId: "agent-1",
+    companyId: "company-1",
+    environmentId: "environment-3",
+    err: connectError,
+    provider: "e2b",
+    providerEnvironmentId: "sandbox-123",
+    reusedLease: false,
+    sessionId: "session-1",
+  }, "failed to connect to provider environment shell"]]);
 });
