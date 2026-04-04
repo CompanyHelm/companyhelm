@@ -219,7 +219,7 @@ class FakeEnvironmentShell {
     }
 
     if (command.startsWith("timeout ") && command.includes(" tmux wait-for ")) {
-      const completionChannel = /tmux wait-for '([^']+)'/.exec(command)?.[1];
+      const completionChannel = /tmux wait-for ([^ ]+)/.exec(command)?.[1];
       assert.ok(completionChannel);
       return {
         exitCode: this.completionChannels.has(completionChannel) ? 0 : 124,

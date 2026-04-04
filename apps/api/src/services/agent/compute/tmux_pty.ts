@@ -325,7 +325,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       "rc=$?",
       `rm -f ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
       `printf '%s' "$rc" > ${AgentEnvironmentTmuxPty.shellQuote(rcFile)}`,
-      `tmux wait-for -S ${AgentEnvironmentTmuxPty.shellQuote(completionChannel)}`,
+      `tmux wait-for -S ${completionChannel}`,
     ].join("; ");
     await this.sendInputToTmuxSession(sessionId, wrapperCommand, true, timeoutSeconds);
 
@@ -361,7 +361,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
 
     const waitResult = await this.runRemoteCommand(
-      `timeout ${AgentEnvironmentTmuxPty.formatWaitTimeoutDuration(yieldTimeMilliseconds)}s tmux wait-for ${AgentEnvironmentTmuxPty.shellQuote(commandRun.completionChannel)}`,
+      `timeout ${AgentEnvironmentTmuxPty.formatWaitTimeoutDuration(yieldTimeMilliseconds)}s tmux wait-for ${commandRun.completionChannel}`,
       timeoutSeconds,
     );
     if (waitResult.exitCode === 0) {
