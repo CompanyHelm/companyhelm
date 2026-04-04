@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
+import pino, { type Logger as PinoLogger } from "pino";
 import { agentSessions, messageContents, sessionMessages, sessionTurns } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
@@ -104,6 +105,7 @@ type PiMonoSessionContextSnapshot = {
 
 type PiMonoSessionEventHandlerDependencies = {
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
+  logger?: PinoLogger;
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
   userSessionReadService?: UserSessionReadService;
 };
@@ -114,9 +116,14 @@ type PiMonoSessionEventHandlerDependencies = {
  * and make unsupported event shapes noisy in logs so persistence work can expand deliberately.
  */
 export class PiMonoSessionEventHandler {
+  private static readonly fallbackLogger = pino({
+    level: "silent",
+  });
+
   private readonly redisService: RedisService;
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly sessionId: string;
+  private readonly logger: PinoLogger;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly userSessionReadService: UserSessionReadService;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
@@ -143,6 +150,10 @@ export class PiMonoSessionEventHandler {
     this.redisService = redisService;
     this.transactionProvider = transactionProvider;
     this.sessionId = sessionId;
+    this.logger = (dependencies.logger ?? PiMonoSessionEventHandler.fallbackLogger).child({
+      component: "pi_mono_session_event_handler",
+      sessionId,
+    });
     this.contextSnapshotProvider = dependencies.contextSnapshotProvider ?? (() => ({
       currentContextTokens: null,
       isCompacting: false,
@@ -224,10 +235,10 @@ export class PiMonoSessionEventHandler {
         await this.handleAgentEnd(sessionEvent);
         return;
       case "turn_start":
-        this.logInfo("pi mono turn started", sessionEvent);
+        this.logDebug("pi mono turn started", sessionEvent);
         return;
       case "turn_end":
-        this.logInfo("pi mono turn ended", sessionEvent);
+        this.logDebug("pi mono turn ended", sessionEvent);
         return;
       case "message_start":
         await this.handleMessageStart(sessionEvent);
@@ -269,12 +280,12 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleAgentStart(sessionEvent: SessionEvent): Promise<void> {
-    this.logInfo("pi mono agent started", sessionEvent);
+    this.logDebug("pi mono agent started", sessionEvent);
     await this.updateSessionStatus("running");
   }
 
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
-    this.logInfo("pi mono agent ended", sessionEvent);
+    this.logDebug("pi mono agent ended", sessionEvent);
     const companyId = await this.resolveCompanyId();
     await this.userSessionReadService.clearSessionReads(this.transactionProvider, {
       companyId,
@@ -284,32 +295,32 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleAutoCompactionStart(sessionEvent: SessionEvent): Promise<void> {
-    this.logInfo("pi mono auto compaction started", sessionEvent);
+    this.logDebug("pi mono auto compaction started", sessionEvent);
     await this.persistSessionState({}, true, true);
   }
 
   private async handleAutoCompactionEnd(sessionEvent: SessionEvent): Promise<void> {
-    this.logInfo("pi mono auto compaction ended", sessionEvent);
+    this.logDebug("pi mono auto compaction ended", sessionEvent);
     await this.persistSessionState({}, true, true);
   }
 
   private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
     switch (sessionEvent.message?.role) {
       case "user":
-        this.logInfo("ignoring pi mono user message start", sessionEvent);
+        this.logDebug("ignoring pi mono user message start", sessionEvent);
         return;
       case "assistant":
         this.persistedThinkingContent = "";
         await this.upsertSessionMessage("running", sessionEvent);
-        this.logInfo("pi mono assistant message started", sessionEvent);
+        this.logDebug("pi mono assistant message started", sessionEvent);
         return;
       case "toolResult":
       if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
-        this.logInfo("ignoring pi mono tool result start after tool execution events", sessionEvent);
+        this.logDebug("ignoring pi mono tool result start after tool execution events", sessionEvent);
         return;
       }
         await this.upsertSessionMessage("running", sessionEvent);
-        this.logInfo("pi mono tool result message started", sessionEvent);
+        this.logDebug("pi mono tool result message started", sessionEvent);
         return;
       default:
         this.logError("unhandled pi mono message_start event", sessionEvent);
@@ -320,7 +331,7 @@ export class PiMonoSessionEventHandler {
     if (sessionEvent.message?.role === "assistant") {
       await this.processAssistantThinkingEvent(sessionEvent);
       await this.upsertSessionMessage("running", sessionEvent);
-      this.logInfo("pi mono assistant message updated", sessionEvent);
+      this.logDebug("pi mono assistant message updated", sessionEvent);
       return;
     }
 
@@ -333,22 +344,22 @@ export class PiMonoSessionEventHandler {
         const userMessageTimestamp = this.shiftQueuedUserMessageTimestamp()
           ?? this.resolveMessageTimestamp(sessionEvent.message.timestamp);
         await this.upsertSessionMessage("completed", sessionEvent, userMessageTimestamp);
-        this.logInfo("pi mono user message completed", sessionEvent);
+        this.logDebug("pi mono user message completed", sessionEvent);
         return;
       }
       case "assistant":
         await this.upsertSessionMessage("completed", sessionEvent);
         await this.clearThinkingState(true, true);
         this.persistedThinkingContent = "";
-        this.logInfo("pi mono assistant message completed", sessionEvent);
+        this.logDebug("pi mono assistant message completed", sessionEvent);
         return;
       case "toolResult":
         if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
-          this.logInfo("ignoring pi mono tool result end after tool execution events", sessionEvent);
+          this.logDebug("ignoring pi mono tool result end after tool execution events", sessionEvent);
           return;
         }
         await this.upsertSessionMessage("completed", sessionEvent);
-        this.logInfo("pi mono tool result message completed", sessionEvent);
+        this.logDebug("pi mono tool result message completed", sessionEvent);
         return;
       default:
         this.logError("unhandled pi mono message_end event", sessionEvent);
@@ -417,18 +428,18 @@ export class PiMonoSessionEventHandler {
   private async handleToolExecutionStart(sessionEvent: SessionEvent): Promise<void> {
     this.completedToolExecutionKeys.delete(this.createToolExecutionEventKey(sessionEvent));
     await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent));
-    this.logInfo("pi mono tool execution started", sessionEvent);
+    this.logDebug("pi mono tool execution started", sessionEvent);
   }
 
   private async handleToolExecutionUpdate(sessionEvent: SessionEvent): Promise<void> {
     await this.upsertSessionMessage("running", this.createToolExecutionSessionEvent(sessionEvent));
-    this.logInfo("pi mono tool execution updated", sessionEvent);
+    this.logDebug("pi mono tool execution updated", sessionEvent);
   }
 
   private async handleToolExecutionEnd(sessionEvent: SessionEvent): Promise<void> {
     await this.upsertSessionMessage("completed", this.createToolExecutionSessionEvent(sessionEvent));
     this.completedToolExecutionKeys.add(this.createToolExecutionEventKey(sessionEvent));
-    this.logInfo("pi mono tool execution ended", sessionEvent);
+    this.logDebug("pi mono tool execution ended", sessionEvent);
   }
 
   private async upsertMessageContents(
@@ -977,8 +988,8 @@ export class PiMonoSessionEventHandler {
     });
   }
 
-  private logInfo(logMessage: string, event: SessionEvent): void {
-    console.info({
+  private logDebug(logMessage: string, event: SessionEvent): void {
+    this.logger.debug({
       event,
       logMessage,
       sessionId: this.sessionId,
@@ -986,7 +997,7 @@ export class PiMonoSessionEventHandler {
   }
 
   private logError(logMessage: string, event: SessionEvent): void {
-    console.error({
+    this.logger.error({
       event,
       logMessage,
       sessionId: this.sessionId,

@@ -80,6 +80,12 @@ beforeEach(() => {
   piAgentMocks.sessionManagerInstances.length = 0;
 });
 
+const logger = {
+  child() {
+    return logger;
+  },
+} as never;
+
 test("PiMonoSessionManagerService creates one runtime session and routes prompt plus steer calls through it", async () => {
   const storedMessages = [{
     content: "Earlier context",
@@ -114,6 +120,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
+    logger,
     {
       async getClient() {
         return {
@@ -426,6 +433,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
+    logger,
     {
       async getClient() {
         return {

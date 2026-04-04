@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import type { Logger as PinoLogger } from "pino";
 import { agentSessions, messageContents, sessionMessages, sessionTurns, userSessionReads } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
@@ -29,7 +30,7 @@ class PiMonoSessionEventHandlerTestHarness {
     const messageContentRecordsByMessageId = new Map<string, MessageContentRecord[]>();
     const publishCalls: Array<{ channel: string; message: string }> = [];
     const clearedSessionReadSessionIds: string[] = [];
-    const infoLogs: unknown[] = [];
+    const debugLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
     const contextSnapshot = {
       currentContextTokens: null as number | null,
@@ -44,21 +45,24 @@ class PiMonoSessionEventHandlerTestHarness {
       status: "stopped",
       thinkingText: null as string | null,
     };
-    const originalInfo = console.info;
-    const originalError = console.error;
-
-    console.info = (...args: unknown[]) => {
-      infoLogs.push(args);
-    };
-    console.error = (...args: unknown[]) => {
-      errorLogs.push(args);
-    };
+    const logger = {
+      child() {
+        return logger;
+      },
+      debug(entry: unknown) {
+        debugLogs.push(entry);
+      },
+      error(entry: unknown) {
+        errorLogs.push(entry);
+      },
+    } as unknown as PinoLogger;
 
     return {
+      debugLogs,
       errorLogs,
       contextSnapshot,
       clearedSessionReadSessionIds,
-      infoLogs,
+      logger,
       messageContentRecordsByMessageId,
       publishCalls,
       redisService: {
@@ -296,8 +300,6 @@ class PiMonoSessionEventHandlerTestHarness {
         },
       },
       restore() {
-        console.info = originalInfo;
-        console.error = originalError;
       },
     };
   }
@@ -1423,12 +1425,72 @@ test("PiMonoSessionEventHandler serializes concurrent assistant updates for the 
   );
 });
 
+test("PiMonoSessionEventHandler debug logs assistant message updates", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      logger: harness.logger,
+    },
+  );
+
+  try {
+    await handler.handle({
+      assistantMessageEvent: {
+        delta: "It",
+        type: "thinking_delta",
+      },
+      message: {
+        content: [{
+          text: "Answer",
+          type: "text",
+        }],
+        role: "assistant",
+        timestamp: 1000,
+      },
+      type: "message_update",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.debugLogs.length, 1);
+  assert.deepEqual(
+    harness.debugLogs[0],
+    {
+      event: {
+        assistantMessageEvent: {
+          delta: "It",
+          type: "thinking_delta",
+        },
+        message: {
+          content: [{
+            text: "Answer",
+            type: "text",
+          }],
+          role: "assistant",
+          timestamp: 1000,
+        },
+        type: "message_update",
+      },
+      logMessage: "pi mono assistant message updated",
+      sessionId: "session-1",
+    },
+  );
+});
+
 test("PiMonoSessionEventHandler error logs unhandled message roles", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(
     harness.transactionProvider as never,
     "session-1",
     harness.redisService as never,
+    {
+      logger: harness.logger,
+    },
   );
 
   try {
@@ -1443,10 +1505,10 @@ test("PiMonoSessionEventHandler error logs unhandled message roles", async () =>
   }
 
   assert.equal(harness.sessionMessageRecords.size, 0);
-  assert.equal(harness.infoLogs.length, 0);
+  assert.equal(harness.debugLogs.length, 0);
   assert.equal(harness.errorLogs.length, 1);
   assert.deepEqual(
-    (harness.errorLogs[0] as unknown[])[0],
+    harness.errorLogs[0],
     {
       event: {
         message: {

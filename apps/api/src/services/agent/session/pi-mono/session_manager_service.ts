@@ -2,6 +2,7 @@ import { inject, injectable } from "inversify";
 import { eq } from "drizzle-orm";
 import type { AgentMessage, ThinkingLevel } from "@mariozechner/pi-agent-core";
 import type { ImageContent } from "@mariozechner/pi-ai";
+import type { Logger as PinoLogger } from "pino";
 import {
   type AgentSession,
   AuthStorage,
@@ -36,6 +37,7 @@ import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { AgentWebToolProvider } from "../../tools/web/provider.ts";
 import { AgentWebToolService } from "../../tools/web/service.ts";
 import { ArtifactService } from "../../../artifact_service.ts";
+import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { TaskService } from "../../../task_service.ts";
 import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
@@ -91,6 +93,7 @@ export class PiMonoSessionManagerService {
   private readonly agentEnvironmentAccessService: AgentEnvironmentAccessService;
   private readonly githubClient: GithubClient;
   private readonly inboxService: AgentInboxService;
+  private readonly logger: PinoLogger;
   private readonly runtimesById = new Map<string, SessionRuntime>();
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
@@ -98,6 +101,7 @@ export class PiMonoSessionManagerService {
   private readonly exaWebClient: ExaWebClient;
 
   constructor(
+    @inject(ApiLogger) logger: ApiLogger,
     @inject(RedisService) redisService: RedisService,
     @inject(AgentEnvironmentAccessService) agentEnvironmentAccessService: AgentEnvironmentAccessService,
     @inject(GithubClient) githubClient: GithubClient,
@@ -106,6 +110,9 @@ export class PiMonoSessionManagerService {
     @inject(AgentConversationService) agentConversationService: AgentConversationService,
     @inject(ExaWebClient) exaWebClient: ExaWebClient,
   ) {
+    this.logger = logger.child({
+      component: "pi_mono_session_manager_service",
+    });
     this.redisService = redisService;
     this.agentEnvironmentAccessService = agentEnvironmentAccessService;
     this.githubClient = githubClient;
@@ -233,6 +240,7 @@ export class PiMonoSessionManagerService {
       this.redisService,
       {
         contextSnapshotProvider: () => this.buildContextSnapshot(session),
+        logger: this.logger,
       },
     );
 
