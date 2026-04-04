@@ -8,12 +8,6 @@ import { ClerkAuthProvider } from "../src/auth/clerk/clerk_auth_provider.ts";
  * Creates the minimal Clerk auth fixtures needed to exercise provisioning and session construction.
  */
 class ClerkAuthProviderTestHarness {
-  static createUniqueViolationError(message = "duplicate key value violates unique constraint") {
-    return Object.assign(new Error(message), {
-      code: "23505",
-    });
-  }
-
   static createConfigMock(): Config {
     return {
       auth: {
@@ -66,36 +60,28 @@ class ClerkAuthProviderTestHarness {
         return {
           values(value: Record<string, unknown>) {
             insertedValues.push(value);
-
-            if (insertCallCount === 1) {
-              return {
-                async returning() {
-                  return [{
-                    id: "local-user-1",
-                    clerk_user_id: "user_clerk_1",
-                    email: "user@example.com",
-                    first_name: "User",
-                    last_name: "Example",
-                  }];
-                },
-              };
-            }
-
-            if (insertCallCount === 2) {
-              return {
-                async returning() {
-                  return [{
-                    id: "local-company-1",
-                    clerk_organization_id: "org_clerk_1",
-                    name: "Example Org",
-                  }];
-                },
-              };
-            }
+            const returningRows = insertCallCount === 1
+              ? [{
+                id: "local-user-1",
+                clerk_user_id: "user_clerk_1",
+                email: "user@example.com",
+                first_name: "User",
+                last_name: "Example",
+              }]
+              : insertCallCount === 2
+              ? [{
+                id: "local-company-1",
+                clerk_organization_id: "org_clerk_1",
+                name: "Example Org",
+              }]
+              : [];
 
             return {
+              onConflictDoNothing() {
+                return this;
+              },
               async returning() {
-                return [];
+                return returningRows;
               },
             };
           },
@@ -191,7 +177,11 @@ class ClerkAuthProviderTestHarness {
       insert() {
         return {
           values() {
-            return undefined;
+            return {
+              onConflictDoNothing() {
+                return undefined;
+              },
+            };
           },
         };
       },
@@ -296,6 +286,9 @@ class ClerkAuthProviderTestHarness {
         return {
           values() {
             return {
+              onConflictDoNothing() {
+                return this;
+              },
               async returning() {
                 return [];
               },
@@ -405,8 +398,23 @@ class ClerkAuthProviderTestHarness {
         insertCallCount += 1;
         return {
           values() {
+            if (insertCallCount <= 2) {
+              return {
+                onConflictDoNothing() {
+                  return this;
+                },
+                async returning() {
+                  return [];
+                },
+              };
+            }
+
             if (insertCallCount <= 4) {
-              throw ClerkAuthProviderTestHarness.createUniqueViolationError();
+              return {
+                onConflictDoNothing() {
+                  return undefined;
+                },
+              };
             }
 
             throw new Error("Unexpected insert call.");

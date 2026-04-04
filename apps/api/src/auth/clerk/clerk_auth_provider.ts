@@ -170,33 +170,26 @@ export class ClerkAuthProvider extends AuthProvider {
     }
 
     const now = new Date();
-    try {
-      const [createdUser] = await transaction
-        .insert(users)
-        .values({
-          clerkUserId: providerSubject,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          created_at: now,
-          updated_at: now,
-        })
-        .returning?.({
-          id: users.id,
-          clerk_user_id: users.clerkUserId,
-          email: users.email,
-          first_name: users.first_name,
-          last_name: users.last_name,
-        }) as Promise<UserRecord[]>;
-      if (!createdUser) {
-        throw new Error("Failed to provision Clerk user.");
-      }
-
+    const [createdUser] = await transaction
+      .insert(users)
+      .values({
+        clerkUserId: providerSubject,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        created_at: now,
+        updated_at: now,
+      })
+      .onConflictDoNothing()
+      .returning?.({
+        id: users.id,
+        clerk_user_id: users.clerkUserId,
+        email: users.email,
+        first_name: users.first_name,
+        last_name: users.last_name,
+      }) as Promise<UserRecord[]>;
+    if (createdUser) {
       return createdUser;
-    } catch (error) {
-      if (!this.isUniqueViolation(error)) {
-        throw error;
-      }
     }
 
     const concurrentUser = await this.findUserByColumn(
@@ -251,24 +244,18 @@ export class ClerkAuthProvider extends AuthProvider {
       return existingCompany;
     }
 
-    let createdCompany: CompanyRecord | undefined;
-    try {
-      [createdCompany] = await transaction
-        .insert(companies)
-        .values({
-          clerkOrganizationId: params.providerSubject,
-          name: params.name,
-        })
-        .returning?.({
-          id: companies.id,
-          clerk_organization_id: companies.clerkOrganizationId,
-          name: companies.name,
-        }) as Promise<CompanyRecord[]>;
-    } catch (error) {
-      if (!this.isUniqueViolation(error)) {
-        throw error;
-      }
-    }
+    const [createdCompany] = await transaction
+      .insert(companies)
+      .values({
+        clerkOrganizationId: params.providerSubject,
+        name: params.name,
+      })
+      .onConflictDoNothing()
+      .returning?.({
+        id: companies.id,
+        clerk_organization_id: companies.clerkOrganizationId,
+        name: companies.name,
+      }) as Promise<CompanyRecord[]>;
     if (!createdCompany) {
       const concurrentCompany = await this.findCompanyByClerkOrganizationId(
         transaction,
@@ -310,16 +297,13 @@ export class ClerkAuthProvider extends AuthProvider {
       userId: string;
     },
   ): Promise<void> {
-    try {
-      await transaction.insert(companyMembers).values({
+    await transaction
+      .insert(companyMembers)
+      .values({
         companyId: params.companyId,
         userId: params.userId,
-      });
-    } catch (error) {
-      if (!this.isUniqueViolation(error)) {
-        throw error;
-      }
-    }
+      })
+      .onConflictDoNothing();
   }
 
   private async ensureCompanyHelmComputeProviderDefinition(
@@ -327,8 +311,9 @@ export class ClerkAuthProvider extends AuthProvider {
     companyId: string,
   ): Promise<void> {
     const now = new Date();
-    try {
-      await transaction.insert(computeProviderDefinitions).values({
+    await transaction
+      .insert(computeProviderDefinitions)
+      .values({
         companyId,
         createdAt: now,
         createdByUserId: null,
@@ -337,12 +322,8 @@ export class ClerkAuthProvider extends AuthProvider {
         provider: "e2b",
         updatedAt: now,
         updatedByUserId: null,
-      });
-    } catch (error) {
-      if (!this.isUniqueViolation(error)) {
-        throw error;
-      }
-    }
+      })
+      .onConflictDoNothing();
   }
 
   private resolveClerkUserEmail(clerkUser: ClerkBackendUser): string {
@@ -465,33 +446,5 @@ export class ClerkAuthProvider extends AuthProvider {
     }
 
     return null;
-  }
-
-  private isUniqueViolation(error: unknown): boolean {
-    const seenErrors = new Set<unknown>();
-    let currentError: unknown = error;
-
-    while (currentError && typeof currentError === "object" && !seenErrors.has(currentError)) {
-      seenErrors.add(currentError);
-      const errorRecord = currentError as {
-        cause?: unknown;
-        code?: unknown;
-        message?: unknown;
-      };
-      if (errorRecord.code === "23505") {
-        return true;
-      }
-
-      if (
-        typeof errorRecord.message === "string"
-        && errorRecord.message.toLowerCase().includes("duplicate key value")
-      ) {
-        return true;
-      }
-
-      currentError = errorRecord.cause;
-    }
-
-    return false;
   }
 }
