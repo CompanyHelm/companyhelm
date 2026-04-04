@@ -1,12 +1,13 @@
 import { Suspense, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PlusIcon, Settings2Icon } from "lucide-react";
+import { Loader2Icon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskCategoryDialog } from "./task_category_dialog";
 import type { settingsPageCreateTaskCategoryMutation } from "./__generated__/settingsPageCreateTaskCategoryMutation.graphql";
+import type { settingsPageDeleteTaskCategoryMutation } from "./__generated__/settingsPageDeleteTaskCategoryMutation.graphql";
 import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphql";
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
@@ -33,6 +34,18 @@ const settingsPageQueryNode = graphql`
 const settingsPageCreateTaskCategoryMutationNode = graphql`
   mutation settingsPageCreateTaskCategoryMutation($input: CreateTaskCategoryInput!) {
     CreateTaskCategory(input: $input) {
+      id
+      name
+      taskCount
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const settingsPageDeleteTaskCategoryMutationNode = graphql`
+  mutation settingsPageDeleteTaskCategoryMutation($input: DeleteTaskCategoryInput!) {
+    DeleteTaskCategory(input: $input) {
       id
       name
       taskCount
@@ -88,6 +101,7 @@ function SettingsPageContent() {
   const search = useSearch({ strict: false }) as SettingsPageSearch;
   const [taskErrorMessage, setTaskErrorMessage] = useState<string | null>(null);
   const [isTaskCategoryDialogOpen, setTaskCategoryDialogOpen] = useState(false);
+  const [deletingTaskCategoryId, setDeletingTaskCategoryId] = useState<string | null>(null);
   const data = useLazyLoadQuery<settingsPageQuery>(
     settingsPageQueryNode,
     {},
@@ -97,6 +111,9 @@ function SettingsPageContent() {
   );
   const [commitCreateTaskCategory, isCreateTaskCategoryInFlight] = useMutation<settingsPageCreateTaskCategoryMutation>(
     settingsPageCreateTaskCategoryMutationNode,
+  );
+  const [commitDeleteTaskCategory] = useMutation<settingsPageDeleteTaskCategoryMutation>(
+    settingsPageDeleteTaskCategoryMutationNode,
   );
   const [commitUpdateCompanySettings] = useMutation<settingsPageUpdateCompanySettingsMutation>(
     settingsPageUpdateCompanySettingsMutationNode,
@@ -180,6 +197,12 @@ function SettingsPageContent() {
             </CardAction>
           </CardHeader>
           <CardContent className="grid gap-3">
+            {taskErrorMessage ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {taskErrorMessage}
+              </div>
+            ) : null}
+
             {data.TaskCategories.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">No categories yet</p>
@@ -201,9 +224,67 @@ function SettingsPageContent() {
                     {category.taskCount} {category.taskCount === 1 ? "task" : "tasks"} in this lane
                   </p>
                 </div>
-                <p className="text-[0.625rem] uppercase tracking-[0.18em] text-muted-foreground/80">
-                  Added {new Date(category.createdAt).toLocaleDateString()}
-                </p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <p className="text-[0.625rem] uppercase tracking-[0.18em] text-muted-foreground/80">
+                    Added {new Date(category.createdAt).toLocaleDateString()}
+                  </p>
+                  <Button
+                    aria-label={`Delete ${category.name}`}
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={deletingTaskCategoryId === category.id}
+                    onClick={() => {
+                      setTaskErrorMessage(null);
+                      setDeletingTaskCategoryId(category.id);
+
+                      void new Promise<void>((resolve, reject) => {
+                        commitDeleteTaskCategory({
+                          variables: {
+                            input: {
+                              id: category.id,
+                            },
+                          },
+                          updater: (store) => {
+                            const deletedCategory = store.getRootField("DeleteTaskCategory");
+                            if (!deletedCategory) {
+                              return;
+                            }
+
+                            const rootRecord = store.getRoot();
+                            const currentCategories = filterStoreRecords(rootRecord.getLinkedRecords("TaskCategories") || []);
+                            rootRecord.setLinkedRecords(
+                              currentCategories.filter((record) => record.getDataID() !== deletedCategory.getDataID()),
+                              "TaskCategories",
+                            );
+                          },
+                          onCompleted: (_response, errors) => {
+                            const nextErrorMessage = errors?.[0]?.message;
+                            if (nextErrorMessage) {
+                              reject(new Error(nextErrorMessage));
+                              return;
+                            }
+
+                            resolve();
+                          },
+                          onError: reject,
+                        });
+                      }).catch((error: unknown) => {
+                        setTaskErrorMessage(error instanceof Error ? error.message : "Failed to delete task category.");
+                      }).finally(() => {
+                        setDeletingTaskCategoryId((currentCategoryId) => {
+                          return currentCategoryId === category.id ? null : currentCategoryId;
+                        });
+                      });
+                    }}
+                    size="icon-sm"
+                    title={`Delete ${category.name}`}
+                    type="button"
+                    variant="ghost"
+                  >
+                    {deletingTaskCategoryId === category.id
+                      ? <Loader2Icon className="size-4 animate-spin" />
+                      : <Trash2Icon className="size-4" />}
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>
