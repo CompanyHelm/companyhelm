@@ -1,7 +1,6 @@
 import { Sandbox, SandboxNotFoundError } from "e2b";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
-import { ApiLogger } from "../../../../log/api_logger.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
 import {
@@ -23,18 +22,15 @@ const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
 export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
-  private readonly logger: ApiLogger;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
-    @inject(ApiLogger) logger: ApiLogger,
   ) {
     super();
     this.catalogService = catalogService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
-    this.logger = logger;
   }
 
   getProvider(): "e2b" {
@@ -240,11 +236,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       });
     }
 
-    return new AgentComputeE2bShell(sandbox, this.logger.child({
-      component: "agent_compute_e2b_shell",
-      provider: "e2b",
-      providerEnvironmentId: environment.providerEnvironmentId,
-    }));
+    return new AgentComputeE2bShell(sandbox);
   }
 
   private isMissingEnvironmentError(error: unknown): boolean {

@@ -1,5 +1,7 @@
-import type { Logger as PinoLogger } from "pino";
-import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
+import {
+  AgentEnvironmentShellInterface,
+  AgentEnvironmentShellTimeoutError,
+} from "../shell_interface.ts";
 
 type DaytonaRemoteSandbox = {
   process: {
@@ -24,14 +26,6 @@ type DaytonaCommandError = {
   name?: string;
 };
 
-type ShellLogger = Pick<PinoLogger, "warn">;
-
-const NOOP_LOGGER = {
-  warn() {
-    return undefined;
-  },
-} as ShellLogger;
-
 /**
  * Adapts the Daytona sandbox SDK into the generic environment shell contract. It intentionally
  * exposes only direct remote command execution so shared PTY/session managers can be layered on
@@ -39,12 +33,10 @@ const NOOP_LOGGER = {
  */
 export class AgentComputeDaytonaShell extends AgentEnvironmentShellInterface {
   private readonly remoteSandbox: DaytonaRemoteSandbox;
-  private readonly logger: ShellLogger;
 
-  constructor(remoteSandbox: DaytonaRemoteSandbox, logger: ShellLogger = NOOP_LOGGER) {
+  constructor(remoteSandbox: DaytonaRemoteSandbox) {
     super();
     this.remoteSandbox = remoteSandbox;
-    this.logger = logger;
   }
 
   async executeCommand(
@@ -70,12 +62,13 @@ export class AgentComputeDaytonaShell extends AgentEnvironmentShellInterface {
       };
     } catch (error) {
       if (this.isTimeoutError(error as DaytonaCommandError)) {
-        this.logger.warn({
+        throw new AgentEnvironmentShellTimeoutError(
+          "daytona",
           command,
-          err: error,
-          timeoutSeconds: timeoutSeconds ?? null,
-          workingDirectory: workingDirectory ?? null,
-        }, "daytona shell command timed out");
+          timeoutSeconds,
+          workingDirectory,
+          error,
+        );
       }
       throw error;
     }

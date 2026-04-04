@@ -1,6 +1,8 @@
 import { Sandbox } from "e2b";
-import type { Logger as PinoLogger } from "pino";
-import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
+import {
+  AgentEnvironmentShellInterface,
+  AgentEnvironmentShellTimeoutError,
+} from "../shell_interface.ts";
 
 type E2bCommandExitError = {
   code?: number | string;
@@ -13,14 +15,6 @@ type E2bCommandExitError = {
   };
 };
 
-type ShellLogger = Pick<PinoLogger, "warn">;
-
-const NOOP_LOGGER = {
-  warn() {
-    return undefined;
-  },
-} as ShellLogger;
-
 /**
  * Adapts the E2B sandbox SDK into the shared shell contract used by tmux orchestration and other
  * tool runners. It intentionally narrows the provider surface down to direct command execution so
@@ -28,12 +22,10 @@ const NOOP_LOGGER = {
  */
 export class AgentComputeE2bShell extends AgentEnvironmentShellInterface {
   private readonly sandbox: Sandbox;
-  private readonly logger: ShellLogger;
 
-  constructor(sandbox: Sandbox, logger: ShellLogger = NOOP_LOGGER) {
+  constructor(sandbox: Sandbox) {
     super();
     this.sandbox = sandbox;
-    this.logger = logger;
   }
 
   async executeCommand(
@@ -61,12 +53,13 @@ export class AgentComputeE2bShell extends AgentEnvironmentShellInterface {
       const exitCode = commandExitError.result?.exitCode;
       if (typeof exitCode !== "number") {
         if (this.isTimeoutError(commandExitError)) {
-          this.logger.warn({
+          throw new AgentEnvironmentShellTimeoutError(
+            "e2b",
             command,
-            err: error,
-            timeoutSeconds: timeoutSeconds ?? null,
-            workingDirectory: workingDirectory ?? null,
-          }, "e2b shell command timed out");
+            timeoutSeconds,
+            workingDirectory,
+            error,
+          );
         }
         throw error;
       }

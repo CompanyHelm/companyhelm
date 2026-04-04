@@ -23,15 +23,6 @@ function createDaytonaProvider(catalogService: AgentEnvironmentCatalogService = 
   return new AgentComputeDaytonaProvider(
     catalogService,
     createComputeProviderDefinitionService() as never,
-    {
-      child() {
-        return {
-          warn() {
-            return undefined;
-          },
-        };
-      },
-    } as never,
   );
 }
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+import { test } from "vitest";
 import { AgentComputeE2bShell } from "../src/services/agent/compute/e2b/e2b_shell.ts";
+import { AgentEnvironmentShellTimeoutError } from "../src/services/agent/compute/shell_interface.ts";
 
 test("AgentComputeE2bShell returns command output on successful execution", async () => {
   const shell = new AgentComputeE2bShell({
@@ -78,25 +79,26 @@ test("AgentComputeE2bShell rethrows unexpected sandbox errors", async () => {
   );
 });
 
-test("AgentComputeE2bShell warns when the E2B command request times out", async () => {
-  const warn = vi.fn();
+test("AgentComputeE2bShell throws the shared shell timeout error for E2B request timeouts", async () => {
   const shell = new AgentComputeE2bShell({
     commands: {
       async run() {
         throw new Error("[deadline_exceeded] the operation timed out: This error is likely due to exceeding 'timeoutMs'.");
       },
     },
-  } as never, {
-    warn,
-  });
+  } as never);
 
   await assert.rejects(
     async () => {
       await shell.executeCommand("pwd", "/home/user/workspace", undefined, 30);
     },
-    /deadline_exceeded/,
+    (error: unknown) => {
+      assert.ok(error instanceof AgentEnvironmentShellTimeoutError);
+      assert.equal(error.provider, "e2b");
+      assert.equal(error.command, "pwd");
+      assert.equal(error.timeoutSeconds, 30);
+      assert.equal(error.workingDirectory, "/home/user/workspace");
+      return true;
+    },
   );
-
-  assert.equal(warn.mock.calls.length, 1);
-  assert.equal(warn.mock.calls[0]?.[1], "e2b shell command timed out");
 });

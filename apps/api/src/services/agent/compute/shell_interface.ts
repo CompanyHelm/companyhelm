@@ -3,6 +3,30 @@
  * adapters implement this once so reusable PTY managers such as tmux can drive remote sessions
  * without depending on provider-specific SDK types.
  */
+export class AgentEnvironmentShellTimeoutError extends Error {
+  readonly command: string;
+  readonly provider: string;
+  readonly timeoutSeconds: number | null;
+  readonly workingDirectory: string | null;
+
+  constructor(
+    provider: string,
+    command: string,
+    timeoutSeconds?: number,
+    workingDirectory?: string,
+    cause?: unknown,
+  ) {
+    super(`${provider} shell command timed out.`, {
+      cause,
+    });
+    this.name = "AgentEnvironmentShellTimeoutError";
+    this.provider = provider;
+    this.command = command;
+    this.timeoutSeconds = timeoutSeconds ?? null;
+    this.workingDirectory = workingDirectory ?? null;
+  }
+}
+
 export abstract class AgentEnvironmentShellInterface {
   /**
    * Executes one command directly on the provisioned environment and returns its combined textual
