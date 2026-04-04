@@ -2,11 +2,8 @@ name: Publish CompanyHelm Daytona image
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - docker/daytona/Dockerfile
-  workflow_dispatch:
+    tags:
+      - "v*"
 
 jobs:
   publish:
@@ -16,6 +13,25 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Resolve package version
+        id: version
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+          if [ -z "$PACKAGE_VERSION" ]; then
+            echo "package.json version is empty" >&2
+            exit 1
+          fi
+
+          if [ "v$PACKAGE_VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Git tag $GITHUB_REF_NAME does not match package.json version $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+
+          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -29,14 +45,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract Docker image metadata
-        id: metadata
-        uses: docker/metadata-action@v5
-        with:
-          images: companyhelm/daytona
-          tags: |
-            type=raw,value=latest
-
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -44,7 +52,6 @@ jobs:
           file: docker/daytona/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
+          tags: companyhelm/daytona:${{ steps.version.outputs.package_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
