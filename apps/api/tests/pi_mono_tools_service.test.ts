@@ -129,6 +129,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
     [
       "list_pty_sessions",
       "execute_command",
+      "apply_patch",
       "send_pty_input",
       "read_pty_output",
       "resize_pty",
@@ -408,6 +409,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
     [
       "list_pty_sessions",
       "execute_command",
+      "apply_patch",
       "send_pty_input",
       "read_pty_output",
       "resize_pty",

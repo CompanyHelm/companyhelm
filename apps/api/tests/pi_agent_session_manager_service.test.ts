@@ -304,6 +304,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     [
       "list_pty_sessions",
       "execute_command",
+      "apply_patch",
       "send_pty_input",
       "read_pty_output",
       "resize_pty",
@@ -359,6 +360,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     [[[
       "list_pty_sessions",
       "execute_command",
+      "apply_patch",
       "send_pty_input",
       "read_pty_output",
       "resize_pty",
@@ -553,6 +555,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     [[[
       "list_pty_sessions",
       "execute_command",
+      "apply_patch",
       "send_pty_input",
       "read_pty_output",
       "resize_pty",
