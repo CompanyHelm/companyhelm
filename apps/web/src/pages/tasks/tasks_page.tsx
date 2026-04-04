@@ -114,6 +114,31 @@ type TasksPageSearch = {
   category?: string;
 };
 
+function parseSelectedTaskCategoryKeys(
+  categorySearchValue: string | undefined,
+  validCategoryKeys: Set<string>,
+): string[] {
+  if (!categorySearchValue) {
+    return [];
+  }
+
+  const selectedCategoryKeys = [] as string[];
+  for (const rawCategoryKey of categorySearchValue.split(",")) {
+    const categoryKey = rawCategoryKey.trim();
+    if (
+      categoryKey.length === 0
+      || !validCategoryKeys.has(categoryKey)
+      || selectedCategoryKeys.includes(categoryKey)
+    ) {
+      continue;
+    }
+
+    selectedCategoryKeys.push(categoryKey);
+  }
+
+  return selectedCategoryKeys;
+}
+
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
   return records.filter((record): record is { getDataID(): string } => {
     return typeof record === "object"
@@ -200,26 +225,28 @@ function TasksPageContent() {
       }]
       : []),
   ];
-  const selectedCategoryKey = categoryFilterOptions.some((filterOption) => filterOption.key === search.category)
-    ? search.category
-    : undefined;
-  const visibleCategories = selectedCategoryKey === undefined
+  const validCategoryKeys = new Set(
+    categoryFilterOptions.flatMap((filterOption) => filterOption.key ? [filterOption.key] : []),
+  );
+  const selectedCategoryKeys = parseSelectedTaskCategoryKeys(search.category, validCategoryKeys);
+  const hasSelectedCategoryFilters = selectedCategoryKeys.length > 0;
+  const visibleCategories = !hasSelectedCategoryFilters
     ? allCategories
-    : selectedCategoryKey === "uncategorized"
-      ? []
-      : allCategories.filter((category: { id: string; name: string }) => category.id === selectedCategoryKey);
-  const visibleTasks = selectedCategoryKey === undefined
+    : allCategories.filter((category: { id: string; name: string }) => selectedCategoryKeys.includes(category.id));
+  const visibleTasks = !hasSelectedCategoryFilters
     ? data.Tasks
-    : selectedCategoryKey === "uncategorized"
-      ? data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === null)
-      : data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === selectedCategoryKey);
+    : data.Tasks.filter((task: TasksPageTask) => {
+      return selectedCategoryKeys.includes(task.taskCategoryId ?? "uncategorized");
+    });
 
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 items-center justify-between gap-4">
         <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
           {categoryFilterOptions.map((filterOption) => {
-            const isSelected = selectedCategoryKey === filterOption.key;
+            const isSelected = filterOption.key === undefined
+              ? !hasSelectedCategoryFilters
+              : selectedCategoryKeys.includes(filterOption.key);
 
             return (
               <Button
@@ -230,9 +257,27 @@ function TasksPageContent() {
                     : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                 }`}
                 onClick={() => {
+                  if (filterOption.key === undefined) {
+                    void navigate({
+                      to: "/tasks",
+                      search: {},
+                    });
+                    return;
+                  }
+
+                  const nextSelectedCategoryKeys = isSelected
+                    ? selectedCategoryKeys.filter((categoryKey) => categoryKey !== filterOption.key)
+                    : categoryFilterOptions
+                      .flatMap((option) => option.key ? [option.key] : [])
+                      .filter((categoryKey) => {
+                        return categoryKey === filterOption.key || selectedCategoryKeys.includes(categoryKey);
+                      });
+
                   void navigate({
                     to: "/tasks",
-                    search: filterOption.key ? { category: filterOption.key } : {},
+                    search: nextSelectedCategoryKeys.length > 0
+                      ? { category: nextSelectedCategoryKeys.join(",") }
+                      : {},
                   });
                 }}
                 size="sm"
@@ -266,7 +311,7 @@ function TasksPageContent() {
           categories={visibleCategories}
           deletingTaskId={deletingTaskId}
           executingTaskId={executingTaskId}
-          includeUncategorizedColumn={selectedCategoryKey === undefined || selectedCategoryKey === "uncategorized"}
+          includeUncategorizedColumn={!hasSelectedCategoryFilters || selectedCategoryKeys.includes("uncategorized")}
           onDeleteTask={async (taskId) => {
             setDeletingTaskId(taskId);
             setErrorMessage(null);
