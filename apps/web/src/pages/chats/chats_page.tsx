@@ -1231,8 +1231,11 @@ function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
 ) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const executionDurationLabel = resolveToolExecutionDurationLabel(message);
-  const statusLabel = message.status.trim().toLowerCase() === "running"
+  const normalizedStatus = message.status.trim().toLowerCase();
+  const executionDurationLabel = normalizedStatus === "running"
+    ? null
+    : resolveToolExecutionDurationLabel(message);
+  const statusLabel = normalizedStatus === "running"
     ? "Running"
     : message.isError
     ? "Error"
@@ -1370,7 +1373,7 @@ function ToolTranscriptMessage(
             );
           }) : (
             <p className="text-sm text-muted-foreground">
-              {message.status.trim().toLowerCase() === "running" ? "Waiting for tool output..." : "No tool output."}
+              {normalizedStatus === "running" ? "Waiting for tool output..." : "No tool output."}
             </p>
           )}
         </div>
