@@ -24,6 +24,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly DEFAULT_EXECUTE_COMMAND_YIELD_MS = 1_000;
   private static readonly DEFAULT_READ_OUTPUT_LIMIT = 4_000;
   private static readonly POLL_INTERVAL_MILLISECONDS = 100;
+  private static readonly REMOTE_COMMAND_TIMEOUT_BUFFER_SECONDS = 10;
   private static readonly REMOTE_COMMAND_TIMEOUT_SECONDS = 30;
   private static readonly SESSION_LIST_FIELD_SEPARATOR = "|";
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
@@ -45,21 +46,30 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
 
     const resolvedInput = await this.resolveInputWorkingDirectory(input);
+    const yieldTimeMilliseconds = this.resolveYieldTimeMilliseconds(resolvedInput);
+    const interactionTimeoutSeconds = this.resolveInteractionRemoteCommandTimeoutSeconds(
+      yieldTimeMilliseconds,
+    );
     const sessionId = AgentEnvironmentTmuxPty.resolveSessionId(input.sessionId);
-    await this.ensureTmuxSession(sessionId, resolvedInput);
-    const startOffset = await this.captureTmuxOutputLength(sessionId);
-    const commandRun = await this.startTmuxCommand(sessionId, resolvedInput);
+    await this.ensureTmuxSession(sessionId, resolvedInput, interactionTimeoutSeconds);
+    const startOffset = await this.captureTmuxOutputLength(sessionId, interactionTimeoutSeconds);
+    const commandRun = await this.startTmuxCommand(
+      sessionId,
+      resolvedInput,
+      interactionTimeoutSeconds,
+    );
     const waitResult = await this.waitForTmuxCommand(
       commandRun.rcFile,
-      this.resolveYieldTimeMilliseconds(resolvedInput),
+      yieldTimeMilliseconds,
+      interactionTimeoutSeconds,
     );
     const output = this.sanitizeCommandOutput(
-      await this.captureTmuxOutputSince(sessionId, startOffset),
+      await this.captureTmuxOutputSince(sessionId, startOffset, interactionTimeoutSeconds),
       commandRun.outputStartMarker,
       commandRun.outputEndMarker,
     );
     if (waitResult.completed) {
-      await this.deleteRemoteFile(commandRun.rcFile);
+      await this.deleteRemoteFile(commandRun.rcFile, interactionTimeoutSeconds);
     }
 
     return {
@@ -76,19 +86,24 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     yieldTimeMilliseconds?: number,
   ): Promise<AgentEnvironmentCommandResult> {
     await this.ensureTmuxPrepared();
-    await this.ensureExistingTmuxSession(sessionId);
-    const startOffset = await this.captureTmuxOutputLength(sessionId);
-    await this.sendInputToTmuxSession(sessionId, input);
+    const resolvedYieldTimeMilliseconds = this.resolveYieldTimeMilliseconds({
+      command: input,
+      yield_time_ms: yieldTimeMilliseconds,
+    });
+    const interactionTimeoutSeconds = this.resolveInteractionRemoteCommandTimeoutSeconds(
+      resolvedYieldTimeMilliseconds,
+    );
+    await this.ensureExistingTmuxSession(sessionId, interactionTimeoutSeconds);
+    const startOffset = await this.captureTmuxOutputLength(sessionId, interactionTimeoutSeconds);
+    await this.sendInputToTmuxSession(sessionId, input, false, interactionTimeoutSeconds);
     const waitResult = await this.waitForSessionExit(
       sessionId,
-      this.resolveYieldTimeMilliseconds({
-        command: input,
-        yield_time_ms: yieldTimeMilliseconds,
-      }),
+      resolvedYieldTimeMilliseconds,
+      interactionTimeoutSeconds,
     );
     const output = waitResult.completed
       ? ""
-      : await this.captureTmuxOutputSince(sessionId, startOffset);
+      : await this.captureTmuxOutputSince(sessionId, startOffset, interactionTimeoutSeconds);
 
     return {
       completed: waitResult.completed,
@@ -172,8 +187,9 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private async ensureTmuxSession(
     sessionId: string,
     input: AgentEnvironmentCommandInput,
+    timeoutSeconds: number,
   ): Promise<void> {
-    if (await this.hasTmuxSession(sessionId)) {
+    if (await this.hasTmuxSession(sessionId, timeoutSeconds)) {
       return;
     }
 
@@ -187,11 +203,11 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       input.workingDirectory ? `-c ${AgentEnvironmentTmuxPty.shellQuote(input.workingDirectory)}` : "",
       AgentEnvironmentTmuxPty.shellQuote(this.buildShellBootstrapCommand(input.environment)),
     ].filter((segment) => segment.length > 0).join(" ");
-    await this.runRequiredRemoteCommand(creationCommand);
+    await this.runRequiredRemoteCommand(creationCommand, timeoutSeconds);
   }
 
-  private async ensureExistingTmuxSession(sessionId: string): Promise<void> {
-    if (await this.hasTmuxSession(sessionId)) {
+  private async ensureExistingTmuxSession(sessionId: string, timeoutSeconds: number): Promise<void> {
+    if (await this.hasTmuxSession(sessionId, timeoutSeconds)) {
       return;
     }
 
@@ -292,21 +308,26 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private async startTmuxCommand(
     sessionId: string,
     input: AgentEnvironmentCommandInput,
+    timeoutSeconds: number,
   ): Promise<TmuxCommandRun> {
     const commandRunId = randomUUID().replaceAll("-", "");
     const commandFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.command.sh`;
     const rcFile = `${AgentEnvironmentTmuxPty.STATE_DIRECTORY}/${commandRunId}.rc`;
     const outputStartMarker = `__COMPANYHELM_OUTPUT_START_${commandRunId}__`;
     const outputEndMarker = `__COMPANYHELM_OUTPUT_END_${commandRunId}__`;
-    await this.writeRemoteFile(commandFile, this.buildCommandFileContents(input, outputStartMarker, outputEndMarker));
-    await this.deleteRemoteFile(rcFile);
+    await this.writeRemoteFile(
+      commandFile,
+      this.buildCommandFileContents(input, outputStartMarker, outputEndMarker),
+      timeoutSeconds,
+    );
+    await this.deleteRemoteFile(rcFile, timeoutSeconds);
     const wrapperCommand = [
       `sh ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
       "rc=$?",
       `rm -f ${AgentEnvironmentTmuxPty.shellQuote(commandFile)}`,
       `printf '%s' "$rc" > ${AgentEnvironmentTmuxPty.shellQuote(rcFile)}`,
     ].join("; ");
-    await this.sendInputToTmuxSession(sessionId, wrapperCommand, true);
+    await this.sendInputToTmuxSession(sessionId, wrapperCommand, true, timeoutSeconds);
 
     return {
       rcFile,
@@ -318,13 +339,14 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private async waitForTmuxCommand(
     rcFile: string,
     yieldTimeMilliseconds: number,
+    timeoutSeconds: number,
   ): Promise<{
     completed: boolean;
     exitCode: number | null;
   }> {
     const deadline = Date.now() + yieldTimeMilliseconds;
     while (true) {
-      const exitCode = await this.readExitCodeIfPresent(rcFile);
+      const exitCode = await this.readExitCodeIfPresent(rcFile, timeoutSeconds);
       if (exitCode !== null) {
         return {
           completed: true,
@@ -350,13 +372,14 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private async waitForSessionExit(
     sessionId: string,
     yieldTimeMilliseconds: number,
+    timeoutSeconds: number,
   ): Promise<{
     completed: boolean;
     exitCode: number | null;
   }> {
     const deadline = Date.now() + yieldTimeMilliseconds;
     while (true) {
-      if (!await this.hasTmuxSession(sessionId)) {
+      if (!await this.hasTmuxSession(sessionId, timeoutSeconds)) {
         return {
           completed: true,
           exitCode: null,
@@ -378,19 +401,24 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
   }
 
-  private async captureTmuxOutput(sessionId: string): Promise<string> {
+  private async captureTmuxOutput(sessionId: string, timeoutSeconds: number): Promise<string> {
     return this.runRequiredRemoteCommand(
       `tmux capture-pane -pt ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -S -32768`,
+      timeoutSeconds,
     );
   }
 
-  private async captureTmuxOutputLength(sessionId: string): Promise<number> {
-    const output = await this.captureTmuxOutput(sessionId);
+  private async captureTmuxOutputLength(sessionId: string, timeoutSeconds: number): Promise<number> {
+    const output = await this.captureTmuxOutput(sessionId, timeoutSeconds);
     return output.length;
   }
 
-  private async captureTmuxOutputSince(sessionId: string, offset: number): Promise<string> {
-    const output = await this.captureTmuxOutput(sessionId);
+  private async captureTmuxOutputSince(
+    sessionId: string,
+    offset: number,
+    timeoutSeconds: number,
+  ): Promise<string> {
+    const output = await this.captureTmuxOutput(sessionId, timeoutSeconds);
     return output.slice(offset);
   }
 
@@ -496,21 +524,26 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     return `env PS1='' ${exports} sh`;
   }
 
-  private async deleteRemoteFile(path: string): Promise<void> {
-    await this.runRemoteCommand(`rm -f ${AgentEnvironmentTmuxPty.shellQuote(path)}`);
+  private async deleteRemoteFile(path: string, timeoutSeconds?: number): Promise<void> {
+    await this.runRemoteCommand(
+      `rm -f ${AgentEnvironmentTmuxPty.shellQuote(path)}`,
+      timeoutSeconds,
+    );
   }
 
-  private async hasTmuxSession(sessionId: string): Promise<boolean> {
+  private async hasTmuxSession(sessionId: string, timeoutSeconds?: number): Promise<boolean> {
     const commandResult = await this.runRemoteCommand(
       `tmux has-session -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} 2>/dev/null`,
+      timeoutSeconds,
     );
 
     return commandResult.exitCode === 0;
   }
 
-  private async readExitCodeIfPresent(path: string): Promise<number | null> {
+  private async readExitCodeIfPresent(path: string, timeoutSeconds: number): Promise<number | null> {
     const output = await this.runRemoteCommand(
       `sh -lc 'if [ -f ${AgentEnvironmentTmuxPty.shellQuote(path)} ]; then cat ${AgentEnvironmentTmuxPty.shellQuote(path)}; fi' 2>/dev/null`,
+      timeoutSeconds,
     );
     const trimmedOutput = output.stdout.trim();
     if (trimmedOutput.length === 0) {
@@ -532,6 +565,14 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
 
     return Math.max(0, Number(configuredYieldTime));
+  }
+
+  private resolveInteractionRemoteCommandTimeoutSeconds(yieldTimeMilliseconds: number): number {
+    const yieldTimeSeconds = Math.ceil(yieldTimeMilliseconds / 1000);
+    return Math.max(
+      AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_SECONDS,
+      yieldTimeSeconds + AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_BUFFER_SECONDS,
+    );
   }
 
   private async runRequiredRemoteCommand(
@@ -560,22 +601,23 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     sessionId: string,
     input: string,
     appendEnter = false,
+    timeoutSeconds?: number,
   ): Promise<void> {
     const command = this.buildSendKeysCommand(sessionId, input, appendEnter);
     if (command.length === 0) {
       return;
     }
 
-    await this.runRequiredRemoteCommand(command);
+    await this.runRequiredRemoteCommand(command, timeoutSeconds);
   }
 
-  private async writeRemoteFile(path: string, content: string): Promise<void> {
+  private async writeRemoteFile(path: string, content: string, timeoutSeconds?: number): Promise<void> {
     const hereDocToken = `__COMPANYHELM_${randomUUID().replaceAll("-", "")}__`;
     await this.runRequiredRemoteCommand([
       `cat > ${AgentEnvironmentTmuxPty.shellQuote(path)} <<'${hereDocToken}'`,
       content.endsWith("\n") ? content.slice(0, -1) : content,
       hereDocToken,
-    ].join("\n"));
+    ].join("\n"), timeoutSeconds);
   }
 
   private static async delay(milliseconds: number): Promise<void> {

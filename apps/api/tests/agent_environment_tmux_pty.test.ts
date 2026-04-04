@@ -11,6 +11,7 @@ type FakeTmuxSession = {
 
 class FakeEnvironmentShell {
   readonly commandFiles = new Map<string, string>();
+  readonly commandTimeouts = [] as Array<{ command: string; timeoutSeconds?: number }>;
   readonly rcFiles = new Map<string, string>();
   readonly executedCommands = [] as string[];
   readonly sessions = new Map<string, FakeTmuxSession>();
@@ -21,8 +22,17 @@ class FakeEnvironmentShell {
   rootUser = false;
   tmuxInstalled = true;
 
-  async executeCommand(command: string) {
+  async executeCommand(
+    command: string,
+    _workingDirectory?: string,
+    _environment?: Record<string, string>,
+    timeoutSeconds?: number,
+  ) {
     this.executedCommands.push(command);
+    this.commandTimeouts.push({
+      command,
+      timeoutSeconds,
+    });
 
     if (command === "printenv HOME") {
       return {
@@ -438,6 +448,23 @@ test("AgentEnvironmentTmuxPty suppresses stderr noise while reading tmux rc file
       return command.includes(".rc") && command.endsWith("2>/dev/null");
     }),
   );
+});
+
+test("AgentEnvironmentTmuxPty keeps remote helper timeouts above the requested yield window", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.autoCompleteCommands = true;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  await pty.executeCommand({
+    command: "echo done",
+    yield_time_ms: 35_000,
+  });
+
+  const rcReadCommand = fakeEnvironmentShell.commandTimeouts.find((call) => {
+    return call.command.includes(".rc");
+  });
+
+  assert.equal(rcReadCommand?.timeoutSeconds, 45);
 });
 
 test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusable session ids", async () => {
