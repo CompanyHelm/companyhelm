@@ -1,7 +1,9 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import type { Logger as PinoLogger } from "pino";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+import { AgentEnvironmentShellTimeoutError } from "../../compute/shell_interface.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
@@ -38,9 +40,11 @@ export class AgentExecuteCommandTool {
   });
 
   private readonly promptScope: AgentEnvironmentPromptScope;
+  private readonly logger: PinoLogger;
 
-  constructor(promptScope: AgentEnvironmentPromptScope) {
+  constructor(promptScope: AgentEnvironmentPromptScope, logger: PinoLogger) {
     this.promptScope = promptScope;
+    this.logger = logger;
   }
 
   createDefinition(): ToolDefinition<typeof AgentExecuteCommandTool.parameters> {
@@ -48,7 +52,22 @@ export class AgentExecuteCommandTool {
       description: "Execute a shell command inside an agent environment tmux session and return captured output.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
-        const result = await environment.executeCommand(params);
+        let result;
+        try {
+          result = await environment.executeCommand(params);
+        } catch (error) {
+          if (error instanceof AgentEnvironmentShellTimeoutError) {
+            this.logger.warn({
+              command: error.command,
+              err: error,
+              provider: error.provider,
+              timeoutSeconds: error.timeoutSeconds,
+              workingDirectory: error.workingDirectory,
+            }, "environment shell command timed out");
+          }
+          throw error;
+        }
+
         return {
           content: [{
             text: AgentTerminalResultFormatter.formatCommandResult(result),

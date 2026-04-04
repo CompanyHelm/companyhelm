@@ -184,7 +184,7 @@ export class PiMonoSessionManagerService {
     );
     const webToolService = new AgentWebToolService(this.exaWebClient);
     const agentToolsService = new AgentToolsService(promptScope, [
-      new AgentTerminalToolProvider(promptScope),
+      new AgentTerminalToolProvider(promptScope, this.logger),
       new AgentSecretToolProvider(secretToolService),
       new AgentCompanyDirectoryToolProvider(companyDirectoryToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
