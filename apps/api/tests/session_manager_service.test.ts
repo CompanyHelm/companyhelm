@@ -864,6 +864,130 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
   ]);
 });
 
+test("SessionManagerService interruptSession publishes the interrupt channel only for running sessions", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const transaction = {
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              return [{
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                id: "session-1",
+                status: "running",
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while interrupting.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {} as SessionQueuedMessageService,
+  );
+
+  await service.interruptSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:interrupt",
+    message: "",
+  }]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "interrupted agent session",
+    payload: {
+      companyId: "company-1",
+      sessionId: "session-1",
+    },
+  }]);
+});
+
+test("SessionManagerService interruptSession is a no-op for stopped sessions", async () => {
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const transaction = {
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              return [{
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                id: "session-1",
+                status: "stopped",
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while interrupting.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {} as SessionQueuedMessageService,
+  );
+
+  await service.interruptSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.deepEqual(publishCalls, []);
+});
+
 test("SessionManagerService updateSessionTitle stores the custom title and publishes a session update", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const updatedValues: Array<Record<string, unknown>> = [];

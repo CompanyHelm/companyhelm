@@ -36,6 +36,7 @@ import { DismissInboxHumanQuestionMutation } from "./mutations/dismiss_inbox_hum
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
+import { InterruptSessionMutation } from "./mutations/interrupt_session.ts";
 import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_human_question.ts";
@@ -141,6 +142,7 @@ export class GraphqlApplication {
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly executeTaskMutation: ExecuteTaskMutation;
   private readonly inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver;
+  private readonly interruptSessionMutation: InterruptSessionMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
@@ -428,6 +430,12 @@ export class GraphqlApplication {
         throw new Error("UpdateSessionTitle mutation is not configured.");
       },
     } as never),
+    @inject(InterruptSessionMutation)
+    interruptSessionMutation: InterruptSessionMutation = new InterruptSessionMutation({
+      async interruptSession() {
+        throw new Error("InterruptSession mutation is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -483,6 +491,7 @@ export class GraphqlApplication {
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
     this.executeTaskMutation = executeTaskMutation;
     this.inboxHumanQuestionsQueryResolver = inboxHumanQuestionsQueryResolver;
+    this.interruptSessionMutation = interruptSessionMutation;
     this.promptSessionMutation = promptSessionMutation;
     this.resolveInboxHumanQuestionMutation = resolveInboxHumanQuestionMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
@@ -641,6 +650,7 @@ export class GraphqlApplication {
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           ExecuteTask: this.executeTaskMutation.execute,
+          InterruptSession: this.interruptSessionMutation.execute,
           MarkSessionRead: this.markSessionReadMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,

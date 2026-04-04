@@ -16,6 +16,7 @@ import {
   PlusIcon,
   SendHorizonalIcon,
   Settings2Icon,
+  SquareIcon,
   Trash2Icon,
   WrenchIcon,
   XIcon,
@@ -40,6 +41,7 @@ import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePr
 import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDeleteSessionQueuedMessageMutation.graphql";
+import type { chatsPageInterruptSessionMutation } from "./__generated__/chatsPageInterruptSessionMutation.graphql";
 import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
@@ -255,6 +257,29 @@ const chatsPageArchiveSessionMutationNode = graphql`
 const chatsPagePromptSessionMutationNode = graphql`
   mutation chatsPagePromptSessionMutation($input: PromptSessionInput!) {
     PromptSession(input: $input) {
+      id
+      agentId
+      hasUnread
+      currentContextTokens
+      isCompacting
+      maxContextTokens
+      modelProviderCredentialModelId
+      modelId
+      reasoningLevel
+      inferredTitle
+      isThinking
+      status
+      thinkingText
+      createdAt
+      updatedAt
+      userSetTitle
+    }
+  }
+`;
+
+const chatsPageInterruptSessionMutationNode = graphql`
+  mutation chatsPageInterruptSessionMutation($input: InterruptSessionInput!) {
+    InterruptSession(input: $input) {
       id
       agentId
       hasUnread
@@ -1773,6 +1798,9 @@ function ChatsPageContent() {
   const [commitPromptSession, isPromptSessionInFlight] = useMutation<chatsPagePromptSessionMutation>(
     chatsPagePromptSessionMutationNode,
   );
+  const [commitInterruptSession, isInterruptSessionInFlight] = useMutation<chatsPageInterruptSessionMutation>(
+    chatsPageInterruptSessionMutationNode,
+  );
   const [commitDeleteQueuedMessage] = useMutation<chatsPageDeleteSessionQueuedMessageMutation>(
     chatsPageDeleteSessionQueuedMessageMutationNode,
   );
@@ -1852,12 +1880,19 @@ function ChatsPageContent() {
   const shouldUseCompactComposerSettings = isMobile;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSelectedSessionRunning = selectedSession?.status === "running";
+  const hasDraftInput = draftMessage.trim().length > 0 || draftImages.length > 0;
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
   const canSubmitDraft = Boolean(
     selectedAgent
       && selectedComposerModelOption
-      && (draftMessage.trim().length > 0 || draftImages.length > 0),
-  ) && !isSubmittingDraft;
+      && hasDraftInput,
+  ) && !isSubmittingDraft && !isInterruptSessionInFlight;
+  const canInterruptSelectedSession = Boolean(selectedSession && isSelectedSessionRunning)
+    && !hasDraftInput
+    && !isSubmittingDraft
+    && !isInterruptSessionInFlight;
+  const shouldShowInterruptComposerAction = Boolean(selectedSession && isSelectedSessionRunning && !hasDraftInput);
+  const shouldShowQueueComposerAction = Boolean(selectedSession && isSelectedSessionRunning && hasDraftInput);
   const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting"
     && reconnectingSessionId !== null
     && reconnectingSessionId === selectedSessionId;
@@ -2843,6 +2878,37 @@ function ChatsPageContent() {
     });
   };
 
+  const interruptSession = async () => {
+    if (!selectedSession || !isSelectedSessionRunning) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      commitInterruptSession({
+        variables: {
+          input: {
+            sessionId: selectedSession.id,
+          },
+        },
+        updater: (store) => {
+          upsertRootLinkedRecord(store, "Sessions", "InterruptSession");
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to interrupt session.");
+    });
+  };
+
   const deleteQueuedMessage = async (queuedMessageId: string) => {
     const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
     if (!queuedMessage || queuedMessage.shouldSteer) {
@@ -2972,6 +3038,11 @@ function ChatsPageContent() {
   };
 
   const submitDraft = async () => {
+    if (shouldShowInterruptComposerAction) {
+      await interruptSession();
+      return;
+    }
+
     if (selectedSession) {
       await promptSession(isSelectedSessionRunning);
       return;
@@ -2981,7 +3052,7 @@ function ChatsPageContent() {
   };
 
   const queueDraftMessage = async () => {
-    if (!selectedSession || !isSelectedSessionRunning) {
+    if (!selectedSession || !isSelectedSessionRunning || !hasDraftInput) {
       return;
     }
 
@@ -2989,10 +3060,10 @@ function ChatsPageContent() {
   };
 
   const draftSubmitAriaLabel = selectedSession
-    ? isPromptSessionInFlight
-      ? "Sending message"
-      : isSelectedSessionRunning
-        ? "Steer message"
+    ? shouldShowInterruptComposerAction
+      ? (isInterruptSessionInFlight ? "Interrupting session" : "Interrupt session")
+      : isPromptSessionInFlight
+        ? "Sending message"
         : "Send message"
     : isCreateSessionInFlight
       ? "Creating chat"
@@ -3710,6 +3781,9 @@ function ChatsPageContent() {
                       if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
                         return;
                       }
+                      if (!hasDraftInput) {
+                        return;
+                      }
 
                       event.preventDefault();
                       void submitDraft();
@@ -3753,7 +3827,7 @@ function ChatsPageContent() {
                       className="flex h-8 items-center"
                       visible={selectedSession?.isThinking ?? false}
                     />
-                    {isSelectedSessionRunning ? (
+                    {shouldShowQueueComposerAction ? (
                       <Button
                         aria-label={queueDraftAriaLabel}
                         className="h-8 rounded-full px-3 text-[10px] font-medium uppercase tracking-[0.14em]"
@@ -3771,14 +3845,18 @@ function ChatsPageContent() {
                     <Button
                       aria-label={draftSubmitAriaLabel}
                       className="h-8 w-8 shrink-0 rounded-full px-0"
-                      disabled={!canSubmitDraft}
+                      disabled={shouldShowInterruptComposerAction ? !canInterruptSelectedSession : !canSubmitDraft}
                       onClick={() => {
                         void submitDraft();
                       }}
                       title={draftSubmitAriaLabel}
                       type="button"
                     >
-                      <SendHorizonalIcon className="size-3.5" />
+                      {shouldShowInterruptComposerAction ? (
+                        <SquareIcon className="size-3.5 fill-current" />
+                      ) : (
+                        <SendHorizonalIcon className="size-3.5" />
+                      )}
                     </Button>
                   </div>
                 </div>

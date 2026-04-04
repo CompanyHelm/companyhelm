@@ -392,6 +392,47 @@ export class SessionManagerService {
     return sessionRecord;
   }
 
+  async interruptSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const shouldInterrupt = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const [existingSession] = await selectableDatabase
+        .select({
+          agentId: agentSessions.agentId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          id: agentSessions.id,
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!existingSession) {
+        throw new Error("Session not found.");
+      }
+      if (existingSession.status === "archived") {
+        throw new Error("Archived sessions cannot be interrupted.");
+      }
+
+      return existingSession.status === "running";
+    });
+
+    if (!shouldInterrupt) {
+      return;
+    }
+
+    await this.publishInterrupt(companyId, sessionId);
+    this.logger.info({
+      companyId,
+      sessionId,
+    }, "interrupted agent session");
+  }
+
   async prompt(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
