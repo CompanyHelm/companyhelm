@@ -778,6 +778,18 @@ function formatTurnDuration(milliseconds: number): string {
   return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
 }
 
+function resolveToolExecutionDurationLabel(
+  message: Pick<SessionMessageRecord, "createdAt" | "updatedAt">,
+): string | null {
+  const startedAtMilliseconds = new Date(message.createdAt).getTime();
+  const endedAtMilliseconds = new Date(message.updatedAt).getTime();
+  if (!Number.isFinite(startedAtMilliseconds) || !Number.isFinite(endedAtMilliseconds)) {
+    return null;
+  }
+
+  return formatTurnDuration(Math.max(0, endedAtMilliseconds - startedAtMilliseconds));
+}
+
 function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecord>): TranscriptTurnRecord[] {
   const groupedTurns: Array<{ messages: SessionMessageRecord[]; turnId: string }> = [];
 
@@ -1219,6 +1231,7 @@ function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
 ) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const executionDurationLabel = resolveToolExecutionDurationLabel(message);
   const statusLabel = message.status.trim().toLowerCase() === "running"
     ? "Running"
     : message.isError
@@ -1267,6 +1280,14 @@ function ToolTranscriptMessage(
             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
               {statusLabel}
             </span>
+            {executionDurationLabel ? (
+              <span
+                className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70"
+                title={`Execution time: ${executionDurationLabel}`}
+              >
+                {executionDurationLabel}
+              </span>
+            ) : null}
           </div>
         </div>
         <button
