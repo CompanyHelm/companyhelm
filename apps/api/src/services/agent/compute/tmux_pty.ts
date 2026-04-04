@@ -144,7 +144,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   async listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
     await this.ensureTmuxPrepared();
     const output = await this.runRequiredRemoteCommand(
-      `sh -lc 'tmux list-sessions -F "#{session_name}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_attached}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_created}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_width}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_height}" 2>/dev/null || true'`,
+      `tmux list-sessions -F "#{session_name}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_attached}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_created}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_width}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_height}" 2>/dev/null || true`,
     );
 
     return output
@@ -471,23 +471,35 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       return this.buildTerminalSessionRecord([id, attached, createdAt, width, height]);
     }
 
-    return {
-      attached: false,
-      createdAt: "",
-      height: 0,
-      id: line,
-      width: 0,
-    };
+    return null;
   }
 
-  private buildTerminalSessionRecord(parts: string[]): AgentEnvironmentTerminalSession {
+  private buildTerminalSessionRecord(parts: string[]): AgentEnvironmentTerminalSession | null {
     const [id, attached, createdAt, width, height] = parts;
+    const normalizedId = id?.trim() ?? "";
+    const normalizedCreatedAt = createdAt?.trim() ?? "";
+    const normalizedAttached = attached?.trim() ?? "";
+    const parsedWidth = Number(width ?? "");
+    const parsedHeight = Number(height ?? "");
+
+    if (normalizedId.length === 0 || normalizedCreatedAt.length === 0) {
+      return null;
+    }
+
+    if (normalizedAttached !== "0" && normalizedAttached !== "1") {
+      return null;
+    }
+
+    if (!Number.isFinite(parsedWidth) || !Number.isFinite(parsedHeight)) {
+      return null;
+    }
+
     return {
-      attached: attached === "1",
-      createdAt: createdAt ?? "",
-      height: Number(height ?? "0"),
-      id: id ?? "",
-      width: Number(width ?? "0"),
+      attached: normalizedAttached === "1",
+      createdAt: normalizedCreatedAt,
+      height: parsedHeight,
+      id: normalizedId,
+      width: parsedWidth,
     };
   }
 

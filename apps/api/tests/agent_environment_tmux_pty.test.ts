@@ -482,3 +482,37 @@ test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusab
     width: 80,
   }]);
 });
+
+test("AgentEnvironmentTmuxPty lists sessions without shelling through login sh", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  await pty.listSessions();
+
+  assert.ok(fakeEnvironmentShell.executedCommands.some((command) => {
+    return command.startsWith("tmux list-sessions -F ");
+  }));
+  assert.ok(fakeEnvironmentShell.executedCommands.every((command) => {
+    return !command.includes("sh -lc 'tmux list-sessions");
+  }));
+});
+
+test("AgentEnvironmentTmuxPty ignores malformed session list lines", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.listedSessionsOutput = [
+    "sh: 36: source: not found",
+    "main|0|1774825845|80|20",
+    "bad|attached|1774825845|80|20",
+  ].join("\n");
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  const sessions = await pty.listSessions();
+
+  assert.deepEqual(sessions, [{
+    attached: false,
+    createdAt: "1774825845",
+    height: 20,
+    id: "main",
+    width: 80,
+  }]);
+});
