@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentArtifactResultFormatter } from "./result_formatter.ts";
 import { AgentArtifactToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentArtifactToolService } from "./service.ts";
  * and pull requests before creating duplicates or editing the wrong record.
  */
 export class AgentListArtifactsTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     scopeType: Type.Union([
       Type.Literal("company"),
       Type.Literal("task"),

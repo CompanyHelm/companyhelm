@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
@@ -9,7 +10,7 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  * the agent is exploring, rather than the API host filesystem.
  */
 export class AgentApplyPatchTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     patch: Type.String({
       description: [
         "Structured patch text to apply inside the environment workspace.",

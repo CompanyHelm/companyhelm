@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentWebResultFormatter } from "./result_formatter.ts";
 import { AgentWebToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentWebToolService } from "./service.ts";
  * can decide which URLs to inspect more deeply with `web_fetch`.
  */
 export class AgentWebSearchTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     excludeDomains: Type.Optional(Type.Array(Type.String(), {
       description: "Optional domains to exclude from the search results.",
       maxItems: 20,

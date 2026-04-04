@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentArtifactResultFormatter } from "./result_formatter.ts";
 import { AgentArtifactToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentArtifactToolService } from "./service.ts";
  * descriptions instead of only mentioning them in transcript text.
  */
 export class AgentCreateExternalLinkArtifactTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     description: Type.Optional(Type.String({
       description: "Optional short description shown in artifact lists.",
     })),

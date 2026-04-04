@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentSecretResultFormatter } from "./result_formatter.ts";
 import { AgentSecretToolService } from "./service.ts";
 
@@ -8,7 +8,7 @@ import { AgentSecretToolService } from "./service.ts";
  * that exec-style command tools can inject into the environment for the active run.
  */
 export class AgentListAssignedSecretsTool {
-  private static readonly parameters = Type.Object({});
+  private static readonly parameters = AgentToolParameterSchema.object({});
   private readonly secretToolService: AgentSecretToolService;
 
   constructor(secretToolService: AgentSecretToolService) {

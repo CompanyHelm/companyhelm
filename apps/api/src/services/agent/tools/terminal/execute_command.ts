@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
@@ -8,7 +9,7 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  * returning the session id so later tool calls can continue the same shell.
  */
 export class AgentExecuteCommandTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     columns: Type.Optional(Type.Number({
       description: "Optional terminal width to use when creating a new session.",
     })),

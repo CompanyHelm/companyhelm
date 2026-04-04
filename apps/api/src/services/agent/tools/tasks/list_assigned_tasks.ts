@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentTaskResultFormatter } from "./result_formatter.ts";
 import { AgentTaskToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentTaskToolService } from "./service.ts";
  * without having to remember or pass its agent id into the more general list-tasks tool.
  */
 export class AgentListAssignedTasksTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     limit: Type.Optional(Type.Integer({ maximum: 100, minimum: 1 })),
     offset: Type.Optional(Type.Integer({ minimum: 0 })),
     status: Type.Optional(Type.Union([

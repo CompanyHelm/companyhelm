@@ -1,12 +1,13 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 
 /**
  * Terminates an existing tmux session immediately.
  */
 export class AgentKillTerminalSessionTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     sessionId: Type.String({
       description: "Environment session id returned by execute_command.",
     }),

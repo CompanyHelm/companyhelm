@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentTaskResultFormatter } from "./result_formatter.ts";
 import { AgentTaskToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentTaskToolService } from "./service.ts";
  * draft, active, and completed states from within the current session.
  */
 export class AgentUpdateTaskStatusTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     status: Type.Union([
       Type.Literal("draft"),
       Type.Literal("in_progress"),

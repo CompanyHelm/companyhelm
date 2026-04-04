@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentTaskResultFormatter } from "./result_formatter.ts";
 import { AgentTaskToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentTaskToolService } from "./service.ts";
  * browse a larger task catalog incrementally instead of pulling the full backlog at once.
  */
 export class AgentListTasksTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     assignedAgentId: Type.Optional(Type.String()),
     limit: Type.Optional(Type.Integer({ maximum: 100, minimum: 1 })),
     offset: Type.Optional(Type.Integer({ minimum: 0 })),

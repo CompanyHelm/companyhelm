@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
@@ -8,7 +9,7 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  * the newly emitted pane output.
  */
 export class AgentSendTerminalInputTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     input: Type.String({
       description: "Raw terminal input to write into the running environment tmux session.",
     }),

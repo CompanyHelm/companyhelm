@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentWebResultFormatter } from "./result_formatter.ts";
 import { AgentWebToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentWebToolService } from "./service.ts";
  * bodies without relying on direct environment-side HTTP fetching.
  */
 export class AgentWebFetchTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     format: Type.Optional(Type.Union([
       Type.Literal("markdown"),
       Type.Literal("html"),

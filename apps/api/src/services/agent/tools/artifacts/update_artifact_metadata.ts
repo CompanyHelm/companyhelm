@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentArtifactResultFormatter } from "./result_formatter.ts";
 import { AgentArtifactToolService } from "./service.ts";
 
@@ -8,7 +9,7 @@ import { AgentArtifactToolService } from "./service.ts";
  * move them between draft and active states without touching the type-specific payload.
  */
 export class AgentUpdateArtifactMetadataTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     artifactId: Type.String({
       description: "The artifact id to update.",
     }),

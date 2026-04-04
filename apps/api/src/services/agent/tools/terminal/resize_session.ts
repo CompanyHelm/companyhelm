@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 
 /**
@@ -7,7 +8,7 @@ import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
  * to the requested viewport dimensions.
  */
 export class AgentResizeTerminalSessionTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     columns: Type.Number({
       description: "Target terminal width in columns.",
     }),

@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
@@ -8,7 +8,7 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  * which session id to reuse.
  */
 export class AgentListTerminalSessionsTool {
-  private static readonly parameters = Type.Object({});
+  private static readonly parameters = AgentToolParameterSchema.object({});
   private readonly promptScope: AgentEnvironmentPromptScope;
 
   constructor(promptScope: AgentEnvironmentPromptScope) {

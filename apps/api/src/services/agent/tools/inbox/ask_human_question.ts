@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentInboxResultFormatter } from "./result_formatter.ts";
 import { AgentInboxToolService } from "./service.ts";
 
@@ -9,11 +10,11 @@ import { AgentInboxToolService } from "./service.ts";
  * working or wait for the eventual steer reply from the human.
  */
 export class AgentAskHumanQuestionTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     allowCustomAnswer: Type.Optional(Type.Boolean({
       description: "Whether the human should be allowed to type an answer instead of choosing one of the proposals.",
     })),
-    proposals: Type.Array(Type.Object({
+    proposals: Type.Array(AgentToolParameterSchema.object({
       answerText: Type.String({
         description: "One proposed answer the human can choose.",
       }),

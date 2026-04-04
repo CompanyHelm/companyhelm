@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
@@ -7,7 +8,7 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  * Reads terminal output directly from tmux without relying on any API-side PTY buffer.
  */
 export class AgentReadTerminalOutputTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     afterOffset: Type.Optional(Type.Number({
       description: "Character offset cursor returned by the previous read. Omit for the first page.",
     })),

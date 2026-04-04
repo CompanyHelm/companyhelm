@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentGithubInstallationService } from "./installation_service.ts";
 import { AgentGithubResultFormatter } from "./result_formatter.ts";
 
@@ -8,7 +8,7 @@ import { AgentGithubResultFormatter } from "./result_formatter.ts";
  * repositories mirrored for each installation so the agent can choose where to run `gh` commands.
  */
 export class AgentListGithubInstallationsTool {
-  private static readonly parameters = Type.Object({});
+  private static readonly parameters = AgentToolParameterSchema.object({});
   private readonly installationService: AgentGithubInstallationService;
 
   constructor(installationService: AgentGithubInstallationService) {

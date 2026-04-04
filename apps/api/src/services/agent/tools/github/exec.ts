@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { GithubClient } from "../../../../github/client.ts";
 import { AgentGithubInstallationService } from "./installation_service.ts";
@@ -11,7 +12,7 @@ import { AgentGithubResultFormatter } from "./result_formatter.ts";
  * not persisted into the long-lived tmux shell state.
  */
 export class AgentGithubExecTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     args: Type.Array(Type.String(), {
       description: "Arguments to pass to the gh CLI, excluding the leading gh command.",
       minItems: 1,

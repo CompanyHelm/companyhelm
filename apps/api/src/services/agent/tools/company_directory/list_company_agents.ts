@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentCompanyDirectoryResultFormatter } from "./result_formatter.ts";
 import { AgentCompanyDirectoryToolService } from "./service.ts";
 
@@ -8,7 +8,7 @@ import { AgentCompanyDirectoryToolService } from "./service.ts";
  * delegation and coordination flows.
  */
 export class AgentListCompanyAgentsTool {
-  private static readonly parameters = Type.Object({});
+  private static readonly parameters = AgentToolParameterSchema.object({});
 
   private readonly companyDirectoryToolService: AgentCompanyDirectoryToolService;
 

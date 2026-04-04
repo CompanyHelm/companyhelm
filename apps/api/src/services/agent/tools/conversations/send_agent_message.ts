@@ -1,5 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentConversationResultFormatter } from "./result_formatter.ts";
 import { AgentConversationToolService } from "./service.ts";
 
@@ -9,7 +10,7 @@ import { AgentConversationToolService } from "./service.ts";
  * surface can stay focused on delivery rather than routing internals.
  */
 export class AgentSendAgentMessageTool {
-  private static readonly parameters = Type.Object({
+  private static readonly parameters = AgentToolParameterSchema.object({
     targetAgentId: Type.Optional(Type.String()),
     targetSessionId: Type.Optional(Type.String()),
     text: Type.String(),
