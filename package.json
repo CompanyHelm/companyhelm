@@ -21,6 +21,7 @@
     "check:api": "npm run check -w @companyhelm/api",
     "check:web": "npm run check -w @companyhelm/web",
     "check:all": "npm run check:api && npm run check:web",
+    "postinstall": "patch-package",
     "test:api": "npm run test -w @companyhelm/api",
     "test:web": "npm run test -w @companyhelm/web",
     "test:all": "npm run test:api && npm run test:web"
@@ -29,6 +30,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.1.0",
     "globals": "^17.4.0",
+    "patch-package": "^8.0.1",
     "tsx": "^4.21.0",
     "turbo": "^2.8.20",
     "typescript-eslint": "^8.57.1"

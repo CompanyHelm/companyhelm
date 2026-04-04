@@ -1,0 +1,20 @@
+diff --git a/node_modules/@mariozechner/pi-ai/dist/utils/validation.js b/node_modules/@mariozechner/pi-ai/dist/utils/validation.js
+index 64e2d54..bff3ef5 100644
+--- a/node_modules/@mariozechner/pi-ai/dist/utils/validation.js
++++ b/node_modules/@mariozechner/pi-ai/dist/utils/validation.js
+@@ -65,7 +65,14 @@ export function validateToolArguments(tool, toolCall) {
+     // Format validation errors nicely
+     const errors = validate.errors
+         ?.map((err) => {
+-        const path = err.instancePath ? err.instancePath.substring(1) : err.params.missingProperty || "root";
++        const basePath = err.instancePath ? err.instancePath.substring(1) : "";
++        const missingProperty = typeof err.params?.missingProperty === "string" ? err.params.missingProperty : undefined;
++        const additionalProperty = typeof err.params?.additionalProperty === "string" ? err.params.additionalProperty : undefined;
++        const path = missingProperty
++            ? missingProperty
++            : additionalProperty
++                ? [basePath, additionalProperty].filter(Boolean).join(".")
++                : basePath || "root";
+         return `  - ${path}: ${err.message}`;
+     })
+         .join("\n") || "Unknown validation error";
