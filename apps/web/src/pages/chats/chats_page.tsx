@@ -1911,6 +1911,7 @@ function ChatsPageContent() {
     : null;
   const selectedSessionId = selectedSession?.id ?? null;
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
+  const shouldUseCompactComposerSettings = isMobile;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSelectedSessionRunning = selectedSession?.status === "running";
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
@@ -3085,7 +3086,7 @@ function ChatsPageContent() {
       );
     }
 
-    if (selectedSession) {
+    if (selectedSession || (shouldUseCompactComposerSettings && selectedAgent)) {
       actions.push(
         <Button
           key="environment-panel"
@@ -3108,7 +3109,7 @@ function ChatsPageContent() {
     }
 
     return <>{actions}</>;
-  }, [isMobile, selectedSession, shouldShowChatListButton, showChatList]);
+  }, [isMobile, selectedAgent, selectedSession, shouldShowChatListButton, shouldUseCompactComposerSettings, showChatList]);
   const headerContent = useMemo(() => {
     return (
       <div className="min-w-0">
@@ -3459,7 +3460,18 @@ function ChatsPageContent() {
   const selectedSessionTitle = selectedSession
     ? resolveSessionTitle(selectedSession, selectedSessionMessages)
     : "Untitled chat";
-  const environmentDetailsPanel = selectedSession ? (
+  const environmentModelOptions = composerModelOptions.map((modelOption) => ({
+    label: `${modelOption.providerLabel} ${modelOption.name}`,
+    value: modelOption.id,
+  }));
+  const environmentReasoningOptions = (selectedComposerModelOption?.reasoningLevels ?? []).map((reasoningOption) => ({
+    label: reasoningOption,
+    value: reasoningOption,
+  }));
+  const selectedComposerModelDisplayValue = selectedComposerModelOption
+    ? `${selectedComposerModelOption.providerLabel} • ${selectedComposerModelOption.name}`
+    : null;
+  const environmentDetailsPanel = selectedAgent ? (
     <Sheet open={isEnvironmentPanelOpen} onOpenChange={setIsEnvironmentPanelOpen}>
       <SheetContent
         className={isMobile
@@ -3470,7 +3482,7 @@ function ChatsPageContent() {
         <SheetHeader className="border-b border-border/60 px-6 py-5">
           <SheetTitle>Chat settings</SheetTitle>
           <SheetDescription>
-            Edit the chat title and review the reusable environment attached to this session.
+            Adjust the active chat configuration and review the reusable environment attached to this session.
           </SheetDescription>
         </SheetHeader>
 
@@ -3481,83 +3493,126 @@ function ChatsPageContent() {
             </div>
           ) : null}
 
-          <section className="grid gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Title
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                The custom title overrides the inferred chat label everywhere in the chats experience.
-              </p>
-            </div>
-
-            <EditableField
-              displayValue={selectedSessionTitle}
-              emptyValueLabel="Untitled chat"
-              fieldType="text"
-              label="Title"
-              onSave={async (nextTitle) => {
-                await updateSessionTitle(selectedSession.id, nextTitle);
-              }}
-              value={selectedSession.userSetTitle ?? selectedSessionTitle}
-            />
-          </section>
-
-          <section className="grid gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Current environment
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                This is the reusable environment CompanyHelm would attach to the current session right now.
-              </p>
-            </div>
-
-            {isLoadingSessionEnvironment ? (
-              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                <Loader2Icon className="size-4 animate-spin" />
-                Loading environment…
+          {shouldUseCompactComposerSettings ? (
+            <section className="grid gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Model
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mobile keeps the composer compact, so model and reasoning controls live here instead.
+                </p>
               </div>
-            ) : currentSessionEnvironment ? (
-              <button
-                className="grid gap-3 rounded-xl border border-border/60 bg-card/50 p-4 text-left transition hover:border-border hover:bg-card"
-                onClick={() => {
-                  setIsEnvironmentPanelOpen(false);
-                  void navigate({
-                    to: "/environments",
-                  });
+
+              <EditableField
+                displayValue={selectedComposerModelDisplayValue}
+                emptyValueLabel="Select model"
+                fieldType="select"
+                label="Model"
+                onSave={async (nextModelOptionId) => {
+                  setComposerModelOptionId(nextModelOptionId);
                 }}
-                type="button"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {currentSessionEnvironment.displayName ?? currentSessionEnvironment.providerEnvironmentId}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {currentSessionEnvironment.providerDefinitionName ?? "Unnamed definition"} • {formatComputeProviderLabel({
-                        name: currentSessionEnvironment.providerDefinitionName,
-                        provider: currentSessionEnvironment.provider,
-                      })}
-                    </p>
-                  </div>
-                  <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                </div>
-                <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                  <p>Status: {currentSessionEnvironment.status}</p>
-                  <p>Platform: {currentSessionEnvironment.platform}</p>
-                  <p>CPU: {currentSessionEnvironment.cpuCount}</p>
-                  <p>Memory: {currentSessionEnvironment.memoryGb} GB</p>
-                  <p>Disk: {currentSessionEnvironment.diskSpaceGb} GB</p>
-                </div>
-              </button>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
-                No reusable environment is currently attached to this session.
-              </div>
-            )}
-          </section>
+                options={environmentModelOptions}
+                value={composerModelOptionId}
+              />
 
+              {environmentReasoningOptions.length > 0 ? (
+                <EditableField
+                  emptyValueLabel="Select reasoning"
+                  fieldType="select"
+                  label="Reasoning level"
+                  onSave={async (nextReasoningLevel) => {
+                    setComposerReasoningLevel(nextReasoningLevel);
+                  }}
+                  options={environmentReasoningOptions}
+                  value={composerReasoningLevel}
+                />
+              ) : null}
+            </section>
+          ) : null}
+
+          {selectedSession ? (
+            <section className="grid gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Title
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The custom title overrides the inferred chat label everywhere in the chats experience.
+                </p>
+              </div>
+
+              <EditableField
+                displayValue={selectedSessionTitle}
+                emptyValueLabel="Untitled chat"
+                fieldType="text"
+                label="Title"
+                onSave={async (nextTitle) => {
+                  await updateSessionTitle(selectedSession.id, nextTitle);
+                }}
+                value={selectedSession.userSetTitle ?? selectedSessionTitle}
+              />
+            </section>
+          ) : null}
+
+          {selectedSession ? (
+            <section className="grid gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Current environment
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This is the reusable environment CompanyHelm would attach to the current session right now.
+                </p>
+              </div>
+
+              {isLoadingSessionEnvironment ? (
+                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Loading environment…
+                </div>
+              ) : currentSessionEnvironment ? (
+                <button
+                  className="grid gap-3 rounded-xl border border-border/60 bg-card/50 p-4 text-left transition hover:border-border hover:bg-card"
+                  onClick={() => {
+                    setIsEnvironmentPanelOpen(false);
+                    void navigate({
+                      to: "/environments",
+                    });
+                  }}
+                  type="button"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {currentSessionEnvironment.displayName ?? currentSessionEnvironment.providerEnvironmentId}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {currentSessionEnvironment.providerDefinitionName ?? "Unnamed definition"} • {formatComputeProviderLabel({
+                          name: currentSessionEnvironment.providerDefinitionName,
+                          provider: currentSessionEnvironment.provider,
+                        })}
+                      </p>
+                    </div>
+                    <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  </div>
+                  <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                    <p>Status: {currentSessionEnvironment.status}</p>
+                    <p>Platform: {currentSessionEnvironment.platform}</p>
+                    <p>CPU: {currentSessionEnvironment.cpuCount}</p>
+                    <p>Memory: {currentSessionEnvironment.memoryGb} GB</p>
+                    <p>Disk: {currentSessionEnvironment.diskSpaceGb} GB</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+                  No reusable environment is currently attached to this session.
+                </div>
+              )}
+            </section>
+          ) : null}
+
+          {selectedSession ? (
           <section className="grid gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -3581,6 +3636,7 @@ function ChatsPageContent() {
               </div>
             )}
           </section>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
@@ -3737,13 +3793,15 @@ function ChatsPageContent() {
                     >
                       <PlusIcon className="size-3.5" />
                     </Button>
-                    <ChatComposerModelPicker
-                      modelOptions={composerModelOptions}
-                      onModelChange={setComposerModelOptionId}
-                      onReasoningLevelChange={setComposerReasoningLevel}
-                      reasoningLevel={composerReasoningLevel}
-                      selectedModelOptionId={composerModelOptionId}
-                    />
+                    {!shouldUseCompactComposerSettings ? (
+                      <ChatComposerModelPicker
+                        modelOptions={composerModelOptions}
+                        onModelChange={setComposerModelOptionId}
+                        onReasoningLevelChange={setComposerReasoningLevel}
+                        reasoningLevel={composerReasoningLevel}
+                        selectedModelOptionId={composerModelOptionId}
+                      />
+                    ) : null}
                     {selectedSession ? (
                       <ChatsContextUsageIndicator
                         currentContextTokens={selectedSession.currentContextTokens}
