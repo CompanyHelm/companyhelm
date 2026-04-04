@@ -169,6 +169,32 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("web searches should not run during ensureSession");
       },
     } as never,
+    {
+      async getRequirements() {
+        throw new Error("agent requirements should not be loaded during ensureSession");
+      },
+      async updateRequirements() {
+        throw new Error("agent requirements should not be updated during ensureSession");
+      },
+    } as never,
+    {
+      async listDefinitions() {
+        throw new Error("compute provider definitions should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      get() {
+        throw new Error("model provider services should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      getDefaultModelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+      getDefaultReasoningLevelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+    } as never,
   );
 
   const session = await service.ensureSession(
@@ -321,6 +347,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",
+      "list_agents",
+      "create_agent",
+      "update_agent",
       "list_github_installations",
       "gh_exec",
       "web_search",
@@ -377,6 +406,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",
+      "list_agents",
+      "create_agent",
+      "update_agent",
       "list_github_installations",
       "gh_exec",
       "web_search",
@@ -482,6 +514,32 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
         throw new Error("web searches should not run during ensureSession");
       },
     } as never,
+    {
+      async getRequirements() {
+        throw new Error("agent requirements should not be loaded during ensureSession");
+      },
+      async updateRequirements() {
+        throw new Error("agent requirements should not be updated during ensureSession");
+      },
+    } as never,
+    {
+      async listDefinitions() {
+        throw new Error("compute provider definitions should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      get() {
+        throw new Error("model provider services should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      getDefaultModelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+      getDefaultReasoningLevelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+    } as never,
   );
 
   const first = await service.ensureSession(
@@ -573,6 +631,9 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",
+      "list_agents",
+      "create_agent",
+      "update_agent",
       "list_github_installations",
       "gh_exec",
       "web_search",

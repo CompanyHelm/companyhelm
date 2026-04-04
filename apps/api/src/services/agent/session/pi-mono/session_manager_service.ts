@@ -7,7 +7,7 @@ import {
   type AgentSession,
   AuthStorage,
   createAgentSession,
-  ModelRegistry,
+  ModelRegistry as PiMonoModelRegistry,
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { agentSessions } from "../../../../db/schema.ts";
@@ -17,6 +17,8 @@ import { AgentEnvironmentAccessService } from "../../environment/access_service.
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
+import { AgentManagementToolProvider } from "../../tools/agents/provider.ts";
+import { AgentManagementToolService } from "../../tools/agents/service.ts";
 import { AgentArtifactToolProvider } from "../../tools/artifacts/provider.ts";
 import { AgentArtifactToolService } from "../../tools/artifacts/service.ts";
 import { AgentCompanyDirectoryToolProvider } from "../../tools/company_directory/provider.ts";
@@ -24,6 +26,7 @@ import { AgentCompanyDirectoryToolService } from "../../tools/company_directory/
 import { AgentConversationService } from "../../conversations/service.ts";
 import { AgentConversationToolProvider } from "../../tools/conversations/provider.ts";
 import { AgentConversationToolService } from "../../tools/conversations/service.ts";
+import { AgentEnvironmentRequirementsService } from "../../environment/requirements_service.ts";
 import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
 import { AgentInboxService } from "../../inbox/service.ts";
@@ -37,6 +40,8 @@ import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
 import { AgentWebToolProvider } from "../../tools/web/provider.ts";
 import { AgentWebToolService } from "../../tools/web/service.ts";
 import { ArtifactService } from "../../../artifact_service.ts";
+import { ModelRegistry } from "../../../ai_providers/model_registry.ts";
+import { ModelProviderService } from "../../../ai_providers/model_provider_service.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { TaskService } from "../../../task_service.ts";
@@ -44,6 +49,7 @@ import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_t
 import { AgentEnvironmentWorkspacePath } from "../../environment/workspace_path.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
+import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { ExaWebClient } from "../../../web_search/exa_client.ts";
 
 type SessionRuntimeConfig = {
@@ -99,6 +105,10 @@ export class PiMonoSessionManagerService {
   private readonly secretService: SecretService;
   private readonly agentConversationService: AgentConversationService;
   private readonly exaWebClient: ExaWebClient;
+  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly modelProviderService: ModelProviderService;
+  private readonly appModelRegistry: ModelRegistry;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
@@ -109,6 +119,12 @@ export class PiMonoSessionManagerService {
     @inject(SecretService) secretService: SecretService,
     @inject(AgentConversationService) agentConversationService: AgentConversationService,
     @inject(ExaWebClient) exaWebClient: ExaWebClient,
+    @inject(AgentEnvironmentRequirementsService)
+    requirementsService: AgentEnvironmentRequirementsService,
+    @inject(ComputeProviderDefinitionService)
+    computeProviderDefinitionService: ComputeProviderDefinitionService,
+    @inject(ModelProviderService) modelProviderService: ModelProviderService,
+    @inject(ModelRegistry) appModelRegistry: ModelRegistry,
   ) {
     this.logger = logger.child({
       component: "pi_mono_session_manager_service",
@@ -120,6 +136,10 @@ export class PiMonoSessionManagerService {
     this.secretService = secretService;
     this.agentConversationService = agentConversationService;
     this.exaWebClient = exaWebClient;
+    this.requirementsService = requirementsService;
+    this.computeProviderDefinitionService = computeProviderDefinitionService;
+    this.modelProviderService = modelProviderService;
+    this.appModelRegistry = appModelRegistry;
   }
 
   async ensureSession(
@@ -134,7 +154,7 @@ export class PiMonoSessionManagerService {
 
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(runtimeConfig.providerId, runtimeConfig.apiKey);
-    const modelRegistry = new ModelRegistry(authStorage);
+    const modelRegistry = new PiMonoModelRegistry(authStorage);
     const promptScope = new AgentEnvironmentPromptScope(
       transactionProvider,
       this.agentEnvironmentAccessService,
@@ -155,6 +175,16 @@ export class PiMonoSessionManagerService {
     const companyDirectoryToolService = new AgentCompanyDirectoryToolService(
       transactionProvider,
       runtimeConfig.companyId,
+    );
+    const agentManagementToolService = new AgentManagementToolService(
+      transactionProvider,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
+      this.secretService,
+      this.requirementsService,
+      this.computeProviderDefinitionService,
+      this.modelProviderService,
+      this.appModelRegistry,
     );
     const inboxToolService = new AgentInboxToolService(
       transactionProvider,
@@ -187,6 +217,7 @@ export class PiMonoSessionManagerService {
       new AgentTerminalToolProvider(promptScope, this.logger),
       new AgentSecretToolProvider(secretToolService),
       new AgentCompanyDirectoryToolProvider(companyDirectoryToolService),
+      new AgentManagementToolProvider(agentManagementToolService),
       new AgentGithubToolProvider(promptScope, githubInstallationService),
       new AgentWebToolProvider(webToolService),
       new AgentInboxToolProvider(inboxToolService),
@@ -362,7 +393,7 @@ export class PiMonoSessionManagerService {
     messages: AgentMessage[],
   ): Promise<void> {
     await transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       await updatableDatabase
         .update(agentSessions)
         .set({

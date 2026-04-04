@@ -6,6 +6,7 @@ import {
   SessionManager,
 } from "@mariozechner/pi-coding-agent";
 import { test, vi } from "vitest";
+import { AgentManagementToolProvider } from "../src/services/agent/tools/agents/provider.ts";
 import { AgentArtifactToolProvider } from "../src/services/agent/tools/artifacts/provider.ts";
 import { AgentCompanyDirectoryToolProvider } from "../src/services/agent/tools/company_directory/provider.ts";
 import { AgentConversationToolProvider } from "../src/services/agent/tools/conversations/provider.ts";
@@ -30,7 +31,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       async getEnvironment() {
         throw new Error("tools should not acquire the environment during initialization");
       },
-    } as never),
+    } as never, {} as never),
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during initialization");
@@ -45,6 +46,17 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       },
       async listCompanyMembers() {
         throw new Error("company members should not be loaded during initialization");
+      },
+    } as never),
+    new AgentManagementToolProvider({
+      async createAgent() {
+        throw new Error("agents should not be created during initialization");
+      },
+      async listAgents() {
+        throw new Error("agents should not be listed during initialization");
+      },
+      async updateAgent() {
+        throw new Error("agents should not be updated during initialization");
       },
     } as never),
     new AgentGithubToolProvider({
@@ -139,6 +151,9 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",
+      "list_agents",
+      "create_agent",
+      "update_agent",
       "list_github_installations",
       "gh_exec",
       "web_search",
@@ -177,7 +192,7 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       async getEnvironment() {
         throw new Error("tools should not acquire the environment during cleanup");
       },
-    } as never),
+    } as never, {} as never),
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during cleanup");
@@ -192,6 +207,17 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       },
       async listCompanyMembers() {
         throw new Error("company members should not be loaded during cleanup");
+      },
+    } as never),
+    new AgentManagementToolProvider({
+      async createAgent() {
+        throw new Error("agents should not be created during cleanup");
+      },
+      async listAgents() {
+        throw new Error("agents should not be listed during cleanup");
+      },
+      async updateAgent() {
+        throw new Error("agents should not be updated during cleanup");
       },
     } as never),
     new AgentGithubToolProvider({
@@ -296,7 +322,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       async getEnvironment() {
         throw new Error("session creation should not eagerly acquire the environment");
       },
-    } as never),
+    } as never, {} as never),
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during session creation");
@@ -311,6 +337,17 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       },
       async listCompanyMembers() {
         throw new Error("company members should not be loaded during session creation");
+      },
+    } as never),
+    new AgentManagementToolProvider({
+      async createAgent() {
+        throw new Error("agents should not be created during session creation");
+      },
+      async listAgents() {
+        throw new Error("agents should not be listed during session creation");
+      },
+      async updateAgent() {
+        throw new Error("agents should not be updated during session creation");
       },
     } as never),
     new AgentGithubToolProvider({
@@ -419,6 +456,9 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",
+      "list_agents",
+      "create_agent",
+      "update_agent",
       "list_github_installations",
       "gh_exec",
       "web_search",
