@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<31b51cee4792bade8efd8bc2515ac4e0>>
+ * @generated SignedSource<<e585d028444bc36da193800220675316>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,11 @@ export type chatsPageSessionQueuedMessagesUpdatedSubscription$data = {
   readonly SessionQueuedMessagesUpdated: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
+    readonly images: ReadonlyArray<{
+      readonly base64EncodedImage: string;
+      readonly id: string;
+      readonly mimeType: string;
+    }>;
     readonly sessionId: string;
     readonly shouldSteer: boolean;
     readonly status: string;
@@ -36,7 +41,14 @@ var v0 = [
     "name": "sessionId"
   }
 ],
-v1 = [
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v2 = [
   {
     "alias": null,
     "args": [
@@ -51,13 +63,7 @@ v1 = [
     "name": "SessionQueuedMessagesUpdated",
     "plural": true,
     "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -70,6 +76,32 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "text",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "SessionQueuedMessageImage",
+        "kind": "LinkedField",
+        "name": "images",
+        "plural": true,
+        "selections": [
+          (v1/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "base64EncodedImage",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "mimeType",
+            "storageKey": null
+          }
+        ],
         "storageKey": null
       },
       {
@@ -110,7 +142,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageSessionQueuedMessagesUpdatedSubscription",
-    "selections": (v1/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -119,19 +151,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageSessionQueuedMessagesUpdatedSubscription",
-    "selections": (v1/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "f6e90f5ee2c5f44e945a6ee38a5330c2",
+    "cacheID": "51836462382db8ce83c13c99605d719c",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionQueuedMessagesUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionQueuedMessagesUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionQueuedMessagesUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionQueuedMessagesUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionQueuedMessagesUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "02aa725b7d77e3e69a2879c000360cc3";
+(node as any).hash = "30d6a2d3ce6d6e89a5f118ee6a3fd021";
 
 export default node;

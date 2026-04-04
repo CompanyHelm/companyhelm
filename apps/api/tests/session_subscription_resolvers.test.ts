@@ -273,7 +273,11 @@ test("SessionQueuedMessagesUpdated subscription reloads the full pending queue f
     listPending: vi.fn(async () => ([{
       createdAt: new Date("2026-03-31T09:00:00.000Z"),
       id: "queued-1",
-      images: [],
+      images: [{
+        base64EncodedImage: "encoded-image",
+        id: "image-1",
+        mimeType: "image/png",
+      }],
       sessionId: "session-123",
       shouldSteer: false,
       status: "pending",
@@ -310,6 +314,11 @@ test("SessionQueuedMessagesUpdated subscription reloads the full pending queue f
     SessionQueuedMessagesUpdated: [{
       createdAt: "2026-03-31T09:00:00.000Z",
       id: "queued-1",
+      images: [{
+        base64EncodedImage: "encoded-image",
+        id: "image-1",
+        mimeType: "image/png",
+      }],
       sessionId: "session-123",
       shouldSteer: false,
       status: "pending",

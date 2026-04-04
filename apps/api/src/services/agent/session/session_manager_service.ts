@@ -64,7 +64,13 @@ type SessionRecord = {
   userSetTitle: string | null;
 };
 
+export type SessionPromptImageInput = {
+  base64EncodedImage: string;
+  mimeType: string;
+};
+
 export type SessionManagerCreateSessionOptions = {
+  images?: SessionPromptImageInput[];
   modelProviderCredentialModelId?: string | null;
   reasoningLevel?: string | null;
   sessionId?: string | null;
@@ -73,6 +79,7 @@ export type SessionManagerCreateSessionOptions = {
 };
 
 export type SessionManagerQueuePromptOptions = {
+  images?: SessionPromptImageInput[];
   modelProviderCredentialModelId?: string | null;
   reasoningLevel?: string | null;
   shouldSteer?: boolean;
@@ -151,6 +158,7 @@ export class SessionManagerService {
     reasoningLevel?: string | null,
     sessionId?: string | null,
     userId?: string | null,
+    images?: SessionPromptImageInput[],
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.createSessionInTransaction(
@@ -160,6 +168,7 @@ export class SessionManagerService {
         agentId,
         userMessage,
         {
+          images,
           modelProviderCredentialModelId,
           reasoningLevel,
           sessionId,
@@ -220,7 +229,8 @@ export class SessionManagerService {
       options.reasoningLevel,
       agentRecord.defaultReasoningLevel,
     );
-    const inferredTitle = this.inferTitle(userMessage);
+    const queuedImages = this.resolvePromptImages(options.images);
+    const inferredTitle = this.inferTitle(userMessage, queuedImages.length);
     const resolvedSessionId = String(options.sessionId || "").trim();
     const now = new Date();
     const [createdSessionRecord] = await insertableDatabase
@@ -257,6 +267,7 @@ export class SessionManagerService {
 
     await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
       companyId,
+      images: queuedImages,
       sessionId: createdSessionRecord.id,
       shouldSteer: options.shouldSteer ?? false,
       text: userMessage,
@@ -388,6 +399,7 @@ export class SessionManagerService {
     modelProviderCredentialModelId?: string | null,
     reasoningLevel?: string | null,
     shouldSteer = false,
+    images?: SessionPromptImageInput[],
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.queuePromptInTransaction(
@@ -398,6 +410,7 @@ export class SessionManagerService {
         sessionId,
         userMessage,
         {
+          images,
           modelProviderCredentialModelId,
           reasoningLevel,
           shouldSteer,
@@ -463,6 +476,7 @@ export class SessionManagerService {
       options.reasoningLevel,
       existingSession.currentReasoningLevel,
     );
+    const queuedImages = this.resolvePromptImages(options.images);
     const now = new Date();
     const [updatedSessionRecord] = await updatableDatabase
       .update(agentSessions)
@@ -483,6 +497,7 @@ export class SessionManagerService {
 
     await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
       companyId,
+      images: queuedImages,
       sessionId,
       shouldSteer: options.shouldSteer ?? false,
       text: userMessage,
@@ -655,13 +670,34 @@ export class SessionManagerService {
     return availableLevels[0] ?? "";
   }
 
-  private inferTitle(userMessage: string): string | null {
+  private inferTitle(userMessage: string, imageCount = 0): string | null {
     const trimmedMessage = userMessage.trim();
     if (trimmedMessage.length === 0) {
-      return null;
+      if (imageCount <= 0) {
+        return null;
+      }
+
+      return imageCount === 1 ? "Shared image" : `Shared ${imageCount} images`;
     }
 
     return trimmedMessage.slice(0, 50);
+  }
+
+  private resolvePromptImages(images?: SessionPromptImageInput[]): SessionPromptImageInput[] {
+    if (!images || images.length === 0) {
+      return [];
+    }
+
+    return images.map((image) => {
+      if (image.base64EncodedImage.length === 0) {
+        throw new Error("Queued image data is required.");
+      }
+      if (image.mimeType !== "image/jpeg" && image.mimeType !== "image/png") {
+        throw new Error("Only JPEG and PNG images are supported.");
+      }
+
+      return image;
+    });
   }
 
   private sessionSelection(): Record<string, unknown> {

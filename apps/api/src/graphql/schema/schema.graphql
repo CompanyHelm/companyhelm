@@ -364,10 +364,17 @@ type SessionQueuedMessage {
   id: ID!
   sessionId: ID!
   text: String!
+  images: [SessionQueuedMessageImage!]!
   shouldSteer: Boolean!
   status: String!
   createdAt: String!
   updatedAt: String!
+}
+
+type SessionQueuedMessageImage {
+  id: ID!
+  base64EncodedImage: String!
+  mimeType: String!
 }
 
 type SessionMessageContent {
@@ -612,6 +619,7 @@ input MarkSessionReadInput {
 
 input CreateSessionInput {
   agentId: ID!
+  images: [SessionPromptImageInput!]
   modelProviderCredentialModelId: ID
   reasoningLevel: String
   sessionId: ID
@@ -620,10 +628,16 @@ input CreateSessionInput {
 
 input PromptSessionInput {
   id: ID!
+  images: [SessionPromptImageInput!]
   modelProviderCredentialModelId: ID
   reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!
+}
+
+input SessionPromptImageInput {
+  base64EncodedImage: String!
+  mimeType: String!
 }
 
 input ResolveInboxHumanQuestionInput {

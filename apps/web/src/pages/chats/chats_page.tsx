@@ -1,5 +1,12 @@
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MutableRefObject, PointerEvent as ReactPointerEvent, UIEvent } from "react";
+import type {
+  ChangeEvent as ReactChangeEvent,
+  CSSProperties,
+  DragEvent as ReactDragEvent,
+  MutableRefObject,
+  PointerEvent as ReactPointerEvent,
+  UIEvent,
+} from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArchiveIcon,
@@ -23,6 +30,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
+import { ChatComposerImage, type ChatComposerImageDraft } from "./chat_composer_image";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
@@ -133,6 +141,11 @@ const chatsPageQueuedMessagesQueryNode = graphql`
       id
       sessionId
       text
+      images {
+        id
+        base64EncodedImage
+        mimeType
+      }
       shouldSteer
       status
       createdAt
@@ -312,6 +325,11 @@ const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
       id
       sessionId
       text
+      images {
+        id
+        base64EncodedImage
+        mimeType
+      }
       shouldSteer
       status
       createdAt
@@ -362,6 +380,7 @@ type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
 type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
 type SessionMessageContentRecord = SessionMessageRecord["contents"][number];
 type SessionEnvironmentInfoRecord = chatsPageSessionEnvironmentQuery["response"]["SessionEnvironment"];
+type DraftComposerImageRecord = ChatComposerImageDraft;
 type ChatsPageSearch = {
   agentId?: string;
   sessionId?: string;
@@ -373,6 +392,7 @@ const CHAT_LIST_DEFAULT_WIDTH = 352;
 const CHAT_LIST_WIDTH_STORAGE_KEY = "companyhelm.chats.listWidth";
 const CHAT_DRAFT_MIN_LINES = 1;
 const CHAT_DRAFT_MAX_LINES = 10;
+const CHAT_IMAGE_INPUT_ACCEPT = "image/jpeg,image/png";
 const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
 const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
 const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
@@ -431,6 +451,13 @@ type TranscriptTurnRecord = {
 };
 
 const CHAT_TRANSCRIPT_MESSAGE_SELECTOR = "[data-transcript-message-id]";
+
+function resolveInlineImageDataUrl(image: {
+  base64EncodedImage: string;
+  mimeType: string;
+}): string {
+  return `data:${image.mimeType};base64,${image.base64EncodedImage}`;
+}
 
 function resolveDraftTextareaHeightBounds(textarea: HTMLTextAreaElement): { maxHeight: number; minHeight: number } {
   const computedStyle = window.getComputedStyle(textarea);
@@ -617,6 +644,21 @@ function resolveAssistantDisplayContents(
   }];
 }
 
+function resolveImageDisplayContents(
+  message: SessionMessageRecord,
+): Array<{ data: string; mimeType: string }> {
+  return message.contents.flatMap((content) => {
+    if (content.type !== "image" || !content.data || !content.mimeType) {
+      return [];
+    }
+
+    return [{
+      data: content.data,
+      mimeType: content.mimeType,
+    }];
+  });
+}
+
 function loadChatListWidth(): number {
   if (typeof window === "undefined") {
     return CHAT_LIST_DEFAULT_WIDTH;
@@ -750,7 +792,8 @@ function hasVisibleTranscriptMessage(
     return resolveAssistantDisplayContents(message, options).length > 0;
   }
 
-  return message.role === "user" && message.text.trim().length > 0;
+  return message.role === "user"
+    && (message.text.trim().length > 0 || resolveImageDisplayContents(message).length > 0);
 }
 
 function formatTurnDuration(milliseconds: number): string {
@@ -1172,9 +1215,23 @@ function ChatsQueuedMessagesComposerList({
                     {formatTimestamp(queuedMessage.createdAt)}
                   </span>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground [overflow-wrap:anywhere]">
-                  {queuedMessage.text}
-                </p>
+                {queuedMessage.text.trim().length > 0 ? (
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground [overflow-wrap:anywhere]">
+                    {queuedMessage.text}
+                  </p>
+                ) : null}
+                {queuedMessage.images.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {queuedMessage.images.map((image) => (
+                      <img
+                        key={image.id}
+                        alt="Queued attachment"
+                        className="h-16 w-16 rounded-xl border border-border/60 object-cover"
+                        src={resolveInlineImageDataUrl(image)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
               {canSteer || canDelete ? (
                 <div className="flex shrink-0 items-center gap-1">
@@ -1207,6 +1264,57 @@ function ChatsQueuedMessagesComposerList({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function ChatsDraftImagesPreview({
+  draftImages,
+  onRemove,
+}: {
+  draftImages: ReadonlyArray<DraftComposerImageRecord>;
+  onRemove: (draftImageId: string) => void;
+}) {
+  if (draftImages.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="border-b border-border/60 px-2.5 pt-2.5 pb-2">
+      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Attachments
+        </p>
+        <span className="text-[11px] text-muted-foreground">
+          {draftImages.length} {draftImages.length === 1 ? "image" : "images"}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {draftImages.map((draftImage) => (
+          <div
+            key={draftImage.id}
+            className="group relative overflow-hidden rounded-2xl border border-border/60 bg-background/70 p-1"
+          >
+            <img
+              alt={draftImage.fileName}
+              className="h-16 w-16 rounded-xl object-cover"
+              src={resolveInlineImageDataUrl(draftImage)}
+            />
+            <button
+              aria-label={`Remove ${draftImage.fileName}`}
+              className="absolute top-2 right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm transition group-hover:opacity-100 hover:text-foreground"
+              onClick={() => onRemove(draftImage.id)}
+              title={`Remove ${draftImage.fileName}`}
+              type="button"
+            >
+              <XIcon className="size-3" />
+            </button>
+            <p className="max-w-16 truncate px-1 pt-1 text-[10px] text-muted-foreground" title={draftImage.fileName}>
+              {draftImage.fileName}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1399,6 +1507,7 @@ function TranscriptMessageRow({
 
   const isUserMessage = message.role === "user";
   const isToolMessage = message.role === "toolResult";
+  const userImageContents = isUserMessage ? resolveImageDisplayContents(message) : [];
   const assistantDisplayContents = !isUserMessage && !isToolMessage
     ? resolveAssistantDisplayContents(message, { includeThinking })
     : [];
@@ -1418,7 +1527,23 @@ function TranscriptMessageRow({
         }`}
       >
         {isUserMessage ? (
-          <p className="whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">{message.text}</p>
+          <div className="grid min-w-0 gap-2">
+            {message.text.trim().length > 0 ? (
+              <p className="whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">{message.text}</p>
+            ) : null}
+            {userImageContents.length > 0 ? (
+              <div className="grid justify-items-end gap-2">
+                {userImageContents.map((content, contentIndex) => (
+                  <img
+                    key={`${message.id}-user-image-${contentIndex}`}
+                    alt="Uploaded attachment"
+                    className="max-h-[20rem] max-w-full rounded-xl border border-primary-foreground/20 object-contain"
+                    src={`data:${content.mimeType};base64,${content.data}`}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
         ) : isToolMessage ? (
           <ToolTranscriptMessage
             message={message}
@@ -1586,6 +1711,7 @@ function ChatsPageContent() {
   const search = useSearch({ strict: false }) as ChatsPageSearch;
   const isMobile = useIsMobile();
   const [draftMessage, setDraftMessage] = useState("");
+  const [draftImages, setDraftImages] = useState<DraftComposerImageRecord[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
@@ -1606,9 +1732,11 @@ function ChatsPageContent() {
   const [composerReasoningLevel, setComposerReasoningLevel] = useState("");
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
+  const draftImageFileInputRef = useRef<HTMLInputElement | null>(null);
   const draftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const draftTextareaResizeStartHeightRef = useRef(0);
   const draftTextareaResizeStartYRef = useRef(0);
+  const composerDragDepthRef = useRef(0);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const transcriptScrollRestoreAnimationFrameRef = useRef<number | null>(null);
   const pendingTranscriptScrollRestoreRef = useRef<TranscriptScrollRestoreRecord | null>(
@@ -1624,6 +1752,7 @@ function ChatsPageContent() {
   const [isLoadingQueuedMessages, setIsLoadingQueuedMessages] = useState(false);
   const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
+  const [isComposerDragActive, setIsComposerDragActive] = useState(false);
   const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
   const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
   const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
@@ -1724,7 +1853,11 @@ function ChatsPageContent() {
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
   const isSelectedSessionRunning = selectedSession?.status === "running";
   const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight;
-  const canSubmitDraft = Boolean(selectedAgent && selectedComposerModelOption && draftMessage.trim().length > 0) && !isSubmittingDraft;
+  const canSubmitDraft = Boolean(
+    selectedAgent
+      && selectedComposerModelOption
+      && (draftMessage.trim().length > 0 || draftImages.length > 0),
+  ) && !isSubmittingDraft;
   const isReconnectingLiveUpdates = subscriptionConnectionStatus === "reconnecting"
     && reconnectingSessionId !== null
     && reconnectingSessionId === selectedSessionId;
@@ -2387,6 +2520,7 @@ function ChatsPageContent() {
   const openDraftForAgent = async (agentId: string) => {
     setErrorMessage(null);
     setDraftMessage("");
+    setDraftImages([]);
     setIsMobileChatListOpen(false);
     await navigate({
       to: "/chats",
@@ -2425,6 +2559,69 @@ function ChatsPageContent() {
       };
     });
   }, []);
+  const addDraftImageFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
+    try {
+      const nextDraftImages = await Promise.all(files.map((file) => ChatComposerImage.fromFile(file)));
+      setDraftImages((currentDraftImages) => [...currentDraftImages, ...nextDraftImages]);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to attach images.");
+    }
+  }, []);
+  const removeDraftImage = useCallback((draftImageId: string) => {
+    setDraftImages((currentDraftImages) => {
+      return currentDraftImages.filter((draftImage) => draftImage.id !== draftImageId);
+    });
+  }, []);
+  const openDraftImagePicker = useCallback(() => {
+    draftImageFileInputRef.current?.click();
+  }, []);
+  const handleDraftImageInputChange = useCallback((event: ReactChangeEvent<HTMLInputElement>) => {
+    void addDraftImageFiles(Array.from(event.target.files ?? []));
+    event.target.value = "";
+  }, [addDraftImageFiles]);
+  const handleComposerDragEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    composerDragDepthRef.current += 1;
+    setIsComposerDragActive(true);
+  }, []);
+  const handleComposerDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }, []);
+  const handleComposerDragLeave = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    composerDragDepthRef.current = Math.max(0, composerDragDepthRef.current - 1);
+    if (composerDragDepthRef.current === 0) {
+      setIsComposerDragActive(false);
+    }
+  }, []);
+  const handleComposerDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    composerDragDepthRef.current = 0;
+    setIsComposerDragActive(false);
+    void addDraftImageFiles(Array.from(event.dataTransfer.files));
+  }, [addDraftImageFiles]);
 
   const startSession = async () => {
     if (!selectedAgent || !selectedComposerModelOption) {
@@ -2432,7 +2629,11 @@ function ChatsPageContent() {
     }
 
     const userMessage = draftMessage.trim();
-    if (userMessage.length === 0) {
+    const promptImages = draftImages.map((draftImage) => ({
+      base64EncodedImage: draftImage.base64EncodedImage,
+      mimeType: draftImage.mimeType,
+    }));
+    if (userMessage.length === 0 && promptImages.length === 0) {
       return;
     }
     const nextSessionId = globalThis.crypto.randomUUID();
@@ -2453,6 +2654,7 @@ function ChatsPageContent() {
         variables: {
           input: {
             agentId: selectedAgent.id,
+            images: promptImages.length > 0 ? promptImages : undefined,
             modelProviderCredentialModelId: selectedComposerModelOption.id,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             sessionId: nextSessionId,
@@ -2489,6 +2691,7 @@ function ChatsPageContent() {
           }
 
           setDraftMessage("");
+          setDraftImages([]);
           setPendingCreatedSessionTranscriptReloadId(createdSession.id);
 
           try {
@@ -2550,7 +2753,11 @@ function ChatsPageContent() {
     }
 
     const userMessage = draftMessage.trim();
-    if (userMessage.length === 0) {
+    const promptImages = draftImages.map((draftImage) => ({
+      base64EncodedImage: draftImage.base64EncodedImage,
+      mimeType: draftImage.mimeType,
+    }));
+    if (userMessage.length === 0 && promptImages.length === 0) {
       return;
     }
 
@@ -2559,6 +2766,7 @@ function ChatsPageContent() {
         variables: {
           input: {
             id: selectedSession.id,
+            images: promptImages.length > 0 ? promptImages : undefined,
             modelProviderCredentialModelId: selectedComposerModelOption.id,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             shouldSteer,
@@ -2576,6 +2784,7 @@ function ChatsPageContent() {
           }
 
           setDraftMessage("");
+          setDraftImages([]);
           resolve();
         },
         onError: reject,
@@ -3315,7 +3524,17 @@ function ChatsPageContent() {
               onPointerDown={startDraftTextareaResize}
               type="button"
             />
-            <div className="rounded-[1.35rem] bg-input/20 ring-1 ring-input transition focus-within:ring-ring/40">
+            <div
+              className={`rounded-[1.35rem] bg-input/20 ring-1 transition focus-within:ring-ring/40 ${
+                isComposerDragActive
+                  ? "bg-primary/6 ring-primary/40"
+                  : "ring-input"
+              }`}
+              onDragEnter={handleComposerDragEnter}
+              onDragLeave={handleComposerDragLeave}
+              onDragOver={handleComposerDragOver}
+              onDrop={handleComposerDrop}
+            >
               {selectedSession ? (
                 <ChatsQueuedMessagesComposerList
                   steeringQueuedMessageId={steeringQueuedMessageId}
@@ -3330,7 +3549,19 @@ function ChatsPageContent() {
                   queuedMessages={queuedMessages}
                 />
               ) : null}
+              <ChatsDraftImagesPreview
+                draftImages={draftImages}
+                onRemove={removeDraftImage}
+              />
               <div>
+                <input
+                  ref={draftImageFileInputRef}
+                  accept={CHAT_IMAGE_INPUT_ACCEPT}
+                  className="hidden"
+                  multiple
+                  onChange={handleDraftImageInputChange}
+                  type="file"
+                />
                 <textarea
                   id="chat-draft-message"
                   ref={draftTextareaRef}
@@ -3353,6 +3584,16 @@ function ChatsPageContent() {
               </div>
               <div className="flex items-center justify-between gap-2 px-2 py-1.5">
                 <div className="flex min-w-0 items-center gap-1.5">
+                  <Button
+                    aria-label="Add images"
+                    className="h-7 w-7 shrink-0 rounded-full bg-background/60 px-0 text-muted-foreground shadow-none hover:bg-background/80 hover:text-foreground"
+                    onClick={openDraftImagePicker}
+                    title="Add JPEG or PNG images"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <PlusIcon className="size-3.5" />
+                  </Button>
                   <ChatComposerModelPicker
                     modelOptions={composerModelOptions}
                     onModelChange={setComposerModelOptionId}

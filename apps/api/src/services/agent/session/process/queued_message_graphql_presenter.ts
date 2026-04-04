@@ -1,9 +1,16 @@
 import { injectable } from "inversify";
-import type { QueuedSessionMessageRecord } from "./queued_messages.ts";
+import type { QueuedSessionMessageImageRecord, QueuedSessionMessageRecord } from "./queued_messages.ts";
+
+export type SessionQueuedMessageImageGraphqlRecord = {
+  base64EncodedImage: string;
+  id: string;
+  mimeType: string;
+};
 
 export type SessionQueuedMessageGraphqlRecord = {
   createdAt: string;
   id: string;
+  images: SessionQueuedMessageImageGraphqlRecord[];
   sessionId: string;
   shouldSteer: boolean;
   status: string;
@@ -22,6 +29,7 @@ export class SessionQueuedMessageGraphqlPresenter {
     return {
       createdAt: record.createdAt.toISOString(),
       id: record.id,
+      images: record.images.map((image) => this.serializeImage(image)),
       sessionId: record.sessionId,
       shouldSteer: record.shouldSteer,
       status: record.status,
@@ -32,5 +40,13 @@ export class SessionQueuedMessageGraphqlPresenter {
 
   serializeMany(records: ReadonlyArray<QueuedSessionMessageRecord>): SessionQueuedMessageGraphqlRecord[] {
     return records.map((record) => this.serialize(record));
+  }
+
+  private serializeImage(image: QueuedSessionMessageImageRecord): SessionQueuedMessageImageGraphqlRecord {
+    return {
+      base64EncodedImage: image.base64EncodedImage,
+      id: image.id,
+      mimeType: image.mimeType,
+    };
   }
 }

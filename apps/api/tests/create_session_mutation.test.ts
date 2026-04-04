@@ -85,6 +85,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       reasoningLevel?: string | null,
       _sessionId?: string | null,
       userId?: string | null,
+      images?: Array<{ base64EncodedImage: string; mimeType: string }>,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
@@ -93,6 +94,10 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       assert.equal(modelProviderCredentialModelId, "model-row-1");
       assert.equal(reasoningLevel, "high");
       assert.equal(userId, "user-123");
+      assert.deepEqual(images, [{
+        base64EncodedImage: "encoded-image",
+        mimeType: "image/png",
+      }]);
 
       return {
         id: "session-1",
@@ -161,6 +166,10 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
       variables: {
         input: {
           agentId: "agent-1",
+          images: [{
+            base64EncodedImage: "encoded-image",
+            mimeType: "image/png",
+          }],
           modelProviderCredentialModelId: "model-row-1",
           reasoningLevel: "high",
           userMessage: "Draft the onboarding email.",

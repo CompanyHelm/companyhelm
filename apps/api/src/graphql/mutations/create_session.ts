@@ -1,11 +1,12 @@
 import { inject, injectable } from "inversify";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
-import { SessionManagerService } from "../../services/agent/session/session_manager_service.ts";
+import { SessionManagerService, type SessionPromptImageInput } from "../../services/agent/session/session_manager_service.ts";
 
 type CreateSessionMutationArguments = {
   input: {
     agentId: string;
+    images?: SessionPromptImageInput[] | null;
     modelProviderCredentialModelId?: string | null;
     reasoningLevel?: string | null;
     sessionId?: string | null;
@@ -76,19 +77,22 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
     if (arguments_.input.agentId.length === 0) {
       throw new Error("agentId is required.");
     }
-    if (arguments_.input.userMessage.length === 0) {
-      throw new Error("userMessage is required.");
+    const userMessage = arguments_.input.userMessage;
+    const images = arguments_.input.images ?? [];
+    if (userMessage.trim().length === 0 && images.length === 0) {
+      throw new Error("userMessage or images is required.");
     }
 
     const sessionRecord = await this.sessionManagerService.createSession(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       arguments_.input.agentId,
-      arguments_.input.userMessage,
+      userMessage,
       arguments_.input.modelProviderCredentialModelId,
       arguments_.input.reasoningLevel,
       arguments_.input.sessionId,
       context.authSession.user.id,
+      images,
     );
 
     return CreateSessionMutation.serializeRecord(sessionRecord);

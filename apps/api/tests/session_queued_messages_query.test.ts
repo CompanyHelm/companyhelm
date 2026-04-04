@@ -44,6 +44,11 @@ class SessionQueuedMessagesQueryTestHarness {
                         companyId: "company-123",
                         createdAt: new Date("2026-03-31T08:00:00.000Z"),
                         id: "queued-1",
+                        images: [{
+                          base64EncodedImage: "encoded-image",
+                          id: "image-1",
+                          mimeType: "image/png",
+                        }],
                         sessionId: "session-1",
                         shouldSteer: false,
                         status: "pending",
@@ -61,7 +66,15 @@ class SessionQueuedMessagesQueryTestHarness {
                 from() {
                   return {
                     async where() {
-                      return [];
+                      return [{
+                        base64EncodedImage: "encoded-image",
+                        companyId: "company-123",
+                        createdAt: new Date("2026-03-31T08:00:00.000Z"),
+                        id: "image-1",
+                        mimeType: "image/png",
+                        sessionQueuedMessageId: "queued-1",
+                        updatedAt: new Date("2026-03-31T08:01:00.000Z"),
+                      }];
                     },
                   };
                 },
@@ -133,6 +146,11 @@ test("GraphQL SessionQueuedMessages query returns the pending queue for one sess
             id
             sessionId
             text
+            images {
+              id
+              base64EncodedImage
+              mimeType
+            }
             shouldSteer
             status
             createdAt
@@ -151,6 +169,11 @@ test("GraphQL SessionQueuedMessages query returns the pending queue for one sess
   assert.deepEqual(document.data.SessionQueuedMessages, [{
     createdAt: "2026-03-31T08:00:00.000Z",
     id: "queued-1",
+    images: [{
+      base64EncodedImage: "encoded-image",
+      id: "image-1",
+      mimeType: "image/png",
+    }],
     sessionId: "session-1",
     shouldSteer: false,
     status: "pending",

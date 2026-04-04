@@ -168,6 +168,7 @@ test("SessionManagerService createSession persists a queued session, stores the 
   assert.equal(insertedValues[0]?.status, "queued");
   assert.deepEqual(queuedMessages, [{
     companyId: "company-1",
+    images: [],
     sessionId: "session-1",
     shouldSteer: false,
     text: userMessage,
@@ -198,6 +199,140 @@ test("SessionManagerService createSession persists a queued session, stores the 
       reasoningLevel: "high",
       sessionId: "session-1",
     },
+  }]);
+});
+
+test("SessionManagerService createSession infers an image title when the first prompt only contains attachments", async () => {
+  const insertedValues: Array<Record<string, unknown>> = [];
+  const queuedMessages: Array<Record<string, unknown>> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "agent-1",
+                  defaultModelProviderCredentialModelId: "model-row-1",
+                  defaultReasoningLevel: "high",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    insert() {
+      return {
+        values(value: Record<string, unknown>) {
+          insertedValues.push(value);
+          return {
+            async returning() {
+              return [{
+                id: "session-1",
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                inferredTitle: "Shared image",
+                status: "queued",
+                createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                updatedAt: new Date("2026-03-25T01:00:00.000Z"),
+                userSetTitle: null,
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        return undefined;
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
+        queuedMessages.push(input);
+        return {
+          id: "queued-1",
+        };
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  const sessionRecord = await service.createSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "agent-1",
+    "",
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    [{
+      base64EncodedImage: "encoded-image",
+      mimeType: "image/png",
+    }],
+  );
+
+  assert.equal(sessionRecord.inferredTitle, "Shared image");
+  assert.equal(insertedValues[0]?.inferredTitle, "Shared image");
+  assert.deepEqual(queuedMessages, [{
+    companyId: "company-1",
+    images: [{
+      base64EncodedImage: "encoded-image",
+      mimeType: "image/png",
+    }],
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "",
   }]);
 });
 
@@ -846,6 +981,10 @@ test("SessionManagerService prompt queues the message, publishes session updates
     "model-row-2",
     "medium",
     true,
+    [{
+      base64EncodedImage: "encoded-image",
+      mimeType: "image/png",
+    }],
   );
 
   assert.equal(sessionRecord.id, "session-1");
@@ -856,6 +995,10 @@ test("SessionManagerService prompt queues the message, publishes session updates
   assert.equal(updatedValues[0]?.status, "running");
   assert.deepEqual(queuedMessages, [{
     companyId: "company-1",
+    images: [{
+      base64EncodedImage: "encoded-image",
+      mimeType: "image/png",
+    }],
     sessionId: "session-1",
     shouldSteer: true,
     text: "Focus on the failed deploy.",

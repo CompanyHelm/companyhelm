@@ -88,6 +88,7 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       modelProviderCredentialModelId: string | null | undefined,
       reasoningLevel: string | null | undefined,
       shouldSteer: boolean,
+      images?: Array<{ base64EncodedImage: string; mimeType: string }>,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
@@ -96,6 +97,10 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       assert.equal(modelProviderCredentialModelId, "model-row-9");
       assert.equal(reasoningLevel, "medium");
       assert.equal(shouldSteer, true);
+      assert.deepEqual(images, [{
+        base64EncodedImage: "encoded-image",
+        mimeType: "image/jpeg",
+      }]);
 
       return {
         id: "session-1",
@@ -130,6 +135,8 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
         throw new Error("CreateSession should not be called.");
       },
     } as never),
+    undefined,
+    undefined,
     new AgentQueryResolver(),
     new AgentCreateOptionsQueryResolver(),
     new AgentsQueryResolver(),
@@ -174,6 +181,10 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       variables: {
         input: {
           id: "session-1",
+          images: [{
+            base64EncodedImage: "encoded-image",
+            mimeType: "image/jpeg",
+          }],
           modelProviderCredentialModelId: "model-row-9",
           reasoningLevel: "medium",
           shouldSteer: true,
@@ -251,6 +262,8 @@ test("GraphQL PromptSession mutation rejects archived sessions", async () => {
         throw new Error("CreateSession should not be called.");
       },
     } as never),
+    undefined,
+    undefined,
     new AgentQueryResolver(),
     new AgentCreateOptionsQueryResolver(),
     new AgentsQueryResolver(),

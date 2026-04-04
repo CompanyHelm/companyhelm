@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<86204f1e008f84e18d48328c33b78c0c>>
+ * @generated SignedSource<<0327822cd86a5d3f3f406b49d4f38fd4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,10 +11,15 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type PromptSessionInput = {
   id: string;
+  images?: ReadonlyArray<SessionPromptImageInput> | null | undefined;
   modelProviderCredentialModelId?: string | null | undefined;
   reasoningLevel?: string | null | undefined;
   shouldSteer?: boolean | null | undefined;
   userMessage: string;
+};
+export type SessionPromptImageInput = {
+  base64EncodedImage: string;
+  mimeType: string;
 };
 export type chatsPagePromptSessionMutation$variables = {
   input: PromptSessionInput;
