@@ -291,7 +291,7 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
     yield_time_ms: 0,
   });
 
-  assert.equal(executionResult.sessionId, "main");
+  assert.match(executionResult.sessionId, /^pty-[a-f0-9]{32}$/);
   assert.equal(executionResult.completed, false);
   assert.equal(executionResult.output, "ran: ls -la");
 
@@ -313,6 +313,24 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
 
   await pty.closeSession(executionResult.sessionId);
   assert.equal(fakeEnvironmentShell.sessions.has(executionResult.sessionId), false);
+});
+
+test("AgentEnvironmentTmuxPty creates a fresh session id for each executeCommand call when sessionId is omitted", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  const firstResult = await pty.executeCommand({
+    command: "pwd",
+    yield_time_ms: 0,
+  });
+  const secondResult = await pty.executeCommand({
+    command: "ls",
+    yield_time_ms: 0,
+  });
+
+  assert.notEqual(firstResult.sessionId, secondResult.sessionId);
+  assert.ok(fakeEnvironmentShell.sessions.has(firstResult.sessionId));
+  assert.ok(fakeEnvironmentShell.sessions.has(secondResult.sessionId));
 });
 
 test("AgentEnvironmentTmuxPty returns immediately when a tmux command completes before the yield window", async () => {

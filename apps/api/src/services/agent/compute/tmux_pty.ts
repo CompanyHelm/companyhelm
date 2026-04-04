@@ -179,7 +179,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
 
   private static resolveSessionId(sessionId?: string | null): string {
     const trimmedSessionId = sessionId?.trim() || "";
-    return trimmedSessionId.length > 0 ? trimmedSessionId : "main";
+    return trimmedSessionId.length > 0 ? trimmedSessionId : `pty-${randomUUID().replaceAll("-", "")}`;
   }
 
   private async ensureTmuxSession(
