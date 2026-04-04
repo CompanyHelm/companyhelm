@@ -24,8 +24,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.COMPANYHELM_NG_API_IMAGE_PUBLISHER_ROLE_ARN }}
-          role-session-name: github-actions-companyhelm-ng-api-image-publish
+          role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsApiImagePublisherRole
+          role-session-name: github-actions-api-image-publish
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -112,8 +112,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.COMPANYHELM_NG_WEB_IMAGE_PUBLISHER_ROLE_ARN }}
-          role-session-name: github-actions-companyhelm-ng-web-image-publish
+          role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsWebImagePublisherRole
+          role-session-name: github-actions-web-image-publish
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
