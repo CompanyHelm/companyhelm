@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createClerkClient } from "@clerk/backend";
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
@@ -170,28 +170,49 @@ export class ClerkAuthProvider extends AuthProvider {
     }
 
     const now = new Date();
-    const [createdUser] = await transaction
-      .insert(users)
-      .values({
-        clerkUserId: providerSubject,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        created_at: now,
-        updated_at: now,
-      })
-      .returning?.({
-        id: users.id,
-        clerk_user_id: users.clerkUserId,
-        email: users.email,
-        first_name: users.first_name,
-        last_name: users.last_name,
-      }) as Promise<UserRecord[]>;
-    if (!createdUser) {
-      throw new Error("Failed to provision Clerk user.");
+    try {
+      const [createdUser] = await transaction
+        .insert(users)
+        .values({
+          clerkUserId: providerSubject,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          created_at: now,
+          updated_at: now,
+        })
+        .returning?.({
+          id: users.id,
+          clerk_user_id: users.clerkUserId,
+          email: users.email,
+          first_name: users.first_name,
+          last_name: users.last_name,
+        }) as Promise<UserRecord[]>;
+      if (!createdUser) {
+        throw new Error("Failed to provision Clerk user.");
+      }
+
+      return createdUser;
+    } catch (error) {
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
     }
 
-    return createdUser;
+    const concurrentUser = await this.findUserByColumn(
+      transaction,
+      users.clerkUserId,
+      providerSubject,
+    ) ?? await this.findUserByColumn(
+      transaction,
+      users.email,
+      email,
+    );
+    if (!concurrentUser) {
+      throw new Error("Failed to provision Clerk user after duplicate insert.");
+    }
+
+    return concurrentUser;
   }
 
   private async findUserByColumn(
@@ -221,6 +242,54 @@ export class ClerkAuthProvider extends AuthProvider {
       name: string;
     },
   ): Promise<CompanyRecord> {
+    const existingCompany = await this.findCompanyByClerkOrganizationId(
+      transaction,
+      params.providerSubject,
+    );
+    if (existingCompany) {
+      await this.ensureCompanyHelmComputeProviderDefinition(transaction, existingCompany.id);
+      return existingCompany;
+    }
+
+    let createdCompany: CompanyRecord | undefined;
+    try {
+      [createdCompany] = await transaction
+        .insert(companies)
+        .values({
+          clerkOrganizationId: params.providerSubject,
+          name: params.name,
+        })
+        .returning?.({
+          id: companies.id,
+          clerk_organization_id: companies.clerkOrganizationId,
+          name: companies.name,
+        }) as Promise<CompanyRecord[]>;
+    } catch (error) {
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
+    }
+    if (!createdCompany) {
+      const concurrentCompany = await this.findCompanyByClerkOrganizationId(
+        transaction,
+        params.providerSubject,
+      );
+      if (!concurrentCompany) {
+        throw new Error("Failed to provision Clerk company.");
+      }
+
+      await this.ensureCompanyHelmComputeProviderDefinition(transaction, concurrentCompany.id);
+      return concurrentCompany;
+    }
+    await this.ensureCompanyHelmComputeProviderDefinition(transaction, createdCompany.id);
+
+    return createdCompany;
+  }
+
+  private async findCompanyByClerkOrganizationId(
+    transaction: DatabaseTransactionInterface,
+    providerSubject: string,
+  ): Promise<CompanyRecord | null> {
     const [existingCompany] = await transaction
       .select({
         id: companies.id,
@@ -228,29 +297,10 @@ export class ClerkAuthProvider extends AuthProvider {
         name: companies.name,
       })
       .from(companies)
-      .where(eq(companies.clerkOrganizationId, params.providerSubject))
+      .where(eq(companies.clerkOrganizationId, providerSubject))
       .limit(1) as CompanyRecord[];
-    if (existingCompany) {
-      return existingCompany;
-    }
 
-    const [createdCompany] = await transaction
-      .insert(companies)
-      .values({
-        clerkOrganizationId: params.providerSubject,
-        name: params.name,
-      })
-      .returning?.({
-        id: companies.id,
-        clerk_organization_id: companies.clerkOrganizationId,
-        name: companies.name,
-      }) as Promise<CompanyRecord[]>;
-    if (!createdCompany) {
-      throw new Error("Failed to provision Clerk company.");
-    }
-    await this.ensureCompanyHelmComputeProviderDefinition(transaction, createdCompany.id);
-
-    return createdCompany;
+    return existingCompany ?? null;
   }
 
   private async ensureMembership(
@@ -260,57 +310,39 @@ export class ClerkAuthProvider extends AuthProvider {
       userId: string;
     },
   ): Promise<void> {
-    const [existingMembership] = await transaction
-      .select({
-        companyId: companyMembers.companyId,
-        userId: companyMembers.userId,
-      })
-      .from(companyMembers)
-      .where(and(
-        eq(companyMembers.companyId, params.companyId),
-        eq(companyMembers.userId, params.userId),
-      ))
-      .limit(1) as Array<{ companyId: string; userId: string }>;
-
-    if (existingMembership?.userId === params.userId) {
-      return;
+    try {
+      await transaction.insert(companyMembers).values({
+        companyId: params.companyId,
+        userId: params.userId,
+      });
+    } catch (error) {
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
     }
-
-    await transaction.insert(companyMembers).values({
-      companyId: params.companyId,
-      userId: params.userId,
-    });
   }
 
   private async ensureCompanyHelmComputeProviderDefinition(
     transaction: DatabaseTransactionInterface,
     companyId: string,
   ): Promise<void> {
-    const [existingDefinition] = await transaction
-      .select({
-        id: computeProviderDefinitions.id,
-      })
-      .from(computeProviderDefinitions)
-      .where(and(
-        eq(computeProviderDefinitions.companyId, companyId),
-        eq(computeProviderDefinitions.name, CompanyHelmComputeProviderService.DEFINITION_NAME),
-      ))
-      .limit(1) as Array<{ id: string }>;
-    if (existingDefinition) {
-      return;
-    }
-
     const now = new Date();
-    await transaction.insert(computeProviderDefinitions).values({
-      companyId,
-      createdAt: now,
-      createdByUserId: null,
-      description: CompanyHelmComputeProviderService.DEFINITION_DESCRIPTION,
-      name: CompanyHelmComputeProviderService.DEFINITION_NAME,
-      provider: "e2b",
-      updatedAt: now,
-      updatedByUserId: null,
-    });
+    try {
+      await transaction.insert(computeProviderDefinitions).values({
+        companyId,
+        createdAt: now,
+        createdByUserId: null,
+        description: CompanyHelmComputeProviderService.DEFINITION_DESCRIPTION,
+        name: CompanyHelmComputeProviderService.DEFINITION_NAME,
+        provider: "e2b",
+        updatedAt: now,
+        updatedByUserId: null,
+      });
+    } catch (error) {
+      if (!this.isUniqueViolation(error)) {
+        throw error;
+      }
+    }
   }
 
   private resolveClerkUserEmail(clerkUser: ClerkBackendUser): string {
@@ -433,5 +465,33 @@ export class ClerkAuthProvider extends AuthProvider {
     }
 
     return null;
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    const seenErrors = new Set<unknown>();
+    let currentError: unknown = error;
+
+    while (currentError && typeof currentError === "object" && !seenErrors.has(currentError)) {
+      seenErrors.add(currentError);
+      const errorRecord = currentError as {
+        cause?: unknown;
+        code?: unknown;
+        message?: unknown;
+      };
+      if (errorRecord.code === "23505") {
+        return true;
+      }
+
+      if (
+        typeof errorRecord.message === "string"
+        && errorRecord.message.toLowerCase().includes("duplicate key value")
+      ) {
+        return true;
+      }
+
+      currentError = errorRecord.cause;
+    }
+
+    return false;
   }
 }

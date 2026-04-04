@@ -8,6 +8,12 @@ import { ClerkAuthProvider } from "../src/auth/clerk/clerk_auth_provider.ts";
  * Creates the minimal Clerk auth fixtures needed to exercise provisioning and session construction.
  */
 class ClerkAuthProviderTestHarness {
+  static createUniqueViolationError(message = "duplicate key value violates unique constraint") {
+    return Object.assign(new Error(message), {
+      code: "23505",
+    });
+  }
+
   static createConfigMock(): Config {
     return {
       auth: {
@@ -183,7 +189,11 @@ class ClerkAuthProviderTestHarness {
         throw new Error("Unexpected select call.");
       },
       insert() {
-        throw new Error("No inserts expected.");
+        return {
+          values() {
+            return undefined;
+          },
+        };
       },
     };
 
@@ -290,6 +300,116 @@ class ClerkAuthProviderTestHarness {
                 return [];
               },
             };
+          },
+        };
+      },
+    };
+
+    const database = {
+      scopedCompanyIds,
+      getDatabase() {
+        return {
+          async transaction<T>(callback: (database_: typeof transaction) => Promise<T>) {
+            return callback(transaction);
+          },
+        };
+      },
+      async applyCompanyContext(_database: unknown, companyId: string) {
+        scopedCompanyIds.push(companyId);
+      },
+    };
+
+    return database;
+  }
+
+  static createConcurrentProvisioningRaceDatabaseMock() {
+    const scopedCompanyIds: string[] = [];
+    let insertCallCount = 0;
+    let selectCallCount = 0;
+
+    const transaction = {
+      async execute() {
+        return [];
+      },
+      select() {
+        selectCallCount += 1;
+        if (selectCallCount === 1 || selectCallCount === 2) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 3) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      id: "local-user-race",
+                      clerk_user_id: "user_clerk_race",
+                      email: "race@example.com",
+                      first_name: "Race",
+                      last_name: "Condition",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 4) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        if (selectCallCount === 5) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      id: "local-company-race",
+                      clerk_organization_id: "org_clerk_race",
+                      name: "Race Org",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        throw new Error("Unexpected select call.");
+      },
+      insert() {
+        insertCallCount += 1;
+        return {
+          values() {
+            if (insertCallCount <= 4) {
+              throw ClerkAuthProviderTestHarness.createUniqueViolationError();
+            }
+
+            throw new Error("Unexpected insert call.");
           },
         };
       },
@@ -536,4 +656,69 @@ test("clerk auth provider reuses existing local user matched by email when clerk
     },
   });
   assert.deepEqual(db.scopedCompanyIds, ["local-company-9"]);
+});
+
+test("clerk auth provider tolerates concurrent provisioning races for first-time users", async () => {
+  const db = ClerkAuthProviderTestHarness.createConcurrentProvisioningRaceDatabaseMock();
+  const provider = ClerkAuthProvider.createForTest(
+    ClerkAuthProviderTestHarness.createConfigMock(),
+    {
+      clerkClient: {
+        async authenticateRequest() {
+          return {
+            isAuthenticated: true,
+            toAuth() {
+              return {
+                isAuthenticated: true,
+                userId: "user_clerk_race",
+                orgId: "org_clerk_race",
+                sessionClaims: {
+                  o: {
+                    nam: "Race Org",
+                  },
+                },
+              };
+            },
+          };
+        },
+        users: {
+          async getUser() {
+            return {
+              firstName: "Race",
+              lastName: "Condition",
+              primaryEmailAddressId: "email_race",
+              emailAddresses: [{
+                id: "email_race",
+                emailAddress: "race@example.com",
+              }],
+            };
+          },
+        },
+      },
+      jwtKeyLoader: {
+        async load() {
+          return "clerk-jwt-key";
+        },
+      },
+    },
+  );
+
+  const session = await provider.authenticateBearerToken(db as never, "clerk-token");
+
+  assert.deepEqual(session, {
+    token: "clerk-token",
+    user: {
+      id: "local-user-race",
+      email: "race@example.com",
+      firstName: "Race",
+      lastName: "Condition",
+      provider: "clerk",
+      providerSubject: "user_clerk_race",
+    },
+    company: {
+      id: "local-company-race",
+      name: "Race Org",
+    },
+  });
+  assert.deepEqual(db.scopedCompanyIds, ["local-company-race"]);
 });
