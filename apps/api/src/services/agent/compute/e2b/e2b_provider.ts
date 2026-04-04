@@ -11,6 +11,7 @@ import {
 import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
 import { AgentComputeE2bShell } from "./e2b_shell.ts";
 
+const E2B_DEFAULT_TEMPLATE_ID = "wunszvjeuyrdgrt0z6o9";
 const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
 
 /**
@@ -64,7 +65,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    const sandbox = await Sandbox.create({
+    const sandbox = await Sandbox.create(E2B_DEFAULT_TEMPLATE_ID, {
       apiKey: definition.apiKey,
       lifecycle: {
         autoResume: true,
