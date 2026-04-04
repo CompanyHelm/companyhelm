@@ -75,7 +75,7 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 
 function SettingsPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -121,7 +121,7 @@ function SettingsPageContent() {
   const selectedTab = search.tab === "AI" ? "AI" : "tasks";
 
   return (
-    <main className="flex flex-1 flex-col gap-6">
+    <main className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
