@@ -91,12 +91,12 @@ function formatTaskStatus(status: TaskStatus): string {
     : status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function resolveTaskStatusVariant(status: TaskStatus): "outline" | "secondary" | "positive" {
+function resolveTaskStatusVariant(status: TaskStatus): "outline" | "warning" | "positive" {
   if (status === "completed") {
     return "positive";
   }
   if (status === "in_progress") {
-    return "secondary";
+    return "warning";
   }
 
   return "outline";
