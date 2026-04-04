@@ -64,6 +64,7 @@ type Mutation {
   DeleteSecret(input: DeleteSecretInput!): Secret!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
+  DismissInboxHumanQuestion(input: DismissInboxHumanQuestionInput!): InboxHumanQuestion!
   MarkSessionRead(input: MarkSessionReadInput!): Session!
   PromptSession(input: PromptSessionInput!): Session!
   UpdateSessionTitle(input: UpdateSessionTitleInput!): Session!
@@ -650,6 +651,10 @@ input ResolveInboxHumanQuestionInput {
   inboxItemId: ID!
   proposalId: ID
   customAnswerText: String
+}
+
+input DismissInboxHumanQuestionInput {
+  inboxItemId: ID!
 }
 
 input SteerSessionQueuedMessageInput {

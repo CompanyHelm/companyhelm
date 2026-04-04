@@ -25,7 +25,11 @@ export type InboxQuestionCardRecord = {
 };
 
 interface InboxQuestionCardProps {
+  isDismissing: boolean;
   isResolving: boolean;
+  onDismiss(input: {
+    inboxItemId: string;
+  }): Promise<void>;
   onResolve(input: {
     customAnswerText?: string;
     inboxItemId: string;
@@ -53,9 +57,8 @@ function renderRating(rating: number) {
  */
 export function InboxQuestionCard(props: InboxQuestionCardProps) {
   const [customAnswerText, setCustomAnswerText] = useState("");
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const hasCustomAnswer = customAnswerText.trim().length > 0;
-  const canSubmit = hasCustomAnswer || selectedProposalId !== null;
+  const isBusy = props.isResolving || props.isDismissing;
 
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -92,19 +95,21 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
         {props.question.proposals.length > 0 ? (
           <div className="grid gap-3">
             {props.question.proposals.map((proposal) => {
-              const isSelected = selectedProposalId === proposal.id && !hasCustomAnswer;
-
               return (
                 <button
+                  disabled={isBusy}
                   key={proposal.id}
                   className={`grid gap-3 rounded-xl border px-4 py-3 text-left transition ${
-                    isSelected
-                      ? "border-primary/50 bg-primary/10"
+                    isBusy
+                      ? "border-border/60 bg-background opacity-70"
                       : "border-border/60 bg-background hover:border-border hover:bg-muted/20"
                   }`}
-                  onClick={() => {
-                    setSelectedProposalId(proposal.id);
+                  onClick={async () => {
                     setCustomAnswerText("");
+                    await props.onResolve({
+                      inboxItemId: props.question.id,
+                      proposalId: proposal.id,
+                    });
                   }}
                   type="button"
                 >
@@ -151,11 +156,9 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
             </label>
             <textarea
               className="min-h-24 rounded-xl border border-border/60 bg-background px-3 py-2 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
+              disabled={isBusy}
               onChange={(event) => {
                 setCustomAnswerText(event.target.value);
-                if (event.target.value.trim().length > 0) {
-                  setSelectedProposalId(null);
-                }
               }}
               placeholder="Type your own answer instead of selecting one of the proposals."
               value={customAnswerText}
@@ -163,19 +166,33 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
           </div>
         ) : null}
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between gap-3">
           <Button
-            disabled={!canSubmit || props.isResolving}
+            disabled={isBusy}
             onClick={async () => {
-              await props.onResolve({
-                customAnswerText: hasCustomAnswer ? customAnswerText.trim() : undefined,
+              await props.onDismiss({
                 inboxItemId: props.question.id,
-                proposalId: hasCustomAnswer ? undefined : selectedProposalId ?? undefined,
               });
             }}
+            type="button"
+            variant="ghost"
           >
-            {props.isResolving ? "Sending..." : "Send answer"}
+            {props.isDismissing ? "Dismissing..." : "Dismiss"}
           </Button>
+          {props.question.allowCustomAnswer ? (
+            <Button
+              disabled={!hasCustomAnswer || isBusy}
+              onClick={async () => {
+                await props.onResolve({
+                  customAnswerText: hasCustomAnswer ? customAnswerText.trim() : undefined,
+                  inboxItemId: props.question.id,
+                });
+              }}
+              type="button"
+            >
+              {props.isResolving ? "Sending..." : "Send answer"}
+            </Button>
+          ) : <div />}
         </div>
       </CardContent>
     </Card>

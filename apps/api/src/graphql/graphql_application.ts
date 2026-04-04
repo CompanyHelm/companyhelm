@@ -32,6 +32,7 @@ import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_
 import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DeleteTaskMutation } from "./mutations/delete_task.ts";
+import { DismissInboxHumanQuestionMutation } from "./mutations/dismiss_inbox_human_question.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
@@ -135,6 +136,7 @@ export class GraphqlApplication {
   private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly deleteTaskMutation: DeleteTaskMutation;
+  private readonly dismissInboxHumanQuestionMutation: DismissInboxHumanQuestionMutation;
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly executeTaskMutation: ExecuteTaskMutation;
@@ -289,6 +291,12 @@ export class GraphqlApplication {
     @inject(DeleteSessionQueuedMessageMutation)
     deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation = new DeleteSessionQueuedMessageMutation(),
     @inject(DeleteTaskMutation) deleteTaskMutation: DeleteTaskMutation = new DeleteTaskMutation(),
+    @inject(DismissInboxHumanQuestionMutation)
+    dismissInboxHumanQuestionMutation: DismissInboxHumanQuestionMutation = new DismissInboxHumanQuestionMutation({
+      async dismissHumanQuestion() {
+        throw new Error("DismissInboxHumanQuestion mutation is not configured.");
+      },
+    } as never),
     @inject(RefreshGithubInstallationRepositoriesMutation)
     refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient(config)),
@@ -467,6 +475,7 @@ export class GraphqlApplication {
     this.deleteSessionQueuedMessageMutation = deleteSessionQueuedMessageMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
     this.deleteTaskMutation = deleteTaskMutation;
+    this.dismissInboxHumanQuestionMutation = dismissInboxHumanQuestionMutation;
     this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
       ?? new DetachSecretFromAgentMutation(defaultSecretService);
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
@@ -628,6 +637,7 @@ export class GraphqlApplication {
           DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,
           DeleteSecret: this.deleteSecretMutation.execute,
           DeleteTask: this.deleteTaskMutation.execute,
+          DismissInboxHumanQuestion: this.dismissInboxHumanQuestionMutation.execute,
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           ExecuteTask: this.executeTaskMutation.execute,

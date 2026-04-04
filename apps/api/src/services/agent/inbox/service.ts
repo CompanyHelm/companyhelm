@@ -371,6 +371,56 @@ export class AgentInboxService {
     return resolvedQuestion;
   }
 
+  async dismissHumanQuestion(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      inboxItemId: string;
+      userId: string;
+    },
+  ): Promise<AgentInboxHumanQuestionRecord> {
+    await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const [questionRecord] = await this.loadHumanQuestionsByIdsInTransaction(
+        selectableDatabase,
+        input.companyId,
+        [input.inboxItemId],
+      );
+      if (!questionRecord) {
+        throw new Error("Inbox item not found.");
+      }
+      if (questionRecord.status !== "open") {
+        throw new Error("Inbox item has already been resolved.");
+      }
+
+      const timestamp = new Date();
+      await updatableDatabase
+        .update(agentInboxItems)
+        .set({
+          resolvedAt: timestamp,
+          resolvedByUserId: input.userId,
+          status: "resolved",
+          updatedAt: timestamp,
+        })
+        .where(and(
+          eq(agentInboxItems.companyId, input.companyId),
+          eq(agentInboxItems.id, input.inboxItemId),
+        ));
+    });
+
+    const [dismissedQuestion] = await this.loadHumanQuestionsByIds(
+      transactionProvider,
+      input.companyId,
+      [input.inboxItemId],
+    );
+    if (!dismissedQuestion) {
+      throw new Error("Resolved inbox item not found.");
+    }
+
+    return dismissedQuestion;
+  }
+
   private async reopenQuestion(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

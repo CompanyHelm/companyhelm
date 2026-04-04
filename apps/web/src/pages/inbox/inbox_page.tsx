@@ -3,6 +3,7 @@ import { InboxIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
 import { InboxQuestionCard, type InboxQuestionCardRecord } from "./inbox_question_card";
+import type { inboxPageDismissInboxHumanQuestionMutation } from "./__generated__/inboxPageDismissInboxHumanQuestionMutation.graphql";
 import type { inboxPageQuery } from "./__generated__/inboxPageQuery.graphql";
 import type { inboxPageResolveInboxHumanQuestionMutation } from "./__generated__/inboxPageResolveInboxHumanQuestionMutation.graphql";
 
@@ -43,6 +44,15 @@ const inboxPageResolveInboxHumanQuestionMutationNode = graphql`
   }
 `;
 
+const inboxPageDismissInboxHumanQuestionMutationNode = graphql`
+  mutation inboxPageDismissInboxHumanQuestionMutation($input: DismissInboxHumanQuestionInput!) {
+    DismissInboxHumanQuestion(input: $input) {
+      id
+      status
+    }
+  }
+`;
+
 function InboxPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-4">
@@ -55,7 +65,10 @@ function InboxPageFallback() {
 
 function InboxPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [resolvingInboxItemId, setResolvingInboxItemId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    inboxItemId: string;
+    type: "dismiss" | "resolve";
+  } | null>(null);
   const { showSavedToast } = useToast();
   const data = useLazyLoadQuery<inboxPageQuery>(
     inboxPageQueryNode,
@@ -66,6 +79,9 @@ function InboxPageContent() {
   );
   const [commitResolveInboxHumanQuestion] = useMutation<inboxPageResolveInboxHumanQuestionMutation>(
     inboxPageResolveInboxHumanQuestionMutationNode,
+  );
+  const [commitDismissInboxHumanQuestion] = useMutation<inboxPageDismissInboxHumanQuestionMutation>(
+    inboxPageDismissInboxHumanQuestionMutationNode,
   );
   const questions: InboxQuestionCardRecord[] = data.InboxHumanQuestions.map((question) => ({
     agentId: question.agentId,
@@ -86,6 +102,29 @@ function InboxPageContent() {
     summary: question.summary,
     title: question.title,
   }));
+
+  const removeQuestionFromStore = (store: {
+    getRoot(): {
+      getLinkedRecords(name: string): Array<{ getDataID(): string } | null> | null;
+      setLinkedRecords(records: Array<{ getDataID(): string }>, name: string): void;
+    };
+    getRootField(name: string): { getDataID(): string } | null;
+  }, rootFieldName: string) => {
+    const resolvedQuestion = store.getRootField(rootFieldName);
+    const resolvedId = resolvedQuestion?.getDataID();
+    if (!resolvedId) {
+      return;
+    }
+
+    const rootRecord = store.getRoot();
+    const currentQuestions = rootRecord.getLinkedRecords("InboxHumanQuestions") || [];
+    rootRecord.setLinkedRecords(
+      currentQuestions.filter((record): record is { getDataID(): string } => {
+        return Boolean(record) && record.getDataID() !== resolvedId;
+      }),
+      "InboxHumanQuestions",
+    );
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-4">
@@ -108,10 +147,50 @@ function InboxPageContent() {
           {questions.map((question) => (
             <InboxQuestionCard
               key={question.id}
-              isResolving={resolvingInboxItemId === question.id}
+              isDismissing={pendingAction?.inboxItemId === question.id && pendingAction.type === "dismiss"}
+              isResolving={pendingAction?.inboxItemId === question.id && pendingAction.type === "resolve"}
+              onDismiss={async (input) => {
+                setErrorMessage(null);
+                setPendingAction({
+                  inboxItemId: question.id,
+                  type: "dismiss",
+                });
+
+                try {
+                  await new Promise<void>((resolve, reject) => {
+                    commitDismissInboxHumanQuestion({
+                      variables: {
+                        input,
+                      },
+                      updater: (store) => {
+                        removeQuestionFromStore(store, "DismissInboxHumanQuestion");
+                      },
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = errors?.[0]?.message;
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
+
+                        resolve();
+                      },
+                      onError: reject,
+                    });
+                  });
+
+                  showSavedToast("Question dismissed");
+                } catch (error: unknown) {
+                  setErrorMessage(error instanceof Error ? error.message : "Failed to dismiss question.");
+                } finally {
+                  setPendingAction((currentValue) => currentValue?.inboxItemId === question.id ? null : currentValue);
+                }
+              }}
               onResolve={async (input) => {
                 setErrorMessage(null);
-                setResolvingInboxItemId(question.id);
+                setPendingAction({
+                  inboxItemId: question.id,
+                  type: "resolve",
+                });
 
                 try {
                   await new Promise<void>((resolve, reject) => {
@@ -120,18 +199,7 @@ function InboxPageContent() {
                         input,
                       },
                       updater: (store) => {
-                        const resolvedQuestion = store.getRootField("ResolveInboxHumanQuestion");
-                        const resolvedId = resolvedQuestion?.getDataID();
-                        if (!resolvedId) {
-                          return;
-                        }
-
-                        const rootRecord = store.getRoot();
-                        const currentQuestions = rootRecord.getLinkedRecords("InboxHumanQuestions") || [];
-                        rootRecord.setLinkedRecords(
-                          currentQuestions.filter((record) => record && record.getDataID() !== resolvedId),
-                          "InboxHumanQuestions",
-                        );
+                        removeQuestionFromStore(store, "ResolveInboxHumanQuestion");
                       },
                       onCompleted: (_response, errors) => {
                         const nextErrorMessage = errors?.[0]?.message;
@@ -150,7 +218,7 @@ function InboxPageContent() {
                 } catch (error: unknown) {
                   setErrorMessage(error instanceof Error ? error.message : "Failed to send answer.");
                 } finally {
-                  setResolvingInboxItemId((currentValue) => currentValue === question.id ? null : currentValue);
+                  setPendingAction((currentValue) => currentValue?.inboxItemId === question.id ? null : currentValue);
                 }
               }}
               question={question}
