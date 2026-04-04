@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0068c3ccfd2804dd357dbef197f8a4b3>>
+ * @generated SignedSource<<345c546b3290b2d47766195e8f36abea>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,6 +16,20 @@ export type taskDetailPageQuery$data = {
   readonly Agents: ReadonlyArray<{
     readonly id: string;
     readonly name: string;
+  }>;
+  readonly Artifacts: ReadonlyArray<{
+    readonly createdAt: string;
+    readonly description: string | null | undefined;
+    readonly id: string;
+    readonly markdownContent: string | null | undefined;
+    readonly name: string;
+    readonly pullRequestNumber: number | null | undefined;
+    readonly pullRequestProvider: string | null | undefined;
+    readonly pullRequestRepository: string | null | undefined;
+    readonly state: string;
+    readonly type: string;
+    readonly updatedAt: string;
+    readonly url: string | null | undefined;
   }>;
   readonly Task: {
     readonly assignedAt: string | null | undefined;
@@ -89,35 +103,47 @@ v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "status",
+  "name": "description",
   "storageKey": null
 },
 v4 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "email",
+  "name": "status",
   "storageKey": null
 },
 v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "createdAt",
+  "name": "email",
   "storageKey": null
 },
 v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "updatedAt",
   "storageKey": null
 },
-v7 = [
+v8 = {
+  "kind": "Variable",
+  "name": "taskId",
+  "variableName": "taskId"
+},
+v9 = [
   (v1/*: any*/),
   (v2/*: any*/)
 ],
-v8 = [
+v10 = [
   {
     "alias": null,
     "args": [
@@ -134,14 +160,8 @@ v8 = [
     "selections": [
       (v1/*: any*/),
       (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
       (v3/*: any*/),
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -180,23 +200,19 @@ v8 = [
           },
           (v1/*: any*/),
           (v2/*: any*/),
-          (v4/*: any*/)
+          (v5/*: any*/)
         ],
         "storageKey": null
       },
-      (v5/*: any*/),
-      (v6/*: any*/)
+      (v6/*: any*/),
+      (v7/*: any*/)
     ],
     "storageKey": null
   },
   {
     "alias": null,
     "args": [
-      {
-        "kind": "Variable",
-        "name": "taskId",
-        "variableName": "taskId"
-      }
+      (v8/*: any*/)
     ],
     "concreteType": "TaskRun",
     "kind": "LinkedField",
@@ -232,7 +248,7 @@ v8 = [
         "name": "sessionId",
         "storageKey": null
       },
-      (v3/*: any*/),
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -261,8 +277,86 @@ v8 = [
         "name": "endedReason",
         "storageKey": null
       },
-      (v5/*: any*/),
-      (v6/*: any*/)
+      (v6/*: any*/),
+      (v7/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": [
+      {
+        "fields": [
+          {
+            "kind": "Literal",
+            "name": "scopeType",
+            "value": "task"
+          },
+          (v8/*: any*/)
+        ],
+        "kind": "ObjectValue",
+        "name": "input"
+      }
+    ],
+    "concreteType": "Artifact",
+    "kind": "LinkedField",
+    "name": "Artifacts",
+    "plural": true,
+    "selections": [
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "type",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "state",
+        "storageKey": null
+      },
+      (v2/*: any*/),
+      (v3/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "markdownContent",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "url",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "pullRequestProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "pullRequestRepository",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "pullRequestNumber",
+        "storageKey": null
+      },
+      (v6/*: any*/),
+      (v7/*: any*/)
     ],
     "storageKey": null
   },
@@ -273,7 +367,7 @@ v8 = [
     "kind": "LinkedField",
     "name": "Agents",
     "plural": true,
-    "selections": (v7/*: any*/),
+    "selections": (v9/*: any*/),
     "storageKey": null
   },
   {
@@ -292,7 +386,7 @@ v8 = [
         "name": "displayName",
         "storageKey": null
       },
-      (v4/*: any*/)
+      (v5/*: any*/)
     ],
     "storageKey": null
   },
@@ -303,7 +397,7 @@ v8 = [
     "kind": "LinkedField",
     "name": "TaskCategories",
     "plural": true,
-    "selections": (v7/*: any*/),
+    "selections": (v9/*: any*/),
     "storageKey": null
   }
 ];
@@ -313,7 +407,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "taskDetailPageQuery",
-    "selections": (v8/*: any*/),
+    "selections": (v10/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -322,19 +416,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "taskDetailPageQuery",
-    "selections": (v8/*: any*/)
+    "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "eea63f57965d78d48fcef9c52f41e20e",
+    "cacheID": "ee1aca085a31a83b27be3c5ecc7a6dc2",
     "id": null,
     "metadata": {},
     "name": "taskDetailPageQuery",
     "operationKind": "query",
-    "text": "query taskDetailPageQuery(\n  $taskId: ID!\n) {\n  Task(id: $taskId) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n  TaskRuns(taskId: $taskId) {\n    id\n    taskId\n    agentId\n    agentName\n    sessionId\n    status\n    startedAt\n    finishedAt\n    lastActivityAt\n    endedReason\n    createdAt\n    updatedAt\n  }\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskCategories {\n    id\n    name\n  }\n}\n"
+    "text": "query taskDetailPageQuery(\n  $taskId: ID!\n) {\n  Task(id: $taskId) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n  TaskRuns(taskId: $taskId) {\n    id\n    taskId\n    agentId\n    agentName\n    sessionId\n    status\n    startedAt\n    finishedAt\n    lastActivityAt\n    endedReason\n    createdAt\n    updatedAt\n  }\n  Artifacts(input: {scopeType: \"task\", taskId: $taskId}) {\n    id\n    type\n    state\n    name\n    description\n    markdownContent\n    url\n    pullRequestProvider\n    pullRequestRepository\n    pullRequestNumber\n    createdAt\n    updatedAt\n  }\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskCategories {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "caaf0c6bd345cf4534afaeda7da2fec2";
+(node as any).hash = "37280fac4e1748b87182c31b2a48959d";
 
 export default node;

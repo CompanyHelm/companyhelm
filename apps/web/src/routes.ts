@@ -23,6 +23,7 @@ import { GithubInstallCallbackPage } from "./pages/repositories/github_install_c
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
 import { SettingsPage } from "./pages/settings/settings_page";
+import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
@@ -38,7 +39,7 @@ type TasksRouteSearch = {
 };
 
 type TaskDetailRouteSearch = {
-  tab?: "runs";
+  tab?: "artifacts" | "runs";
 };
 
 type ConversationsRouteSearch = {
@@ -70,7 +71,9 @@ function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSe
 
 function validateTaskDetailRouteSearch(search: Record<string, unknown>): TaskDetailRouteSearch {
   return {
-    tab: search.tab === "runs" ? "runs" : undefined,
+    tab: search.tab === "runs" || search.tab === "artifacts"
+      ? search.tab
+      : undefined,
   };
 }
 
@@ -218,6 +221,12 @@ const taskDetailRoute = createRoute({
   component: TaskDetailPage,
 });
 
+const taskArtifactDetailRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/tasks/$taskId/artifacts/$artifactId",
+  component: ArtifactDetailPage,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/settings",
@@ -267,6 +276,7 @@ const routeTree = rootRoute.addChildren([
       knowledgeBaseDetailRoute,
       tasksRoute,
       taskDetailRoute,
+      taskArtifactDetailRoute,
       settingsRoute,
       agentDetailRoute,
       modelProviderCredentialsRoute,

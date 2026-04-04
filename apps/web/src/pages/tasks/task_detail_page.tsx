@@ -1,9 +1,10 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { PlayIcon } from "lucide-react";
+import { ExternalLinkIcon, FileTextIcon, GitPullRequestIcon, PlayIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { MarkdownContent } from "@/components/markdown_content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,14 +14,16 @@ import type { taskDetailPageUpdateTaskMutation } from "./__generated__/taskDetai
 
 type TaskStatus = "draft" | "in_progress" | "completed";
 type TaskRunStatus = "queued" | "running" | "completed" | "failed" | "canceled";
+type TaskArtifactType = "markdown_document" | "external_link" | "pull_request";
 type TaskDetailPageSearch = {
-  tab?: "runs";
+  tab?: "artifacts" | "runs";
 };
 type TaskDetailPageTaskAssignee = NonNullable<taskDetailPageQuery["response"]["Task"]["assignee"]>;
 type TaskDetailPageTaskCategory = taskDetailPageQuery["response"]["TaskCategories"][number];
 type TaskDetailPageAssignableUser = taskDetailPageQuery["response"]["TaskAssignableUsers"][number];
 type TaskDetailPageAgent = taskDetailPageQuery["response"]["Agents"][number];
 type TaskDetailPageRun = taskDetailPageQuery["response"]["TaskRuns"][number];
+type TaskDetailPageArtifact = taskDetailPageQuery["response"]["Artifacts"][number];
 
 const taskDetailPageQueryNode = graphql`
   query taskDetailPageQuery($taskId: ID!) {
@@ -52,6 +55,20 @@ const taskDetailPageQueryNode = graphql`
       finishedAt
       lastActivityAt
       endedReason
+      createdAt
+      updatedAt
+    }
+    Artifacts(input: { scopeType: "task", taskId: $taskId }) {
+      id
+      type
+      state
+      name
+      description
+      markdownContent
+      url
+      pullRequestProvider
+      pullRequestRepository
+      pullRequestNumber
       createdAt
       updatedAt
     }
@@ -151,6 +168,17 @@ function formatTaskRunStatus(status: TaskRunStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function formatArtifactType(type: TaskArtifactType): string {
+  switch (type) {
+    case "markdown_document":
+      return "Document";
+    case "external_link":
+      return "Link";
+    case "pull_request":
+      return "Pull Request";
+  }
+}
+
 function formatTaskTimestamp(value: string | null | undefined, emptyLabel: string): string {
   if (!value) {
     return emptyLabel;
@@ -181,6 +209,34 @@ function formatAssigneeLabel(assignee: {
   return `${assignee.kind === "agent" ? "Agent" : "User"} • ${assignee.name}`;
 }
 
+function summarizeArtifactText(value: string): string {
+  return value
+    .replace(/^#+\s*/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getArtifactPreview(artifact: TaskDetailPageArtifact): string {
+  const description = String(artifact.description || "").trim();
+  if (description.length > 0) {
+    return description;
+  }
+
+  if (artifact.type === "markdown_document") {
+    return summarizeArtifactText(String(artifact.markdownContent || ""));
+  }
+
+  if (artifact.type === "pull_request") {
+    return [
+      artifact.pullRequestRepository,
+      artifact.pullRequestNumber ? `#${artifact.pullRequestNumber}` : null,
+      artifact.url,
+    ].filter(Boolean).join(" • ");
+  }
+
+  return String(artifact.url || "").trim();
+}
+
 function resolveTaskRunStatusVariant(status: TaskRunStatus): "destructive" | "outline" | "positive" | "secondary" {
   if (status === "completed") {
     return "positive";
@@ -193,6 +249,17 @@ function resolveTaskRunStatusVariant(status: TaskRunStatus): "destructive" | "ou
   }
 
   return "outline";
+}
+
+function resolveArtifactTypeIcon(type: TaskArtifactType) {
+  switch (type) {
+    case "markdown_document":
+      return FileTextIcon;
+    case "external_link":
+      return ExternalLinkIcon;
+    case "pull_request":
+      return GitPullRequestIcon;
+  }
 }
 
 function TaskDetailPageContent() {
@@ -221,7 +288,11 @@ function TaskDetailPageContent() {
     taskDetailPageExecuteTaskMutationNode,
   );
   const task = data.Task;
-  const selectedTab = search.tab === "runs" ? "runs" : "details";
+  const selectedTab = search.tab === "runs"
+    ? "runs"
+    : search.tab === "artifacts"
+      ? "artifacts"
+      : "details";
   const currentTaskStatus = task.status as TaskStatus;
   const currentAssignedAgentId = task.assignee?.kind === "agent" ? task.assignee.id : null;
   const currentAssignedUserId = task.assignee?.kind === "user" ? task.assignee.id : null;
@@ -384,6 +455,10 @@ function TaskDetailPageContent() {
                 label: "Details",
               },
               {
+                key: "artifacts" as const,
+                label: "Artifacts",
+              },
+              {
                 key: "runs" as const,
                 label: "Runs",
               },
@@ -403,7 +478,7 @@ function TaskDetailPageContent() {
                       params: {
                         taskId: task.id,
                       },
-                      search: tab.key === "runs" ? { tab: "runs" } : {},
+                      search: tab.key === "details" ? {} : { tab: tab.key },
                       to: "/tasks/$taskId",
                     });
                   }}
@@ -652,6 +727,77 @@ function TaskDetailPageContent() {
                 ) : null}
               </div>
             ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {selectedTab === "artifacts" ? (
+        <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Task Artifacts</CardTitle>
+              <CardDescription>
+                Review the documents, links, and pull requests attached to this task.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {data.Artifacts.length === 0 ? (
+              <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                <p className="text-sm font-medium text-foreground">No artifacts yet</p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                  Task-scoped documents and delivery links will appear here as agents attach them.
+                </p>
+              </div>
+            ) : null}
+
+            {data.Artifacts.map((artifact: TaskDetailPageArtifact) => {
+              const ArtifactIcon = resolveArtifactTypeIcon(artifact.type as TaskArtifactType);
+
+              return (
+                <button
+                  key={artifact.id}
+                  className="group rounded-2xl border border-border/60 bg-card/70 text-left shadow-sm transition hover:border-border/80 hover:bg-card hover:shadow-md"
+                  onClick={() => {
+                    void navigate({
+                      params: {
+                        artifactId: artifact.id,
+                        taskId: task.id,
+                      },
+                      to: "/tasks/$taskId/artifacts/$artifactId",
+                    });
+                  }}
+                  type="button"
+                >
+                  <div className="border-b border-border/40 px-5 py-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-md bg-muted p-1.5 text-muted-foreground">
+                        <ArtifactIcon className="size-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-foreground">{artifact.name}</p>
+                          <Badge variant="outline">{formatArtifactType(artifact.type as TaskArtifactType)}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Updated {formatTaskTimestamp(artifact.updatedAt, "Unknown")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 px-5 py-4">
+                    <MarkdownContent
+                      content={getArtifactPreview(artifact)}
+                      emptyClassName="text-sm text-muted-foreground"
+                      emptyLabel="Open this artifact for details."
+                    />
+                    {artifact.url ? (
+                      <p className="truncate text-xs text-muted-foreground">{artifact.url}</p>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
           </CardContent>
         </Card>
       ) : null}
