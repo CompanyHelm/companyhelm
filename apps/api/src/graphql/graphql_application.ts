@@ -52,6 +52,7 @@ import { UpdateComputeProviderDefinitionMutation } from "./mutations/update_comp
 import { UpdateExternalLinkArtifactMutation } from "./mutations/update_external_link_artifact.ts";
 import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_artifact.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
+import { UpdateSessionTitleMutation } from "./mutations/update_session_title.ts";
 import { UpdateTaskMutation } from "./mutations/update_task.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
@@ -179,6 +180,7 @@ export class GraphqlApplication {
   private readonly updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation;
   private readonly updateMarkdownArtifactMutation: UpdateMarkdownArtifactMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
+  private readonly updateSessionTitleMutation: UpdateSessionTitleMutation;
   private readonly updateTaskMutation: UpdateTaskMutation;
   private readonly redisService: RedisService;
 
@@ -412,6 +414,12 @@ export class GraphqlApplication {
         throw new Error("TaskRun service is not configured.");
       },
     } as never),
+    @inject(UpdateSessionTitleMutation)
+    updateSessionTitleMutation: UpdateSessionTitleMutation = new UpdateSessionTitleMutation({
+      async updateSessionTitle() {
+        throw new Error("UpdateSessionTitle mutation is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -477,6 +485,7 @@ export class GraphqlApplication {
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
     this.meQueryResolver = meQueryResolver;
     this.markSessionReadMutation = markSessionReadMutation;
+    this.updateSessionTitleMutation = updateSessionTitleMutation;
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
@@ -625,6 +634,7 @@ export class GraphqlApplication {
           MarkSessionRead: this.markSessionReadMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
           PromptSession: this.promptSessionMutation.execute,
+          UpdateSessionTitle: this.updateSessionTitleMutation.execute,
           ResolveInboxHumanQuestion: this.resolveInboxHumanQuestionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,

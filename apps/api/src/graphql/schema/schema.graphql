@@ -66,6 +66,7 @@ type Mutation {
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   MarkSessionRead(input: MarkSessionReadInput!): Session!
   PromptSession(input: PromptSessionInput!): Session!
+  UpdateSessionTitle(input: UpdateSessionTitleInput!): Session!
   ResolveInboxHumanQuestion(input: ResolveInboxHumanQuestionInput!): InboxHumanQuestion!
   SteerSessionQueuedMessage(input: SteerSessionQueuedMessageInput!): SessionQueuedMessage!
   RefreshGithubInstallationRepositories(
@@ -633,6 +634,11 @@ input PromptSessionInput {
   reasoningLevel: String
   shouldSteer: Boolean
   userMessage: String!
+}
+
+input UpdateSessionTitleInput {
+  sessionId: ID!
+  title: String
 }
 
 input SessionPromptImageInput {

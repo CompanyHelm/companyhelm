@@ -32,6 +32,7 @@ type ExistingSessionRow = {
   currentReasoningLevel: string;
   id: string;
   status: string;
+  userSetTitle?: string | null;
 };
 
 type ModelRecord = {
@@ -431,6 +432,77 @@ export class SessionManagerService {
     return sessionRecord;
   }
 
+  async updateSessionTitle(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    title: string | null | undefined,
+  ): Promise<SessionRecord> {
+    const sessionRecord = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const [existingSession] = await selectableDatabase
+        .select({
+          agentId: agentSessions.agentId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          id: agentSessions.id,
+          status: agentSessions.status,
+          userSetTitle: agentSessions.userSetTitle,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!existingSession) {
+        throw new Error("Session not found.");
+      }
+
+      const [updatedSessionRecord] = await updatableDatabase
+        .update(agentSessions)
+        .set({
+          updated_at: new Date(),
+          userSetTitle: this.resolveUserSetTitle(title),
+        })
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        ))
+        .returning?.(this.sessionSelection()) as SessionRecord[];
+      if (!updatedSessionRecord) {
+        throw new Error("Session not found.");
+      }
+
+      const currentModelRecord = await this.resolveCurrentModelRecord(
+        selectableDatabase,
+        companyId,
+        {
+          ...existingSession,
+          currentModelProviderCredentialModelId: updatedSessionRecord.currentModelProviderCredentialModelId,
+          currentReasoningLevel: updatedSessionRecord.currentReasoningLevel,
+          status: updatedSessionRecord.status,
+          userSetTitle: updatedSessionRecord.userSetTitle,
+        },
+      );
+
+      return {
+        ...updatedSessionRecord,
+        currentModelId: currentModelRecord.modelId,
+      };
+    });
+
+    await this.publishSessionUpdate(companyId, sessionRecord.id);
+
+    this.logger.info({
+      companyId,
+      sessionId: sessionRecord.id,
+      userSetTitle: sessionRecord.userSetTitle,
+    }, "updated agent session title");
+
+    return sessionRecord;
+  }
+
   async queuePromptInTransaction(
     selectableDatabase: SelectableDatabase,
     insertableDatabase: InsertableDatabase,
@@ -681,6 +753,17 @@ export class SessionManagerService {
     }
 
     return trimmedMessage.slice(0, 50);
+  }
+
+  private resolveUserSetTitle(title: string | null | undefined): string | null {
+    if (title === undefined || title === null) {
+      return null;
+    }
+    if (title.trim().length === 0) {
+      return null;
+    }
+
+    return title;
   }
 
   private resolvePromptImages(images?: SessionPromptImageInput[]): SessionPromptImageInput[] {

@@ -23,6 +23,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
+import { EditableField } from "@/components/editable_field";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { useGraphqlSubscriptionConnectionStatus } from "@/components/relay_environment_provider";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__
 import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
 import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
+import type { chatsPageUpdateSessionTitleMutation } from "./__generated__/chatsPageUpdateSessionTitleMutation.graphql";
 
 const chatsPageQueryNode = graphql`
   query chatsPageQuery {
@@ -276,6 +278,29 @@ const chatsPagePromptSessionMutationNode = graphql`
 const chatsPageMarkSessionReadMutationNode = graphql`
   mutation chatsPageMarkSessionReadMutation($input: MarkSessionReadInput!) {
     MarkSessionRead(input: $input) {
+      id
+      agentId
+      hasUnread
+      currentContextTokens
+      isCompacting
+      maxContextTokens
+      modelProviderCredentialModelId
+      modelId
+      reasoningLevel
+      inferredTitle
+      isThinking
+      status
+      thinkingText
+      createdAt
+      updatedAt
+      userSetTitle
+    }
+  }
+`;
+
+const chatsPageUpdateSessionTitleMutationNode = graphql`
+  mutation chatsPageUpdateSessionTitleMutation($input: UpdateSessionTitleInput!) {
+    UpdateSessionTitle(input: $input) {
       id
       agentId
       hasUnread
@@ -757,12 +782,12 @@ function formatSessionTitle(messages: ReadonlyArray<Pick<SessionMessageRecord, "
 }
 
 function resolvePersistedSessionTitle(session: Pick<SessionRecord, "inferredTitle" | "userSetTitle">): string | null {
-  if (typeof session.inferredTitle === "string" && session.inferredTitle.length > 0) {
-    return session.inferredTitle;
-  }
-
   if (typeof session.userSetTitle === "string" && session.userSetTitle.length > 0) {
     return session.userSetTitle;
+  }
+
+  if (typeof session.inferredTitle === "string" && session.inferredTitle.length > 0) {
+    return session.inferredTitle;
   }
 
   return null;
@@ -1819,6 +1844,9 @@ function ChatsPageContent() {
   const [commitMarkSessionRead] = useMutation<chatsPageMarkSessionReadMutation>(
     chatsPageMarkSessionReadMutationNode,
   );
+  const [commitUpdateSessionTitle] = useMutation<chatsPageUpdateSessionTitleMutation>(
+    chatsPageUpdateSessionTitleMutationNode,
+  );
 
   const sortedAgents = useMemo(() => {
     return [...data.Agents].sort((leftAgent, rightAgent) => leftAgent.name.localeCompare(rightAgent.name));
@@ -1935,6 +1963,40 @@ function ChatsPageContent() {
       },
     });
   }, [commitMarkSessionRead]);
+  const updateSessionTitle = useCallback(async (sessionId: string, title: string) => {
+    await new Promise<void>((resolve, reject) => {
+      commitUpdateSessionTitle({
+        variables: {
+          input: {
+            sessionId,
+            title,
+          },
+        },
+        updater: (store) => {
+          upsertRootLinkedRecord(store, "Sessions", "UpdateSessionTitle");
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          setSessionTitleOverridesById((currentOverrides) => {
+            if (!(sessionId in currentOverrides)) {
+              return currentOverrides;
+            }
+
+            const nextOverrides = { ...currentOverrides };
+            delete nextOverrides[sessionId];
+            return nextOverrides;
+          });
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  }, [commitUpdateSessionTitle]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -3027,13 +3089,13 @@ function ChatsPageContent() {
       actions.push(
         <Button
           key="environment-panel"
-          aria-label="Show environment details"
+          aria-label="Show chat settings"
           className="text-muted-foreground hover:text-foreground"
           onClick={() => {
             setIsEnvironmentPanelOpen(true);
           }}
           size="icon-sm"
-          title="Show environment details"
+          title="Show chat settings"
           variant="ghost"
         >
           <Settings2Icon className="size-4" />
@@ -3394,6 +3456,9 @@ function ChatsPageContent() {
   ) : null;
   const currentSessionEnvironment = sessionEnvironmentInfo?.currentEnvironment ?? null;
   const agentDefaultComputeProviderDefinition = sessionEnvironmentInfo?.agentDefaultComputeProviderDefinition ?? null;
+  const selectedSessionTitle = selectedSession
+    ? resolveSessionTitle(selectedSession, selectedSessionMessages)
+    : "Untitled chat";
   const environmentDetailsPanel = selectedSession ? (
     <Sheet open={isEnvironmentPanelOpen} onOpenChange={setIsEnvironmentPanelOpen}>
       <SheetContent
@@ -3403,9 +3468,9 @@ function ChatsPageContent() {
         side={isMobile ? "bottom" : "right"}
       >
         <SheetHeader className="border-b border-border/60 px-6 py-5">
-          <SheetTitle>Environment</SheetTitle>
+          <SheetTitle>Chat settings</SheetTitle>
           <SheetDescription>
-            Review the current reusable environment for this chat session and the agent&apos;s fallback compute provider.
+            Edit the chat title and review the reusable environment attached to this session.
           </SheetDescription>
         </SheetHeader>
 
@@ -3415,6 +3480,28 @@ function ChatsPageContent() {
               {sessionEnvironmentErrorMessage}
             </div>
           ) : null}
+
+          <section className="grid gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Title
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                The custom title overrides the inferred chat label everywhere in the chats experience.
+              </p>
+            </div>
+
+            <EditableField
+              displayValue={selectedSessionTitle}
+              emptyValueLabel="Untitled chat"
+              fieldType="text"
+              label="Title"
+              onSave={async (nextTitle) => {
+                await updateSessionTitle(selectedSession.id, nextTitle);
+              }}
+              value={selectedSession.userSetTitle ?? selectedSessionTitle}
+            />
+          </section>
 
           <section className="grid gap-3">
             <div>

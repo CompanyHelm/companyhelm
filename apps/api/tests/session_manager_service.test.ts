@@ -864,6 +864,142 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
   ]);
 });
 
+test("SessionManagerService updateSessionTitle stores the custom title and publishes a session update", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  id: "session-1",
+                  status: "stopped",
+                  userSetTitle: null,
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
+          return {
+            where() {
+              return {
+                async returning() {
+                  return [{
+                    id: "session-1",
+                    agentId: "agent-1",
+                    currentModelProviderCredentialModelId: "model-row-1",
+                    currentReasoningLevel: "high",
+                    currentContextTokens: null,
+                    inferredTitle: "Original inferred title",
+                    isCompacting: false,
+                    isThinking: false,
+                    maxContextTokens: null,
+                    status: "stopped",
+                    thinkingText: null,
+                    createdAt: new Date("2026-04-04T13:00:00.000Z"),
+                    updatedAt: new Date("2026-04-04T13:05:00.000Z"),
+                    userSetTitle: "Launch prep",
+                  }];
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("updateSessionTitle should not enqueue wake jobs");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction() {
+        throw new Error("updateSessionTitle should not queue messages");
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  const sessionRecord = await service.updateSessionTitle(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+    "Launch prep",
+  );
+
+  assert.equal(sessionRecord.id, "session-1");
+  assert.equal(sessionRecord.currentModelId, "gpt-5.4");
+  assert.equal(sessionRecord.userSetTitle, "Launch prep");
+  assert.equal(updatedValues.length, 1);
+  assert.equal(updatedValues[0]?.userSetTitle, "Launch prep");
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "updated agent session title",
+    payload: {
+      companyId: "company-1",
+      sessionId: "session-1",
+      userSetTitle: "Launch prep",
+    },
+  }]);
+});
+
 test("SessionManagerService prompt queues the message, publishes session updates, and nudges steering when requested", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const queuedMessages: Array<Record<string, unknown>> = [];
