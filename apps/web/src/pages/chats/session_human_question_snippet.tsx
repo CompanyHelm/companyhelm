@@ -1,4 +1,4 @@
-import { Loader2Icon, StarIcon } from "lucide-react";
+import { Loader2Icon, StarIcon, XIcon } from "lucide-react";
 
 export type SessionHumanQuestionSnippetRecord = {
   allowCustomAnswer: boolean;
@@ -13,7 +13,9 @@ export type SessionHumanQuestionSnippetRecord = {
 };
 
 interface SessionHumanQuestionSnippetProps {
+  isDismissing: boolean;
   isResolving: boolean;
+  onDismiss: () => void;
   onSelectProposal: (proposalId: string) => void;
   question: SessionHumanQuestionSnippetRecord;
 }
@@ -36,6 +38,8 @@ function renderRating(rating: number) {
  * one of the proposed answers without leaving the active session.
  */
 export function SessionHumanQuestionSnippet(props: SessionHumanQuestionSnippetProps) {
+  const isBusy = props.isResolving || props.isDismissing;
+
   return (
     <div className="border-b border-border/60 px-2.5 pt-2.5 pb-2">
       <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-3">
@@ -49,7 +53,16 @@ export function SessionHumanQuestionSnippet(props: SessionHumanQuestionSnippetPr
               {props.question.questionText}
             </p>
           </div>
-          {props.isResolving ? <Loader2Icon className="mt-0.5 size-4 shrink-0 animate-spin text-muted-foreground" /> : null}
+          <button
+            aria-label="Dismiss question"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/40 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy}
+            onClick={props.onDismiss}
+            title={props.isDismissing ? "Dismissing question..." : "Dismiss question"}
+            type="button"
+          >
+            {props.isDismissing ? <Loader2Icon className="size-3.5 animate-spin" /> : <XIcon className="size-3.5" />}
+          </button>
         </div>
 
         {props.question.proposals.length > 0 ? (
@@ -58,7 +71,7 @@ export function SessionHumanQuestionSnippet(props: SessionHumanQuestionSnippetPr
               <button
                 key={proposal.id}
                 className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/15 px-3 py-2 text-left transition hover:border-border hover:bg-muted/25 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={props.isResolving}
+                disabled={isBusy}
                 onClick={() => props.onSelectProposal(proposal.id)}
                 type="button"
               >

@@ -37,6 +37,7 @@ import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
+import type { chatsPageDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDismissInboxHumanQuestionMutation.graphql";
 import type { chatsPageMarkSessionReadMutation } from "./__generated__/chatsPageMarkSessionReadMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
 import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
@@ -323,6 +324,15 @@ const chatsPageResolveInboxHumanQuestionMutationNode = graphql`
       answer {
         id
       }
+    }
+  }
+`;
+
+const chatsPageDismissInboxHumanQuestionMutationNode = graphql`
+  mutation chatsPageDismissInboxHumanQuestionMutation($input: DismissInboxHumanQuestionInput!) {
+    DismissInboxHumanQuestion(input: $input) {
+      id
+      status
     }
   }
 `;
@@ -1870,6 +1880,9 @@ function ChatsPageContent() {
   const [commitInterruptSession, isInterruptSessionInFlight] = useMutation<chatsPageInterruptSessionMutation>(
     chatsPageInterruptSessionMutationNode,
   );
+  const [commitDismissInboxHumanQuestion, isDismissInboxHumanQuestionInFlight] = useMutation<chatsPageDismissInboxHumanQuestionMutation>(
+    chatsPageDismissInboxHumanQuestionMutationNode,
+  );
   const [commitResolveInboxHumanQuestion, isResolveInboxHumanQuestionInFlight] = useMutation<chatsPageResolveInboxHumanQuestionMutation>(
     chatsPageResolveInboxHumanQuestionMutationNode,
   );
@@ -1970,7 +1983,11 @@ function ChatsPageContent() {
       && selectedComposerModelOption
       && hasDraftInput,
   );
-  const isSubmittingDraft = isCreateSessionInFlight || isPromptSessionInFlight || isResolveInboxHumanQuestionInFlight;
+  const isSubmittingDraft =
+    isCreateSessionInFlight
+    || isPromptSessionInFlight
+    || isResolveInboxHumanQuestionInFlight
+    || isDismissInboxHumanQuestionInFlight;
   const canSubmitDraft = Boolean(
     shouldUseComposerForHumanQuestionAnswer || canSubmitPromptDraft,
   ) && !isSubmittingDraft && !isInterruptSessionInFlight;
@@ -3038,6 +3055,39 @@ function ChatsPageContent() {
     }
   };
 
+  const dismissHumanQuestion = async (inboxItemId: string): Promise<boolean> => {
+    setErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitDismissInboxHumanQuestion({
+          variables: {
+            input: {
+              inboxItemId,
+            },
+          },
+          updater: (store) => {
+            removeRootLinkedRecord(store, "InboxHumanQuestions", "DismissInboxHumanQuestion");
+          },
+          onCompleted: (_response, errors) => {
+            const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+            if (nextErrorMessage.length > 0) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+      return true;
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to dismiss question.");
+      return false;
+    }
+  };
+
   const deleteQueuedMessage = async (queuedMessageId: string) => {
     const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
     if (!queuedMessage || queuedMessage.shouldSteer) {
@@ -3890,7 +3940,11 @@ function ChatsPageContent() {
                 {selectedSession ? (
                   selectedSessionHumanQuestion ? (
                     <SessionHumanQuestionSnippet
+                      isDismissing={isDismissInboxHumanQuestionInFlight}
                       isResolving={isResolveInboxHumanQuestionInFlight}
+                      onDismiss={() => {
+                        void dismissHumanQuestion(selectedSessionHumanQuestion.id);
+                      }}
                       onSelectProposal={(proposalId) => {
                         void resolveHumanQuestion({
                           inboxItemId: selectedSessionHumanQuestion.id,
