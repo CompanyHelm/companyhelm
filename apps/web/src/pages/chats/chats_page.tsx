@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { formatProviderLabel as formatModelProviderLabel } from "../model-provider-credentials/provider_label";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
 import { ChatComposerImage, type ChatComposerImageDraft } from "./chat_composer_image";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
@@ -460,6 +461,7 @@ const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
 `;
 
 type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
+type AgentRecord = chatsPageQuery["response"]["Agents"][number];
 type InboxHumanQuestionRecord = chatsPageQuery["response"]["InboxHumanQuestions"][number];
 type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
 type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
@@ -663,6 +665,16 @@ function formatComputeProviderLabel(definition: {
   provider: "daytona" | "e2b" | string;
 }): string {
   return CompanyHelmComputeProvider.formatProviderLabel(definition);
+}
+
+function formatAgentMeta(agent: Pick<AgentRecord, "modelName" | "modelProvider" | "reasoningLevel">): string {
+  const formattedParts = [
+    agent.modelProvider ? formatModelProviderLabel(agent.modelProvider) : null,
+    typeof agent.modelName === "string" && agent.modelName.trim().length > 0 ? agent.modelName : null,
+    typeof agent.reasoningLevel === "string" && agent.reasoningLevel.trim().length > 0 ? agent.reasoningLevel : null,
+  ].filter((part): part is string => typeof part === "string" && part.trim().length > 0);
+
+  return formattedParts.length > 0 ? formattedParts.join(" • ") : "No model configured";
 }
 
 function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["arguments"]): CommandToolArgumentsRecord | null {
