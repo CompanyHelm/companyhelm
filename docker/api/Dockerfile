@@ -19,8 +19,6 @@ COPY . .
 
 RUN chmod +x /app/docker/api/docker-entrypoint.sh
 
-ENV COMPANYHELM_API_CONFIG_PATH=/app/apps/api/config/container.yaml
-
 EXPOSE 4000
 
 ENTRYPOINT ["/app/docker/api/docker-entrypoint.sh"]

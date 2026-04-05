@@ -123,7 +123,9 @@ The API image defaults to `apps/api/config/container.yaml`. That config expects 
 - `COMPANYHELM_ENCRYPTION_KEY`
 - `COMPANYHELM_ENCRYPTION_KEY_ID`
 
-If you want to source the full API config from S3 instead, set `COMPANYHELM_API_CONFIG_S3_URI`. The entrypoint will download that file before starting the server.
+If you want to source the full API config from S3 instead, set `COMPANYHELM_CONFIG_S3_URI`.
+The entrypoint uses the `--config-path` argument as the destination path for that download.
+If you do not pass `--config-path`, the image defaults to `apps/api/config/container.yaml`.
 
 ### Web runtime config
 
