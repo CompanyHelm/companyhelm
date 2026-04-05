@@ -121,6 +121,7 @@ export class ClerkAuthProvider extends AuthProvider {
         transaction as DatabaseClientInterface,
         company.id,
       );
+      await this.ensureCompanyHelmComputeProviderDefinition(transaction, company.id);
       await this.ensureMembership(transaction, {
         companyId: company.id,
         userId: user.id,
@@ -240,7 +241,6 @@ export class ClerkAuthProvider extends AuthProvider {
       params.providerSubject,
     );
     if (existingCompany) {
-      await this.ensureCompanyHelmComputeProviderDefinition(transaction, existingCompany.id);
       return existingCompany;
     }
 
@@ -265,10 +265,8 @@ export class ClerkAuthProvider extends AuthProvider {
         throw new Error("Failed to provision Clerk company.");
       }
 
-      await this.ensureCompanyHelmComputeProviderDefinition(transaction, concurrentCompany.id);
       return concurrentCompany;
     }
-    await this.ensureCompanyHelmComputeProviderDefinition(transaction, createdCompany.id);
 
     return createdCompany;
   }
