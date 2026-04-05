@@ -14,6 +14,19 @@
       "skipFiles": ["<node_internals>/**"]
     },
     {
+      "name": "API (dev)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**"],
+      "args": ["--config-path", "${workspaceFolder}/apps/api/config/dev.yaml"]
+    },
+    {
       "name": "Web Dev Server",
       "type": "node-terminal",
       "request": "launch",
