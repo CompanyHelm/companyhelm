@@ -428,6 +428,13 @@
       "when": 1775253961725,
       "tag": "0060_wakeful_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1775367600000,
+      "tag": "0061_users_runtime_access_policy",
+      "breakpoints": true
     }
   ]
 }
