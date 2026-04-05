@@ -27,8 +27,8 @@ test("Clerk bootstrap applies company context before company-scoped inserts", ()
     "expected company context to be applied before company-scoped compute provider bootstrap",
   );
   assert.ok(
-    ensureComputeProviderIndex < ensureMembershipIndex,
-    "expected compute provider bootstrap to happen before membership bootstrap",
+    ensureMembershipIndex < ensureComputeProviderIndex,
+    "expected membership bootstrap to happen before company-scoped compute provider bootstrap",
   );
 
   const findOrCreateCompanyMatch = source.match(

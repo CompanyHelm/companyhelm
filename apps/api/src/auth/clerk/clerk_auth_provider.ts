@@ -121,11 +121,11 @@ export class ClerkAuthProvider extends AuthProvider {
         transaction as DatabaseClientInterface,
         company.id,
       );
-      await this.ensureCompanyHelmComputeProviderDefinition(transaction, company.id);
       await this.ensureMembership(transaction, {
         companyId: company.id,
         userId: user.id,
       });
+      await this.ensureCompanyHelmComputeProviderDefinition(transaction, company.id);
 
       return {
         token,
