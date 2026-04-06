@@ -484,6 +484,13 @@
       "when": 1775469300000,
       "tag": "0068_compute_provider_default_repairs",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1775475300000,
+      "tag": "0069_session_queued_message_contents",
+      "breakpoints": true
     }
   ]
 }

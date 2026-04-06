@@ -287,7 +287,6 @@ export const sessionQueuedMessages = pgTable("session_queued_messages", {
   sessionId: uuid("session_id")
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
-  text: text("text").notNull(),
   shouldSteer: boolean("should_steer").notNull(),
   status: sessionQueuedMessageStatusEnum("status").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -298,7 +297,7 @@ export const sessionQueuedMessages = pgTable("session_queued_messages", {
   sessionIdIndex: index("session_queued_messages_session_id_idx").on(table.sessionId),
 }));
 
-export const sessionQueuedMessageImages = pgTable("session_queued_message_images", {
+export const sessionQueuedMessageContents = pgTable("session_queued_message_contents", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
@@ -308,14 +307,20 @@ export const sessionQueuedMessageImages = pgTable("session_queued_message_images
   sessionQueuedMessageId: uuid("session_queued_message_id")
     .references(() => sessionQueuedMessages.id, { onDelete: "cascade" })
     .notNull(),
-  base64EncodedImage: text("base64_encoded_image").notNull(),
-  mimeType: text("mime_type").notNull(),
+  type: messageContentTypeEnum("type").notNull(),
+  text: text("text"),
+  data: text("data"),
+  mimeType: text("mime_type"),
+  structuredContent: jsonb("structured_content"),
+  toolCallId: text("tool_call_id"),
+  toolName: text("tool_name"),
+  arguments: jsonb("arguments"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
-  companyIdIndex: index("session_queued_message_images_company_id_idx").on(table.companyId),
-  sessionQueuedMessageIdIndex: index("session_queued_message_images_session_queued_message_id_idx").on(table.sessionQueuedMessageId),
+  companyIdIndex: index("session_queued_message_contents_company_id_idx").on(table.companyId),
+  sessionQueuedMessageIdIndex: index("session_queued_message_contents_session_queued_message_id_idx").on(table.sessionQueuedMessageId),
 }));
 
 export const agentInboxItems = pgTable("agent_inbox_items", {

@@ -15,7 +15,7 @@ The important distinction in this codebase is that the web does not stream model
 flowchart TD
     A["Chats page"] --> B["CreateSession or PromptSession GraphQL mutation"]
     B --> C["SessionManagerService"]
-    C --> D["Postgres: agent_sessions + session_queued_messages"]
+    C --> D["Postgres: agent_sessions + queued metadata + queued content parts"]
     C --> E["Redis pub/sub session update signals"]
     C --> F["BullMQ wake queue"]
     F --> G["SessionProcessWorker"]
@@ -65,8 +65,8 @@ The subscription transport is a shared `graphql-ws` socket created by [graphql_s
 
 1. creates an `agent_sessions` row,
 2. resolves the selected or default model,
-3. stores the first user prompt in `session_queued_messages`,
-4. optionally stores queued images in `session_queued_message_images`,
+3. stores queue metadata in `session_queued_messages`,
+4. stores the first user prompt content parts in `session_queued_message_contents`,
 5. calls `notifyQueuedSessionMessage()`.
 
 The inserted session starts in `queued` status because the mutation is only the ingress step. The actual model execution happens later in the background worker.
@@ -77,8 +77,8 @@ The inserted session starts in `queued` status because the mutation is only the 
 
 1. updates the `agent_sessions` row with the selected model and reasoning level,
 2. keeps status as `running` if the session is already running, otherwise uses `queued`,
-3. inserts a new row into `session_queued_messages`,
-4. optionally inserts queued images,
+3. inserts a new queue metadata row into `session_queued_messages`,
+4. inserts queued content parts into `session_queued_message_contents`,
 5. calls `notifyQueuedSessionMessage()`.
 
 This means the mutation path is durable and quick: the browser gets confirmation once the prompt is queued, not when the model finishes.

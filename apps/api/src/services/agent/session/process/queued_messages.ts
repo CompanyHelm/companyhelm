@@ -1,8 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
-  sessionQueuedMessageImages,
   sessionQueuedMessageStatusEnum,
+  sessionQueuedMessageContents,
   sessionQueuedMessages,
 } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
@@ -16,17 +16,22 @@ type QueuedMessageRow = {
   sessionId: string;
   shouldSteer: boolean;
   status: SessionQueuedMessageStatus;
-  text: string;
   updatedAt: Date;
 };
 
-type QueuedMessageImageRow = {
-  base64EncodedImage: string;
+type QueuedMessageContentRow = {
+  arguments: unknown | null;
   companyId: string;
   createdAt: Date;
+  data: string | null;
   id: string;
-  mimeType: string;
+  mimeType: string | null;
   sessionQueuedMessageId: string;
+  structuredContent: unknown | null;
+  text: string | null;
+  toolCallId: string | null;
+  toolName: string | null;
+  type: string;
   updatedAt: Date;
 };
 
@@ -77,8 +82,8 @@ type DeletableDatabase = {
 
 /**
  * Owns persistence of queued inbound session messages before a worker delivers them to PI Mono. Its
- * scope is limited to queue-state records in Postgres, including optional queued images and the
- * delete-on-processed lifecycle used by the worker flow.
+ * scope is limited to queue-state rows plus queued content parts, so the ingress queue mirrors the
+ * transcript model instead of special-casing images outside the message body.
  */
 @injectable()
 export class SessionQueuedMessageService {
@@ -117,21 +122,12 @@ export class SessionQueuedMessageService {
       sessionId: input.sessionId,
       shouldSteer: input.shouldSteer,
       status: "pending",
-      text: input.text,
       updatedAt: timestamp,
     });
 
-    const imageRecords = (input.images ?? []).map((image) => ({
-      base64EncodedImage: image.base64EncodedImage,
-      companyId: input.companyId,
-      createdAt: timestamp,
-      id: crypto.randomUUID(),
-      mimeType: image.mimeType,
-      sessionQueuedMessageId: queuedMessageId,
-      updatedAt: timestamp,
-    }));
-    if (imageRecords.length > 0) {
-      await insertableDatabase.insert(sessionQueuedMessageImages).values(imageRecords);
+    const contentRecords = this.buildContentRecords(queuedMessageId, input, timestamp);
+    if (contentRecords.length > 0) {
+      await insertableDatabase.insert(sessionQueuedMessageContents).values(contentRecords);
     }
 
     return {
@@ -174,22 +170,7 @@ export class SessionQueuedMessageService {
     const sessionId = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
-      const [queuedMessage] = await selectableDatabase
-        .select({
-          companyId: sessionQueuedMessages.companyId,
-          createdAt: sessionQueuedMessages.createdAt,
-          id: sessionQueuedMessages.id,
-          sessionId: sessionQueuedMessages.sessionId,
-          shouldSteer: sessionQueuedMessages.shouldSteer,
-          status: sessionQueuedMessages.status,
-          text: sessionQueuedMessages.text,
-          updatedAt: sessionQueuedMessages.updatedAt,
-        })
-        .from(sessionQueuedMessages)
-        .where(and(
-          eq(sessionQueuedMessages.companyId, companyId),
-          eq(sessionQueuedMessages.id, queuedMessageId),
-        )) as QueuedMessageRow[];
+      const queuedMessage = await this.loadQueuedMessage(selectableDatabase, companyId, queuedMessageId);
       if (!queuedMessage) {
         throw new Error("Queued message not found.");
       }
@@ -228,22 +209,7 @@ export class SessionQueuedMessageService {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const deletableDatabase = tx as DeletableDatabase;
-      const [queuedMessage] = await selectableDatabase
-        .select({
-          companyId: sessionQueuedMessages.companyId,
-          createdAt: sessionQueuedMessages.createdAt,
-          id: sessionQueuedMessages.id,
-          sessionId: sessionQueuedMessages.sessionId,
-          shouldSteer: sessionQueuedMessages.shouldSteer,
-          status: sessionQueuedMessages.status,
-          text: sessionQueuedMessages.text,
-          updatedAt: sessionQueuedMessages.updatedAt,
-        })
-        .from(sessionQueuedMessages)
-        .where(and(
-          eq(sessionQueuedMessages.companyId, companyId),
-          eq(sessionQueuedMessages.id, queuedMessageId),
-        )) as QueuedMessageRow[];
+      const queuedMessage = await this.loadQueuedMessage(selectableDatabase, companyId, queuedMessageId);
       if (!queuedMessage) {
         throw new Error("Queued message not found.");
       }
@@ -254,21 +220,11 @@ export class SessionQueuedMessageService {
         throw new Error("Steer queued messages cannot be deleted.");
       }
 
-      const queuedMessageImages = await selectableDatabase
-        .select({
-          base64EncodedImage: sessionQueuedMessageImages.base64EncodedImage,
-          companyId: sessionQueuedMessageImages.companyId,
-          createdAt: sessionQueuedMessageImages.createdAt,
-          id: sessionQueuedMessageImages.id,
-          mimeType: sessionQueuedMessageImages.mimeType,
-          sessionQueuedMessageId: sessionQueuedMessageImages.sessionQueuedMessageId,
-          updatedAt: sessionQueuedMessageImages.updatedAt,
-        })
-        .from(sessionQueuedMessageImages)
-        .where(and(
-          eq(sessionQueuedMessageImages.companyId, companyId),
-          eq(sessionQueuedMessageImages.sessionQueuedMessageId, queuedMessageId),
-        )) as QueuedMessageImageRow[];
+      const queuedMessageContents = await this.loadQueuedMessageContents(
+        selectableDatabase,
+        companyId,
+        [queuedMessageId],
+      );
 
       await deletableDatabase
         .delete(sessionQueuedMessages)
@@ -277,22 +233,10 @@ export class SessionQueuedMessageService {
           eq(sessionQueuedMessages.id, queuedMessageId),
         ));
 
-      return {
-        createdAt: queuedMessage.createdAt,
-        id: queuedMessage.id,
-        images: queuedMessageImages
-          .filter((queuedMessageImage) => queuedMessageImage.sessionQueuedMessageId === queuedMessageId)
-          .map((queuedMessageImage) => ({
-            base64EncodedImage: queuedMessageImage.base64EncodedImage,
-            id: queuedMessageImage.id,
-            mimeType: queuedMessageImage.mimeType,
-          })),
-        sessionId: queuedMessage.sessionId,
-        shouldSteer: queuedMessage.shouldSteer,
-        status: queuedMessage.status,
-        text: queuedMessage.text,
-        updatedAt: queuedMessage.updatedAt,
-      };
+      return this.serializeQueuedMessage(
+        queuedMessage,
+        queuedMessageContents.filter((content) => content.sessionQueuedMessageId === queuedMessageId),
+      );
     });
   }
 
@@ -396,6 +340,56 @@ export class SessionQueuedMessageService {
     return queuedMessages.length > 0;
   }
 
+  private buildContentRecords(
+    queuedMessageId: string,
+    input: {
+      companyId: string;
+      images?: Array<{ base64EncodedImage: string; mimeType: string }>;
+      text: string;
+    },
+    timestamp: Date,
+  ): Array<Record<string, unknown>> {
+    const contentRecords: Array<Record<string, unknown>> = [];
+
+    if (input.text.length > 0) {
+      contentRecords.push({
+        companyId: input.companyId,
+        createdAt: timestamp,
+        data: null,
+        id: crypto.randomUUID(),
+        mimeType: null,
+        sessionQueuedMessageId: queuedMessageId,
+        structuredContent: null,
+        text: input.text,
+        toolCallId: null,
+        toolName: null,
+        arguments: null,
+        type: "text",
+        updatedAt: timestamp,
+      });
+    }
+
+    for (const image of input.images ?? []) {
+      contentRecords.push({
+        companyId: input.companyId,
+        createdAt: timestamp,
+        data: image.base64EncodedImage,
+        id: crypto.randomUUID(),
+        mimeType: image.mimeType,
+        sessionQueuedMessageId: queuedMessageId,
+        structuredContent: null,
+        text: null,
+        toolCallId: null,
+        toolName: null,
+        arguments: null,
+        type: "image",
+        updatedAt: timestamp,
+      });
+    }
+
+    return contentRecords;
+  }
+
   private async listForFilter(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -412,7 +406,6 @@ export class SessionQueuedMessageService {
           sessionId: sessionQueuedMessages.sessionId,
           shouldSteer: sessionQueuedMessages.shouldSteer,
           status: sessionQueuedMessages.status,
-          text: sessionQueuedMessages.text,
           updatedAt: sessionQueuedMessages.updatedAt,
         })
         .from(sessionQueuedMessages)
@@ -425,46 +418,134 @@ export class SessionQueuedMessageService {
         return [];
       }
 
-      const queuedMessageIds = queuedMessages.map((queuedMessage) => queuedMessage.id);
-      const queuedMessageImages = await selectableDatabase
-        .select({
-          base64EncodedImage: sessionQueuedMessageImages.base64EncodedImage,
-          companyId: sessionQueuedMessageImages.companyId,
-          createdAt: sessionQueuedMessageImages.createdAt,
-          id: sessionQueuedMessageImages.id,
-          mimeType: sessionQueuedMessageImages.mimeType,
-          sessionQueuedMessageId: sessionQueuedMessageImages.sessionQueuedMessageId,
-          updatedAt: sessionQueuedMessageImages.updatedAt,
-        })
-        .from(sessionQueuedMessageImages)
-        .where(and(
-          eq(sessionQueuedMessageImages.companyId, companyId),
-          inArray(sessionQueuedMessageImages.sessionQueuedMessageId, queuedMessageIds),
-        )) as QueuedMessageImageRow[];
-
-      const imagesByQueuedMessageId = new Map<string, QueuedSessionMessageImageRecord[]>();
-      for (const queuedMessageImage of queuedMessageImages) {
-        const images = imagesByQueuedMessageId.get(queuedMessageImage.sessionQueuedMessageId) ?? [];
-        images.push({
-          base64EncodedImage: queuedMessageImage.base64EncodedImage,
-          id: queuedMessageImage.id,
-          mimeType: queuedMessageImage.mimeType,
-        });
-        imagesByQueuedMessageId.set(queuedMessageImage.sessionQueuedMessageId, images);
-      }
+      const queuedMessageContents = await this.loadQueuedMessageContents(
+        selectableDatabase,
+        companyId,
+        queuedMessages.map((queuedMessage) => queuedMessage.id),
+      );
+      const contentsByQueuedMessageId = this.groupContentsByQueuedMessageId(queuedMessageContents);
 
       return [...queuedMessages]
         .sort((leftMessage, rightMessage) => leftMessage.createdAt.getTime() - rightMessage.createdAt.getTime())
-        .map((queuedMessage) => ({
-          createdAt: queuedMessage.createdAt,
-          id: queuedMessage.id,
-          images: imagesByQueuedMessageId.get(queuedMessage.id) ?? [],
-          sessionId: queuedMessage.sessionId,
-          shouldSteer: queuedMessage.shouldSteer,
-          status: queuedMessage.status,
-          text: queuedMessage.text,
-          updatedAt: queuedMessage.updatedAt,
-        }));
+        .map((queuedMessage) => this.serializeQueuedMessage(
+          queuedMessage,
+          contentsByQueuedMessageId.get(queuedMessage.id) ?? [],
+        ));
     });
+  }
+
+  private async loadQueuedMessage(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    queuedMessageId: string,
+  ): Promise<QueuedMessageRow | null> {
+    const [queuedMessage] = await selectableDatabase
+      .select({
+        companyId: sessionQueuedMessages.companyId,
+        createdAt: sessionQueuedMessages.createdAt,
+        id: sessionQueuedMessages.id,
+        sessionId: sessionQueuedMessages.sessionId,
+        shouldSteer: sessionQueuedMessages.shouldSteer,
+        status: sessionQueuedMessages.status,
+        updatedAt: sessionQueuedMessages.updatedAt,
+      })
+      .from(sessionQueuedMessages)
+      .where(and(
+        eq(sessionQueuedMessages.companyId, companyId),
+        eq(sessionQueuedMessages.id, queuedMessageId),
+      )) as QueuedMessageRow[];
+
+    return queuedMessage ?? null;
+  }
+
+  private async loadQueuedMessageContents(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    queuedMessageIds: string[],
+  ): Promise<QueuedMessageContentRow[]> {
+    if (queuedMessageIds.length === 0) {
+      return [];
+    }
+
+    return await selectableDatabase
+      .select({
+        arguments: sessionQueuedMessageContents.arguments,
+        companyId: sessionQueuedMessageContents.companyId,
+        createdAt: sessionQueuedMessageContents.createdAt,
+        data: sessionQueuedMessageContents.data,
+        id: sessionQueuedMessageContents.id,
+        mimeType: sessionQueuedMessageContents.mimeType,
+        sessionQueuedMessageId: sessionQueuedMessageContents.sessionQueuedMessageId,
+        structuredContent: sessionQueuedMessageContents.structuredContent,
+        text: sessionQueuedMessageContents.text,
+        toolCallId: sessionQueuedMessageContents.toolCallId,
+        toolName: sessionQueuedMessageContents.toolName,
+        type: sessionQueuedMessageContents.type,
+        updatedAt: sessionQueuedMessageContents.updatedAt,
+      })
+      .from(sessionQueuedMessageContents)
+      .where(and(
+        eq(sessionQueuedMessageContents.companyId, companyId),
+        inArray(sessionQueuedMessageContents.sessionQueuedMessageId, queuedMessageIds),
+      )) as QueuedMessageContentRow[];
+  }
+
+  private groupContentsByQueuedMessageId(
+    queuedMessageContents: QueuedMessageContentRow[],
+  ): Map<string, QueuedMessageContentRow[]> {
+    const contentsByQueuedMessageId = new Map<string, QueuedMessageContentRow[]>();
+
+    for (const queuedMessageContent of queuedMessageContents) {
+      const contents = contentsByQueuedMessageId.get(queuedMessageContent.sessionQueuedMessageId) ?? [];
+      contents.push(queuedMessageContent);
+      contentsByQueuedMessageId.set(queuedMessageContent.sessionQueuedMessageId, contents);
+    }
+
+    for (const [queuedMessageId, contents] of contentsByQueuedMessageId) {
+      contentsByQueuedMessageId.set(queuedMessageId, [...contents].sort((leftContent, rightContent) => {
+        const createdAtDelta = leftContent.createdAt.getTime() - rightContent.createdAt.getTime();
+        if (createdAtDelta !== 0) {
+          return createdAtDelta;
+        }
+
+        return leftContent.id.localeCompare(rightContent.id);
+      }));
+    }
+
+    return contentsByQueuedMessageId;
+  }
+
+  private serializeQueuedMessage(
+    queuedMessage: QueuedMessageRow,
+    queuedMessageContents: QueuedMessageContentRow[],
+  ): QueuedSessionMessageRecord {
+    const textParts: string[] = [];
+    const images: QueuedSessionMessageImageRecord[] = [];
+
+    for (const queuedMessageContent of queuedMessageContents) {
+      if (queuedMessageContent.type === "text" && queuedMessageContent.text) {
+        textParts.push(queuedMessageContent.text);
+        continue;
+      }
+
+      if (queuedMessageContent.type === "image" && queuedMessageContent.data && queuedMessageContent.mimeType) {
+        images.push({
+          base64EncodedImage: queuedMessageContent.data,
+          id: queuedMessageContent.id,
+          mimeType: queuedMessageContent.mimeType,
+        });
+      }
+    }
+
+    return {
+      createdAt: queuedMessage.createdAt,
+      id: queuedMessage.id,
+      images,
+      sessionId: queuedMessage.sessionId,
+      shouldSteer: queuedMessage.shouldSteer,
+      status: queuedMessage.status,
+      text: textParts.join("\n\n"),
+      updatedAt: queuedMessage.updatedAt,
+    };
   }
 }

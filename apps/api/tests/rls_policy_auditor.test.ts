@@ -20,6 +20,8 @@ test("RlsPolicyAuditor reports no missing policies for the current migration set
   const report = auditor.audit(resolve(import.meta.dirname, "../drizzle"));
 
   assert.deepEqual(report.missingPolicyTables, []);
+  assert.ok(report.rlsEnabledTables.includes("session_queued_message_contents"));
+  assert.ok(report.policyTables.includes("session_queued_message_contents"));
   assert.ok(report.rlsEnabledTables.includes("user_session_reads"));
   assert.ok(report.policyTables.includes("user_session_reads"));
 });

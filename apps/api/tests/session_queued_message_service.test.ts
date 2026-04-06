@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { sessionQueuedMessageImages, sessionQueuedMessages } from "../src/db/schema.ts";
+import { sessionQueuedMessageContents, sessionQueuedMessages } from "../src/db/schema.ts";
 import { SessionQueuedMessageService } from "../src/services/agent/session/process/queued_messages.ts";
 
 type QueuedMessageRecord = Record<string, unknown> & {
@@ -10,17 +10,22 @@ type QueuedMessageRecord = Record<string, unknown> & {
   sessionId: string;
   shouldSteer: boolean;
   status: string;
-  text: string;
   updatedAt: Date;
 };
 
-type QueuedImageRecord = Record<string, unknown> & {
-  base64EncodedImage: string;
+type QueuedContentRecord = Record<string, unknown> & {
+  arguments: unknown | null;
   companyId: string;
   createdAt: Date;
+  data: string | null;
   id: string;
-  mimeType: string;
+  mimeType: string | null;
   sessionQueuedMessageId: string;
+  structuredContent: unknown | null;
+  text: string | null;
+  toolCallId: string | null;
+  toolName: string | null;
+  type: string;
   updatedAt: Date;
 };
 
@@ -59,10 +64,10 @@ function collectSqlParamValues(chunk: unknown): unknown[] {
 class SessionQueuedMessageServiceTestHarness {
   static create() {
     const queuedMessages: QueuedMessageRecord[] = [];
-    const queuedImages: QueuedImageRecord[] = [];
+    const queuedContents: QueuedContentRecord[] = [];
 
     return {
-      queuedImages,
+      queuedContents,
       queuedMessages,
       transactionProvider: {
         async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
@@ -71,13 +76,14 @@ class SessionQueuedMessageServiceTestHarness {
               return {
                 async values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
                   if (table === sessionQueuedMessages) {
-                    queuedMessages.push(value as QueuedMessageRecord);
+                    const values = Array.isArray(value) ? value as QueuedMessageRecord[] : [value as QueuedMessageRecord];
+                    queuedMessages.push(...values);
                     return undefined;
                   }
 
-                  if (table === sessionQueuedMessageImages) {
-                    const values = Array.isArray(value) ? value as QueuedImageRecord[] : [value as QueuedImageRecord];
-                    queuedImages.push(...values);
+                  if (table === sessionQueuedMessageContents) {
+                    const values = Array.isArray(value) ? value as QueuedContentRecord[] : [value as QueuedContentRecord];
+                    queuedContents.push(...values);
                     return undefined;
                   }
 
@@ -120,15 +126,15 @@ class SessionQueuedMessageServiceTestHarness {
                     };
                   }
 
-                  if (table === sessionQueuedMessageImages) {
+                  if (table === sessionQueuedMessageContents) {
                     return {
                       async where(condition: unknown) {
                         const [companyId, ...queuedMessageIds] = collectSqlParamValues(condition) as string[];
-                        return queuedImages.filter((queuedImage) => {
-                          if (companyId && queuedImage.companyId !== companyId) {
+                        return queuedContents.filter((queuedContent) => {
+                          if (companyId && queuedContent.companyId !== companyId) {
                             return false;
                           }
-                          if (queuedMessageIds.length > 0 && !queuedMessageIds.includes(queuedImage.sessionQueuedMessageId)) {
+                          if (queuedMessageIds.length > 0 && !queuedMessageIds.includes(queuedContent.sessionQueuedMessageId)) {
                             return false;
                           }
 
@@ -174,9 +180,9 @@ class SessionQueuedMessageServiceTestHarness {
                       continue;
                     }
 
-                    for (let index = queuedImages.length - 1; index >= 0; index -= 1) {
-                      if (queuedImages[index]?.sessionQueuedMessageId === deletedMessage.id) {
-                        queuedImages.splice(index, 1);
+                    for (let index = queuedContents.length - 1; index >= 0; index -= 1) {
+                      if (queuedContents[index]?.sessionQueuedMessageId === deletedMessage.id) {
+                        queuedContents.splice(index, 1);
                       }
                     }
                   }
@@ -227,6 +233,30 @@ test("SessionQueuedMessageService enqueues queued messages and loads them in cre
   assert.equal(steerMessages[0]?.text, "Steer message");
 });
 
+test("SessionQueuedMessageService stores text and image parts in queued contents", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+
+  await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    images: [{
+      base64EncodedImage: "encoded-image",
+      mimeType: "image/png",
+    }],
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Queued prompt",
+  });
+
+  assert.equal(harness.queuedMessages.length, 1);
+  assert.equal(harness.queuedContents.length, 2);
+  assert.equal(harness.queuedContents[0]?.type, "text");
+  assert.equal(harness.queuedContents[0]?.text, "Queued prompt");
+  assert.equal(harness.queuedContents[1]?.type, "image");
+  assert.equal(harness.queuedContents[1]?.data, "encoded-image");
+  assert.equal(harness.queuedContents[1]?.mimeType, "image/png");
+});
+
 test("SessionQueuedMessageService marks queued rows processing and deletes processed rows", async () => {
   const harness = SessionQueuedMessageServiceTestHarness.create();
   const service = new SessionQueuedMessageService();
@@ -248,7 +278,7 @@ test("SessionQueuedMessageService marks queued rows processing and deletes proce
   await service.deleteProcessed(harness.transactionProvider as never, "company-1", [first.id]);
 
   assert.equal(harness.queuedMessages.length, 0);
-  assert.equal(harness.queuedImages.length, 0);
+  assert.equal(harness.queuedContents.length, 0);
 });
 
 test("SessionQueuedMessageService does not expose in-flight processing rows as processable work", async () => {
