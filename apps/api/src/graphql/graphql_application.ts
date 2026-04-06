@@ -111,6 +111,7 @@ import { AgentEnvironmentRequirementsService } from "../services/agent/environme
  */
 @injectable()
 export class GraphqlApplication {
+  private static readonly SUBSCRIPTION_KEEP_ALIVE_MILLISECONDS = 30_000;
   private readonly configDocument: Config;
   private readonly addAgentMutation: AddAgentMutation;
   private readonly addComputeProviderDefinitionMutation: AddComputeProviderDefinitionMutation;
@@ -588,6 +589,7 @@ export class GraphqlApplication {
         request: Parameters<GraphqlRequestContextResolver["resolve"]>[0],
       ) => this.graphqlRequestContextResolver.resolve(request),
       subscription: {
+        keepAlive: GraphqlApplication.SUBSCRIPTION_KEEP_ALIVE_MILLISECONDS,
         context: async (
           _socket: unknown,
           request: Parameters<GraphqlRequestContextResolver["resolve"]>[0],
