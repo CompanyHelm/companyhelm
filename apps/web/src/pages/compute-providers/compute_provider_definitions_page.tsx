@@ -13,12 +13,14 @@ import {
 import type { computeProviderDefinitionsPageAddMutation } from "./__generated__/computeProviderDefinitionsPageAddMutation.graphql";
 import type { computeProviderDefinitionsPageDeleteMutation } from "./__generated__/computeProviderDefinitionsPageDeleteMutation.graphql";
 import type { computeProviderDefinitionsPageQuery } from "./__generated__/computeProviderDefinitionsPageQuery.graphql";
+import type { computeProviderDefinitionsPageSetDefaultMutation } from "./__generated__/computeProviderDefinitionsPageSetDefaultMutation.graphql";
 import type { computeProviderDefinitionsPageUpdateMutation } from "./__generated__/computeProviderDefinitionsPageUpdateMutation.graphql";
 
 const computeProviderDefinitionsPageQueryNode = graphql`
   query computeProviderDefinitionsPageQuery {
     ComputeProviderDefinitions {
       id
+      isDefault
       name
       provider
       description
@@ -40,6 +42,7 @@ const computeProviderDefinitionsPageAddMutationNode = graphql`
   ) {
     AddComputeProviderDefinition(input: $input) {
       id
+      isDefault
       name
       provider
       description
@@ -61,6 +64,7 @@ const computeProviderDefinitionsPageUpdateMutationNode = graphql`
   ) {
     UpdateComputeProviderDefinition(input: $input) {
       id
+      isDefault
       name
       provider
       description
@@ -82,6 +86,17 @@ const computeProviderDefinitionsPageDeleteMutationNode = graphql`
   ) {
     DeleteComputeProviderDefinition(input: $input) {
       id
+    }
+  }
+`;
+
+const computeProviderDefinitionsPageSetDefaultMutationNode = graphql`
+  mutation computeProviderDefinitionsPageSetDefaultMutation(
+    $input: SetDefaultComputeProviderDefinitionInput!
+  ) {
+    SetDefaultComputeProviderDefinition(input: $input) {
+      id
+      isDefault
     }
   }
 `;
@@ -109,8 +124,10 @@ function ComputeProviderDefinitionsPageFallback() {
             definitions={[]}
             deletingDefinitionId={null}
             isLoading
+            settingDefaultDefinitionId={null}
             onDelete={async () => undefined}
             onEdit={() => undefined}
+            onSetDefault={async () => undefined}
           />
         </CardContent>
       </Card>
@@ -124,10 +141,13 @@ function ComputeProviderDefinitionsPageContent() {
   const [dialogDefinition, setDialogDefinition] = useState<ComputeProviderDefinitionDialogRecord | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [deletingDefinitionId, setDeletingDefinitionId] = useState<string | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
+  const [settingDefaultDefinitionId, setSettingDefaultDefinitionId] = useState<string | null>(null);
   const data = useLazyLoadQuery<computeProviderDefinitionsPageQuery>(
     computeProviderDefinitionsPageQueryNode,
     {},
     {
+      fetchKey,
       fetchPolicy: "store-and-network",
     },
   );
@@ -140,12 +160,16 @@ function ComputeProviderDefinitionsPageContent() {
   const [commitDeleteDefinition, isDeleteDefinitionInFlight] = useMutation<computeProviderDefinitionsPageDeleteMutation>(
     computeProviderDefinitionsPageDeleteMutationNode,
   );
+  const [commitSetDefaultDefinition, isSetDefaultDefinitionInFlight] = useMutation<computeProviderDefinitionsPageSetDefaultMutation>(
+    computeProviderDefinitionsPageSetDefaultMutationNode,
+  );
   const definitions = useMemo<ComputeProviderDefinitionTableRecord[]>(() => {
     return data.ComputeProviderDefinitions.map((definition) => ({
       description: definition.description,
       daytonaApiUrl: definition.daytona?.apiUrl ?? null,
       hasApiKey: definition.e2b?.hasApiKey ?? definition.daytona !== null,
       id: definition.id,
+      isDefault: definition.isDefault,
       name: definition.name,
       provider: definition.provider as "daytona" | "e2b",
       updatedAt: definition.updatedAt,
@@ -192,6 +216,7 @@ function ComputeProviderDefinitionsPageContent() {
             definitions={definitions}
             deletingDefinitionId={deletingDefinitionId}
             isLoading={false}
+            settingDefaultDefinitionId={settingDefaultDefinitionId}
             onDelete={async (definitionId) => {
               if (isDeleteDefinitionInFlight) {
                 return;
@@ -233,6 +258,7 @@ function ComputeProviderDefinitionsPageContent() {
                   onError: reject,
                 });
               }).then(() => {
+                setFetchKey((current) => current + 1);
                 toast.showSavedToast("Deleted");
               }).catch((error: unknown) => {
                 setErrorMessage(error instanceof Error ? error.message : "Failed to delete compute provider.");
@@ -251,6 +277,54 @@ function ComputeProviderDefinitionsPageContent() {
               setErrorMessage(null);
               setDialogOpen(true);
             }}
+            onSetDefault={async (definitionId) => {
+              if (isSetDefaultDefinitionInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setSettingDefaultDefinitionId(definitionId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitSetDefaultDefinition({
+                  variables: {
+                    input: {
+                      id: definitionId,
+                    },
+                  },
+                  updater: (store) => {
+                    const updatedDefinition = store.getRootField("SetDefaultComputeProviderDefinition");
+                    if (!updatedDefinition) {
+                      return;
+                    }
+
+                    const updatedId = updatedDefinition.getDataID();
+                    const rootRecord = store.getRoot();
+                    const currentDefinitions = rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [];
+                    currentDefinitions.forEach((record) => {
+                      record?.setValue(record?.getDataID() === updatedId, "isDefault");
+                    });
+                  },
+                  onCompleted: (_response, errors) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).then(() => {
+                setFetchKey((current) => current + 1);
+                toast.showSavedToast("Default updated");
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to update default compute provider.");
+              });
+
+              setSettingDefaultDefinitionId(null);
+            }}
           />
         </CardContent>
       </Card>
@@ -261,6 +335,7 @@ function ComputeProviderDefinitionsPageContent() {
         isOpen={isDialogOpen}
         isSaving={isSaving}
         onOpenChange={setDialogOpen}
+        suggestDefault={definitions.length === 0}
         onSave={async (input) => {
           setErrorMessage(null);
 
@@ -296,6 +371,7 @@ function ComputeProviderDefinitionsPageContent() {
               onError: reject,
             });
           }).then(() => {
+            setFetchKey((current) => current + 1);
             setDialogOpen(false);
             toast.showSavedToast();
           }).catch((error: unknown) => {

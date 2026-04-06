@@ -1,7 +1,13 @@
 import { inject, injectable } from "inversify";
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { Resolver } from "./resolver.ts";
+import { Mutation } from "./mutation.ts";
+
+type SetDefaultComputeProviderDefinitionMutationArguments = {
+  input: {
+    id: string;
+  };
+};
 
 type GraphqlComputeProviderDefinitionRecord = {
   companyId: string;
@@ -21,11 +27,13 @@ type GraphqlComputeProviderDefinitionRecord = {
 };
 
 /**
- * Lists the company-scoped compute provider definitions so the web UI can configure environment
- * backends and agents can choose their default provisioning target.
+ * Promotes one company compute provider definition to the singleton default used by new agents.
  */
 @injectable()
-export class ComputeProviderDefinitionsQueryResolver extends Resolver<GraphqlComputeProviderDefinitionRecord[]> {
+export class SetDefaultComputeProviderDefinitionMutation extends Mutation<
+  SetDefaultComputeProviderDefinitionMutationArguments,
+  GraphqlComputeProviderDefinitionRecord
+> {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
 
   constructor(
@@ -36,7 +44,14 @@ export class ComputeProviderDefinitionsQueryResolver extends Resolver<GraphqlCom
     this.computeProviderDefinitionService = computeProviderDefinitionService;
   }
 
-  protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlComputeProviderDefinitionRecord[]> => {
+  protected resolve = async (
+    arguments_: SetDefaultComputeProviderDefinitionMutationArguments,
+    context: GraphqlRequestContext,
+  ): Promise<GraphqlComputeProviderDefinitionRecord> => {
+    const definitionId = String(arguments_.input.id || "").trim();
+    if (!definitionId) {
+      throw new Error("id is required.");
+    }
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -44,12 +59,13 @@ export class ComputeProviderDefinitionsQueryResolver extends Resolver<GraphqlCom
       throw new Error("Authentication required.");
     }
 
-    const definitions = await this.computeProviderDefinitionService.listDefinitions(
+    const definition = await this.computeProviderDefinitionService.setDefaultDefinition(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
+      definitionId,
     );
 
-    return definitions.map((definition) => ({
+    return {
       companyId: definition.companyId,
       createdAt: definition.createdAt.toISOString(),
       daytona: definition.daytona,
@@ -60,6 +76,6 @@ export class ComputeProviderDefinitionsQueryResolver extends Resolver<GraphqlCom
       name: definition.name,
       provider: definition.provider,
       updatedAt: definition.updatedAt.toISOString(),
-    }));
+    };
   };
 }

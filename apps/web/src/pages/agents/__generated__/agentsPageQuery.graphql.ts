@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b4376c0aacefead97c30e0bb7cb62a67>>
+ * @generated SignedSource<<e7327f55c380488aedac7e4b46e34ae6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type agentsPageQuery$data = {
     readonly defaultModelId: string | null | undefined;
     readonly defaultReasoningLevel: string | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly label: string;
     readonly modelProvider: string;
     readonly models: ReadonlyArray<{
@@ -36,6 +37,7 @@ export type agentsPageQuery$data = {
   }>;
   readonly ComputeProviderDefinitions: ReadonlyArray<{
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
   }>;
@@ -73,7 +75,14 @@ v2 = {
   "name": "modelProvider",
   "storageKey": null
 },
-v3 = [
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isDefault",
+  "storageKey": null
+},
+v4 = [
   {
     "alias": null,
     "args": null,
@@ -132,6 +141,7 @@ v3 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -220,6 +230,7 @@ v3 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
+      (v3/*: any*/),
       (v1/*: any*/),
       {
         "alias": null,
@@ -238,7 +249,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentsPageQuery",
-    "selections": (v3/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -247,19 +258,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "agentsPageQuery",
-    "selections": (v3/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "4d7a8fa86e71419843b65dc64a9985fd",
+    "cacheID": "2ce07cd9987faa00f4edb740035db6f1",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d01a1f8d57c0eb393f44df4d5afac92f";
+(node as any).hash = "31ab20c8f50e09547175c0dc68ccd1be";
 
 export default node;

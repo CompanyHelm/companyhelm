@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<15026cc16dbbcfea5206f836bd363e98>>
+ * @generated SignedSource<<92a0cb12406ed27e79562616f1aae156>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type AddComputeProviderDefinitionInput = {
   daytona?: AddDaytonaComputeProviderDefinitionInput | null | undefined;
   description?: string | null | undefined;
   e2b?: AddE2bComputeProviderDefinitionInput | null | undefined;
+  isDefault?: boolean | null | undefined;
   name: string;
   provider: string;
 };
@@ -37,6 +38,7 @@ export type computeProviderDefinitionsPageAddMutation$data = {
       readonly hasApiKey: boolean;
     } | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
     readonly updatedAt: string;
@@ -75,6 +77,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isDefault",
         "storageKey": null
       },
       {
@@ -170,16 +179,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "51b0a47c899bcc656817d721bcd710da",
+    "cacheID": "f76d7ff8ee2a6a39d0faab7ee85b91dc",
     "id": null,
     "metadata": {},
     "name": "computeProviderDefinitionsPageAddMutation",
     "operationKind": "mutation",
-    "text": "mutation computeProviderDefinitionsPageAddMutation(\n  $input: AddComputeProviderDefinitionInput!\n) {\n  AddComputeProviderDefinition(input: $input) {\n    id\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation computeProviderDefinitionsPageAddMutation(\n  $input: AddComputeProviderDefinitionInput!\n) {\n  AddComputeProviderDefinition(input: $input) {\n    id\n    isDefault\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "185f3aa34267adfd6c21b7d5c0282f79";
+(node as any).hash = "13ca5e1e5cace98a3bb0f45dba50441f";
 
 export default node;

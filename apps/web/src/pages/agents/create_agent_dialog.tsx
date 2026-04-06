@@ -21,6 +21,7 @@ import {
 
 export type AgentCreateProviderOption = {
   id: string;
+  isDefault: boolean;
   label: string;
   modelProvider: string;
   defaultModelId: string | null;
@@ -42,6 +43,7 @@ export type AgentCreateSecretOption = {
 
 export type AgentCreateComputeProviderDefinitionOption = {
   id: string;
+  isDefault: boolean;
   label: string;
   provider: "daytona" | "e2b";
 };
@@ -133,6 +135,32 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setMinDiskSpaceGb("");
     }
   }, [props.isOpen]);
+
+  useEffect(() => {
+    if (!props.isOpen) {
+      return;
+    }
+
+    if (!props.computeProviderDefinitionOptions.some((option) => option.id === computeProviderDefinitionId)) {
+      const defaultComputeProviderDefinition = props.computeProviderDefinitionOptions.find((option) => option.isDefault)
+        ?? props.computeProviderDefinitionOptions[0]
+        ?? null;
+      setComputeProviderDefinitionId(defaultComputeProviderDefinition?.id ?? "");
+    }
+
+    if (!props.providerOptions.some((option) => option.id === providerOptionId)) {
+      const defaultProviderOption = props.providerOptions.find((option) => option.isDefault)
+        ?? props.providerOptions[0]
+        ?? null;
+      setProviderOptionId(defaultProviderOption?.id ?? "");
+    }
+  }, [
+    computeProviderDefinitionId,
+    props.computeProviderDefinitionOptions,
+    props.isOpen,
+    props.providerOptions,
+    providerOptionId,
+  ]);
 
   useEffect(() => {
     if (!selectedProviderOption) {

@@ -20,6 +20,7 @@ type ModelProviderCredentialRecord = {
 
 type GraphqlModelProviderCredentialModelRecord = {
   id: string;
+  isDefault: boolean;
   modelProviderCredentialId: string;
   modelId: string;
   name: string;

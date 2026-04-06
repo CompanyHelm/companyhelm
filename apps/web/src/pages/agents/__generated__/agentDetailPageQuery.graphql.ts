@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cba9d4a43eec9f1ad8578d96cd46fd3c>>
+ * @generated SignedSource<<6b1722ab9fa7ca5ae7ea46c154630b46>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -37,6 +37,7 @@ export type agentDetailPageQuery$data = {
     readonly defaultModelId: string | null | undefined;
     readonly defaultReasoningLevel: string | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly label: string;
     readonly modelProvider: string;
     readonly models: ReadonlyArray<{
@@ -59,6 +60,7 @@ export type agentDetailPageQuery$data = {
   };
   readonly ComputeProviderDefinitions: ReadonlyArray<{
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
   }>;
@@ -122,7 +124,14 @@ v5 = [
     "storageKey": null
   }
 ],
-v6 = [
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isDefault",
+  "storageKey": null
+},
+v7 = [
   {
     "alias": null,
     "args": [
@@ -295,6 +304,7 @@ v6 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -367,6 +377,7 @@ v6 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
+      (v6/*: any*/),
       (v2/*: any*/),
       {
         "alias": null,
@@ -385,7 +396,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentDetailPageQuery",
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -394,19 +405,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "agentDetailPageQuery",
-    "selections": (v6/*: any*/)
+    "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "c1364f7971550fd688ebf3fa41a5cb47",
+    "cacheID": "dbad53c68aa5d160ed857627925054ef",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4099ca0bfc6e3b3b5820ae5238641d7c";
+(node as any).hash = "17e4b9ecbd2087e3603f57220e833522";
 
 export default node;

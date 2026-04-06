@@ -9,6 +9,7 @@ import { formatProviderLabel } from "./provider_label";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
 import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
 import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
+import type { modelProviderCredentialsPageSetDefaultCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultCredentialMutation.graphql";
 
 const modelProviderCredentialsPageQueryNode = graphql`
   query modelProviderCredentialsPageQuery {
@@ -20,8 +21,10 @@ const modelProviderCredentialsPageQueryNode = graphql`
     }
     ModelProviderCredentials {
       id
+      isDefault
       name
       modelProvider
+      defaultModelId
       createdAt
       updatedAt
     }
@@ -34,8 +37,10 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
   ) {
     AddModelProviderCredential(input: $input) {
       id
+      isDefault
       name
       modelProvider
+      defaultModelId
       createdAt
       updatedAt
     }
@@ -48,6 +53,17 @@ const modelProviderCredentialsPageDeleteCredentialMutationNode = graphql`
   ) {
     DeleteModelProviderCredential(input: $input) {
       id
+    }
+  }
+`;
+
+const modelProviderCredentialsPageSetDefaultCredentialMutationNode = graphql`
+  mutation modelProviderCredentialsPageSetDefaultCredentialMutation(
+    $input: SetDefaultModelProviderCredentialInput!
+  ) {
+    SetDefaultModelProviderCredential(input: $input) {
+      id
+      isDefault
     }
   }
 `;
@@ -72,9 +88,11 @@ function ModelProviderCredentialsPageFallback() {
         <CardContent className="grid gap-4">
           <CredentialsTable
             credentials={[]}
+            defaultingCredentialId={null}
             isLoading
             deletingCredentialId={null}
             onDelete={async () => undefined}
+            onSetDefault={async () => undefined}
           />
         </CardContent>
       </Card>
@@ -86,10 +104,13 @@ function ModelProviderCredentialsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [deletingCredentialId, setDeletingCredentialId] = useState<string | null>(null);
+  const [fetchKey, setFetchKey] = useState(0);
+  const [defaultingCredentialId, setDefaultingCredentialId] = useState<string | null>(null);
   const data = useLazyLoadQuery<modelProviderCredentialsPageQuery>(
     modelProviderCredentialsPageQueryNode,
     {},
     {
+      fetchKey,
       fetchPolicy: "store-and-network",
     },
   );
@@ -101,8 +122,14 @@ function ModelProviderCredentialsPageContent() {
     useMutation<modelProviderCredentialsPageDeleteCredentialMutation>(
       modelProviderCredentialsPageDeleteCredentialMutationNode,
     );
+  const [commitSetDefaultCredential, isSetDefaultCredentialInFlight] =
+    useMutation<modelProviderCredentialsPageSetDefaultCredentialMutation>(
+      modelProviderCredentialsPageSetDefaultCredentialMutationNode,
+    );
   const credentials: CredentialsTableRecord[] = data.ModelProviderCredentials.map((credential) => ({
+    defaultModelId: credential.defaultModelId,
     id: credential.id,
+    isDefault: credential.isDefault,
     name: credential.name,
     modelProvider: credential.modelProvider,
     createdAt: credential.createdAt,
@@ -145,6 +172,7 @@ function ModelProviderCredentialsPageContent() {
 
           <CredentialsTable
             credentials={credentials}
+            defaultingCredentialId={defaultingCredentialId}
             isLoading={false}
             deletingCredentialId={deletingCredentialId}
             onDelete={async (credentialId) => {
@@ -187,11 +215,60 @@ function ModelProviderCredentialsPageContent() {
                   },
                   onError: reject,
                 });
+              }).then(() => {
+                setFetchKey((current) => current + 1);
               }).catch((error: unknown) => {
                 setErrorMessage(error instanceof Error ? error.message : "Failed to delete credential.");
               });
 
               setDeletingCredentialId(null);
+            }}
+            onSetDefault={async (credentialId) => {
+              if (isSetDefaultCredentialInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setDefaultingCredentialId(credentialId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitSetDefaultCredential({
+                  variables: {
+                    input: {
+                      id: credentialId,
+                    },
+                  },
+                  updater: (store) => {
+                    const updatedCredential = store.getRootField("SetDefaultModelProviderCredential");
+                    if (!updatedCredential) {
+                      return;
+                    }
+
+                    const updatedId = updatedCredential.getDataID();
+                    const rootRecord = store.getRoot();
+                    const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
+                    currentCredentials.forEach((record) => {
+                      record?.setValue(record?.getDataID() === updatedId, "isDefault");
+                    });
+                  },
+                  onCompleted: (_response, errors) => {
+                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).then(() => {
+                setFetchKey((current) => current + 1);
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to update default credential.");
+              });
+
+              setDefaultingCredentialId(null);
             }}
           />
         </CardContent>
@@ -202,6 +279,7 @@ function ModelProviderCredentialsPageContent() {
         isOpen={isCreateDialogOpen}
         isSaving={isCreateCredentialInFlight}
         providers={providers}
+        suggestDefault={credentials.length === 0}
         onCreate={async (input) => {
           setErrorMessage(null);
 
@@ -231,6 +309,7 @@ function ModelProviderCredentialsPageContent() {
                 }
 
                 setCreateDialogOpen(false);
+                setFetchKey((current) => current + 1);
                 resolve();
               },
               onError: reject,

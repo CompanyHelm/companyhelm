@@ -73,6 +73,7 @@ export type AgentManagementToolCredentialOption = {
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   id: string;
+  isDefault: boolean;
   label: string;
   modelProvider: "anthropic" | "openai" | "openai-codex";
   models: AgentManagementToolCredentialModelOption[];
@@ -89,6 +90,7 @@ export type AgentManagementToolComputeProviderDefinition = {
     hasApiKey: boolean;
   } | null;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: ComputeProvider;
   updatedAt: Date;
@@ -148,12 +150,14 @@ type AgentSecretAttachmentRecord = {
 
 type CredentialRecord = {
   id: string;
+  isDefault: boolean;
   modelProvider: "anthropic" | "openai" | "openai-codex";
   name: string;
 };
 
 type ComputeProviderDefinitionRecord = {
   id: string;
+  isDefault: boolean;
   name: string;
   provider: ComputeProvider;
 };
@@ -163,6 +167,7 @@ type ExistingAgentRecord = AgentBaseRecord;
 type ModelRecord = {
   description: string;
   id: string;
+  isDefault: boolean;
   modelId: string;
   modelProviderCredentialId: string;
   name: string;
@@ -444,6 +449,7 @@ export class AgentManagementToolService {
       const credentialRecords = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -453,6 +459,7 @@ export class AgentManagementToolService {
         .select({
           description: modelProviderCredentialModels.description,
           id: modelProviderCredentialModels.id,
+          isDefault: modelProviderCredentialModels.isDefault,
           modelId: modelProviderCredentialModels.modelId,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           name: modelProviderCredentialModels.name,
@@ -463,8 +470,9 @@ export class AgentManagementToolService {
 
       return credentialRecords
         .map((credentialRecord) => {
-          const credentialModels = modelRecords
-            .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id)
+          const credentialModelRecords = modelRecords
+            .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id);
+          const credentialModels = credentialModelRecords
             .map((modelRecord) => ({
               description: modelRecord.description,
               id: modelRecord.id,
@@ -472,18 +480,30 @@ export class AgentManagementToolService {
               name: modelRecord.name,
               reasoningLevels: modelRecord.reasoningLevels ?? [],
             }));
+          const defaultModelRecord = credentialModelRecords.find((modelRecord) => modelRecord.isDefault)
+            ?? credentialModelRecords.find((modelRecord) =>
+              modelRecord.modelId === this.modelRegistry.getDefaultModelForProvider(credentialRecord.modelProvider)
+            )
+            ?? credentialModelRecords[0]
+            ?? null;
+          const providerDefaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider(
+            credentialRecord.modelProvider,
+          );
 
           return {
-            defaultModelId: this.modelRegistry.getDefaultModelForProvider(credentialRecord.modelProvider),
-            defaultReasoningLevel: this.modelRegistry.getDefaultReasoningLevelForProvider(
-              credentialRecord.modelProvider,
-            ),
+            defaultModelId: defaultModelRecord?.modelId ?? null,
+            defaultReasoningLevel: providerDefaultReasoningLevel
+              && defaultModelRecord?.reasoningLevels?.includes(providerDefaultReasoningLevel)
+              ? providerDefaultReasoningLevel
+              : (defaultModelRecord?.reasoningLevels[0] ?? null),
             id: credentialRecord.id,
+            isDefault: credentialRecord.isDefault,
             label: this.resolveCredentialLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
             models: credentialModels,
           };
         })
+        .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
         .filter((credentialRecord) => credentialRecord.models.length > 0);
     });
   }

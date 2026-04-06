@@ -43,6 +43,9 @@ import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_human_question.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
+import { SetDefaultComputeProviderDefinitionMutation } from "./mutations/set_default_compute_provider_definition.ts";
+import { SetDefaultModelProviderCredentialMutation } from "./mutations/set_default_model_provider_credential.ts";
+import { SetDefaultModelProviderCredentialModelMutation } from "./mutations/set_default_model_provider_credential_model.ts";
 import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { SteerSessionQueuedMessageMutation } from "./mutations/steer_session_queued_message.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
@@ -175,6 +178,9 @@ export class GraphqlApplication {
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
   private readonly setTaskCategoryMutation: SetTaskCategoryMutation;
+  private readonly setDefaultComputeProviderDefinitionMutation: SetDefaultComputeProviderDefinitionMutation;
+  private readonly setDefaultModelProviderCredentialMutation: SetDefaultModelProviderCredentialMutation;
+  private readonly setDefaultModelProviderCredentialModelMutation: SetDefaultModelProviderCredentialModelMutation;
   private readonly startEnvironmentMutation: StartEnvironmentMutation;
   private readonly steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation;
   private readonly stopEnvironmentMutation: StopEnvironmentMutation;
@@ -448,6 +454,24 @@ export class GraphqlApplication {
     deleteTaskCategoryMutation: DeleteTaskCategoryMutation = new DeleteTaskCategoryMutation(),
     @inject(GraphqlErrorLogger)
     graphqlErrorLogger: GraphqlErrorLogger = new GraphqlErrorLogger(),
+    @inject(SetDefaultComputeProviderDefinitionMutation)
+    setDefaultComputeProviderDefinitionMutation: SetDefaultComputeProviderDefinitionMutation = {
+      async execute() {
+        throw new Error("SetDefaultComputeProviderDefinition mutation is not configured.");
+      },
+    } as never,
+    @inject(SetDefaultModelProviderCredentialMutation)
+    setDefaultModelProviderCredentialMutation: SetDefaultModelProviderCredentialMutation = {
+      async execute() {
+        throw new Error("SetDefaultModelProviderCredential mutation is not configured.");
+      },
+    } as never,
+    @inject(SetDefaultModelProviderCredentialModelMutation)
+    setDefaultModelProviderCredentialModelMutation: SetDefaultModelProviderCredentialModelMutation = {
+      async execute() {
+        throw new Error("SetDefaultModelProviderCredentialModel mutation is not configured.");
+      },
+    } as never,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -532,6 +556,9 @@ export class GraphqlApplication {
     this.sessionsQueryResolver = sessionsQueryResolver;
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
     this.setTaskCategoryMutation = setTaskCategoryMutation;
+    this.setDefaultComputeProviderDefinitionMutation = setDefaultComputeProviderDefinitionMutation;
+    this.setDefaultModelProviderCredentialMutation = setDefaultModelProviderCredentialMutation;
+    this.setDefaultModelProviderCredentialModelMutation = setDefaultModelProviderCredentialModelMutation;
     this.steerSessionQueuedMessageMutation = steerSessionQueuedMessageMutation;
     this.taskQueryResolver = taskQueryResolver;
     this.taskAssignableUsersQueryResolver = taskAssignableUsersQueryResolver;
@@ -674,6 +701,9 @@ export class GraphqlApplication {
           UpdateSessionTitle: this.updateSessionTitleMutation.execute,
           ResolveInboxHumanQuestion: this.resolveInboxHumanQuestionMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
+          SetDefaultComputeProviderDefinition: this.setDefaultComputeProviderDefinitionMutation.execute,
+          SetDefaultModelProviderCredential: this.setDefaultModelProviderCredentialMutation.execute,
+          SetDefaultModelProviderCredentialModel: this.setDefaultModelProviderCredentialModelMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,
           SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,
           UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,

@@ -475,11 +475,15 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   refreshToken: text("refresh_token"),
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
+  isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
   companyIdIndex: index("model_provider_credentials_company_id_idx").on(table.companyId),
+  companyDefaultUnique: uniqueIndex("model_provider_credentials_company_default_uidx")
+    .on(table.companyId)
+    .where(sql`${table.isDefault}`),
   oauthRefreshTokenCheck: check(
     "model_provider_credentials_oauth_refresh_token_check",
     sql`${table.type} <> 'oauth_token' OR ${table.refreshToken} IS NOT NULL`,
@@ -528,6 +532,7 @@ export const computeProviderDefinitions = pgTable("compute_provider_definitions"
   name: text("name").notNull(),
   provider: computeProviderEnum("provider").notNull(),
   description: text("description"),
+  isDefault: boolean("is_default").notNull().default(false),
   createdByUserId: uuid("created_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   updatedByUserId: uuid("updated_by_user_id")
@@ -540,6 +545,9 @@ export const computeProviderDefinitions = pgTable("compute_provider_definitions"
     table.companyId,
     table.provider,
   ),
+  companyDefaultUnique: uniqueIndex("compute_provider_definitions_company_default_uidx")
+    .on(table.companyId)
+    .where(sql`${table.isDefault}`),
   companyNameLowerUnique: uniqueIndex("compute_provider_definitions_company_name_lower_uidx")
     .on(table.companyId, sql`lower(${table.name})`),
 }));
@@ -599,10 +607,14 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
   description: text("description").notNull(),
   // null if the model does not support reasoning levels
   reasoningLevels: text("reasoning_levels").array(),
+  isDefault: boolean("is_default").notNull().default(false),
 },
 (table) => ({
   companyIdIndex: index("model_provider_credential_models_company_id_idx").on(table.companyId),
   modelProviderCredentialIdIndex: index("model_provider_credential_models_model_provider_credential_id_idx").on(table.modelProviderCredentialId),
+  credentialDefaultUnique: uniqueIndex("model_provider_credential_models_credential_default_uidx")
+    .on(table.modelProviderCredentialId)
+    .where(sql`${table.isDefault}`),
 }));
 
 export const agentSessionSecrets = pgTable("agent_session_secrets", {

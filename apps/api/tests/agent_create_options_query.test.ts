@@ -42,6 +42,7 @@ class AgentCreateOptionsQueryTestHarness {
                     async where() {
                       return [{
                         id: "credential-1",
+                        isDefault: true,
                         modelProvider: "openai",
                         name: "OpenAI / Codex",
                       }];
@@ -58,6 +59,7 @@ class AgentCreateOptionsQueryTestHarness {
                     async where() {
                       return [{
                         id: "model-row-1",
+                        isDefault: true,
                         modelProviderCredentialId: "credential-1",
                         modelId: "gpt-5.4",
                         name: "GPT-5.4",
@@ -133,6 +135,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
         query AgentCreateOptions {
           AgentCreateOptions {
             id
+            isDefault
             label
             modelProvider
             defaultModelId
@@ -154,6 +157,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
   const document = response.json();
   assert.deepEqual(document.data.AgentCreateOptions, [{
     id: "credential-1",
+    isDefault: true,
     label: "OpenAI / Codex",
     modelProvider: "openai",
     defaultModelId: "gpt-5.4",

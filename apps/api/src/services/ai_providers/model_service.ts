@@ -11,6 +11,7 @@ import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_ad
 
 type StoredModelRecord = {
   id: string;
+  isDefault: boolean;
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
@@ -53,9 +54,11 @@ type DeletableDatabase = {
  */
 @injectable()
 export class ModelService {
+  private readonly modelRegistry: ModelRegistry;
   private readonly providerAdapters: Map<string, ModelAdapterInterface>;
 
   constructor(@inject(ModelRegistry) modelRegistry: ModelRegistry) {
+    this.modelRegistry = modelRegistry;
     this.providerAdapters = new Map<string, ModelAdapterInterface>([
       ["openai", new OpenAiModelAdapter(modelRegistry)],
       ["openai-codex", new OpenAiCodexModelAdapter(modelRegistry)],
@@ -99,6 +102,7 @@ export class ModelService {
       const existingModels = await selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,
+          isDefault: modelProviderCredentialModels.isDefault,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
@@ -114,7 +118,13 @@ export class ModelService {
       const existingModelsByModelId = new Map(
         existingModels.map((model) => [model.modelId, model]),
       );
+      const existingDefaultModelId = existingModels.find((model) => model.isDefault)?.modelId ?? null;
       const fetchedModelIds = new Set(fetchedModels.map((model) => model.modelId));
+      const providerDefaultModelId = this.resolveDefaultModelId(
+        input.modelProvider,
+        fetchedModels.map((model) => model.modelId),
+        existingDefaultModelId,
+      );
 
       for (const fetchedModel of fetchedModels) {
         const existingModel = existingModelsByModelId.get(fetchedModel.modelId);
@@ -128,6 +138,7 @@ export class ModelService {
               name: fetchedModel.name,
               description: fetchedModel.description,
               reasoningLevels: fetchedModel.reasoningLevels,
+              isDefault: false,
             });
           continue;
         }
@@ -158,9 +169,32 @@ export class ModelService {
           ));
       }
 
+      await updatableDatabase
+        .update(modelProviderCredentialModels)
+        .set({
+          isDefault: false,
+        })
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, input.companyId),
+          eq(modelProviderCredentialModels.modelProviderCredentialId, input.modelProviderCredentialId),
+        ));
+      if (providerDefaultModelId) {
+        await updatableDatabase
+          .update(modelProviderCredentialModels)
+          .set({
+            isDefault: true,
+          })
+          .where(and(
+            eq(modelProviderCredentialModels.companyId, input.companyId),
+            eq(modelProviderCredentialModels.modelProviderCredentialId, input.modelProviderCredentialId),
+            eq(modelProviderCredentialModels.modelId, providerDefaultModelId),
+          ));
+      }
+
       return selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,
+          isDefault: modelProviderCredentialModels.isDefault,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
@@ -173,6 +207,23 @@ export class ModelService {
           eq(modelProviderCredentialModels.modelProviderCredentialId, input.modelProviderCredentialId),
         ));
     });
+  }
+
+  private resolveDefaultModelId(
+    modelProvider: string,
+    fetchedModelIds: string[],
+    existingDefaultModelId: string | null,
+  ): string | null {
+    if (existingDefaultModelId && fetchedModelIds.includes(existingDefaultModelId)) {
+      return existingDefaultModelId;
+    }
+
+    const providerDefaultModelId = this.modelRegistry.getDefaultModelForProvider(modelProvider);
+    if (providerDefaultModelId && fetchedModelIds.includes(providerDefaultModelId)) {
+      return providerDefaultModelId;
+    }
+
+    return fetchedModelIds[0] ?? null;
   }
 }
 

@@ -1,13 +1,15 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { RefreshCcwIcon } from "lucide-react";
+import { RefreshCcwIcon, StarIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
+import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
 import { formatProviderLabel } from "./provider_label";
 
 const modelProviderCredentialDetailPageQueryNode = graphql`
@@ -18,9 +20,21 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
     }
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
+      isDefault
       name
       description
       reasoningLevels
+    }
+  }
+`;
+
+const modelProviderCredentialDetailPageSetDefaultModelMutationNode = graphql`
+  mutation credentialDetailPageSetDefaultModelMutation(
+    $input: SetDefaultModelProviderCredentialModelInput!
+  ) {
+    SetDefaultModelProviderCredentialModel(input: $input) {
+      id
+      isDefault
     }
   }
 `;
@@ -87,6 +101,10 @@ function ModelProviderCredentialDetailPageContent() {
   const [commitRefreshModels, isRefreshInFlight] =
     useMutation<credentialDetailPageRefreshModelsMutation>(
       modelProviderCredentialDetailPageRefreshModelsMutationNode,
+    );
+  const [commitSetDefaultModel, isSetDefaultModelInFlight] =
+    useMutation<credentialDetailPageSetDefaultModelMutation>(
+      modelProviderCredentialDetailPageSetDefaultModelMutationNode,
     );
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
   const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim())
@@ -165,14 +183,73 @@ function ModelProviderCredentialDetailPageContent() {
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Reasoning levels</TableHead>
+                  <TableHead className="w-24 text-right">Default</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.ModelProviderCredentialModels.map((model) => (
                   <TableRow key={model.id}>
-                    <TableCell className="font-medium text-foreground">{model.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{model.name}</span>
+                        {model.isDefault ? (
+                          <Badge variant="secondary">Default</Badge>
+                        ) : null}
+                      </div>
+                    </TableCell>
                     <TableCell>{model.description}</TableCell>
                     <TableCell>{formatReasoningLevels(model.reasoningLevels)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        disabled={model.isDefault || isSetDefaultModelInFlight}
+                        onClick={async () => {
+                          if (model.isDefault || isSetDefaultModelInFlight) {
+                            return;
+                          }
+
+                          setErrorMessage(null);
+                          await new Promise<void>((resolve, reject) => {
+                            commitSetDefaultModel({
+                              variables: {
+                                input: {
+                                  id: model.id,
+                                },
+                              },
+                              updater: (store) => {
+                                const updatedModel = store.getRootField("SetDefaultModelProviderCredentialModel");
+                                if (!updatedModel) {
+                                  return;
+                                }
+
+                                const updatedId = updatedModel.getDataID();
+                                const rootRecord = store.getRoot();
+                                const currentModels = rootRecord.getLinkedRecords("ModelProviderCredentialModels") || [];
+                                currentModels.forEach((record) => {
+                                  record?.setValue(record?.getDataID() === updatedId, "isDefault");
+                                });
+                              },
+                              onCompleted: (_response, errors) => {
+                                const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                                if (nextErrorMessage) {
+                                  reject(new Error(nextErrorMessage));
+                                  return;
+                                }
+
+                                setFetchKey((current) => current + 1);
+                                resolve();
+                              },
+                              onError: reject,
+                            });
+                          }).catch((error: unknown) => {
+                            setErrorMessage(error instanceof Error ? error.message : "Failed to update default model.");
+                          });
+                        }}
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <StarIcon className={`size-4 ${model.isDefault ? "fill-current" : ""}`} />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

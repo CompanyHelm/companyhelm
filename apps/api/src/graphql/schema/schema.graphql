@@ -87,6 +87,15 @@ type Mutation {
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
+  SetDefaultComputeProviderDefinition(
+    input: SetDefaultComputeProviderDefinitionInput!
+  ): ComputeProviderDefinition!
+  SetDefaultModelProviderCredential(
+    input: SetDefaultModelProviderCredentialInput!
+  ): ModelProviderCredential!
+  SetDefaultModelProviderCredentialModel(
+    input: SetDefaultModelProviderCredentialModelInput!
+  ): ModelProviderCredentialModel!
   SetTaskCategory(input: SetTaskCategoryInput!): Task!
   UpdateTask(input: UpdateTaskInput!): Task!
   UpdateArtifact(input: UpdateArtifactInput!): Artifact!
@@ -283,6 +292,7 @@ type Environment {
 type ComputeProviderDefinition {
   id: ID!
   companyId: ID!
+  isDefault: Boolean!
   name: String!
   provider: String!
   description: String
@@ -302,6 +312,7 @@ type E2bComputeProviderDefinition {
 
 type AgentCreateProviderOption {
   id: ID!
+  isDefault: Boolean!
   label: String!
   modelProvider: String!
   defaultModelId: String
@@ -410,6 +421,7 @@ type SessionTranscriptMessageConnection {
 type ModelProviderCredential {
   id: ID!
   companyId: ID!
+  isDefault: Boolean!
   name: String!
   modelProvider: String!
   defaultModelId: String
@@ -433,6 +445,7 @@ type Secret {
 
 type ModelProviderCredentialModel {
   id: ID!
+  isDefault: Boolean!
   modelProviderCredentialId: ID!
   modelId: String!
   name: String!
@@ -519,6 +532,7 @@ input AddModelProviderCredentialInput {
   accessToken: String
   accessTokenExpiresAtMilliseconds: String
   apiKey: String
+  isDefault: Boolean
   name: String
   modelProvider: String!
   refreshToken: String
@@ -581,6 +595,7 @@ input DeleteEnvironmentInput {
 }
 
 input AddComputeProviderDefinitionInput {
+  isDefault: Boolean
   name: String!
   provider: String!
   description: String
@@ -728,6 +743,18 @@ input DetachSecretFromSessionInput {
 
 input RefreshModelProviderCredentialModelsInput {
   modelProviderCredentialId: ID!
+}
+
+input SetDefaultComputeProviderDefinitionInput {
+  id: ID!
+}
+
+input SetDefaultModelProviderCredentialInput {
+  id: ID!
+}
+
+input SetDefaultModelProviderCredentialModelInput {
+  id: ID!
 }
 
 input ArtifactsInput {

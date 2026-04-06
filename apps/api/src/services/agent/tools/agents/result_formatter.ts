@@ -89,6 +89,7 @@ export class AgentManagementResultFormatter {
       `id: ${definition.id}`,
       `name: ${definition.name}`,
       `companyId: ${definition.companyId}`,
+      `isDefault: ${definition.isDefault}`,
       `provider: ${definition.provider}`,
       `description: ${definition.description ?? "(no description)"}`,
       `daytona.apiUrl: ${definition.daytona?.apiUrl ?? "(none)"}`,
@@ -116,6 +117,7 @@ export class AgentManagementResultFormatter {
     return [
       `id: ${option.id}`,
       `label: ${option.label}`,
+      `isDefault: ${option.isDefault}`,
       `modelProvider: ${option.modelProvider}`,
       `defaultModelId: ${option.defaultModelId ?? "(none)"}`,
       `defaultReasoningLevel: ${option.defaultReasoningLevel ?? "(none)"}`,

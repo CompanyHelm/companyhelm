@@ -470,6 +470,13 @@
       "when": 1775462400000,
       "tag": "0066_runtime_access_policy_catchup",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1775437258671,
+      "tag": "0067_rich_the_twelve",
+      "breakpoints": true
     }
   ]
 }

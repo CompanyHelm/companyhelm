@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<966becd76d45f4c5784664a0efd66200>>
+ * @generated SignedSource<<b02065abffad4831eb9f38d39388034e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,9 @@ export type modelProviderCredentialsPageQuery$variables = Record<PropertyKey, ne
 export type modelProviderCredentialsPageQuery$data = {
   readonly ModelProviderCredentials: ReadonlyArray<{
     readonly createdAt: string;
+    readonly defaultModelId: string | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly modelProvider: string;
     readonly name: string;
     readonly updatedAt: string;
@@ -82,12 +84,26 @@ v2 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isDefault",
+        "storageKey": null
+      },
       (v1/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "modelProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultModelId",
         "storageKey": null
       },
       {
@@ -126,16 +142,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "643457ac59f85713a1165eb6e466db1a",
+    "cacheID": "5b91777a8d62c76d911e802ef1e9e93d",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    defaultModelId\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ebcbfa836d68ff64c0e459ef590923ef";
+(node as any).hash = "5d17fef1e3bb8af05f403b4ec2618e99";
 
 export default node;

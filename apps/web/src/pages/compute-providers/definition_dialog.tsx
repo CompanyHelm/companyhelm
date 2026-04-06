@@ -31,6 +31,7 @@ interface ComputeProviderDefinitionDialogProps {
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
+  suggestDefault: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (input:
     | {
@@ -39,6 +40,7 @@ interface ComputeProviderDefinitionDialogProps {
           apiKey: string;
           apiUrl?: string;
         };
+        isDefault?: boolean;
         name: string;
         provider: "daytona";
       }
@@ -47,6 +49,7 @@ interface ComputeProviderDefinitionDialogProps {
         e2b: {
           apiKey: string;
         };
+        isDefault?: boolean;
         name: string;
         provider: "e2b";
       }
@@ -87,6 +90,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
   const [provider, setProvider] = useState<"daytona" | "e2b">("daytona");
   const [daytonaApiUrl, setDaytonaApiUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
   const isEditing = props.definition !== null;
 
   useEffect(() => {
@@ -96,6 +100,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
       setProvider("daytona");
       setDaytonaApiUrl("");
       setApiKey("");
+      setIsDefault(props.suggestDefault);
       return;
     }
 
@@ -105,6 +110,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
       setProvider("daytona");
       setDaytonaApiUrl("");
       setApiKey("");
+      setIsDefault(props.suggestDefault);
       return;
     }
 
@@ -113,7 +119,8 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
     setProvider(props.definition.provider);
     setDaytonaApiUrl(props.definition.daytonaApiUrl ?? "");
     setApiKey("");
-  }, [props.definition, props.isOpen]);
+    setIsDefault(false);
+  }, [props.definition, props.isOpen, props.suggestDefault]);
 
   const title = isEditing ? "Edit compute provider" : "Create compute provider";
   const descriptionText = isEditing
@@ -204,6 +211,25 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
             />
           </div>
 
+          {!isEditing ? (
+            <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+              <input
+                checked={isDefault}
+                className="mt-0.5 size-4 rounded border border-input bg-background"
+                onChange={(event) => {
+                  setIsDefault(event.target.checked);
+                }}
+                type="checkbox"
+              />
+              <div className="grid gap-1">
+                <span className="text-xs font-medium text-foreground">Default for new agents</span>
+                <span className="text-xs text-muted-foreground">
+                  Newly created agents will preselect this environment provider.
+                </span>
+              </div>
+            </label>
+          ) : null}
+
           {provider === "daytona" ? (
             <div className="grid gap-2">
               <label className="text-xs font-medium text-foreground" htmlFor="compute-provider-api-url">
@@ -275,6 +301,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                         apiUrl: daytonaApiUrl.trim() ? daytonaApiUrl : undefined,
                       },
                       description,
+                      ...(isDefault ? { isDefault: true } : {}),
                       name,
                       provider: "daytona",
                     });
@@ -296,6 +323,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                     e2b: {
                       apiKey,
                     },
+                    ...(isDefault ? { isDefault: true } : {}),
                     name,
                     provider: "e2b",
                   });
