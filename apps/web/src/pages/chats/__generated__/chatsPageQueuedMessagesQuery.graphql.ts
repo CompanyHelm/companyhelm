@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<868a3bf2ed367ee562896f0b9feab3c1>>
+ * @generated SignedSource<<141ac5781c859cef4f6b03a19cc001ab>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,9 +14,7 @@ export type chatsPageQueuedMessagesQuery$variables = {
 };
 export type chatsPageQueuedMessagesQuery$data = {
   readonly SessionQueuedMessages: ReadonlyArray<{
-    readonly claimedAt: string | null | undefined;
     readonly createdAt: string;
-    readonly dispatchedAt: string | null | undefined;
     readonly id: string;
     readonly images: ReadonlyArray<{
       readonly base64EncodedImage: string;
@@ -124,20 +122,6 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "claimedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "dispatchedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -170,16 +154,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "fddabeb7aea7c441aa0b5db6b2d57687",
+    "cacheID": "c5b7bf63917b5117bce76c2a90542615",
     "id": null,
     "metadata": {},
     "name": "chatsPageQueuedMessagesQuery",
     "operationKind": "query",
-    "text": "query chatsPageQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    claimedAt\n    dispatchedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query chatsPageQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0800ee61d31167044131815fb2849173";
+(node as any).hash = "fb30288731bf018683f1ec88488e9566";
 
 export default node;

@@ -169,8 +169,6 @@ const chatsPageQueuedMessagesQueryNode = graphql`
       }
       shouldSteer
       status
-      claimedAt
-      dispatchedAt
       createdAt
       updatedAt
     }
@@ -209,8 +207,6 @@ const chatsPageDeleteSessionQueuedMessageMutationNode = graphql`
       text
       shouldSteer
       status
-      claimedAt
-      dispatchedAt
       createdAt
       updatedAt
     }
@@ -225,8 +221,6 @@ const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
       text
       shouldSteer
       status
-      claimedAt
-      dispatchedAt
       createdAt
       updatedAt
     }
@@ -426,8 +420,6 @@ const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
       }
       shouldSteer
       status
-      claimedAt
-      dispatchedAt
       createdAt
       updatedAt
     }
@@ -794,21 +786,6 @@ function loadChatListWidth(): number {
   return clampChatListWidth(storedWidth);
 }
 
-function formatTimestamp(value: string): string {
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) {
-    return "Unknown";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(timestamp);
-}
-
 function resolveComposerModelOptionId(
   modelOptions: ReadonlyArray<ChatComposerModelOption>,
   preferredModelOptionId: string | null | undefined,
@@ -905,17 +882,6 @@ function compareQueuedMessagesByTimestamp(leftMessage: QueuedMessageRecord, righ
 
 function normalizeQueuedMessageStatus(status: string): string {
   return status.trim().toLowerCase();
-}
-
-function formatQueuedMessageLifecycle(queuedMessage: Pick<QueuedMessageRecord, "claimedAt" | "dispatchedAt">): string | null {
-  if (queuedMessage.dispatchedAt) {
-    return `Dispatched ${formatTimestamp(queuedMessage.dispatchedAt)}`;
-  }
-  if (queuedMessage.claimedAt) {
-    return `Claimed ${formatTimestamp(queuedMessage.claimedAt)}`;
-  }
-
-  return null;
 }
 
 function compareSessionsByLatestActivity(leftSession: SessionRecord, rightSession: SessionRecord): number {
@@ -1335,42 +1301,30 @@ function ChatsQueuedMessagesComposerList({
           const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
           const isSteering = steeringQueuedMessageId === queuedMessage.id;
           const isDeleting = deletingQueuedMessageId === queuedMessage.id;
-          const lifecycleLabel = formatQueuedMessageLifecycle(queuedMessage);
 
           return (
             <div
-              className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/70 px-3 py-2.5"
+              className="flex items-start gap-2 rounded-2xl border border-border/60 bg-background/70 px-2.5 py-2"
               key={queuedMessage.id}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    {queuedMessage.shouldSteer ? "Steer" : "Queued"}
-                  </span>
-                  <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    {normalizedStatus === "processing" ? "Processing" : "Pending"}
-                  </span>
-                  <span className="truncate text-[11px] text-muted-foreground">
-                    {formatTimestamp(queuedMessage.createdAt)}
+                    {queuedMessage.shouldSteer ? "Steer" : "Queue"}
                   </span>
                 </div>
-                {lifecycleLabel ? (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {lifecycleLabel}
-                  </p>
-                ) : null}
                 {queuedMessage.text.trim().length > 0 ? (
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground [overflow-wrap:anywhere]">
+                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground [overflow-wrap:anywhere]">
                     {queuedMessage.text}
                   </p>
                 ) : null}
                 {queuedMessage.images.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {queuedMessage.images.map((image) => (
                       <img
                         key={image.id}
                         alt="Queued attachment"
-                        className="h-16 w-16 rounded-xl border border-border/60 object-cover"
+                        className="h-12 w-12 rounded-lg border border-border/60 object-cover"
                         src={resolveInlineImageDataUrl(image)}
                       />
                     ))}
@@ -1378,11 +1332,11 @@ function ChatsQueuedMessagesComposerList({
                 ) : null}
               </div>
               {canSteer || canDelete ? (
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1 self-center">
                   {canSteer ? (
                     <button
                       aria-label="Steer queued message"
-                      className="inline-flex h-8 items-center justify-center rounded-full px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isSteering}
                       onClick={() => onSteer(queuedMessage.id)}
                       title={isSteering ? "Steering queued message..." : "Steer queued message"}
@@ -1394,7 +1348,7 @@ function ChatsQueuedMessagesComposerList({
                   {canDelete ? (
                     <button
                       aria-label="Delete queued message"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isDeleting}
                       onClick={() => onDelete(queuedMessage.id)}
                       title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
