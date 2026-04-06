@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "audit:rls": "tsx scripts/check_rls_policies.ts",
     "dev": "tsx watch --include src/graphql/schema/schema.graphql server.ts --config-path ./config/local.yaml",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
-    "lint": "eslint server.ts src tests",
-    "test": "npm run check && vitest run",
+    "lint": "eslint server.ts src scripts tests",
+    "test": "npm run audit:rls && npm run check && vitest run",
     "typecheck": "npm exec -- tsc -p tsconfig.json",
     "check": "npm run lint && npm run typecheck"
   },
