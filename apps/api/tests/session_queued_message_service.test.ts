@@ -344,6 +344,43 @@ test("SessionQueuedMessageService marks queued rows processing, records claim an
   assert.equal(harness.queuedContents.length, 0);
 });
 
+test("SessionQueuedMessageService requeues only undispatched processing steer rows", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+  const steerMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: true,
+    text: "Queued steer",
+  });
+  const promptMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Queued prompt",
+  });
+
+  await service.markProcessing(harness.transactionProvider as never, "company-1", [steerMessage.id, promptMessage.id]);
+  await service.markDispatched(
+    harness.transactionProvider as never,
+    "company-1",
+    [promptMessage.id],
+    new Date("2026-03-26T12:02:00.000Z"),
+  );
+
+  const requeuedIds = await service.requeueUndispatchedProcessingSteer(
+    harness.transactionProvider as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.deepEqual(requeuedIds, [steerMessage.id]);
+  assert.equal(harness.queuedMessages.find((message) => message.id === steerMessage.id)?.status, "pending");
+  assert.equal(harness.queuedMessages.find((message) => message.id === steerMessage.id)?.claimedAt, null);
+  assert.equal(harness.queuedMessages.find((message) => message.id === steerMessage.id)?.dispatchedAt, null);
+  assert.equal(harness.queuedMessages.find((message) => message.id === promptMessage.id)?.status, "processing");
+});
+
 test("SessionQueuedMessageService does not expose in-flight processing rows as processable work", async () => {
   const harness = SessionQueuedMessageServiceTestHarness.create();
   const service = new SessionQueuedMessageService();

@@ -232,6 +232,24 @@ export class SessionProcessExecutionService {
         clearInterval(heartbeatHandle);
       }
 
+      try {
+        const requeuedUndispatchedSteerIds = await this.sessionQueuedMessageService.requeueUndispatchedProcessingSteer?.(
+          transactionProvider,
+          companyId,
+          sessionId,
+        ) ?? [];
+        if (requeuedUndispatchedSteerIds.length > 0) {
+          shouldEnqueueFollowUpWake = true;
+          await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
+        }
+      } catch (error) {
+        this.logger.error({
+          companyId,
+          error,
+          sessionId,
+        }, "failed to requeue undispatched steer messages before disposing the runtime");
+      }
+
       await this.piMonoSessionManagerService.dispose(sessionId);
       await this.sessionLeaseService.release(lease);
       await redisCompanyScopedService.disconnect();

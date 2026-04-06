@@ -331,16 +331,6 @@ export class PiMonoSessionManagerService {
 
     const session = runtime.session;
     await session.steer(message, images);
-    // `steer()` only queues a user message. If the runtime is already idle when the queue entry is
-    // added, PI Mono can return without ever emitting transcripted `message_start/message_end`
-    // events for that queued user message unless we explicitly continue the loop.
-    while (
-      session.pendingMessageCount > 0
-      && !session.agent.state.isStreaming
-      && session.agent.state.messages.at(-1)?.role === "assistant"
-    ) {
-      await session.agent.continue();
-    }
     await this.persistContextMessages(transactionProvider, sessionId, session.agent.state.messages);
   }
 

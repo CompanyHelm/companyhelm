@@ -553,6 +553,222 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
   assert.deepEqual(disposeCalls, ["session-1"]);
 });
 
+test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues undispatched steer rows", async () => {
+  const disposeCalls: string[] = [];
+  const queueWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
+  const requeueCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const subscriber = {
+    isOpen: true,
+    async connect() {
+      return this;
+    },
+    async subscribe() {},
+    async unsubscribe() {},
+    async quit() {},
+  };
+  let selectCallCount = 0;
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        assert.equal(companyId, "company-1");
+        return callback({
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        agentId: "agent-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentReasoningLevel: "high",
+                        status: "queued",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        modelId: "gpt-5.4",
+                        modelProviderCredentialId: "credential-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        encryptedApiKey: "sk-openai",
+                        modelProvider: "openai",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
+          },
+        });
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {},
+          error() {},
+        };
+      },
+    } as never,
+    {
+      async ensureSession() {
+        return undefined;
+      },
+      async prompt() {
+        return undefined;
+      },
+      async dispose(sessionId: string) {
+        disposeCalls.push(sessionId);
+      },
+    } as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+      async getSubscriberClient() {
+        return subscriber;
+      },
+    } as never,
+    {
+      async acquire(companyId: string, sessionId: string) {
+        return {
+          companyId,
+          sessionId,
+          token: "lease-token",
+        };
+      },
+      async heartbeat() {
+        return true;
+      },
+      async release(handle: { companyId: string; sessionId: string; token: string }) {
+        releaseCalls.push(handle);
+      },
+    } as never,
+    {
+      async enqueueSessionWake(companyId: string, sessionId: string) {
+        queueWakeCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        return [{
+          createdAt: new Date("2026-03-26T12:00:00.000Z"),
+          id: "queued-1",
+          images: [],
+          sessionId: "session-1",
+          shouldSteer: false,
+          status: "pending",
+          text: "Investigate the regression.",
+          updatedAt: new Date("2026-03-26T12:00:00.000Z"),
+        }];
+      },
+      async listPendingSteer() {
+        return [];
+      },
+      async markProcessing() {
+        return undefined;
+      },
+      async markPending() {
+        return undefined;
+      },
+      async hasPendingMessages() {
+        return false;
+      },
+      async requeueUndispatchedProcessingSteer(
+        _transactionProvider: unknown,
+        companyId: string,
+        sessionId: string,
+      ) {
+        requeueCalls.push({
+          companyId,
+          sessionId,
+        });
+        return ["queued-steer-1"];
+      },
+    } as never,
+    undefined as never,
+    companySettingsService as never,
+  );
+
+  await service.execute("company-1", "session-1");
+
+  assert.deepEqual(requeueCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(queueWakeCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(releaseCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+    token: "lease-token",
+  }]);
+});
+
 test("SessionProcessExecutionService disposes the runtime session even when turn processing fails", async () => {
   const disposeCalls: string[] = [];
   const enqueueSessionWakeCalls: Array<{ companyId: string; sessionId: string }> = [];

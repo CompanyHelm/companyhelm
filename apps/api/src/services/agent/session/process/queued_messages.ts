@@ -410,6 +410,23 @@ export class SessionQueuedMessageService {
     return queuedMessages.length > 0;
   }
 
+  async requeueUndispatchedProcessingSteer(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<string[]> {
+    const queuedMessages = await this.listQueued(transactionProvider, companyId, sessionId);
+    const queuedMessageIds = queuedMessages
+      .filter((queuedMessage) => queuedMessage.shouldSteer && queuedMessage.status === "processing" && !queuedMessage.dispatchedAt)
+      .map((queuedMessage) => queuedMessage.id);
+    if (queuedMessageIds.length === 0) {
+      return [];
+    }
+
+    await this.markPending(transactionProvider, companyId, queuedMessageIds);
+    return queuedMessageIds;
+  }
+
   private buildContentRecords(
     queuedMessageId: string,
     input: {
