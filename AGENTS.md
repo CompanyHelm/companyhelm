@@ -45,3 +45,7 @@
 # Application specific instructions
 - read the apps/*/AGENTS.md when making changes to the specific apps e.g. web or api and follow the instructions in the specific AGENTS.md
 - app specific instructions are additonal from this AGENTS.md
+
+# Comments
+- Add comments to any non trivial logic
+- Do not add comments if code is self explanatory
