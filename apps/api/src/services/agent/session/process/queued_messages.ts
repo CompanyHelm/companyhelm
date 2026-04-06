@@ -321,6 +321,9 @@ export class SessionQueuedMessageService {
       await updatableDatabase
         .update(sessionQueuedMessages)
         .set({
+          // `processing` means the worker has frozen this row's payload and is about to hand it to
+          // PI Mono. The row is no longer batchable, but it is not "dispatched" yet because we
+          // still have not observed the corresponding PI Mono user `message_start` event.
           claimedAt: timestamp,
           dispatchedAt: null,
           status: "processing",
@@ -348,6 +351,9 @@ export class SessionQueuedMessageService {
       await updatableDatabase
         .update(sessionQueuedMessages)
         .set({
+          // `dispatchedAt` records the moment PI Mono actually starts the queued user message. That
+          // is later than the worker's `steer()` / `prompt()` call and is our proof that the row
+          // crossed from the Postgres queue into the live runtime event stream.
           dispatchedAt,
           updatedAt: dispatchedAt,
         })
@@ -406,6 +412,9 @@ export class SessionQueuedMessageService {
     companyId: string,
     sessionId: string,
   ): Promise<boolean> {
+    // Only `pending` rows are wakeable work. `processing` rows were already claimed by a worker and
+    // must not be replayed blindly; if they never dispatch, cleanup converts the safe subset back
+    // to `pending` via `requeueUndispatchedProcessingSteer()`.
     const queuedMessages = await this.listPending(transactionProvider, companyId, sessionId);
     return queuedMessages.length > 0;
   }
@@ -417,6 +426,9 @@ export class SessionQueuedMessageService {
   ): Promise<string[]> {
     const queuedMessages = await this.listQueued(transactionProvider, companyId, sessionId);
     const queuedMessageIds = queuedMessages
+      // A steer row can be claimed locally, handed to `session.steer()`, and still never dispatch
+      // if the runtime goes idle before PI Mono emits the user message. Those rows are safe to
+      // requeue because `dispatchedAt = null` means no PI Mono user `message_start` was observed.
       .filter((queuedMessage) => queuedMessage.shouldSteer && queuedMessage.status === "processing" && !queuedMessage.dispatchedAt)
       .map((queuedMessage) => queuedMessage.id);
     if (queuedMessageIds.length === 0) {

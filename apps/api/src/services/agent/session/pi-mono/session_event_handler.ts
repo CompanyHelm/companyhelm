@@ -938,6 +938,9 @@ export class PiMonoSessionEventHandler {
       await updatableDatabase
         .update(sessionQueuedMessages)
         .set({
+          // "Dispatched" is the first PI Mono user `message_start` we observe for a claimed queue
+          // row. We intentionally stamp it here instead of at `steer()` / `prompt()` call time so
+          // cleanup can distinguish "accepted by our worker" from "actually consumed by PI Mono".
           dispatchedAt,
           updatedAt: dispatchedAt,
         })

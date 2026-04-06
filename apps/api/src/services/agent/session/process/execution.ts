@@ -203,6 +203,9 @@ export class SessionProcessExecutionService {
           await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
           return;
         }
+        // Only brand-new `pending` rows justify a follow-up wake here. Rows still marked
+        // `processing` were already claimed by this worker and are handled separately during
+        // cleanup so we do not accidentally replay in-flight work.
         shouldEnqueueFollowUpWake = await this.sessionQueuedMessageService.hasPendingMessages(
           transactionProvider,
           companyId,
@@ -239,6 +242,8 @@ export class SessionProcessExecutionService {
           sessionId,
         ) ?? [];
         if (requeuedUndispatchedSteerIds.length > 0) {
+          // These rows were claimed locally but never emitted a PI Mono user `message_start`, so
+          // they are safe to move back to `pending` and wake again after the runtime is disposed.
           shouldEnqueueFollowUpWake = true;
           await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
         }
