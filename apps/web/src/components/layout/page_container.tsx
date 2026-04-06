@@ -3,6 +3,8 @@ import { useRouterState } from "@tanstack/react-router";
 import { ApplicationBreadcrumbProvider } from "@/components/layout/application_breadcrumb_context";
 import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
+import { ErrorBoundary } from "@/components/error_boundary";
+import { ErrorState } from "@/components/error_state";
 import { cn } from "@/lib/utils";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -13,6 +15,9 @@ interface PageContainerProps {
 export function PageContainer(props: PageContainerProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
+  });
+  const locationKey = useRouterState({
+    select: (state) => state.location.href,
   });
   const isChatsPage = pathname.startsWith("/chats");
   const isTasksBoardPage = pathname === "/tasks";
@@ -39,7 +44,22 @@ export function PageContainer(props: PageContainerProps) {
                 : "px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8",
             )}
           >
-            {props.children}
+            <ErrorBoundary
+              boundaryKey={locationKey}
+              fallback={({ error, reset }) => (
+                <div className="flex flex-1 items-center justify-center">
+                  <ErrorState
+                    actionLabel="Try again"
+                    className="w-full max-w-2xl rounded-2xl border border-border/70 bg-card/80 px-6 py-6 shadow-sm"
+                    message={error.message || "An unexpected error interrupted this page."}
+                    onAction={reset}
+                    title="Unable to load this page"
+                  />
+                </div>
+              )}
+            >
+              {props.children}
+            </ErrorBoundary>
           </div>
         </SidebarInset>
       </SidebarProvider>

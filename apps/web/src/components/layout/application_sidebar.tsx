@@ -20,6 +20,7 @@ import {
   WorkflowIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { ErrorBoundary } from "@/components/error_boundary";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
@@ -236,9 +237,11 @@ export function ApplicationSidebar() {
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                     {item.to === "/inbox" ? (
-                      <Suspense fallback={null}>
-                        <ApplicationSidebarInboxBadge />
-                      </Suspense>
+                      <ErrorBoundary boundaryKey={pathname} fallback={null}>
+                        <Suspense fallback={null}>
+                          <ApplicationSidebarInboxBadge />
+                        </Suspense>
+                      </ErrorBoundary>
                     ) : null}
                   </SidebarMenuItem>
                 );
@@ -312,9 +315,11 @@ export function ApplicationSidebar() {
               {emailAddress}
             </span>
           </div>
-          <Suspense fallback={null}>
-            <ApplicationSidebarVersion />
-          </Suspense>
+          <ErrorBoundary boundaryKey={pathname} fallback={null}>
+            <Suspense fallback={null}>
+              <ApplicationSidebarVersion />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </SidebarFooter>
       <SidebarRail />

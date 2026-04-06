@@ -28,6 +28,7 @@ import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
+import { RootErrorComponent } from "./pages/root/root_error_component";
 
 type ChatsRouteSearch = {
   agentId?: string;
@@ -107,6 +108,7 @@ function SignUpRoute() {
 
 const rootRoute = createRootRoute({
   component: Outlet,
+  errorComponent: RootErrorComponent,
 });
 
 const authenticatedRoute = createRoute({
