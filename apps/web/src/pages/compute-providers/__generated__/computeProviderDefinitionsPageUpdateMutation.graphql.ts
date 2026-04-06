@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<afed079f3f25029eb9f1f35b10515f5e>>
+ * @generated SignedSource<<20da225a7013435391c099ea7e1f0fe5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -37,6 +37,7 @@ export type computeProviderDefinitionsPageUpdateMutation$data = {
       readonly hasApiKey: boolean;
     } | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
     readonly updatedAt: string;
@@ -75,6 +76,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isDefault",
         "storageKey": null
       },
       {
@@ -170,16 +178,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1fff6d3f303eab8b4ee1d0c068c2fcae",
+    "cacheID": "1c05438995fe3f35e3d97cf1cc247d76",
     "id": null,
     "metadata": {},
     "name": "computeProviderDefinitionsPageUpdateMutation",
     "operationKind": "mutation",
-    "text": "mutation computeProviderDefinitionsPageUpdateMutation(\n  $input: UpdateComputeProviderDefinitionInput!\n) {\n  UpdateComputeProviderDefinition(input: $input) {\n    id\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation computeProviderDefinitionsPageUpdateMutation(\n  $input: UpdateComputeProviderDefinitionInput!\n) {\n  UpdateComputeProviderDefinition(input: $input) {\n    id\n    isDefault\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "38945d62eba968f0b22d1d9ef75bf861";
+(node as any).hash = "cd4b08e8eba837965f1d00f4246f97a7";
 
 export default node;

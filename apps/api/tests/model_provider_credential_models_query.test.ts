@@ -30,6 +30,7 @@ class ModelProviderCredentialModelsQueryTestHarness {
   static createDatabaseMock() {
     const rows = [{
       id: "model-1",
+      isDefault: true,
       modelProviderCredentialId: "credential-1",
       modelId: "gpt-5.4",
       name: "GPT-5.4",
@@ -115,6 +116,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
         query CredentialModels($credentialId: ID!) {
           ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
             id
+            isDefault
             modelProviderCredentialId
             modelId
             name
@@ -133,6 +135,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
   const document = response.json();
   assert.deepEqual(document.data.ModelProviderCredentialModels, [{
     id: "model-1",
+    isDefault: true,
     modelProviderCredentialId: "credential-1",
     modelId: "gpt-5.4",
     name: "GPT-5.4",

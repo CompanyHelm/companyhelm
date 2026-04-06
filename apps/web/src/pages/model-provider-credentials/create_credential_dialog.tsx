@@ -34,16 +34,19 @@ interface CreateCredentialDialogProps {
     accessToken?: string;
     accessTokenExpiresAtMilliseconds?: string;
     apiKey?: string;
+    isDefault?: boolean;
     name?: string;
     modelProvider: string;
     refreshToken?: string;
   }): Promise<void>;
   onOpenChange(open: boolean): void;
+  suggestDefault: boolean;
 }
 
 export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const [authFileContents, setAuthFileContents] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [modelProvider, setModelProvider] = useState(props.providers[0]?.id ?? "");
@@ -53,11 +56,12 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
     if (!props.isOpen) {
       setAuthFileContents("");
       setApiKey("");
+      setIsDefault(props.suggestDefault);
       setLocalErrorMessage(null);
       setName("");
       setModelProvider(props.providers[0]?.id ?? "");
     }
-  }, [props.isOpen, props.providers]);
+  }, [props.isOpen, props.providers, props.suggestDefault]);
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -117,6 +121,23 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               Optional. Defaults to the provider name.
             </p>
           </div>
+
+          <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+            <input
+              checked={isDefault}
+              className="mt-0.5 size-4 rounded border border-input bg-background"
+              onChange={(event) => {
+                setIsDefault(event.target.checked);
+              }}
+              type="checkbox"
+            />
+            <div className="grid gap-1">
+              <span className="text-xs font-medium text-foreground">Default for new agents</span>
+              <span className="text-xs text-muted-foreground">
+                Newly created agents will preselect this credential.
+              </span>
+            </div>
+          </label>
 
           {selectedProvider?.authorizationInstructionsMarkdown ? (
             <div className="grid gap-2">
@@ -208,6 +229,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                   await props.onCreate({
                     accessToken: oauthCredential.accessToken,
                     accessTokenExpiresAtMilliseconds: oauthCredential.accessTokenExpiresAtMilliseconds,
+                    ...(isDefault ? { isDefault: true } : {}),
                     name,
                     modelProvider: selectedProvider.id,
                     refreshToken: oauthCredential.refreshToken,
@@ -217,6 +239,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
 
                 await props.onCreate({
                   apiKey,
+                  ...(isDefault ? { isDefault: true } : {}),
                   name,
                   modelProvider: selectedProvider.id,
                 });

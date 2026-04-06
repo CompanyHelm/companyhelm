@@ -15,6 +15,7 @@ type BaseDefinitionRow = {
   createdAt: Date;
   description: string | null;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: "daytona" | "e2b";
   updatedAt: Date;
@@ -91,6 +92,7 @@ class ComputeProviderDefinitionServiceTestHarness {
                     createdAt: value.createdAt as Date,
                     description: value.description as string | null,
                     id: "companyhelm-definition-1",
+                    isDefault: Boolean(value.isDefault),
                     name: value.name as string,
                     provider: value.provider as "daytona" | "e2b",
                     updatedAt: value.updatedAt as Date,
@@ -107,6 +109,23 @@ class ComputeProviderDefinitionServiceTestHarness {
                 return {
                   async returning() {
                     return [];
+                  },
+                };
+              },
+            };
+          },
+          update(table: unknown) {
+            return {
+              set(value: Record<string, unknown>) {
+                return {
+                  async where() {
+                    if (table === computeProviderDefinitions && "isDefault" in value) {
+                      baseDefinitions.forEach((row, index) => {
+                        row.isDefault = value.isDefault === true ? index === (baseDefinitions.length - 1) : false;
+                      });
+                    }
+
+                    return undefined;
                   },
                 };
               },
@@ -153,6 +172,7 @@ test("ComputeProviderDefinitionService seeds the CompanyHelm definition when a c
   assert.equal(definitions[0]?.provider, "e2b");
   assert.equal(definitions[0]?.description, "Managed by CompanyHelm");
   assert.equal(definitions[0]?.e2b?.hasApiKey, true);
+  assert.equal(definitions[0]?.isDefault, true);
 });
 
 test("ComputeProviderDefinitionService resolves CompanyHelm runtime credentials from config", async () => {
@@ -162,6 +182,7 @@ test("ComputeProviderDefinitionService resolves CompanyHelm runtime credentials 
       createdAt: new Date("2026-04-03T18:00:00.000Z"),
       description: "Managed by CompanyHelm",
       id: "companyhelm-definition-1",
+      isDefault: true,
       name: "CompanyHelm",
       provider: "e2b",
       updatedAt: new Date("2026-04-03T18:00:00.000Z"),
@@ -211,6 +232,7 @@ test("ComputeProviderDefinitionService blocks deleting the CompanyHelm definitio
       createdAt: new Date("2026-04-03T18:00:00.000Z"),
       description: "Managed by CompanyHelm",
       id: "companyhelm-definition-1",
+      isDefault: true,
       name: "CompanyHelm",
       provider: "e2b",
       updatedAt: new Date("2026-04-03T18:00:00.000Z"),

@@ -17,6 +17,7 @@ type BaseDefinitionRecord = {
   createdAt: Date;
   description: string | null;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: ComputeProvider;
   updatedAt: Date;
@@ -82,6 +83,7 @@ export type ComputeProviderDefinitionRecord = {
     hasApiKey: boolean;
   } | null;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: ComputeProvider;
   updatedAt: Date;
@@ -115,6 +117,7 @@ type CreateComputeProviderDefinitionInput =
         apiUrl?: string | null;
       };
       description?: string | null;
+      isDefault?: boolean | null;
       name: string;
       provider: "daytona";
     }
@@ -125,6 +128,7 @@ type CreateComputeProviderDefinitionInput =
       e2b: {
         apiKey: string;
       };
+      isDefault?: boolean | null;
       name: string;
       provider: "e2b";
     };
@@ -312,6 +316,13 @@ export class ComputeProviderDefinitionService {
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
       const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingDefinitions = await selectableDatabase
+        .select(this.baseSelection())
+        .from(computeProviderDefinitions)
+        .where(eq(computeProviderDefinitions.companyId, input.companyId)) as BaseDefinitionRecord[];
+      const hasExistingDefault = existingDefinitions.some((definition) => definition.isDefault);
+      const shouldSetDefault = Boolean(input.isDefault) || !hasExistingDefault;
       const now = new Date();
       const [createdDefinition] = await insertableDatabase
         .insert(computeProviderDefinitions)
@@ -320,6 +331,7 @@ export class ComputeProviderDefinitionService {
           createdAt: now,
           createdByUserId: input.createdByUserId,
           description: this.resolveNullableText(input.description),
+          isDefault: false,
           name: definitionName,
           provider: input.provider,
           updatedAt: now,
@@ -328,6 +340,15 @@ export class ComputeProviderDefinitionService {
         .returning?.(this.baseSelection()) as BaseDefinitionRecord[];
       if (!createdDefinition) {
         throw new Error("Failed to create compute provider definition.");
+      }
+
+      if (shouldSetDefault) {
+        await this.setDefaultDefinitionRecord(
+          selectableDatabase,
+          updatableDatabase,
+          input.companyId,
+          createdDefinition.id,
+        );
       }
 
       if (input.provider === "daytona") {
@@ -351,7 +372,18 @@ export class ComputeProviderDefinitionService {
           });
       }
 
-      const [createdRecord] = await this.hydrateDefinitions(selectableDatabase, [createdDefinition]);
+      const [reloadedDefinition] = await selectableDatabase
+        .select(this.baseSelection())
+        .from(computeProviderDefinitions)
+        .where(and(
+          eq(computeProviderDefinitions.companyId, input.companyId),
+          eq(computeProviderDefinitions.id, createdDefinition.id),
+        )) as BaseDefinitionRecord[];
+      if (!reloadedDefinition) {
+        throw new Error("Failed to reload compute provider definition.");
+      }
+
+      const [createdRecord] = await this.hydrateDefinitions(selectableDatabase, [reloadedDefinition]);
       if (!createdRecord) {
         throw new Error("Failed to load compute provider definition.");
       }
@@ -500,6 +532,7 @@ export class ComputeProviderDefinitionService {
     await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const deletableDatabase = tx as DeletableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
       const [agentReference] = await selectableDatabase
         .select({
           id: agents.id,
@@ -532,9 +565,57 @@ export class ComputeProviderDefinitionService {
           eq(computeProviderDefinitions.companyId, companyId),
           eq(computeProviderDefinitions.id, definitionId),
         ));
+
+      if (definition.isDefault) {
+        await this.ensureFallbackDefaultDefinition(selectableDatabase, updatableDatabase, companyId);
+      }
     });
 
     return definition;
+  }
+
+  async setDefaultDefinition(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    definitionId: string,
+  ): Promise<ComputeProviderDefinitionRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const definitions = await selectableDatabase
+        .select(this.baseSelection())
+        .from(computeProviderDefinitions)
+        .where(eq(computeProviderDefinitions.companyId, companyId)) as BaseDefinitionRecord[];
+      const targetDefinition = definitions.find((definition) => definition.id === definitionId);
+      if (!targetDefinition) {
+        throw new Error("Compute provider definition not found.");
+      }
+
+      await this.setDefaultDefinitionRecord(
+        selectableDatabase,
+        updatableDatabase,
+        companyId,
+        definitionId,
+      );
+
+      const [updatedDefinition] = await selectableDatabase
+        .select(this.baseSelection())
+        .from(computeProviderDefinitions)
+        .where(and(
+          eq(computeProviderDefinitions.companyId, companyId),
+          eq(computeProviderDefinitions.id, definitionId),
+        )) as BaseDefinitionRecord[];
+      if (!updatedDefinition) {
+        throw new Error("Failed to reload compute provider definition.");
+      }
+
+      const [hydratedDefinition] = await this.hydrateDefinitions(selectableDatabase, [updatedDefinition]);
+      if (!hydratedDefinition) {
+        throw new Error("Failed to load compute provider definition.");
+      }
+
+      return hydratedDefinition;
+    });
   }
 
   private async hydrateDefinitions(
@@ -591,6 +672,7 @@ export class ComputeProviderDefinitionService {
             }
           : null,
         id: definition.id,
+        isDefault: definition.isDefault,
         name: definition.name,
         provider: definition.provider,
         updatedAt: definition.updatedAt,
@@ -603,6 +685,7 @@ export class ComputeProviderDefinitionService {
       createdAt: computeProviderDefinitions.createdAt,
       description: computeProviderDefinitions.description,
       id: computeProviderDefinitions.id,
+      isDefault: computeProviderDefinitions.isDefault,
       name: computeProviderDefinitions.name,
       provider: computeProviderDefinitions.provider,
       updatedAt: computeProviderDefinitions.updatedAt,
@@ -630,6 +713,10 @@ export class ComputeProviderDefinitionService {
       return;
     }
 
+    const companyDefinitions = await selectableDatabase
+      .select(this.baseSelection())
+      .from(computeProviderDefinitions)
+      .where(eq(computeProviderDefinitions.companyId, companyId)) as BaseDefinitionRecord[];
     const now = new Date();
     await insertableDatabase
       .insert(computeProviderDefinitions)
@@ -638,11 +725,71 @@ export class ComputeProviderDefinitionService {
         createdAt: now,
         createdByUserId: null,
         description: this.companyHelmComputeProviderService.getDefinitionDescription(),
+        isDefault: !companyDefinitions.some((definition) => definition.isDefault),
         name: this.companyHelmComputeProviderService.getDefinitionName(),
         provider: this.companyHelmComputeProviderService.getProvider(),
         updatedAt: now,
         updatedByUserId: null,
       });
+  }
+
+  private async ensureFallbackDefaultDefinition(
+    selectableDatabase: SelectableDatabase,
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+  ): Promise<void> {
+    const definitions = await selectableDatabase
+      .select(this.baseSelection())
+      .from(computeProviderDefinitions)
+      .where(eq(computeProviderDefinitions.companyId, companyId)) as BaseDefinitionRecord[];
+    if (definitions.some((definition) => definition.isDefault)) {
+      return;
+    }
+
+    const fallbackDefinition = [...definitions]
+      .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())
+      .at(0);
+    if (!fallbackDefinition) {
+      return;
+    }
+
+    await this.setDefaultDefinitionRecord(
+      selectableDatabase,
+      updatableDatabase,
+      companyId,
+      fallbackDefinition.id,
+    );
+  }
+
+  private async setDefaultDefinitionRecord(
+    selectableDatabase: SelectableDatabase,
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    definitionId: string,
+  ): Promise<void> {
+    const definitions = await selectableDatabase
+      .select(this.baseSelection())
+      .from(computeProviderDefinitions)
+      .where(eq(computeProviderDefinitions.companyId, companyId)) as BaseDefinitionRecord[];
+    if (!definitions.some((definition) => definition.id === definitionId)) {
+      throw new Error("Compute provider definition not found.");
+    }
+
+    await updatableDatabase
+      .update(computeProviderDefinitions)
+      .set({
+        isDefault: false,
+      })
+      .where(eq(computeProviderDefinitions.companyId, companyId));
+    await updatableDatabase
+      .update(computeProviderDefinitions)
+      .set({
+        isDefault: true,
+      })
+      .where(and(
+        eq(computeProviderDefinitions.companyId, companyId),
+        eq(computeProviderDefinitions.id, definitionId),
+      ));
   }
 
   private resolveNullableText(value: string | null | undefined): string | null {

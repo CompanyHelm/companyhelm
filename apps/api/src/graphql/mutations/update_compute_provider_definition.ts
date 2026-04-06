@@ -30,6 +30,7 @@ type GraphqlComputeProviderDefinitionRecord = {
     hasApiKey: boolean;
   } | null;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: "daytona" | "e2b";
   updatedAt: string;
@@ -113,6 +114,7 @@ export class UpdateComputeProviderDefinitionMutation extends Mutation<
       description: definition.description,
       e2b: definition.e2b,
       id: definition.id,
+      isDefault: definition.isDefault,
       name: definition.name,
       provider: definition.provider,
       updatedAt: definition.updatedAt.toISOString(),

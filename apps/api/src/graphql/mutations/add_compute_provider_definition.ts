@@ -13,6 +13,7 @@ type AddComputeProviderDefinitionMutationArguments = {
     e2b?: {
       apiKey: string;
     } | null;
+    isDefault?: boolean | null;
     name: string;
     provider: string;
   };
@@ -29,6 +30,7 @@ type GraphqlComputeProviderDefinitionRecord = {
     hasApiKey: boolean;
   } | null;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: "daytona" | "e2b";
   updatedAt: string;
@@ -81,6 +83,7 @@ export class AddComputeProviderDefinitionMutation extends Mutation<
             apiUrl: arguments_.input.daytona.apiUrl,
           },
           description: arguments_.input.description,
+          isDefault: arguments_.input.isDefault,
           name: arguments_.input.name,
           provider: "daytona",
         },
@@ -99,6 +102,7 @@ export class AddComputeProviderDefinitionMutation extends Mutation<
           e2b: {
             apiKey: arguments_.input.e2b.apiKey,
           },
+          isDefault: arguments_.input.isDefault,
           name: arguments_.input.name,
           provider: "e2b",
         },
@@ -114,6 +118,7 @@ export class AddComputeProviderDefinitionMutation extends Mutation<
       description: definition.description,
       e2b: definition.e2b,
       id: definition.id,
+      isDefault: definition.isDefault,
       name: definition.name,
       provider: definition.provider,
       updatedAt: definition.updatedAt.toISOString(),

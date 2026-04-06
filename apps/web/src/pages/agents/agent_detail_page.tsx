@@ -48,6 +48,7 @@ const agentDetailPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
+      isDefault
       label
       modelProvider
       defaultModelId
@@ -68,6 +69,7 @@ const agentDetailPageQueryNode = graphql`
     }
     ComputeProviderDefinitions {
       id
+      isDefault
       name
       provider
     }
@@ -222,6 +224,7 @@ function AgentDetailPageContent() {
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
+      isDefault: providerOption.isDefault,
       label: providerOption.label,
       modelProvider: providerOption.modelProvider,
       defaultModelId: providerOption.defaultModelId,
@@ -237,6 +240,7 @@ function AgentDetailPageContent() {
   const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] = useMemo(() => {
     return data.ComputeProviderDefinitions.map((definition) => ({
       id: definition.id,
+      isDefault: definition.isDefault,
       label: CompanyHelmComputeProvider.formatDefinitionOptionLabel(definition),
       provider: definition.provider as "daytona" | "e2b",
     }));

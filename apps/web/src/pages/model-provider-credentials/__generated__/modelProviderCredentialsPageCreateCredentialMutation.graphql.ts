@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<55b24fe318792ba119efaa48f48e9912>>
+ * @generated SignedSource<<b0418d15e6d9b2d29540c198152fba30>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type AddModelProviderCredentialInput = {
   accessToken?: string | null | undefined;
   accessTokenExpiresAtMilliseconds?: string | null | undefined;
   apiKey?: string | null | undefined;
+  isDefault?: boolean | null | undefined;
   modelProvider: string;
   name?: string | null | undefined;
   refreshToken?: string | null | undefined;
@@ -23,7 +24,9 @@ export type modelProviderCredentialsPageCreateCredentialMutation$variables = {
 export type modelProviderCredentialsPageCreateCredentialMutation$data = {
   readonly AddModelProviderCredential: {
     readonly createdAt: string;
+    readonly defaultModelId: string | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly modelProvider: string;
     readonly name: string;
     readonly updatedAt: string;
@@ -68,6 +71,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isDefault",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "name",
         "storageKey": null
       },
@@ -76,6 +86,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "modelProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultModelId",
         "storageKey": null
       },
       {
@@ -114,16 +131,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "46b270c23e286b71b20ab2ddeb809f97",
+    "cacheID": "cfbee4d48084bc0112a66e43fa33f247",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageCreateCredentialMutation",
     "operationKind": "mutation",
-    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    name\n    modelProvider\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    isDefault\n    name\n    modelProvider\n    defaultModelId\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "98fd7afb6575af93c9bcf672a791bb47";
+(node as any).hash = "3dcb34d0e0419126b2fa273587f2197b";
 
 export default node;

@@ -1,12 +1,13 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentials } from "../../db/schema.ts";
+import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
 type ModelProviderCredentialRecord = {
   id: string;
+  isDefault: boolean;
   companyId: string;
   name: string;
   modelProvider: "openai" | "anthropic";
@@ -24,6 +25,7 @@ type GraphqlModelProviderCredentialRecord = {
   modelProvider: "openai" | "anthropic";
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
+  isDefault: boolean;
   type: "api_key";
   refreshToken: string | null;
   refreshedAt: string | null;
@@ -31,10 +33,17 @@ type GraphqlModelProviderCredentialRecord = {
   updatedAt: string;
 };
 
+type ModelRecord = {
+  isDefault: boolean;
+  modelId: string;
+  modelProviderCredentialId: string;
+  reasoningLevels: string[] | null;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
-      where(condition: unknown): Promise<ModelProviderCredentialRecord[]>;
+      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
     };
   };
 };
@@ -64,6 +73,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
       const credentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          isDefault: modelProviderCredentials.isDefault,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -74,10 +84,19 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
+        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id)) as ModelProviderCredentialRecord[];
+      const modelRecords = await selectableDatabase
+        .select({
+          isDefault: modelProviderCredentialModels.isDefault,
+          modelId: modelProviderCredentialModels.modelId,
+          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+          reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+        })
+        .from(modelProviderCredentialModels)
+        .where(eq(modelProviderCredentialModels.companyId, context.authSession.company.id)) as ModelRecord[];
 
       return credentials.map((credential) =>
-        ModelProviderCredentialsQueryResolver.serializeRecord(this.modelRegistry, credential)
+        ModelProviderCredentialsQueryResolver.serializeRecord(this.modelRegistry, credential, modelRecords)
       );
     });
   };
@@ -85,11 +104,20 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
   private static serializeRecord(
     modelRegistry: ModelRegistry,
     credential: ModelProviderCredentialRecord,
+    models: ModelRecord[],
   ): GraphqlModelProviderCredentialRecord {
+    const defaultModel = models.find((model) =>
+      model.modelProviderCredentialId === credential.id && model.isDefault
+    ) ?? null;
+    const supportedReasoningLevels = defaultModel?.reasoningLevels ?? [];
+    const providerDefaultReasoningLevel = modelRegistry.getDefaultReasoningLevelForProvider(credential.modelProvider);
+
     return {
       ...credential,
-      defaultModelId: modelRegistry.getDefaultModelForProvider(credential.modelProvider),
-      defaultReasoningLevel: modelRegistry.getDefaultReasoningLevelForProvider(credential.modelProvider),
+      defaultModelId: defaultModel?.modelId ?? null,
+      defaultReasoningLevel: providerDefaultReasoningLevel && supportedReasoningLevels.includes(providerDefaultReasoningLevel)
+        ? providerDefaultReasoningLevel
+        : (supportedReasoningLevels[0] ?? null),
       refreshedAt: credential.refreshedAt?.toISOString() ?? null,
       createdAt: credential.createdAt.toISOString(),
       updatedAt: credential.updatedAt.toISOString(),

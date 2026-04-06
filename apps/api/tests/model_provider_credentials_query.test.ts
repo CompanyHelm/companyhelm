@@ -28,9 +28,10 @@ class ModelProviderCredentialsQueryTestHarness {
   }
 
   static createDatabaseMock() {
-    const rows = [{
+    const credentialRows = [{
       id: "credential-1",
       companyId: "company-123",
+      isDefault: true,
       name: "OpenAI / Codex",
       modelProvider: "openai",
       type: "api_key",
@@ -39,18 +40,26 @@ class ModelProviderCredentialsQueryTestHarness {
       createdAt: new Date("2026-03-20T10:00:00.000Z"),
       updatedAt: new Date("2026-03-20T10:00:00.000Z"),
     }];
+    const modelRows = [{
+      isDefault: true,
+      modelId: "gpt-5.4",
+      modelProviderCredentialId: "credential-1",
+      reasoningLevels: ["low", "medium", "high"],
+    }];
     const scopedCompanyIds: string[] = [];
+    let selectCallCount = 0;
 
     return {
       scopedCompanyIds,
       getDatabase() {
         return {
           select() {
+            selectCallCount += 1;
             return {
               from() {
                 return {
                   async where() {
-                    return rows;
+                    return selectCallCount === 1 ? credentialRows : modelRows;
                   },
                 };
               },
@@ -119,6 +128,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
           ModelProviderCredentials {
             id
             companyId
+            isDefault
             name
             modelProvider
             defaultModelId
@@ -137,6 +147,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
   assert.deepEqual(document.data.ModelProviderCredentials, [{
     id: "credential-1",
     companyId: "company-123",
+    isDefault: true,
     name: "OpenAI / Codex",
     modelProvider: "openai",
     defaultModelId: "gpt-5.4",

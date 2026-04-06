@@ -8,12 +8,14 @@ import { Resolver } from "./resolver.ts";
 
 type CredentialRecord = {
   id: string;
+  isDefault: boolean;
   modelProvider: string;
   name: string;
 };
 
 type ModelRecord = {
   id: string;
+  isDefault: boolean;
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
@@ -31,6 +33,7 @@ type GraphqlAgentCreateModelOption = {
 
 type GraphqlAgentCreateProviderOption = {
   id: string;
+  isDefault: boolean;
   label: string;
   modelProvider: string;
   defaultModelId: string | null;
@@ -77,6 +80,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       const credentialRecords = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
@@ -86,6 +90,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
       const modelRecords = await selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,
+          isDefault: modelProviderCredentialModels.isDefault,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
@@ -97,8 +102,9 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
 
       return credentialRecords
         .map((credentialRecord) => {
-          const credentialModels = modelRecords
-            .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id)
+          const credentialModelRecords = modelRecords
+            .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id);
+          const credentialModels = credentialModelRecords
             .map((modelRecord) => ({
               id: modelRecord.id,
               modelId: modelRecord.modelId,
@@ -106,18 +112,32 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
               description: modelRecord.description,
               reasoningLevels: modelRecord.reasoningLevels ?? [],
             }));
+          const defaultModelRecord = credentialModelRecords.find((modelRecord) => modelRecord.isDefault)
+            ?? credentialModelRecords.find((modelRecord) =>
+              modelRecord.modelId === this.modelRegistry.getDefaultModelForProvider(credentialRecord.modelProvider)
+            )
+            ?? credentialModelRecords[0]
+            ?? null;
+          const providerDefaultReasoningLevel = this.modelRegistry.getDefaultReasoningLevelForProvider(
+            credentialRecord.modelProvider,
+          );
+          const supportedReasoningLevels = defaultModelRecord?.reasoningLevels ?? [];
+          const defaultReasoningLevel = providerDefaultReasoningLevel
+            && supportedReasoningLevels.includes(providerDefaultReasoningLevel)
+            ? providerDefaultReasoningLevel
+            : (supportedReasoningLevels[0] ?? null);
 
           return {
             id: credentialRecord.id,
+            isDefault: credentialRecord.isDefault,
             label: this.resolveProviderLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
-            defaultModelId: this.modelRegistry.getDefaultModelForProvider(credentialRecord.modelProvider),
-            defaultReasoningLevel: this.modelRegistry.getDefaultReasoningLevelForProvider(
-              credentialRecord.modelProvider,
-            ),
+            defaultModelId: defaultModelRecord?.modelId ?? null,
+            defaultReasoningLevel,
             models: credentialModels,
           };
         })
+        .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
         .filter((providerOption) => providerOption.models.length > 0);
     });
   };

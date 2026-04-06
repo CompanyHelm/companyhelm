@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
+import { modelProviderCredentialModels, modelProviderCredentials } from "../src/db/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
@@ -30,17 +31,51 @@ class AddModelProviderCredentialMutationTestHarness {
   static createDatabaseMock() {
     const insertedValues: Array<Record<string, unknown>> = [];
     const scopedCompanyIds: string[] = [];
+    const credentialRows: Array<Record<string, unknown>> = [];
+    const modelRows: Array<Record<string, unknown>> = [];
+    let credentialUpdateCount = 0;
+    let modelUpdateCount = 0;
 
     return {
       insertedValues,
       scopedCompanyIds,
       getDatabase() {
         return {
+          select() {
+            return {
+              from(table: unknown) {
+                return {
+                  async where() {
+                    if (table === modelProviderCredentials) {
+                      return [...credentialRows];
+                    }
+                    if (table === modelProviderCredentialModels) {
+                      return [...modelRows];
+                    }
+
+                    return [];
+                  },
+                };
+              },
+            };
+          },
           insert() {
             return {
               values(value: Record<string, unknown> | Array<Record<string, unknown>>) {
                 const values = Array.isArray(value) ? value : [value];
                 insertedValues.push(...values);
+                if (values[0] && "modelProvider" in values[0]) {
+                  credentialRows.push({
+                    ...values[0],
+                    id: "credential-1",
+                  });
+                }
+                if (values[0] && "modelProviderCredentialId" in values[0]) {
+                  modelRows.push(...values.map((entry, index) => ({
+                    ...entry,
+                    id: `model-row-${index + 1}`,
+                  })));
+                }
                 return {
                   async returning() {
                     const credentialValue = values[0] ?? {};
@@ -50,11 +85,34 @@ class AddModelProviderCredentialMutationTestHarness {
                       name: String(credentialValue.name),
                       modelProvider: credentialValue.modelProvider,
                       type: credentialValue.type,
+                      isDefault: Boolean(credentialValue.isDefault),
                       refreshToken: credentialValue.refreshToken ?? null,
                       refreshedAt: credentialValue.refreshedAt ?? null,
                       createdAt: credentialValue.createdAt,
                       updatedAt: credentialValue.updatedAt,
                     }];
+                  },
+                };
+              },
+            };
+          },
+          update(table: unknown) {
+            return {
+              set(value: Record<string, unknown>) {
+                return {
+                  async where() {
+                    if (table === modelProviderCredentials && "isDefault" in value) {
+                      credentialUpdateCount += 1;
+                      credentialRows.forEach((row) => {
+                        row.isDefault = credentialUpdateCount === 2;
+                      });
+                    }
+                    if (table === modelProviderCredentialModels && "isDefault" in value) {
+                      modelUpdateCount += 1;
+                      modelRows.forEach((row) => {
+                        row.isDefault = modelUpdateCount === 2;
+                      });
+                    }
                   },
                 };
               },

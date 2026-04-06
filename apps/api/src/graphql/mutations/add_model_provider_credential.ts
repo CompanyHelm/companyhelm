@@ -1,5 +1,7 @@
+import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import {
   ModelProviderAuthorizationType,
   ModelProviderService,
@@ -13,6 +15,7 @@ type AddModelProviderCredentialMutationArguments = {
     accessToken?: string | null;
     accessTokenExpiresAtMilliseconds?: string | null;
     apiKey?: string | null;
+    isDefault?: boolean | null;
     name?: string | null;
     modelProvider: string;
     refreshToken?: string | null;
@@ -28,6 +31,7 @@ type ModelProviderCredentialRecord = {
   refreshToken: string | null;
   refreshedAt: Date | null;
   createdAt: Date;
+  isDefault: boolean;
   updatedAt: Date;
 };
 
@@ -36,6 +40,9 @@ type GraphqlModelProviderCredentialRecord = {
   companyId: string;
   name: string;
   modelProvider: string;
+  defaultModelId: string | null;
+  defaultReasoningLevel: string | null;
+  isDefault: boolean;
   type: "api_key" | "oauth_token";
   refreshToken: string | null;
   refreshedAt: string | null;
@@ -43,10 +50,26 @@ type GraphqlModelProviderCredentialRecord = {
   updatedAt: string;
 };
 
+type SelectableDatabase = {
+  select(selection: Record<string, unknown>): {
+    from(table: unknown): {
+      where(condition: unknown): Promise<ModelProviderCredentialRecord[]>;
+    };
+  };
+};
+
 type InsertableDatabase = {
   insert(table: unknown): {
     values(value: Record<string, unknown> | Array<Record<string, unknown>>): {
       returning?(selection?: Record<string, unknown>): Promise<ModelProviderCredentialRecord[]>;
+    };
+  };
+};
+
+type UpdatableDatabase = {
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): Promise<void>;
     };
   };
 };
@@ -60,14 +83,17 @@ export class AddModelProviderCredentialMutation extends Mutation<
   GraphqlModelProviderCredentialRecord
 > {
   private readonly modelManager: ModelService;
+  private readonly modelRegistry: ModelRegistry;
   private readonly modelProviderService: ModelProviderService;
 
   constructor(
     @inject(ModelService) modelManager: ModelService,
+    @inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry(),
     @inject(ModelProviderService) modelProviderService: ModelProviderService = new ModelProviderService(),
   ) {
     super();
     this.modelManager = modelManager;
+    this.modelRegistry = modelRegistry;
     this.modelProviderService = modelProviderService;
   }
 
@@ -93,9 +119,33 @@ export class AddModelProviderCredentialMutation extends Mutation<
       providerDefinition.type,
     );
     const models = await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken);
+    const defaultModelId = AddModelProviderCredentialMutation.resolveDefaultModelId(
+      this.modelRegistry,
+      modelProvider,
+      models,
+    );
     const now = new Date();
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingCredentials = await selectableDatabase
+        .select({
+          id: modelProviderCredentials.id,
+          companyId: modelProviderCredentials.companyId,
+          name: modelProviderCredentials.name,
+          modelProvider: modelProviderCredentials.modelProvider,
+          type: modelProviderCredentials.type,
+          refreshToken: modelProviderCredentials.refreshToken,
+          refreshedAt: modelProviderCredentials.refreshedAt,
+          createdAt: modelProviderCredentials.createdAt,
+          isDefault: modelProviderCredentials.isDefault,
+          updatedAt: modelProviderCredentials.updatedAt,
+        })
+        .from(modelProviderCredentials)
+        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
+      const shouldSetDefaultCredential = Boolean(arguments_.input.isDefault)
+        || !existingCredentials.some((existingCredential) => existingCredential.isDefault);
       const createdCredentials = await insertableDatabase
         .insert(modelProviderCredentials)
         .values({
@@ -107,6 +157,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshToken: credentialPayload.refreshToken,
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
+          isDefault: false,
           createdAt: now,
           updatedAt: now,
         })
@@ -119,6 +170,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
+          isDefault: modelProviderCredentials.isDefault,
           updatedAt: modelProviderCredentials.updatedAt,
         }) as Promise<ModelProviderCredentialRecord[]>;
 
@@ -137,14 +189,54 @@ export class AddModelProviderCredentialMutation extends Mutation<
           })));
       }
 
-      return [createdCredential];
+      if (shouldSetDefaultCredential) {
+        await AddModelProviderCredentialMutation.setDefaultCredential(
+          updatableDatabase,
+          context.authSession.company.id,
+          createdCredential.id,
+        );
+      }
+      if (defaultModelId) {
+        await AddModelProviderCredentialMutation.setDefaultModel(
+          updatableDatabase,
+          context.authSession.company.id,
+          createdCredential.id,
+          defaultModelId,
+        );
+      }
+
+      const reloadedCredentials = await selectableDatabase
+        .select({
+          id: modelProviderCredentials.id,
+          companyId: modelProviderCredentials.companyId,
+          name: modelProviderCredentials.name,
+          modelProvider: modelProviderCredentials.modelProvider,
+          type: modelProviderCredentials.type,
+          refreshToken: modelProviderCredentials.refreshToken,
+          refreshedAt: modelProviderCredentials.refreshedAt,
+          createdAt: modelProviderCredentials.createdAt,
+          isDefault: modelProviderCredentials.isDefault,
+          updatedAt: modelProviderCredentials.updatedAt,
+        })
+        .from(modelProviderCredentials)
+        .where(and(
+          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.id, createdCredential.id),
+        ));
+
+      return reloadedCredentials;
     });
 
     if (!credential) {
       throw new Error("Failed to create model provider credential.");
     }
 
-    return AddModelProviderCredentialMutation.serializeRecord(credential);
+    return AddModelProviderCredentialMutation.serializeRecord(
+      this.modelRegistry,
+      credential,
+      defaultModelId,
+      models,
+    );
   };
 
   private static toModelInsertInput(input: {
@@ -159,7 +251,96 @@ export class AddModelProviderCredentialMutation extends Mutation<
       name: input.model.name,
       description: input.model.description,
       reasoningLevels: input.model.reasoningLevels,
+      isDefault: false,
     };
+  }
+
+  private static resolveDefaultModelId(
+    modelRegistry: ModelRegistry,
+    modelProvider: string,
+    models: ModelProviderModel[],
+  ): string | null {
+    const providerDefaultModelId = modelRegistry.getDefaultModelForProvider(modelProvider);
+    if (providerDefaultModelId && models.some((model) => model.modelId === providerDefaultModelId)) {
+      return providerDefaultModelId;
+    }
+
+    return models[0]?.modelId ?? null;
+  }
+
+  private static resolveDefaultReasoningLevel(
+    modelRegistry: ModelRegistry,
+    credential: ModelProviderCredentialRecord,
+    models: ModelProviderModel[],
+    defaultModelId: string | null,
+  ): string | null {
+    if (!defaultModelId) {
+      return null;
+    }
+
+    const defaultModel = models.find((model) => model.modelId === defaultModelId);
+    const supportedLevels = defaultModel?.reasoningLevels ?? [];
+    if (supportedLevels.length === 0) {
+      return null;
+    }
+
+    const providerDefaultReasoningLevel = modelRegistry.getDefaultReasoningLevelForProvider(
+      credential.modelProvider,
+    );
+    if (providerDefaultReasoningLevel && supportedLevels.includes(providerDefaultReasoningLevel)) {
+      return providerDefaultReasoningLevel;
+    }
+
+    return supportedLevels[0] ?? null;
+  }
+
+  private static async setDefaultCredential(
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    credentialId: string,
+  ): Promise<void> {
+    await updatableDatabase
+      .update(modelProviderCredentials)
+      .set({
+        isDefault: false,
+      })
+      .where(eq(modelProviderCredentials.companyId, companyId));
+    await updatableDatabase
+      .update(modelProviderCredentials)
+      .set({
+        isDefault: true,
+      })
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.id, credentialId),
+      ));
+  }
+
+  private static async setDefaultModel(
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    credentialId: string,
+    modelId: string,
+  ): Promise<void> {
+    await updatableDatabase
+      .update(modelProviderCredentialModels)
+      .set({
+        isDefault: false,
+      })
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+      ));
+    await updatableDatabase
+      .update(modelProviderCredentialModels)
+      .set({
+        isDefault: true,
+      })
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+        eq(modelProviderCredentialModels.modelId, modelId),
+      ));
   }
 
   private static resolveCredentialPayload(
@@ -225,10 +406,20 @@ export class AddModelProviderCredentialMutation extends Mutation<
   }
 
   private static serializeRecord(
+    modelRegistry: ModelRegistry,
     credential: ModelProviderCredentialRecord,
+    defaultModelId: string | null,
+    models: ModelProviderModel[],
   ): GraphqlModelProviderCredentialRecord {
     return {
       ...credential,
+      defaultModelId,
+      defaultReasoningLevel: AddModelProviderCredentialMutation.resolveDefaultReasoningLevel(
+        modelRegistry,
+        credential,
+        models,
+        defaultModelId,
+      ),
       refreshedAt: credential.refreshedAt?.toISOString() ?? null,
       createdAt: credential.createdAt.toISOString(),
       updatedAt: credential.updatedAt.toISOString(),

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<47055e37ecd0109ee4181ce874d008c9>>
+ * @generated SignedSource<<ca2352668a44b15f50415400ee95552d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type computeProviderDefinitionsPageQuery$data = {
       readonly hasApiKey: boolean;
     } | null | undefined;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
     readonly updatedAt: string;
@@ -46,6 +47,13 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isDefault",
         "storageKey": null
       },
       {
@@ -141,16 +149,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "be1fafac82eee708ccd2cb7b2b0b6304",
+    "cacheID": "bfba2628243bdbee446533a66d7f4b9b",
     "id": null,
     "metadata": {},
     "name": "computeProviderDefinitionsPageQuery",
     "operationKind": "query",
-    "text": "query computeProviderDefinitionsPageQuery {\n  ComputeProviderDefinitions {\n    id\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query computeProviderDefinitionsPageQuery {\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1cfa4631640af587992559db7bd3af51";
+(node as any).hash = "6c0f10ed445767223363f1ba0dc2207c";
 
 export default node;

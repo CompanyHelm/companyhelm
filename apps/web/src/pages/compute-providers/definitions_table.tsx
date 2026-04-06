@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ export type ComputeProviderDefinitionTableRecord = {
   daytonaApiUrl: string | null;
   hasApiKey: boolean;
   id: string;
+  isDefault: boolean;
   name: string;
   provider: "daytona" | "e2b";
   updatedAt: string;
@@ -40,8 +41,10 @@ interface ComputeProviderDefinitionsTableProps {
   definitions: ComputeProviderDefinitionTableRecord[];
   deletingDefinitionId: string | null;
   isLoading: boolean;
+  settingDefaultDefinitionId: string | null;
   onDelete: (definitionId: string) => Promise<void>;
   onEdit: (definition: ComputeProviderDefinitionTableRecord) => void;
+  onSetDefault: (definitionId: string) => Promise<void>;
 }
 
 interface DeleteDefinitionDialogProps {
@@ -150,14 +153,19 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
           <TableHead>Connection</TableHead>
           <TableHead>Description</TableHead>
           <TableHead>Updated</TableHead>
-          <TableHead className="w-28 text-right">Actions</TableHead>
+          <TableHead className="w-40 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {props.definitions.map((definition) => (
           <TableRow key={definition.id}>
             <TableCell>
-              <p className="font-medium text-foreground">{definition.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-foreground">{definition.name}</p>
+                {definition.isDefault ? (
+                  <Badge variant="secondary">Default</Badge>
+                ) : null}
+              </div>
             </TableCell>
             <TableCell>
               <Badge variant="outline">{CompanyHelmComputeProvider.formatProviderLabel(definition)}</Badge>
@@ -186,11 +194,31 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
             <TableCell>{formatTimestamp(definition.updatedAt)}</TableCell>
             <TableCell>
               {CompanyHelmComputeProvider.isManagedDefinition(definition) ? (
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    disabled={definition.isDefault || props.settingDefaultDefinitionId === definition.id}
+                    onClick={async () => {
+                      await props.onSetDefault(definition.id);
+                    }}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <StarIcon className={`size-4 ${definition.isDefault ? "fill-current" : ""}`} />
+                  </Button>
                   <span className="text-xs text-muted-foreground">Managed</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-end gap-1">
+                  <Button
+                    disabled={definition.isDefault || props.settingDefaultDefinitionId === definition.id}
+                    onClick={async () => {
+                      await props.onSetDefault(definition.id);
+                    }}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <StarIcon className={`size-4 ${definition.isDefault ? "fill-current" : ""}`} />
+                  </Button>
                   <Button
                     onClick={() => {
                       props.onEdit(definition);

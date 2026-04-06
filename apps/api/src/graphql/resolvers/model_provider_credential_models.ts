@@ -9,6 +9,7 @@ type ModelProviderCredentialModelsArguments = {
 
 type ModelProviderCredentialModelRecord = {
   id: string;
+  isDefault: boolean;
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
@@ -18,6 +19,7 @@ type ModelProviderCredentialModelRecord = {
 
 type GraphqlModelProviderCredentialModelRecord = {
   id: string;
+  isDefault: boolean;
   modelProviderCredentialId: string;
   modelId: string;
   name: string;
@@ -60,6 +62,7 @@ export class ModelProviderCredentialModelsQueryResolver {
       const models = await selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,
+          isDefault: modelProviderCredentialModels.isDefault,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
