@@ -1270,31 +1270,23 @@ function ChatsThinkingIndicator({
 function ChatsQueuedMessagesComposerList({
   steeringQueuedMessageId,
   deletingQueuedMessageId,
-  isLoading,
   onSteer,
   onDelete,
   queuedMessages,
 }: {
   steeringQueuedMessageId: string | null;
   deletingQueuedMessageId: string | null;
-  isLoading: boolean;
   onSteer: (queuedMessageId: string) => void;
   onDelete: (queuedMessageId: string) => void;
   queuedMessages: ReadonlyArray<QueuedMessageRecord>;
 }) {
-  if (!isLoading && queuedMessages.length === 0) {
+  if (queuedMessages.length === 0) {
     return null;
   }
 
   return (
-    <div className="border-b border-border/60 px-2.5 pt-2.5 pb-2">
-      <div className="mb-2 flex items-center justify-between gap-3 px-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Queue
-        </p>
-        {isLoading ? <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" /> : null}
-      </div>
-      <div className="grid gap-2">
+    <div className="px-2.5 pt-2 pb-1.5">
+      <div className="grid gap-1.5">
         {queuedMessages.map((queuedMessage) => {
           const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
           const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
@@ -1847,7 +1839,6 @@ function ChatsPageContent() {
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
-  const [isLoadingQueuedMessages, setIsLoadingQueuedMessages] = useState(false);
   const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
   const [isComposerDragActive, setIsComposerDragActive] = useState(false);
@@ -2151,7 +2142,6 @@ function ChatsPageContent() {
     const requestId = queuedMessagesRequestIdRef.current + 1;
     queuedMessagesRequestIdRef.current = requestId;
     activeQueuedMessagesSessionIdRef.current = sessionId;
-    setIsLoadingQueuedMessages(true);
 
     try {
       const response = await fetchQuery<chatsPageQueuedMessagesQuery>(
@@ -2178,10 +2168,6 @@ function ChatsPageContent() {
 
       setQueuedMessages([]);
       setErrorMessage((currentMessage) => currentMessage ?? (error instanceof Error ? error.message : "Failed to load queued messages."));
-    } finally {
-      if (queuedMessagesRequestIdRef.current === requestId && activeQueuedMessagesSessionIdRef.current === sessionId) {
-        setIsLoadingQueuedMessages(false);
-      }
     }
   }, [environment]);
 
@@ -2400,7 +2386,6 @@ function ChatsPageContent() {
       queuedMessagesRequestIdRef.current += 1;
       activeQueuedMessagesSessionIdRef.current = null;
       setQueuedMessages([]);
-      setIsLoadingQueuedMessages(false);
       setDeletingQueuedMessageId(null);
       return;
     }
@@ -2697,7 +2682,6 @@ function ChatsPageContent() {
         }
 
         setQueuedMessages([...nextQueuedMessages].sort(compareQueuedMessagesByTimestamp));
-        setIsLoadingQueuedMessages(false);
       },
       onError: (error) => {
         setErrorMessage((currentMessage) => currentMessage ?? error.message);
@@ -3968,7 +3952,6 @@ function ChatsPageContent() {
                   <ChatsQueuedMessagesComposerList
                     steeringQueuedMessageId={steeringQueuedMessageId}
                     deletingQueuedMessageId={deletingQueuedMessageId}
-                    isLoading={isLoadingQueuedMessages}
                     onSteer={(queuedMessageId) => {
                       void steerQueuedMessage(queuedMessageId);
                     }}
