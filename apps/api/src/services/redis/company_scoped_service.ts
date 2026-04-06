@@ -1,7 +1,8 @@
 import { inject, injectable } from "inversify";
-import type { RedisClientType } from "redis";
 import { RedisService } from "./service.ts";
 import { RedisSubscriptionHandle } from "./subscription_handle.ts";
+
+type SubscriberRedisClient = Awaited<ReturnType<RedisService["getSubscriberClient"]>>;
 
 /**
  * Wraps Redis access in one company namespace. Its scope is guaranteeing that every company-level
@@ -11,8 +12,6 @@ import { RedisSubscriptionHandle } from "./subscription_handle.ts";
 export class RedisCompanyScopedService {
   private readonly companyId: string;
   private readonly redisService: RedisService;
-  private subscriberClient?: RedisClientType;
-  private subscriberConnectPromise?: Promise<RedisClientType>;
 
   constructor(companyId: string, @inject(RedisService) redisService: RedisService) {
     this.companyId = companyId;
@@ -54,46 +53,14 @@ export class RedisCompanyScopedService {
   }
 
   async disconnect(): Promise<void> {
-    const subscriberClient = this.subscriberClient;
-    const subscriberConnectPromise = this.subscriberConnectPromise;
-    this.subscriberClient = undefined;
-    this.subscriberConnectPromise = undefined;
-
-    if (subscriberClient?.isOpen) {
-      await subscriberClient.quit();
-      return;
-    }
-
-    const pendingSubscriber = await subscriberConnectPromise?.catch(() => undefined);
-    if (pendingSubscriber?.isOpen) {
-      await pendingSubscriber.quit();
-    }
+    return;
   }
 
   private scopeKey(key: string): string {
     return `company:${this.companyId}:${key}`;
   }
 
-  private async getSubscriberClient(): Promise<RedisClientType> {
-    if (this.subscriberClient?.isOpen) {
-      return this.subscriberClient;
-    }
-    if (this.subscriberConnectPromise) {
-      return this.subscriberConnectPromise;
-    }
-
-    const client = await this.redisService.getClient();
-    const subscriber = client.duplicate();
-    this.subscriberClient = subscriber;
-    this.subscriberConnectPromise = subscriber.connect().then(() => {
-      this.subscriberConnectPromise = undefined;
-      return subscriber;
-    }).catch((error) => {
-      this.subscriberClient = undefined;
-      this.subscriberConnectPromise = undefined;
-      throw error;
-    });
-
-    return this.subscriberConnectPromise;
+  private async getSubscriberClient(): Promise<SubscriberRedisClient> {
+    return await this.redisService.getSubscriberClient();
   }
 }

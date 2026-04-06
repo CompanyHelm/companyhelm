@@ -4,6 +4,7 @@ import GraphQLJSON from "graphql-type-json";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
 import { GithubClient } from "../github/client.ts";
+import { ApiLogger } from "../log/api_logger.ts";
 import { SecretEncryptionService } from "../services/secrets/encryption.ts";
 import { SecretService } from "../services/secrets/service.ts";
 import { RedisService } from "../services/redis/service.ts";
@@ -280,7 +281,7 @@ export class GraphqlApplication {
         throw new Error("PromptSession mutation is not configured.");
       },
     } as never),
-    @inject(RedisService) redisService: RedisService = new RedisService(config),
+    @inject(RedisService) redisService: RedisService = new RedisService(config, new ApiLogger(config)),
     @inject(CreateTaskMutation) createTaskMutation: CreateTaskMutation = new CreateTaskMutation(),
     @inject(CreateTaskCategoryMutation)
     createTaskCategoryMutation: CreateTaskCategoryMutation = new CreateTaskCategoryMutation(),
