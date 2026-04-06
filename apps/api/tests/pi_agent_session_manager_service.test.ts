@@ -671,6 +671,206 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
   assert.equal(persistedContextUpdates.filter((value) => "context_messages" in value).length, 1);
 });
 
+test("PiMonoSessionManagerService steer drains queued messages immediately when the runtime is idle", async () => {
+  const storedMessages = [{
+    content: "Earlier context",
+    role: "user",
+    timestamp: 1234,
+  }];
+  const persistedContextUpdates: Array<Record<string, unknown>> = [];
+  const model = {
+    id: "gpt-5.4",
+    provider: "openai",
+  };
+  let pendingMessageCount = 1;
+  piAgentMocks.continueMock.mockImplementation(async () => {
+    pendingMessageCount -= 1;
+  });
+  const createdSession = {
+    abort: piAgentMocks.abortMock,
+    agent: {
+      continue: piAgentMocks.continueMock,
+      replaceMessages: piAgentMocks.replaceMessagesMock,
+      state: {
+        isStreaming: false,
+        messages: [{
+          content: "Updated context",
+          role: "assistant",
+          timestamp: 5678,
+        }],
+      },
+    },
+    dispose: piAgentMocks.disposeMock,
+    prompt: piAgentMocks.promptMock,
+    setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
+    steer: piAgentMocks.steerMock,
+    subscribe: piAgentMocks.subscribeMock,
+  };
+  Object.defineProperty(createdSession, "pendingMessageCount", {
+    get() {
+      return pendingMessageCount;
+    },
+  });
+  piAgentMocks.findModelMock.mockReturnValue(model);
+  piAgentMocks.createAgentSessionMock.mockResolvedValue({
+    session: createdSession,
+  });
+  const service = new PiMonoSessionManagerService(
+    logger,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    {
+      async getEnvironmentForSession() {
+        throw new Error("tools should not acquire an environment during ensureSession");
+      },
+    } as never,
+    {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during ensureSession");
+      },
+    } as never,
+    {
+      async listSecrets() {
+        throw new Error("company secrets should not be loaded during ensureSession");
+      },
+      async listSessionSecrets() {
+        throw new Error("session secrets should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async sendMessage() {
+        throw new Error("agent conversations should not be sent during ensureSession");
+      },
+    } as never,
+    {
+      async fetchHtmlContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async fetchMarkdownContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async search() {
+        throw new Error("web searches should not run during ensureSession");
+      },
+    } as never,
+    {
+      async getRequirements() {
+        throw new Error("agent requirements should not be loaded during ensureSession");
+      },
+      async updateRequirements() {
+        throw new Error("agent requirements should not be updated during ensureSession");
+      },
+    } as never,
+    {
+      async listDefinitions() {
+        throw new Error("compute provider definitions should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      get() {
+        throw new Error("model provider services should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      getDefaultModelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+      getDefaultReasoningLevelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+    } as never,
+  );
+
+  await service.ensureSession(
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          insert() {
+            return {
+              async values() {
+                return undefined;
+              },
+            };
+          },
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      companyId: "company-1",
+                      contextMessages: storedMessages,
+                    }];
+                  },
+                };
+              },
+            };
+          },
+          update() {
+            return {
+              set(value: Record<string, unknown>) {
+                persistedContextUpdates.push(value);
+                return {
+                  async where() {
+                    return undefined;
+                  },
+                };
+              },
+            };
+          },
+        });
+      },
+    } as never,
+    "session-1",
+    {
+      agentId: "agent-1",
+      agentName: "Support Agent",
+      apiKey: "sk-test",
+      companyId: "company-1",
+      companyName: "My Organization",
+      modelId: "gpt-5.4",
+      providerId: "openai",
+      reasoningLevel: "high",
+    },
+  );
+
+  await service.steer({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
+      return callback({
+        update() {
+          return {
+            set(value: Record<string, unknown>) {
+              persistedContextUpdates.push(value);
+              return {
+                async where() {
+                  return undefined;
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  } as never, "session-1", "Process the queued message.");
+
+  assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Process the queued message.", undefined]]);
+  assert.equal(piAgentMocks.continueMock.mock.calls.length, 1);
+  assert.equal(pendingMessageCount, 0);
+  assert.equal(persistedContextUpdates.filter((value) => "context_messages" in value).length, 1);
+});
+
 test("PiMonoSessionManagerService reuses the live runtime session for repeated ensureSession calls", async () => {
   const createdSession = {
     abort: piAgentMocks.abortMock,
