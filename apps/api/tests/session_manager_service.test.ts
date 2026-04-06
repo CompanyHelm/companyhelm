@@ -1124,7 +1124,7 @@ test("SessionManagerService updateSessionTitle stores the custom title and publi
   }]);
 });
 
-test("SessionManagerService prompt queues the message, publishes session updates, and nudges steering when requested", async () => {
+test("SessionManagerService prompt queues the message, publishes session updates, and leaves steer delivery for the follow-up prompt turn", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const queuedMessages: Array<Record<string, unknown>> = [];
   const updatedValues: Array<Record<string, unknown>> = [];
@@ -1276,10 +1276,6 @@ test("SessionManagerService prompt queues the message, publishes session updates
       channel: "company:company-1:session:session-1:update",
       message: "",
     },
-    {
-      channel: "company:company-1:session:session-1:steer",
-      message: "",
-    },
   ]);
   assert.deepEqual(logs, [{
     bindings: {
@@ -1294,6 +1290,59 @@ test("SessionManagerService prompt queues the message, publishes session updates
       shouldSteer: true,
     },
   }]);
+});
+
+test("SessionManagerService notifyQueuedSessionMessage still publishes the steer channel for explicit steer delivery", async () => {
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const wakeCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake(companyId: string, sessionId: string) {
+        wakeCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {} as never,
+  );
+
+  await service.notifyQueuedSessionMessage("company-1", "session-1", true);
+
+  assert.deepEqual(wakeCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:steer",
+      message: "",
+    },
+  ]);
 });
 
 test("SessionManagerService steerQueuedMessage marks the queued row and publishes queue plus steer updates", async () => {

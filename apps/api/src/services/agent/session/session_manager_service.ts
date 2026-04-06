@@ -118,6 +118,8 @@ type DeletableDatabase = {
   };
 };
 
+type QueuedMessageInsertableDatabase = Parameters<SessionQueuedMessageService["enqueueInTransaction"]>[0];
+
 /**
  * Owns the persisted ingress for agent-session work. Its scope is resolving the session defaults,
  * storing session rows and queued user messages in Postgres, and nudging the BullMQ wake queue plus
@@ -266,7 +268,7 @@ export class SessionManagerService {
       options.userId,
     );
 
-    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase as unknown as QueuedMessageInsertableDatabase, {
       companyId,
       images: queuedImages,
       sessionId: createdSessionRecord.id,
@@ -460,7 +462,10 @@ export class SessionManagerService {
       );
     });
 
-    await this.notifyQueuedSessionMessage(companyId, sessionId, shouldSteer);
+    // Fresh session prompts must stay on the normal prompt path so PI Mono creates transcript rows
+    // and persists them into session context. Immediate steer delivery is reserved for internal
+    // queued-message nudges such as agent-to-agent deliveries and explicitly steered queued rows.
+    await this.notifyQueuedSessionMessage(companyId, sessionId, false);
 
     this.logger.info({
       companyId,
@@ -608,7 +613,7 @@ export class SessionManagerService {
       throw new Error("Failed to update session.");
     }
 
-    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase as unknown as QueuedMessageInsertableDatabase, {
       companyId,
       images: queuedImages,
       sessionId,
