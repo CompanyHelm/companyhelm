@@ -57,6 +57,11 @@ import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_arti
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import { UpdateSessionTitleMutation } from "./mutations/update_session_title.ts";
 import { UpdateTaskMutation } from "./mutations/update_task.ts";
+import {
+  GraphqlErrorLogger,
+  type GraphqlExecutionContext,
+  type GraphqlExecutionResult,
+} from "./error_logger.ts";
 import type { GraphqlRequestContext } from "./graphql_request_context.ts";
 import { GraphqlRequestContextResolver } from "./graphql_request_context.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
@@ -189,6 +194,7 @@ export class GraphqlApplication {
   private readonly updateSessionTitleMutation: UpdateSessionTitleMutation;
   private readonly updateTaskMutation: UpdateTaskMutation;
   private readonly redisService: RedisService;
+  private readonly graphqlErrorLogger: GraphqlErrorLogger;
 
   constructor(
     @inject(Config) config: Config,
@@ -440,6 +446,8 @@ export class GraphqlApplication {
     } as never),
     @inject(DeleteTaskCategoryMutation)
     deleteTaskCategoryMutation: DeleteTaskCategoryMutation = new DeleteTaskCategoryMutation(),
+    @inject(GraphqlErrorLogger)
+    graphqlErrorLogger: GraphqlErrorLogger = new GraphqlErrorLogger(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
@@ -540,10 +548,13 @@ export class GraphqlApplication {
     this.updateMarkdownArtifactMutation = updateMarkdownArtifactMutation;
     this.updateTaskMutation = updateTaskMutation;
     this.redisService = redisService;
+    this.graphqlErrorLogger = graphqlErrorLogger;
   }
 
   async register(app: FastifyInstance): Promise<void> {
     const graphqlPluginOptions = {
+      errorFormatter: (execution: GraphqlExecutionResult, context: GraphqlExecutionContext) =>
+        this.graphqlErrorLogger.logAndFormat(execution, context),
       schema: GraphqlSchema.getDocument(),
       context: (
         request: Parameters<GraphqlRequestContextResolver["resolve"]>[0],
