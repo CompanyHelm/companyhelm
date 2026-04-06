@@ -1,10 +1,13 @@
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   sessionQueuedMessageImages,
+  sessionQueuedMessageStatusEnum,
   sessionQueuedMessages,
 } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+
+type SessionQueuedMessageStatus = (typeof sessionQueuedMessageStatusEnum.enumValues)[number];
 
 type QueuedMessageRow = {
   companyId: string;
@@ -12,7 +15,7 @@ type QueuedMessageRow = {
   id: string;
   sessionId: string;
   shouldSteer: boolean;
-  status: string;
+  status: SessionQueuedMessageStatus;
   text: string;
   updatedAt: Date;
 };
@@ -39,7 +42,7 @@ export type QueuedSessionMessageRecord = {
   images: QueuedSessionMessageImageRecord[];
   sessionId: string;
   shouldSteer: boolean;
-  status: string;
+  status: SessionQueuedMessageStatus;
   text: string;
   updatedAt: Date;
 };
@@ -141,7 +144,9 @@ export class SessionQueuedMessageService {
     companyId: string,
     sessionId: string,
   ): Promise<QueuedSessionMessageRecord[]> {
-    return this.listForFilter(transactionProvider, companyId, sessionId, ["pending", "processing"]);
+    // Only rows that have not been claimed yet may start a fresh wake pass. Replaying rows already
+    // marked `processing` is unsafe because the live PI Mono runtime is still process-local.
+    return this.listPending(transactionProvider, companyId, sessionId);
   }
 
   async listPending(
@@ -387,7 +392,7 @@ export class SessionQueuedMessageService {
     companyId: string,
     sessionId: string,
   ): Promise<boolean> {
-    const queuedMessages = await this.listProcessable(transactionProvider, companyId, sessionId);
+    const queuedMessages = await this.listPending(transactionProvider, companyId, sessionId);
     return queuedMessages.length > 0;
   }
 
@@ -395,7 +400,7 @@ export class SessionQueuedMessageService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
-    statuses: string[],
+    statuses: SessionQueuedMessageStatus[],
   ): Promise<QueuedSessionMessageRecord[]> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -414,9 +419,7 @@ export class SessionQueuedMessageService {
         .where(and(
           eq(sessionQueuedMessages.companyId, companyId),
           eq(sessionQueuedMessages.sessionId, sessionId),
-          statuses.length === 1
-            ? eq(sessionQueuedMessages.status, statuses[0]!)
-            : or(...statuses.map((status) => eq(sessionQueuedMessages.status, status))),
+          inArray(sessionQueuedMessages.status, statuses),
         )) as QueuedMessageRow[];
       if (queuedMessages.length === 0) {
         return [];

@@ -32,7 +32,7 @@ test("Clerk bootstrap applies company context before company-scoped inserts", ()
   );
 
   const findOrCreateCompanyMatch = source.match(
-    /private async findOrCreateCompany\([\s\S]*?\n  \}\n\n  private async findCompanyByClerkOrganizationId/,
+    /private async findOrCreateCompany\([\s\S]*?\n {2}\}\n\n {2}private async findCompanyByClerkOrganizationId/,
   );
   assert.ok(findOrCreateCompanyMatch, "expected findOrCreateCompany implementation");
   assert.doesNotMatch(

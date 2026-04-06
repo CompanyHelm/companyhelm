@@ -24,6 +24,38 @@ type QueuedImageRecord = Record<string, unknown> & {
   updatedAt: Date;
 };
 
+type SqlChunk = {
+  encoder?: unknown;
+  queryChunks?: unknown[];
+  value?: unknown;
+};
+
+function isQueuedMessageStatus(value: string): value is "pending" | "processing" {
+  return value === "pending" || value === "processing";
+}
+
+function collectSqlParamValues(chunk: unknown): unknown[] {
+  if (Array.isArray(chunk)) {
+    return chunk.flatMap((nestedChunk) => collectSqlParamValues(nestedChunk));
+  }
+  if (!chunk || typeof chunk !== "object") {
+    return [];
+  }
+
+  const sqlChunk = chunk as SqlChunk;
+  if ("encoder" in sqlChunk && "value" in sqlChunk) {
+    return [sqlChunk.value];
+  }
+  if (Array.isArray(sqlChunk.queryChunks)) {
+    return sqlChunk.queryChunks.flatMap((nestedChunk) => collectSqlParamValues(nestedChunk));
+  }
+  if (Array.isArray(sqlChunk.value)) {
+    return sqlChunk.value.flatMap((nestedChunk) => collectSqlParamValues(nestedChunk));
+  }
+
+  return [];
+}
+
 class SessionQueuedMessageServiceTestHarness {
   static create() {
     const queuedMessages: QueuedMessageRecord[] = [];
@@ -58,16 +90,50 @@ class SessionQueuedMessageServiceTestHarness {
                 from(table: unknown) {
                   if (table === sessionQueuedMessages) {
                     return {
-                      async where() {
-                        return queuedMessages;
+                      async where(condition: unknown) {
+                        const [companyId, ...filterValues] = collectSqlParamValues(condition) as string[];
+                        const statuses = filterValues.filter((value): value is "pending" | "processing" => isQueuedMessageStatus(value));
+                        const keyFilters = filterValues.filter((value) => !isQueuedMessageStatus(value));
+                        return queuedMessages.filter((queuedMessage) => {
+                          if (companyId && queuedMessage.companyId !== companyId) {
+                            return false;
+                          }
+                          if (statuses.length > 0) {
+                            const sessionId = keyFilters[0];
+                            if (sessionId && queuedMessage.sessionId !== sessionId) {
+                              return false;
+                            }
+                          } else if (keyFilters.length > 0) {
+                            const matchesId = keyFilters.includes(queuedMessage.id);
+                            const matchesSessionId = keyFilters.includes(queuedMessage.sessionId);
+                            if (!matchesId && !matchesSessionId) {
+                              return false;
+                            }
+                          }
+                          if (statuses.length > 0 && (!isQueuedMessageStatus(queuedMessage.status) || !statuses.includes(queuedMessage.status))) {
+                            return false;
+                          }
+
+                          return true;
+                        });
                       },
                     };
                   }
 
                   if (table === sessionQueuedMessageImages) {
                     return {
-                      async where() {
-                        return queuedImages;
+                      async where(condition: unknown) {
+                        const [companyId, ...queuedMessageIds] = collectSqlParamValues(condition) as string[];
+                        return queuedImages.filter((queuedImage) => {
+                          if (companyId && queuedImage.companyId !== companyId) {
+                            return false;
+                          }
+                          if (queuedMessageIds.length > 0 && !queuedMessageIds.includes(queuedImage.sessionQueuedMessageId)) {
+                            return false;
+                          }
+
+                          return true;
+                        });
                       },
                     };
                   }
@@ -183,6 +249,28 @@ test("SessionQueuedMessageService marks queued rows processing and deletes proce
 
   assert.equal(harness.queuedMessages.length, 0);
   assert.equal(harness.queuedImages.length, 0);
+});
+
+test("SessionQueuedMessageService does not expose in-flight processing rows as processable work", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+  const queuedMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Only the worker that already claimed this row may continue it.",
+  });
+
+  await service.markProcessing(harness.transactionProvider as never, "company-1", [queuedMessage.id]);
+
+  const processableMessages = await service.listProcessable(
+    harness.transactionProvider as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.deepEqual(processableMessages, []);
+  assert.equal(await service.hasPendingMessages(harness.transactionProvider as never, "company-1", "session-1"), false);
 });
 
 test("SessionQueuedMessageService reports whether a session still has pending rows", async () => {

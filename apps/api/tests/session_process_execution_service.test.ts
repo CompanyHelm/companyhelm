@@ -48,6 +48,244 @@ test("SessionProcessExecutionService no-ops when another worker already owns the
   await service.execute("company-1", "session-1");
 });
 
+test("SessionProcessExecutionService does not replay an in-flight row when another wake arrives", async () => {
+  const promptCalls: Array<{ sessionId: string; text: string }> = [];
+  const queuedMessages = [{
+    createdAt: new Date("2026-03-26T12:00:00.000Z"),
+    id: "queued-1",
+    images: [],
+    sessionId: "session-1",
+    shouldSteer: false,
+    status: "pending",
+    text: "Investigate the regression.",
+    updatedAt: new Date("2026-03-26T12:00:00.000Z"),
+  }];
+  const subscriber = {
+    isOpen: true,
+    async connect() {
+      return this;
+    },
+    async subscribe() {},
+    async unsubscribe() {},
+    async quit() {},
+  };
+  let resolvePrompt: () => void = () => {
+    throw new Error("Prompt start resolver not initialized.");
+  };
+  const promptStarted = new Promise<void>((resolve) => {
+    resolvePrompt = () => {
+      resolve();
+    };
+  });
+  let releasePrompt: () => void = () => {
+    throw new Error("Prompt completion resolver not initialized.");
+  };
+  const promptCompletion = new Promise<void>((resolve) => {
+    releasePrompt = () => {
+      resolve();
+    };
+  });
+  let selectCallCount = 0;
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        assert.equal(companyId, "company-1");
+        return callback({
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        agentId: "agent-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentReasoningLevel: "high",
+                        status: "queued",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        modelId: "gpt-5.4",
+                        modelProviderCredentialId: "credential-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        encryptedApiKey: "sk-openai",
+                        modelProvider: "openai",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
+          },
+        });
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {},
+          error() {},
+        };
+      },
+    } as never,
+    {
+      async ensureSession() {
+        return undefined;
+      },
+      dispose() {
+        return undefined;
+      },
+      async prompt(_transactionProvider: unknown, sessionId: string, text: string) {
+        promptCalls.push({
+          sessionId,
+          text,
+        });
+        resolvePrompt();
+        await promptCompletion;
+      },
+    } as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+      async getSubscriberClient() {
+        return subscriber;
+      },
+    } as never,
+    {
+      async acquire(companyId: string, sessionId: string) {
+        return {
+          companyId,
+          sessionId,
+          token: crypto.randomUUID(),
+        };
+      },
+      async heartbeat() {
+        return true;
+      },
+      async release() {
+        return undefined;
+      },
+    } as never,
+    {
+      async enqueueSessionWake() {
+        return undefined;
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        return queuedMessages.filter((queuedMessage) => queuedMessage.status === "pending");
+      },
+      async listPendingSteer() {
+        return [];
+      },
+      async markProcessing(_transactionProvider: unknown, _companyId: string, ids: string[]) {
+        for (const queuedMessage of queuedMessages) {
+          if (ids.includes(queuedMessage.id)) {
+            queuedMessage.status = "processing";
+          }
+        }
+      },
+      async deleteProcessed(_transactionProvider: unknown, _companyId: string, ids: string[]) {
+        for (let index = queuedMessages.length - 1; index >= 0; index -= 1) {
+          if (ids.includes(queuedMessages[index]!.id)) {
+            queuedMessages.splice(index, 1);
+          }
+        }
+      },
+      async markPending() {
+        return undefined;
+      },
+      async hasPendingMessages() {
+        return queuedMessages.some((queuedMessage) => queuedMessage.status === "pending");
+      },
+    } as never,
+  );
+
+  const firstExecutionPromise = service.execute("company-1", "session-1");
+  await promptStarted;
+
+  await service.execute("company-1", "session-1");
+  assert.deepEqual(promptCalls, [{
+    sessionId: "session-1",
+    text: "Investigate the regression.",
+  }]);
+
+  releasePrompt();
+  await firstExecutionPromise;
+  assert.equal(queuedMessages.length, 0);
+});
+
 test("SessionProcessExecutionService prompts one queued turn, releases the lease, and re-enqueues when more work remains", async () => {
   const ensureSessionCalls: unknown[] = [];
   const disposeCalls: string[] = [];
@@ -148,6 +386,18 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
               };
             }
 
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
         });
@@ -192,10 +442,10 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
           async publish() {
             return 1;
           },
-          duplicate() {
-            return subscriber;
-          },
         };
+      },
+      async getSubscriberClient() {
+        return subscriber;
       },
     } as never,
     {
@@ -259,7 +509,9 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
     runtimeConfig: {
       agentId: "agent-1",
       agentName: "Support Agent",
+      agentSystemPrompt: undefined,
       apiKey: "sk-openai",
+      companyBaseSystemPrompt: null,
       companyId: "company-1",
       companyName: "My Organization",
       modelId: "gpt-5.4",
@@ -384,6 +636,18 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
               };
             }
 
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
         });
@@ -414,10 +678,10 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
           async publish() {
             return 1;
           },
-          duplicate() {
-            return subscriber;
-          },
         };
+      },
+      async getSubscriberClient() {
+        return subscriber;
       },
     } as never,
     {
@@ -595,6 +859,18 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
               };
             }
 
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
         });
@@ -631,10 +907,10 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
           async publish() {
             return 1;
           },
-          duplicate() {
-            return subscriber;
-          },
         };
+      },
+      async getSubscriberClient() {
+        return subscriber;
       },
     } as never,
     {
