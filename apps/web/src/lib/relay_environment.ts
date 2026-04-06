@@ -2,6 +2,7 @@ import { Environment, Network, RecordSource, Store } from "relay-runtime";
 import { config } from "@/config";
 import { GraphqlSubscriptionConnectionStore } from "./graphql_subscription_connection_store";
 import { GraphqlSubscriptionClient } from "./graphql_subscription_client";
+import { SessionTranscriptRetentionStore } from "./session_transcript_retention_store";
 
 type GetToken = () => Promise<string | null>;
 
@@ -11,6 +12,7 @@ type GetToken = () => Promise<string | null>;
  */
 export class RelayEnvironment {
   readonly environment: Environment;
+  readonly sessionTranscriptRetentionStore: SessionTranscriptRetentionStore;
   readonly subscriptionConnectionStore: GraphqlSubscriptionConnectionStore;
 
   constructor(getToken: GetToken) {
@@ -62,5 +64,6 @@ export class RelayEnvironment {
       ),
       store: new Store(new RecordSource()),
     });
+    this.sessionTranscriptRetentionStore = new SessionTranscriptRetentionStore(this.environment);
   }
 }

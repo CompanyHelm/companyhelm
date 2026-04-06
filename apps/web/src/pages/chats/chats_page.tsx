@@ -26,7 +26,10 @@ import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { MarkdownContent } from "@/components/markdown_content";
-import { useGraphqlSubscriptionConnectionStatus } from "@/components/relay_environment_provider";
+import {
+  useGraphqlSubscriptionConnectionStatus,
+  useSessionTranscriptRetentionStore,
+} from "@/components/relay_environment_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -36,7 +39,6 @@ import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_co
 import { ChatComposerImage, type ChatComposerImageDraft } from "./chat_composer_image";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
-import { TranscriptSessionCache } from "./transcript_session_cache";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDismissInboxHumanQuestionMutation.graphql";
@@ -1825,6 +1827,7 @@ function ChatsPageContent() {
   const navigate = useNavigate();
   const environment = useRelayEnvironment();
   const subscriptionConnectionStatus = useGraphqlSubscriptionConnectionStatus();
+  const sessionTranscriptRetentionStore = useSessionTranscriptRetentionStore();
   const search = useSearch({ strict: false }) as ChatsPageSearch;
   const isMobile = useIsMobile();
   const [draftMessage, setDraftMessage] = useState("");
@@ -1864,7 +1867,6 @@ function ChatsPageContent() {
   const transcriptRequestIdRef = useRef(0);
   const activeTranscriptSessionIdRef = useRef<string | null>(null);
   const selectedSessionUpdatedAtRef = useRef<string | null>(null);
-  const transcriptSessionCacheRef = useRef(new TranscriptSessionCache<SessionMessageRecord>());
   const transcriptMessagesRef = useRef<SessionMessageRecord[]>([]);
   const transcriptHasNextPageRef = useRef(false);
   const transcriptEndCursorRef = useRef<string | null>(null);
@@ -2248,7 +2250,6 @@ function ChatsPageContent() {
 
   const applyTranscriptState = useCallback((
     sessionId: string,
-    sessionUpdatedAt: string,
     nextState: {
       endCursor: string | null;
       hasNextPage: boolean;
@@ -2261,13 +2262,6 @@ function ChatsPageContent() {
     setTranscriptMessages(nextState.messages);
     setTranscriptHasNextPage(nextState.hasNextPage);
     setTranscriptEndCursor(nextState.endCursor);
-    transcriptSessionCacheRef.current.write(sessionId, {
-      endCursor: nextState.endCursor,
-      hasLoadedInitialPage: true,
-      hasNextPage: nextState.hasNextPage,
-      messages: nextState.messages,
-      sessionUpdatedAt,
-    });
     updateSessionTitleOverride(sessionId, nextState.messages);
   }, [updateSessionTitleOverride]);
 
@@ -2315,7 +2309,18 @@ function ChatsPageContent() {
         const nextMessages = toTranscriptMessagesFromConnection(connection);
         const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, nextMessages);
         const nextSessionUpdatedAt = selectedSessionUpdatedAtRef.current ?? sessionUpdatedAt;
-        applyTranscriptState(sessionId, nextSessionUpdatedAt, {
+        sessionTranscriptRetentionStore.retain({
+          after: null,
+          query: chatsPageTranscriptQueryNode,
+          sessionId,
+          sessionUpdatedAt: nextSessionUpdatedAt,
+          variables: {
+            after: null,
+            first: CHAT_TRANSCRIPT_PAGE_SIZE,
+            sessionId,
+          },
+        });
+        applyTranscriptState(sessionId, {
           endCursor: mode === "replace"
             ? connection?.pageInfo.endCursor ?? null
             : transcriptEndCursorRef.current,
@@ -2373,7 +2378,18 @@ function ChatsPageContent() {
       const nextMessages = toTranscriptMessagesFromConnection(connection);
       const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, nextMessages);
       const nextSessionUpdatedAt = selectedSessionUpdatedAtRef.current ?? sessionUpdatedAt;
-      applyTranscriptState(sessionId, nextSessionUpdatedAt, {
+      sessionTranscriptRetentionStore.retain({
+        after,
+        query: chatsPageTranscriptQueryNode,
+        sessionId,
+        sessionUpdatedAt: nextSessionUpdatedAt,
+        variables: {
+          after,
+          first: CHAT_TRANSCRIPT_PAGE_SIZE,
+          sessionId,
+        },
+      });
+      applyTranscriptState(sessionId, {
         endCursor: connection?.pageInfo.endCursor ?? null,
         hasNextPage: Boolean(connection?.pageInfo.hasNextPage),
         messages: mergedMessages,
@@ -2389,6 +2405,7 @@ function ChatsPageContent() {
     applyTranscriptState,
     clearTranscriptState,
     environment,
+    sessionTranscriptRetentionStore,
   ]);
 
   useEffect(() => {
@@ -2429,19 +2446,26 @@ function ChatsPageContent() {
     }
 
     activeTranscriptSessionIdRef.current = selectedSession.id;
-    const cachedTranscript = transcriptSessionCacheRef.current.read(selectedSession.id);
-    if (cachedTranscript?.hasLoadedInitialPage) {
-      // Rehydrate the transcript immediately from memory, then refresh only when the session moved
-      // forward while a different chat was selected.
-      applyTranscriptState(selectedSession.id, cachedTranscript.sessionUpdatedAt, {
-        endCursor: cachedTranscript.endCursor,
-        hasNextPage: cachedTranscript.hasNextPage,
-        messages: [...cachedTranscript.messages],
+    const retainedTranscript = sessionTranscriptRetentionStore.read<chatsPageTranscriptQuery["response"]>(selectedSession.id);
+    if (retainedTranscript) {
+      // Relay already owns these retained transcript pages, so rebuild the page state from the
+      // normalized store first and only refresh the newest page when the session advanced.
+      const retainedMessages = retainedTranscript.pageResponses.reduce<SessionMessageRecord[]>((currentMessages, pageResponse) => {
+        return mergeTranscriptMessages(
+          currentMessages,
+          toTranscriptMessagesFromConnection(pageResponse.SessionTranscriptMessages),
+        );
+      }, []);
+      const oldestRetainedConnection = retainedTranscript.pageResponses.at(-1)?.SessionTranscriptMessages;
+      applyTranscriptState(selectedSession.id, {
+        endCursor: oldestRetainedConnection?.pageInfo.endCursor ?? null,
+        hasNextPage: Boolean(oldestRetainedConnection?.pageInfo.hasNextPage),
+        messages: retainedMessages,
       });
       setIsLoadingTranscript(false);
       isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
-      if (cachedTranscript.sessionUpdatedAt === selectedSession.updatedAt) {
+      if (retainedTranscript.sessionUpdatedAt === selectedSession.updatedAt) {
         return;
       }
 
@@ -2458,7 +2482,7 @@ function ChatsPageContent() {
       sessionId: selectedSession.id,
       sessionUpdatedAt: selectedSession.updatedAt,
     });
-  }, [applyTranscriptState, clearTranscriptState, loadTranscriptPage, selectedSession?.id]);
+  }, [applyTranscriptState, clearTranscriptState, loadTranscriptPage, selectedSession?.id, sessionTranscriptRetentionStore]);
 
   useEffect(() => {
     if (!selectedSession || pendingCreatedSessionTranscriptReloadId !== selectedSession.id) {
@@ -2759,7 +2783,7 @@ function ChatsPageContent() {
         }
 
         const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, [nextMessage]);
-        applyTranscriptState(selectedSession.id, selectedSessionUpdatedAtRef.current ?? selectedSession.updatedAt, {
+        applyTranscriptState(selectedSession.id, {
           endCursor: transcriptEndCursorRef.current,
           hasNextPage: transcriptHasNextPageRef.current,
           messages: mergedMessages,

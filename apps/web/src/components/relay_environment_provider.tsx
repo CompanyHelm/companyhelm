@@ -12,6 +12,9 @@ interface AppRelayEnvironmentProviderProps {
 const GraphqlSubscriptionConnectionStoreContext = createContext<
   RelayEnvironment["subscriptionConnectionStore"] | null
 >(null);
+const SessionTranscriptRetentionStoreContext = createContext<
+  RelayEnvironment["sessionTranscriptRetentionStore"] | null
+>(null);
 
 export function AppRelayEnvironmentProvider(props: AppRelayEnvironmentProviderProps) {
   const auth = useAuth();
@@ -22,11 +25,13 @@ export function AppRelayEnvironmentProvider(props: AppRelayEnvironmentProviderPr
   }, []);
 
   return (
-    <GraphqlSubscriptionConnectionStoreContext.Provider value={relayEnvironment.subscriptionConnectionStore}>
-      <RelayEnvironmentProvider environment={relayEnvironment.environment}>
-        {props.children}
-      </RelayEnvironmentProvider>
-    </GraphqlSubscriptionConnectionStoreContext.Provider>
+    <SessionTranscriptRetentionStoreContext.Provider value={relayEnvironment.sessionTranscriptRetentionStore}>
+      <GraphqlSubscriptionConnectionStoreContext.Provider value={relayEnvironment.subscriptionConnectionStore}>
+        <RelayEnvironmentProvider environment={relayEnvironment.environment}>
+          {props.children}
+        </RelayEnvironmentProvider>
+      </GraphqlSubscriptionConnectionStoreContext.Provider>
+    </SessionTranscriptRetentionStoreContext.Provider>
   );
 }
 
@@ -41,4 +46,13 @@ export function useGraphqlSubscriptionConnectionStatus(): GraphqlSubscriptionCon
     () => connectionStore.getSnapshot(),
     () => "idle",
   );
+}
+
+export function useSessionTranscriptRetentionStore(): RelayEnvironment["sessionTranscriptRetentionStore"] {
+  const transcriptRetentionStore = useContext(SessionTranscriptRetentionStoreContext);
+  if (!transcriptRetentionStore) {
+    throw new Error("Session transcript retention store is unavailable.");
+  }
+
+  return transcriptRetentionStore;
 }
