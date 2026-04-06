@@ -58,6 +58,8 @@ test("ApiServer does not expose a default root endpoint", async () => {
   } as never, {
     getLogger: () => pino({ level: "silent" }),
   } as never, {
+    validateNoEvictionPolicy: async () => {},
+  } as never, {
     start: () => {},
     stop: () => {},
   } as never, {
@@ -95,6 +97,8 @@ test("ApiServer exposes a health endpoint", async () => {
   } as never, {
     getLogger: () => pino({ level: "silent" }),
   } as never, {
+    validateNoEvictionPolicy: async () => {},
+  } as never, {
     start: () => {},
     stop: () => {},
   } as never, {
@@ -114,3 +118,40 @@ test("ApiServer exposes a health endpoint", async () => {
   await app.close();
 });
 
+test("ApiServer fails startup before listening when the Redis queue policy is unsafe", async () => {
+  const llmOauthRefreshWorker = {
+    start: () => {},
+    stop: () => {},
+  };
+  const sessionProcessWorker = {
+    start: () => {},
+    stop: async () => {},
+  };
+  const server = new ApiServer({
+    host: "127.0.0.1",
+    port: 0,
+    cors: {
+      origin: ["http://localhost:5173"],
+      credentials: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowed_headers: ["content-type", "authorization"],
+    },
+  } as never, {
+    close: async () => {},
+  } as never, {
+    close: async () => {},
+  } as never, {
+    register: async () => {},
+  } as never, {
+    getLogger: () => pino({ level: "silent" }),
+  } as never, {
+    validateNoEvictionPolicy: async () => {
+      throw new Error('Redis maxmemory policy must be "noeviction" for BullMQ, got "volatile-lru".');
+    },
+  } as never, llmOauthRefreshWorker as never, sessionProcessWorker as never);
+
+  await assert.rejects(
+    () => server.start(),
+    /Redis maxmemory policy must be "noeviction" for BullMQ/u,
+  );
+});

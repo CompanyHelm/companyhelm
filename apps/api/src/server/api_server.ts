@@ -6,6 +6,7 @@ import { AdminDatabase } from "../db/admin_database.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
 import { ApiLogger } from "../log/api_logger.ts";
+import { QueuePolicyValidator } from "../services/redis/queue_policy_validator.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
 
@@ -20,6 +21,7 @@ export class ApiServer {
   private readonly graphqlApplication: GraphqlApplication;
   private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
   private readonly logger: ApiLogger;
+  private readonly queuePolicyValidator: QueuePolicyValidator;
   private readonly sessionProcessWorker: SessionProcessWorker;
   private readonly app;
 
@@ -29,6 +31,7 @@ export class ApiServer {
     @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
     @inject(GraphqlApplication) graphqlApplication: GraphqlApplication,
     @inject(ApiLogger) logger: ApiLogger,
+    @inject(QueuePolicyValidator) queuePolicyValidator: QueuePolicyValidator,
     @inject(LlmOauthRefreshWorker) llmOauthRefreshWorker: LlmOauthRefreshWorker,
     @inject(SessionProcessWorker) sessionProcessWorker: SessionProcessWorker,
   ) {
@@ -37,6 +40,7 @@ export class ApiServer {
     this.database = database;
     this.graphqlApplication = graphqlApplication;
     this.logger = logger;
+    this.queuePolicyValidator = queuePolicyValidator;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
     this.sessionProcessWorker = sessionProcessWorker;
     this.app = Fastify({
@@ -45,6 +49,8 @@ export class ApiServer {
   }
 
   async start(): Promise<void> {
+    await this.queuePolicyValidator.validateNoEvictionPolicy();
+
     this.app.addHook("onClose", async () => {
       this.llmOauthRefreshWorker.stop();
       await this.sessionProcessWorker.stop();
@@ -63,7 +69,7 @@ export class ApiServer {
       return { status: "ok" };
     });
 
-    await this.graphqlApplication.register(this.app);
+    await this.graphqlApplication.register(this.app as never);
 
     await this.app.listen({
       host: this.config.host,
