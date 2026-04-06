@@ -100,6 +100,75 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const selectedModelOption = useMemo(() => {
     return selectedProviderOption?.models.find((modelOption) => modelOption.id === modelOptionId);
   }, [modelOptionId, selectedProviderOption]);
+  const orderedComputeProviderDefinitionOptions = useMemo(() => {
+    return props.computeProviderDefinitionOptions
+      .map((definitionOption, index) => ({
+        definitionOption,
+        index,
+      }))
+      .sort((left, right) => {
+        const leftIsSelected = left.definitionOption.id === computeProviderDefinitionId;
+        const rightIsSelected = right.definitionOption.id === computeProviderDefinitionId;
+        if (leftIsSelected !== rightIsSelected) {
+          return leftIsSelected ? -1 : 1;
+        }
+
+        if (left.definitionOption.isDefault !== right.definitionOption.isDefault) {
+          return left.definitionOption.isDefault ? -1 : 1;
+        }
+
+        return left.index - right.index;
+      })
+      .map(({ definitionOption }) => definitionOption);
+  }, [computeProviderDefinitionId, props.computeProviderDefinitionOptions]);
+  const orderedProviderOptions = useMemo(() => {
+    return props.providerOptions
+      .map((providerOption, index) => ({
+        index,
+        providerOption,
+      }))
+      .sort((left, right) => {
+        const leftIsSelected = left.providerOption.id === providerOptionId;
+        const rightIsSelected = right.providerOption.id === providerOptionId;
+        if (leftIsSelected !== rightIsSelected) {
+          return leftIsSelected ? -1 : 1;
+        }
+
+        if (left.providerOption.isDefault !== right.providerOption.isDefault) {
+          return left.providerOption.isDefault ? -1 : 1;
+        }
+
+        return left.index - right.index;
+      })
+      .map(({ providerOption }) => providerOption);
+  }, [props.providerOptions, providerOptionId]);
+  const orderedModelOptions = useMemo(() => {
+    const defaultModelOptionId = selectedProviderOption?.models.find(
+      (modelOption) => modelOption.modelId === selectedProviderOption.defaultModelId,
+    )?.id;
+
+    return (selectedProviderOption?.models ?? [])
+      .map((modelOption, index) => ({
+        index,
+        modelOption,
+      }))
+      .sort((left, right) => {
+        const leftIsSelected = left.modelOption.id === modelOptionId;
+        const rightIsSelected = right.modelOption.id === modelOptionId;
+        if (leftIsSelected !== rightIsSelected) {
+          return leftIsSelected ? -1 : 1;
+        }
+
+        const leftIsDefault = left.modelOption.id === defaultModelOptionId;
+        const rightIsDefault = right.modelOption.id === defaultModelOptionId;
+        if (leftIsDefault !== rightIsDefault) {
+          return leftIsDefault ? -1 : 1;
+        }
+
+        return left.index - right.index;
+      })
+      .map(({ modelOption }) => modelOption);
+  }, [modelOptionId, selectedProviderOption]);
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
   const selectedComputeProviderCpuBounds = selectedComputeProviderDefinitionOption
     ? ComputeProviderLimitsCatalog.getCpuBounds(selectedComputeProviderDefinitionOption.provider)
@@ -262,7 +331,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               Environment provider
             </label>
             <Select
-              items={props.computeProviderDefinitionOptions.map((definitionOption) => ({
+              items={orderedComputeProviderDefinitionOptions.map((definitionOption) => ({
                 label: definitionOption.label,
                 value: definitionOption.id,
               }))}
@@ -275,7 +344,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 <SelectValue placeholder="Select an environment provider" />
               </SelectTrigger>
               <SelectContent>
-                {props.computeProviderDefinitionOptions.map((definitionOption) => (
+                {orderedComputeProviderDefinitionOptions.map((definitionOption) => (
                   <SelectItem key={definitionOption.id} value={definitionOption.id}>
                     {definitionOption.label}
                   </SelectItem>
@@ -289,7 +358,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               Provider
             </label>
             <Select
-              items={props.providerOptions.map((providerOption) => ({
+              items={orderedProviderOptions.map((providerOption) => ({
                 label: providerOption.label,
                 value: providerOption.id,
               }))}
@@ -302,7 +371,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 <SelectValue placeholder="Select a provider" />
               </SelectTrigger>
               <SelectContent>
-                {props.providerOptions.map((providerOption) => (
+                {orderedProviderOptions.map((providerOption) => (
                   <SelectItem key={providerOption.id} value={providerOption.id}>
                     {providerOption.label}
                   </SelectItem>
@@ -316,7 +385,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               Model
             </label>
             <Select
-              items={(selectedProviderOption?.models ?? []).map((modelOption) => ({
+              items={orderedModelOptions.map((modelOption) => ({
                 label: modelOption.name,
                 value: modelOption.id,
               }))}
@@ -329,7 +398,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
               <SelectContent>
-                {(selectedProviderOption?.models ?? []).map((modelOption) => (
+                {orderedModelOptions.map((modelOption) => (
                   <SelectItem key={modelOption.id} value={modelOption.id}>
                     {modelOption.name}
                   </SelectItem>
