@@ -303,6 +303,12 @@ export class PiMonoSessionManagerService {
     await runtime.eventHandler.startPromptTurn(new Date());
     try {
       await session.prompt(message, images && images.length > 0 ? { images } : undefined);
+      // `steer()` only queues a user message. If it lands after PI Mono's last steering poll for
+      // the current run, `prompt()` can return with pending messages still enqueued and not yet
+      // emitted as transcripted `message_end` events, so drain the queue before closing the turn.
+      while (session.pendingMessageCount > 0) {
+        await session.agent.continue();
+      }
     } finally {
       await runtime.eventHandler.finishPromptTurn(new Date());
     }
