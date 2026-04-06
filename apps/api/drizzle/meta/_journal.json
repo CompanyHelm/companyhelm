@@ -456,6 +456,13 @@
       "when": 1775454000000,
       "tag": "0064_agent_sessions_company_scope_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1775457000000,
+      "tag": "0065_session_queued_messages_company_scope_policy",
+      "breakpoints": true
     }
   ]
 }
