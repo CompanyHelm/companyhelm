@@ -10,9 +10,9 @@ type SessionQueuedMessagesUpdatedArguments = {
 };
 
 /**
- * Streams the live pending queue for one session. Redis only signals that queue state changed; the
- * resolver reloads the full pending list from Postgres so the web composer can replace its local
- * queue strip without inferring deletes or steer toggles.
+ * Streams the live queued rows for one session. Redis only signals that queue state changed; the
+ * resolver reloads the full queue snapshot from Postgres so the web composer can replace its local
+ * queue strip without inferring claims, dispatches, deletes, or steer toggles client-side.
  */
 @injectable()
 export class SessionQueuedMessagesUpdatedSubscriptionResolver {
@@ -73,7 +73,7 @@ export class SessionQueuedMessagesUpdatedSubscriptionResolver {
     try {
       for await (const event of iterator) {
         void event;
-        const queuedMessages = await this.sessionQueuedMessageService.listPending(
+        const queuedMessages = await this.sessionQueuedMessageService.listQueued(
           requestContext.app_runtime_transaction_provider,
           requestContext.authSession.company.id,
           sessionId,

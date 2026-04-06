@@ -293,10 +293,11 @@ export class PiMonoSessionManagerService {
     message: string,
     images?: ImageContent[],
     userMessageCreatedAt?: Date,
+    queuedMessageId?: string,
   ): Promise<void> {
     const runtime = this.getRequiredRuntime(sessionId);
     if (userMessageCreatedAt) {
-      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt);
+      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId);
     }
 
     const session = runtime.session;
@@ -321,10 +322,11 @@ export class PiMonoSessionManagerService {
     message: string,
     images?: ImageContent[],
     userMessageCreatedAt?: Date,
+    queuedMessageId?: string,
   ): Promise<void> {
     const runtime = this.getRequiredRuntime(sessionId);
     if (userMessageCreatedAt) {
-      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt);
+      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId);
     }
 
     const session = runtime.session;

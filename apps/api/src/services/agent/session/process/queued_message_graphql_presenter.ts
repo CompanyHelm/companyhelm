@@ -8,7 +8,9 @@ export type SessionQueuedMessageImageGraphqlRecord = {
 };
 
 export type SessionQueuedMessageGraphqlRecord = {
+  claimedAt: string | null;
   createdAt: string;
+  dispatchedAt: string | null;
   id: string;
   images: SessionQueuedMessageImageGraphqlRecord[];
   sessionId: string;
@@ -27,7 +29,9 @@ export type SessionQueuedMessageGraphqlRecord = {
 export class SessionQueuedMessageGraphqlPresenter {
   serialize(record: QueuedSessionMessageRecord): SessionQueuedMessageGraphqlRecord {
     return {
+      claimedAt: record.claimedAt?.toISOString() ?? null,
       createdAt: record.createdAt.toISOString(),
+      dispatchedAt: record.dispatchedAt?.toISOString() ?? null,
       id: record.id,
       images: record.images.map((image) => this.serializeImage(image)),
       sessionId: record.sessionId,

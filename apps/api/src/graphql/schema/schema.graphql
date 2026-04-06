@@ -382,6 +382,8 @@ type SessionQueuedMessage {
   images: [SessionQueuedMessageImage!]!
   shouldSteer: Boolean!
   status: String!
+  claimedAt: String
+  dispatchedAt: String
   createdAt: String!
   updatedAt: String!
 }

@@ -12,7 +12,9 @@ test("SteerSessionQueuedMessageMutation marks one queued row steer and serialize
         assert.equal(queuedMessageId, "queued-1");
 
         return {
+          claimedAt: null,
           createdAt: new Date("2026-03-31T08:00:00.000Z"),
+          dispatchedAt: null,
           id: "queued-1",
           images: [],
           sessionId: "session-1",
@@ -47,8 +49,11 @@ test("SteerSessionQueuedMessageMutation marks one queued row steer and serialize
   );
 
   assert.deepEqual(result, {
+    claimedAt: null,
     createdAt: "2026-03-31T08:00:00.000Z",
+    dispatchedAt: null,
     id: "queued-1",
+    images: [],
     sessionId: "session-1",
     shouldSteer: true,
     status: "pending",

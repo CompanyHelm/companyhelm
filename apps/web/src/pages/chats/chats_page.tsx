@@ -169,6 +169,8 @@ const chatsPageQueuedMessagesQueryNode = graphql`
       }
       shouldSteer
       status
+      claimedAt
+      dispatchedAt
       createdAt
       updatedAt
     }
@@ -207,6 +209,8 @@ const chatsPageDeleteSessionQueuedMessageMutationNode = graphql`
       text
       shouldSteer
       status
+      claimedAt
+      dispatchedAt
       createdAt
       updatedAt
     }
@@ -221,6 +225,8 @@ const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
       text
       shouldSteer
       status
+      claimedAt
+      dispatchedAt
       createdAt
       updatedAt
     }
@@ -420,6 +426,8 @@ const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
       }
       shouldSteer
       status
+      claimedAt
+      dispatchedAt
       createdAt
       updatedAt
     }
@@ -895,6 +903,21 @@ function compareQueuedMessagesByTimestamp(leftMessage: QueuedMessageRecord, righ
   return leftMessage.id.localeCompare(rightMessage.id);
 }
 
+function normalizeQueuedMessageStatus(status: string): string {
+  return status.trim().toLowerCase();
+}
+
+function formatQueuedMessageLifecycle(queuedMessage: Pick<QueuedMessageRecord, "claimedAt" | "dispatchedAt">): string | null {
+  if (queuedMessage.dispatchedAt) {
+    return `Dispatched ${formatTimestamp(queuedMessage.dispatchedAt)}`;
+  }
+  if (queuedMessage.claimedAt) {
+    return `Claimed ${formatTimestamp(queuedMessage.claimedAt)}`;
+  }
+
+  return null;
+}
+
 function compareSessionsByLatestActivity(leftSession: SessionRecord, rightSession: SessionRecord): number {
   const leftTimestamp = new Date(leftSession.updatedAt).getTime();
   const rightTimestamp = new Date(rightSession.updatedAt).getTime();
@@ -1301,16 +1324,18 @@ function ChatsQueuedMessagesComposerList({
     <div className="border-b border-border/60 px-2.5 pt-2.5 pb-2">
       <div className="mb-2 flex items-center justify-between gap-3 px-1">
         <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Pending queue
+          Queue
         </p>
         {isLoading ? <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" /> : null}
       </div>
       <div className="grid gap-2">
         {queuedMessages.map((queuedMessage) => {
-          const canSteer = !queuedMessage.shouldSteer && queuedMessage.status.trim().toLowerCase() === "pending";
-          const canDelete = !queuedMessage.shouldSteer && queuedMessage.status.trim().toLowerCase() === "pending";
+          const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
+          const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
+          const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
           const isSteering = steeringQueuedMessageId === queuedMessage.id;
           const isDeleting = deletingQueuedMessageId === queuedMessage.id;
+          const lifecycleLabel = formatQueuedMessageLifecycle(queuedMessage);
 
           return (
             <div
@@ -1322,10 +1347,18 @@ function ChatsQueuedMessagesComposerList({
                   <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     {queuedMessage.shouldSteer ? "Steer" : "Queued"}
                   </span>
+                  <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {normalizedStatus === "processing" ? "Processing" : "Pending"}
+                  </span>
                   <span className="truncate text-[11px] text-muted-foreground">
                     {formatTimestamp(queuedMessage.createdAt)}
                   </span>
                 </div>
+                {lifecycleLabel ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {lifecycleLabel}
+                  </p>
+                ) : null}
                 {queuedMessage.text.trim().length > 0 ? (
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground [overflow-wrap:anywhere]">
                     {queuedMessage.text}
@@ -3102,7 +3135,7 @@ function ChatsPageContent() {
 
   const deleteQueuedMessage = async (queuedMessageId: string) => {
     const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
-    if (!queuedMessage || queuedMessage.shouldSteer) {
+    if (!queuedMessage || queuedMessage.shouldSteer || normalizeQueuedMessageStatus(queuedMessage.status) !== "pending") {
       return;
     }
 
@@ -3139,7 +3172,7 @@ function ChatsPageContent() {
 
   const steerQueuedMessage = async (queuedMessageId: string) => {
     const queuedMessage = queuedMessages.find((currentQueuedMessage) => currentQueuedMessage.id === queuedMessageId) ?? null;
-    if (!queuedMessage || queuedMessage.shouldSteer || queuedMessage.status.trim().toLowerCase() !== "pending") {
+    if (!queuedMessage || queuedMessage.shouldSteer || normalizeQueuedMessageStatus(queuedMessage.status) !== "pending") {
       return;
     }
 

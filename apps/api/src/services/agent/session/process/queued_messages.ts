@@ -10,8 +10,10 @@ import type { TransactionProviderInterface } from "../../../../db/transaction_pr
 type SessionQueuedMessageStatus = (typeof sessionQueuedMessageStatusEnum.enumValues)[number];
 
 type QueuedMessageRow = {
+  claimedAt: Date | null;
   companyId: string;
   createdAt: Date;
+  dispatchedAt: Date | null;
   id: string;
   sessionId: string;
   shouldSteer: boolean;
@@ -42,7 +44,9 @@ export type QueuedSessionMessageImageRecord = {
 };
 
 export type QueuedSessionMessageRecord = {
+  claimedAt: Date | null;
   createdAt: Date;
+  dispatchedAt: Date | null;
   id: string;
   images: QueuedSessionMessageImageRecord[];
   sessionId: string;
@@ -62,23 +66,25 @@ type SelectableDatabase = {
 
 type InsertableDatabase = {
   insert(table: unknown): {
-    values(value: Record<string, unknown> | Array<Record<string, unknown>>): Promise<unknown>;
+    values(value: Record<string, unknown> | Array<Record<string, unknown>>): unknown;
   };
 };
 
 type UpdatableDatabase = {
   update(table: unknown): {
     set(value: Record<string, unknown>): {
-      where(condition: unknown): Promise<unknown>;
+      where(condition: unknown): unknown;
     };
   };
 };
 
 type DeletableDatabase = {
   delete(table: unknown): {
-    where(condition: unknown): Promise<unknown>;
+    where(condition: unknown): unknown;
   };
 };
+
+type QueueWritableDatabase = SelectableDatabase & InsertableDatabase & UpdatableDatabase;
 
 /**
  * Owns persistence of queued inbound session messages before a worker delivers them to PI Mono. Its
@@ -98,12 +104,12 @@ export class SessionQueuedMessageService {
     },
   ): Promise<{ id: string }> {
     return transactionProvider.transaction(async (tx) => {
-      return this.enqueueInTransaction(tx as InsertableDatabase, input);
+      return this.enqueueInTransaction(tx as unknown as QueueWritableDatabase, input);
     });
   }
 
   async enqueueInTransaction(
-    insertableDatabase: InsertableDatabase,
+    database: QueueWritableDatabase,
     input: {
       companyId: string;
       images?: Array<{ base64EncodedImage: string; mimeType: string }>;
@@ -112,12 +118,38 @@ export class SessionQueuedMessageService {
       text: string;
     },
   ): Promise<{ id: string }> {
-    const queuedMessageId = crypto.randomUUID();
     const timestamp = new Date();
+    const latestQueuedMessage = await this.loadLatestQueuedMessage(
+      database,
+      input.companyId,
+      input.sessionId,
+    );
+    if (latestQueuedMessage?.status === "pending" && latestQueuedMessage.shouldSteer === input.shouldSteer) {
+      const contentRecords = this.buildContentRecords(latestQueuedMessage.id, input, timestamp);
+      if (contentRecords.length > 0) {
+        await database.insert(sessionQueuedMessageContents).values(contentRecords);
+      }
+      await database
+        .update(sessionQueuedMessages)
+        .set({
+          updatedAt: timestamp,
+        })
+        .where(and(
+          eq(sessionQueuedMessages.companyId, input.companyId),
+          eq(sessionQueuedMessages.id, latestQueuedMessage.id),
+        ));
 
-    await insertableDatabase.insert(sessionQueuedMessages).values({
+      return {
+        id: latestQueuedMessage.id,
+      };
+    }
+
+    const queuedMessageId = crypto.randomUUID();
+    await database.insert(sessionQueuedMessages).values({
+      claimedAt: null,
       companyId: input.companyId,
       createdAt: timestamp,
+      dispatchedAt: null,
       id: queuedMessageId,
       sessionId: input.sessionId,
       shouldSteer: input.shouldSteer,
@@ -127,7 +159,7 @@ export class SessionQueuedMessageService {
 
     const contentRecords = this.buildContentRecords(queuedMessageId, input, timestamp);
     if (contentRecords.length > 0) {
-      await insertableDatabase.insert(sessionQueuedMessageContents).values(contentRecords);
+      await database.insert(sessionQueuedMessageContents).values(contentRecords);
     }
 
     return {
@@ -143,6 +175,14 @@ export class SessionQueuedMessageService {
     // Only rows that have not been claimed yet may start a fresh wake pass. Replaying rows already
     // marked `processing` is unsafe because the live PI Mono runtime is still process-local.
     return this.listPending(transactionProvider, companyId, sessionId);
+  }
+
+  async listQueued(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<QueuedSessionMessageRecord[]> {
+    return this.listForFilter(transactionProvider, companyId, sessionId, ["pending", "processing"]);
   }
 
   async listPending(
@@ -254,6 +294,8 @@ export class SessionQueuedMessageService {
       await updatableDatabase
         .update(sessionQueuedMessages)
         .set({
+          claimedAt: null,
+          dispatchedAt: null,
           status: "pending",
           updatedAt: new Date(),
         })
@@ -275,11 +317,39 @@ export class SessionQueuedMessageService {
 
     await transactionProvider.transaction(async (tx) => {
       const updatableDatabase = tx as UpdatableDatabase;
+      const timestamp = new Date();
       await updatableDatabase
         .update(sessionQueuedMessages)
         .set({
+          claimedAt: timestamp,
+          dispatchedAt: null,
           status: "processing",
-          updatedAt: new Date(),
+          updatedAt: timestamp,
+        })
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          inArray(sessionQueuedMessages.id, ids),
+        ));
+    });
+  }
+
+  async markDispatched(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    ids: string[],
+    dispatchedAt: Date,
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    await transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(sessionQueuedMessages)
+        .set({
+          dispatchedAt,
+          updatedAt: dispatchedAt,
         })
         .where(and(
           eq(sessionQueuedMessages.companyId, companyId),
@@ -400,8 +470,10 @@ export class SessionQueuedMessageService {
       const selectableDatabase = tx as SelectableDatabase;
       const queuedMessages = await selectableDatabase
         .select({
+          claimedAt: sessionQueuedMessages.claimedAt,
           companyId: sessionQueuedMessages.companyId,
           createdAt: sessionQueuedMessages.createdAt,
+          dispatchedAt: sessionQueuedMessages.dispatchedAt,
           id: sessionQueuedMessages.id,
           sessionId: sessionQueuedMessages.sessionId,
           shouldSteer: sessionQueuedMessages.shouldSteer,
@@ -441,8 +513,10 @@ export class SessionQueuedMessageService {
   ): Promise<QueuedMessageRow | null> {
     const [queuedMessage] = await selectableDatabase
       .select({
+        claimedAt: sessionQueuedMessages.claimedAt,
         companyId: sessionQueuedMessages.companyId,
         createdAt: sessionQueuedMessages.createdAt,
+        dispatchedAt: sessionQueuedMessages.dispatchedAt,
         id: sessionQueuedMessages.id,
         sessionId: sessionQueuedMessages.sessionId,
         shouldSteer: sessionQueuedMessages.shouldSteer,
@@ -456,6 +530,48 @@ export class SessionQueuedMessageService {
       )) as QueuedMessageRow[];
 
     return queuedMessage ?? null;
+  }
+
+  private async loadLatestQueuedMessage(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionId: string,
+  ): Promise<QueuedMessageRow | null> {
+    const queuedMessages = await selectableDatabase
+      .select({
+        claimedAt: sessionQueuedMessages.claimedAt,
+        companyId: sessionQueuedMessages.companyId,
+        createdAt: sessionQueuedMessages.createdAt,
+        dispatchedAt: sessionQueuedMessages.dispatchedAt,
+        id: sessionQueuedMessages.id,
+        sessionId: sessionQueuedMessages.sessionId,
+        shouldSteer: sessionQueuedMessages.shouldSteer,
+        status: sessionQueuedMessages.status,
+        updatedAt: sessionQueuedMessages.updatedAt,
+      })
+      .from(sessionQueuedMessages)
+      .where(and(
+        eq(sessionQueuedMessages.companyId, companyId),
+        eq(sessionQueuedMessages.sessionId, sessionId),
+      )) as QueuedMessageRow[];
+
+    if (queuedMessages.length === 0) {
+      return null;
+    }
+
+    return [...queuedMessages].sort((leftMessage, rightMessage) => {
+      const updatedAtDelta = rightMessage.updatedAt.getTime() - leftMessage.updatedAt.getTime();
+      if (updatedAtDelta !== 0) {
+        return updatedAtDelta;
+      }
+
+      const createdAtDelta = rightMessage.createdAt.getTime() - leftMessage.createdAt.getTime();
+      if (createdAtDelta !== 0) {
+        return createdAtDelta;
+      }
+
+      return rightMessage.id.localeCompare(leftMessage.id);
+    })[0] ?? null;
   }
 
   private async loadQueuedMessageContents(
@@ -538,7 +654,9 @@ export class SessionQueuedMessageService {
     }
 
     return {
+      claimedAt: queuedMessage.claimedAt,
       createdAt: queuedMessage.createdAt,
+      dispatchedAt: queuedMessage.dispatchedAt,
       id: queuedMessage.id,
       images,
       sessionId: queuedMessage.sessionId,

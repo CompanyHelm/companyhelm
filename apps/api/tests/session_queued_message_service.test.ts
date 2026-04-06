@@ -4,8 +4,10 @@ import { sessionQueuedMessageContents, sessionQueuedMessages } from "../src/db/s
 import { SessionQueuedMessageService } from "../src/services/agent/session/process/queued_messages.ts";
 
 type QueuedMessageRecord = Record<string, unknown> & {
+  claimedAt: Date | null;
   companyId: string;
   createdAt: Date;
+  dispatchedAt: Date | null;
   id: string;
   sessionId: string;
   shouldSteer: boolean;
@@ -61,6 +63,24 @@ function collectSqlParamValues(chunk: unknown): unknown[] {
   return [];
 }
 
+function parseQueuedMessageFilter(condition: unknown): {
+  companyId: string | null;
+  ids: string[];
+  sessionId: string | null;
+  statuses: Array<"pending" | "processing">;
+} {
+  const [companyIdValue, ...restValues] = collectSqlParamValues(condition) as string[];
+  const statuses = restValues.filter((value): value is "pending" | "processing" => isQueuedMessageStatus(value));
+  const keyFilters = restValues.filter((value) => !isQueuedMessageStatus(value));
+
+  return {
+    companyId: companyIdValue ?? null,
+    ids: keyFilters.length > 1 ? keyFilters : [],
+    sessionId: keyFilters.length === 1 ? keyFilters[0] ?? null : null,
+    statuses,
+  };
+}
+
 class SessionQueuedMessageServiceTestHarness {
   static create() {
     const queuedMessages: QueuedMessageRecord[] = [];
@@ -97,27 +117,20 @@ class SessionQueuedMessageServiceTestHarness {
                   if (table === sessionQueuedMessages) {
                     return {
                       async where(condition: unknown) {
-                        const [companyId, ...filterValues] = collectSqlParamValues(condition) as string[];
-                        const statuses = filterValues.filter((value): value is "pending" | "processing" => isQueuedMessageStatus(value));
-                        const keyFilters = filterValues.filter((value) => !isQueuedMessageStatus(value));
+                        const filter = parseQueuedMessageFilter(condition);
                         return queuedMessages.filter((queuedMessage) => {
-                          if (companyId && queuedMessage.companyId !== companyId) {
+                          const matchesCompanyId = !filter.companyId || queuedMessage.companyId === filter.companyId;
+                          const matchesId = filter.ids.length === 0 || filter.ids.includes(queuedMessage.id);
+                          const matchesSessionId = !filter.sessionId
+                            || queuedMessage.sessionId === filter.sessionId
+                            || queuedMessage.id === filter.sessionId;
+                          if (!matchesCompanyId || !matchesId || !matchesSessionId) {
                             return false;
                           }
-                          if (statuses.length > 0) {
-                            const sessionId = keyFilters[0];
-                            if (sessionId && queuedMessage.sessionId !== sessionId) {
+                          if (filter.statuses.length > 0) {
+                            if (!isQueuedMessageStatus(queuedMessage.status) || !filter.statuses.includes(queuedMessage.status)) {
                               return false;
                             }
-                          } else if (keyFilters.length > 0) {
-                            const matchesId = keyFilters.includes(queuedMessage.id);
-                            const matchesSessionId = keyFilters.includes(queuedMessage.sessionId);
-                            if (!matchesId && !matchesSessionId) {
-                              return false;
-                            }
-                          }
-                          if (statuses.length > 0 && (!isQueuedMessageStatus(queuedMessage.status) || !statuses.includes(queuedMessage.status))) {
-                            return false;
                           }
 
                           return true;
@@ -156,9 +169,13 @@ class SessionQueuedMessageServiceTestHarness {
               return {
                 set(value: Record<string, unknown>) {
                   return {
-                    async where() {
+                    async where(condition: unknown) {
+                      const filter = parseQueuedMessageFilter(condition);
                       for (const queuedMessage of queuedMessages) {
-                        if (queuedMessage.status === "pending") {
+                        const matchesCompanyId = !filter.companyId || queuedMessage.companyId === filter.companyId;
+                        const matchesId = filter.ids.length === 0 || filter.ids.includes(queuedMessage.id);
+                        const matchesSessionId = !filter.sessionId || queuedMessage.sessionId === filter.sessionId || queuedMessage.id === filter.sessionId;
+                        if (matchesCompanyId && matchesId && matchesSessionId) {
                           Object.assign(queuedMessage, value);
                         }
                       }
@@ -173,15 +190,24 @@ class SessionQueuedMessageServiceTestHarness {
               }
 
               return {
-                async where() {
-                  while (queuedMessages.length > 0) {
-                    const deletedMessage = queuedMessages.pop();
-                    if (!deletedMessage) {
+                async where(condition: unknown) {
+                  const filter = parseQueuedMessageFilter(condition);
+                  for (let messageIndex = queuedMessages.length - 1; messageIndex >= 0; messageIndex -= 1) {
+                    const queuedMessage = queuedMessages[messageIndex];
+                    if (!queuedMessage) {
                       continue;
                     }
 
+                    const matchesCompanyId = !filter.companyId || queuedMessage.companyId === filter.companyId;
+                    const matchesId = filter.ids.length === 0 || filter.ids.includes(queuedMessage.id);
+                    const matchesSessionId = !filter.sessionId || queuedMessage.sessionId === filter.sessionId || queuedMessage.id === filter.sessionId;
+                    if (!matchesCompanyId || !matchesId || !matchesSessionId) {
+                      continue;
+                    }
+
+                    queuedMessages.splice(messageIndex, 1);
                     for (let index = queuedContents.length - 1; index >= 0; index -= 1) {
-                      if (queuedContents[index]?.sessionQueuedMessageId === deletedMessage.id) {
+                      if (queuedContents[index]?.sessionQueuedMessageId === queuedMessage.id) {
                         queuedContents.splice(index, 1);
                       }
                     }
@@ -196,7 +222,7 @@ class SessionQueuedMessageServiceTestHarness {
   }
 }
 
-test("SessionQueuedMessageService enqueues queued messages and loads them in created order", async () => {
+test("SessionQueuedMessageService batches onto the latest pending row with the same steer mode", async () => {
   const harness = SessionQueuedMessageServiceTestHarness.create();
   const service = new SessionQueuedMessageService();
 
@@ -205,6 +231,12 @@ test("SessionQueuedMessageService enqueues queued messages and loads them in cre
     sessionId: "session-1",
     shouldSteer: false,
     text: "First message",
+  });
+  const second = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Second message",
   });
   await service.enqueue(harness.transactionProvider as never, {
     companyId: "company-1",
@@ -220,17 +252,42 @@ test("SessionQueuedMessageService enqueues queued messages and loads them in cre
   harness.queuedMessages[0]!.createdAt = new Date("2026-03-26T20:00:00.000Z");
   harness.queuedMessages[1]!.createdAt = new Date("2026-03-26T20:01:00.000Z");
 
-  const queuedMessages = await service.listPending(harness.transactionProvider as never, "company-1", "session-1");
+  const queuedMessages = await service.listQueued(harness.transactionProvider as never, "company-1", "session-1");
   const steerMessages = await service.listPendingSteer(harness.transactionProvider as never, "company-1", "session-1");
 
   assert.equal(first.id.length > 0, true);
+  assert.equal(second.id, first.id);
   assert.equal(queuedMessages.length, 2);
-  assert.equal(queuedMessages[0]?.text, "First message");
+  assert.equal(queuedMessages[0]?.text, "First message\n\nSecond message");
   assert.equal(queuedMessages[1]?.shouldSteer, true);
   assert.equal(queuedMessages[1]?.images.length, 1);
   assert.equal(queuedMessages[1]?.images[0]?.mimeType, "image/png");
   assert.equal(steerMessages.length, 1);
   assert.equal(steerMessages[0]?.text, "Steer message");
+});
+
+test("SessionQueuedMessageService starts a new row once the latest queue entry is no longer pending", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+
+  const first = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Queued prompt",
+  });
+  await service.markProcessing(harness.transactionProvider as never, "company-1", [first.id]);
+  const second = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Follow-up prompt",
+  });
+
+  assert.notEqual(second.id, first.id);
+  assert.equal(harness.queuedMessages.length, 2);
+  assert.equal(harness.queuedMessages[0]?.status, "processing");
+  assert.equal(harness.queuedMessages[1]?.status, "pending");
 });
 
 test("SessionQueuedMessageService stores text and image parts in queued contents", async () => {
@@ -257,7 +314,7 @@ test("SessionQueuedMessageService stores text and image parts in queued contents
   assert.equal(harness.queuedContents[1]?.mimeType, "image/png");
 });
 
-test("SessionQueuedMessageService marks queued rows processing and deletes processed rows", async () => {
+test("SessionQueuedMessageService marks queued rows processing, records claim and dispatch timestamps, and deletes processed rows", async () => {
   const harness = SessionQueuedMessageServiceTestHarness.create();
   const service = new SessionQueuedMessageService();
   const first = await service.enqueue(harness.transactionProvider as never, {
@@ -273,7 +330,13 @@ test("SessionQueuedMessageService marks queued rows processing and deletes proce
 
   await service.markProcessing(harness.transactionProvider as never, "company-1", [first.id]);
   assert.equal(harness.queuedMessages[0]?.status, "processing");
+  assert.ok(harness.queuedMessages[0]?.claimedAt instanceof Date);
+  assert.equal(harness.queuedMessages[0]?.dispatchedAt, null);
   assert.ok(harness.queuedMessages[0]?.updatedAt instanceof Date);
+
+  const dispatchedAt = new Date("2026-03-26T12:01:00.000Z");
+  await service.markDispatched(harness.transactionProvider as never, "company-1", [first.id], dispatchedAt);
+  assert.equal((harness.queuedMessages[0]?.dispatchedAt as Date | null)?.toISOString(), dispatchedAt.toISOString());
 
   await service.deleteProcessed(harness.transactionProvider as never, "company-1", [first.id]);
 
@@ -301,6 +364,30 @@ test("SessionQueuedMessageService does not expose in-flight processing rows as p
 
   assert.deepEqual(processableMessages, []);
   assert.equal(await service.hasPendingMessages(harness.transactionProvider as never, "company-1", "session-1"), false);
+});
+
+test("SessionQueuedMessageService resets claim metadata when a claimed row returns to pending", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+  const queuedMessage = await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Retry this after the runtime error.",
+  });
+
+  await service.markProcessing(harness.transactionProvider as never, "company-1", [queuedMessage.id]);
+  await service.markDispatched(
+    harness.transactionProvider as never,
+    "company-1",
+    [queuedMessage.id],
+    new Date("2026-03-26T12:05:00.000Z"),
+  );
+  await service.markPending(harness.transactionProvider as never, "company-1", [queuedMessage.id]);
+
+  assert.equal(harness.queuedMessages[0]?.status, "pending");
+  assert.equal(harness.queuedMessages[0]?.claimedAt, null);
+  assert.equal(harness.queuedMessages[0]?.dispatchedAt, null);
 });
 
 test("SessionQueuedMessageService reports whether a session still has pending rows", async () => {

@@ -289,6 +289,8 @@ export const sessionQueuedMessages = pgTable("session_queued_messages", {
     .notNull(),
   shouldSteer: boolean("should_steer").notNull(),
   status: sessionQueuedMessageStatusEnum("status").notNull(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },

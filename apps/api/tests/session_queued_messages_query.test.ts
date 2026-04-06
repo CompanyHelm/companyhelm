@@ -24,6 +24,10 @@ class SessionQueuedMessagesQueryTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -41,18 +45,14 @@ class SessionQueuedMessagesQueryTestHarness {
                   return {
                     async where() {
                       return [{
+                        claimedAt: new Date("2026-03-31T08:00:30.000Z"),
                         companyId: "company-123",
                         createdAt: new Date("2026-03-31T08:00:00.000Z"),
+                        dispatchedAt: null,
                         id: "queued-1",
-                        images: [{
-                          base64EncodedImage: "encoded-image",
-                          id: "image-1",
-                          mimeType: "image/png",
-                        }],
                         sessionId: "session-1",
                         shouldSteer: false,
                         status: "pending",
-                        text: "Focus on the flaky worker.",
                         updatedAt: new Date("2026-03-31T08:01:00.000Z"),
                       }];
                     },
@@ -66,15 +66,38 @@ class SessionQueuedMessagesQueryTestHarness {
                 from() {
                   return {
                     async where() {
-                      return [{
-                        base64EncodedImage: "encoded-image",
-                        companyId: "company-123",
-                        createdAt: new Date("2026-03-31T08:00:00.000Z"),
-                        id: "image-1",
-                        mimeType: "image/png",
-                        sessionQueuedMessageId: "queued-1",
-                        updatedAt: new Date("2026-03-31T08:01:00.000Z"),
-                      }];
+                      return [
+                        {
+                          arguments: null,
+                          companyId: "company-123",
+                          createdAt: new Date("2026-03-31T08:00:00.000Z"),
+                          data: null,
+                          id: "content-1",
+                          mimeType: null,
+                          sessionQueuedMessageId: "queued-1",
+                          structuredContent: null,
+                          text: "Focus on the flaky worker.",
+                          toolCallId: null,
+                          toolName: null,
+                          type: "text",
+                          updatedAt: new Date("2026-03-31T08:01:00.000Z"),
+                        },
+                        {
+                          arguments: null,
+                          companyId: "company-123",
+                          createdAt: new Date("2026-03-31T08:00:01.000Z"),
+                          data: "encoded-image",
+                          id: "image-1",
+                          mimeType: "image/png",
+                          sessionQueuedMessageId: "queued-1",
+                          structuredContent: null,
+                          text: null,
+                          toolCallId: null,
+                          toolName: null,
+                          type: "image",
+                          updatedAt: new Date("2026-03-31T08:01:00.000Z"),
+                        },
+                      ];
                     },
                   };
                 },
@@ -92,7 +115,7 @@ class SessionQueuedMessagesQueryTestHarness {
   }
 }
 
-test("GraphQL SessionQueuedMessages query returns the pending queue for one session", async () => {
+test("GraphQL SessionQueuedMessages query returns queued rows for one session", async () => {
   const app = Fastify();
   const config = SessionQueuedMessagesQueryTestHarness.createConfigMock();
   const database = SessionQueuedMessagesQueryTestHarness.createDatabaseMock();
@@ -126,7 +149,7 @@ test("GraphQL SessionQueuedMessages query returns the pending queue for one sess
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
-    new GraphqlRequestContextResolver(authProvider as never, database),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
     new HealthQueryResolver(),
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
@@ -153,6 +176,8 @@ test("GraphQL SessionQueuedMessages query returns the pending queue for one sess
             }
             shouldSteer
             status
+            claimedAt
+            dispatchedAt
             createdAt
             updatedAt
           }
@@ -167,7 +192,9 @@ test("GraphQL SessionQueuedMessages query returns the pending queue for one sess
   assert.equal(response.statusCode, 200);
   const document = response.json();
   assert.deepEqual(document.data.SessionQueuedMessages, [{
+    claimedAt: "2026-03-31T08:00:30.000Z",
     createdAt: "2026-03-31T08:00:00.000Z",
+    dispatchedAt: null,
     id: "queued-1",
     images: [{
       base64EncodedImage: "encoded-image",

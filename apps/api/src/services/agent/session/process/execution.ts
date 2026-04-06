@@ -1,6 +1,5 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import type { ImageContent } from "@mariozechner/pi-ai";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
@@ -127,8 +126,8 @@ export class SessionProcessExecutionService {
         companyId,
         sessionId,
       );
-      const primaryBatch = this.selectPrimaryBatch(processableMessages);
-      if (primaryBatch.length === 0) {
+      const [primaryQueuedMessage] = processableMessages;
+      if (!primaryQueuedMessage) {
         return;
       }
 
@@ -179,7 +178,7 @@ export class SessionProcessExecutionService {
         },
       );
 
-      const primaryMessageIds = primaryBatch.map((queuedMessage) => queuedMessage.id);
+      const primaryMessageIds = [primaryQueuedMessage.id];
       await this.sessionQueuedMessageService.markProcessing(
         transactionProvider,
         companyId,
@@ -191,9 +190,10 @@ export class SessionProcessExecutionService {
         await this.piMonoSessionManagerService.prompt(
           transactionProvider,
           sessionId,
-          this.combineQueuedTexts(primaryBatch),
-          this.toImageContents(primaryBatch),
-          primaryBatch[0]?.createdAt,
+          primaryQueuedMessage.text,
+          this.toImageContents(primaryQueuedMessage),
+          primaryQueuedMessage.createdAt,
+          primaryQueuedMessage.id,
         );
         await steeringDeliveryPromise;
         if (leaseLossError) {
@@ -203,12 +203,6 @@ export class SessionProcessExecutionService {
           await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
           return;
         }
-        await this.sessionQueuedMessageService.deleteProcessed(
-          transactionProvider,
-          companyId,
-          primaryMessageIds,
-        );
-        await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
         shouldEnqueueFollowUpWake = await this.sessionQueuedMessageService.hasPendingMessages(
           transactionProvider,
           companyId,
@@ -254,33 +248,34 @@ export class SessionProcessExecutionService {
     companyId: string,
     sessionId: string,
   ): Promise<void> {
-    const steerMessages = await this.sessionQueuedMessageService.listPendingSteer(
-      transactionProvider,
-      companyId,
-      sessionId,
-    );
-    if (steerMessages.length === 0) {
-      return;
-    }
-
-    const steerMessageIds = steerMessages.map((queuedMessage) => queuedMessage.id);
-    await this.sessionQueuedMessageService.markProcessing(transactionProvider, companyId, steerMessageIds);
-    await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
-
-    try {
-      await this.piMonoSessionManagerService.steer(
+    while (true) {
+      const steerMessages = await this.sessionQueuedMessageService.listPendingSteer(
         transactionProvider,
+        companyId,
         sessionId,
-        this.combineQueuedTexts(steerMessages),
-        this.toImageContents(steerMessages),
-        steerMessages[0]?.createdAt,
       );
-      await this.sessionQueuedMessageService.deleteProcessed(transactionProvider, companyId, steerMessageIds);
+      const [steerMessage] = steerMessages;
+      if (!steerMessage) {
+        return;
+      }
+
+      await this.sessionQueuedMessageService.markProcessing(transactionProvider, companyId, [steerMessage.id]);
       await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
-    } catch (error) {
-      await this.sessionQueuedMessageService.markPending(transactionProvider, companyId, steerMessageIds);
-      await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
-      throw error;
+
+      try {
+        await this.piMonoSessionManagerService.steer(
+          transactionProvider,
+          sessionId,
+          steerMessage.text,
+          this.toImageContents(steerMessage),
+          steerMessage.createdAt,
+          steerMessage.id,
+        );
+      } catch (error) {
+        await this.sessionQueuedMessageService.markPending(transactionProvider, companyId, [steerMessage.id]);
+        await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
+        throw error;
+      }
     }
   }
 
@@ -407,41 +402,12 @@ export class SessionProcessExecutionService {
     await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
   }
 
-  private selectPrimaryBatch(
-    queuedMessages: QueuedSessionMessageRecord[],
-  ): QueuedSessionMessageRecord[] {
-    const [firstQueuedMessage] = queuedMessages;
-    if (!firstQueuedMessage) {
-      return [];
-    }
-    if (!firstQueuedMessage.shouldSteer) {
-      return [firstQueuedMessage];
-    }
-
-    const batchedSteerMessages: QueuedSessionMessageRecord[] = [];
-    for (const queuedMessage of queuedMessages) {
-      if (!queuedMessage.shouldSteer) {
-        break;
-      }
-
-      batchedSteerMessages.push(queuedMessage);
-    }
-
-    return batchedSteerMessages;
-  }
-
-  private combineQueuedTexts(queuedMessages: QueuedSessionMessageRecord[]): string {
-    return queuedMessages.map((queuedMessage) => queuedMessage.text).join("\n\n");
-  }
-
-  private toImageContents(queuedMessages: QueuedSessionMessageRecord[]): ImageContent[] {
-    return queuedMessages.flatMap((queuedMessage) => {
-      return queuedMessage.images.map((image) => ({
-        data: image.base64EncodedImage,
-        mimeType: image.mimeType,
-        type: "image" as const,
-      }));
-    });
+  private toImageContents(queuedMessage: QueuedSessionMessageRecord) {
+    return queuedMessage.images.map((image) => ({
+      data: image.base64EncodedImage,
+      mimeType: image.mimeType,
+      type: "image" as const,
+    }));
   }
 
   private startLeaseHeartbeat(

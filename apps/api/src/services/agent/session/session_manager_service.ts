@@ -266,13 +266,16 @@ export class SessionManagerService {
       options.userId,
     );
 
-    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+    await this.sessionQueuedMessageService.enqueueInTransaction(
+      insertableDatabase as unknown as SelectableDatabase & InsertableDatabase & UpdatableDatabase,
+      {
       companyId,
       images: queuedImages,
       sessionId: createdSessionRecord.id,
       shouldSteer: options.shouldSteer ?? false,
       text: userMessage,
-    });
+      },
+    );
 
     return {
       ...createdSessionRecord,
@@ -608,13 +611,16 @@ export class SessionManagerService {
       throw new Error("Failed to update session.");
     }
 
-    await this.sessionQueuedMessageService.enqueueInTransaction(insertableDatabase, {
+    await this.sessionQueuedMessageService.enqueueInTransaction(
+      insertableDatabase as unknown as SelectableDatabase & InsertableDatabase & UpdatableDatabase,
+      {
       companyId,
       images: queuedImages,
       sessionId,
       shouldSteer: options.shouldSteer ?? false,
       text: userMessage,
-    });
+      },
+    );
 
     return {
       ...updatedSessionRecord,

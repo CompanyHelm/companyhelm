@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import type { Logger as PinoLogger } from "pino";
-import { agentSessions, messageContents, sessionMessages, sessionTurns, userSessionReads } from "../src/db/schema.ts";
+import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages, sessionTurns, userSessionReads } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
 type SessionMessageRecord = Record<string, unknown> & {
@@ -22,6 +22,11 @@ type SessionTurnRecord = Record<string, unknown> & {
   sessionId: string;
 };
 
+type SessionQueuedMessageRecord = Record<string, unknown> & {
+  id: string;
+  status: string;
+};
+
 class PiMonoSessionEventHandlerTestHarness {
   static create() {
     const sessionStatusUpdates: Array<Record<string, unknown>> = [];
@@ -29,6 +34,7 @@ class PiMonoSessionEventHandlerTestHarness {
     const sessionTurnRecords = new Map<string, SessionTurnRecord>();
     const messageContentRecordsByMessageId = new Map<string, MessageContentRecord[]>();
     const publishCalls: Array<{ channel: string; message: string }> = [];
+    const sessionQueuedMessageRecords = new Map<string, SessionQueuedMessageRecord>();
     const clearedSessionReadSessionIds: string[] = [];
     const debugLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
@@ -79,6 +85,7 @@ class PiMonoSessionEventHandlerTestHarness {
         },
       },
       sessionMessageRecords,
+      sessionQueuedMessageRecords,
       sessionStatusUpdates,
       sessionTurnRecords,
       sessionState,
@@ -263,6 +270,31 @@ class PiMonoSessionEventHandlerTestHarness {
                 };
               }
 
+              if (table === sessionQueuedMessages) {
+                return {
+                  set(value: Record<string, unknown>) {
+                    return {
+                      async where() {
+                        const [queuedMessageId] = Array.from(sessionQueuedMessageRecords.keys()).slice(-1);
+                        if (!queuedMessageId) {
+                          return undefined;
+                        }
+
+                        const existingQueuedMessageRecord = sessionQueuedMessageRecords.get(queuedMessageId);
+                        if (!existingQueuedMessageRecord) {
+                          return undefined;
+                        }
+
+                        sessionQueuedMessageRecords.set(queuedMessageId, {
+                          ...existingQueuedMessageRecord,
+                          ...value,
+                        });
+                      },
+                    };
+                  },
+                };
+              }
+
               throw new Error("Unexpected update table.");
             },
             delete(table: unknown) {
@@ -289,6 +321,20 @@ class PiMonoSessionEventHandlerTestHarness {
                     }
 
                     messageContentRecordsByMessageId.set(messageId, existingRecords.slice(0, -1));
+                    return undefined;
+                  },
+                };
+              }
+
+              if (table === sessionQueuedMessages) {
+                return {
+                  async where() {
+                    const [queuedMessageId] = Array.from(sessionQueuedMessageRecords.keys()).slice(-1);
+                    if (!queuedMessageId) {
+                      return undefined;
+                    }
+
+                    sessionQueuedMessageRecords.delete(queuedMessageId);
                     return undefined;
                   },
                 };
@@ -1290,6 +1336,52 @@ test("PiMonoSessionEventHandler uses the queued user message timestamp when pers
   assert.equal((messageRecord.updatedAt as Date).toISOString(), queuedTimestamp.toISOString());
 });
 
+test("PiMonoSessionEventHandler marks queued rows dispatched on user start and removes them on user completion", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+  const queuedTimestamp = new Date("2026-03-27T18:10:00.000Z");
+  harness.sessionQueuedMessageRecords.set("queued-1", {
+    claimedAt: new Date("2026-03-27T18:09:59.000Z"),
+    dispatchedAt: null,
+    id: "queued-1",
+    status: "processing",
+  });
+
+  try {
+    handler.queueUserMessageTimestamp(queuedTimestamp, "queued-1");
+    await handler.handle({
+      message: {
+        content: "Deliver the queued row.",
+        role: "user",
+        timestamp: Date.parse("2026-03-27T18:10:01.000Z"),
+      },
+      type: "message_start",
+    });
+    assert.equal(
+      (harness.sessionQueuedMessageRecords.get("queued-1")?.dispatchedAt as Date | null)?.toISOString(),
+      "2026-03-27T18:10:01.000Z",
+    );
+
+    await handler.handle({
+      message: {
+        content: "Deliver the queued row.",
+        role: "user",
+        timestamp: Date.parse("2026-03-27T18:10:02.000Z"),
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.sessionQueuedMessageRecords.size, 0);
+  assert.ok(harness.publishCalls.some((call) => call.channel === "company:company-1:session:session-1:queued:update"));
+});
+
 test("PiMonoSessionEventHandler removes stale content rows when a later snapshot shrinks", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const handler = new PiMonoSessionEventHandler(
@@ -1355,7 +1447,7 @@ test("PiMonoSessionEventHandler removes stale content rows when a later snapshot
 test("PiMonoSessionEventHandler serializes concurrent assistant updates for the same message", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
   const originalTransaction = harness.transactionProvider.transaction;
-  harness.transactionProvider.transaction = async (callback: (tx: unknown) => Promise<unknown>) => {
+  harness.transactionProvider.transaction = async <T>(callback: (tx: unknown) => Promise<T>): Promise<T> => {
     await new Promise((resolve) => setTimeout(resolve, 5));
     return originalTransaction(callback);
   };

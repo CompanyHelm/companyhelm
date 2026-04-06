@@ -12,7 +12,9 @@ test("DeleteSessionQueuedMessageMutation deletes one queued row and serializes t
         assert.equal(queuedMessageId, "queued-1");
 
         return {
+          claimedAt: null,
           createdAt: new Date("2026-03-31T08:00:00.000Z"),
+          dispatchedAt: null,
           id: "queued-1",
           images: [],
           sessionId: "session-1",
@@ -47,8 +49,11 @@ test("DeleteSessionQueuedMessageMutation deletes one queued row and serializes t
   );
 
   assert.deepEqual(result, {
+    claimedAt: null,
     createdAt: "2026-03-31T08:00:00.000Z",
+    dispatchedAt: null,
     id: "queued-1",
+    images: [],
     sessionId: "session-1",
     shouldSteer: false,
     status: "pending",

@@ -8,8 +8,9 @@ type SessionQueuedMessagesQueryArguments = {
 };
 
 /**
- * Lists the still-pending queued prompts for one session so the chats composer can show work that
- * has been accepted by the backend but has not been fully consumed by the worker yet.
+ * Lists queued rows for one session while they still live in Postgres. Pending rows are still
+ * batchable; processing rows have already been claimed by a worker and are waiting for PI Mono to
+ * emit the user message that will remove them from the queue.
  */
 @injectable()
 export class SessionQueuedMessagesQueryResolver {
@@ -43,7 +44,7 @@ export class SessionQueuedMessagesQueryResolver {
       throw new Error("sessionId is required.");
     }
 
-    const queuedMessages = await this.sessionQueuedMessageService.listPending(
+    const queuedMessages = await this.sessionQueuedMessageService.listQueued(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       sessionId,

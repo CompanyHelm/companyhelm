@@ -3,6 +3,14 @@ import { test } from "vitest";
 import { SessionProcessExecutionService } from "../src/services/agent/session/process/execution.ts";
 import { SessionProcessQueuedNames } from "../src/services/agent/session/process/queued_names.ts";
 
+const companySettingsService = {
+  async getSettings() {
+    return {
+      baseSystemPrompt: null,
+    };
+  },
+};
+
 test("SessionProcessExecutionService no-ops when another worker already owns the lease", async () => {
   const service = new SessionProcessExecutionService(
     {
@@ -43,6 +51,8 @@ test("SessionProcessExecutionService no-ops when another worker already owns the
         throw new Error("Queued messages should not be loaded without a lease.");
       },
     } as never,
+    undefined as never,
+    companySettingsService as never,
   );
 
   await service.execute("company-1", "session-1");
@@ -270,6 +280,8 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
         return queuedMessages.some((queuedMessage) => queuedMessage.status === "pending");
       },
     } as never,
+    undefined as never,
+    companySettingsService as never,
   );
 
   const firstExecutionPromise = service.execute("company-1", "session-1");
@@ -283,17 +295,17 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
 
   releasePrompt();
   await firstExecutionPromise;
-  assert.equal(queuedMessages.length, 0);
+  assert.equal(queuedMessages.length, 1);
+  assert.equal(queuedMessages[0]?.status, "processing");
 });
 
 test("SessionProcessExecutionService prompts one queued turn, releases the lease, and re-enqueues when more work remains", async () => {
   const ensureSessionCalls: unknown[] = [];
   const disposeCalls: string[] = [];
-  const promptCalls: Array<{ createdAt: Date | undefined; images: unknown; sessionId: string; text: string }> = [];
+  const promptCalls: Array<{ createdAt: Date | undefined; images: unknown; queuedMessageId: string | undefined; sessionId: string; text: string }> = [];
   const queueWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const markProcessingCalls: string[][] = [];
-  const deleteProcessedCalls: string[][] = [];
   const subscriber = {
     isOpen: true,
     async connect() {
@@ -427,10 +439,12 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
         text: string,
         images?: unknown,
         createdAt?: Date,
+        queuedMessageId?: string,
       ) {
         promptCalls.push({
           createdAt,
           images,
+          queuedMessageId,
           sessionId,
           text,
         });
@@ -491,9 +505,6 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       async markProcessing(_transactionProvider: unknown, _companyId: string, ids: string[]) {
         markProcessingCalls.push(ids);
       },
-      async deleteProcessed(_transactionProvider: unknown, _companyId: string, ids: string[]) {
-        deleteProcessedCalls.push(ids);
-      },
       async markPending() {
         throw new Error("markPending should not be called on the happy path.");
       },
@@ -501,6 +512,8 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
         return true;
       },
     } as never,
+    undefined as never,
+    companySettingsService as never,
   );
 
   await service.execute("company-1", "session-1");
@@ -523,11 +536,11 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
   assert.deepEqual(promptCalls, [{
     createdAt: new Date("2026-03-26T12:00:00.000Z"),
     images: [],
+    queuedMessageId: "queued-1",
     sessionId: "session-1",
     text: "Investigate the regression.",
   }]);
   assert.deepEqual(markProcessingCalls, [["queued-1"]]);
-  assert.deepEqual(deleteProcessedCalls, [["queued-1"]]);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
@@ -737,6 +750,8 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
         return true;
       },
     } as never,
+    undefined as never,
+    companySettingsService as never,
   );
 
   await assert.rejects(
@@ -969,6 +984,8 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
         return false;
       },
     } as never,
+    undefined as never,
+    companySettingsService as never,
   );
 
   const executionPromise = service.execute("company-1", "session-1");
@@ -1118,6 +1135,8 @@ test("SessionProcessExecutionService clears queued work and exits quietly for ar
         throw new Error("hasPendingMessages should not run for archived sessions.");
       },
     } as never,
+    undefined as never,
+    companySettingsService as never,
   );
 
   await service.execute("company-1", "session-1");

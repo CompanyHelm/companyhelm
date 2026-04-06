@@ -325,11 +325,13 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
   assert.equal(unsubscribe.mock.calls.length, 1);
 });
 
-test("SessionQueuedMessagesUpdated subscription reloads the full pending queue for the selected session", async () => {
+test("SessionQueuedMessagesUpdated subscription reloads the full queued snapshot for the selected session", async () => {
   const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
   const sessionQueuedMessageService = {
-    listPending: vi.fn(async () => ([{
+    listQueued: vi.fn(async () => ([{
+      claimedAt: new Date("2026-03-31T09:00:30.000Z"),
       createdAt: new Date("2026-03-31T09:00:00.000Z"),
+      dispatchedAt: null,
       id: "queued-1",
       images: [{
         base64EncodedImage: "encoded-image",
@@ -370,7 +372,9 @@ test("SessionQueuedMessagesUpdated subscription reloads the full pending queue f
 
   assert.deepEqual(nextEvent.value, {
     SessionQueuedMessagesUpdated: [{
+      claimedAt: "2026-03-31T09:00:30.000Z",
       createdAt: "2026-03-31T09:00:00.000Z",
+      dispatchedAt: null,
       id: "queued-1",
       images: [{
         base64EncodedImage: "encoded-image",
@@ -385,7 +389,7 @@ test("SessionQueuedMessagesUpdated subscription reloads the full pending queue f
     }],
   });
   assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:queued:update");
-  assert.deepEqual(sessionQueuedMessageService.listPending.mock.calls[0], [
+  assert.deepEqual(sessionQueuedMessageService.listQueued.mock.calls[0], [
     context.app_runtime_transaction_provider,
     "company-1",
     "session-123",

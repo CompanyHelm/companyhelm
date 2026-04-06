@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<641729a0d5896c37fa2efa721092bfa6>>
+ * @generated SignedSource<<93971466f7164dc8880feb91ed5bb0b2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,9 @@ export type chatsPageSteerSessionQueuedMessageMutation$variables = {
 };
 export type chatsPageSteerSessionQueuedMessageMutation$data = {
   readonly SteerSessionQueuedMessage: {
+    readonly claimedAt: string | null | undefined;
     readonly createdAt: string;
+    readonly dispatchedAt: string | null | undefined;
     readonly id: string;
     readonly sessionId: string;
     readonly shouldSteer: boolean;
@@ -93,6 +95,20 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "claimedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "dispatchedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -125,16 +141,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "c568b3c83808e16b69e0767fb547c55d",
+    "cacheID": "c7525f5a434787e0ba99900c481633a7",
     "id": null,
     "metadata": {},
     "name": "chatsPageSteerSessionQueuedMessageMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageSteerSessionQueuedMessageMutation(\n  $input: SteerSessionQueuedMessageInput!\n) {\n  SteerSessionQueuedMessage(input: $input) {\n    id\n    sessionId\n    text\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageSteerSessionQueuedMessageMutation(\n  $input: SteerSessionQueuedMessageInput!\n) {\n  SteerSessionQueuedMessage(input: $input) {\n    id\n    sessionId\n    text\n    shouldSteer\n    status\n    claimedAt\n    dispatchedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d0f8c50e43c358743ec9ab32f4d966bd";
+(node as any).hash = "ca124a58d8edce0cf0758c4113c9b99e";
 
 export default node;

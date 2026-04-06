@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
 import pino, { type Logger as PinoLogger } from "pino";
-import { agentSessions, messageContents, sessionMessages, sessionTurns } from "../../../../db/schema.ts";
+import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages, sessionTurns } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
@@ -103,6 +103,12 @@ type PiMonoSessionContextSnapshot = {
   maxContextTokens: number | null;
 };
 
+type QueuedUserMessageDispatch = {
+  dispatched: boolean;
+  queuedMessageId: string | null;
+  timestamp: Date;
+};
+
 type PiMonoSessionEventHandlerDependencies = {
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
   logger?: PinoLogger;
@@ -131,7 +137,7 @@ export class PiMonoSessionEventHandler {
   private readonly messageIdsByTurnId = new Map<string, Set<string>>();
   private readonly contentIdsByMessageId = new Map<string, string[]>();
   private readonly persistedMessageIds = new Set<string>();
-  private readonly queuedUserMessageTimestamps: Date[] = [];
+  private readonly queuedUserMessageDispatches: QueuedUserMessageDispatch[] = [];
   private readonly completedToolExecutionKeys = new Set<string>();
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
@@ -171,8 +177,12 @@ export class PiMonoSessionEventHandler {
     return queuedEvent;
   }
 
-  queueUserMessageTimestamp(timestamp: Date): void {
-    this.queuedUserMessageTimestamps.push(timestamp);
+  queueUserMessageTimestamp(timestamp: Date, queuedMessageId?: string | null): void {
+    this.queuedUserMessageDispatches.push({
+      dispatched: false,
+      queuedMessageId: queuedMessageId ? String(queuedMessageId).trim() : null,
+      timestamp,
+    });
   }
 
   async startPromptTurn(startedAt: Date = new Date()): Promise<string> {
@@ -307,6 +317,7 @@ export class PiMonoSessionEventHandler {
   private async handleMessageStart(sessionEvent: SessionEvent): Promise<void> {
     switch (sessionEvent.message?.role) {
       case "user":
+        await this.markQueuedUserMessageDispatched(sessionEvent);
         this.logDebug("ignoring pi mono user message start", sessionEvent);
         return;
       case "assistant":
@@ -341,9 +352,13 @@ export class PiMonoSessionEventHandler {
   private async handleMessageEnd(sessionEvent: SessionEvent): Promise<void> {
     switch (sessionEvent.message?.role) {
       case "user": {
-        const userMessageTimestamp = this.shiftQueuedUserMessageTimestamp()
+        const queuedUserMessageDispatch = this.shiftQueuedUserMessageDispatch();
+        const userMessageTimestamp = queuedUserMessageDispatch?.timestamp
           ?? this.resolveMessageTimestamp(sessionEvent.message.timestamp);
         await this.upsertSessionMessage("completed", sessionEvent, userMessageTimestamp);
+        if (queuedUserMessageDispatch?.queuedMessageId) {
+          await this.deleteQueuedUserMessage(queuedUserMessageDispatch.queuedMessageId);
+        }
         this.logDebug("pi mono user message completed", sessionEvent);
         return;
       }
@@ -902,8 +917,53 @@ export class PiMonoSessionEventHandler {
     return new Date(nextMilliseconds);
   }
 
-  private shiftQueuedUserMessageTimestamp(): Date | undefined {
-    return this.queuedUserMessageTimestamps.shift();
+  private peekQueuedUserMessageDispatch(): QueuedUserMessageDispatch | undefined {
+    return this.queuedUserMessageDispatches[0];
+  }
+
+  private shiftQueuedUserMessageDispatch(): QueuedUserMessageDispatch | undefined {
+    return this.queuedUserMessageDispatches.shift();
+  }
+
+  private async markQueuedUserMessageDispatched(sessionEvent: SessionEvent): Promise<void> {
+    const queuedUserMessageDispatch = this.peekQueuedUserMessageDispatch();
+    if (!queuedUserMessageDispatch || queuedUserMessageDispatch.dispatched || !queuedUserMessageDispatch.queuedMessageId) {
+      return;
+    }
+
+    const companyId = await this.resolveCompanyId();
+    const dispatchedAt = this.resolveMessageTimestamp(sessionEvent.message?.timestamp);
+    await this.transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(sessionQueuedMessages)
+        .set({
+          dispatchedAt,
+          updatedAt: dispatchedAt,
+        })
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          eq(sessionQueuedMessages.id, queuedUserMessageDispatch.queuedMessageId),
+          eq(sessionQueuedMessages.status, "processing"),
+        ));
+    });
+    queuedUserMessageDispatch.dispatched = true;
+    await this.publishQueuedMessagesUpdate();
+  }
+
+  private async deleteQueuedUserMessage(queuedMessageId: string): Promise<void> {
+    const companyId = await this.resolveCompanyId();
+    await this.transactionProvider.transaction(async (tx) => {
+      const deletableDatabase = tx as DeletableDatabase;
+      await deletableDatabase
+        .delete(sessionQueuedMessages)
+        .where(and(
+          eq(sessionQueuedMessages.companyId, companyId),
+          eq(sessionQueuedMessages.id, queuedMessageId),
+          eq(sessionQueuedMessages.status, "processing"),
+        ));
+    });
+    await this.publishQueuedMessagesUpdate();
   }
 
   private async resolveCompanyId(): Promise<string> {
@@ -1029,5 +1089,11 @@ export class PiMonoSessionEventHandler {
     const companyId = await this.resolveCompanyId();
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionUpdateChannel(this.sessionId));
+  }
+
+  private async publishQueuedMessagesUpdate(): Promise<void> {
+    const companyId = await this.resolveCompanyId();
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdateChannel(this.sessionId));
   }
 }

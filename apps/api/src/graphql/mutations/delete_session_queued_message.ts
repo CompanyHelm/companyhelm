@@ -11,9 +11,8 @@ type DeleteSessionQueuedMessageMutationArguments = {
 };
 
 /**
- * Deletes one pending user-authored queued prompt before the worker consumes it. Its scope is
- * intentionally narrow so steer prompts remain protected and transcript steering semantics stay
- * stable even when users manage the pending queue from the web UI.
+ * Deletes one pending non-steer queued prompt before a worker claims it. Steer rows stay protected
+ * because they are expected to be consumed almost immediately once the live session is active.
  */
 @injectable()
 export class DeleteSessionQueuedMessageMutation extends Mutation<
