@@ -26,7 +26,7 @@ export class AgentExecuteCommandTool {
       },
     )),
     keepSession: Type.Optional(Type.Boolean({
-      description: "Whether to preserve a newly created session after a command finishes within the current call.",
+      description: "Whether to preserve a newly created session if the command finishes before this call returns. If the command is still running when yield_time_ms elapses, the session stays alive regardless.",
     })),
     rows: Type.Optional(Type.Number({
       description: "Optional terminal height to use when creating a new session.",
@@ -92,7 +92,8 @@ export class AgentExecuteCommandTool {
       promptGuidelines: [
         "Use execute_command to create or continue work in an environment tmux session.",
         "When sessionId is omitted execute_command creates a fresh tmux session.",
-        "Completed one-shot commands auto-close their new session unless keepSession is true.",
+        "If the command is still running when the tool returns after yield_time_ms, the session remains open and sessionId is returned regardless of keepSession.",
+        "Completed one-shot commands auto-close their newly created session unless keepSession is true.",
         "Reuse the returned sessionId when you want follow-up tool calls to target the same shell.",
       ],
       promptSnippet: "Execute commands in the environment",

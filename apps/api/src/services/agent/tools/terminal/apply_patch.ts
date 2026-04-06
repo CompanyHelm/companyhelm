@@ -12,7 +12,7 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 export class AgentApplyPatchTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     keepSession: Type.Optional(Type.Boolean({
-      description: "Whether to preserve a newly created shell session after the patch command finishes in this call.",
+      description: "Whether to preserve a newly created shell session if the patch command finishes before this call returns. If the command is still running when yield_time_ms elapses, the session stays alive regardless.",
     })),
     patch: Type.String({
       description: [
@@ -416,7 +416,8 @@ try {
         "Use apply_patch for precise file edits after you have already inspected the relevant files.",
         "Provide the full structured patch in the patch field, starting with *** Begin Patch and ending with *** End Patch.",
         "Reuse sessionId when relative paths should resolve from an existing shell state.",
-        "Set keepSession to true only when a new shell session should remain open after the patch finishes.",
+        "If the patch command is still running when the tool returns after yield_time_ms, the session remains open regardless of keepSession.",
+        "Set keepSession to true only when a newly created shell session should remain open after the patch finishes.",
       ],
       promptSnippet: "Apply a structured patch in the environment",
     };

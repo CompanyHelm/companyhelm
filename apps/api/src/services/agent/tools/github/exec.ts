@@ -24,7 +24,7 @@ export class AgentGithubExecTool {
       description: "GitHub installation id linked to the current company.",
     }),
     keepSession: Type.Optional(Type.Boolean({
-      description: "Whether to preserve a newly created shell session after the gh command finishes in this call.",
+      description: "Whether to preserve a newly created shell session if the gh command finishes before this call returns. If the command is still running when yield_time_ms elapses, the session stays alive regardless.",
     })),
     rows: Type.Optional(Type.Number({
       description: "Optional terminal height to use when creating a new session.",
@@ -94,6 +94,7 @@ export class AgentGithubExecTool {
         "Use gh_exec when you need the flexibility of the gh CLI against a linked installation.",
         "Call list_github_installations first if you do not already know the installation id to target.",
         "Do not use gh auth commands because the installation token is injected automatically for the command.",
+        "If the command is still running when the tool returns after yield_time_ms, the session remains open regardless of keepSession.",
         "Set keepSession to true when you want a newly created shell session to stay alive after the command finishes.",
       ],
       promptSnippet: "Run gh CLI commands against a linked GitHub installation",
