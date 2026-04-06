@@ -19,6 +19,7 @@ export type AgentEnvironmentCommandInput = {
   columns?: number;
   command: string;
   environment?: Record<string, string>;
+  keepSession?: boolean;
   sessionId?: string | null;
   rows?: number;
   workingDirectory?: string;
@@ -34,7 +35,7 @@ export type AgentEnvironmentCommandResult = {
   completed: boolean;
   exitCode: number | null;
   output: string;
-  sessionId: string;
+  sessionId: string | null;
 };
 
 /**

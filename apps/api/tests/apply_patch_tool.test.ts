@@ -9,20 +9,30 @@ import { AgentApplyPatchTool } from "../src/services/agent/tools/terminal/apply_
 
 const execFileAsync = promisify(execFile);
 
+type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
+  content: Array<{ text: string; type: string }>;
+  details?: Record<string, unknown>;
+}>;
+
 test("AgentApplyPatchTool forwards a structured patch into the environment command runner", async () => {
-  const executeCommand = vi.fn(async () => ({
-    completed: true,
-    exitCode: 0,
-    output: "M src/file.ts",
-    sessionId: "pty-123",
-  }));
+  const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
+    void input;
+    return {
+      completed: true,
+      exitCode: 0,
+      output: "M src/file.ts",
+      sessionId: "pty-123",
+    };
+  });
   const tool = new AgentApplyPatchTool({
     async getEnvironment() {
       return {
         executeCommand,
       };
     },
-  } as never).createDefinition();
+  } as never).createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
 
   const patch = [
     "*** Begin Patch",
@@ -34,6 +44,7 @@ test("AgentApplyPatchTool forwards a structured patch into the environment comma
   ].join("\n");
 
   const result = await tool.execute("tool-call-1", {
+    keepSession: true,
     patch,
     sessionId: "pty-123",
     workingDirectory: "/workspace",
@@ -53,14 +64,19 @@ test("AgentApplyPatchTool forwards a structured patch into the environment comma
     type: "text",
   }]);
 
-  const [commandInput] = executeCommand.mock.calls[0] ?? [];
+  const [commandInput] = executeCommand.mock.calls[0] as [Record<string, unknown>] | undefined ?? [];
+  assert.ok(commandInput);
+  assert.equal(commandInput.keepSession, true);
   assert.equal(commandInput.sessionId, "pty-123");
   assert.equal(commandInput.workingDirectory, "/workspace");
   assert.equal(commandInput.yield_time_ms, 2000);
-  assert.match(commandInput.command, /mktemp \/tmp\/companyhelm-apply-patch/);
-  assert.match(commandInput.command, /command -v node/);
+  assert.match(commandInput.command as string, /mktemp \/tmp\/companyhelm-apply-patch/);
+  assert.match(commandInput.command as string, /command -v node/);
   assert.equal(
-    Buffer.from(commandInput.environment.COMPANYHELM_APPLY_PATCH_BASE64, "base64").toString("utf8"),
+    Buffer.from(
+      (commandInput.environment as Record<string, string>).COMPANYHELM_APPLY_PATCH_BASE64,
+      "base64",
+    ).toString("utf8"),
     patch,
   );
 });
@@ -109,7 +125,9 @@ test("AgentApplyPatchTool generated command applies structured changes inside a 
           executeCommand,
         };
       },
-    } as never).createDefinition();
+    } as never).createDefinition() as unknown as {
+      execute: ToolExecuteFunction;
+    };
 
     const patch = [
       "*** Begin Patch",

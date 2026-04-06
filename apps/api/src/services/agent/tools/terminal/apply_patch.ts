@@ -11,6 +11,9 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  */
 export class AgentApplyPatchTool {
   private static readonly parameters = AgentToolParameterSchema.object({
+    keepSession: Type.Optional(Type.Boolean({
+      description: "Whether to preserve a newly created shell session after the patch command finishes in this call.",
+    })),
     patch: Type.String({
       description: [
         "Structured patch text to apply inside the environment workspace.",
@@ -386,6 +389,7 @@ try {
           environment: {
             COMPANYHELM_APPLY_PATCH_BASE64: Buffer.from(params.patch, "utf8").toString("base64"),
           },
+          keepSession: params.keepSession,
           sessionId: params.sessionId,
           workingDirectory: params.workingDirectory,
           yield_time_ms: params.yield_time_ms,
@@ -412,6 +416,7 @@ try {
         "Use apply_patch for precise file edits after you have already inspected the relevant files.",
         "Provide the full structured patch in the patch field, starting with *** Begin Patch and ending with *** End Patch.",
         "Reuse sessionId when relative paths should resolve from an existing shell state.",
+        "Set keepSession to true only when a new shell session should remain open after the patch finishes.",
       ],
       promptSnippet: "Apply a structured patch in the environment",
     };

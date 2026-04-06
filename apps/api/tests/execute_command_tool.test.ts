@@ -3,20 +3,30 @@ import { test, vi } from "vitest";
 import { AgentEnvironmentShellTimeoutError } from "../src/services/agent/compute/shell_interface.ts";
 import { AgentExecuteCommandTool } from "../src/services/agent/tools/terminal/execute_command.ts";
 
+type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
+  content: Array<{ text: string; type: string }>;
+  details?: Record<string, unknown>;
+}>;
+
 test("AgentExecuteCommandTool returns terminal metadata in details", async () => {
-  const executeCommand = vi.fn(async () => ({
-    completed: true,
-    exitCode: 2,
-    output: "file-a\nfile-b",
-    sessionId: "pty-123",
-  }));
+  const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
+    void input;
+    return {
+      completed: true,
+      exitCode: 2,
+      output: "file-a\nfile-b",
+      sessionId: null,
+    };
+  });
   const tool = new AgentExecuteCommandTool({
     async getEnvironment() {
       return {
         executeCommand,
       };
     },
-  } as never).createDefinition();
+  } as never, {} as never).createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
 
   const result = await tool.execute("tool-call-1", {
     command: "ls -la",
@@ -28,7 +38,7 @@ test("AgentExecuteCommandTool returns terminal metadata in details", async () =>
     completed: true,
     cwd: "/workspace",
     exitCode: 2,
-    sessionId: "pty-123",
+    sessionId: null,
     type: "terminal",
   });
   assert.deepEqual(result.content, [{
@@ -38,6 +48,37 @@ test("AgentExecuteCommandTool returns terminal metadata in details", async () =>
   assert.deepEqual(executeCommand.mock.calls, [[{
     command: "ls -la",
     workingDirectory: "/workspace",
+  }]]);
+});
+
+test("AgentExecuteCommandTool forwards keepSession when requested", async () => {
+  const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
+    void input;
+    return {
+      completed: false,
+      exitCode: null,
+      output: "starting dev server",
+      sessionId: "pty-keep",
+    };
+  });
+  const tool = new AgentExecuteCommandTool({
+    async getEnvironment() {
+      return {
+        executeCommand,
+      };
+    },
+  } as never, {} as never).createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
+
+  await tool.execute("tool-call-1", {
+    command: "npm run dev",
+    keepSession: true,
+  });
+
+  assert.deepEqual(executeCommand.mock.calls, [[{
+    command: "npm run dev",
+    keepSession: true,
   }]]);
 });
 
@@ -60,7 +101,9 @@ test("AgentExecuteCommandTool logs shell timeouts with the command and rethrows"
     },
   } as never, {
     warn,
-  } as never).createDefinition();
+  } as never).createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
 
   await assert.rejects(async () => {
     await tool.execute("tool-call-1", {

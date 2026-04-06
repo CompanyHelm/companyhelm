@@ -4,6 +4,11 @@ import { AgentGithubExecTool } from "../src/services/agent/tools/github/exec.ts"
 import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
 import { AgentListGithubInstallationsTool } from "../src/services/agent/tools/github/list_installations.ts";
 
+type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
+  content: Array<{ text: string; type: string }>;
+  details?: Record<string, unknown>;
+}>;
+
 test("AgentGithubToolProvider contributes the GitHub installation and gh exec tools", () => {
   const provider = new AgentGithubToolProvider({
     async getEnvironment() {
@@ -42,8 +47,11 @@ test("AgentListGithubInstallationsTool renders linked installations and reposito
       }];
     },
   } as never);
+  const definition = tool.createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
 
-  const result = await tool.createDefinition().execute("tool-call-1", {});
+  const result = await definition.execute("tool-call-1", {});
 
   assert.deepEqual(result, {
     content: [{
@@ -59,7 +67,8 @@ test("AgentListGithubInstallationsTool renders linked installations and reposito
 });
 
 test("AgentGithubExecTool injects the installation access token only into the command execution environment", async () => {
-  const executeCommand = vi.fn(async () => {
+  const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
+    void input;
     return {
       completed: true,
       exitCode: 0,
@@ -78,10 +87,14 @@ test("AgentGithubExecTool injects the installation access token only into the co
       return "ghs_installation_token";
     },
   } as never);
+  const definition = tool.createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
 
-  const result = await tool.createDefinition().execute("tool-call-1", {
+  const result = await definition.execute("tool-call-1", {
     args: ["repo", "list", "acme"],
     installationId: "110600868",
+    keepSession: true,
     sessionId: "pty-existing",
     workingDirectory: "/workspace/repo",
     yield_time_ms: 250,
@@ -94,6 +107,7 @@ test("AgentGithubExecTool injects the installation access token only into the co
     environment: {
       GH_TOKEN: "ghs_installation_token",
     },
+    keepSession: true,
     rows: undefined,
     sessionId: "pty-existing",
     workingDirectory: "/workspace/repo",
@@ -125,9 +139,12 @@ test("AgentGithubExecTool rejects gh auth commands", async () => {
       throw new Error("token resolution should not be reached");
     },
   } as never);
+  const definition = tool.createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
 
   await assert.rejects(
-    tool.createDefinition().execute("tool-call-1", {
+    definition.execute("tool-call-1", {
       args: ["auth", "status"],
       installationId: "110600868",
     }),

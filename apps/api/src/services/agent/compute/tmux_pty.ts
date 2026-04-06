@@ -72,12 +72,16 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     if (waitResult.completed) {
       await this.deleteRemoteFile(commandRun.rcFile, interactionTimeoutSeconds);
     }
+    const shouldKeepSession = AgentEnvironmentTmuxPty.shouldKeepSession(input, waitResult.completed);
+    if (waitResult.completed && !shouldKeepSession) {
+      await this.closeSession(sessionId);
+    }
 
     return {
       completed: waitResult.completed,
       exitCode: waitResult.exitCode,
       output,
-      sessionId,
+      sessionId: waitResult.completed && !shouldKeepSession ? null : sessionId,
     };
   }
 
@@ -182,6 +186,21 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     return trimmedSessionId.length > 0 ? trimmedSessionId : `pty-${randomUUID().replaceAll("-", "")}`;
   }
 
+  private static shouldKeepSession(
+    input: AgentEnvironmentCommandInput,
+    commandCompleted: boolean,
+  ): boolean {
+    if (!commandCompleted) {
+      return true;
+    }
+
+    if ((input.sessionId?.trim() ?? "").length > 0) {
+      return true;
+    }
+
+    return input.keepSession === true;
+  }
+
   private async ensureTmuxSession(
     sessionId: string,
     input: AgentEnvironmentCommandInput,
@@ -204,7 +223,10 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     await this.runRequiredRemoteCommand(creationCommand, timeoutSeconds);
   }
 
-  private async ensureExistingTmuxSession(sessionId: string, timeoutSeconds: number): Promise<void> {
+  private async ensureExistingTmuxSession(
+    sessionId: string,
+    timeoutSeconds = AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_SECONDS,
+  ): Promise<void> {
     if (await this.hasTmuxSession(sessionId, timeoutSeconds)) {
       return;
     }
@@ -390,7 +412,10 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     );
   }
 
-  private async captureTmuxOutput(sessionId: string, timeoutSeconds: number): Promise<string> {
+  private async captureTmuxOutput(
+    sessionId: string,
+    timeoutSeconds = AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_SECONDS,
+  ): Promise<string> {
     return this.runRequiredRemoteCommand(
       `tmux capture-pane -pt ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -S -32768`,
       timeoutSeconds,

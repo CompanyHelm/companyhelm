@@ -64,7 +64,7 @@ type TerminalStructuredContent = {
   completed: boolean;
   cwd: string | null;
   exitCode: number | null;
-  sessionId: string;
+  sessionId: string | null;
 };
 
 type SessionMessage = {
@@ -753,7 +753,7 @@ export class PiMonoSessionEventHandler {
     if (
       typeof terminalDetails.command !== "string"
       || typeof terminalDetails.completed !== "boolean"
-      || typeof terminalDetails.sessionId !== "string"
+      || (terminalDetails.sessionId !== null && typeof terminalDetails.sessionId !== "string")
     ) {
       return null;
     }

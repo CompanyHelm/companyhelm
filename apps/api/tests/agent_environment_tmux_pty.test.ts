@@ -290,29 +290,31 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
     command: "ls -la",
     yield_time_ms: 0,
   });
+  const executionSessionId = executionResult.sessionId;
 
-  assert.match(executionResult.sessionId, /^pty-[a-f0-9]{32}$/);
+  assert.match(executionSessionId ?? "", /^pty-[a-f0-9]{32}$/);
   assert.equal(executionResult.completed, false);
   assert.equal(executionResult.output, "ran: ls -la");
+  assert.ok(executionSessionId);
 
   const sessions = await pty.listSessions();
-  assert.ok(sessions.some((session) => session.id === executionResult.sessionId));
+  assert.ok(sessions.some((session) => session.id === executionSessionId));
   assert.ok(sessions.some((session) => session.id === "stray-session"));
 
-  const firstPage = await pty.readOutput(executionResult.sessionId, null, 4_000);
+  const firstPage = await pty.readOutput(executionSessionId, null, 4_000);
   assert.equal(firstPage.chunks.length, 1);
   assert.ok(firstPage.chunks[0]?.text.includes("wrapper command that should be hidden"));
   assert.ok(firstPage.chunks[0]?.text.includes("ran: ls -la"));
 
-  const secondPage = await pty.readOutput(executionResult.sessionId, firstPage.nextOffset, 4_000);
+  const secondPage = await pty.readOutput(executionSessionId, firstPage.nextOffset, 4_000);
   assert.deepEqual(secondPage.chunks, []);
 
-  await pty.resizeSession(executionResult.sessionId, 120, 40);
-  assert.equal(fakeEnvironmentShell.sessions.get(executionResult.sessionId)?.width, 120);
-  assert.equal(fakeEnvironmentShell.sessions.get(executionResult.sessionId)?.height, 40);
+  await pty.resizeSession(executionSessionId, 120, 40);
+  assert.equal(fakeEnvironmentShell.sessions.get(executionSessionId)?.width, 120);
+  assert.equal(fakeEnvironmentShell.sessions.get(executionSessionId)?.height, 40);
 
-  await pty.closeSession(executionResult.sessionId);
-  assert.equal(fakeEnvironmentShell.sessions.has(executionResult.sessionId), false);
+  await pty.closeSession(executionSessionId);
+  assert.equal(fakeEnvironmentShell.sessions.has(executionSessionId), false);
 });
 
 test("AgentEnvironmentTmuxPty creates a fresh session id for each executeCommand call when sessionId is omitted", async () => {
@@ -327,10 +329,14 @@ test("AgentEnvironmentTmuxPty creates a fresh session id for each executeCommand
     command: "ls",
     yield_time_ms: 0,
   });
+  const firstSessionId = firstResult.sessionId;
+  const secondSessionId = secondResult.sessionId;
 
-  assert.notEqual(firstResult.sessionId, secondResult.sessionId);
-  assert.ok(fakeEnvironmentShell.sessions.has(firstResult.sessionId));
-  assert.ok(fakeEnvironmentShell.sessions.has(secondResult.sessionId));
+  assert.notEqual(firstSessionId, secondSessionId);
+  assert.ok(firstSessionId);
+  assert.ok(secondSessionId);
+  assert.ok(fakeEnvironmentShell.sessions.has(firstSessionId));
+  assert.ok(fakeEnvironmentShell.sessions.has(secondSessionId));
 });
 
 test("AgentEnvironmentTmuxPty returns immediately when a tmux command completes before the yield window", async () => {
@@ -346,9 +352,28 @@ test("AgentEnvironmentTmuxPty returns immediately when a tmux command completes 
   assert.equal(result.completed, true);
   assert.equal(result.exitCode, 0);
   assert.equal(result.output, "ran: echo done");
+  assert.equal(result.sessionId, null);
+  assert.equal(fakeEnvironmentShell.sessions.size, 0);
   assert.ok(fakeEnvironmentShell.executedCommands.some((command) => {
     return command.startsWith("timeout 5s tmux wait-for ");
   }));
+});
+
+test("AgentEnvironmentTmuxPty keeps a completed new session when keepSession is true", async () => {
+  const fakeEnvironmentShell = new FakeEnvironmentShell();
+  fakeEnvironmentShell.autoCompleteCommands = true;
+  const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+
+  const result = await pty.executeCommand({
+    command: "echo done",
+    keepSession: true,
+    yield_time_ms: 5_000,
+  });
+
+  assert.equal(result.completed, true);
+  assert.equal(result.exitCode, 0);
+  assert.match(result.sessionId ?? "", /^pty-[a-f0-9]{32}$/);
+  assert.equal(fakeEnvironmentShell.sessions.has(result.sessionId as string), true);
 });
 
 test("AgentEnvironmentTmuxPty uses the provided logical session name when creating tmux sessions", async () => {
@@ -375,15 +400,18 @@ test("AgentEnvironmentTmuxPty reuses tmux sessions by session id across PTY inst
     yield_time_ms: 0,
   });
   const secondPty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
+  const createdSessionId = createdSession.sessionId;
 
-  await secondPty.sendInput(createdSession.sessionId, "q\n", 0);
-  const outputPage = await secondPty.readOutput(createdSession.sessionId, null, 4_000);
+  assert.ok(createdSessionId);
+
+  await secondPty.sendInput(createdSessionId, "q\n", 0);
+  const outputPage = await secondPty.readOutput(createdSessionId, null, 4_000);
 
   assert.ok(outputPage.chunks[0]?.text.includes("ran: tail -f log.txt"));
   assert.ok(outputPage.chunks[0]?.text.includes("q\n"));
 
-  await secondPty.killSession(createdSession.sessionId);
-  assert.equal(fakeEnvironmentShell.sessions.has(createdSession.sessionId), false);
+  await secondPty.killSession(createdSessionId);
+  assert.equal(fakeEnvironmentShell.sessions.has(createdSessionId), false);
 });
 
 test("AgentEnvironmentTmuxPty expands home-relative working directories before creating tmux sessions", async () => {
@@ -511,8 +539,11 @@ test("AgentEnvironmentTmuxPty waits for the yield window once when sending input
     yield_time_ms: 0,
   });
   fakeEnvironmentShell.executedCommands.length = 0;
+  const createdSessionId = createdSession.sessionId;
 
-  await pty.sendInput(createdSession.sessionId, "q\n", 1);
+  assert.ok(createdSessionId);
+
+  await pty.sendInput(createdSessionId, "q\n", 1);
 
   const hasSessionCalls = fakeEnvironmentShell.executedCommands.filter((command) => {
     return command.startsWith("tmux has-session -t ");
