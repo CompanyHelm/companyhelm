@@ -525,6 +525,8 @@ type AssistantDisplayContentRecord = {
   type: "text" | "thinking";
 };
 
+type AssistantContentMode = "all" | "text-only" | "thinking-only";
+
 type TranscriptScrollRestoreRecord = {
   anchorMessageId: string | null;
   anchorOffsetTop: number;
@@ -535,6 +537,7 @@ type TranscriptScrollRestoreRecord = {
 type TranscriptTurnRecord = {
   durationLabel: string;
   hiddenMessages: SessionMessageRecord[];
+  hiddenThinkingMessages: SessionMessageRecord[];
   inlineMessages: SessionMessageRecord[];
   isRunning: boolean;
   turnId: string;
@@ -726,14 +729,17 @@ function buildToolCallSummaryById(
 
 function resolveAssistantDisplayContents(
   message: SessionMessageRecord,
-  options: { includeThinking?: boolean } = {},
+  options: { contentMode?: AssistantContentMode } = {},
 ): AssistantDisplayContentRecord[] {
-  const includeThinking = options.includeThinking ?? true;
+  const contentMode = options.contentMode ?? "all";
   const contentBlocks = message.contents.flatMap((content): AssistantDisplayContentRecord[] => {
     if ((content.type !== "text" && content.type !== "thinking") || typeof content.text !== "string") {
       return [];
     }
-    if (content.type === "thinking" && !includeThinking) {
+    if (content.type === "thinking" && contentMode === "text-only") {
+      return [];
+    }
+    if (content.type === "text" && contentMode === "thinking-only") {
       return [];
     }
     if (content.text.trim().length === 0) {
@@ -747,6 +753,9 @@ function resolveAssistantDisplayContents(
   });
   if (contentBlocks.length > 0) {
     return contentBlocks;
+  }
+  if (contentMode === "thinking-only") {
+    return [];
   }
   if (message.text.trim().length === 0) {
     return [];
@@ -906,13 +915,15 @@ function compareInboxHumanQuestionsByCreatedAt(leftQuestion: InboxHumanQuestionR
 
 function hasVisibleTranscriptMessage(
   message: SessionMessageRecord,
-  options: { includeThinking?: boolean } = {},
+  options: { assistantContentMode?: AssistantContentMode } = {},
 ): boolean {
   if (message.role === "toolResult") {
     return typeof message.toolName === "string" && message.toolName.trim().length > 0;
   }
   if (message.role === "assistant") {
-    return resolveAssistantDisplayContents(message, options).length > 0;
+    return resolveAssistantDisplayContents(message, {
+      contentMode: options.assistantContentMode ?? "all",
+    }).length > 0;
   }
 
   return message.role === "user"
@@ -980,17 +991,18 @@ function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecord>): Tr
       return {
         durationLabel: "",
         hiddenMessages: [],
-        inlineMessages: turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { includeThinking: true })),
+        hiddenThinkingMessages: [],
+        inlineMessages: turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { assistantContentMode: "all" })),
         isRunning: true,
         turnId,
       };
     }
 
-    const renderableMessages = turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { includeThinking: true }));
+    const renderableMessages = turnMessages.filter((message) => hasVisibleTranscriptMessage(message, { assistantContentMode: "all" }));
     const firstUserMessage = renderableMessages.find((message) => message.role === "user") ?? null;
     const lastAssistantMessage = [...renderableMessages]
       .reverse()
-      .find((message) => message.role === "assistant" && hasVisibleTranscriptMessage(message, { includeThinking: false }))
+      .find((message) => message.role === "assistant" && hasVisibleTranscriptMessage(message, { assistantContentMode: "text-only" }))
       ?? null;
     const inlineMessageIds = new Set(
       [firstUserMessage?.id ?? null, lastAssistantMessage?.id ?? null].filter((messageId): messageId is string => Boolean(messageId)),
@@ -1001,10 +1013,16 @@ function buildTranscriptTurns(messages: ReadonlyArray<SessionMessageRecord>): Tr
     }
 
     const turnWindow = resolveTurnWindow(turnMessages);
+    const hiddenThinkingMessages = lastAssistantMessage
+      && inlineMessageIds.has(lastAssistantMessage.id)
+      && hasVisibleTranscriptMessage(lastAssistantMessage, { assistantContentMode: "thinking-only" })
+      ? [lastAssistantMessage]
+      : [];
 
     return {
       durationLabel: formatTurnDuration(turnWindow.endedAt - turnWindow.startedAt),
       hiddenMessages: renderableMessages.filter((message) => !inlineMessageIds.has(message.id)),
+      hiddenThinkingMessages,
       inlineMessages: renderableMessages.filter((message) => inlineMessageIds.has(message.id)),
       isRunning: false,
       turnId,
@@ -1581,17 +1599,17 @@ function ToolTranscriptMessage(
 }
 
 function TranscriptMessageRow({
-  includeThinking,
+  assistantContentMode,
   message,
   toolCallSummary,
   useLeftGutter = true,
 }: {
-  includeThinking: boolean;
+  assistantContentMode: AssistantContentMode;
   message: SessionMessageRecord;
   toolCallSummary: ToolCallSummaryRecord | null;
   useLeftGutter?: boolean;
 }) {
-  if (!hasVisibleTranscriptMessage(message, { includeThinking })) {
+  if (!hasVisibleTranscriptMessage(message, { assistantContentMode })) {
     return null;
   }
 
@@ -1599,7 +1617,7 @@ function TranscriptMessageRow({
   const isToolMessage = message.role === "toolResult";
   const userImageContents = isUserMessage ? resolveImageDisplayContents(message) : [];
   const assistantDisplayContents = !isUserMessage && !isToolMessage
-    ? resolveAssistantDisplayContents(message, { includeThinking })
+    ? resolveAssistantDisplayContents(message, { contentMode: assistantContentMode })
     : [];
 
   return (
@@ -1722,7 +1740,7 @@ function ChatsTranscript({
             <div key={turn.turnId} className="grid gap-3">
               {turn.inlineMessages.map((message) => (
                 <TranscriptMessageRow
-                  includeThinking={true}
+                  assistantContentMode="all"
                   key={message.id}
                   message={message}
                   toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
@@ -1732,7 +1750,7 @@ function ChatsTranscript({
           );
         }
 
-        const hasHiddenMessages = turn.hiddenMessages.length > 0;
+        const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
         const isExpanded = expandedTurnIds[turn.turnId] === true;
         const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
         const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
@@ -1743,7 +1761,7 @@ function ChatsTranscript({
           <div key={turn.turnId} className="grid gap-3">
             {inlineMessagesBeforeWorkedFor.map((message) => (
               <TranscriptMessageRow
-                includeThinking={false}
+                assistantContentMode="text-only"
                 key={message.id}
                 message={message}
                 toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
@@ -1771,8 +1789,16 @@ function ChatsTranscript({
               <>
                 {turn.hiddenMessages.map((message) => (
                   <TranscriptMessageRow
-                    includeThinking={true}
+                    assistantContentMode="all"
                     key={message.id}
+                    message={message}
+                    toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                  />
+                ))}
+                {turn.hiddenThinkingMessages.map((message) => (
+                  <TranscriptMessageRow
+                    assistantContentMode="thinking-only"
+                    key={`${message.id}-thinking`}
                     message={message}
                     toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                   />
@@ -1781,7 +1807,7 @@ function ChatsTranscript({
             ) : null}
             {inlineMessagesAfterWorkedFor.map((message) => (
               <TranscriptMessageRow
-                includeThinking={false}
+                assistantContentMode="text-only"
                 key={message.id}
                 message={message}
                 toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
