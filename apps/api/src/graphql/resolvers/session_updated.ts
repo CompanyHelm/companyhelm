@@ -84,7 +84,16 @@ export class SessionUpdatedSubscriptionResolver {
 
   private parseSessionId(channel: string): string | null {
     const segments = channel.split(":");
-    return segments.length >= 5 ? segments[3] ?? null : null;
+    if (
+      segments.length !== 5
+      || segments[0] !== "company"
+      || segments[2] !== "session"
+      || segments[4] !== "update"
+    ) {
+      return null;
+    }
+
+    return segments[3] ?? null;
   }
 
   private async resolveRequestContext(context: GraphqlRequestContext): Promise<GraphqlRequestContext> {

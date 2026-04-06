@@ -4,6 +4,29 @@ import { SessionMessageUpdatedSubscriptionResolver } from "../src/graphql/resolv
 import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_queued_messages_updated.ts";
 import { SessionUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_updated.ts";
 
+type SubscribePatternListener = (message: string, channel: string) => void;
+
+function createSubscribePatternHarness(): {
+  getListener: () => SubscribePatternListener | undefined;
+  subscribePattern: ReturnType<typeof vi.fn>;
+  unsubscribe: ReturnType<typeof vi.fn>;
+} {
+  const unsubscribe = vi.fn(async () => undefined);
+  let listener: SubscribePatternListener | undefined;
+  const subscribePattern = vi.fn(async (_pattern: string, nextListener: SubscribePatternListener) => {
+    listener = nextListener;
+    return {
+      unsubscribe,
+    };
+  });
+
+  return {
+    getListener: () => listener,
+    subscribePattern,
+    unsubscribe,
+  };
+}
+
 async function waitForListener(
   getListener: () => ((message: string, channel: string) => void) | undefined,
 ): Promise<(message: string, channel: string) => void> {
@@ -22,13 +45,7 @@ async function waitForListener(
 }
 
 test("SessionUpdated subscription reloads the full session from Postgres when Redis signals an update", async () => {
-  const unsubscribe = vi.fn(async () => undefined);
-  const subscribePattern = vi.fn(async (_pattern: string, listener: (message: string, channel: string) => void) => {
-    subscribePattern.listener = listener;
-    return {
-      unsubscribe,
-    };
-  }) as typeof vi.fn & { listener?: (message: string, channel: string) => void };
+  const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
   const sessionReadService = {
     getSession: vi.fn(async () => ({
       id: "session-1",
@@ -67,7 +84,8 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
   const iterator = resolver.subscribe({}, {}, context as never);
   const nextEventPromise = iterator.next();
   await Promise.resolve();
-  subscribePattern.listener?.("", "company:company-1:session:session-1:update");
+  const listener = await waitForListener(getListener);
+  listener("", "company:company-1:session:session-1:update");
   const nextEvent = await nextEventPromise;
 
   assert.deepEqual(nextEvent.value, {
@@ -95,18 +113,12 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     "user-1",
   ]);
 
-  await iterator.return();
+  await iterator.return?.();
   assert.equal(unsubscribe.mock.calls.length, 1);
 });
 
 test("SessionUpdated subscription still works when Mercurius calls subscribe without a bound this", async () => {
-  const unsubscribe = vi.fn(async () => undefined);
-  const subscribePattern = vi.fn(async (_pattern: string, listener: (message: string, channel: string) => void) => {
-    subscribePattern.listener = listener;
-    return {
-      unsubscribe,
-    };
-  }) as typeof vi.fn & { listener?: (message: string, channel: string) => void };
+  const { getListener, subscribePattern } = createSubscribePatternHarness();
   const sessionReadService = {
     getSession: vi.fn(async () => ({
       id: "session-1",
@@ -147,24 +159,76 @@ test("SessionUpdated subscription still works when Mercurius calls subscribe wit
 
   const iterator = detachedSubscribe({}, {}, context as never);
   const nextEventPromise = iterator.next();
-  const listener = await waitForListener(() => subscribePattern.listener);
+  const listener = await waitForListener(getListener);
   listener("", "company:company-1:session:session-1:update");
   const nextEvent = await nextEventPromise;
 
   assert.equal(nextEvent.value?.SessionUpdated.id, "session-1");
   assert.equal(context.resolveSubscriptionContext.mock.calls.length, 1);
 
-  await iterator.return();
+  await iterator.return?.();
+});
+
+test("SessionUpdated subscription ignores message and queued channels that share the session prefix", async () => {
+  const { getListener, subscribePattern } = createSubscribePatternHarness();
+  const sessionReadService = {
+    getSession: vi.fn(async () => ({
+      id: "session-1",
+      agentId: "agent-1",
+      currentContextTokens: null,
+      hasUnread: false,
+      isCompacting: false,
+      modelId: "gpt-5.4",
+      maxContextTokens: 200000,
+      reasoningLevel: "high",
+      isThinking: false,
+      status: "running",
+      thinkingText: null,
+      createdAt: "2026-03-26T06:00:00.000Z",
+      updatedAt: "2026-03-26T06:01:00.000Z",
+    })),
+  };
+  const resolver = new SessionUpdatedSubscriptionResolver(sessionReadService as never);
+  const context = {
+    authSession: {
+      company: {
+        id: "company-1",
+      },
+      user: {
+        id: "user-1",
+      },
+    },
+    app_runtime_transaction_provider: {
+      transaction: vi.fn(),
+    },
+    redisCompanyScopedService: {
+      subscribePattern,
+    },
+  };
+
+  const iterator = resolver.subscribe({}, {}, context as never);
+  const nextEventPromise = iterator.next();
+  const listener = await waitForListener(getListener);
+
+  listener("", "company:company-1:session:session-1:message:message-1:update");
+  listener("", "company:company-1:session:session-1:queued:update");
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+
+  assert.equal(sessionReadService.getSession.mock.calls.length, 0);
+
+  listener("", "company:company-1:session:session-1:update");
+  const nextEvent = await nextEventPromise;
+
+  assert.equal(nextEvent.value?.SessionUpdated.id, "session-1");
+  assert.equal(sessionReadService.getSession.mock.calls.length, 1);
+
+  await iterator.return?.();
 });
 
 test("SessionMessageUpdated subscription reloads the message row from Postgres for the selected session", async () => {
-  const unsubscribe = vi.fn(async () => undefined);
-  const subscribePattern = vi.fn(async (_pattern: string, listener: (message: string, channel: string) => void) => {
-    subscribePattern.listener = listener;
-    return {
-      unsubscribe,
-    };
-  }) as typeof vi.fn & { listener?: (message: string, channel: string) => void };
+  const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
   const sessionReadService = {
     getMessage: vi.fn(async () => ({
       id: "message-1",
@@ -214,8 +278,8 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
 
   const iterator = resolver.subscribe({}, { sessionId: "session-123" }, context as never);
   const nextEventPromise = iterator.next();
-  await Promise.resolve();
-  subscribePattern.listener?.("", "company:company-1:session:session-123:message:message-1:update");
+  const listener = await waitForListener(getListener);
+  listener("", "company:company-1:session:session-123:message:message-1:update");
   const nextEvent = await nextEventPromise;
 
   assert.deepEqual(nextEvent.value, {
@@ -257,18 +321,12 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
     "message-1",
   ]);
 
-  await iterator.return();
+  await iterator.return?.();
   assert.equal(unsubscribe.mock.calls.length, 1);
 });
 
 test("SessionQueuedMessagesUpdated subscription reloads the full pending queue for the selected session", async () => {
-  const unsubscribe = vi.fn(async () => undefined);
-  const subscribePattern = vi.fn(async (_pattern: string, listener: (message: string, channel: string) => void) => {
-    subscribePattern.listener = listener;
-    return {
-      unsubscribe,
-    };
-  }) as typeof vi.fn & { listener?: (message: string, channel: string) => void };
+  const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
   const sessionQueuedMessageService = {
     listPending: vi.fn(async () => ([{
       createdAt: new Date("2026-03-31T09:00:00.000Z"),
@@ -306,8 +364,8 @@ test("SessionQueuedMessagesUpdated subscription reloads the full pending queue f
 
   const iterator = resolver.subscribe({}, { sessionId: "session-123" }, context as never);
   const nextEventPromise = iterator.next();
-  await Promise.resolve();
-  subscribePattern.listener?.("", "company:company-1:session:session-123:queued:update");
+  const listener = await waitForListener(getListener);
+  listener("", "company:company-1:session:session-123:queued:update");
   const nextEvent = await nextEventPromise;
 
   assert.deepEqual(nextEvent.value, {
@@ -333,6 +391,6 @@ test("SessionQueuedMessagesUpdated subscription reloads the full pending queue f
     "session-123",
   ]);
 
-  await iterator.return();
+  await iterator.return?.();
   assert.equal(unsubscribe.mock.calls.length, 1);
 });
