@@ -36,6 +36,7 @@ import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_co
 import { ChatComposerImage, type ChatComposerImageDraft } from "./chat_composer_image";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
+import { TranscriptSessionCache } from "./transcript_session_cache";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDismissInboxHumanQuestionMutation.graphql";
@@ -1862,6 +1863,11 @@ function ChatsPageContent() {
   const shouldStickTranscriptToBottomRef = useRef(true);
   const transcriptRequestIdRef = useRef(0);
   const activeTranscriptSessionIdRef = useRef<string | null>(null);
+  const selectedSessionUpdatedAtRef = useRef<string | null>(null);
+  const transcriptSessionCacheRef = useRef(new TranscriptSessionCache<SessionMessageRecord>());
+  const transcriptMessagesRef = useRef<SessionMessageRecord[]>([]);
+  const transcriptHasNextPageRef = useRef(false);
+  const transcriptEndCursorRef = useRef<string | null>(null);
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
@@ -2024,6 +2030,10 @@ function ChatsPageContent() {
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
+
+  useEffect(() => {
+    selectedSessionUpdatedAtRef.current = selectedSession?.updatedAt ?? null;
+  }, [selectedSession?.id, selectedSession?.updatedAt]);
 
   useEffect(() => {
     if (subscriptionConnectionStatus === "reconnecting") {
@@ -2227,27 +2237,64 @@ function ChatsPageContent() {
     });
   }, []);
 
+  const clearTranscriptState = useCallback(() => {
+    transcriptMessagesRef.current = [];
+    transcriptHasNextPageRef.current = false;
+    transcriptEndCursorRef.current = null;
+    setTranscriptMessages([]);
+    setTranscriptHasNextPage(false);
+    setTranscriptEndCursor(null);
+  }, []);
+
+  const applyTranscriptState = useCallback((
+    sessionId: string,
+    sessionUpdatedAt: string,
+    nextState: {
+      endCursor: string | null;
+      hasNextPage: boolean;
+      messages: SessionMessageRecord[];
+    },
+  ) => {
+    transcriptMessagesRef.current = nextState.messages;
+    transcriptHasNextPageRef.current = nextState.hasNextPage;
+    transcriptEndCursorRef.current = nextState.endCursor;
+    setTranscriptMessages(nextState.messages);
+    setTranscriptHasNextPage(nextState.hasNextPage);
+    setTranscriptEndCursor(nextState.endCursor);
+    transcriptSessionCacheRef.current.write(sessionId, {
+      endCursor: nextState.endCursor,
+      hasLoadedInitialPage: true,
+      hasNextPage: nextState.hasNextPage,
+      messages: nextState.messages,
+      sessionUpdatedAt,
+    });
+    updateSessionTitleOverride(sessionId, nextState.messages);
+  }, [updateSessionTitleOverride]);
+
   const loadTranscriptPage = useCallback(async ({
     after = null,
     mode,
     sessionId,
+    sessionUpdatedAt,
   }: {
     after?: string | null;
-    mode: "prepend" | "replace";
+    mode: "prepend" | "refresh" | "replace";
     sessionId: string;
+    sessionUpdatedAt: string;
   }) => {
-    if (mode === "replace") {
+    if (mode === "replace" || mode === "refresh") {
       const requestId = transcriptRequestIdRef.current + 1;
       transcriptRequestIdRef.current = requestId;
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = true;
       setErrorMessage(null);
-      setTranscriptMessages([]);
-      setTranscriptHasNextPage(false);
-      setTranscriptEndCursor(null);
-      isLoadingOlderTranscriptRef.current = false;
-      setIsLoadingOlderTranscript(false);
-      setIsLoadingTranscript(true);
+
+      if (mode === "replace") {
+        clearTranscriptState();
+        isLoadingOlderTranscriptRef.current = false;
+        setIsLoadingOlderTranscript(false);
+        setIsLoadingTranscript(true);
+      }
 
       try {
         const response = await fetchQuery<chatsPageTranscriptQuery>(
@@ -2266,19 +2313,27 @@ function ChatsPageContent() {
 
         const connection = response?.SessionTranscriptMessages;
         const nextMessages = toTranscriptMessagesFromConnection(connection);
-        setTranscriptMessages((currentMessages) => {
-          const mergedMessages = mergeTranscriptMessages(currentMessages, nextMessages);
-          updateSessionTitleOverride(sessionId, mergedMessages);
-          return mergedMessages;
+        const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, nextMessages);
+        const nextSessionUpdatedAt = selectedSessionUpdatedAtRef.current ?? sessionUpdatedAt;
+        applyTranscriptState(sessionId, nextSessionUpdatedAt, {
+          endCursor: mode === "replace"
+            ? connection?.pageInfo.endCursor ?? null
+            : transcriptEndCursorRef.current,
+          hasNextPage: mode === "replace"
+            ? Boolean(connection?.pageInfo.hasNextPage)
+            : transcriptHasNextPageRef.current,
+          messages: mergedMessages,
         });
-        setTranscriptHasNextPage(Boolean(connection?.pageInfo.hasNextPage));
-        setTranscriptEndCursor(connection?.pageInfo.endCursor ?? null);
       } catch (error) {
         if (transcriptRequestIdRef.current === requestId) {
           setErrorMessage(error instanceof Error ? error.message : "Failed to load transcript.");
         }
       } finally {
-        if (transcriptRequestIdRef.current === requestId && activeTranscriptSessionIdRef.current === sessionId) {
+        if (
+          mode === "replace"
+          && transcriptRequestIdRef.current === requestId
+          && activeTranscriptSessionIdRef.current === sessionId
+        ) {
           setIsLoadingTranscript(false);
         }
       }
@@ -2316,13 +2371,13 @@ function ChatsPageContent() {
 
       const connection = response?.SessionTranscriptMessages;
       const nextMessages = toTranscriptMessagesFromConnection(connection);
-      setTranscriptMessages((currentMessages) => {
-        const mergedMessages = mergeTranscriptMessages(currentMessages, nextMessages);
-        updateSessionTitleOverride(sessionId, mergedMessages);
-        return mergedMessages;
+      const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, nextMessages);
+      const nextSessionUpdatedAt = selectedSessionUpdatedAtRef.current ?? sessionUpdatedAt;
+      applyTranscriptState(sessionId, nextSessionUpdatedAt, {
+        endCursor: connection?.pageInfo.endCursor ?? null,
+        hasNextPage: Boolean(connection?.pageInfo.hasNextPage),
+        messages: mergedMessages,
       });
-      setTranscriptHasNextPage(Boolean(connection?.pageInfo.hasNextPage));
-      setTranscriptEndCursor(connection?.pageInfo.endCursor ?? null);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to load older messages.");
       pendingTranscriptScrollRestoreRef.current = null;
@@ -2331,8 +2386,9 @@ function ChatsPageContent() {
       setIsLoadingOlderTranscript(false);
     }
   }, [
+    applyTranscriptState,
+    clearTranscriptState,
     environment,
-    updateSessionTitleOverride,
   ]);
 
   useEffect(() => {
@@ -2365,9 +2421,7 @@ function ChatsPageContent() {
       activeTranscriptSessionIdRef.current = null;
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = true;
-      setTranscriptMessages([]);
-      setTranscriptHasNextPage(false);
-      setTranscriptEndCursor(null);
+      clearTranscriptState();
       setIsLoadingTranscript(false);
       isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
@@ -2375,11 +2429,36 @@ function ChatsPageContent() {
     }
 
     activeTranscriptSessionIdRef.current = selectedSession.id;
+    const cachedTranscript = transcriptSessionCacheRef.current.read(selectedSession.id);
+    if (cachedTranscript?.hasLoadedInitialPage) {
+      // Rehydrate the transcript immediately from memory, then refresh only when the session moved
+      // forward while a different chat was selected.
+      applyTranscriptState(selectedSession.id, cachedTranscript.sessionUpdatedAt, {
+        endCursor: cachedTranscript.endCursor,
+        hasNextPage: cachedTranscript.hasNextPage,
+        messages: [...cachedTranscript.messages],
+      });
+      setIsLoadingTranscript(false);
+      isLoadingOlderTranscriptRef.current = false;
+      setIsLoadingOlderTranscript(false);
+      if (cachedTranscript.sessionUpdatedAt === selectedSession.updatedAt) {
+        return;
+      }
+
+      void loadTranscriptPage({
+        mode: "refresh",
+        sessionId: selectedSession.id,
+        sessionUpdatedAt: selectedSession.updatedAt,
+      });
+      return;
+    }
+
     void loadTranscriptPage({
       mode: "replace",
       sessionId: selectedSession.id,
+      sessionUpdatedAt: selectedSession.updatedAt,
     });
-  }, [loadTranscriptPage, selectedSession?.id]);
+  }, [applyTranscriptState, clearTranscriptState, loadTranscriptPage, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedSession || pendingCreatedSessionTranscriptReloadId !== selectedSession.id) {
@@ -2395,6 +2474,7 @@ function ChatsPageContent() {
       void loadTranscriptPage({
         mode: "replace",
         sessionId: selectedSession.id,
+        sessionUpdatedAt: selectedSession.updatedAt,
       }).finally(() => {
         setPendingCreatedSessionTranscriptReloadId((currentSessionId) => {
           return currentSessionId === selectedSession.id ? null : currentSessionId;
@@ -2590,6 +2670,7 @@ function ChatsPageContent() {
       after: transcriptEndCursor,
       mode: "prepend",
       sessionId: selectedSession.id,
+      sessionUpdatedAt: selectedSession.updatedAt,
     });
   }, [
     isLoadingOlderTranscript,
@@ -2617,6 +2698,7 @@ function ChatsPageContent() {
       after: transcriptEndCursor,
       mode: "prepend",
       sessionId: selectedSession.id,
+      sessionUpdatedAt: selectedSession.updatedAt,
     });
   }, [
     isLoadingOlderTranscript,
@@ -2676,10 +2758,11 @@ function ChatsPageContent() {
           return;
         }
 
-        setTranscriptMessages((currentMessages) => {
-          const mergedMessages = mergeTranscriptMessages(currentMessages, [nextMessage]);
-          updateSessionTitleOverride(selectedSession.id, mergedMessages);
-          return mergedMessages;
+        const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, [nextMessage]);
+        applyTranscriptState(selectedSession.id, selectedSessionUpdatedAtRef.current ?? selectedSession.updatedAt, {
+          endCursor: transcriptEndCursorRef.current,
+          hasNextPage: transcriptHasNextPageRef.current,
+          messages: mergedMessages,
         });
       },
       onError: (error) => {
@@ -2690,7 +2773,7 @@ function ChatsPageContent() {
     return () => {
       disposable.dispose();
     };
-  }, [environment, selectedSession?.id, updateSessionTitleOverride]);
+  }, [applyTranscriptState, environment, selectedSession?.id]);
 
   useEffect(() => {
     if (!selectedSession) {
