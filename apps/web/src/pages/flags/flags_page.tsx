@@ -4,6 +4,11 @@ import { useFeatureFlags } from "@/contextes/feature_flag_context";
 
 const featureFlagDefinitions = [
   {
+    key: "computer_providers" as const,
+    description: "Controls whether the Compute Providers page appears in navigation for this browser.",
+    label: "Computer providers",
+  },
+  {
     key: "tasks_management" as const,
     description: "Controls whether the Tasks entry appears in the left navigation for this browser.",
     label: "Tasks management",

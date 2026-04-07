@@ -1,10 +1,12 @@
 import { Suspense, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { useToast } from "@/components/toast_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import { ComputeProviderDefinitionDialog, type ComputeProviderDefinitionDialogRecord } from "./definition_dialog";
 import {
   ComputeProviderDefinitionsTable,
@@ -384,6 +386,33 @@ function ComputeProviderDefinitionsPageContent() {
 }
 
 export function ComputeProviderDefinitionsPage() {
+  const featureFlags = useFeatureFlags();
+  if (!featureFlags.isEnabled("computer_providers")) {
+    return (
+      <main className="flex flex-1 flex-col gap-6">
+        <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardDescription>
+                Compute Providers is disabled in this browser. Enable the
+                <span className="mx-1 font-medium text-foreground">Computer providers</span>
+                feature flag to access this page.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="flex items-center gap-3">
+            <Link
+              className="inline-flex h-6 items-center rounded-md border border-border px-2 text-xs font-medium text-foreground transition hover:bg-input/50"
+              to="/flags"
+            >
+              Open feature flags
+            </Link>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
   return (
     <Suspense fallback={<ComputeProviderDefinitionsPageFallback />}>
       <ComputeProviderDefinitionsPageContent />

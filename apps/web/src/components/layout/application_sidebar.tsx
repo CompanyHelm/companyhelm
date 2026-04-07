@@ -164,11 +164,13 @@ export function ApplicationSidebar() {
       label: "Environments",
       to: "/environments",
     },
-    {
-      icon: WrenchIcon,
-      label: "Compute Providers",
-      to: "/compute-providers",
-    },
+    ...(featureFlags.isEnabled("computer_providers")
+      ? [{
+        icon: WrenchIcon,
+        label: "Compute Providers",
+        to: "/compute-providers",
+      }]
+      : []),
     {
       icon: FolderGit2Icon,
       label: "Repositories",
