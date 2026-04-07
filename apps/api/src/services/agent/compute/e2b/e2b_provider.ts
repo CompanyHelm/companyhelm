@@ -347,6 +347,10 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
         return directTemplate;
       }
 
+      if (candidateReference.includes("/")) {
+        continue;
+      }
+
       const aliasedTemplateId = await this.getTemplateIdForAlias(candidateReference, apiKey);
       if (!aliasedTemplateId) {
         continue;
@@ -384,7 +388,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       signal: AbortSignal.timeout(60_000),
     });
 
-    if (response.status === 404) {
+    if (response.status === 400 || response.status === 404) {
       return null;
     }
     if (!response.ok) {

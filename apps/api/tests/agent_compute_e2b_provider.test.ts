@@ -88,7 +88,6 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
   }]);
   assert.deepEqual(fetchSpy.mock.calls.map((call) => call[0]), [
     "https://api.e2b.app/templates/e2b%2Fdesktop",
-    "https://api.e2b.app/templates/aliases/e2b%2Fdesktop",
     "https://api.e2b.app/templates/desktop",
   ]);
   fetchSpy.mockRestore();
