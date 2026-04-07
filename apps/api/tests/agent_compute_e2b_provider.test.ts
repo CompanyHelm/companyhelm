@@ -34,14 +34,19 @@ function createConfig() {
 
 test("AgentComputeE2bProvider resolves configured templates from the E2B API", async () => {
   const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-    json: async () => [{
+    json: async () => ({
       aliases: ["desktop"],
-      cpuCount: 4,
-      diskSizeMB: 20 * 1024,
-      memoryMB: 8 * 1024,
+      builds: [{
+        cpuCount: 4,
+        createdAt: "2026-04-07T00:00:00.000Z",
+        diskSizeMB: 20 * 1024,
+        memoryMB: 8 * 1024,
+        status: "ready",
+        updatedAt: "2026-04-07T00:00:00.000Z",
+      }],
       names: ["desktop"],
       templateID: "e2b/desktop",
-    }],
+    }),
     ok: true,
   } as never);
   const provider = new AgentComputeE2bProvider(
@@ -63,7 +68,7 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
     name: "Desktop",
     templateId: "e2b/desktop",
   }]);
-  assert.equal(fetchSpy.mock.calls[0]?.[0], "https://api.e2b.app/templates");
+  assert.equal(fetchSpy.mock.calls[0]?.[0], "https://api.e2b.app/templates/e2b%2Fdesktop");
   fetchSpy.mockRestore();
 });
 

@@ -16,11 +16,18 @@ import { AgentComputeE2bShell } from "./e2b_shell.ts";
 const E2B_API_BASE_URL = "https://api.e2b.app";
 const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
 
-type E2bTemplateRecord = {
-  aliases?: string[];
+type E2bTemplateBuildRecord = {
   cpuCount: number;
-  diskSizeMB: number;
+  createdAt: string;
+  diskSizeMB?: number;
   memoryMB: number;
+  status: "building" | "waiting" | "ready" | "error";
+  updatedAt: string;
+};
+
+type E2bTemplateWithBuildsRecord = {
+  aliases?: string[];
+  builds: E2bTemplateBuildRecord[];
   names?: string[];
   templateID: string;
 };
@@ -72,25 +79,22 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    const remoteTemplates = await this.listTemplates(definition.apiKey);
-    return this.config.companyhelm.e2b.templates.map((configuredTemplate) => {
-      const remoteTemplate = remoteTemplates.find((template) => this.matchesTemplateReference(
-        template,
-        configuredTemplate.template_id,
-      ));
-      if (!remoteTemplate) {
-        throw new Error(`Configured E2B template ${configuredTemplate.template_id} was not found.`);
+    return Promise.all(this.config.companyhelm.e2b.templates.map(async (configuredTemplate) => {
+      const remoteTemplate = await this.getTemplate(definition.apiKey, configuredTemplate.template_id);
+      const templateBuild = this.requireReadyTemplateBuild(remoteTemplate, configuredTemplate.template_id);
+      if (templateBuild.diskSizeMB === undefined) {
+        throw new Error(`Configured E2B template ${configuredTemplate.template_id} is missing disk metadata.`);
       }
 
       return {
         computerUse: configuredTemplate.computer_use,
-        cpuCount: remoteTemplate.cpuCount,
-        diskSpaceGb: this.convertMegabytesToGigabytes(remoteTemplate.diskSizeMB),
-        memoryGb: this.convertMegabytesToGigabytes(remoteTemplate.memoryMB),
+        cpuCount: templateBuild.cpuCount,
+        diskSpaceGb: this.convertMegabytesToGigabytes(templateBuild.diskSizeMB),
+        memoryGb: this.convertMegabytesToGigabytes(templateBuild.memoryMB),
         name: configuredTemplate.name,
         templateId: configuredTemplate.template_id,
       };
-    });
+    }));
   }
 
   async provisionEnvironment(
@@ -308,16 +312,22 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     return Math.max(1, Math.ceil(valueInMegabytes / 1024));
   }
 
-  private matchesTemplateReference(template: E2bTemplateRecord, reference: string): boolean {
-    if (template.templateID === reference) {
-      return true;
+  private requireReadyTemplateBuild(
+    template: E2bTemplateWithBuildsRecord,
+    templateReference: string,
+  ): E2bTemplateBuildRecord {
+    const readyBuild = [...template.builds]
+      .filter((build) => build.status === "ready")
+      .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0];
+    if (!readyBuild) {
+      throw new Error(`Configured E2B template ${templateReference} does not have a ready build.`);
     }
 
-    return template.names?.includes(reference) === true || template.aliases?.includes(reference) === true;
+    return readyBuild;
   }
 
-  private async listTemplates(apiKey: string): Promise<E2bTemplateRecord[]> {
-    const response = await fetch(`${E2B_API_BASE_URL}/templates`, {
+  private async getTemplate(apiKey: string, templateReference: string): Promise<E2bTemplateWithBuildsRecord> {
+    const response = await fetch(`${E2B_API_BASE_URL}/templates/${encodeURIComponent(templateReference)}`, {
       headers: {
         "User-Agent": "companyhelm-ng",
         "X-API-KEY": apiKey,
@@ -326,9 +336,9 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to load E2B templates (${response.status}).`);
+      throw new Error(`Failed to load E2B template ${templateReference} (${response.status}).`);
     }
 
-    return await response.json() as E2bTemplateRecord[];
+    return await response.json() as E2bTemplateWithBuildsRecord;
   }
 }
