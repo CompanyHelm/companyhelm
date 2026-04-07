@@ -1,12 +1,12 @@
 import "reflect-metadata";
 import pino from "pino";
-import { ApiCli } from "./src/cli/api_cli.ts";
-import { ApiContainer } from "./src/api_container.ts";
-import { ConfigLoader } from "./src/config/config_loader.ts";
-import { Config, ConfigDocument } from "./src/config/schema.ts";
-import { ApiLogger } from "./src/log/api_logger.ts";
-import { ApiServer } from "./src/server/api_server.ts";
-import { DbBootstrap } from "./src/db/bootstrap/bootstrap.ts";
+import { ApiContainer } from "./api_container.ts";
+import { ApiCli } from "./cli/api_cli.ts";
+import { ConfigLoader } from "./config/config_loader.ts";
+import { Config, ConfigDocument } from "./config/schema.ts";
+import { DbBootstrap } from "./db/bootstrap/bootstrap.ts";
+import { ApiLogger } from "./log/api_logger.ts";
+import { ApiServer } from "./server/api_server.ts";
 
 try {
   const argumentsDocument = new ApiCli().parse(process.argv);

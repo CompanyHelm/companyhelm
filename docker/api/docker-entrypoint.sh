@@ -38,4 +38,4 @@ if [ -n "${COMPANYHELM_CONFIG_S3_URI:-}" ]; then
 fi
 
 cd /app
-exec npm exec -w @companyhelm/api -- tsx server.ts "$@"
+exec npm exec -w @companyhelm/api -- tsx src/main.ts "$@"
