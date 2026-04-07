@@ -24,6 +24,7 @@ type EnvironmentRecord = {
   provider: "daytona" | "e2b";
   providerDefinitionId: string | null;
   providerEnvironmentId: string;
+  templateId: string;
   updatedAt: Date;
 };
 
@@ -47,6 +48,7 @@ type GraphqlEnvironmentRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  templateId: string;
   status: AgentEnvironmentStatus;
   updatedAt: string;
 };
@@ -139,6 +141,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
           provider: agentEnvironments.provider,
           providerDefinitionId: agentEnvironments.providerDefinitionId,
           providerEnvironmentId: agentEnvironments.providerEnvironmentId,
+          templateId: agentEnvironments.templateId,
           updatedAt: agentEnvironments.updatedAt,
         })
         .from(agentEnvironments)
@@ -193,6 +196,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
             ? providerDefinitionNameById.get(environmentRecord.providerDefinitionId) ?? null
             : null,
           providerEnvironmentId: environmentRecord.providerEnvironmentId,
+          templateId: environmentRecord.templateId,
           status: statusesByEnvironmentId.get(environmentRecord.id) ?? "unhealthy",
           updatedAt: environmentRecord.updatedAt.toISOString(),
         }));

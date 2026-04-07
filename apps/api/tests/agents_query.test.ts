@@ -24,6 +24,10 @@ class AgentsQueryTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -43,6 +47,8 @@ class AgentsQueryTestHarness {
                   return {
                     async where() {
                       return [{
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+                        defaultEnvironmentTemplateId: "e2b/desktop",
                         id: "agent-1",
                         name: "Research Agent",
                         defaultModelProviderCredentialModelId: "model-row-1",
@@ -81,6 +87,22 @@ class AgentsQueryTestHarness {
                       return [{
                         id: "credential-1",
                         modelProvider: "openai",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "compute-provider-definition-1",
+                        name: "Primary E2B",
+                        provider: "e2b",
                       }];
                     },
                   };
@@ -129,7 +151,7 @@ test("GraphQL Agents query lists agents for the authenticated company", async ()
     },
   };
 
-  await new GraphqlApplication(
+  const graphqlApplication = new GraphqlApplication(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -139,7 +161,19 @@ test("GraphQL Agents query lists agents for the authenticated company", async ()
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
     new ModelProviderCredentialsQueryResolver(),
-  ).register(app);
+  );
+  (
+    graphqlApplication as unknown as {
+      agentEnvironmentTemplateResolver: {
+        execute: () => Promise<never>;
+      };
+    }
+  ).agentEnvironmentTemplateResolver = {
+    async execute() {
+      throw new Error("environmentTemplate resolver should not run for Agents queries without template fields");
+    },
+  };
+  await graphqlApplication.register(app);
 
   const response = await app.inject({
     method: "POST",

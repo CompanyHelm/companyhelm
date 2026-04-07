@@ -28,6 +28,7 @@ type GraphqlEnvironmentRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  templateId: string;
   status: "deleting";
   updatedAt: string;
 };
@@ -151,6 +152,7 @@ export class DeleteEnvironmentMutation extends Mutation<
       providerDefinitionId: deletedEnvironment.providerDefinitionId,
       providerDefinitionName: providerDefinition?.name ?? null,
       providerEnvironmentId: deletedEnvironment.providerEnvironmentId,
+      templateId: deletedEnvironment.templateId,
       status: "deleting",
       updatedAt: deletedEnvironment.updatedAt.toISOString(),
     };

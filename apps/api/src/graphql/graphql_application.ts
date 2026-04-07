@@ -73,11 +73,13 @@ import { AgentConversationMessagesQueryResolver } from "./resolvers/agent_conver
 import { AgentConversationsQueryResolver } from "./resolvers/agent_conversations.ts";
 import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
+import { AgentEnvironmentTemplateResolver } from "./resolvers/agent_environment_template.ts";
 import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
 import { ArtifactQueryResolver } from "./resolvers/artifact.ts";
 import { ArtifactsQueryResolver } from "./resolvers/artifacts.ts";
 import { CompanySettingsQueryResolver } from "./resolvers/company_settings.ts";
+import { ComputeProviderDefinitionTemplatesResolver } from "./resolvers/compute_provider_definition_templates.ts";
 import { ComputeProviderDefinitionsQueryResolver } from "./resolvers/compute_provider_definitions.ts";
 import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
@@ -124,6 +126,7 @@ export class GraphqlApplication {
   private readonly agentConversationsQueryResolver: AgentConversationsQueryResolver;
   private readonly agentQueryResolver: AgentQueryResolver;
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
+  private readonly agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolver;
   private readonly agentSecretsQueryResolver: AgentSecretsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
   private readonly artifactQueryResolver: ArtifactQueryResolver;
@@ -138,6 +141,7 @@ export class GraphqlApplication {
   private readonly createSecretMutation: CreateSecretMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly computeProviderDefinitionsQueryResolver: ComputeProviderDefinitionsQueryResolver;
+  private readonly computeProviderDefinitionTemplatesResolver: ComputeProviderDefinitionTemplatesResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly deleteArtifactMutation: DeleteArtifactMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
@@ -471,6 +475,10 @@ export class GraphqlApplication {
         throw new Error("SetDefaultModelProviderCredentialModel mutation is not configured.");
       },
     } as never,
+    @inject(AgentEnvironmentTemplateResolver)
+    agentEnvironmentTemplateResolver?: AgentEnvironmentTemplateResolver,
+    @inject(ComputeProviderDefinitionTemplatesResolver)
+    computeProviderDefinitionTemplatesResolver?: ComputeProviderDefinitionTemplatesResolver,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
@@ -503,6 +511,17 @@ export class GraphqlApplication {
             templateId: string;
           },
         ) {
+          if (input.templateId === "e2b/desktop") {
+            return {
+              computerUse: true,
+              cpuCount: 4,
+              diskSpaceGb: 10,
+              memoryGb: 8,
+              name: "Desktop",
+              templateId: input.templateId,
+            };
+          }
+
           return {
             computerUse: false,
             cpuCount: 4,
@@ -527,8 +546,10 @@ export class GraphqlApplication {
       ?? new AttachSecretToSessionMutation(defaultSecretService);
     this.agentConversationMessagesQueryResolver = agentConversationMessagesQueryResolver;
     this.agentConversationsQueryResolver = agentConversationsQueryResolver;
-    this.agentQueryResolver = agentQueryResolver ?? new AgentQueryResolver(defaultAgentEnvironmentTemplateService);
+    this.agentQueryResolver = agentQueryResolver ?? new AgentQueryResolver();
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
+    this.agentEnvironmentTemplateResolver = agentEnvironmentTemplateResolver
+      ?? new AgentEnvironmentTemplateResolver(defaultAgentEnvironmentTemplateService);
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
     this.agentsQueryResolver = agentsQueryResolver;
@@ -544,6 +565,8 @@ export class GraphqlApplication {
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
     this.createSessionMutation = createSessionMutation;
     this.computeProviderDefinitionsQueryResolver = computeProviderDefinitionsQueryResolver;
+    this.computeProviderDefinitionTemplatesResolver = computeProviderDefinitionTemplatesResolver
+      ?? new ComputeProviderDefinitionTemplatesResolver(defaultAgentEnvironmentTemplateService);
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.deleteArtifactMutation = deleteArtifactMutation;
     this.deleteAgentMutation = deleteAgentMutation;
@@ -664,6 +687,12 @@ export class GraphqlApplication {
       },
       resolvers: {
         JSON: GraphQLJSON,
+        Agent: {
+          environmentTemplate: this.agentEnvironmentTemplateResolver.execute,
+        },
+        ComputeProviderDefinition: {
+          templates: this.computeProviderDefinitionTemplatesResolver.execute,
+        },
         Query: {
           Agent: this.agentQueryResolver.execute,
           AgentConversationMessages: this.agentConversationMessagesQueryResolver.execute,

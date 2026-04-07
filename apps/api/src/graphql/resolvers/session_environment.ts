@@ -36,6 +36,7 @@ type GraphqlEnvironmentRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  templateId: string;
   status: AgentEnvironmentStatus;
   updatedAt: string;
 };
@@ -215,6 +216,7 @@ export class SessionEnvironmentQueryResolver {
             providerDefinitionId: currentEnvironment.providerDefinitionId,
             providerDefinitionName: currentEnvironmentDefinition?.name ?? null,
             providerEnvironmentId: currentEnvironment.providerEnvironmentId,
+            templateId: currentEnvironment.templateId,
             status: currentEnvironmentStatus,
             updatedAt: currentEnvironment.updatedAt.toISOString(),
           }

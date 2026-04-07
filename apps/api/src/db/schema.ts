@@ -847,6 +847,7 @@ export const agentEnvironments = pgTable("agent_environments", {
   providerDefinitionId: uuid("provider_definition_id")
     .references(() => computeProviderDefinitions.id, { onDelete: "restrict" }),
   providerEnvironmentId: text("provider_environment_id").notNull(),
+  templateId: text("template_id").notNull(),
   displayName: text("display_name"),
   platform: agentEnvironmentPlatformEnum("platform").notNull(),
   cpuCount: integer("cpu_count").notNull(),

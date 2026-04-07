@@ -27,6 +27,10 @@ class StartStopEnvironmentMutationTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -90,6 +94,7 @@ class StartStopEnvironmentMutationTestHarness {
           platform: "linux" as const,
           provider: "daytona" as const,
           providerEnvironmentId: "daytona-env-1",
+          templateId: "daytona/default",
           updatedAt: new Date("2026-03-29T11:00:00.000Z"),
         };
       },

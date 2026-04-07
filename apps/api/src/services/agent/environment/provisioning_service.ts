@@ -119,6 +119,7 @@ export class AgentEnvironmentProvisioningService {
         provider: provider.getProvider(),
         providerDefinitionId: agent.defaultComputeProviderDefinitionId,
         providerEnvironmentId: provisionedEnvironment.providerEnvironmentId,
+        templateId: template.templateId,
       });
 
       await this.environmentProvisioning.provision(transactionProvider, createdEnvironment);

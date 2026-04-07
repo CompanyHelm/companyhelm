@@ -27,6 +27,7 @@ type GraphqlEnvironmentRecord = {
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
+  templateId: string;
   status: "running";
   updatedAt: string;
 };
@@ -134,6 +135,7 @@ export class StartEnvironmentMutation extends Mutation<
       providerDefinitionId: environment.providerDefinitionId,
       providerDefinitionName: providerDefinition?.name ?? null,
       providerEnvironmentId: environment.providerEnvironmentId,
+      templateId: environment.templateId,
       status: "running",
       updatedAt: environment.updatedAt.toISOString(),
     };

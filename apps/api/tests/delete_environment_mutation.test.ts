@@ -26,6 +26,10 @@ class DeleteEnvironmentMutationTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 }
@@ -74,6 +78,7 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
         platform: "linux" as const,
         provider: "daytona" as const,
         providerEnvironmentId: "daytona-env-1",
+        templateId: "daytona/default",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -92,6 +97,7 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
         platform: "linux" as const,
         provider: "daytona" as const,
         providerEnvironmentId: "daytona-env-1",
+        templateId: "daytona/default",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -222,6 +228,7 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
         platform: "linux" as const,
         provider: "daytona" as const,
         providerEnvironmentId: "daytona-env-1",
+        templateId: "daytona/default",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -240,6 +247,7 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
         platform: "linux" as const,
         provider: "daytona" as const,
         providerEnvironmentId: "daytona-env-1",
+        templateId: "daytona/default",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },

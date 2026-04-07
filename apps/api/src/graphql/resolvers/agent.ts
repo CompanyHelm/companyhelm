@@ -1,13 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import {
   agents,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
-import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
-import { AgentEnvironmentTemplateService } from "../../services/agent/environment/template_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type AgentQueryArguments = {
@@ -48,7 +46,6 @@ type GraphqlAgentRecord = {
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
   defaultEnvironmentTemplateId: string;
-  environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
@@ -75,26 +72,6 @@ type SelectableDatabase = {
  */
 @injectable()
 export class AgentQueryResolver {
-  private readonly templateService: AgentEnvironmentTemplateService;
-
-  constructor(
-    @inject(AgentEnvironmentTemplateService)
-    templateService: AgentEnvironmentTemplateService = {
-      async getAgentTemplate() {
-        return {
-          computerUse: true,
-          cpuCount: 4,
-          diskSpaceGb: 10,
-          memoryGb: 8,
-          name: "Desktop",
-          templateId: "e2b/desktop",
-        };
-      },
-    } as never,
-  ) {
-    this.templateService = templateService;
-  }
-
   execute = async (
     _root: unknown,
     arguments_: AgentQueryArguments,
@@ -133,12 +110,6 @@ export class AgentQueryResolver {
         throw new Error("Agent not found.");
       }
 
-      const environmentTemplate = await this.templateService.getAgentTemplate(
-        context.app_runtime_transaction_provider,
-        context.authSession.company.id,
-        agentRecord.id,
-      );
-
       const [computeProviderDefinitionRecord] = agentRecord.defaultComputeProviderDefinitionId
         ? await selectableDatabase
           .select({
@@ -156,7 +127,6 @@ export class AgentQueryResolver {
           null,
           null,
           computeProviderDefinitionRecord ?? null,
-          environmentTemplate,
         );
       }
 
@@ -187,7 +157,6 @@ export class AgentQueryResolver {
         modelRecord ?? null,
         credentialRecord ?? null,
         computeProviderDefinitionRecord ?? null,
-        environmentTemplate,
       );
     });
   };
@@ -197,14 +166,12 @@ export class AgentQueryResolver {
     modelRecord: ModelRecord | null,
     credentialRecord: CredentialRecord | null,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
-    environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
       defaultComputeProvider: computeProviderDefinitionRecord?.provider ?? null,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord?.name ?? null,
       defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
-      environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: modelRecord?.modelProviderCredentialId ?? null,

@@ -37,35 +37,22 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
     const url = String(input);
     if (url.endsWith("/templates/e2b%2Fdesktop")) {
       return {
-        ok: false,
-        status: 404,
+        json: async () => ({
+          builds: [{
+            cpuCount: 4,
+            createdAt: "2026-04-07T19:00:00.000Z",
+            diskSizeMB: 20 * 1024,
+            memoryMB: 8 * 1024,
+            status: "ready",
+            updatedAt: "2026-04-07T19:00:00.000Z",
+          }],
+          templateID: "e2b/desktop",
+        }),
+        ok: true,
+        status: 200,
       } as never;
     }
-    if (url.endsWith("/templates/desktop")) {
-      return {
-        ok: false,
-        status: 404,
-      } as never;
-    }
-    if (url.endsWith("/templates/aliases/desktop")) {
-      return {
-        ok: false,
-        status: 403,
-      } as never;
-    }
-    assert.equal(url, "https://api.e2b.app/templates");
-    return {
-      json: async () => [{
-        aliases: ["desktop"],
-        cpuCount: 4,
-        diskSizeMB: 20 * 1024,
-        memoryMB: 8 * 1024,
-        names: ["desktop"],
-        templateID: "desktop",
-      }],
-      ok: true,
-      status: 200,
-    } as never;
+    throw new Error(`Unexpected fetch: ${url}`);
   });
   const provider = new AgentComputeE2bProvider(
     createConfig() as never,
@@ -86,12 +73,7 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
     name: "Desktop",
     templateId: "e2b/desktop",
   }]);
-  assert.deepEqual(fetchSpy.mock.calls.map((call) => call[0]), [
-    "https://api.e2b.app/templates/e2b%2Fdesktop",
-    "https://api.e2b.app/templates/desktop",
-    "https://api.e2b.app/templates/aliases/desktop",
-    "https://api.e2b.app/templates",
-  ]);
+  assert.deepEqual(fetchSpy.mock.calls.map((call) => call[0]), ["https://api.e2b.app/templates/e2b%2Fdesktop"]);
   fetchSpy.mockRestore();
 });
 
@@ -100,35 +82,22 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
     const url = String(input);
     if (url.endsWith("/templates/e2b%2Fdesktop")) {
       return {
-        ok: false,
-        status: 404,
+        json: async () => ({
+          builds: [{
+            cpuCount: 4,
+            createdAt: "2026-04-07T19:00:00.000Z",
+            diskSizeMB: 20 * 1024,
+            memoryMB: 8 * 1024,
+            status: "ready",
+            updatedAt: "2026-04-07T19:00:00.000Z",
+          }],
+          templateID: "e2b/desktop",
+        }),
+        ok: true,
+        status: 200,
       } as never;
     }
-    if (url.endsWith("/templates/desktop")) {
-      return {
-        ok: false,
-        status: 404,
-      } as never;
-    }
-    if (url.endsWith("/templates/aliases/desktop")) {
-      return {
-        ok: false,
-        status: 403,
-      } as never;
-    }
-    assert.equal(url, "https://api.e2b.app/templates");
-    return {
-      json: async () => [{
-        aliases: ["desktop"],
-        cpuCount: 4,
-        diskSizeMB: 20 * 1024,
-        memoryMB: 8 * 1024,
-        names: ["desktop"],
-        templateID: "desktop",
-      }],
-      ok: true,
-      status: 200,
-    } as never;
+    throw new Error(`Unexpected fetch: ${url}`);
   });
   const getInfo = vi.fn(async () => ({
     cpuCount: 8,
@@ -164,7 +133,7 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
   assert.equal(provider.getProvider(), "e2b");
   assert.equal(provider.supportsOnDemandProvisioning(), true);
   assert.equal(create.mock.calls.length, 1);
-  assert.equal(create.mock.calls[0]?.[0], "desktop");
+  assert.equal(create.mock.calls[0]?.[0], "e2b/desktop");
   assert.deepEqual(create.mock.calls[0]?.[1], {
     apiKey: "e2b-api-key",
     lifecycle: {

@@ -65,6 +65,7 @@ export class AgentEnvironmentCatalogService {
       provider: ComputeProvider;
       providerDefinitionId: string | null;
       providerEnvironmentId: string;
+      templateId: string;
     },
   ): Promise<AgentEnvironmentRecord> {
     const now = new Date();
@@ -85,6 +86,7 @@ export class AgentEnvironmentCatalogService {
           provider: input.provider,
           providerDefinitionId: input.providerDefinitionId,
           providerEnvironmentId: input.providerEnvironmentId,
+          templateId: input.templateId,
           updatedAt: now,
         })
         .returning?.(this.environmentSelection()) as AgentEnvironmentRecord[];
@@ -236,6 +238,7 @@ export class AgentEnvironmentCatalogService {
       provider: agentEnvironments.provider,
       providerDefinitionId: agentEnvironments.providerDefinitionId,
       providerEnvironmentId: agentEnvironments.providerEnvironmentId,
+      templateId: agentEnvironments.templateId,
       updatedAt: agentEnvironments.updatedAt,
     };
   }

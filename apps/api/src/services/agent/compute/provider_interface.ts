@@ -52,6 +52,7 @@ export type AgentEnvironmentRecord = {
   provider: ComputeProvider;
   providerDefinitionId: string | null;
   providerEnvironmentId: string;
+  templateId: string;
   updatedAt: Date;
 };
 

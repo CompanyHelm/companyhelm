@@ -26,22 +26,7 @@ type E2bTemplateBuildRecord = {
 };
 
 type E2bTemplateWithBuildsRecord = {
-  aliases?: string[];
   builds: E2bTemplateBuildRecord[];
-  names?: string[];
-  templateID: string;
-};
-
-type E2bTemplateRecord = {
-  aliases?: string[];
-  cpuCount: number;
-  diskSizeMB: number;
-  memoryMB: number;
-  names?: string[];
-  templateID: string;
-};
-
-type E2bTemplateAliasRecord = {
   templateID: string;
 };
 
@@ -353,76 +338,22 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     apiKey: string,
     templateReference: string,
   ): Promise<E2bResolvedTemplateRecord> {
-    const candidateReferences = this.getTemplateReferenceCandidates(templateReference);
-
-    for (const candidateReference of candidateReferences) {
-      const directTemplate = await this.getTemplateDetails(candidateReference, apiKey);
-      if (directTemplate) {
-        const templateBuild = this.requireReadyTemplateBuild(directTemplate, templateReference);
-        if (templateBuild.diskSizeMB === undefined) {
-          throw new Error(`Configured E2B template ${templateReference} is missing disk metadata.`);
-        }
-
-        return {
-          cpuCount: templateBuild.cpuCount,
-          diskSizeMB: templateBuild.diskSizeMB,
-          memoryMB: templateBuild.memoryMB,
-          templateID: directTemplate.templateID,
-        };
-      }
-
-      if (candidateReference.includes("/")) {
-        continue;
-      }
-
-      const aliasedTemplateId = await this.getTemplateIdForAlias(candidateReference, apiKey);
-      if (!aliasedTemplateId) {
-        continue;
-      }
-
-      const aliasedTemplate = await this.getTemplateDetails(aliasedTemplateId, apiKey);
-      if (aliasedTemplate) {
-        const templateBuild = this.requireReadyTemplateBuild(aliasedTemplate, templateReference);
-        if (templateBuild.diskSizeMB === undefined) {
-          throw new Error(`Configured E2B template ${templateReference} is missing disk metadata.`);
-        }
-
-        return {
-          cpuCount: templateBuild.cpuCount,
-          diskSizeMB: templateBuild.diskSizeMB,
-          memoryMB: templateBuild.memoryMB,
-          templateID: aliasedTemplate.templateID,
-        };
-      }
+    const template = await this.getTemplateDetails(templateReference, apiKey);
+    if (!template) {
+      throw new Error(`Configured E2B template ${templateReference} was not found.`);
     }
 
-    const remoteTemplates = await this.listTemplates(apiKey);
-    const matchingTemplate = remoteTemplates.find((template) => candidateReferences.some((candidateReference) => (
-      template.templateID === candidateReference
-      || template.names?.includes(candidateReference) === true
-      || template.aliases?.includes(candidateReference) === true
-    )));
-    if (matchingTemplate) {
-      return {
-        cpuCount: matchingTemplate.cpuCount,
-        diskSizeMB: matchingTemplate.diskSizeMB,
-        memoryMB: matchingTemplate.memoryMB,
-        templateID: matchingTemplate.templateID,
-      };
+    const templateBuild = this.requireReadyTemplateBuild(template, templateReference);
+    if (templateBuild.diskSizeMB === undefined) {
+      throw new Error(`Configured E2B template ${templateReference} is missing disk metadata.`);
     }
 
-    throw new Error(`Configured E2B template ${templateReference} was not found.`);
-  }
-
-  private getTemplateReferenceCandidates(templateReference: string): string[] {
-    const suffixReference = templateReference.includes("/")
-      ? templateReference.split("/").at(-1)
-      : undefined;
-
-    return [...new Set([
-      templateReference,
-      suffixReference,
-    ].filter((value): value is string => typeof value === "string" && value.length > 0))];
+    return {
+      cpuCount: templateBuild.cpuCount,
+      diskSizeMB: templateBuild.diskSizeMB,
+      memoryMB: templateBuild.memoryMB,
+      templateID: template.templateID,
+    };
   }
 
   private async getTemplateDetails(
@@ -437,7 +368,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       signal: AbortSignal.timeout(60_000),
     });
 
-    if (response.status === 400 || response.status === 403 || response.status === 404) {
+    if (response.status === 404) {
       return null;
     }
     if (!response.ok) {
@@ -445,44 +376,5 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     }
 
     return await response.json() as E2bTemplateWithBuildsRecord;
-  }
-
-  private async getTemplateIdForAlias(
-    alias: string,
-    apiKey: string,
-  ): Promise<string | null> {
-    const response = await fetch(`${E2B_API_BASE_URL}/templates/aliases/${encodeURIComponent(alias)}`, {
-      headers: {
-        "User-Agent": "companyhelm-ng",
-        "X-API-KEY": apiKey,
-      },
-      signal: AbortSignal.timeout(60_000),
-    });
-
-    if (response.status === 400 || response.status === 403 || response.status === 404) {
-      return null;
-    }
-    if (!response.ok) {
-      throw new Error(`Failed to resolve E2B template alias ${alias} (${response.status}).`);
-    }
-
-    const aliasRecord = await response.json() as E2bTemplateAliasRecord;
-    return aliasRecord.templateID;
-  }
-
-  private async listTemplates(apiKey: string): Promise<E2bTemplateRecord[]> {
-    const response = await fetch(`${E2B_API_BASE_URL}/templates`, {
-      headers: {
-        "User-Agent": "companyhelm-ng",
-        "X-API-KEY": apiKey,
-      },
-      signal: AbortSignal.timeout(60_000),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to list E2B templates (${response.status}).`);
-    }
-
-    return await response.json() as E2bTemplateRecord[];
   }
 }

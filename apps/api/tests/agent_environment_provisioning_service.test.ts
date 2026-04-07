@@ -19,6 +19,7 @@ const createdEnvironment = {
   provider: "daytona" as const,
   providerDefinitionId: "compute-provider-definition-1",
   providerEnvironmentId: "daytona-environment-1",
+  templateId: "daytona/large",
   updatedAt: new Date("2026-03-29T20:00:00.000Z"),
 };
 
@@ -160,6 +161,7 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
     sessionId: "session-1",
   });
   assert.equal(createEnvironment.mock.calls.length, 1);
+  assert.equal(createEnvironment.mock.calls[0]?.[1]?.templateId, "daytona/large");
   assert.deepEqual(bootstrapProvision.mock.calls, [[transactionProvider, createdEnvironment]]);
 });
 

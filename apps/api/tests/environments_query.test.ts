@@ -25,6 +25,10 @@ class EnvironmentsQueryTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -57,6 +61,7 @@ class EnvironmentsQueryTestHarness {
                         provider: "daytona",
                         providerDefinitionId: "definition-1",
                         providerEnvironmentId: "daytona-env-1",
+                        templateId: "daytona/default",
                         updatedAt: new Date("2026-03-27T15:00:00.000Z"),
                       }];
                     },

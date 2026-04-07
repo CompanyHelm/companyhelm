@@ -279,6 +279,7 @@ type Environment {
   providerDefinitionId: ID
   providerDefinitionName: String
   providerEnvironmentId: String!
+  templateId: ID!
   displayName: String
   platform: String!
   status: String!
