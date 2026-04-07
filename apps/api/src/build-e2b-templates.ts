@@ -5,6 +5,7 @@ import { Template, defaultBuildLogger } from 'e2b';
 
 const template = Template()
   .fromBaseImage()
+  .aptInstall('gh')
 
 async function main() {
   await Template.build(template, 'small', {
