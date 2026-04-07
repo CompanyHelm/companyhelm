@@ -6,14 +6,15 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
-import { AgentEnvironmentRequirementsService } from "../../services/agent/environment/requirements_service.ts";
-import { ComputeProviderLimitsCatalog } from "../../services/compute_provider_definitions/provider_limits_catalog.ts";
+import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
+import { AgentEnvironmentTemplateService } from "../../services/agent/environment/template_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type UpdateAgentMutationArguments = {
   input: {
     defaultComputeProviderDefinitionId: string;
+    defaultEnvironmentTemplateId: string;
     id: string;
     name: string;
     modelProviderCredentialId: string;
@@ -28,6 +29,7 @@ type AgentRecord = {
   name: string;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
+  defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: Date;
@@ -60,6 +62,8 @@ type GraphqlAgentRecord = {
   defaultComputeProvider: "daytona" | "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
+  defaultEnvironmentTemplateId: string;
+  environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
@@ -93,14 +97,25 @@ type DatabaseTransaction = {
  */
 @injectable()
 export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, GraphqlAgentRecord> {
-  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly templateService: AgentEnvironmentTemplateService;
 
   constructor(
-    @inject(AgentEnvironmentRequirementsService)
-    requirementsService: AgentEnvironmentRequirementsService = new AgentEnvironmentRequirementsService(),
+    @inject(AgentEnvironmentTemplateService)
+    templateService: AgentEnvironmentTemplateService = {
+      async resolveTemplateForProvider(_transactionProvider, input) {
+        return {
+          computerUse: false,
+          cpuCount: 4,
+          diskSpaceGb: 10,
+          memoryGb: 8,
+          name: "Default",
+          templateId: input.templateId,
+        };
+      },
+    } as never,
   ) {
     super();
-    this.requirementsService = requirementsService;
+    this.templateService = templateService;
   }
 
   protected resolve = async (
@@ -128,8 +143,13 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     if (arguments_.input.defaultComputeProviderDefinitionId.length === 0) {
       throw new Error("defaultComputeProviderDefinitionId is required.");
     }
+    if (arguments_.input.defaultEnvironmentTemplateId.length === 0) {
+      throw new Error("defaultEnvironmentTemplateId is required.");
+    }
+    const authSession = context.authSession;
+    const runtimeTransactionProvider = context.app_runtime_transaction_provider;
 
-    return context.app_runtime_transaction_provider.transaction(async (tx) => {
+    return runtimeTransactionProvider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
       const transactionProvider = {
         async transaction<T>(transaction: (databaseTransaction: DatabaseTransaction) => Promise<T>): Promise<T> {
@@ -142,7 +162,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(agents)
         .where(and(
-          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.companyId, authSession.company.id),
           eq(agents.id, arguments_.input.id),
         )) as ExistingAgentRecord[];
       if (!existingAgent) {
@@ -156,7 +176,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, authSession.company.id),
           eq(modelProviderCredentials.id, arguments_.input.modelProviderCredentialId),
         )) as CredentialRecord[];
       if (!credentialRecord) {
@@ -172,7 +192,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, authSession.company.id),
           eq(modelProviderCredentialModels.id, arguments_.input.modelProviderCredentialModelId),
         )) as ModelRecord[];
       if (!modelRecord) {
@@ -190,38 +210,37 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(computeProviderDefinitions)
         .where(and(
-          eq(computeProviderDefinitions.companyId, context.authSession.company.id),
+          eq(computeProviderDefinitions.companyId, authSession.company.id),
           eq(computeProviderDefinitions.id, arguments_.input.defaultComputeProviderDefinitionId),
         )) as ComputeProviderDefinitionRecord[];
       if (!computeProviderDefinitionRecord) {
         throw new Error("Compute provider definition not found.");
       }
-      const currentRequirements = await this.requirementsService.getRequirements(
+      const environmentTemplate = await this.templateService.resolveTemplateForProvider(
         transactionProvider as never,
-        context.authSession.company.id,
-        existingAgent.id,
+        {
+          companyId: authSession.company.id,
+          providerDefinitionId: computeProviderDefinitionRecord.id,
+          templateId: arguments_.input.defaultEnvironmentTemplateId,
+        },
       );
-      ComputeProviderLimitsCatalog.validateRequirements(
-        computeProviderDefinitionRecord.provider,
-        currentRequirements,
-      );
-
       const reasoningLevel = UpdateAgentMutation.resolveReasoningLevel(
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
       );
-      const [agentRecord] = await databaseTransaction
+      const updatedAgentRecords = await databaseTransaction
         .update(agents)
         .set({
           name: arguments_.input.name,
           defaultModelProviderCredentialModelId: modelRecord.id,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
+          defaultEnvironmentTemplateId: environmentTemplate.templateId,
           default_reasoning_level: reasoningLevel,
           system_prompt: UpdateAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
           updated_at: new Date(),
         })
         .where(and(
-          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.companyId, authSession.company.id),
           eq(agents.id, existingAgent.id),
         ))
         .returning?.({
@@ -229,11 +248,13 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+          defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
           updatedAt: agents.updated_at,
-        }) as Promise<AgentRecord[]>;
+        });
+      const [agentRecord] = updatedAgentRecords ?? [];
       if (!agentRecord) {
         throw new Error("Failed to update agent.");
       }
@@ -243,6 +264,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         modelRecord,
         credentialRecord,
         computeProviderDefinitionRecord,
+        environmentTemplate,
       );
     });
   };
@@ -282,11 +304,14 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     modelRecord: ModelRecord,
     credentialRecord: CredentialRecord,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord,
+    environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
       defaultComputeProvider: computeProviderDefinitionRecord.provider,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord.name,
+      defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
+      environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: credentialRecord.id,

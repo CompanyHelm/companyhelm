@@ -498,6 +498,13 @@
       "when": 1775475301000,
       "tag": "0070_queued_message_dispatch_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1775585778000,
+      "tag": "0071_agent_environment_templates",
+      "breakpoints": true
     }
   ]
 }

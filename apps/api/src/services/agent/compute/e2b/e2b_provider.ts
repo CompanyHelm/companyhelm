@@ -1,18 +1,29 @@
 import { Sandbox, SandboxNotFoundError } from "e2b";
 import { inject, injectable } from "inversify";
+import { Config } from "../../../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
 import {
   AgentComputeProviderInterface,
+  type AgentEnvironmentTemplate,
   type AgentEnvironmentRecord,
   type AgentEnvironmentStatus,
 } from "../provider_interface.ts";
 import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
 import { AgentComputeE2bShell } from "./e2b_shell.ts";
 
-const E2B_DEFAULT_TEMPLATE_ID = "wunszvjeuyrdgrt0z6o9";
+const E2B_API_BASE_URL = "https://api.e2b.app";
 const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
+
+type E2bTemplateRecord = {
+  aliases?: string[];
+  cpuCount: number;
+  diskSizeMB: number;
+  memoryMB: number;
+  names?: string[];
+  templateID: string;
+};
 
 /**
  * Bridges the shared compute-provider contract onto E2B sandboxes. The environment services decide
@@ -22,14 +33,17 @@ const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
 @injectable()
 export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
   private readonly catalogService: AgentEnvironmentCatalogService;
+  private readonly config: Config;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
 
   constructor(
+    @inject(Config) config: Config,
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
   ) {
     super();
+    this.config = config;
     this.catalogService = catalogService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
   }
@@ -42,18 +56,51 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     return true;
   }
 
+  async getTemplates(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      providerDefinitionId: string;
+    },
+  ): Promise<AgentEnvironmentTemplate[]> {
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      input.companyId,
+      input.providerDefinitionId,
+    );
+    if (definition.provider !== "e2b") {
+      throw new Error("Compute provider definition does not belong to E2B.");
+    }
+
+    const remoteTemplates = await this.listTemplates(definition.apiKey);
+    return this.config.companyhelm.e2b.templates.map((configuredTemplate) => {
+      const remoteTemplate = remoteTemplates.find((template) => this.matchesTemplateReference(
+        template,
+        configuredTemplate.template_id,
+      ));
+      if (!remoteTemplate) {
+        throw new Error(`Configured E2B template ${configuredTemplate.template_id} was not found.`);
+      }
+
+      return {
+        computerUse: configuredTemplate.computer_use,
+        cpuCount: remoteTemplate.cpuCount,
+        diskSpaceGb: this.convertMegabytesToGigabytes(remoteTemplate.diskSizeMB),
+        memoryGb: this.convertMegabytesToGigabytes(remoteTemplate.memoryMB),
+        name: configuredTemplate.name,
+        templateId: configuredTemplate.template_id,
+      };
+    });
+  }
+
   async provisionEnvironment(
     transactionProvider: TransactionProviderInterface,
     request: {
       agentId: string;
       companyId: string;
       providerDefinitionId: string;
-      requirements: {
-        minCpuCount: number;
-        minDiskSpaceGb: number;
-        minMemoryGb: number;
-      };
       sessionId: string;
+      template: AgentEnvironmentTemplate;
     },
   ) {
     const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
@@ -65,7 +112,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    const sandbox = await Sandbox.create(E2B_DEFAULT_TEMPLATE_ID, {
+    const sandbox = await Sandbox.create(request.template.templateId, {
       apiKey: definition.apiKey,
       lifecycle: {
         autoResume: true,
@@ -85,10 +132,10 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
         cleanup: async () => {
           await sandbox.kill().catch(() => undefined);
         },
-        cpuCount: info.cpuCount || request.requirements.minCpuCount,
-        diskSpaceGb: request.requirements.minDiskSpaceGb,
+        cpuCount: info.cpuCount || request.template.cpuCount,
+        diskSpaceGb: request.template.diskSpaceGb,
         displayName: null,
-        memoryGb: Math.max(1, Math.ceil(info.memoryMB / 1024)) || request.requirements.minMemoryGb,
+        memoryGb: Math.max(1, Math.ceil(info.memoryMB / 1024)) || request.template.memoryGb,
         metadata: {},
         platform: "linux" as const,
         providerEnvironmentId: sandbox.sandboxId,
@@ -255,5 +302,33 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       || errorRecord.code === 404
       || errorRecord.code === "404"
       || errorRecord.message?.toLowerCase().includes("not found") === true;
+  }
+
+  private convertMegabytesToGigabytes(valueInMegabytes: number): number {
+    return Math.max(1, Math.ceil(valueInMegabytes / 1024));
+  }
+
+  private matchesTemplateReference(template: E2bTemplateRecord, reference: string): boolean {
+    if (template.templateID === reference) {
+      return true;
+    }
+
+    return template.names?.includes(reference) === true || template.aliases?.includes(reference) === true;
+  }
+
+  private async listTemplates(apiKey: string): Promise<E2bTemplateRecord[]> {
+    const response = await fetch(`${E2B_API_BASE_URL}/templates`, {
+      headers: {
+        "User-Agent": "companyhelm-ng",
+        "X-API-KEY": apiKey,
+      },
+      signal: AbortSignal.timeout(60_000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to load E2B templates (${response.status}).`);
+    }
+
+    return await response.json() as E2bTemplateRecord[];
   }
 }

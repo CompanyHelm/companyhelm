@@ -41,6 +41,10 @@ web_search:
 companyhelm:
   e2b:
     api_key: "${E2B_API_KEY}"
+    templates:
+      - name: "Desktop"
+        computer_use: true
+        template_id: "e2b/desktop"
 daytona:
   api_key: "${DAYTONA_API_KEY}"
   api_url: "https://app.daytona.io/api"

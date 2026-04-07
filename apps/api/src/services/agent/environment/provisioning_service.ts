@@ -9,10 +9,11 @@ import { AgentComputeProviderRegistry } from "../compute/provider_registry.ts";
 import { ComputeProviderDefinitionService } from "../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentCatalogService } from "./catalog_service.ts";
 import { AgentEnvironmentProvisioning } from "./provisioning.ts";
-import { AgentEnvironmentRequirementsService } from "./requirements_service.ts";
+import { AgentEnvironmentTemplateService } from "./template_service.ts";
 
 type AgentRecord = {
   defaultComputeProviderDefinitionId: string | null;
+  defaultEnvironmentTemplateId: string;
 };
 
 type SelectableDatabase = {
@@ -33,7 +34,7 @@ export class AgentEnvironmentProvisioningService {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly environmentProvisioning: AgentEnvironmentProvisioning;
   private readonly providerRegistry: AgentComputeProviderRegistry;
-  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly templateService: AgentEnvironmentTemplateService;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
@@ -41,13 +42,13 @@ export class AgentEnvironmentProvisioningService {
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
     @inject(AgentEnvironmentProvisioning) environmentProvisioning: AgentEnvironmentProvisioning,
-    @inject(AgentEnvironmentRequirementsService) requirementsService: AgentEnvironmentRequirementsService,
+    @inject(AgentEnvironmentTemplateService) templateService: AgentEnvironmentTemplateService,
   ) {
     this.catalogService = catalogService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.environmentProvisioning = environmentProvisioning;
     this.providerRegistry = providerRegistry;
-    this.requirementsService = requirementsService;
+    this.templateService = templateService;
   }
 
   async provisionEnvironmentForSession(
@@ -63,6 +64,7 @@ export class AgentEnvironmentProvisioningService {
       const agentRows = await selectableDatabase
         .select({
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+          defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
         })
         .from(agents)
         .where(and(
@@ -93,15 +95,15 @@ export class AgentEnvironmentProvisioningService {
       throw new Error(`Provider ${provider.getProvider()} does not support on-demand environments.`);
     }
 
-    const requirements = await this.requirementsService.getRequirements(
-      transactionProvider,
-      input.companyId,
-      input.agentId,
-    );
+    const template = await this.templateService.resolveTemplateForProvider(transactionProvider, {
+      companyId: input.companyId,
+      providerDefinitionId: agent.defaultComputeProviderDefinitionId,
+      templateId: agent.defaultEnvironmentTemplateId,
+    });
     const provisionedEnvironment = await provider.provisionEnvironment(transactionProvider, {
       ...input,
       providerDefinitionId: agent.defaultComputeProviderDefinitionId,
-      requirements,
+      template,
     });
     let createdEnvironment: AgentEnvironmentRecord | null = null;
     try {

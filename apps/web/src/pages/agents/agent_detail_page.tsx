@@ -5,7 +5,6 @@ import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { AgentEnvironmentRequirementsCard } from "./agent_environment_requirements_card";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
 import type {
   AgentCreateComputeProviderDefinitionOption,
@@ -26,12 +25,16 @@ const agentDetailPageQueryNode = graphql`
       defaultComputeProvider
       defaultComputeProviderDefinitionId
       defaultComputeProviderDefinitionName
+      defaultEnvironmentTemplateId
       reasoningLevel
       systemPrompt
-      environmentRequirements {
-        minCpuCount
-        minMemoryGb
-        minDiskSpaceGb
+      environmentTemplate {
+        computerUse
+        cpuCount
+        diskSpaceGb
+        memoryGb
+        name
+        templateId
       }
       createdAt
       updatedAt
@@ -72,6 +75,14 @@ const agentDetailPageQueryNode = graphql`
       isDefault
       name
       provider
+      templates {
+        computerUse
+        cpuCount
+        diskSpaceGb
+        memoryGb
+        name
+        templateId
+      }
     }
   }
 `;
@@ -88,6 +99,15 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
       defaultComputeProvider
       defaultComputeProviderDefinitionId
       defaultComputeProviderDefinitionName
+      defaultEnvironmentTemplateId
+      environmentTemplate {
+        computerUse
+        cpuCount
+        diskSpaceGb
+        memoryGb
+        name
+        templateId
+      }
       reasoningLevel
       systemPrompt
       createdAt
@@ -215,12 +235,6 @@ function AgentDetailPageContent() {
     id: secret.id,
     name: secret.name,
   }));
-  const selectedComputeProviderDefinition = data.ComputeProviderDefinitions.find((definition: {
-    id: string;
-    provider: string;
-  }) => {
-    return definition.id === agent.defaultComputeProviderDefinitionId;
-  }) ?? null;
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
@@ -243,6 +257,14 @@ function AgentDetailPageContent() {
       isDefault: definition.isDefault,
       label: CompanyHelmComputeProvider.formatDefinitionOptionLabel(definition),
       provider: definition.provider as "daytona" | "e2b",
+      templates: definition.templates.map((template) => ({
+        computerUse: template.computerUse,
+        cpuCount: template.cpuCount,
+        diskSpaceGb: template.diskSpaceGb,
+        memoryGb: template.memoryGb,
+        name: template.name,
+        templateId: template.templateId,
+      })),
     }));
   }, [data.ComputeProviderDefinitions]);
 
@@ -260,6 +282,9 @@ function AgentDetailPageContent() {
   const selectedComputeProviderDefinitionOption = agent.defaultComputeProviderDefinitionId
     ? computeProviderDefinitionOptions.find((option) => option.id === agent.defaultComputeProviderDefinitionId) ?? null
     : null;
+  const selectedEnvironmentTemplateOption = selectedComputeProviderDefinitionOption?.templates.find((template) => {
+    return template.templateId === agent.defaultEnvironmentTemplateId;
+  }) ?? null;
   const selectedModelOption = selectedProviderOption && agent.modelProviderCredentialModelId
     ? selectedProviderOption.models.find((option) => option.id === agent.modelProviderCredentialModelId) ?? null
     : null;
@@ -267,6 +292,7 @@ function AgentDetailPageContent() {
 
   const saveAgent = async (patch: {
     defaultComputeProviderDefinitionId?: string;
+    defaultEnvironmentTemplateId?: string;
     modelProviderCredentialId?: string;
     modelProviderCredentialModelId?: string;
     name?: string;
@@ -281,6 +307,21 @@ function AgentDetailPageContent() {
       ?? agent.defaultComputeProviderDefinitionId;
     if (!nextComputeProviderDefinitionId) {
       throw new Error("Agent environment provider is required.");
+    }
+    const nextComputeProviderDefinition = computeProviderDefinitionOptions.find((option) => {
+      return option.id === nextComputeProviderDefinitionId;
+    }) ?? null;
+    if (!nextComputeProviderDefinition) {
+      throw new Error("Selected environment provider is not available.");
+    }
+    const nextEnvironmentTemplateId = patch.defaultEnvironmentTemplateId
+      ?? (
+        patch.defaultComputeProviderDefinitionId === undefined
+          ? agent.defaultEnvironmentTemplateId
+          : (nextComputeProviderDefinition.templates[0]?.templateId ?? null)
+      );
+    if (!nextEnvironmentTemplateId) {
+      throw new Error("Agent environment template is required.");
     }
 
     const nextProviderOption = resolveProviderOption(providerOptions, nextProviderCredentialId);
@@ -304,6 +345,7 @@ function AgentDetailPageContent() {
           input: {
             id: agent.id,
             defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
+            defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
             name: patch.name ?? agent.name,
             modelProviderCredentialId: nextProviderOption.id,
             modelProviderCredentialModelId: nextModelOption.id,
@@ -365,6 +407,23 @@ function AgentDetailPageContent() {
               value: option.id,
             }))}
             value={agent.defaultComputeProviderDefinitionId}
+          />
+
+          <EditableField
+            displayValue={selectedEnvironmentTemplateOption?.name ?? agent.environmentTemplate.name}
+            emptyValueLabel="No environment template selected"
+            fieldType="select"
+            label="Environment template"
+            onSave={async (value) => {
+              await saveAgent({
+                defaultEnvironmentTemplateId: value,
+              });
+            }}
+            options={(selectedComputeProviderDefinitionOption?.templates ?? []).map((option) => ({
+              label: option.name,
+              value: option.templateId,
+            }))}
+            value={agent.defaultEnvironmentTemplateId}
           />
 
           <EditableField
@@ -458,13 +517,29 @@ function AgentDetailPageContent() {
         companySecrets={companySecrets}
       />
 
-      <AgentEnvironmentRequirementsCard
-        agentId={agent.id}
-        minCpuCount={agent.environmentRequirements.minCpuCount}
-        minDiskSpaceGb={agent.environmentRequirements.minDiskSpaceGb}
-        minMemoryGb={agent.environmentRequirements.minMemoryGb}
-        provider={selectedComputeProviderDefinition?.provider as "daytona" | "e2b" | null}
-      />
+      <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <CardHeader>
+          <CardDescription>
+            Future environments for this agent use the selected provider template instead of custom CPU and memory overrides.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Template</p>
+            <p className="mt-3 text-sm text-foreground">{agent.environmentTemplate.name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{agent.environmentTemplate.templateId}</p>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Resources</p>
+            <p className="mt-3 text-sm text-foreground">
+              {agent.environmentTemplate.cpuCount} vCPU • {agent.environmentTemplate.memoryGb} GB RAM
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {agent.environmentTemplate.diskSpaceGb} GB disk • Computer use {agent.environmentTemplate.computerUse ? "enabled" : "disabled"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>

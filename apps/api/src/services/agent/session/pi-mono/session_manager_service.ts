@@ -26,7 +26,7 @@ import { AgentCompanyDirectoryToolService } from "../../tools/company_directory/
 import { AgentConversationService } from "../../conversations/service.ts";
 import { AgentConversationToolProvider } from "../../tools/conversations/provider.ts";
 import { AgentConversationToolService } from "../../tools/conversations/service.ts";
-import { AgentEnvironmentRequirementsService } from "../../environment/requirements_service.ts";
+import { AgentEnvironmentTemplateService } from "../../environment/template_service.ts";
 import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
 import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
 import { AgentInboxService } from "../../inbox/service.ts";
@@ -105,7 +105,7 @@ export class PiMonoSessionManagerService {
   private readonly secretService: SecretService;
   private readonly agentConversationService: AgentConversationService;
   private readonly exaWebClient: ExaWebClient;
-  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly templateService: AgentEnvironmentTemplateService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly modelProviderService: ModelProviderService;
   private readonly appModelRegistry: ModelRegistry;
@@ -119,8 +119,8 @@ export class PiMonoSessionManagerService {
     @inject(SecretService) secretService: SecretService,
     @inject(AgentConversationService) agentConversationService: AgentConversationService,
     @inject(ExaWebClient) exaWebClient: ExaWebClient,
-    @inject(AgentEnvironmentRequirementsService)
-    requirementsService: AgentEnvironmentRequirementsService,
+    @inject(AgentEnvironmentTemplateService)
+    templateService: AgentEnvironmentTemplateService,
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(ModelProviderService) modelProviderService: ModelProviderService,
@@ -136,7 +136,7 @@ export class PiMonoSessionManagerService {
     this.secretService = secretService;
     this.agentConversationService = agentConversationService;
     this.exaWebClient = exaWebClient;
-    this.requirementsService = requirementsService;
+    this.templateService = templateService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.modelProviderService = modelProviderService;
     this.appModelRegistry = appModelRegistry;
@@ -181,7 +181,7 @@ export class PiMonoSessionManagerService {
       runtimeConfig.companyId,
       runtimeConfig.agentId,
       this.secretService,
-      this.requirementsService,
+      this.templateService,
       this.computeProviderDefinitionService,
       this.modelProviderService,
       this.appModelRegistry,

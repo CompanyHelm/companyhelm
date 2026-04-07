@@ -17,17 +17,16 @@ import type { ModelProviderModel } from "../src/services/ai_providers/model_serv
 class AgentQueryTestHarness {
   static createConfigMock(): Config {
     return {
-      daytona: {
-        cpu_count: 4,
-        disk_gb: 40,
-        memory_gb: 8,
-      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
       },
       auth: {
         provider: "clerk",
+      },
+      log: {
+        json: false,
+        level: "info",
       },
     } as Config;
   }
@@ -49,6 +48,8 @@ class AgentQueryTestHarness {
                         id: "agent-1",
                         name: "Research Agent",
                         defaultModelProviderCredentialModelId: "model-row-1",
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+                        defaultEnvironmentTemplateId: "e2b/desktop",
                         defaultReasoningLevel: "high",
                         systemPrompt: "You are concise.",
                         createdAt: new Date("2026-03-24T09:00:00.000Z"),
@@ -66,7 +67,9 @@ class AgentQueryTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "agent-1",
+                        id: "compute-provider-definition-1",
+                        name: "Primary E2B",
+                        provider: "e2b",
                       }];
                     },
                   };
@@ -75,23 +78,6 @@ class AgentQueryTestHarness {
             }
 
             if (selectCallCount === 3) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "requirements-1",
-                        minCpuCount: 4,
-                        minDiskSpaceGb: 40,
-                        minMemoryGb: 8,
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -107,7 +93,7 @@ class AgentQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -186,16 +172,20 @@ test("GraphQL Agent query returns one agent detail record", async () => {
           Agent(id: $id) {
             id
             name
+            defaultEnvironmentTemplateId
             modelProviderCredentialId
             modelProviderCredentialModelId
             modelProvider
             modelName
             reasoningLevel
             systemPrompt
-            environmentRequirements {
-              minCpuCount
-              minMemoryGb
-              minDiskSpaceGb
+            environmentTemplate {
+              computerUse
+              cpuCount
+              diskSpaceGb
+              memoryGb
+              name
+              templateId
             }
             createdAt
             updatedAt
@@ -213,16 +203,20 @@ test("GraphQL Agent query returns one agent detail record", async () => {
   assert.deepEqual(document.data.Agent, {
     id: "agent-1",
     name: "Research Agent",
+    defaultEnvironmentTemplateId: "e2b/desktop",
     modelProviderCredentialId: "credential-1",
     modelProviderCredentialModelId: "model-row-1",
     modelProvider: "openai",
     modelName: "GPT-5.4",
     reasoningLevel: "high",
     systemPrompt: "You are concise.",
-    environmentRequirements: {
-      minCpuCount: 4,
-      minMemoryGb: 8,
-      minDiskSpaceGb: 40,
+    environmentTemplate: {
+      computerUse: true,
+      cpuCount: 4,
+      diskSpaceGb: 10,
+      memoryGb: 8,
+      name: "Desktop",
+      templateId: "e2b/desktop",
     },
     createdAt: "2026-03-24T09:00:00.000Z",
     updatedAt: "2026-03-24T09:10:00.000Z",

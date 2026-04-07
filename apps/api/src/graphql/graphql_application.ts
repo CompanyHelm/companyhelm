@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import GraphQLJSON from "graphql-type-json";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
+import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 import { GithubClient } from "../github/client.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import { SecretEncryptionService } from "../services/secrets/encryption.ts";
@@ -51,7 +52,6 @@ import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { SteerSessionQueuedMessageMutation } from "./mutations/steer_session_queued_message.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
-import { UpdateAgentEnvironmentRequirementsMutation } from "./mutations/update_agent_environment_requirements.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { UpdateArtifactMutation } from "./mutations/update_artifact.ts";
 import { UpdateCompanySettingsMutation } from "./mutations/update_company_settings.ts";
@@ -104,7 +104,7 @@ import { SessionEnvironmentQueryResolver } from "./resolvers/session_environment
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
-import { AgentEnvironmentRequirementsService } from "../services/agent/environment/requirements_service.ts";
+import { AgentEnvironmentTemplateService } from "../services/agent/environment/template_service.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -193,7 +193,6 @@ export class GraphqlApplication {
   private readonly tasksQueryResolver: TasksQueryResolver;
   private readonly updateAgentMutation: UpdateAgentMutation;
   private readonly updateArtifactMutation: UpdateArtifactMutation;
-  private readonly updateAgentEnvironmentRequirementsMutation: UpdateAgentEnvironmentRequirementsMutation;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateComputeProviderDefinitionMutation: UpdateComputeProviderDefinitionMutation;
   private readonly updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation;
@@ -339,10 +338,8 @@ export class GraphqlApplication {
     secretsQueryResolver?: SecretsQueryResolver,
     @inject(SessionSecretsQueryResolver)
     sessionSecretsQueryResolver?: SessionSecretsQueryResolver,
-    @inject(AgentEnvironmentRequirementsService)
-    agentEnvironmentRequirementsService?: AgentEnvironmentRequirementsService,
-    @inject(UpdateAgentEnvironmentRequirementsMutation)
-    updateAgentEnvironmentRequirementsMutation?: UpdateAgentEnvironmentRequirementsMutation,
+    @inject(AgentEnvironmentTemplateService)
+    agentEnvironmentTemplateService?: AgentEnvironmentTemplateService,
     @inject(AddComputeProviderDefinitionMutation)
     addComputeProviderDefinitionMutation: AddComputeProviderDefinitionMutation = {
       async execute() {
@@ -476,12 +473,50 @@ export class GraphqlApplication {
     } as never,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
-    const defaultAgentEnvironmentRequirementsService = agentEnvironmentRequirementsService
-      ?? new AgentEnvironmentRequirementsService();
+    const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
+      ?? ({
+        async getAgentTemplate() {
+          return {
+            computerUse: true,
+            cpuCount: 4,
+            diskSpaceGb: 10,
+            memoryGb: 8,
+            name: "Desktop",
+            templateId: "e2b/desktop",
+          };
+        },
+        async listTemplatesForProvider() {
+          return [{
+            computerUse: true,
+            cpuCount: 4,
+            diskSpaceGb: 10,
+            memoryGb: 8,
+            name: "Desktop",
+            templateId: "e2b/desktop",
+          }];
+        },
+        async resolveTemplateForProvider(
+          _transactionProvider: TransactionProviderInterface,
+          input: {
+            companyId: string;
+            providerDefinitionId: string;
+            templateId: string;
+          },
+        ) {
+          return {
+            computerUse: false,
+            cpuCount: 4,
+            diskSpaceGb: 10,
+            memoryGb: 8,
+            name: "Default",
+            templateId: input.templateId,
+          };
+        },
+      } as never);
 
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation
-      ?? new AddAgentMutation(defaultSecretService, defaultAgentEnvironmentRequirementsService);
+      ?? new AddAgentMutation(defaultSecretService, defaultAgentEnvironmentTemplateService);
     this.addComputeProviderDefinitionMutation = addComputeProviderDefinitionMutation;
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
@@ -492,7 +527,7 @@ export class GraphqlApplication {
       ?? new AttachSecretToSessionMutation(defaultSecretService);
     this.agentConversationMessagesQueryResolver = agentConversationMessagesQueryResolver;
     this.agentConversationsQueryResolver = agentConversationsQueryResolver;
-    this.agentQueryResolver = agentQueryResolver ?? new AgentQueryResolver(defaultAgentEnvironmentRequirementsService);
+    this.agentQueryResolver = agentQueryResolver ?? new AgentQueryResolver(defaultAgentEnvironmentTemplateService);
     this.agentCreateOptionsQueryResolver = agentCreateOptionsQueryResolver;
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
@@ -569,8 +604,6 @@ export class GraphqlApplication {
     this.tasksQueryResolver = tasksQueryResolver;
     this.updateAgentMutation = updateAgentMutation;
     this.updateArtifactMutation = updateArtifactMutation;
-    this.updateAgentEnvironmentRequirementsMutation = updateAgentEnvironmentRequirementsMutation
-      ?? new UpdateAgentEnvironmentRequirementsMutation(defaultAgentEnvironmentRequirementsService);
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
     this.updateComputeProviderDefinitionMutation = updateComputeProviderDefinitionMutation;
     this.updateExternalLinkArtifactMutation = updateExternalLinkArtifactMutation;
@@ -709,7 +742,6 @@ export class GraphqlApplication {
           SetDefaultModelProviderCredentialModel: this.setDefaultModelProviderCredentialModelMutation.execute,
           SetTaskCategory: this.setTaskCategoryMutation.execute,
           SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,
-          UpdateAgentEnvironmentRequirements: this.updateAgentEnvironmentRequirementsMutation.execute,
           UpdateAgent: this.updateAgentMutation.execute,
           UpdateArtifact: this.updateArtifactMutation.execute,
           UpdateCompanySettings: this.updateCompanySettingsMutation.execute,

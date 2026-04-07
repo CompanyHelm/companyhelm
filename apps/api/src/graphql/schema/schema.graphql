@@ -74,9 +74,6 @@ type Mutation {
   RefreshGithubInstallationRepositories(
     input: RefreshGithubInstallationRepositoriesInput!
   ): RefreshGithubInstallationRepositoriesPayload!
-  UpdateAgentEnvironmentRequirements(
-    input: UpdateAgentEnvironmentRequirementsInput!
-  ): AgentEnvironmentRequirements!
   UpdateAgent(input: UpdateAgentInput!): Agent!
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateTask(input: CreateTaskInput!): Task!
@@ -251,6 +248,7 @@ type Agent {
   defaultComputeProvider: String
   defaultComputeProviderDefinitionId: ID
   defaultComputeProviderDefinitionName: String
+  defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
   modelProviderCredentialId: ID
@@ -259,15 +257,18 @@ type Agent {
   modelName: String
   reasoningLevel: String
   systemPrompt: String
-  environmentRequirements: AgentEnvironmentRequirements!
+  environmentTemplate: AgentEnvironmentTemplate!
   createdAt: String!
   updatedAt: String!
 }
 
-type AgentEnvironmentRequirements {
-  minCpuCount: Int!
-  minMemoryGb: Int!
-  minDiskSpaceGb: Int!
+type AgentEnvironmentTemplate {
+  computerUse: Boolean!
+  cpuCount: Int!
+  diskSpaceGb: Int!
+  memoryGb: Int!
+  name: String!
+  templateId: ID!
 }
 
 type Environment {
@@ -298,6 +299,7 @@ type ComputeProviderDefinition {
   description: String
   daytona: DaytonaComputeProviderDefinition
   e2b: E2bComputeProviderDefinition
+  templates: [AgentEnvironmentTemplate!]!
   createdAt: String!
   updatedAt: String!
 }
@@ -547,36 +549,24 @@ input AddGithubInstallationInput {
 
 input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
+  defaultEnvironmentTemplateId: ID!
   name: String!
   modelProviderCredentialId: ID!
   modelProviderCredentialModelId: ID!
   reasoningLevel: String
   systemPrompt: String
   secretIds: [ID!]
-  environmentRequirements: AddAgentEnvironmentRequirementsInput
-}
-
-input AddAgentEnvironmentRequirementsInput {
-  minCpuCount: Int!
-  minMemoryGb: Int!
-  minDiskSpaceGb: Int!
 }
 
 input UpdateAgentInput {
   defaultComputeProviderDefinitionId: ID!
+  defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
   modelProviderCredentialId: ID!
   modelProviderCredentialModelId: ID!
   reasoningLevel: String
   systemPrompt: String
-}
-
-input UpdateAgentEnvironmentRequirementsInput {
-  agentId: ID!
-  minCpuCount: Int!
-  minMemoryGb: Int!
-  minDiskSpaceGb: Int!
 }
 
 input UpdateCompanySettingsInput {

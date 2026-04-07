@@ -6,7 +6,8 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
-import { AgentEnvironmentRequirementsService } from "../../services/agent/environment/requirements_service.ts";
+import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
+import { AgentEnvironmentTemplateService } from "../../services/agent/environment/template_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type AgentQueryArguments = {
@@ -18,6 +19,7 @@ type AgentRecord = {
   name: string;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
+  defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: Date;
@@ -45,6 +47,8 @@ type GraphqlAgentRecord = {
   defaultComputeProvider: "daytona" | "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
+  defaultEnvironmentTemplateId: string;
+  environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
@@ -53,11 +57,6 @@ type GraphqlAgentRecord = {
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;
-  environmentRequirements: {
-    minCpuCount: number;
-    minDiskSpaceGb: number;
-    minMemoryGb: number;
-  };
   createdAt: string;
   updatedAt: string;
 };
@@ -76,17 +75,24 @@ type SelectableDatabase = {
  */
 @injectable()
 export class AgentQueryResolver {
-  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly templateService: AgentEnvironmentTemplateService;
 
   constructor(
-    @inject(AgentEnvironmentRequirementsService)
-    requirementsService: AgentEnvironmentRequirementsService = {
-      async getRequirements() {
-        throw new Error("Agent environment requirements service is not configured.");
+    @inject(AgentEnvironmentTemplateService)
+    templateService: AgentEnvironmentTemplateService = {
+      async getAgentTemplate() {
+        return {
+          computerUse: true,
+          cpuCount: 4,
+          diskSpaceGb: 10,
+          memoryGb: 8,
+          name: "Desktop",
+          templateId: "e2b/desktop",
+        };
       },
     } as never,
   ) {
-    this.requirementsService = requirementsService;
+    this.templateService = templateService;
   }
 
   execute = async (
@@ -112,6 +118,7 @@ export class AgentQueryResolver {
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+          defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -126,7 +133,7 @@ export class AgentQueryResolver {
         throw new Error("Agent not found.");
       }
 
-      const environmentRequirements = await this.requirementsService.getRequirements(
+      const environmentTemplate = await this.templateService.getAgentTemplate(
         context.app_runtime_transaction_provider,
         context.authSession.company.id,
         agentRecord.id,
@@ -149,7 +156,7 @@ export class AgentQueryResolver {
           null,
           null,
           computeProviderDefinitionRecord ?? null,
-          environmentRequirements,
+          environmentTemplate,
         );
       }
 
@@ -180,7 +187,7 @@ export class AgentQueryResolver {
         modelRecord ?? null,
         credentialRecord ?? null,
         computeProviderDefinitionRecord ?? null,
-        environmentRequirements,
+        environmentTemplate,
       );
     });
   };
@@ -190,16 +197,14 @@ export class AgentQueryResolver {
     modelRecord: ModelRecord | null,
     credentialRecord: CredentialRecord | null,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
-    environmentRequirements: {
-      minCpuCount: number;
-      minDiskSpaceGb: number;
-      minMemoryGb: number;
-    },
+    environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
       defaultComputeProvider: computeProviderDefinitionRecord?.provider ?? null,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord?.name ?? null,
+      defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
+      environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: modelRecord?.modelProviderCredentialId ?? null,
@@ -208,7 +213,6 @@ export class AgentQueryResolver {
       modelName: modelRecord?.name ?? null,
       reasoningLevel: agentRecord.defaultReasoningLevel,
       systemPrompt: agentRecord.systemPrompt,
-      environmentRequirements,
       createdAt: agentRecord.createdAt.toISOString(),
       updatedAt: agentRecord.updatedAt.toISOString(),
     };

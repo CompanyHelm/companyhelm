@@ -14,11 +14,9 @@ export class AgentCreateAgentTool {
     defaultComputeProviderDefinitionId: Type.String({
       description: "Compute provider definition id to use for the new agent by default.",
     }),
-    environmentRequirements: Type.Optional(AgentToolParameterSchema.object({
-      minCpuCount: Type.Integer({ minimum: 1 }),
-      minDiskSpaceGb: Type.Integer({ minimum: 1 }),
-      minMemoryGb: Type.Integer({ minimum: 1 }),
-    })),
+    defaultEnvironmentTemplateId: Type.String({
+      description: "Environment template id to use for future environments created for this agent.",
+    }),
     modelProviderCredentialId: Type.Optional(Type.Union([
       Type.Null(),
       Type.String({
@@ -59,7 +57,7 @@ export class AgentCreateAgentTool {
 
   createDefinition(): ToolDefinition<typeof AgentCreateAgentTool.parameters> {
     return {
-      description: "Create a company agent with model, compute provider, environment, and secret defaults.",
+      description: "Create a company agent with model, compute provider, environment template, and secret defaults.",
       execute: async (_toolCallId, input) => {
         const agent = await this.agentManagementToolService.createAgent(input);
         return {
@@ -77,8 +75,8 @@ export class AgentCreateAgentTool {
       name: "create_agent",
       parameters: AgentCreateAgentTool.parameters,
       promptGuidelines: [
-        "Use create_agent when you need a new company agent with a distinct model, compute provider, or system prompt.",
-        "Call list_agents first if you need the current ids for compute providers, provider credentials, models, or secrets.",
+        "Use create_agent when you need a new company agent with a distinct model, compute provider, environment template, or system prompt.",
+        "Call list_agents first if you need the current ids for compute providers, templates, provider credentials, models, or secrets.",
       ],
       promptSnippet: "Create a company agent",
     };

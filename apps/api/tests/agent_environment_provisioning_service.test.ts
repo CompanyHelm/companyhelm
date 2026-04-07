@@ -24,13 +24,16 @@ const createdEnvironment = {
 
 class AgentEnvironmentProvisioningServiceTestTransactions {
   private readonly defaultComputeProviderDefinitionId: string | null;
+  private readonly defaultEnvironmentTemplateId: string;
 
-  constructor(defaultComputeProviderDefinitionId: string | null) {
+  constructor(defaultComputeProviderDefinitionId: string | null, defaultEnvironmentTemplateId = "daytona/default") {
     this.defaultComputeProviderDefinitionId = defaultComputeProviderDefinitionId;
+    this.defaultEnvironmentTemplateId = defaultEnvironmentTemplateId;
   }
 
   build(): TransactionProviderInterface {
     const defaultComputeProviderDefinitionId = this.defaultComputeProviderDefinitionId;
+    const defaultEnvironmentTemplateId = this.defaultEnvironmentTemplateId;
     return {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
@@ -38,6 +41,7 @@ class AgentEnvironmentProvisioningServiceTestTransactions {
             from: () => ({
               where: async () => [{
                 defaultComputeProviderDefinitionId,
+                defaultEnvironmentTemplateId,
               }],
             }),
           }),
@@ -120,11 +124,14 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
       provision: bootstrapProvision,
     } as never,
     {
-      async getRequirements() {
+      async resolveTemplateForProvider() {
         return {
-          minCpuCount: 6,
-          minDiskSpaceGb: 40,
-          minMemoryGb: 12,
+          computerUse: false,
+          cpuCount: 6,
+          diskSpaceGb: 40,
+          memoryGb: 12,
+          name: "Large",
+          templateId: "daytona/large",
         };
       },
     } as never,
@@ -141,10 +148,13 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
   assert.deepEqual(providerProvisionEnvironment.mock.calls[0]?.[1], {
     agentId: "agent-1",
     companyId: "company-1",
-    requirements: {
-      minCpuCount: 6,
-      minDiskSpaceGb: 40,
-      minMemoryGb: 12,
+    template: {
+      computerUse: false,
+      cpuCount: 6,
+      diskSpaceGb: 40,
+      memoryGb: 12,
+      name: "Large",
+      templateId: "daytona/large",
     },
     providerDefinitionId: "compute-provider-definition-1",
     sessionId: "session-1",
@@ -207,11 +217,14 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
       },
     } as never,
     {
-      async getRequirements() {
+      async resolveTemplateForProvider() {
         return {
-          minCpuCount: 2,
-          minDiskSpaceGb: 20,
-          minMemoryGb: 4,
+          computerUse: false,
+          cpuCount: 2,
+          diskSpaceGb: 20,
+          memoryGb: 4,
+          name: "Default",
+          templateId: "daytona/default",
         };
       },
     } as never,

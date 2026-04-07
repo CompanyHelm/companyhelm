@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6b1722ab9fa7ca5ae7ea46c154630b46>>
+ * @generated SignedSource<<9ceca85ea1289fbe4666db782e5ed4ad>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,10 +18,14 @@ export type agentDetailPageQuery$data = {
     readonly defaultComputeProvider: string | null | undefined;
     readonly defaultComputeProviderDefinitionId: string | null | undefined;
     readonly defaultComputeProviderDefinitionName: string | null | undefined;
-    readonly environmentRequirements: {
-      readonly minCpuCount: number;
-      readonly minDiskSpaceGb: number;
-      readonly minMemoryGb: number;
+    readonly defaultEnvironmentTemplateId: string;
+    readonly environmentTemplate: {
+      readonly computerUse: boolean;
+      readonly cpuCount: number;
+      readonly diskSpaceGb: number;
+      readonly memoryGb: number;
+      readonly name: string;
+      readonly templateId: string;
     };
     readonly id: string;
     readonly modelName: string | null | undefined;
@@ -63,6 +67,14 @@ export type agentDetailPageQuery$data = {
     readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
+    readonly templates: ReadonlyArray<{
+      readonly computerUse: boolean;
+      readonly cpuCount: number;
+      readonly diskSpaceGb: number;
+      readonly memoryGb: number;
+      readonly name: string;
+      readonly templateId: string;
+    }>;
   }>;
   readonly Secrets: ReadonlyArray<{
     readonly description: string | null | undefined;
@@ -105,17 +117,55 @@ v3 = {
   "name": "modelProvider",
   "storageKey": null
 },
-v4 = {
+v4 = [
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "computerUse",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "cpuCount",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "diskSpaceGb",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "memoryGb",
+    "storageKey": null
+  },
+  (v2/*: any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "templateId",
+    "storageKey": null
+  }
+],
+v5 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "description",
   "storageKey": null
 },
-v5 = [
+v6 = [
   (v1/*: any*/),
   (v2/*: any*/),
-  (v4/*: any*/),
+  (v5/*: any*/),
   {
     "alias": null,
     "args": null,
@@ -124,14 +174,14 @@ v5 = [
     "storageKey": null
   }
 ],
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "isDefault",
   "storageKey": null
 },
-v7 = [
+v8 = [
   {
     "alias": null,
     "args": [
@@ -195,6 +245,13 @@ v7 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "defaultEnvironmentTemplateId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevel",
         "storageKey": null
       },
@@ -208,33 +265,11 @@ v7 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "AgentEnvironmentRequirements",
+        "concreteType": "AgentEnvironmentTemplate",
         "kind": "LinkedField",
-        "name": "environmentRequirements",
+        "name": "environmentTemplate",
         "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "minCpuCount",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "minMemoryGb",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "minDiskSpaceGb",
-            "storageKey": null
-          }
-        ],
+        "selections": (v4/*: any*/),
         "storageKey": null
       },
       {
@@ -292,7 +327,7 @@ v7 = [
     "kind": "LinkedField",
     "name": "AgentSecrets",
     "plural": true,
-    "selections": (v5/*: any*/),
+    "selections": (v6/*: any*/),
     "storageKey": null
   },
   {
@@ -304,7 +339,7 @@ v7 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
-      (v6/*: any*/),
+      (v7/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -344,7 +379,7 @@ v7 = [
             "storageKey": null
           },
           (v2/*: any*/),
-          (v4/*: any*/),
+          (v5/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -365,7 +400,7 @@ v7 = [
     "kind": "LinkedField",
     "name": "Secrets",
     "plural": true,
-    "selections": (v5/*: any*/),
+    "selections": (v6/*: any*/),
     "storageKey": null
   },
   {
@@ -377,13 +412,23 @@ v7 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
-      (v6/*: any*/),
+      (v7/*: any*/),
       (v2/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "provider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "AgentEnvironmentTemplate",
+        "kind": "LinkedField",
+        "name": "templates",
+        "plural": true,
+        "selections": (v4/*: any*/),
         "storageKey": null
       }
     ],
@@ -396,7 +441,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentDetailPageQuery",
-    "selections": (v7/*: any*/),
+    "selections": (v8/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -405,19 +450,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "agentDetailPageQuery",
-    "selections": (v7/*: any*/)
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "dbad53c68aa5d160ed857627925054ef",
+    "cacheID": "7a737ab94ca22950511e794c99f0df6e",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    reasoningLevel\n    systemPrompt\n    environmentRequirements {\n      minCpuCount\n      minMemoryGb\n      minDiskSpaceGb\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    reasoningLevel\n    systemPrompt\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "17e4b9ecbd2087e3603f57220e833522";
+(node as any).hash = "a3f40f7ddf024bc20e949c941ae89c8b";
 
 export default node;

@@ -24,6 +24,10 @@ class UpdateAgentMutationTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -253,6 +257,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
         input: {
           id: "agent-1",
           defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+          defaultEnvironmentTemplateId: "e2b/desktop",
           name: "Executive Agent",
           modelProviderCredentialId: "credential-2",
           modelProviderCredentialModelId: "model-row-2",
@@ -277,95 +282,11 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
   });
   assert.equal(database.updatedValues.length, 1);
   assert.equal(database.updatedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
+  assert.equal(database.updatedValues[0]?.defaultEnvironmentTemplateId, "e2b/desktop");
   assert.equal(database.updatedValues[0]?.name, "Executive Agent");
   assert.equal(database.updatedValues[0]?.defaultModelProviderCredentialModelId, "model-row-2");
   assert.equal(database.updatedValues[0]?.default_reasoning_level, null);
   assert.equal(database.updatedValues[0]?.system_prompt, "Handle complex work.");
-
-  await app.close();
-});
-
-test("GraphQL UpdateAgent mutation rejects switching to a provider that cannot satisfy the current requirements", async () => {
-  const app = Fastify();
-  const config = UpdateAgentMutationTestHarness.createConfigMock();
-  const database = UpdateAgentMutationTestHarness.createDatabaseMock({
-    currentRequirements: {
-      minCpuCount: 4,
-      minDiskSpaceGb: 20,
-      minMemoryGb: 8,
-    },
-    provider: "daytona",
-    providerName: "Primary Daytona",
-  });
-  const modelManager = {
-    async fetchModels(): Promise<ModelProviderModel[]> {
-      return [];
-    },
-  };
-  const authProvider = {
-    async authenticateBearerToken() {
-      return {
-        token: "jwt-token",
-        user: {
-          id: "user-123",
-          email: "user@example.com",
-          firstName: "User",
-          lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
-        },
-        company: {
-          id: "company-123",
-          name: "Example Org",
-        },
-      };
-    },
-  };
-
-  await new GraphqlApplication(
-    config,
-    new AddModelProviderCredentialMutation(modelManager as never),
-    new DeleteModelProviderCredentialMutation(),
-    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
-    new GraphqlRequestContextResolver(authProvider as never, database),
-    new HealthQueryResolver(),
-    new MeQueryResolver(),
-    new ModelProviderCredentialModelsQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(),
-  ).register(app);
-
-  const response = await app.inject({
-    method: "POST",
-    url: "/graphql",
-    headers: {
-      authorization: "Bearer jwt-token",
-    },
-    payload: {
-      query: `
-        mutation UpdateAgent($input: UpdateAgentInput!) {
-          UpdateAgent(input: $input) {
-            id
-          }
-        }
-      `,
-      variables: {
-        input: {
-          id: "agent-1",
-          defaultComputeProviderDefinitionId: "compute-provider-definition-1",
-          name: "Executive Agent",
-          modelProviderCredentialId: "credential-2",
-          modelProviderCredentialModelId: "model-row-2",
-          systemPrompt: "Handle complex work.",
-        },
-      },
-    },
-  });
-
-  assert.equal(response.statusCode, 200);
-  const document = response.json();
-  assert.equal(document.data, null);
-  assert.match(document.errors[0]?.message ?? "", /Disk must be between 3 and 10 GB for Daytona\./);
-  assert.equal(database.updatedValues.length, 0);
 
   await app.close();
 });

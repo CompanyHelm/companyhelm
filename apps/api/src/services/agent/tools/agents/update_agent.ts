@@ -14,11 +14,12 @@ export class AgentUpdateAgentTool {
     defaultComputeProviderDefinitionId: Type.Optional(Type.String({
       description: "Optional replacement compute provider definition id.",
     })),
-    environmentRequirements: Type.Optional(AgentToolParameterSchema.object({
-      minCpuCount: Type.Integer({ minimum: 1 }),
-      minDiskSpaceGb: Type.Integer({ minimum: 1 }),
-      minMemoryGb: Type.Integer({ minimum: 1 }),
-    })),
+    defaultEnvironmentTemplateId: Type.Optional(Type.Union([
+      Type.Null(),
+      Type.String({
+        description: "Optional replacement environment template id.",
+      }),
+    ])),
     id: Type.String({
       description: "Id of the agent to update. This can be the current agent id.",
     }),

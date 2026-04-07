@@ -50,6 +50,7 @@ export class AgentManagementResultFormatter {
       `defaultComputeProvider: ${agent.defaultComputeProvider ?? "(none)"}`,
       `defaultComputeProviderDefinitionId: ${agent.defaultComputeProviderDefinitionId ?? "(none)"}`,
       `defaultComputeProviderDefinitionName: ${agent.defaultComputeProviderDefinitionName ?? "(none)"}`,
+      `defaultEnvironmentTemplateId: ${agent.defaultEnvironmentTemplateId}`,
       `modelProvider: ${agent.modelProvider ?? "(none)"}`,
       `modelProviderCredentialId: ${agent.modelProviderCredentialId ?? "(none)"}`,
       `modelProviderCredentialLabel: ${agent.modelProviderCredentialLabel ?? "(none)"}`,
@@ -60,9 +61,12 @@ export class AgentManagementResultFormatter {
       `supportedReasoningLevels: ${AgentManagementResultFormatter.formatStringList(agent.supportedReasoningLevels)}`,
       `reasoningLevel: ${agent.reasoningLevel ?? "(none)"}`,
       `systemPrompt: ${agent.systemPrompt ?? "(none)"}`,
-      `environmentRequirements.minCpuCount: ${agent.environmentRequirements.minCpuCount}`,
-      `environmentRequirements.minMemoryGb: ${agent.environmentRequirements.minMemoryGb}`,
-      `environmentRequirements.minDiskSpaceGb: ${agent.environmentRequirements.minDiskSpaceGb}`,
+      `environmentTemplate.name: ${agent.environmentTemplate.name}`,
+      `environmentTemplate.templateId: ${agent.environmentTemplate.templateId}`,
+      `environmentTemplate.cpuCount: ${agent.environmentTemplate.cpuCount}`,
+      `environmentTemplate.memoryGb: ${agent.environmentTemplate.memoryGb}`,
+      `environmentTemplate.diskSpaceGb: ${agent.environmentTemplate.diskSpaceGb}`,
+      `environmentTemplate.computerUse: ${agent.environmentTemplate.computerUse}`,
       `createdAt: ${agent.createdAt.toISOString()}`,
       `updatedAt: ${agent.updatedAt.toISOString()}`,
       "defaultSecrets:",
@@ -94,6 +98,8 @@ export class AgentManagementResultFormatter {
       `description: ${definition.description ?? "(no description)"}`,
       `daytona.apiUrl: ${definition.daytona?.apiUrl ?? "(none)"}`,
       `e2b.hasApiKey: ${definition.e2b?.hasApiKey ?? false}`,
+      "templates:",
+      AgentManagementResultFormatter.formatIndentedTemplateSection(definition.templates),
       `createdAt: ${definition.createdAt.toISOString()}`,
       `updatedAt: ${definition.updatedAt.toISOString()}`,
     ].join("\n");
@@ -152,6 +158,25 @@ export class AgentManagementResultFormatter {
         `name: ${model.name}`,
         `description: ${model.description}`,
         `reasoningLevels: ${AgentManagementResultFormatter.formatStringList(model.reasoningLevels)}`,
+      ].join("\n"));
+    }).join("\n\n");
+  }
+
+  private static formatIndentedTemplateSection(
+    templates: AgentManagementToolComputeProviderDefinition["templates"],
+  ): string {
+    if (templates.length === 0) {
+      return "  none";
+    }
+
+    return templates.map((template) => {
+      return AgentManagementResultFormatter.indentBlock([
+        `name: ${template.name}`,
+        `templateId: ${template.templateId}`,
+        `cpuCount: ${template.cpuCount}`,
+        `memoryGb: ${template.memoryGb}`,
+        `diskSpaceGb: ${template.diskSpaceGb}`,
+        `computerUse: ${template.computerUse}`,
       ].join("\n"));
     }).join("\n\n");
   }

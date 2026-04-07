@@ -24,6 +24,10 @@ class AddAgentMutationTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
       security: {
         encryption: {
           key: "super-secret-key",
@@ -289,12 +293,8 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
       `,
       variables: {
         input: {
-          environmentRequirements: {
-            minCpuCount: 6,
-            minDiskSpaceGb: 20,
-            minMemoryGb: 8,
-          },
           defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+          defaultEnvironmentTemplateId: "e2b/desktop",
           name: "Research Agent",
           modelProviderCredentialId: "credential-1",
           modelProviderCredentialModelId: "model-row-1",
@@ -316,9 +316,10 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
     reasoningLevel: "high",
     systemPrompt: "You are concise.",
   });
-  assert.equal(database.insertedValues.length, 3);
+  assert.equal(database.insertedValues.length, 2);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.defaultComputeProviderDefinitionId, "compute-provider-definition-1");
+  assert.equal(database.insertedValues[0]?.defaultEnvironmentTemplateId, "e2b/desktop");
   assert.equal(database.insertedValues[0]?.default_reasoning_level, "high");
   assert.equal(database.insertedValues[0]?.system_prompt, "You are concise.");
   assert.deepEqual(database.insertedValues[1], {
@@ -328,15 +329,5 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
     createdByUserId: "user-123",
     secretId: "secret-1",
   });
-  assert.deepEqual(database.insertedValues[2], {
-    agentId: "agent-1",
-    companyId: "company-123",
-    createdAt: database.insertedValues[2]?.createdAt,
-    minCpuCount: 6,
-    minDiskSpaceGb: 20,
-    minMemoryGb: 8,
-    updatedAt: database.insertedValues[2]?.updatedAt,
-  });
-
   await app.close();
 });

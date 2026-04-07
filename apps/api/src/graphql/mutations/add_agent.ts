@@ -7,19 +7,16 @@ import {
   modelProviderCredentials,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-import { AgentEnvironmentRequirementsService } from "../../services/agent/environment/requirements_service.ts";
+import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
+import { AgentEnvironmentTemplateService } from "../../services/agent/environment/template_service.ts";
 import { SecretService } from "../../services/secrets/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type AddAgentMutationArguments = {
   input: {
-    environmentRequirements?: {
-      minCpuCount: number;
-      minDiskSpaceGb: number;
-      minMemoryGb: number;
-    } | null;
     defaultComputeProviderDefinitionId: string;
+    defaultEnvironmentTemplateId: string;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
     name: string;
@@ -34,6 +31,7 @@ type AgentRecord = {
   name: string;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
+  defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: Date;
@@ -62,6 +60,8 @@ type GraphqlAgentRecord = {
   defaultComputeProvider: "daytona" | "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
+  defaultEnvironmentTemplateId: string;
+  environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
@@ -94,16 +94,34 @@ type DatabaseTransaction = {
 @injectable()
 export class AddAgentMutation extends Mutation<AddAgentMutationArguments, GraphqlAgentRecord> {
   private readonly secretService: SecretService;
-  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly templateService: AgentEnvironmentTemplateService;
 
   constructor(
     @inject(SecretService) secretService: SecretService,
-    @inject(AgentEnvironmentRequirementsService)
-    requirementsService: AgentEnvironmentRequirementsService,
+    @inject(AgentEnvironmentTemplateService)
+    templateService: AgentEnvironmentTemplateService = {
+      async resolveTemplateForProvider(
+        _transactionProvider: TransactionProviderInterface,
+        input: {
+          companyId: string;
+          providerDefinitionId: string;
+          templateId: string;
+        },
+      ) {
+        return {
+          computerUse: false,
+          cpuCount: 4,
+          diskSpaceGb: 10,
+          memoryGb: 8,
+          name: "Default",
+          templateId: input.templateId,
+        };
+      },
+    } as never,
   ) {
     super();
     this.secretService = secretService;
-    this.requirementsService = requirementsService;
+    this.templateService = templateService;
   }
 
   protected resolve = async (
@@ -128,8 +146,13 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     if (arguments_.input.defaultComputeProviderDefinitionId.length === 0) {
       throw new Error("defaultComputeProviderDefinitionId is required.");
     }
+    if (arguments_.input.defaultEnvironmentTemplateId.length === 0) {
+      throw new Error("defaultEnvironmentTemplateId is required.");
+    }
+    const authSession = context.authSession;
+    const runtimeTransactionProvider = context.app_runtime_transaction_provider;
 
-    return context.app_runtime_transaction_provider.transaction(async (tx) => {
+    return runtimeTransactionProvider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
       const transactionProvider: TransactionProviderInterface = {
         async transaction(transaction) {
@@ -143,7 +166,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, authSession.company.id),
           eq(modelProviderCredentials.id, arguments_.input.modelProviderCredentialId),
         )) as CredentialRecord[];
       if (!credentialRecord) {
@@ -159,7 +182,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, authSession.company.id),
           eq(modelProviderCredentialModels.id, arguments_.input.modelProviderCredentialModelId),
         )) as ModelRecord[];
       if (!modelRecord) {
@@ -177,25 +200,34 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         })
         .from(computeProviderDefinitions)
         .where(and(
-          eq(computeProviderDefinitions.companyId, context.authSession.company.id),
+          eq(computeProviderDefinitions.companyId, authSession.company.id),
           eq(computeProviderDefinitions.id, arguments_.input.defaultComputeProviderDefinitionId),
         )) as ComputeProviderDefinitionRecord[];
       if (!computeProviderDefinitionRecord) {
         throw new Error("Compute provider definition not found.");
       }
+      const environmentTemplate = await this.templateService.resolveTemplateForProvider(
+        transactionProvider,
+        {
+          companyId: authSession.company.id,
+          providerDefinitionId: computeProviderDefinitionRecord.id,
+          templateId: arguments_.input.defaultEnvironmentTemplateId,
+        },
+      );
 
       const reasoningLevel = AddAgentMutation.resolveReasoningLevel(
         arguments_.input.reasoningLevel,
         modelRecord.reasoningLevels ?? [],
       );
       const now = new Date();
-      const [agentRecord] = await databaseTransaction
+      const insertedAgentRecords = await databaseTransaction
         .insert(agents)
         .values({
-          companyId: context.authSession.company.id,
+          companyId: authSession.company.id,
           name: arguments_.input.name,
           defaultModelProviderCredentialModelId: modelRecord.id,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
+          defaultEnvironmentTemplateId: environmentTemplate.templateId,
           default_reasoning_level: reasoningLevel,
           system_prompt: AddAgentMutation.resolveSystemPrompt(arguments_.input.systemPrompt),
           created_at: now,
@@ -206,11 +238,13 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+          defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
           updatedAt: agents.updated_at,
-        }) as Promise<AgentRecord[]>;
+        });
+      const [agentRecord] = insertedAgentRecords ?? [];
       if (!agentRecord) {
         throw new Error("Failed to create agent.");
       }
@@ -218,22 +252,9 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       for (const secretId of AddAgentMutation.resolveSecretIds(arguments_.input.secretIds)) {
         await this.secretService.attachSecretToAgent(transactionProvider, {
           agentId: agentRecord.id,
-          companyId: context.authSession.company.id,
+          companyId: authSession.company.id,
           secretId,
-          userId: context.authSession.user.id,
-        });
-      }
-
-      const environmentRequirements = AddAgentMutation.resolveEnvironmentRequirements(
-        arguments_.input.environmentRequirements,
-      );
-      if (environmentRequirements) {
-        await this.requirementsService.updateRequirements(transactionProvider, {
-          agentId: agentRecord.id,
-          companyId: context.authSession.company.id,
-          minCpuCount: environmentRequirements.minCpuCount,
-          minDiskSpaceGb: environmentRequirements.minDiskSpaceGb,
-          minMemoryGb: environmentRequirements.minMemoryGb,
+          userId: authSession.user.id,
         });
       }
 
@@ -242,6 +263,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         modelRecord,
         credentialRecord,
         computeProviderDefinitionRecord,
+        environmentTemplate,
       );
     });
   };
@@ -284,26 +306,19 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     return [...new Set(secretIds.filter((secretId) => secretId.length > 0))];
   }
 
-  private static resolveEnvironmentRequirements(
-    environmentRequirements: AddAgentMutationArguments["input"]["environmentRequirements"],
-  ): AddAgentMutationArguments["input"]["environmentRequirements"] {
-    if (!environmentRequirements) {
-      return null;
-    }
-
-    return environmentRequirements;
-  }
-
   private static serializeRecord(
     agentRecord: AgentRecord,
     modelRecord: ModelRecord,
     credentialRecord: CredentialRecord,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord,
+    environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
       defaultComputeProvider: computeProviderDefinitionRecord.provider,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord.name,
+      defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
+      environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: credentialRecord.id,

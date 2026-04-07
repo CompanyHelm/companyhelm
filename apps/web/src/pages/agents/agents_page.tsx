@@ -52,6 +52,14 @@ const agentsPageQueryNode = graphql`
       isDefault
       name
       provider
+      templates {
+        computerUse
+        cpuCount
+        diskSpaceGb
+        memoryGb
+        name
+        templateId
+      }
     }
   }
 `;
@@ -161,6 +169,14 @@ function AgentsPageContent() {
       isDefault: definition.isDefault,
       label: CompanyHelmComputeProvider.formatDefinitionOptionLabel(definition),
       provider: definition.provider as "daytona" | "e2b",
+      templates: definition.templates.map((template) => ({
+        computerUse: template.computerUse,
+        cpuCount: template.cpuCount,
+        diskSpaceGb: template.diskSpaceGb,
+        memoryGb: template.memoryGb,
+        name: template.name,
+        templateId: template.templateId,
+      })),
     }));
   const filterStoreRecords = (
     records: ReadonlyArray<unknown>,

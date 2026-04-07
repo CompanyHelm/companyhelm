@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e7327f55c380488aedac7e4b46e34ae6>>
+ * @generated SignedSource<<182043292dab0c7ffd6a81ddeb6b8afe>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -40,6 +40,14 @@ export type agentsPageQuery$data = {
     readonly isDefault: boolean;
     readonly name: string;
     readonly provider: string;
+    readonly templates: ReadonlyArray<{
+      readonly computerUse: boolean;
+      readonly cpuCount: number;
+      readonly diskSpaceGb: number;
+      readonly memoryGb: number;
+      readonly name: string;
+      readonly templateId: string;
+    }>;
   }>;
   readonly Secrets: ReadonlyArray<{
     readonly description: string | null | undefined;
@@ -238,6 +246,53 @@ v4 = [
         "kind": "ScalarField",
         "name": "provider",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "AgentEnvironmentTemplate",
+        "kind": "LinkedField",
+        "name": "templates",
+        "plural": true,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "computerUse",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "cpuCount",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "diskSpaceGb",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "memoryGb",
+            "storageKey": null
+          },
+          (v1/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "templateId",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -261,16 +316,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "2ce07cd9987faa00f4edb740035db6f1",
+    "cacheID": "7ea1532287b4306116f09c9f8d9bc066",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "31ab20c8f50e09547175c0dc68ccd1be";
+(node as any).hash = "3030502c436cdfc52a5d8111596be88b";
 
 export default node;

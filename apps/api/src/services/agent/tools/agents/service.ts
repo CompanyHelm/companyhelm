@@ -2,7 +2,6 @@ import { and, eq, inArray } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import {
   agentDefaultSecrets,
-  agentEnvironmentRequirements,
   agents,
   companySecrets,
   computeProviderDefinitions,
@@ -15,17 +14,15 @@ import type {
 } from "../../../../db/transaction_provider_interface.ts";
 import { ModelRegistry } from "../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../ai_providers/model_provider_service.ts";
-import type { ComputeProvider } from "../../compute/provider_interface.ts";
-import { AgentEnvironmentRequirementsService } from "../../environment/requirements_service.ts";
+import type {
+  AgentEnvironmentTemplate,
+  ComputeProvider,
+} from "../../compute/provider_interface.ts";
+import { AgentEnvironmentTemplateService } from "../../environment/template_service.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
-import { ComputeProviderLimitsCatalog } from "../../../compute_provider_definitions/provider_limits_catalog.ts";
 import { SecretService } from "../../../secrets/service.ts";
 
-export type AgentManagementToolEnvironmentRequirements = {
-  minCpuCount: number;
-  minDiskSpaceGb: number;
-  minMemoryGb: number;
-};
+export type AgentManagementToolEnvironmentTemplate = AgentEnvironmentTemplate;
 
 export type AgentManagementToolSecret = {
   companyId: string;
@@ -43,7 +40,8 @@ export type AgentManagementToolAgent = {
   defaultComputeProvider: ComputeProvider | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
-  environmentRequirements: AgentManagementToolEnvironmentRequirements;
+  defaultEnvironmentTemplateId: string;
+  environmentTemplate: AgentManagementToolEnvironmentTemplate;
   id: string;
   isCurrentAgent: boolean;
   modelDescription: string | null;
@@ -93,6 +91,7 @@ export type AgentManagementToolComputeProviderDefinition = {
   isDefault: boolean;
   name: string;
   provider: ComputeProvider;
+  templates: AgentManagementToolEnvironmentTemplate[];
   updatedAt: Date;
 };
 
@@ -106,7 +105,7 @@ export type AgentManagementToolSnapshot = {
 
 export type AgentManagementToolCreateAgentInput = {
   defaultComputeProviderDefinitionId: string;
-  environmentRequirements?: AgentManagementToolEnvironmentRequirements | null;
+  defaultEnvironmentTemplateId: string;
   modelProviderCredentialId?: string | null;
   modelProviderCredentialModelId: string;
   name: string;
@@ -117,7 +116,7 @@ export type AgentManagementToolCreateAgentInput = {
 
 export type AgentManagementToolUpdateAgentInput = {
   defaultComputeProviderDefinitionId?: string | null;
-  environmentRequirements?: AgentManagementToolEnvironmentRequirements | null;
+  defaultEnvironmentTemplateId?: string | null;
   id: string;
   modelProviderCredentialId?: string | null;
   modelProviderCredentialModelId?: string | null;
@@ -131,16 +130,13 @@ type AgentBaseRecord = {
   companyId: string;
   createdAt: Date;
   defaultComputeProviderDefinitionId: string | null;
+  defaultEnvironmentTemplateId: string;
   defaultModelProviderCredentialModelId: string | null;
   defaultReasoningLevel: string | null;
   id: string;
   name: string;
   systemPrompt: string | null;
   updatedAt: Date;
-};
-
-type AgentEnvironmentRequirementsRecord = AgentManagementToolEnvironmentRequirements & {
-  agentId: string;
 };
 
 type AgentSecretAttachmentRecord = {
@@ -217,7 +213,7 @@ export class AgentManagementToolService {
   private readonly companyId: string;
   private readonly currentAgentId: string;
   private readonly secretService: SecretService;
-  private readonly requirementsService: AgentEnvironmentRequirementsService;
+  private readonly templateService: AgentEnvironmentTemplateService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly modelProviderService: ModelProviderService;
   private readonly modelRegistry: ModelRegistry;
@@ -227,8 +223,8 @@ export class AgentManagementToolService {
     companyId: string,
     currentAgentId: string,
     @inject(SecretService) secretService: SecretService,
-    @inject(AgentEnvironmentRequirementsService)
-    requirementsService: AgentEnvironmentRequirementsService,
+    @inject(AgentEnvironmentTemplateService)
+    templateService: AgentEnvironmentTemplateService,
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(ModelProviderService) modelProviderService: ModelProviderService,
@@ -238,7 +234,7 @@ export class AgentManagementToolService {
     this.companyId = companyId;
     this.currentAgentId = currentAgentId;
     this.secretService = secretService;
-    this.requirementsService = requirementsService;
+    this.templateService = templateService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.modelProviderService = modelProviderService;
     this.modelRegistry = modelRegistry;
@@ -254,6 +250,9 @@ export class AgentManagementToolService {
     if (input.defaultComputeProviderDefinitionId.length === 0) {
       throw new Error("defaultComputeProviderDefinitionId is required.");
     }
+    if (input.defaultEnvironmentTemplateId.length === 0) {
+      throw new Error("defaultEnvironmentTemplateId is required.");
+    }
 
     return this.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -267,6 +266,14 @@ export class AgentManagementToolService {
         selectableDatabase,
         input.defaultComputeProviderDefinitionId,
       );
+      const environmentTemplate = await this.templateService.resolveTemplateForProvider(
+        scopedTransactionProvider,
+        {
+          companyId: this.companyId,
+          providerDefinitionId: computeProviderDefinition.id,
+          templateId: input.defaultEnvironmentTemplateId,
+        },
+      );
       const reasoningLevel = this.resolveReasoningLevel(
         input.reasoningLevel,
         resolvedModelSelection.credential,
@@ -279,6 +286,7 @@ export class AgentManagementToolService {
           companyId: this.companyId,
           created_at: now,
           defaultComputeProviderDefinitionId: computeProviderDefinition.id,
+          defaultEnvironmentTemplateId: environmentTemplate.templateId,
           defaultModelProviderCredentialModelId: resolvedModelSelection.model.id,
           default_reasoning_level: reasoningLevel,
           name: input.name,
@@ -295,17 +303,12 @@ export class AgentManagementToolService {
         input.secretIds,
         tx as SelectableDatabase & InsertableDatabase & DeletableDatabase,
       );
-      if (input.environmentRequirements) {
-        await this.requirementsService.updateRequirements(scopedTransactionProvider, {
-          agentId: createdAgent.id,
-          companyId: this.companyId,
-          minCpuCount: input.environmentRequirements.minCpuCount,
-          minDiskSpaceGb: input.environmentRequirements.minDiskSpaceGb,
-          minMemoryGb: input.environmentRequirements.minMemoryGb,
-        });
-      }
 
-      return this.loadRequiredAgentFromDatabase(selectableDatabase, createdAgent.id);
+      return this.loadRequiredAgentFromDatabase(
+        selectableDatabase,
+        scopedTransactionProvider,
+        createdAgent.id,
+      );
     });
   }
 
@@ -318,7 +321,7 @@ export class AgentManagementToolService {
     ] = await Promise.all([
       this.loadAllAgents(),
       this.loadProviderOptions(),
-      this.computeProviderDefinitionService.listDefinitions(this.transactionProvider, this.companyId),
+      this.loadAvailableComputeProviderDefinitions(),
       this.secretService.listSecrets(this.transactionProvider, this.companyId),
     ]);
 
@@ -365,6 +368,27 @@ export class AgentManagementToolService {
         selectableDatabase,
         nextComputeProviderDefinitionId,
       );
+      const nextEnvironmentTemplateId = input.defaultEnvironmentTemplateId === undefined
+        ? (
+          input.defaultComputeProviderDefinitionId === undefined
+            ? existingAgent.defaultEnvironmentTemplateId
+            : await this.resolveDefaultEnvironmentTemplateId(
+              scopedTransactionProvider,
+              nextComputeProviderDefinitionId,
+            )
+        )
+        : input.defaultEnvironmentTemplateId;
+      if (!nextEnvironmentTemplateId) {
+        throw new Error("defaultEnvironmentTemplateId is required.");
+      }
+      const environmentTemplate = await this.templateService.resolveTemplateForProvider(
+        scopedTransactionProvider,
+        {
+          companyId: this.companyId,
+          providerDefinitionId: computeProviderDefinition.id,
+          templateId: nextEnvironmentTemplateId,
+        },
+      );
       const reasoningLevel = this.resolveReasoningLevel(
         input.reasoningLevel === undefined
           ? (
@@ -376,17 +400,12 @@ export class AgentManagementToolService {
         resolvedModelSelection.credential,
         resolvedModelSelection.model,
       );
-      const nextRequirements = input.environmentRequirements
-        ?? await this.requirementsService.getRequirements(scopedTransactionProvider, this.companyId, input.id);
-      ComputeProviderLimitsCatalog.validateRequirements(
-        computeProviderDefinition.provider,
-        nextRequirements,
-      );
 
       const [updatedAgent] = await updatableDatabase
         .update(agents)
         .set({
           defaultComputeProviderDefinitionId: computeProviderDefinition.id,
+          defaultEnvironmentTemplateId: environmentTemplate.templateId,
           defaultModelProviderCredentialModelId: resolvedModelSelection.model.id,
           default_reasoning_level: reasoningLevel,
           name: nextName,
@@ -402,15 +421,6 @@ export class AgentManagementToolService {
         throw new Error("Failed to update agent.");
       }
 
-      if (input.environmentRequirements !== undefined && input.environmentRequirements !== null) {
-        await this.requirementsService.updateRequirements(scopedTransactionProvider, {
-          agentId: updatedAgent.id,
-          companyId: this.companyId,
-          minCpuCount: nextRequirements.minCpuCount,
-          minDiskSpaceGb: nextRequirements.minDiskSpaceGb,
-          minMemoryGb: nextRequirements.minMemoryGb,
-        });
-      }
       if (input.secretIds !== undefined) {
         await this.replaceAgentSecrets(
           updatedAgent.id,
@@ -419,7 +429,11 @@ export class AgentManagementToolService {
         );
       }
 
-      return this.loadRequiredAgentFromDatabase(selectableDatabase, updatedAgent.id);
+      return this.loadRequiredAgentFromDatabase(
+        selectableDatabase,
+        scopedTransactionProvider,
+        updatedAgent.id,
+      );
     });
   }
 
@@ -428,6 +442,7 @@ export class AgentManagementToolService {
       companyId: agents.companyId,
       createdAt: agents.created_at,
       defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+      defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
       defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
       defaultReasoningLevel: agents.default_reasoning_level,
       id: agents.id,
@@ -439,8 +454,33 @@ export class AgentManagementToolService {
 
   private async loadAllAgents(): Promise<AgentManagementToolAgent[]> {
     return this.transactionProvider.transaction(async (tx) => {
-      return this.loadAgentSummaries(tx as SelectableDatabase);
+      return this.loadAgentSummaries(
+        tx as SelectableDatabase,
+        this.createScopedTransactionProvider(tx),
+      );
     });
+  }
+
+  private async loadAvailableComputeProviderDefinitions(): Promise<AgentManagementToolComputeProviderDefinition[]> {
+    const definitions = await this.computeProviderDefinitionService.listDefinitions(
+      this.transactionProvider,
+      this.companyId,
+    );
+    const templatesByDefinitionId = new Map(
+      await Promise.all(definitions.map(async (definition) => {
+        const templates = await this.templateService.listTemplatesForProvider(
+          this.transactionProvider,
+          this.companyId,
+          definition.id,
+        );
+        return [definition.id, templates] as const;
+      })),
+    );
+
+    return definitions.map((definition) => ({
+      ...definition,
+      templates: templatesByDefinitionId.get(definition.id) ?? [],
+    }));
   }
 
   private async loadProviderOptions(): Promise<AgentManagementToolCredentialOption[]> {
@@ -510,9 +550,10 @@ export class AgentManagementToolService {
 
   private async loadRequiredAgentFromDatabase(
     selectableDatabase: SelectableDatabase,
+    transactionProvider: TransactionProviderInterface,
     agentId: string,
   ): Promise<AgentManagementToolAgent> {
-    const agents_ = await this.loadAgentSummaries(selectableDatabase, [agentId]);
+    const agents_ = await this.loadAgentSummaries(selectableDatabase, transactionProvider, [agentId]);
     const agent = agents_[0];
     if (!agent) {
       throw new Error("Agent not found.");
@@ -523,6 +564,7 @@ export class AgentManagementToolService {
 
   private async loadAgentSummaries(
     selectableDatabase: SelectableDatabase,
+    transactionProvider: TransactionProviderInterface,
     agentIds?: string[],
   ): Promise<AgentManagementToolAgent[]> {
     const baseAgents = await selectableDatabase
@@ -538,18 +580,21 @@ export class AgentManagementToolService {
     }
 
     const resolvedAgentIds = baseAgents.map((agent) => agent.id);
-    const requirementRecords = await selectableDatabase
-      .select({
-        agentId: agentEnvironmentRequirements.agentId,
-        minCpuCount: agentEnvironmentRequirements.minCpuCount,
-        minDiskSpaceGb: agentEnvironmentRequirements.minDiskSpaceGb,
-        minMemoryGb: agentEnvironmentRequirements.minMemoryGb,
-      })
-      .from(agentEnvironmentRequirements)
-      .where(and(
-        eq(agentEnvironmentRequirements.companyId, this.companyId),
-        inArray(agentEnvironmentRequirements.agentId, resolvedAgentIds),
-      )) as AgentEnvironmentRequirementsRecord[];
+    const computeProviderDefinitionIds = [...new Set(
+      baseAgents
+        .map((agent) => agent.defaultComputeProviderDefinitionId)
+        .filter((value): value is string => typeof value === "string"),
+    )];
+    const templatesByDefinitionId = new Map(
+      await Promise.all(computeProviderDefinitionIds.map(async (definitionId) => {
+        const templates = await this.templateService.listTemplatesForProvider(
+          transactionProvider,
+          this.companyId,
+          definitionId,
+        );
+        return [definitionId, templates] as const;
+      })),
+    );
     const secretAttachmentRecords = await selectableDatabase
       .select({
         agentId: agentDefaultSecrets.agentId,
@@ -615,11 +660,6 @@ export class AgentManagementToolService {
           eq(modelProviderCredentials.companyId, this.companyId),
           inArray(modelProviderCredentials.id, credentialIds),
         )) as CredentialRecord[];
-    const computeProviderDefinitionIds = [...new Set(
-      baseAgents
-        .map((agent) => agent.defaultComputeProviderDefinitionId)
-        .filter((value): value is string => typeof value === "string"),
-    )];
     const computeProviderDefinitionRecords = computeProviderDefinitionIds.length === 0
       ? []
       : await selectableDatabase
@@ -634,9 +674,6 @@ export class AgentManagementToolService {
           inArray(computeProviderDefinitions.id, computeProviderDefinitionIds),
         )) as ComputeProviderDefinitionRecord[];
 
-    const requirementsByAgentId = new Map(
-      requirementRecords.map((record) => [record.agentId, record]),
-    );
     const secretsById = new Map(secretRecords.map((record) => [record.id, record]));
     const secretIdsByAgentId = new Map<string, string[]>();
     for (const record of secretAttachmentRecords) {
@@ -673,11 +710,11 @@ export class AgentManagementToolService {
           defaultComputeProvider: computeProviderDefinition?.provider ?? null,
           defaultComputeProviderDefinitionId: agent.defaultComputeProviderDefinitionId,
           defaultComputeProviderDefinitionName: computeProviderDefinition?.name ?? null,
-          environmentRequirements: requirementsByAgentId.get(agent.id) ?? {
-            minCpuCount: 1,
-            minDiskSpaceGb: 10,
-            minMemoryGb: 3,
-          },
+          defaultEnvironmentTemplateId: agent.defaultEnvironmentTemplateId,
+          environmentTemplate: this.requireEnvironmentTemplate(
+            agent,
+            templatesByDefinitionId,
+          ),
           id: agent.id,
           isCurrentAgent: agent.id === this.currentAgentId,
           modelDescription: model?.description ?? null,
@@ -800,6 +837,43 @@ export class AgentManagementToolService {
     }
 
     return systemPrompt;
+  }
+
+  private requireEnvironmentTemplate(
+    agent: {
+      defaultComputeProviderDefinitionId: string | null;
+      defaultEnvironmentTemplateId: string;
+    },
+    templatesByDefinitionId: Map<string, AgentManagementToolEnvironmentTemplate[]>,
+  ): AgentManagementToolEnvironmentTemplate {
+    if (!agent.defaultComputeProviderDefinitionId) {
+      throw new Error("Agent environment provider is not configured.");
+    }
+
+    const selectedTemplate = (templatesByDefinitionId.get(agent.defaultComputeProviderDefinitionId) ?? [])
+      .find((template) => template.templateId === agent.defaultEnvironmentTemplateId);
+    if (!selectedTemplate) {
+      throw new Error("Agent environment template is not available for the selected provider.");
+    }
+
+    return selectedTemplate;
+  }
+
+  private async resolveDefaultEnvironmentTemplateId(
+    transactionProvider: TransactionProviderInterface,
+    definitionId: string,
+  ): Promise<string> {
+    const templates = await this.templateService.listTemplatesForProvider(
+      transactionProvider,
+      this.companyId,
+      definitionId,
+    );
+    const defaultTemplate = templates[0];
+    if (!defaultTemplate) {
+      throw new Error("Selected compute provider does not expose any environment templates.");
+    }
+
+    return defaultTemplate.templateId;
   }
 
   private async requireComputeProviderDefinition(

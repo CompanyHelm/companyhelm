@@ -4,18 +4,26 @@ import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 export type ComputeProvider = "daytona" | "e2b";
 export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
 
-export type AgentEnvironmentRequirements = {
-  minCpuCount: number;
-  minDiskSpaceGb: number;
-  minMemoryGb: number;
+/**
+ * Describes one provider-backed environment template that an agent can select for future
+ * provisioning. Templates replace free-form CPU and memory selection with a named catalog entry
+ * that already declares the compute envelope and any special capabilities such as computer use.
+ */
+export type AgentEnvironmentTemplate = {
+  computerUse: boolean;
+  cpuCount: number;
+  diskSpaceGb: number;
+  memoryGb: number;
+  name: string;
+  templateId: string;
 };
 
 export type AgentEnvironmentProvisionRequest = {
   agentId: string;
   companyId: string;
   providerDefinitionId: string;
-  requirements: AgentEnvironmentRequirements;
   sessionId: string;
+  template: AgentEnvironmentTemplate;
 };
 
 export type AgentEnvironmentProvisionResult = {
@@ -64,6 +72,18 @@ export abstract class AgentComputeProviderInterface {
    * reuse an existing environment for the agent.
    */
   abstract supportsOnDemandProvisioning(): boolean;
+
+  /**
+   * Lists the provider-backed templates that CompanyHelm allows for a specific compute provider
+   * definition. Callers use this to present valid options and to validate persisted agent choices.
+   */
+  abstract getTemplates(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      providerDefinitionId: string;
+    },
+  ): Promise<AgentEnvironmentTemplate[]>;
 
   /**
    * Creates a brand new environment for the agent session when no reusable environment exists.

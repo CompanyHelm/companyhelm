@@ -74,10 +74,13 @@ test("AgentComputeDaytonaProvider provisions Daytona environments on demand with
     agentId: "agent-1",
     companyId: "company-1",
     providerDefinitionId: "compute-provider-definition-1",
-    requirements: {
-      minCpuCount: 6,
-      minDiskSpaceGb: 24,
-      minMemoryGb: 12,
+    template: {
+      computerUse: false,
+      cpuCount: 6,
+      diskSpaceGb: 24,
+      memoryGb: 12,
+      name: "Large",
+      templateId: "daytona/large",
     },
     sessionId: "session-1",
   });

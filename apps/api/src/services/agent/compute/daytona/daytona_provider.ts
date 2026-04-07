@@ -5,6 +5,7 @@ import { ComputeProviderDefinitionService } from "../../../compute_provider_defi
 import { AgentEnvironmentCatalogService } from "../../environment/catalog_service.ts";
 import {
   AgentComputeProviderInterface,
+  type AgentEnvironmentTemplate,
   type AgentEnvironmentRecord,
   type AgentEnvironmentStatus,
 } from "../provider_interface.ts";
@@ -18,6 +19,15 @@ import { AgentComputeDaytonaShell } from "./daytona_shell.ts";
  */
 @injectable()
 export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
+  private static readonly DEFAULT_TEMPLATE: AgentEnvironmentTemplate = {
+    computerUse: false,
+    cpuCount: 4,
+    diskSpaceGb: 10,
+    memoryGb: 8,
+    name: "Default",
+    templateId: "daytona/default",
+  };
+
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
 
@@ -39,18 +49,18 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     return true;
   }
 
+  async getTemplates(): Promise<AgentEnvironmentTemplate[]> {
+    return [AgentComputeDaytonaProvider.DEFAULT_TEMPLATE];
+  }
+
   async provisionEnvironment(
     transactionProvider: TransactionProviderInterface,
     request: {
       agentId: string;
       companyId: string;
       providerDefinitionId: string;
-      requirements: {
-        minCpuCount: number;
-        minDiskSpaceGb: number;
-        minMemoryGb: number;
-      };
       sessionId: string;
+      template: AgentEnvironmentTemplate;
     },
   ) {
     const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
@@ -65,9 +75,9 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     const remoteSandbox = await this.createDaytonaClient(definition.apiKey, definition.apiUrl).create({
       image: "node:20-slim",
       resources: {
-        cpu: request.requirements.minCpuCount,
-        disk: request.requirements.minDiskSpaceGb,
-        memory: request.requirements.minMemoryGb,
+        cpu: request.template.cpuCount,
+        disk: request.template.diskSpaceGb,
+        memory: request.template.memoryGb,
       },
     });
 
@@ -75,10 +85,10 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
       cleanup: async () => {
         await remoteSandbox.delete().catch(() => undefined);
       },
-      cpuCount: remoteSandbox.cpu || request.requirements.minCpuCount,
-      diskSpaceGb: remoteSandbox.disk || request.requirements.minDiskSpaceGb,
+      cpuCount: remoteSandbox.cpu || request.template.cpuCount,
+      diskSpaceGb: remoteSandbox.disk || request.template.diskSpaceGb,
       displayName: null,
-      memoryGb: remoteSandbox.memory || request.requirements.minMemoryGb,
+      memoryGb: remoteSandbox.memory || request.template.memoryGb,
       metadata: {},
       platform: "linux" as const,
       providerEnvironmentId: remoteSandbox.id,

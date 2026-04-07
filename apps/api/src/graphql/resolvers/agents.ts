@@ -1,11 +1,13 @@
 import { eq, inArray } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import {
   agents,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
+import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
+import { AgentEnvironmentTemplateService } from "../../services/agent/environment/template_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -14,6 +16,7 @@ type AgentRecord = {
   name: string;
   defaultModelProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
+  defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
   systemPrompt: string | null;
   createdAt: Date;
@@ -41,6 +44,8 @@ type GraphqlAgentRecord = {
   defaultComputeProvider: "daytona" | "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
+  defaultEnvironmentTemplateId: string;
+  environmentTemplate: AgentEnvironmentTemplate;
   id: string;
   name: string;
   modelProviderCredentialId: string | null;
@@ -67,6 +72,20 @@ type SelectableDatabase = {
  */
 @injectable()
 export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
+  private readonly templateService: AgentEnvironmentTemplateService;
+
+  constructor(
+    @inject(AgentEnvironmentTemplateService)
+    templateService: AgentEnvironmentTemplateService = {
+      async listTemplatesForProvider() {
+        return [];
+      },
+    } as never,
+  ) {
+    super();
+    this.templateService = templateService;
+  }
+
   protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlAgentRecord[]> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
@@ -83,6 +102,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
+          defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultReasoningLevel: agents.default_reasoning_level,
           systemPrompt: agents.system_prompt,
           createdAt: agents.created_at,
@@ -97,6 +117,16 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
       const computeProviderDefinitionIds = agentRecords
         .map((agentRecord) => agentRecord.defaultComputeProviderDefinitionId)
         .filter((value): value is string => typeof value === "string");
+      const templatesByDefinitionId = new Map(
+        await Promise.all(computeProviderDefinitionIds.map(async (definitionId) => {
+          const templates = await this.templateService.listTemplatesForProvider(
+            context.app_runtime_transaction_provider!,
+            context.authSession.company.id,
+            definitionId,
+          );
+          return [definitionId, templates] as const;
+        })),
+      );
       if (modelIds.length === 0) {
         const computeProviderDefinitionRecords = computeProviderDefinitionIds.length === 0
           ? []
@@ -119,6 +149,10 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           agentRecord.defaultComputeProviderDefinitionId
             ? computeProviderDefinitionById.get(agentRecord.defaultComputeProviderDefinitionId) ?? null
             : null,
+          AgentsQueryResolver.requireEnvironmentTemplate(
+            agentRecord,
+            templatesByDefinitionId,
+          ),
         ));
       }
 
@@ -175,6 +209,10 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           modelRecord,
           credentialRecord,
           computeProviderDefinitionRecord,
+          AgentsQueryResolver.requireEnvironmentTemplate(
+            agentRecord,
+            templatesByDefinitionId,
+          ),
         );
       });
     });
@@ -185,11 +223,14 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
     modelRecord: ModelRecord | null,
     credentialRecord: CredentialRecord | null,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
+    environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
     return {
       defaultComputeProvider: computeProviderDefinitionRecord?.provider ?? null,
       defaultComputeProviderDefinitionId: agentRecord.defaultComputeProviderDefinitionId,
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord?.name ?? null,
+      defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
+      environmentTemplate,
       id: agentRecord.id,
       name: agentRecord.name,
       modelProviderCredentialId: modelRecord?.modelProviderCredentialId ?? null,
@@ -201,5 +242,23 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
       createdAt: agentRecord.createdAt.toISOString(),
       updatedAt: agentRecord.updatedAt.toISOString(),
     };
+  }
+
+  private static requireEnvironmentTemplate(
+    agentRecord: AgentRecord,
+    templatesByDefinitionId: Map<string, AgentEnvironmentTemplate[]>,
+  ): AgentEnvironmentTemplate {
+    const providerDefinitionId = agentRecord.defaultComputeProviderDefinitionId;
+    if (!providerDefinitionId) {
+      throw new Error("Agent environment provider is not configured.");
+    }
+
+    const selectedTemplate = (templatesByDefinitionId.get(providerDefinitionId) ?? [])
+      .find((template) => template.templateId === agentRecord.defaultEnvironmentTemplateId);
+    if (!selectedTemplate) {
+      throw new Error("Agent environment template is not available for the selected provider.");
+    }
+
+    return selectedTemplate;
   }
 }

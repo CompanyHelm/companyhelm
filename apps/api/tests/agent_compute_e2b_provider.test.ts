@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
 import { Sandbox } from "e2b";
+import { test, vi } from "vitest";
 import { AgentComputeE2bProvider } from "../src/services/agent/compute/e2b/e2b_provider.ts";
 
 function createComputeProviderDefinitionService() {
@@ -18,7 +18,56 @@ function createComputeProviderDefinitionService() {
   };
 }
 
-test("AgentComputeE2bProvider provisions E2B environments from the Codex template", async () => {
+function createConfig() {
+  return {
+    companyhelm: {
+      e2b: {
+        templates: [{
+          computer_use: true,
+          name: "Desktop",
+          template_id: "e2b/desktop",
+        }],
+      },
+    },
+  };
+}
+
+test("AgentComputeE2bProvider resolves configured templates from the E2B API", async () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    json: async () => [{
+      aliases: ["desktop"],
+      cpuCount: 4,
+      diskSizeMB: 20 * 1024,
+      memoryMB: 8 * 1024,
+      names: ["desktop"],
+      templateID: "e2b/desktop",
+    }],
+    ok: true,
+  } as never);
+  const provider = new AgentComputeE2bProvider(
+    createConfig() as never,
+    {} as never,
+    createComputeProviderDefinitionService() as never,
+  );
+
+  const templates = await provider.getTemplates({} as never, {
+    companyId: "company-1",
+    providerDefinitionId: "compute-provider-definition-1",
+  });
+
+  assert.deepEqual(templates, [{
+    computerUse: true,
+    cpuCount: 4,
+    diskSpaceGb: 20,
+    memoryGb: 8,
+    name: "Desktop",
+    templateId: "e2b/desktop",
+  }]);
+  assert.equal(fetchSpy.mock.calls[0]?.[0], "https://api.e2b.app/templates");
+  fetchSpy.mockRestore();
+});
+
+test("AgentComputeE2bProvider provisions E2B environments from the selected template", async () => {
   const getInfo = vi.fn(async () => ({
     cpuCount: 8,
     memoryMB: 12 * 1024,
@@ -30,6 +79,7 @@ test("AgentComputeE2bProvider provisions E2B environments from the Codex templat
     sandboxId: "e2b-environment-1",
   } as never);
   const provider = new AgentComputeE2bProvider(
+    createConfig() as never,
     {} as never,
     createComputeProviderDefinitionService() as never,
   );
@@ -38,18 +88,21 @@ test("AgentComputeE2bProvider provisions E2B environments from the Codex templat
     agentId: "agent-1",
     companyId: "company-1",
     providerDefinitionId: "compute-provider-definition-1",
-    requirements: {
-      minCpuCount: 2,
-      minDiskSpaceGb: 20,
-      minMemoryGb: 4,
-    },
     sessionId: "session-1",
+    template: {
+      computerUse: true,
+      cpuCount: 2,
+      diskSpaceGb: 20,
+      memoryGb: 4,
+      name: "Desktop",
+      templateId: "e2b/desktop",
+    },
   });
 
   assert.equal(provider.getProvider(), "e2b");
   assert.equal(provider.supportsOnDemandProvisioning(), true);
   assert.equal(create.mock.calls.length, 1);
-  assert.equal(create.mock.calls[0]?.[0], "wunszvjeuyrdgrt0z6o9");
+  assert.equal(create.mock.calls[0]?.[0], "e2b/desktop");
   assert.deepEqual(create.mock.calls[0]?.[1], {
     apiKey: "e2b-api-key",
     lifecycle: {

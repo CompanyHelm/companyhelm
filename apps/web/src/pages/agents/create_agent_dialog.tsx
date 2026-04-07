@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import { ComputeProviderLimitsCatalog } from "@/compute_provider_limits_catalog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,6 +45,16 @@ export type AgentCreateComputeProviderDefinitionOption = {
   isDefault: boolean;
   label: string;
   provider: "daytona" | "e2b";
+  templates: AgentCreateEnvironmentTemplateOption[];
+};
+
+export type AgentCreateEnvironmentTemplateOption = {
+  computerUse: boolean;
+  cpuCount: number;
+  diskSpaceGb: number;
+  memoryGb: number;
+  name: string;
+  templateId: string;
 };
 
 interface CreateAgentDialogProps {
@@ -56,12 +65,8 @@ interface CreateAgentDialogProps {
   providerOptions: AgentCreateProviderOption[];
   secretOptions: AgentCreateSecretOption[];
   onCreate(input: {
-    environmentRequirements?: {
-        minCpuCount: number;
-        minDiskSpaceGb: number;
-        minMemoryGb: number;
-      };
     defaultComputeProviderDefinitionId: string;
+    defaultEnvironmentTemplateId: string;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
     name: string;
@@ -81,14 +86,12 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [agentName, setAgentName] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [computeProviderDefinitionId, setComputeProviderDefinitionId] = useState("");
+  const [environmentTemplateId, setEnvironmentTemplateId] = useState("");
   const [providerOptionId, setProviderOptionId] = useState("");
   const [modelOptionId, setModelOptionId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
-  const [minCpuCount, setMinCpuCount] = useState("");
-  const [minMemoryGb, setMinMemoryGb] = useState("");
-  const [minDiskSpaceGb, setMinDiskSpaceGb] = useState("");
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
   }, [props.providerOptions, providerOptionId]);
@@ -100,6 +103,11 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const selectedModelOption = useMemo(() => {
     return selectedProviderOption?.models.find((modelOption) => modelOption.id === modelOptionId);
   }, [modelOptionId, selectedProviderOption]);
+  const selectedEnvironmentTemplateOption = useMemo(() => {
+    return selectedComputeProviderDefinitionOption?.templates.find(
+      (templateOption) => templateOption.templateId === environmentTemplateId,
+    ) ?? null;
+  }, [environmentTemplateId, selectedComputeProviderDefinitionOption]);
   const orderedComputeProviderDefinitionOptions = useMemo(() => {
     return props.computeProviderDefinitionOptions
       .map((definitionOption, index) => ({
@@ -170,38 +178,18 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       .map(({ modelOption }) => modelOption);
   }, [modelOptionId, selectedProviderOption]);
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
-  const selectedComputeProviderCpuBounds = selectedComputeProviderDefinitionOption
-    ? ComputeProviderLimitsCatalog.getCpuBounds(selectedComputeProviderDefinitionOption.provider)
-    : {
-        max: undefined,
-        min: 1,
-      };
-  const selectedComputeProviderMemoryBounds = selectedComputeProviderDefinitionOption
-    ? ComputeProviderLimitsCatalog.getMemoryBounds(selectedComputeProviderDefinitionOption.provider)
-    : {
-        max: undefined,
-        min: 1,
-      };
-  const selectedComputeProviderDiskBounds = selectedComputeProviderDefinitionOption
-    ? ComputeProviderLimitsCatalog.getDiskBounds(selectedComputeProviderDefinitionOption.provider)
-    : {
-        max: undefined,
-        min: 1,
-      };
 
   useEffect(() => {
     if (!props.isOpen) {
       setAgentName("");
       setIsAdvancedOpen(false);
       setComputeProviderDefinitionId("");
+      setEnvironmentTemplateId("");
       setProviderOptionId("");
       setModelOptionId("");
       setReasoningLevel("");
       setSystemPrompt("");
       setSelectedSecretIds([]);
-      setMinCpuCount("");
-      setMinMemoryGb("");
-      setMinDiskSpaceGb("");
     }
   }, [props.isOpen]);
 
@@ -230,6 +218,23 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     props.providerOptions,
     providerOptionId,
   ]);
+
+  useEffect(() => {
+    if (!selectedComputeProviderDefinitionOption) {
+      setEnvironmentTemplateId("");
+      return;
+    }
+
+    if (
+      selectedComputeProviderDefinitionOption.templates.some(
+        (templateOption) => templateOption.templateId === environmentTemplateId,
+      )
+    ) {
+      return;
+    }
+
+    setEnvironmentTemplateId(selectedComputeProviderDefinitionOption.templates[0]?.templateId ?? "");
+  }, [environmentTemplateId, selectedComputeProviderDefinitionOption]);
 
   useEffect(() => {
     if (!selectedProviderOption) {
@@ -266,40 +271,16 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   }, [reasoningLevel, selectedProviderOption?.defaultReasoningLevel, selectedReasoningLevels]);
 
   const isReasoningLevelRequired = selectedReasoningLevels.length > 0;
-  const hasAnyComputeRequirement = minCpuCount.length > 0 || minMemoryGb.length > 0 || minDiskSpaceGb.length > 0;
-  const hasCompleteComputeRequirements = minCpuCount.length > 0 && minMemoryGb.length > 0 && minDiskSpaceGb.length > 0;
-  const parsedMinCpuCount = minCpuCount.length > 0 ? Number(minCpuCount) : null;
-  const parsedMinMemoryGb = minMemoryGb.length > 0 ? Number(minMemoryGb) : null;
-  const parsedMinDiskSpaceGb = minDiskSpaceGb.length > 0 ? Number(minDiskSpaceGb) : null;
-  const computeRequirementErrorMessage = (hasAnyComputeRequirement && !hasCompleteComputeRequirements)
-    ? "Enter CPU, memory, and disk together, or leave all three blank."
-    : (parsedMinCpuCount !== null && (!Number.isInteger(parsedMinCpuCount) || parsedMinCpuCount <= 0))
-      ? "CPU must be a positive integer."
-      : (parsedMinMemoryGb !== null && (!Number.isInteger(parsedMinMemoryGb) || parsedMinMemoryGb <= 0))
-        ? "Memory must be a positive integer."
-        : (parsedMinDiskSpaceGb !== null && (!Number.isInteger(parsedMinDiskSpaceGb) || parsedMinDiskSpaceGb <= 0))
-          ? "Disk must be a positive integer."
-          : (hasCompleteComputeRequirements && selectedComputeProviderDefinitionOption)
-            ? ComputeProviderLimitsCatalog.getValidationMessage(
-              selectedComputeProviderDefinitionOption.provider,
-              {
-                minCpuCount: parsedMinCpuCount!,
-                minDiskSpaceGb: parsedMinDiskSpaceGb!,
-                minMemoryGb: parsedMinMemoryGb!,
-              },
-            )
-            : null;
   const advancedSummary = [
     selectedSecretIds.length > 0 ? `${selectedSecretIds.length} secret${selectedSecretIds.length === 1 ? "" : "s"}` : null,
-    hasAnyComputeRequirement ? "custom compute" : null,
   ].filter((value): value is string => Boolean(value)).join(" • ");
   const shouldScrollSecrets = props.secretOptions.length > 7;
   const isCreateDisabled = agentName.length === 0
     || computeProviderDefinitionId.length === 0
+    || environmentTemplateId.length === 0
     || providerOptionId.length === 0
     || modelOptionId.length === 0
-    || (isReasoningLevelRequired && reasoningLevel.length === 0)
-    || computeRequirementErrorMessage !== null;
+    || (isReasoningLevelRequired && reasoningLevel.length === 0);
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -336,7 +317,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 value: definitionOption.id,
               }))}
               onValueChange={(value) => {
-                setComputeProviderDefinitionId(value);
+                setComputeProviderDefinitionId(value ?? "");
               }}
               value={computeProviderDefinitionId}
             >
@@ -363,7 +344,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 value: providerOption.id,
               }))}
               onValueChange={(value) => {
-                setProviderOptionId(value);
+                setProviderOptionId(value ?? "");
               }}
               value={providerOptionId}
             >
@@ -381,6 +362,45 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
           </div>
 
           <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="agent-environment-template">
+              Environment template
+            </label>
+            <Select
+              items={(selectedComputeProviderDefinitionOption?.templates ?? []).map((templateOption) => ({
+                label: templateOption.name,
+                value: templateOption.templateId,
+              }))}
+              onValueChange={(value) => {
+                setEnvironmentTemplateId(value ?? "");
+              }}
+              value={environmentTemplateId}
+            >
+              <SelectTrigger id="agent-environment-template">
+                <SelectValue placeholder="Select an environment template" />
+              </SelectTrigger>
+              <SelectContent>
+                {(selectedComputeProviderDefinitionOption?.templates ?? []).map((templateOption) => (
+                  <SelectItem key={templateOption.templateId} value={templateOption.templateId}>
+                    {templateOption.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedEnvironmentTemplateOption ? (
+              <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">{selectedEnvironmentTemplateOption.name}</p>
+                <p className="mt-1">
+                  {selectedEnvironmentTemplateOption.cpuCount} vCPU • {selectedEnvironmentTemplateOption.memoryGb} GB RAM
+                  • {selectedEnvironmentTemplateOption.diskSpaceGb} GB disk
+                </p>
+                <p className="mt-1">
+                  Computer use: {selectedEnvironmentTemplateOption.computerUse ? "Enabled" : "Disabled"}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="agent-model">
               Model
             </label>
@@ -390,7 +410,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 value: modelOption.id,
               }))}
               onValueChange={(value) => {
-                setModelOptionId(value);
+                setModelOptionId(value ?? "");
               }}
               value={modelOptionId}
             >
@@ -418,7 +438,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                   value: level,
                 }))}
                 onValueChange={(value) => {
-                  setReasoningLevel(value);
+                  setReasoningLevel(value ?? "");
                 }}
                 value={reasoningLevel}
               >
@@ -463,7 +483,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Advanced</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Add default secrets or override the minimum compute requirements for new environments.
+                  Add default secrets that should be attached to future sessions.
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -541,87 +561,6 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                   )}
                 </div>
 
-                <div className="grid gap-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Minimum compute
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Leave all three fields blank to use the default minimum of 1 CPU, 3 GB RAM, and 10 GB disk.
-                    </p>
-                    {selectedComputeProviderDefinitionOption ? (
-                      <>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Published range: {ComputeProviderLimitsCatalog.formatPublishedRangeSummary(
-                            selectedComputeProviderDefinitionOption.provider,
-                          )}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {ComputeProviderLimitsCatalog.getPublishedRangeDisclaimer()}
-                        </p>
-                      </>
-                    ) : null}
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="grid gap-2">
-                      <label className="text-xs font-medium text-foreground" htmlFor="agent-min-cpu">
-                        CPU (optional)
-                      </label>
-                      <Input
-                        id="agent-min-cpu"
-                        max={selectedComputeProviderCpuBounds.max}
-                        min={selectedComputeProviderCpuBounds.min}
-                        onChange={(event) => {
-                          setMinCpuCount(event.target.value);
-                        }}
-                        placeholder="1"
-                        type="number"
-                        value={minCpuCount}
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <label className="text-xs font-medium text-foreground" htmlFor="agent-min-memory">
-                        Memory (GB) (optional)
-                      </label>
-                      <Input
-                        id="agent-min-memory"
-                        max={selectedComputeProviderMemoryBounds.max}
-                        min={selectedComputeProviderMemoryBounds.min}
-                        onChange={(event) => {
-                          setMinMemoryGb(event.target.value);
-                        }}
-                        placeholder="3"
-                        type="number"
-                        value={minMemoryGb}
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <label className="text-xs font-medium text-foreground" htmlFor="agent-min-disk">
-                        Disk (GB) (optional)
-                      </label>
-                      <Input
-                        id="agent-min-disk"
-                        max={selectedComputeProviderDiskBounds.max}
-                        min={selectedComputeProviderDiskBounds.min}
-                        onChange={(event) => {
-                          setMinDiskSpaceGb(event.target.value);
-                        }}
-                        placeholder="10"
-                        type="number"
-                        value={minDiskSpaceGb}
-                      />
-                    </div>
-                  </div>
-
-                  {computeRequirementErrorMessage ? (
-                    <p className="text-xs text-destructive">
-                      {computeRequirementErrorMessage}
-                    </p>
-                  ) : null}
-                </div>
               </div>
             ) : null}
           </div>
@@ -647,14 +586,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             disabled={props.isSaving || isCreateDisabled}
             onClick={async () => {
               await props.onCreate({
-                environmentRequirements: hasCompleteComputeRequirements
-                  ? {
-                    minCpuCount: parsedMinCpuCount!,
-                    minDiskSpaceGb: parsedMinDiskSpaceGb!,
-                    minMemoryGb: parsedMinMemoryGb!,
-                  }
-                  : undefined,
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
+                defaultEnvironmentTemplateId: environmentTemplateId,
                 modelProviderCredentialId: providerOptionId,
                 modelProviderCredentialModelId: modelOptionId,
                 name: agentName,
