@@ -1,4 +1,4 @@
-import packageDocument from "../package.json";
+import packageDocument from "../../../package.json";
 
 /**
  * Resolves the browser runtime configuration from an injected window document first and falls
@@ -36,7 +36,7 @@ export class Config {
   private static resolveAppVersion(): string {
     const packageVersion = packageDocument.version;
     if (typeof packageVersion !== "string" || packageVersion.length === 0) {
-      throw new Error("apps/web/package.json is missing a version.");
+      throw new Error("package.json is missing a version.");
     }
 
     return packageVersion;
