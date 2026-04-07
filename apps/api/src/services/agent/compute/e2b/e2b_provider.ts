@@ -32,6 +32,10 @@ type E2bTemplateWithBuildsRecord = {
   templateID: string;
 };
 
+type E2bTemplateAliasRecord = {
+  templateID: string;
+};
+
 /**
  * Bridges the shared compute-provider contract onto E2B sandboxes. The environment services decide
  * when to reuse or provision; this class only translates those operations into E2B lifecycle and
@@ -80,7 +84,10 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     }
 
     return Promise.all(this.config.companyhelm.e2b.templates.map(async (configuredTemplate) => {
-      const remoteTemplate = await this.getTemplate(definition.apiKey, configuredTemplate.template_id);
+      const remoteTemplate = await this.resolveTemplateRecord(
+        definition.apiKey,
+        configuredTemplate.template_id,
+      );
       const templateBuild = this.requireReadyTemplateBuild(remoteTemplate, configuredTemplate.template_id);
       if (templateBuild.diskSizeMB === undefined) {
         throw new Error(`Configured E2B template ${configuredTemplate.template_id} is missing disk metadata.`);
@@ -116,7 +123,11 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    const sandbox = await Sandbox.create(request.template.templateId, {
+    const remoteTemplate = await this.resolveTemplateRecord(
+      definition.apiKey,
+      request.template.templateId,
+    );
+    const sandbox = await Sandbox.create(remoteTemplate.templateID, {
       apiKey: definition.apiKey,
       lifecycle: {
         autoResume: true,
@@ -326,7 +337,45 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     return readyBuild;
   }
 
-  private async getTemplate(apiKey: string, templateReference: string): Promise<E2bTemplateWithBuildsRecord> {
+  private async resolveTemplateRecord(
+    apiKey: string,
+    templateReference: string,
+  ): Promise<E2bTemplateWithBuildsRecord> {
+    for (const candidateReference of this.getTemplateReferenceCandidates(templateReference)) {
+      const directTemplate = await this.getTemplate(candidateReference, apiKey);
+      if (directTemplate) {
+        return directTemplate;
+      }
+
+      const aliasedTemplateId = await this.getTemplateIdForAlias(candidateReference, apiKey);
+      if (!aliasedTemplateId) {
+        continue;
+      }
+
+      const aliasedTemplate = await this.getTemplate(aliasedTemplateId, apiKey);
+      if (aliasedTemplate) {
+        return aliasedTemplate;
+      }
+    }
+
+    throw new Error(`Configured E2B template ${templateReference} was not found.`);
+  }
+
+  private getTemplateReferenceCandidates(templateReference: string): string[] {
+    const suffixReference = templateReference.includes("/")
+      ? templateReference.split("/").at(-1)
+      : undefined;
+
+    return [...new Set([
+      templateReference,
+      suffixReference,
+    ].filter((value): value is string => typeof value === "string" && value.length > 0))];
+  }
+
+  private async getTemplate(
+    templateReference: string,
+    apiKey: string,
+  ): Promise<E2bTemplateWithBuildsRecord | null> {
     const response = await fetch(`${E2B_API_BASE_URL}/templates/${encodeURIComponent(templateReference)}`, {
       headers: {
         "User-Agent": "companyhelm-ng",
@@ -335,10 +384,36 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       signal: AbortSignal.timeout(60_000),
     });
 
+    if (response.status === 404) {
+      return null;
+    }
     if (!response.ok) {
       throw new Error(`Failed to load E2B template ${templateReference} (${response.status}).`);
     }
 
     return await response.json() as E2bTemplateWithBuildsRecord;
+  }
+
+  private async getTemplateIdForAlias(
+    alias: string,
+    apiKey: string,
+  ): Promise<string | null> {
+    const response = await fetch(`${E2B_API_BASE_URL}/templates/aliases/${encodeURIComponent(alias)}`, {
+      headers: {
+        "User-Agent": "companyhelm-ng",
+        "X-API-KEY": apiKey,
+      },
+      signal: AbortSignal.timeout(60_000),
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to resolve E2B template alias ${alias} (${response.status}).`);
+    }
+
+    const aliasRecord = await response.json() as E2bTemplateAliasRecord;
+    return aliasRecord.templateID;
   }
 }

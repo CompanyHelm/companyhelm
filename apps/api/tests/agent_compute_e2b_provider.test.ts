@@ -33,22 +33,40 @@ function createConfig() {
 }
 
 test("AgentComputeE2bProvider resolves configured templates from the E2B API", async () => {
-  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-    json: async () => ({
-      aliases: ["desktop"],
-      builds: [{
-        cpuCount: 4,
-        createdAt: "2026-04-07T00:00:00.000Z",
-        diskSizeMB: 20 * 1024,
-        memoryMB: 8 * 1024,
-        status: "ready",
-        updatedAt: "2026-04-07T00:00:00.000Z",
-      }],
-      names: ["desktop"],
-      templateID: "e2b/desktop",
-    }),
-    ok: true,
-  } as never);
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/templates/e2b%2Fdesktop")) {
+      return {
+        ok: false,
+        status: 404,
+      } as never;
+    }
+    if (url.endsWith("/templates/aliases/e2b%2Fdesktop")) {
+      return {
+        ok: false,
+        status: 404,
+      } as never;
+    }
+
+    assert.equal(url, "https://api.e2b.app/templates/desktop");
+    return {
+      json: async () => ({
+        aliases: ["desktop"],
+        builds: [{
+          cpuCount: 4,
+          createdAt: "2026-04-07T00:00:00.000Z",
+          diskSizeMB: 20 * 1024,
+          memoryMB: 8 * 1024,
+          status: "ready",
+          updatedAt: "2026-04-07T00:00:00.000Z",
+        }],
+        names: ["desktop"],
+        templateID: "desktop",
+      }),
+      ok: true,
+      status: 200,
+    } as never;
+  });
   const provider = new AgentComputeE2bProvider(
     createConfig() as never,
     {} as never,
@@ -68,11 +86,49 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
     name: "Desktop",
     templateId: "e2b/desktop",
   }]);
-  assert.equal(fetchSpy.mock.calls[0]?.[0], "https://api.e2b.app/templates/e2b%2Fdesktop");
+  assert.deepEqual(fetchSpy.mock.calls.map((call) => call[0]), [
+    "https://api.e2b.app/templates/e2b%2Fdesktop",
+    "https://api.e2b.app/templates/aliases/e2b%2Fdesktop",
+    "https://api.e2b.app/templates/desktop",
+  ]);
   fetchSpy.mockRestore();
 });
 
 test("AgentComputeE2bProvider provisions E2B environments from the selected template", async () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.endsWith("/templates/e2b%2Fdesktop")) {
+      return {
+        ok: false,
+        status: 404,
+      } as never;
+    }
+    if (url.endsWith("/templates/aliases/e2b%2Fdesktop")) {
+      return {
+        ok: false,
+        status: 404,
+      } as never;
+    }
+
+    assert.equal(url, "https://api.e2b.app/templates/desktop");
+    return {
+      json: async () => ({
+        aliases: ["desktop"],
+        builds: [{
+          cpuCount: 4,
+          createdAt: "2026-04-07T00:00:00.000Z",
+          diskSizeMB: 20 * 1024,
+          memoryMB: 8 * 1024,
+          status: "ready",
+          updatedAt: "2026-04-07T00:00:00.000Z",
+        }],
+        names: ["desktop"],
+        templateID: "desktop",
+      }),
+      ok: true,
+      status: 200,
+    } as never;
+  });
   const getInfo = vi.fn(async () => ({
     cpuCount: 8,
     memoryMB: 12 * 1024,
@@ -107,7 +163,7 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
   assert.equal(provider.getProvider(), "e2b");
   assert.equal(provider.supportsOnDemandProvisioning(), true);
   assert.equal(create.mock.calls.length, 1);
-  assert.equal(create.mock.calls[0]?.[0], "e2b/desktop");
+  assert.equal(create.mock.calls[0]?.[0], "desktop");
   assert.deepEqual(create.mock.calls[0]?.[1], {
     apiKey: "e2b-api-key",
     lifecycle: {
@@ -128,5 +184,6 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
   assert.equal(provisionedEnvironment.cpuCount, 8);
   assert.equal(provisionedEnvironment.diskSpaceGb, 20);
   assert.equal(provisionedEnvironment.memoryGb, 12);
+  fetchSpy.mockRestore();
   create.mockRestore();
 });
