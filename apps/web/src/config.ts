@@ -1,8 +1,11 @@
+import packageDocument from "../package.json";
+
 /**
  * Resolves the browser runtime configuration from an injected window document first and falls
  * back to Vite environment variables for local development.
  */
 export type ConfigDocument = {
+  appVersion: string;
   clerkPublishableKey: string;
   graphqlUrl: string;
 };
@@ -16,6 +19,7 @@ declare global {
 export class Config {
   static getDocument(): ConfigDocument {
     return {
+      appVersion: Config.resolveAppVersion(),
       clerkPublishableKey: Config.resolveRuntimeStringValue(
         "clerkPublishableKey",
         import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
@@ -27,6 +31,15 @@ export class Config {
         "http://localhost:4000/graphql",
       ),
     };
+  }
+
+  private static resolveAppVersion(): string {
+    const packageVersion = packageDocument.version;
+    if (typeof packageVersion !== "string" || packageVersion.length === 0) {
+      throw new Error("apps/web/package.json is missing a version.");
+    }
+
+    return packageVersion;
   }
 
   private static resolveRuntimeStringValue(

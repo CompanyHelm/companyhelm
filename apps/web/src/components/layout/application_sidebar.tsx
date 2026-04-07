@@ -20,6 +20,7 @@ import {
   WorkflowIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { config } from "@/config";
 import { ErrorBoundary } from "@/components/error_boundary";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
@@ -48,14 +49,6 @@ interface NavigationItem {
   to: string;
 }
 
-const applicationSidebarVersionQueryNode = graphql`
-  query applicationSidebarVersionQuery {
-    Me {
-      serverVersion
-    }
-  }
-`;
-
 const applicationSidebarInboxCountQueryNode = graphql`
   query applicationSidebarInboxCountQuery {
     InboxHumanQuestions {
@@ -73,17 +66,9 @@ function isNavigationItemActive(pathname: string, itemPath: string): boolean {
 }
 
 function ApplicationSidebarVersion() {
-  const data = useLazyLoadQuery(
-    applicationSidebarVersionQueryNode,
-    {},
-    {
-      fetchPolicy: "store-or-network",
-    },
-  );
-
   return (
     <div className="flex h-8 items-center justify-center group-data-[collapsible=icon]:hidden">
-      <span className="app-shell-sidebar__meta text-sidebar-foreground/50">v{data.Me.serverVersion}</span>
+      <span className="app-shell-sidebar__meta text-sidebar-foreground/50">v{config.appVersion}</span>
     </div>
   );
 }
