@@ -41,28 +41,28 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
         status: 404,
       } as never;
     }
-    if (url.endsWith("/templates/aliases/e2b%2Fdesktop")) {
+    if (url.endsWith("/templates/desktop")) {
       return {
         ok: false,
         status: 404,
       } as never;
     }
-
-    assert.equal(url, "https://api.e2b.app/templates/desktop");
+    if (url.endsWith("/templates/aliases/desktop")) {
+      return {
+        ok: false,
+        status: 403,
+      } as never;
+    }
+    assert.equal(url, "https://api.e2b.app/templates");
     return {
-      json: async () => ({
+      json: async () => [{
         aliases: ["desktop"],
-        builds: [{
-          cpuCount: 4,
-          createdAt: "2026-04-07T00:00:00.000Z",
-          diskSizeMB: 20 * 1024,
-          memoryMB: 8 * 1024,
-          status: "ready",
-          updatedAt: "2026-04-07T00:00:00.000Z",
-        }],
+        cpuCount: 4,
+        diskSizeMB: 20 * 1024,
+        memoryMB: 8 * 1024,
         names: ["desktop"],
         templateID: "desktop",
-      }),
+      }],
       ok: true,
       status: 200,
     } as never;
@@ -89,6 +89,8 @@ test("AgentComputeE2bProvider resolves configured templates from the E2B API", a
   assert.deepEqual(fetchSpy.mock.calls.map((call) => call[0]), [
     "https://api.e2b.app/templates/e2b%2Fdesktop",
     "https://api.e2b.app/templates/desktop",
+    "https://api.e2b.app/templates/aliases/desktop",
+    "https://api.e2b.app/templates",
   ]);
   fetchSpy.mockRestore();
 });
@@ -102,28 +104,28 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
         status: 404,
       } as never;
     }
-    if (url.endsWith("/templates/aliases/e2b%2Fdesktop")) {
+    if (url.endsWith("/templates/desktop")) {
       return {
         ok: false,
         status: 404,
       } as never;
     }
-
-    assert.equal(url, "https://api.e2b.app/templates/desktop");
+    if (url.endsWith("/templates/aliases/desktop")) {
+      return {
+        ok: false,
+        status: 403,
+      } as never;
+    }
+    assert.equal(url, "https://api.e2b.app/templates");
     return {
-      json: async () => ({
+      json: async () => [{
         aliases: ["desktop"],
-        builds: [{
-          cpuCount: 4,
-          createdAt: "2026-04-07T00:00:00.000Z",
-          diskSizeMB: 20 * 1024,
-          memoryMB: 8 * 1024,
-          status: "ready",
-          updatedAt: "2026-04-07T00:00:00.000Z",
-        }],
+        cpuCount: 4,
+        diskSizeMB: 20 * 1024,
+        memoryMB: 8 * 1024,
         names: ["desktop"],
         templateID: "desktop",
-      }),
+      }],
       ok: true,
       status: 200,
     } as never;
