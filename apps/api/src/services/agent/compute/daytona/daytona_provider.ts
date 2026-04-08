@@ -201,6 +201,10 @@ export class AgentComputeDaytonaProvider extends AgentComputeProviderInterface {
     await remoteSandbox.refreshData();
   }
 
+  async getVncUrl(): Promise<string> {
+    throw new Error("Computer use is only supported for E2B environments.");
+  }
+
   async createShell(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,

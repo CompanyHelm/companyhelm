@@ -42,6 +42,7 @@ type Mutation {
   AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
   DeleteEnvironment(input: DeleteEnvironmentInput!): Environment!
   DeleteComputeProviderDefinition(input: DeleteComputeProviderDefinitionInput!): ComputeProviderDefinition!
+  GetEnvironmentVncUrl(input: GetEnvironmentVncUrlInput!): EnvironmentVncUrl!
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
@@ -289,6 +290,11 @@ type Environment {
   lastSeenAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type EnvironmentVncUrl {
+  environmentId: ID!
+  url: String!
 }
 
 type ComputeProviderDefinition {
@@ -606,6 +612,10 @@ input AddE2bComputeProviderDefinitionInput {
 }
 
 input StartEnvironmentInput {
+  id: ID!
+}
+
+input GetEnvironmentVncUrlInput {
   id: ID!
 }
 

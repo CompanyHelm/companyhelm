@@ -6,8 +6,14 @@ import { E2bTemplateBuild } from "./template_build.ts";
  */
 export class E2bTemplatesManager {
   builds(): E2bTemplateBuild[] {
-
-    const template = Template()
+    // The medium template must inherit the desktop image so computer-use sandboxes can expose a
+    // browser VNC stream without needing a second provisioning path.
+    const desktopTemplate = Template()
+      .fromTemplate("desktop")
+      .aptInstall("gh")
+      .aptInstall("ripgrep")
+      .runCmd("curl -fsSL https://get.docker.com | sudo sh");
+    const baseTemplate = Template()
       .fromBaseImage()
       .aptInstall("gh")
       .aptInstall("ripgrep")
@@ -18,14 +24,14 @@ export class E2bTemplatesManager {
         cpuCount: 2,
         memoryMB: 4096,
         computerUse: true,
-        template,
+        template: desktopTemplate,
         templateId: "medium",
       }),
       new E2bTemplateBuild({
         cpuCount: 1,
         memoryMB: 2048,
         computerUse: false,
-        template,
+        template: baseTemplate,
         templateId: "small",
       }),
     ];

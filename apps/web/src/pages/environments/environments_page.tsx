@@ -3,6 +3,7 @@ import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { EnvironmentsTable, type EnvironmentsTableRecord } from "./environments_table";
 import type { environmentsPageDeleteEnvironmentMutation } from "./__generated__/environmentsPageDeleteEnvironmentMutation.graphql";
+import type { environmentsPageGetEnvironmentVncUrlMutation } from "./__generated__/environmentsPageGetEnvironmentVncUrlMutation.graphql";
 import type { environmentsPageStartEnvironmentMutation } from "./__generated__/environmentsPageStartEnvironmentMutation.graphql";
 import type { environmentsPageStopEnvironmentMutation } from "./__generated__/environmentsPageStopEnvironmentMutation.graphql";
 import type { environmentsPageQuery } from "./__generated__/environmentsPageQuery.graphql";
@@ -46,6 +47,15 @@ const environmentsPageStartEnvironmentMutationNode = graphql`
   }
 `;
 
+const environmentsPageGetEnvironmentVncUrlMutationNode = graphql`
+  mutation environmentsPageGetEnvironmentVncUrlMutation($input: GetEnvironmentVncUrlInput!) {
+    GetEnvironmentVncUrl(input: $input) {
+      environmentId
+      url
+    }
+  }
+`;
+
 const environmentsPageStopEnvironmentMutationNode = graphql`
   mutation environmentsPageStopEnvironmentMutation($input: StopEnvironmentInput!) {
     StopEnvironment(input: $input) {
@@ -71,6 +81,7 @@ function EnvironmentsPageFallback() {
             environments={[]}
             isLoading
             onDelete={async () => undefined}
+            onOpenDesktop={async () => undefined}
             onStart={async () => undefined}
             onStop={async () => undefined}
           />
@@ -96,6 +107,9 @@ function EnvironmentsPageContent() {
   );
   const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<environmentsPageStartEnvironmentMutation>(
     environmentsPageStartEnvironmentMutationNode,
+  );
+  const [commitGetEnvironmentVncUrl, isGetEnvironmentVncUrlInFlight] = useMutation<environmentsPageGetEnvironmentVncUrlMutation>(
+    environmentsPageGetEnvironmentVncUrlMutationNode,
   );
   const [commitStopEnvironment, isStopEnvironmentInFlight] = useMutation<environmentsPageStopEnvironmentMutation>(
     environmentsPageStopEnvironmentMutationNode,
@@ -209,8 +223,64 @@ function EnvironmentsPageContent() {
 
               setDeletingEnvironmentId(null);
             }}
+            onOpenDesktop={async (environmentId) => {
+              if (
+                isStartEnvironmentInFlight
+                || isDeleteEnvironmentInFlight
+                || isStopEnvironmentInFlight
+                || isGetEnvironmentVncUrlInFlight
+              ) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setActingEnvironmentId(environmentId);
+              const openedWindow = window.open("about:blank", "_blank");
+              if (!openedWindow) {
+                setActingEnvironmentId(null);
+                setErrorMessage("Allow pop-ups to open the environment desktop.");
+                return;
+              }
+
+              await new Promise<void>((resolve, reject) => {
+                commitGetEnvironmentVncUrl({
+                  variables: {
+                    input: {
+                      id: environmentId,
+                    },
+                  },
+                  onCompleted: (response, errors) => {
+                    const nextErrorMessage = errors?.[0]?.message;
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    const url = response.GetEnvironmentVncUrl?.url;
+                    if (!url) {
+                      reject(new Error("Environment desktop URL was not returned."));
+                      return;
+                    }
+
+                    openedWindow.location.replace(url);
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).catch((error: unknown) => {
+                openedWindow.close();
+                setErrorMessage(error instanceof Error ? error.message : "Failed to open environment desktop.");
+              });
+
+              setActingEnvironmentId(null);
+            }}
             onStart={async (environmentId) => {
-              if (isStartEnvironmentInFlight || isDeleteEnvironmentInFlight || isStopEnvironmentInFlight) {
+              if (
+                isStartEnvironmentInFlight
+                || isDeleteEnvironmentInFlight
+                || isStopEnvironmentInFlight
+                || isGetEnvironmentVncUrlInFlight
+              ) {
                 return;
               }
 
@@ -250,7 +320,12 @@ function EnvironmentsPageContent() {
               setActingEnvironmentId(null);
             }}
             onStop={async (environmentId) => {
-              if (isStartEnvironmentInFlight || isDeleteEnvironmentInFlight || isStopEnvironmentInFlight) {
+              if (
+                isStartEnvironmentInFlight
+                || isDeleteEnvironmentInFlight
+                || isStopEnvironmentInFlight
+                || isGetEnvironmentVncUrlInFlight
+              ) {
                 return;
               }
 

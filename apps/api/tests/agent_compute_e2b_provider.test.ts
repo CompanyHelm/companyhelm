@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { Sandbox as DesktopSandbox } from "@e2b/desktop";
 import { Sandbox } from "e2b";
 import { test, vi } from "vitest";
 import { AgentComputeE2bProvider } from "../src/services/agent/compute/e2b/e2b_provider.ts";
@@ -118,4 +119,52 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
   assert.equal(provisionedEnvironment.diskSpaceGb, 20);
   assert.equal(provisionedEnvironment.memoryGb, 12);
   create.mockRestore();
+});
+
+test("AgentComputeE2bProvider starts desktop streaming on demand and returns the stream URL", async () => {
+  const start = vi.fn(async () => undefined);
+  const getUrl = vi.fn(() => "https://desktop.example/vnc");
+  const connect = vi.spyOn(DesktopSandbox, "connect").mockResolvedValue({
+    stream: {
+      getUrl,
+      start,
+    },
+  } as never);
+  const provider = new AgentComputeE2bProvider(
+    createConfig() as never,
+    createComputeProviderDefinitionService() as never,
+  );
+
+  const url = await provider.getVncUrl({} as never, {
+    agentId: "agent-1",
+    companyId: "company-1",
+    cpuCount: 2,
+    createdAt: new Date("2026-04-07T00:00:00.000Z"),
+    diskSpaceGb: 20,
+    displayName: "Medium sandbox",
+    id: "environment-1",
+    lastSeenAt: null,
+    memoryGb: 4,
+    metadata: {},
+    platform: "linux",
+    provider: "e2b",
+    providerDefinitionId: "compute-provider-definition-1",
+    providerEnvironmentId: "e2b-environment-1",
+    templateId: "medium",
+    updatedAt: new Date("2026-04-07T00:00:00.000Z"),
+  });
+
+  assert.equal(url, "https://desktop.example/vnc");
+  assert.equal(connect.mock.calls.length, 1);
+  assert.deepEqual(connect.mock.calls[0], [
+    "e2b-environment-1",
+    {
+      apiKey: "e2b-api-key",
+      timeoutMs: 60 * 60 * 1000,
+    },
+  ]);
+  assert.equal(start.mock.calls.length, 1);
+  assert.equal(getUrl.mock.calls.length, 1);
+
+  connect.mockRestore();
 });

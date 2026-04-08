@@ -39,6 +39,7 @@ import { DismissInboxHumanQuestionMutation } from "./mutations/dismiss_inbox_hum
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
+import { GetEnvironmentVncUrlMutation } from "./mutations/get_environment_vnc_url.ts";
 import { InterruptSessionMutation } from "./mutations/interrupt_session.ts";
 import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
@@ -147,6 +148,7 @@ export class GraphqlApplication {
   private readonly deleteAgentMutation: DeleteAgentMutation;
   private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
   private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
+  private readonly getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
   private readonly deleteTaskCategoryMutation: DeleteTaskCategoryMutation;
@@ -479,6 +481,8 @@ export class GraphqlApplication {
     agentEnvironmentTemplateResolver?: AgentEnvironmentTemplateResolver,
     @inject(ComputeProviderDefinitionTemplatesResolver)
     computeProviderDefinitionTemplatesResolver?: ComputeProviderDefinitionTemplatesResolver,
+    @inject(GetEnvironmentVncUrlMutation)
+    getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation = new GetEnvironmentVncUrlMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
@@ -572,6 +576,7 @@ export class GraphqlApplication {
     this.deleteAgentMutation = deleteAgentMutation;
     this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
+    this.getEnvironmentVncUrlMutation = getEnvironmentVncUrlMutation;
     this.startEnvironmentMutation = startEnvironmentMutation;
     this.stopEnvironmentMutation = stopEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
@@ -732,6 +737,7 @@ export class GraphqlApplication {
           AddComputeProviderDefinition: this.addComputeProviderDefinitionMutation.execute,
           DeleteEnvironment: this.deleteEnvironmentMutation.execute,
           DeleteComputeProviderDefinition: this.deleteComputeProviderDefinitionMutation.execute,
+          GetEnvironmentVncUrl: this.getEnvironmentVncUrlMutation.execute,
           StartEnvironment: this.startEnvironmentMutation.execute,
           StopEnvironment: this.stopEnvironmentMutation.execute,
           AddGithubInstallation: this.addGithubInstallationMutation.execute,

@@ -132,6 +132,15 @@ export abstract class AgentComputeProviderInterface {
   ): Promise<void>;
 
   /**
+   * Starts or reuses the provider-specific desktop stream for an environment and returns the URL
+   * that a browser can open directly.
+   */
+  abstract getVncUrl(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<string>;
+
+  /**
    * Creates the provider-specific shell adapter for an already selected environment row. Shared
    * PTY/session orchestration can then layer tmux or some other terminal manager on top.
    */

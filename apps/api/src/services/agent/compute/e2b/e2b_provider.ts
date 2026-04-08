@@ -1,4 +1,5 @@
-import { Sandbox, SandboxNotFoundError } from "e2b";
+import { Sandbox as DesktopSandbox } from "@e2b/desktop";
+import { Sandbox as E2bSandbox, SandboxNotFoundError } from "e2b";
 import { inject, injectable } from "inversify";
 import { E2bTemplateBuild } from "../../../../compute/e2b/template_build.ts";
 import { E2bTemplatesManager } from "../../../../compute/e2b/templates_manager.ts";
@@ -88,7 +89,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
 
     const configuredTemplate = this.requireConfiguredTemplate(request.template.templateId);
     const template = configuredTemplate.toEnvironmentTemplate();
-    const sandbox = await Sandbox.create(
+    const sandbox = await E2bSandbox.create(
       configuredTemplate.resolveTemplateReference(this.config.companyhelm.e2b.template_prefix),
       {
         apiKey: definition.apiKey,
@@ -143,7 +144,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     }
 
     try {
-      const info = await Sandbox.getInfo(environment.providerEnvironmentId, {
+      const info = await E2bSandbox.getInfo(environment.providerEnvironmentId, {
         apiKey: definition.apiKey,
       });
       return info.state === "running" ? "running" : "stopped";
@@ -174,7 +175,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     }
 
     try {
-      await Sandbox.kill(environment.providerEnvironmentId, {
+      await E2bSandbox.kill(environment.providerEnvironmentId, {
         apiKey: definition.apiKey,
       });
     } catch (error) {
@@ -203,7 +204,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    await Sandbox.connect(environment.providerEnvironmentId, {
+    await E2bSandbox.connect(environment.providerEnvironmentId, {
       apiKey: definition.apiKey,
       timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
     });
@@ -226,9 +227,35 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    await Sandbox.pause(environment.providerEnvironmentId, {
+    await E2bSandbox.pause(environment.providerEnvironmentId, {
       apiKey: definition.apiKey,
     });
+  }
+
+  async getVncUrl(
+    transactionProvider: TransactionProviderInterface,
+    environment: AgentEnvironmentRecord,
+  ): Promise<string> {
+    if (!environment.providerDefinitionId) {
+      throw new Error("Environment provider definition is missing.");
+    }
+
+    const definition = await this.computeProviderDefinitionService.loadRuntimeDefinitionById(
+      transactionProvider,
+      environment.companyId,
+      environment.providerDefinitionId,
+    );
+    if (definition.provider !== "e2b") {
+      throw new Error("Compute provider definition does not belong to E2B.");
+    }
+
+    const sandbox = await DesktopSandbox.connect(environment.providerEnvironmentId, {
+      apiKey: definition.apiKey,
+      timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
+    });
+    await sandbox.stream.start();
+
+    return sandbox.stream.getUrl();
   }
 
   async createShell(
@@ -248,7 +275,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    const sandbox = await Sandbox.connect(environment.providerEnvironmentId, {
+    const sandbox = await E2bSandbox.connect(environment.providerEnvironmentId, {
       apiKey: definition.apiKey,
       timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
     });

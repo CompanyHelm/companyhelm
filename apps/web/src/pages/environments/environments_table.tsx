@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import { MonitorIcon, PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,7 @@ interface EnvironmentsTableProps {
   environments: EnvironmentsTableRecord[];
   isLoading: boolean;
   onDelete: (environmentId: string, force: boolean) => Promise<void>;
+  onOpenDesktop: (environmentId: string) => Promise<void>;
   onStart: (environmentId: string) => Promise<void>;
   onStop: (environmentId: string) => Promise<void>;
 }
@@ -98,6 +99,16 @@ function canStartEnvironment(status: string): boolean {
 
 function canStopEnvironment(status: string): boolean {
   return status === "running";
+}
+
+function canOpenDesktop(environment: EnvironmentsTableRecord): boolean {
+  if (environment.provider !== "e2b") {
+    return false;
+  }
+
+  return environment.status === "available"
+    || environment.status === "running"
+    || environment.status === "stopped";
 }
 
 /**
@@ -265,6 +276,19 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
                     }}
                   >
                     <PlayIcon className="h-4 w-4" />
+                  </Button>
+                ) : null}
+                {canOpenDesktop(environment) ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Open desktop"
+                    disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
+                    onClick={async () => {
+                      await props.onOpenDesktop(environment.id);
+                    }}
+                  >
+                    <MonitorIcon className="h-4 w-4" />
                   </Button>
                 ) : null}
                 {canStopEnvironment(environment.status) ? (
