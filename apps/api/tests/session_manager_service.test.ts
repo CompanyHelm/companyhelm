@@ -1506,3 +1506,294 @@ test("SessionManagerService prompt rejects archived sessions without queueing wo
   assert.deepEqual(publishCalls, []);
   assert.deepEqual(wakeCalls, []);
 });
+
+test("SessionManagerService forkSession creates a stopped branch from an inherited turn and copies session secrets", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const insertedSessionValues: Array<Record<string, unknown>> = [];
+  const insertedSessionSecretValues: Array<Record<string, unknown>> = [];
+  let insertCallCount = 0;
+  let selectCallCount = 0;
+
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  forkedFromTurnId: "turn-parent-1",
+                  id: "session-child",
+                  inferredTitle: "Review the release plan",
+                  status: "stopped",
+                  userSetTitle: null,
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  forkedFromTurnId: "turn-parent-1",
+                  id: "session-child",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 3) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 4) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  endedAt: new Date("2026-04-07T19:10:00.000Z"),
+                  id: "turn-parent-1",
+                  sessionId: "session-parent",
+                  startedAt: new Date("2026-04-07T19:00:00.000Z"),
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 5) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  forkedFromTurnId: null,
+                  id: "session-parent",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 6) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  endedAt: new Date("2026-04-07T19:10:00.000Z"),
+                  id: "turn-parent-1",
+                  sessionId: "session-parent",
+                  startedAt: new Date("2026-04-07T19:00:00.000Z"),
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 7) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  companyId: "company-1",
+                  contextMessages: [{
+                    content: "Parent branch context",
+                    role: "assistant",
+                    timestamp: 1712538600000,
+                  }],
+                  createdAt: new Date("2026-04-07T19:10:00.000Z"),
+                  currentContextTokens: 2048,
+                  maxContextTokens: 200000,
+                  sessionId: "session-parent",
+                  turnId: "turn-parent-1",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 8) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 9) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  createdByUserId: "user-original",
+                  secretId: "secret-1",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected select call ${selectCallCount}.`);
+    },
+    insert() {
+      insertCallCount += 1;
+      if (insertCallCount === 1) {
+        return {
+          values(value: Record<string, unknown>) {
+            insertedSessionValues.push(value);
+            return {
+              async returning() {
+                return [{
+                  id: "session-fork-1",
+                  agentId: "agent-1",
+                  currentContextTokens: 2048,
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  inferredTitle: "Fork of Review the release plan",
+                  isCompacting: false,
+                  isThinking: false,
+                  maxContextTokens: 200000,
+                  status: "stopped",
+                  thinkingText: null,
+                  createdAt: new Date("2026-04-07T19:30:00.000Z"),
+                  updatedAt: new Date("2026-04-07T19:30:00.000Z"),
+                  userSetTitle: null,
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (insertCallCount === 2) {
+        return {
+          values(value: Record<string, unknown> | Record<string, unknown>[]) {
+            if (Array.isArray(value)) {
+              insertedSessionSecretValues.push(...value);
+            } else {
+              insertedSessionSecretValues.push(value);
+            }
+
+            return {};
+          },
+        };
+      }
+
+      throw new Error(`Unexpected insert call ${insertCallCount}.`);
+    },
+  };
+
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
+    {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not run while forking an existing session.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction() {
+        throw new Error("Forking should not enqueue a new user message.");
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  const sessionRecord = await service.forkSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-child",
+    "turn-parent-1",
+    "user-123",
+  );
+
+  assert.equal(sessionRecord.id, "session-fork-1");
+  assert.equal(sessionRecord.currentModelId, "gpt-5.4");
+  assert.equal(insertedSessionValues.length, 1);
+  assert.equal(insertedSessionValues[0]?.companyId, "company-1");
+  assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-parent-1");
+  assert.equal(insertedSessionValues[0]?.status, "stopped");
+  assert.equal(insertedSessionValues[0]?.inferredTitle, "Fork of Review the release plan");
+  assert.deepEqual(insertedSessionValues[0]?.context_messages, [{
+    content: "Parent branch context",
+    role: "assistant",
+    timestamp: 1712538600000,
+  }]);
+  assert.equal(insertedSessionValues[0]?.currentContextTokens, 2048);
+  assert.equal(insertedSessionValues[0]?.maxContextTokens, 200000);
+  assert.deepEqual(insertedSessionSecretValues, [{
+    companyId: "company-1",
+    createdAt: insertedSessionSecretValues[0]?.createdAt,
+    createdByUserId: "user-123",
+    secretId: "secret-1",
+    sessionId: "session-fork-1",
+  }]);
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-fork-1:update",
+    message: "",
+  }]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "forked agent session",
+    payload: {
+      checkpointSessionId: "session-parent",
+      companyId: "company-1",
+      forkedFromTurnId: "turn-parent-1",
+      sessionId: "session-fork-1",
+      sourceSessionId: "session-child",
+    },
+  }]);
+});

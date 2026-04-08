@@ -11,6 +11,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArchiveIcon,
   ChevronRightIcon,
+  GitForkIcon,
   Loader2Icon,
   MessageSquareIcon,
   PlusIcon,
@@ -42,6 +43,7 @@ import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
 import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
 import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
 import type { chatsPageDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDismissInboxHumanQuestionMutation.graphql";
+import type { chatsPageForkSessionMutation } from "./__generated__/chatsPageForkSessionMutation.graphql";
 import type { chatsPageMarkSessionReadMutation } from "./__generated__/chatsPageMarkSessionReadMutation.graphql";
 import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
 import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
@@ -233,6 +235,29 @@ const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
 const chatsPageCreateSessionMutationNode = graphql`
   mutation chatsPageCreateSessionMutation($input: CreateSessionInput!) {
     CreateSession(input: $input) {
+      id
+      agentId
+      hasUnread
+      currentContextTokens
+      isCompacting
+      maxContextTokens
+      modelProviderCredentialModelId
+      modelId
+      reasoningLevel
+      inferredTitle
+      isThinking
+      status
+      thinkingText
+      createdAt
+      updatedAt
+      userSetTitle
+    }
+  }
+`;
+
+const chatsPageForkSessionMutationNode = graphql`
+  mutation chatsPageForkSessionMutation($input: ForkSessionInput!) {
+    ForkSession(input: $input) {
       id
       agentId
       hasUnread
@@ -1677,19 +1702,73 @@ function TranscriptMessageRow({
   );
 }
 
+function TranscriptTurnSummaryRow({
+  durationLabel,
+  isForkDisabled,
+  hasHiddenMessages,
+  isExpanded,
+  isForking,
+  onFork,
+  onToggleHiddenMessages,
+}: {
+  durationLabel: string;
+  isForkDisabled: boolean;
+  hasHiddenMessages: boolean;
+  isExpanded: boolean;
+  isForking: boolean;
+  onFork: () => void;
+  onToggleHiddenMessages: () => void;
+}) {
+  return (
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex min-w-0 items-center justify-between gap-2`}>
+      {hasHiddenMessages ? (
+        <button
+          aria-expanded={isExpanded}
+          className="inline-flex min-w-0 items-center gap-2 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
+          onClick={onToggleHiddenMessages}
+          type="button"
+        >
+          <ChevronRightIcon className={`size-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <span className="truncate">Worked for {durationLabel}</span>
+        </button>
+      ) : (
+        <div className="inline-flex min-w-0 items-center rounded-md px-2 py-1 text-xs font-medium text-muted-foreground">
+          <span className="truncate">Worked for {durationLabel}</span>
+        </div>
+      )}
+      <Button
+        aria-label="Fork from this turn"
+        className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+        disabled={isForkDisabled}
+        onClick={onFork}
+        size="icon"
+        title="Fork from this turn"
+        type="button"
+        variant="ghost"
+      >
+        {isForking ? <Loader2Icon className="size-3.5 animate-spin" /> : <GitForkIcon className="size-3.5" />}
+      </Button>
+    </div>
+  );
+}
+
 function ChatsTranscript({
+  forkingTurnId,
   session,
   sessionMessages,
   transcriptScrollRef,
   isLoadingOlderMessages,
   isLoadingTranscript,
+  onForkTurn,
   onScroll,
 }: {
+  forkingTurnId: string | null;
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
   transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
   isLoadingOlderMessages: boolean;
   isLoadingTranscript: boolean;
+  onForkTurn: (turnId: string) => void;
   onScroll: (event: UIEvent<HTMLDivElement>) => void;
 }) {
   const toolCallSummaryById = useMemo(() => {
@@ -1770,24 +1849,22 @@ function ChatsTranscript({
                 toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
               />
             ))}
-            {hasHiddenMessages ? (
-              <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0`}>
-                <button
-                  aria-expanded={isExpanded}
-                  className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition hover:bg-muted/30 hover:text-foreground"
-                  onClick={() => {
-                    setExpandedTurnIds((currentExpandedTurnIds) => ({
-                      ...currentExpandedTurnIds,
-                      [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
-                    }));
-                  }}
-                  type="button"
-                >
-                  <ChevronRightIcon className={`size-3.5 shrink-0 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                  <span>Worked for {turn.durationLabel}</span>
-                </button>
-              </div>
-            ) : null}
+            <TranscriptTurnSummaryRow
+              durationLabel={turn.durationLabel}
+              hasHiddenMessages={hasHiddenMessages}
+              isExpanded={isExpanded}
+              isForkDisabled={forkingTurnId !== null}
+              isForking={forkingTurnId === turn.turnId}
+              onFork={() => {
+                onForkTurn(turn.turnId);
+              }}
+              onToggleHiddenMessages={() => {
+                setExpandedTurnIds((currentExpandedTurnIds) => ({
+                  ...currentExpandedTurnIds,
+                  [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
+                }));
+              }}
+            />
             {hasHiddenMessages && isExpanded ? (
               <>
                 {turn.hiddenMessages.map((message) => (
@@ -1834,6 +1911,7 @@ function ChatsPageContent() {
   const [draftImages, setDraftImages] = useState<DraftComposerImageRecord[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
+  const [forkingTurnId, setForkingTurnId] = useState<string | null>(null);
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
   const [pendingCreatedSessionTranscriptReloadId, setPendingCreatedSessionTranscriptReloadId] = useState<string | null>(
     null,
@@ -1894,6 +1972,9 @@ function ChatsPageContent() {
   );
   const [commitCreateSession, isCreateSessionInFlight] = useMutation<chatsPageCreateSessionMutation>(
     chatsPageCreateSessionMutationNode,
+  );
+  const [commitForkSession] = useMutation<chatsPageForkSessionMutation>(
+    chatsPageForkSessionMutationNode,
   );
   const [commitArchiveSession, isArchiveSessionInFlight] = useMutation<chatsPageArchiveSessionMutation>(
     chatsPageArchiveSessionMutationNode,
@@ -3027,6 +3108,77 @@ function ChatsPageContent() {
     });
   };
 
+  const forkSessionFromTurn = useCallback(async (turnId: string) => {
+    if (!selectedSession || forkingTurnId !== null) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setForkingTurnId(turnId);
+
+    await new Promise<void>((resolve, reject) => {
+      commitForkSession({
+        variables: {
+          input: {
+            sessionId: selectedSession.id,
+            turnId,
+          },
+        },
+        updater: (store) => {
+          const forkedSession = store.getRootField("ForkSession");
+          if (!forkedSession) {
+            return;
+          }
+
+          const rootRecord = store.getRoot();
+          const currentSessions = filterStoreRecords(rootRecord.getLinkedRecords("Sessions") || []);
+          rootRecord.setLinkedRecords(
+            [
+              forkedSession,
+              ...currentSessions.filter((record) => record.getDataID() !== forkedSession.getDataID()),
+            ],
+            "Sessions",
+          );
+        },
+        onCompleted: async (response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const forkedSession = response.ForkSession;
+          if (!forkedSession) {
+            reject(new Error("Failed to fork chat session."));
+            return;
+          }
+
+          try {
+            if (search.sessionId !== forkedSession.id || search.agentId !== forkedSession.agentId) {
+              await navigate({
+                to: "/chats",
+                search: {
+                  agentId: forkedSession.agentId,
+                  sessionId: forkedSession.id,
+                },
+              });
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to fork chat session.");
+    }).finally(() => {
+      setForkingTurnId((currentTurnId) => {
+        return currentTurnId === turnId ? null : currentTurnId;
+      });
+    });
+  }, [commitForkSession, forkingTurnId, navigate, search.agentId, search.sessionId, selectedSession]);
+
   const archiveSession = async (session: SessionRecord) => {
     setErrorMessage(null);
     setArchivingSessionId(session.id);
@@ -4015,8 +4167,10 @@ function ChatsPageContent() {
         {selectedAgent && selectedSession ? (
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-0 pb-0 md:pt-0 md:pb-0">
             <ChatsTranscript
+              forkingTurnId={forkingTurnId}
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
+              onForkTurn={forkSessionFromTurn}
               onScroll={handleTranscriptScroll}
               session={selectedSession}
               sessionMessages={selectedSessionMessages}

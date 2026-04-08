@@ -39,6 +39,7 @@ import { DismissInboxHumanQuestionMutation } from "./mutations/dismiss_inbox_hum
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
+import { ForkSessionMutation } from "./mutations/fork_session.ts";
 import { GetEnvironmentVncUrlMutation } from "./mutations/get_environment_vnc_url.ts";
 import { InterruptSessionMutation } from "./mutations/interrupt_session.ts";
 import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
@@ -159,6 +160,7 @@ export class GraphqlApplication {
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly executeTaskMutation: ExecuteTaskMutation;
+  private readonly forkSessionMutation: ForkSessionMutation;
   private readonly inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver;
   private readonly interruptSessionMutation: InterruptSessionMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
@@ -483,6 +485,12 @@ export class GraphqlApplication {
     computeProviderDefinitionTemplatesResolver?: ComputeProviderDefinitionTemplatesResolver,
     @inject(GetEnvironmentVncUrlMutation)
     getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation = new GetEnvironmentVncUrlMutation(),
+    @inject(ForkSessionMutation)
+    forkSessionMutation: ForkSessionMutation = new ForkSessionMutation({
+      async forkSession() {
+        throw new Error("ForkSession mutation is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
@@ -592,6 +600,7 @@ export class GraphqlApplication {
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
     this.executeTaskMutation = executeTaskMutation;
+    this.forkSessionMutation = forkSessionMutation;
     this.inboxHumanQuestionsQueryResolver = inboxHumanQuestionsQueryResolver;
     this.interruptSessionMutation = interruptSessionMutation;
     this.promptSessionMutation = promptSessionMutation;
@@ -765,6 +774,7 @@ export class GraphqlApplication {
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           ExecuteTask: this.executeTaskMutation.execute,
+          ForkSession: this.forkSessionMutation.execute,
           InterruptSession: this.interruptSessionMutation.execute,
           MarkSessionRead: this.markSessionReadMutation.execute,
           RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,

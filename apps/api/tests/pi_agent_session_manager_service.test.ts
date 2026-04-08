@@ -94,6 +94,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     role: "user",
     timestamp: 1234,
   }];
+  const persistedCheckpointInserts: Array<Record<string, unknown>> = [];
   const persistedContextUpdates: Array<Record<string, unknown>> = [];
   const model = {
     id: "gpt-5.4",
@@ -114,6 +115,11 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       },
     },
     dispose: piAgentMocks.disposeMock,
+    getContextUsage() {
+      return null;
+    },
+    isCompacting: false,
+    model: null,
     prompt: piAgentMocks.promptMock,
     setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
     steer: piAgentMocks.steerMock,
@@ -264,7 +270,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       return callback({
         insert() {
           return {
-            async values() {
+            async values(value: Record<string, unknown>) {
+              persistedCheckpointInserts.push(value);
               return undefined;
             },
           };
@@ -450,6 +457,13 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       .map((value) => value.context_messages),
     [createdSession.agent.state.messages, createdSession.agent.state.messages],
   );
+  assert.equal(persistedCheckpointInserts.length, 1);
+  assert.equal(persistedCheckpointInserts[0]?.companyId, "company-1");
+  assert.equal(persistedCheckpointInserts[0]?.sessionId, "session-1");
+  assert.deepEqual(persistedCheckpointInserts[0]?.contextMessages, createdSession.agent.state.messages);
+  assert.equal(persistedCheckpointInserts[0]?.currentContextTokens, null);
+  assert.equal(persistedCheckpointInserts[0]?.maxContextTokens, null);
+  assert.ok(typeof persistedCheckpointInserts[0]?.turnId === "string");
 });
 
 test("PiMonoSessionManagerService prompt drains pending queued messages before closing the turn", async () => {
@@ -481,6 +495,11 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
       },
     },
     dispose: piAgentMocks.disposeMock,
+    getContextUsage() {
+      return null;
+    },
+    isCompacting: false,
+    model: null,
     prompt: piAgentMocks.promptMock,
     setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
     steer: piAgentMocks.steerMock,
@@ -681,6 +700,11 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       },
     },
     dispose: piAgentMocks.disposeMock,
+    getContextUsage() {
+      return null;
+    },
+    isCompacting: false,
+    model: null,
     prompt: piAgentMocks.promptMock,
     setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
     steer: piAgentMocks.steerMock,

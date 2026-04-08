@@ -67,6 +67,7 @@ type Mutation {
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   InterruptSession(input: InterruptSessionInput!): Session!
   DismissInboxHumanQuestion(input: DismissInboxHumanQuestionInput!): InboxHumanQuestion!
+  ForkSession(input: ForkSessionInput!): Session!
   MarkSessionRead(input: MarkSessionReadInput!): Session!
   PromptSession(input: PromptSessionInput!): Session!
   UpdateSessionTitle(input: UpdateSessionTitleInput!): Session!
@@ -641,6 +642,11 @@ input MarkSessionReadInput {
 
 input InterruptSessionInput {
   sessionId: ID!
+}
+
+input ForkSessionInput {
+  sessionId: ID!
+  turnId: ID!
 }
 
 input CreateSessionInput {

@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import {
   agentSessions,
   messageContents,
@@ -9,6 +9,7 @@ import {
   userSessionReads,
 } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
+import { SessionLineageService } from "./lineage_service.ts";
 
 type SessionRow = {
   id: string;
@@ -186,6 +187,15 @@ function decodeSessionMessageCursor(cursor?: string | null): { createdAt: string
  */
 @injectable()
 export class SessionReadService {
+  private readonly sessionLineageService: SessionLineageService;
+
+  constructor(
+    @inject(SessionLineageService)
+    sessionLineageService: SessionLineageService = new SessionLineageService(),
+  ) {
+    this.sessionLineageService = sessionLineageService;
+  }
+
   async listSessions(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -297,11 +307,26 @@ export class SessionReadService {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const pageSize = normalizeTranscriptPageSize(first);
+      const visibleTurnIds = await this.sessionLineageService.listVisibleTurnIds(
+        selectableDatabase,
+        companyId,
+        sessionId,
+      );
+      if (visibleTurnIds.length === 0) {
+        return {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            endCursor: null,
+          },
+        };
+      }
+
       const cursor = decodeSessionMessageCursor(after);
       const transcriptFilter = cursor
         ? and(
           eq(sessionMessages.companyId, companyId),
-          eq(sessionMessages.sessionId, sessionId),
+          inArray(sessionMessages.turnId, visibleTurnIds),
           or(
             lt(sessionMessages.createdAt, new Date(cursor.createdAt)),
             and(
@@ -312,7 +337,7 @@ export class SessionReadService {
         )
         : and(
           eq(sessionMessages.companyId, companyId),
-          eq(sessionMessages.sessionId, sessionId),
+          inArray(sessionMessages.turnId, visibleTurnIds),
         );
 
       const persistedMessages = await selectableDatabase

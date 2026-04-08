@@ -131,6 +131,8 @@ export const agentSessions = pgTable("agent_sessions", {
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
+  forkedFromTurnId: uuid("forked_from_turn_id")
+    .references(() => sessionTurns.id, { onDelete: "set null" }),
   // the session context messages from pi mono session.agent.state.messages
   // it is used to reload messages into context when resuming the session
   context_messages: jsonb("context_messages"),
@@ -163,6 +165,27 @@ export const sessionTurns = pgTable("session_turns", {
   companyIdIndex: index("session_turns_company_id_idx").on(table.companyId),
   sessionIdIndex: index("session_turns_session_id_idx").on(table.sessionId),
   sessionStartedAtIndex: index("session_turns_session_started_at_idx").on(table.sessionId, table.startedAt),
+}));
+
+export const sessionContextCheckpoints = pgTable("session_context_checkpoints", {
+  turnId: uuid("turn_id")
+    .primaryKey()
+    .references(() => sessionTurns.id, { onDelete: "cascade" }),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  contextMessages: jsonb("context_messages").notNull(),
+  currentContextTokens: integer("current_context_tokens"),
+  maxContextTokens: integer("max_context_tokens"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+},
+(table) => ({
+  companyIdIndex: index("session_context_checkpoints_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("session_context_checkpoints_session_id_idx").on(table.sessionId),
+  sessionCreatedAtIndex: index("session_context_checkpoints_session_created_at_idx").on(table.sessionId, table.createdAt),
 }));
 
 export const userSessionReads = pgTable("user_session_reads", {

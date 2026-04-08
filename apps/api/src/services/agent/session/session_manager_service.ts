@@ -12,6 +12,8 @@ import {
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
+import { SessionContextCheckpointService } from "./context_checkpoint_service.ts";
+import { SessionLineageService } from "./lineage_service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueueService } from "./process/queue.ts";
 import {
@@ -30,7 +32,9 @@ type ExistingSessionRow = {
   agentId: string;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
+  forkedFromTurnId?: string | null;
   id: string;
+  inferredTitle?: string | null;
   status: string;
   userSetTitle?: string | null;
 };
@@ -43,6 +47,11 @@ type ModelRecord = {
 };
 
 type AgentDefaultSecretRecord = {
+  createdByUserId: string | null;
+  secretId: string;
+};
+
+type AgentSessionSecretRecord = {
   createdByUserId: string | null;
   secretId: string;
 };
@@ -130,6 +139,8 @@ export class SessionManagerService {
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionProcessQueueService: SessionProcessQueueService;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
+  private readonly sessionContextCheckpointService: SessionContextCheckpointService;
+  private readonly sessionLineageService: SessionLineageService;
   private readonly sessionQueuedMessageService: SessionQueuedMessageService;
 
   constructor(
@@ -139,6 +150,10 @@ export class SessionManagerService {
     @inject(SessionProcessQueueService) sessionProcessQueueService: SessionProcessQueueService,
     @inject(SessionProcessQueuedNames) sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(SessionQueuedMessageService) sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
+    @inject(SessionContextCheckpointService)
+    sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
+    @inject(SessionLineageService)
+    sessionLineageService: SessionLineageService = new SessionLineageService(),
   ) {
     this.logger = logger.child({
       component: "session_manager_service",
@@ -148,6 +163,8 @@ export class SessionManagerService {
     this.sessionProcessQueueService = sessionProcessQueueService;
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
     this.sessionQueuedMessageService = sessionQueuedMessageService;
+    this.sessionContextCheckpointService = sessionContextCheckpointService;
+    this.sessionLineageService = sessionLineageService;
   }
 
   async createSession(
@@ -317,6 +334,40 @@ export class SessionManagerService {
       })));
   }
 
+  private async copySessionSecretsToSession(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+    sourceSessionId: string,
+    targetSessionId: string,
+    userId?: string | null,
+  ): Promise<void> {
+    const sessionSecrets = await selectableDatabase
+      .select({
+        createdByUserId: agentSessionSecrets.createdByUserId,
+        secretId: agentSessionSecrets.secretId,
+      })
+      .from(agentSessionSecrets)
+      .where(and(
+        eq(agentSessionSecrets.companyId, companyId),
+        eq(agentSessionSecrets.sessionId, sourceSessionId),
+      )) as AgentSessionSecretRecord[];
+
+    if (sessionSecrets.length === 0) {
+      return;
+    }
+
+    await insertableDatabase
+      .insert(agentSessionSecrets)
+      .values(sessionSecrets.map((sessionSecret) => ({
+        companyId,
+        createdAt: new Date(),
+        createdByUserId: userId ?? sessionSecret.createdByUserId,
+        secretId: sessionSecret.secretId,
+        sessionId: targetSessionId,
+      })));
+  }
+
   async archiveSession(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -391,6 +442,115 @@ export class SessionManagerService {
       companyId,
       sessionId,
     }, "archived agent session");
+
+    return sessionRecord;
+  }
+
+  async forkSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    forkedFromTurnId: string,
+    userId?: string | null,
+  ): Promise<SessionRecord> {
+    let checkpointSessionId: string | null = null;
+    const sessionRecord = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
+      const [sourceSession] = await selectableDatabase
+        .select({
+          agentId: agentSessions.agentId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          forkedFromTurnId: agentSessions.forkedFromTurnId,
+          id: agentSessions.id,
+          inferredTitle: agentSessions.inferredTitle,
+          status: agentSessions.status,
+          userSetTitle: agentSessions.userSetTitle,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!sourceSession) {
+        throw new Error("Source session not found.");
+      }
+
+      const visibleTurnIds = await this.sessionLineageService.listVisibleTurnIds(
+        selectableDatabase,
+        companyId,
+        sourceSession.id,
+      );
+      if (!visibleTurnIds.includes(forkedFromTurnId)) {
+        throw new Error("Fork source turn is unavailable.");
+      }
+
+      const checkpoint = await this.sessionContextCheckpointService.getCheckpointForTurn(
+        selectableDatabase,
+        companyId,
+        forkedFromTurnId,
+      );
+      if (!checkpoint) {
+        throw new Error("Fork source turn is unavailable.");
+      }
+      checkpointSessionId = checkpoint.sessionId;
+
+      const currentModelRecord = await this.resolveCurrentModelRecord(
+        selectableDatabase,
+        companyId,
+        sourceSession,
+      );
+      const now = new Date();
+      const [createdSessionRecord] = await insertableDatabase
+        .insert(agentSessions)
+        .values({
+          companyId,
+          context_messages: checkpoint.contextMessages,
+          currentContextTokens: checkpoint.currentContextTokens,
+          agentId: sourceSession.agentId,
+          currentModelProviderCredentialModelId: sourceSession.currentModelProviderCredentialModelId,
+          currentReasoningLevel: sourceSession.currentReasoningLevel,
+          forkedFromTurnId,
+          inferredTitle: this.inferForkTitle(sourceSession.userSetTitle ?? sourceSession.inferredTitle ?? null),
+          isCompacting: false,
+          isThinking: false,
+          maxContextTokens: checkpoint.maxContextTokens,
+          status: "stopped",
+          thinkingText: null,
+          created_at: now,
+          updated_at: now,
+          userSetTitle: null,
+        })
+        .returning?.(this.sessionSelection()) as SessionRecord[];
+      if (!createdSessionRecord) {
+        throw new Error("Failed to create forked session.");
+      }
+
+      await this.copySessionSecretsToSession(
+        selectableDatabase,
+        insertableDatabase,
+        companyId,
+        sourceSession.id,
+        createdSessionRecord.id,
+        userId,
+      );
+
+      return {
+        ...createdSessionRecord,
+        currentModelId: currentModelRecord.modelId,
+      };
+    });
+
+    await this.publishSessionUpdate(companyId, sessionRecord.id);
+
+    this.logger.info({
+      companyId,
+      forkedFromTurnId,
+      sessionId: sessionRecord.id,
+      sourceSessionId: sessionId,
+      checkpointSessionId,
+    }, "forked agent session");
 
     return sessionRecord;
   }
@@ -800,6 +960,15 @@ export class SessionManagerService {
     }
 
     return trimmedMessage.slice(0, 50);
+  }
+
+  private inferForkTitle(sourceTitle: string | null): string {
+    const trimmedSourceTitle = sourceTitle?.trim() ?? "";
+    if (trimmedSourceTitle.length === 0) {
+      return "Forked session";
+    }
+
+    return `Fork of ${trimmedSourceTitle}`.slice(0, 50);
   }
 
   private resolveUserSetTitle(title: string | null | undefined): string | null {

@@ -21,6 +21,10 @@ class SessionTranscriptMessagesQueryTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
       auth: {
         provider: "clerk",
       },
@@ -36,6 +40,46 @@ class SessionTranscriptMessagesQueryTestHarness {
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        forkedFromTurnId: null,
+                        id: "session-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          endedAt: new Date("2026-03-24T08:03:00.000Z"),
+                          id: "turn-2",
+                          sessionId: "session-1",
+                          startedAt: new Date("2026-03-24T08:02:00.000Z"),
+                        },
+                        {
+                          endedAt: new Date("2026-03-24T08:02:00.000Z"),
+                          id: "turn-1",
+                          sessionId: "session-1",
+                          startedAt: new Date("2026-03-24T08:00:00.000Z"),
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -92,7 +136,7 @@ class SessionTranscriptMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 2) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -157,7 +201,7 @@ class SessionTranscriptMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -383,6 +427,271 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
     pageInfo: {
       hasNextPage: true,
       endCursor: Buffer.from("session-message:2026-03-24T08:01:00.000Z|message-2", "utf8").toString("base64url"),
+    },
+  });
+
+  await app.close();
+});
+
+test("GraphQL SessionTranscriptMessages query includes inherited transcript turns for forked sessions", async () => {
+  const app = Fastify();
+  const config = SessionTranscriptMessagesQueryTestHarness.createConfigMock();
+  let selectCallCount = 0;
+  const database = {
+    getDatabase() {
+      return {
+        select() {
+          selectCallCount += 1;
+          if (selectCallCount === 1) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      forkedFromTurnId: "turn-parent-1",
+                      id: "session-child",
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 2) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 3) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      endedAt: new Date("2026-03-24T08:02:00.000Z"),
+                      id: "turn-parent-1",
+                      sessionId: "session-parent",
+                      startedAt: new Date("2026-03-24T08:00:00.000Z"),
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 4) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      forkedFromTurnId: null,
+                      id: "session-parent",
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 5) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      endedAt: new Date("2026-03-24T08:02:00.000Z"),
+                      id: "turn-parent-1",
+                      sessionId: "session-parent",
+                      startedAt: new Date("2026-03-24T08:00:00.000Z"),
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 6) {
+            return {
+              from() {
+                return {
+                  where() {
+                    return {
+                      orderBy() {
+                        return {
+                          async limit() {
+                            return [{
+                              id: "message-parent-1",
+                              sessionId: "session-parent",
+                              turnId: "turn-parent-1",
+                              role: "assistant",
+                              status: "completed",
+                              toolCallId: null,
+                              toolName: null,
+                              isError: false,
+                              createdAt: new Date("2026-03-24T08:01:00.000Z"),
+                              updatedAt: new Date("2026-03-24T08:02:00.000Z"),
+                            }];
+                          },
+                        };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 7) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      arguments: null,
+                      data: null,
+                      messageId: "message-parent-1",
+                      mimeType: null,
+                      structuredContent: null,
+                      text: "Inherited answer",
+                      toolCallId: null,
+                      toolName: null,
+                      type: "text",
+                      createdAt: new Date("2026-03-24T08:01:00.000Z"),
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 8) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      id: "turn-parent-1",
+                      sessionId: "session-parent",
+                      startedAt: new Date("2026-03-24T08:00:00.000Z"),
+                      endedAt: new Date("2026-03-24T08:02:00.000Z"),
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          throw new Error(`Unexpected select call ${selectCallCount}.`);
+        },
+      } as never;
+    },
+    async withCompanyContext(_companyId: string, callback: (database_: unknown) => Promise<unknown>) {
+      return callback(this.getDatabase());
+    },
+  };
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query SessionTranscriptMessagesInherited($sessionId: ID!, $first: Int!) {
+          SessionTranscriptMessages(sessionId: $sessionId, first: $first) {
+            edges {
+              node {
+                id
+                sessionId
+                turnId
+                turn {
+                  id
+                  sessionId
+                  startedAt
+                  endedAt
+                }
+                text
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `,
+      variables: {
+        sessionId: "session-child",
+        first: 10,
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.SessionTranscriptMessages, {
+    edges: [{
+      node: {
+        id: "message-parent-1",
+        sessionId: "session-parent",
+        text: "Inherited answer",
+        turnId: "turn-parent-1",
+        turn: {
+          endedAt: "2026-03-24T08:02:00.000Z",
+          id: "turn-parent-1",
+          sessionId: "session-parent",
+          startedAt: "2026-03-24T08:00:00.000Z",
+        },
+      },
+    }],
+    pageInfo: {
+      endCursor: Buffer.from("session-message:2026-03-24T08:01:00.000Z|message-parent-1", "utf8").toString("base64url"),
+      hasNextPage: false,
     },
   });
 

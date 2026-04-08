@@ -519,6 +519,13 @@
       "when": 1775592000000,
       "tag": "0073_backfill_medium_environment_template",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1775601000000,
+      "tag": "0074_session_forking",
+      "breakpoints": true
     }
   ]
 }

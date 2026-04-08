@@ -206,10 +206,10 @@ export class PiMonoSessionEventHandler {
     return turnId;
   }
 
-  async finishPromptTurn(endedAt: Date = new Date()): Promise<void> {
+  async finishPromptTurn(endedAt: Date = new Date()): Promise<string | null> {
     const currentTurnId = this.currentTurnId;
     if (!currentTurnId) {
-      return;
+      return null;
     }
 
     await this.waitForIdle();
@@ -225,6 +225,7 @@ export class PiMonoSessionEventHandler {
     await this.publishTurnMessageUpdates(currentTurnId);
     this.messageIdsByTurnId.delete(currentTurnId);
     this.currentTurnId = null;
+    return currentTurnId;
   }
 
   private async waitForIdle(): Promise<void> {
