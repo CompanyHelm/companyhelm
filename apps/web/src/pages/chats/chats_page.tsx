@@ -18,6 +18,7 @@ import {
   SendHorizonalIcon,
   Settings2Icon,
   SquareIcon,
+  Trash2Icon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
@@ -33,6 +34,7 @@ import {
 } from "@/components/relay_environment_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatProviderLabel as formatModelProviderLabel } from "../model-provider-credentials/provider_label";
@@ -972,6 +974,12 @@ function normalizeQueuedMessageStatus(status: string): string {
   return status.trim().toLowerCase();
 }
 
+function resolveQueuedMessagePreview(text: string): string {
+  const [firstLine = ""] = text.split(/\r?\n/u);
+
+  return firstLine;
+}
+
 function compareSessionsByLatestActivity(leftSession: SessionRecord, rightSession: SessionRecord): number {
   const leftTimestamp = new Date(leftSession.updatedAt).getTime();
   const rightTimestamp = new Date(rightSession.updatedAt).getTime();
@@ -1377,82 +1385,141 @@ function ChatsQueuedMessagesComposerList({
   onDelete: (queuedMessageId: string) => void;
   queuedMessages: ReadonlyArray<QueuedMessageRecord>;
 }) {
+  const [fullscreenQueuedMessageId, setFullscreenQueuedMessageId] = useState<string | null>(null);
+
   if (queuedMessages.length === 0) {
     return null;
   }
 
-  return (
-    <div className="px-2.5 pt-2 pb-1.5">
-      <div className="grid gap-1.5">
-        {queuedMessages.map((queuedMessage) => {
-          const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
-          const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
-          const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
-          const isSteering = steeringQueuedMessageId === queuedMessage.id;
-          const isDeleting = deletingQueuedMessageId === queuedMessage.id;
+  const fullscreenQueuedMessage = queuedMessages.find((queuedMessage) => queuedMessage.id === fullscreenQueuedMessageId) ?? null;
 
-          return (
-            <div
-              className="flex items-start gap-2 rounded-2xl border border-border/60 bg-background/70 px-2.5 py-2"
-              key={queuedMessage.id}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    {queuedMessage.shouldSteer ? "Steer" : "Queue"}
-                  </span>
+  return (
+    <>
+      <div className="px-2.5 pt-2 pb-1.5">
+        <div className="grid gap-1.5">
+          {queuedMessages.map((queuedMessage) => {
+            const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
+            const previewText = resolveQueuedMessagePreview(queuedMessage.text);
+            const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
+            const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
+            const canOpenFullscreen = queuedMessage.text.trim().length > 0 || queuedMessage.images.length > 0;
+            const isSteering = steeringQueuedMessageId === queuedMessage.id;
+            const isDeleting = deletingQueuedMessageId === queuedMessage.id;
+
+            return (
+              <div
+                className="flex items-start gap-2 rounded-2xl border border-border/60 bg-background/70 px-2.5 py-2"
+                key={queuedMessage.id}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {queuedMessage.shouldSteer ? "Steer" : "Queue"}
+                    </span>
+                  </div>
+                  {previewText.trim().length > 0 ? (
+                    <p className="mt-1 truncate text-sm leading-5 text-foreground">
+                      {previewText}
+                    </p>
+                  ) : null}
+                  {queuedMessage.images.length > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {queuedMessage.images.map((image) => (
+                        <img
+                          key={image.id}
+                          alt="Queued attachment"
+                          className="h-12 w-12 rounded-lg border border-border/60 object-cover"
+                          src={resolveInlineImageDataUrl(image)}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-                {queuedMessage.text.trim().length > 0 ? (
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-foreground [overflow-wrap:anywhere]">
-                    {queuedMessage.text}
-                  </p>
-                ) : null}
-                {queuedMessage.images.length > 0 ? (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {queuedMessage.images.map((image) => (
-                      <img
-                        key={image.id}
-                        alt="Queued attachment"
-                        className="h-12 w-12 rounded-lg border border-border/60 object-cover"
-                        src={resolveInlineImageDataUrl(image)}
-                      />
-                    ))}
+                {canOpenFullscreen || canSteer || canDelete ? (
+                  <div className="flex shrink-0 items-center gap-1 self-center">
+                    {canOpenFullscreen ? (
+                      <button
+                        aria-label="Open queued message fullscreen"
+                        className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+                        onClick={() => setFullscreenQueuedMessageId(queuedMessage.id)}
+                        title="Open queued message fullscreen"
+                        type="button"
+                      >
+                        Full
+                      </button>
+                    ) : null}
+                    {canSteer ? (
+                      <button
+                        aria-label="Steer queued message"
+                        className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={isSteering}
+                        onClick={() => onSteer(queuedMessage.id)}
+                        title={isSteering ? "Steering queued message..." : "Steer queued message"}
+                        type="button"
+                      >
+                        {isSteering ? <Loader2Icon className="size-4 animate-spin" /> : "Steer"}
+                      </button>
+                    ) : null}
+                    {canDelete ? (
+                      <button
+                        aria-label="Delete queued message"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={isDeleting}
+                        onClick={() => onDelete(queuedMessage.id)}
+                        title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
+                        type="button"
+                      >
+                        {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
-              {canSteer || canDelete ? (
-                <div className="flex shrink-0 items-center gap-1 self-center">
-                  {canSteer ? (
-                    <button
-                      aria-label="Steer queued message"
-                      className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isSteering}
-                      onClick={() => onSteer(queuedMessage.id)}
-                      title={isSteering ? "Steering queued message..." : "Steer queued message"}
-                      type="button"
-                    >
-                      {isSteering ? <Loader2Icon className="size-4 animate-spin" /> : "Steer"}
-                    </button>
-                  ) : null}
-                  {canDelete ? (
-                    <button
-                      aria-label="Delete queued message"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isDeleting}
-                      onClick={() => onDelete(queuedMessage.id)}
-                      title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
-                      type="button"
-                    >
-                      {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
-                    </button>
-                  ) : null}
+            );
+          })}
+        </div>
+      </div>
+      <Dialog
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setFullscreenQueuedMessageId(null);
+          }
+        }}
+        open={fullscreenQueuedMessage !== null}
+      >
+        <DialogContent className="flex h-[min(92vh,56rem)] w-[min(96vw,72rem)] max-w-none flex-col overflow-hidden p-0">
+          <DialogHeader className="border-b border-border/60 px-6 pt-6 pb-4">
+            <DialogTitle>Queued message</DialogTitle>
+            <DialogDescription>
+              {fullscreenQueuedMessage?.shouldSteer ? "Steer message preview" : "Queued message preview"}
+            </DialogDescription>
+          </DialogHeader>
+          {fullscreenQueuedMessage ? (
+            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+              {fullscreenQueuedMessage.text.trim().length > 0 ? (
+                <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
+                    {fullscreenQueuedMessage.text}
+                  </p>
+                </div>
+              ) : null}
+              {fullscreenQueuedMessage.images.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {fullscreenQueuedMessage.images.map((image) => (
+                    <img
+                      key={image.id}
+                      alt="Queued attachment"
+                      className="w-full rounded-2xl border border-border/60 object-cover"
+                      src={resolveInlineImageDataUrl(image)}
+                    />
+                  ))}
                 </div>
               ) : null}
             </div>
-          );
-        })}
-      </div>
-    </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
