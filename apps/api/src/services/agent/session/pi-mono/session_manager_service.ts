@@ -17,43 +17,22 @@ import { AgentEnvironmentAccessService } from "../../environment/access_service.
 import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
 import { SecretService } from "../../../secrets/service.ts";
 import { AgentToolsService } from "../../tools/service.ts";
-import { AgentManagementToolProvider } from "../../tools/agents/provider.ts";
-import { AgentManagementToolService } from "../../tools/agents/service.ts";
-import { AgentArtifactToolProvider } from "../../tools/artifacts/provider.ts";
-import { AgentArtifactToolService } from "../../tools/artifacts/service.ts";
-import { AgentCompanyDirectoryToolProvider } from "../../tools/company_directory/provider.ts";
-import { AgentCompanyDirectoryToolService } from "../../tools/company_directory/service.ts";
 import { AgentConversationService } from "../../conversations/service.ts";
-import { AgentConversationToolProvider } from "../../tools/conversations/provider.ts";
-import { AgentConversationToolService } from "../../tools/conversations/service.ts";
 import { AgentEnvironmentTemplateService } from "../../environment/template_service.ts";
-import { AgentGithubInstallationService } from "../../tools/github/installation_service.ts";
-import { AgentGithubToolProvider } from "../../tools/github/provider.ts";
 import { AgentInboxService } from "../../inbox/service.ts";
-import { AgentInboxToolProvider } from "../../tools/inbox/provider.ts";
-import { AgentInboxToolService } from "../../tools/inbox/service.ts";
-import { AgentSecretToolProvider } from "../../tools/secrets/provider.ts";
-import { AgentSecretToolService } from "../../tools/secrets/service.ts";
-import { AgentTaskToolProvider } from "../../tools/tasks/provider.ts";
-import { AgentTaskToolService } from "../../tools/tasks/service.ts";
-import { AgentTerminalToolProvider } from "../../tools/terminal/provider.ts";
-import { AgentWebToolProvider } from "../../tools/web/provider.ts";
-import { AgentWebToolService } from "../../tools/web/service.ts";
-import { ArtifactService } from "../../../artifact_service.ts";
 import { ModelRegistry } from "../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../ai_providers/model_provider_service.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisService } from "../../../redis/service.ts";
-import { TaskService } from "../../../task_service.ts";
-import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 import { AgentEnvironmentWorkspacePath } from "../../environment/workspace_path.ts";
 import { SessionContextCheckpointService } from "../context_checkpoint_service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
-import { E2bTemplatesManager } from "../../../../compute/e2b/templates_manager.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { ExaWebClient } from "../../../web_search/exa_client.ts";
-import { AgentToolProviderInterface } from "../../tools/provider_interface.ts";
+import { AgentSessionBootstrapContext } from "./bootstrap_context.ts";
+import { DefaultAgentSessionModuleRegistry } from "./modules/default_registry.ts";
+import { AgentSessionRuntimeContext } from "./runtime_context.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -66,13 +45,6 @@ type SessionRuntimeConfig = {
   modelId: string;
   providerId: string;
   reasoningLevel?: string | null;
-};
-
-type SessionRuntime = {
-  companyId: string;
-  eventHandler: PiMonoSessionEventHandler;
-  session: AgentSession;
-  toolsService: AgentToolsService;
 };
 
 const DEFAULT_PI_WORKING_DIRECTORY = AgentEnvironmentWorkspacePath.get();
@@ -104,7 +76,7 @@ export class PiMonoSessionManagerService {
   private readonly githubClient: GithubClient;
   private readonly inboxService: AgentInboxService;
   private readonly logger: PinoLogger;
-  private readonly runtimesById = new Map<string, SessionRuntime>();
+  private readonly runtimesById = new Map<string, AgentSessionRuntimeContext>();
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
   private readonly sessionContextCheckpointService: SessionContextCheckpointService;
@@ -114,7 +86,7 @@ export class PiMonoSessionManagerService {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly modelProviderService: ModelProviderService;
   private readonly appModelRegistry: ModelRegistry;
-  private readonly e2bTemplatesManager: E2bTemplatesManager;
+  private readonly sessionModuleRegistry: DefaultAgentSessionModuleRegistry;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
@@ -149,7 +121,18 @@ export class PiMonoSessionManagerService {
     this.modelProviderService = modelProviderService;
     this.appModelRegistry = appModelRegistry;
     this.sessionContextCheckpointService = sessionContextCheckpointService;
-    this.e2bTemplatesManager = new E2bTemplatesManager();
+    this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
+      agentConversationService: this.agentConversationService,
+      computeProviderDefinitionService: this.computeProviderDefinitionService,
+      exaWebClient: this.exaWebClient,
+      githubClient: this.githubClient,
+      inboxService: this.inboxService,
+      logger: this.logger,
+      modelProviderService: this.modelProviderService,
+      modelRegistry: this.appModelRegistry,
+      secretService: this.secretService,
+      templateService: this.templateService,
+    });
   }
 
   async ensureSession(
@@ -162,89 +145,22 @@ export class PiMonoSessionManagerService {
       return existingRuntime.session;
     }
 
+    const bootstrapContext = await this.createBootstrapContext(
+      transactionProvider,
+      sessionId,
+      runtimeConfig,
+    );
     const authStorage = AuthStorage.inMemory();
-    authStorage.setRuntimeApiKey(runtimeConfig.providerId, runtimeConfig.apiKey);
+    authStorage.setRuntimeApiKey(bootstrapContext.modelProviderId, bootstrapContext.modelApiKey);
     const modelRegistry = new PiMonoModelRegistry(authStorage);
-    const promptScope = new AgentEnvironmentPromptScope(
-      transactionProvider,
-      this.agentEnvironmentAccessService,
-      runtimeConfig.agentId,
-      sessionId,
+    const sessionModuleResolution = await this.sessionModuleRegistry.resolve(bootstrapContext);
+    const agentToolsService = new AgentToolsService(
+      bootstrapContext.promptScope,
+      sessionModuleResolution.toolProviders,
     );
-    const githubInstallationService = new AgentGithubInstallationService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      this.githubClient,
-    );
-    const secretToolService = new AgentSecretToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      sessionId,
-      this.secretService,
-    );
-    const companyDirectoryToolService = new AgentCompanyDirectoryToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-    );
-    const agentManagementToolService = new AgentManagementToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      runtimeConfig.agentId,
-      this.secretService,
-      this.templateService,
-      this.computeProviderDefinitionService,
-      this.modelProviderService,
-      this.appModelRegistry,
-    );
-    const inboxToolService = new AgentInboxToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      runtimeConfig.agentId,
-      sessionId,
-      this.inboxService,
-    );
-    const conversationToolService = new AgentConversationToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      runtimeConfig.agentId,
-      sessionId,
-      this.agentConversationService,
-    );
-    const artifactToolService = new AgentArtifactToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      runtimeConfig.agentId,
-      new ArtifactService(),
-    );
-    const taskToolService = new AgentTaskToolService(
-      transactionProvider,
-      runtimeConfig.companyId,
-      runtimeConfig.agentId,
-      new TaskService(),
-    );
-    const webToolService = new AgentWebToolService(this.exaWebClient);
-    const environmentToolProviders = await this.resolveEnvironmentToolProviders(
-      transactionProvider,
-      runtimeConfig.companyId,
-      runtimeConfig.agentId,
-      promptScope,
-    );
-    const agentToolsService = new AgentToolsService(promptScope, [
-      new AgentTerminalToolProvider(promptScope, this.logger),
-      ...environmentToolProviders,
-      new AgentSecretToolProvider(secretToolService),
-      new AgentCompanyDirectoryToolProvider(companyDirectoryToolService),
-      new AgentManagementToolProvider(agentManagementToolService),
-      new AgentGithubToolProvider(promptScope, githubInstallationService),
-      new AgentWebToolProvider(webToolService),
-      new AgentInboxToolProvider(inboxToolService),
-      new AgentConversationToolProvider(conversationToolService),
-      new AgentTaskToolProvider(taskToolService),
-      new AgentArtifactToolProvider(artifactToolService),
-    ]);
-    const model = modelRegistry.find(runtimeConfig.providerId, runtimeConfig.modelId);
+    const model = modelRegistry.find(bootstrapContext.modelProviderId, bootstrapContext.modelId);
     if (!model) {
-      throw new Error(`Model not found for provider "${runtimeConfig.providerId}": ${runtimeConfig.modelId}`);
+      throw new Error(`Model not found for provider "${bootstrapContext.modelProviderId}": ${bootstrapContext.modelId}`);
     }
 
     const sessionManager = SessionManager.inMemory();
@@ -253,16 +169,8 @@ export class PiMonoSessionManagerService {
     });
     const storedContextMessages = await this.loadStoredContextMessages(transactionProvider, sessionId);
     const resourceLoader = new CompanyHelmResourceLoader(
-      new SystemPromptTemplateContext(
-        runtimeConfig.agentId,
-        runtimeConfig.agentName,
-        runtimeConfig.companyName,
-        sessionId,
-      ),
-      {
-        agentSystemPrompt: runtimeConfig.agentSystemPrompt,
-        companyBaseSystemPrompt: runtimeConfig.companyBaseSystemPrompt,
-      },
+      bootstrapContext.toSystemPromptTemplateContext(),
+      sessionModuleResolution.appendSystemPrompts,
     );
     await resourceLoader.reload();
 
@@ -278,7 +186,7 @@ export class PiMonoSessionManagerService {
       // `customTools`, because the PI SDK only treats `tools` as an active-name selector.
       tools: [],
       customTools: initializedTools,
-      thinkingLevel: this.resolveThinkingLevel(runtimeConfig.reasoningLevel),
+      thinkingLevel: this.resolveThinkingLevel(bootstrapContext.reasoningLevel),
     });
     session.setActiveToolsByName(initializedTools.map((tool) => tool.name));
     session.agent.replaceMessages(storedContextMessages);
@@ -296,12 +204,12 @@ export class PiMonoSessionManagerService {
       void sessionEventHandler.handle(event);
     });
 
-    this.runtimesById.set(sessionId, {
-      companyId: runtimeConfig.companyId,
+    this.runtimesById.set(sessionId, new AgentSessionRuntimeContext({
+      bootstrapContext,
       eventHandler: sessionEventHandler,
       session,
       toolsService: agentToolsService,
-    });
+    }));
     return session;
   }
 
@@ -336,7 +244,7 @@ export class PiMonoSessionManagerService {
     }
     await this.persistContextMessages(
       transactionProvider,
-      runtime.companyId,
+      runtime.getCompanyId(),
       sessionId,
       session.agent.state.messages,
       completedTurnId,
@@ -362,7 +270,7 @@ export class PiMonoSessionManagerService {
     await session.steer(message, images);
     await this.persistContextMessages(
       transactionProvider,
-      runtime.companyId,
+      runtime.getCompanyId(),
       sessionId,
       session.agent.state.messages,
       null,
@@ -395,7 +303,7 @@ export class PiMonoSessionManagerService {
     this.runtimesById.delete(sessionId);
   }
 
-  private getRequiredRuntime(sessionId: string): SessionRuntime {
+  private getRequiredRuntime(sessionId: string): AgentSessionRuntimeContext {
     const runtime = this.runtimesById.get(sessionId);
     if (!runtime) {
       throw new Error("Session not found.");
@@ -404,29 +312,40 @@ export class PiMonoSessionManagerService {
     return runtime;
   }
 
-  private async resolveEnvironmentToolProviders(
+  private async createBootstrapContext(
     transactionProvider: TransactionProviderInterface,
-    companyId: string,
-    agentId: string,
-    promptScope: AgentEnvironmentPromptScope,
-  ): Promise<AgentToolProviderInterface[]> {
+    sessionId: string,
+    runtimeConfig: SessionRuntimeConfig,
+  ): Promise<AgentSessionBootstrapContext> {
+    const promptScope = new AgentEnvironmentPromptScope(
+      transactionProvider,
+      this.agentEnvironmentAccessService,
+      runtimeConfig.agentId,
+      sessionId,
+    );
     const selection = await this.templateService.getAgentTemplateSelection(
       transactionProvider,
-      companyId,
-      agentId,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
     );
-    if (selection.provider !== "e2b") {
-      return [];
-    }
 
-    const templateBuild = this.e2bTemplatesManager.findBuild(selection.template.templateId);
-    if (!templateBuild) {
-      throw new Error(`E2B template build not found for template "${selection.template.templateId}".`);
-    }
-
-    return templateBuild.getTools({
-      computeProviderDefinitionService: this.computeProviderDefinitionService,
+    return new AgentSessionBootstrapContext({
+      agentId: runtimeConfig.agentId,
+      agentName: runtimeConfig.agentName,
+      agentSystemPrompt: runtimeConfig.agentSystemPrompt ?? null,
+      companyBaseSystemPrompt: runtimeConfig.companyBaseSystemPrompt ?? null,
+      companyId: runtimeConfig.companyId,
+      companyName: runtimeConfig.companyName,
+      computeProviderDefinitionId: selection.providerDefinitionId,
+      environmentProvider: selection.provider,
+      environmentTemplate: selection.template,
+      logger: this.logger,
+      modelApiKey: runtimeConfig.apiKey,
+      modelId: runtimeConfig.modelId,
+      modelProviderId: runtimeConfig.providerId,
       promptScope,
+      reasoningLevel: runtimeConfig.reasoningLevel ?? null,
+      sessionId,
       transactionProvider,
     });
   }

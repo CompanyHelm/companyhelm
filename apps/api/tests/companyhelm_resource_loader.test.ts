@@ -45,10 +45,10 @@ test("CompanyHelmResourceLoader keeps company and agent prompt overrides as sepa
     "My Organization",
     "session-1",
   );
-  const loader = new CompanyHelmResourceLoader(promptContext, {
-    agentSystemPrompt: "Prefer concise implementation plans.",
-    companyBaseSystemPrompt: "Always align work with company priorities.",
-  });
+  const loader = new CompanyHelmResourceLoader(promptContext, [
+    "Always align work with company priorities.",
+    "Prefer concise implementation plans.",
+  ]);
 
   await loader.reload();
 
