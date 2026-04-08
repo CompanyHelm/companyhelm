@@ -1,6 +1,6 @@
 import type { Logger as PinoLogger } from "pino";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentTerminalToolProvider } from "../../../tools/terminal/provider.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentTerminalToolProvider } from "../tools/terminal/provider.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

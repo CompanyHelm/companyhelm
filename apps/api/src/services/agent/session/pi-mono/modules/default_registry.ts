@@ -7,9 +7,9 @@ import { ComputeProviderDefinitionService } from "../../../../compute_provider_d
 import { SecretService } from "../../../../secrets/service.ts";
 import { TaskService } from "../../../../task_service.ts";
 import { ExaWebClient } from "../../../../web_search/exa_client.ts";
-import { AgentConversationService } from "../../../conversations/service.ts";
-import { AgentEnvironmentTemplateService } from "../../../environment/template_service.ts";
-import { AgentInboxService } from "../../../inbox/service.ts";
+import { AgentConversationService } from "../../../../conversations/service.ts";
+import { AgentEnvironmentTemplateService } from "../../../../environments/template_service.ts";
+import { AgentInboxService } from "../../../../inbox/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import {
   AgentSessionModuleRegistry,

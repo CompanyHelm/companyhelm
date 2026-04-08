@@ -108,7 +108,7 @@ import { SessionEnvironmentQueryResolver } from "./resolvers/session_environment
 import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_transcript_messages.ts";
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
-import { AgentEnvironmentTemplateService } from "../services/agent/environment/template_service.ts";
+import { AgentEnvironmentTemplateService } from "../services/environments/template_service.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.

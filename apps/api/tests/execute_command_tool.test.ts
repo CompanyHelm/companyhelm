@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentEnvironmentShellTimeoutError } from "../src/services/agent/compute/shell_interface.ts";
-import { AgentExecuteCommandTool } from "../src/services/agent/tools/terminal/execute_command.ts";
+import { AgentEnvironmentShellTimeoutError } from "../src/services/environments/providers/shell_interface.ts";
+import { AgentExecuteCommandTool } from "../src/services/agent/session/pi-mono/tools/terminal/execute_command.ts";
 
 type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
   content: Array<{ text: string; type: string }>;

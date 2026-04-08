@@ -1,6 +1,6 @@
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentCompanyDirectoryToolProvider } from "../../../tools/company_directory/provider.ts";
-import { AgentCompanyDirectoryToolService } from "../../../tools/company_directory/service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentCompanyDirectoryToolProvider } from "../tools/company_directory/provider.ts";
+import { AgentCompanyDirectoryToolService } from "../tools/company_directory/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

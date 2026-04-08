@@ -1,7 +1,7 @@
-import { AgentInboxService } from "../../../inbox/service.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentInboxToolProvider } from "../../../tools/inbox/provider.ts";
-import { AgentInboxToolService } from "../../../tools/inbox/service.ts";
+import { AgentInboxService } from "../../../../inbox/service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentInboxToolProvider } from "../tools/inbox/provider.ts";
+import { AgentInboxToolService } from "../tools/inbox/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

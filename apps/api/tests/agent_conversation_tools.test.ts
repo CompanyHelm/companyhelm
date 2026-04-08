@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentConversationToolProvider } from "../src/services/agent/tools/conversations/provider.ts";
-import { AgentSendAgentMessageTool } from "../src/services/agent/tools/conversations/send_agent_message.ts";
+import { AgentConversationToolProvider } from "../src/services/agent/session/pi-mono/tools/conversations/provider.ts";
+import { AgentSendAgentMessageTool } from "../src/services/agent/session/pi-mono/tools/conversations/send_agent_message.ts";
 
 test("AgentConversationToolProvider contributes the send_agent_message tool", () => {
   const provider = new AgentConversationToolProvider({

@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { AgentToolProviderInterface } from "../../../../services/agent/tools/provider_interface.ts";
+import { AgentToolProviderInterface } from "../../../../services/agent/session/pi-mono/tools/provider_interface.ts";
 import { AgentComputeE2bComputerUseClickTool } from "./click.ts";
 import { AgentComputeE2bComputerUseDragTool } from "./drag.ts";
 import { AgentComputeE2bComputerUseLaunchTool } from "./launch.ts";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentEnvironmentSelectionService } from "../src/services/agent/environment/selection_service.ts";
+import { AgentEnvironmentSelectionService } from "../src/services/environments/selection_service.ts";
 
 test("AgentEnvironmentSelectionService skips unhealthy environments and falls back to the next reusable lease-history candidate", async () => {
   const getEnvironmentStatus = vi.fn(async (_transactionProvider, environment: { id: string }) => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentEnvironmentTmuxPty } from "../src/services/agent/compute/tmux_pty.ts";
+import { AgentEnvironmentTmuxPty } from "../src/services/environments/providers/tmux_pty.ts";
 
 type FakeTmuxSession = {
   createdAt: string;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentComputeDaytonaShell } from "../src/services/agent/compute/daytona/daytona_shell.ts";
-import { AgentEnvironmentShellTimeoutError } from "../src/services/agent/compute/shell_interface.ts";
+import { AgentComputeDaytonaShell } from "../src/services/environments/providers/daytona/daytona_shell.ts";
+import { AgentEnvironmentShellTimeoutError } from "../src/services/environments/providers/shell_interface.ts";
 
 test("AgentComputeDaytonaShell returns command output on successful execution", async () => {
   const shell = new AgentComputeDaytonaShell({

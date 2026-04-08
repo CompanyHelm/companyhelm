@@ -1,7 +1,7 @@
 import { GithubClient } from "../../../../../github/client.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentGithubInstallationService } from "../../../tools/github/installation_service.ts";
-import { AgentGithubToolProvider } from "../../../tools/github/provider.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentGithubInstallationService } from "../tools/github/installation_service.ts";
+import { AgentGithubToolProvider } from "../tools/github/provider.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

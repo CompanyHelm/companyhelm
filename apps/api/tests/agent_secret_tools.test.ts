@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentListAssignedSecretsTool } from "../src/services/agent/tools/secrets/list_assigned.ts";
-import { AgentListAvailableSecretsTool } from "../src/services/agent/tools/secrets/list_available.ts";
-import { AgentSecretToolProvider } from "../src/services/agent/tools/secrets/provider.ts";
+import { AgentListAssignedSecretsTool } from "../src/services/agent/session/pi-mono/tools/secrets/list_assigned.ts";
+import { AgentListAvailableSecretsTool } from "../src/services/agent/session/pi-mono/tools/secrets/list_available.ts";
+import { AgentSecretToolProvider } from "../src/services/agent/session/pi-mono/tools/secrets/provider.ts";
 
 test("AgentSecretToolProvider contributes the assigned and available secret tools", () => {
   const provider = new AgentSecretToolProvider({

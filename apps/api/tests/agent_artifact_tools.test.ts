@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentArchiveArtifactTool } from "../src/services/agent/tools/artifacts/archive_artifact.ts";
-import { AgentCreateMarkdownArtifactTool } from "../src/services/agent/tools/artifacts/create_markdown_artifact.ts";
-import { AgentArtifactToolProvider } from "../src/services/agent/tools/artifacts/provider.ts";
+import { AgentArchiveArtifactTool } from "../src/services/agent/session/pi-mono/tools/artifacts/archive_artifact.ts";
+import { AgentCreateMarkdownArtifactTool } from "../src/services/agent/session/pi-mono/tools/artifacts/create_markdown_artifact.ts";
+import { AgentArtifactToolProvider } from "../src/services/agent/session/pi-mono/tools/artifacts/provider.ts";
 
 test("AgentArtifactToolProvider contributes the artifact catalog tools", () => {
   const provider = new AgentArtifactToolProvider({

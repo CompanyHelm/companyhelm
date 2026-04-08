@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { Type } from "@sinclair/typebox";
 import { validateToolArguments } from "@mariozechner/pi-ai";
-import { AgentToolParameterSchema } from "../src/services/agent/tools/parameter_schema.ts";
+import { AgentToolParameterSchema } from "../src/services/agent/session/pi-mono/tools/parameter_schema.ts";
 
 /**
  * Covers the patched upstream formatter so unknown tool arguments remain strict while the returned

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { agentConversationMessages, agentConversationParticipants, agentConversations } from "../src/db/schema.ts";
-import { AgentConversationService } from "../src/services/agent/conversations/service.ts";
+import { AgentConversationService } from "../src/services/conversations/service.ts";
 
 class AgentConversationServiceTestTransaction {
   readonly insertCalls: Array<{ table: unknown; values: unknown }> = [];

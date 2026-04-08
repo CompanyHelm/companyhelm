@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { test, vi } from "vitest";
-import { AgentApplyPatchTool } from "../src/services/agent/tools/terminal/apply_patch.ts";
+import { AgentApplyPatchTool } from "../src/services/agent/session/pi-mono/tools/terminal/apply_patch.ts";
 
 const execFileAsync = promisify(execFile);
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentEnvironmentShellPrivilegeProbe } from "../src/services/agent/compute/shell_privilege_probe.ts";
+import { AgentEnvironmentShellPrivilegeProbe } from "../src/services/environments/providers/shell_privilege_probe.ts";
 
 class FakeEnvironmentShell {
   readonly executedCommands = [] as string[];

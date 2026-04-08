@@ -1,7 +1,7 @@
 import { inject, injectable } from "inversify";
-import { AgentComputeProviderRegistry } from "../../services/agent/compute/provider_registry.ts";
-import type { AgentComputeProviderInterface } from "../../services/agent/compute/provider_interface.ts";
-import { AgentEnvironmentCatalogService } from "../../services/agent/environment/catalog_service.ts";
+import { AgentComputeProviderRegistry } from "../../services/environments/providers/provider_registry.ts";
+import type { AgentComputeProviderInterface } from "../../services/environments/providers/provider_interface.ts";
+import { AgentEnvironmentCatalogService } from "../../services/environments/catalog_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 

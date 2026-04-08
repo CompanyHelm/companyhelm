@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentWebFetchTool } from "../src/services/agent/tools/web/fetch.ts";
-import { AgentWebToolProvider } from "../src/services/agent/tools/web/provider.ts";
-import { AgentWebSearchTool } from "../src/services/agent/tools/web/search.ts";
-import { AgentWebToolService } from "../src/services/agent/tools/web/service.ts";
+import { AgentWebFetchTool } from "../src/services/agent/session/pi-mono/tools/web/fetch.ts";
+import { AgentWebToolProvider } from "../src/services/agent/session/pi-mono/tools/web/provider.ts";
+import { AgentWebSearchTool } from "../src/services/agent/session/pi-mono/tools/web/search.ts";
+import { AgentWebToolService } from "../src/services/agent/session/pi-mono/tools/web/service.ts";
 
 test("AgentWebToolProvider contributes Exa-backed web search and fetch tools", () => {
   const provider = new AgentWebToolProvider({

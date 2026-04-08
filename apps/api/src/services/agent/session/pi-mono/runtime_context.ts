@@ -1,5 +1,5 @@
 import type { AgentSession } from "@mariozechner/pi-coding-agent";
-import { AgentToolsService } from "../../tools/service.ts";
+import { AgentToolsService } from "./tools/service.ts";
 import { AgentSessionBootstrapContext } from "./bootstrap_context.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 

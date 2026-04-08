@@ -2,10 +2,10 @@ import { ComputeProviderDefinitionService } from "../../../../compute_provider_d
 import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../../ai_providers/model_provider_service.ts";
 import { SecretService } from "../../../../secrets/service.ts";
-import { AgentEnvironmentTemplateService } from "../../../environment/template_service.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentManagementToolProvider } from "../../../tools/agents/provider.ts";
-import { AgentManagementToolService } from "../../../tools/agents/service.ts";
+import { AgentEnvironmentTemplateService } from "../../../../environments/template_service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentManagementToolProvider } from "../tools/agents/provider.ts";
+import { AgentManagementToolService } from "../tools/agents/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

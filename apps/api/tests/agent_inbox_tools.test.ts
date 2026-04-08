@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentAskHumanQuestionTool } from "../src/services/agent/tools/inbox/ask_human_question.ts";
-import { AgentInboxToolProvider } from "../src/services/agent/tools/inbox/provider.ts";
+import { AgentAskHumanQuestionTool } from "../src/services/agent/session/pi-mono/tools/inbox/ask_human_question.ts";
+import { AgentInboxToolProvider } from "../src/services/agent/session/pi-mono/tools/inbox/provider.ts";
 
 test("AgentInboxToolProvider contributes the ask-human-question tool", () => {
   const provider = new AgentInboxToolProvider({

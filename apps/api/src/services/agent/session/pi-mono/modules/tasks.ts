@@ -1,7 +1,7 @@
 import { TaskService } from "../../../../task_service.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentTaskToolProvider } from "../../../tools/tasks/provider.ts";
-import { AgentTaskToolService } from "../../../tools/tasks/service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentTaskToolProvider } from "../tools/tasks/provider.ts";
+import { AgentTaskToolService } from "../tools/tasks/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

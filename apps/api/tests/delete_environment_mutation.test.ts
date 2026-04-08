@@ -13,7 +13,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import { AgentEnvironmentCatalogService } from "../src/services/agent/environment/catalog_service.ts";
+import { AgentEnvironmentCatalogService } from "../src/services/environments/catalog_service.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class DeleteEnvironmentMutationTestHarness {

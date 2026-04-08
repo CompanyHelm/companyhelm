@@ -1,7 +1,7 @@
 import { SecretService } from "../../../../secrets/service.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentSecretToolProvider } from "../../../tools/secrets/provider.ts";
-import { AgentSecretToolService } from "../../../tools/secrets/service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentSecretToolProvider } from "../tools/secrets/provider.ts";
+import { AgentSecretToolService } from "../tools/secrets/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

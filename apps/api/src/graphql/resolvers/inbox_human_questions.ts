@@ -1,5 +1,5 @@
 import { inject, injectable } from "inversify";
-import { AgentInboxService } from "../../services/agent/inbox/service.ts";
+import { AgentInboxService } from "../../services/inbox/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 

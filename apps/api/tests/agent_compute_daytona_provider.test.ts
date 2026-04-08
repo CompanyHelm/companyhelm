@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentComputeDaytonaProvider } from "../src/services/agent/compute/daytona/daytona_provider.ts";
-import { AgentEnvironmentCatalogService } from "../src/services/agent/environment/catalog_service.ts";
+import { AgentComputeDaytonaProvider } from "../src/services/environments/providers/daytona/daytona_provider.ts";
+import { AgentEnvironmentCatalogService } from "../src/services/environments/catalog_service.ts";
 
 function createComputeProviderDefinitionService() {
   return {

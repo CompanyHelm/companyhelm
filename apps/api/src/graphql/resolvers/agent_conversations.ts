@@ -2,7 +2,7 @@ import { inject, injectable } from "inversify";
 import {
   AgentConversationService,
   type AgentConversationRecord,
-} from "../../services/agent/conversations/service.ts";
+} from "../../services/conversations/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentCreateAgentTool } from "../src/services/agent/tools/agents/create_agent.ts";
-import { AgentListAgentsTool } from "../src/services/agent/tools/agents/list_agents.ts";
-import { AgentManagementToolProvider } from "../src/services/agent/tools/agents/provider.ts";
-import { AgentUpdateAgentTool } from "../src/services/agent/tools/agents/update_agent.ts";
+import { AgentCreateAgentTool } from "../src/services/agent/session/pi-mono/tools/agents/create_agent.ts";
+import { AgentListAgentsTool } from "../src/services/agent/session/pi-mono/tools/agents/list_agents.ts";
+import { AgentManagementToolProvider } from "../src/services/agent/session/pi-mono/tools/agents/provider.ts";
+import { AgentUpdateAgentTool } from "../src/services/agent/session/pi-mono/tools/agents/update_agent.ts";
 
 type AgentToolExecutionResult = {
   content: Array<{

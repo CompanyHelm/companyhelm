@@ -1,4 +1,4 @@
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 
 /**

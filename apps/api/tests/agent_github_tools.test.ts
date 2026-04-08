@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentGithubExecTool } from "../src/services/agent/tools/github/exec.ts";
-import { AgentGithubToolProvider } from "../src/services/agent/tools/github/provider.ts";
-import { AgentListGithubInstallationsTool } from "../src/services/agent/tools/github/list_installations.ts";
+import { AgentGithubExecTool } from "../src/services/agent/session/pi-mono/tools/github/exec.ts";
+import { AgentGithubToolProvider } from "../src/services/agent/session/pi-mono/tools/github/provider.ts";
+import { AgentListGithubInstallationsTool } from "../src/services/agent/session/pi-mono/tools/github/list_installations.ts";
 
 type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
   content: Array<{ text: string; type: string }>;

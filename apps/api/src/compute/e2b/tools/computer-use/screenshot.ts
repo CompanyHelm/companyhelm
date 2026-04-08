@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { AgentToolParameterSchema } from "../../../../services/agent/tools/parameter_schema.ts";
+import { AgentToolParameterSchema } from "../../../../services/agent/session/pi-mono/tools/parameter_schema.ts";
 import { AgentComputeE2bComputerUseResultFormatter } from "./result_formatter.ts";
 import { AgentComputeE2bComputerUseToolService } from "./service.ts";
 

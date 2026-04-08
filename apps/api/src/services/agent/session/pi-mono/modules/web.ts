@@ -1,7 +1,7 @@
 import { ExaWebClient } from "../../../../web_search/exa_client.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentWebToolProvider } from "../../../tools/web/provider.ts";
-import { AgentWebToolService } from "../../../tools/web/service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentWebToolProvider } from "../tools/web/provider.ts";
+import { AgentWebToolService } from "../tools/web/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

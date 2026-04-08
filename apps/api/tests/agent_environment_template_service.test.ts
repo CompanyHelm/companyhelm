@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentEnvironmentTemplateService } from "../src/services/agent/environment/template_service.ts";
+import { AgentEnvironmentTemplateService } from "../src/services/environments/template_service.ts";
 
 test("AgentEnvironmentTemplateService resolves the persisted agent template selection against provider templates", async () => {
   const service = new AgentEnvironmentTemplateService({

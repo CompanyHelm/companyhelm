@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentListCompanyAgentsTool } from "../src/services/agent/tools/company_directory/list_company_agents.ts";
-import { AgentListCompanyMembersTool } from "../src/services/agent/tools/company_directory/list_company_members.ts";
-import { AgentCompanyDirectoryToolProvider } from "../src/services/agent/tools/company_directory/provider.ts";
+import { AgentListCompanyAgentsTool } from "../src/services/agent/session/pi-mono/tools/company_directory/list_company_agents.ts";
+import { AgentListCompanyMembersTool } from "../src/services/agent/session/pi-mono/tools/company_directory/list_company_members.ts";
+import { AgentCompanyDirectoryToolProvider } from "../src/services/agent/session/pi-mono/tools/company_directory/provider.ts";
 
 test("AgentCompanyDirectoryToolProvider contributes the company member and agent tools", () => {
   const provider = new AgentCompanyDirectoryToolProvider({

@@ -4,8 +4,8 @@ import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_t
 import type {
   AgentEnvironmentTemplate,
   ComputeProvider,
-} from "../../compute/provider_interface.ts";
-import { AgentEnvironmentPromptScope } from "../../environment/prompt_scope.ts";
+} from "../../../environments/providers/provider_interface.ts";
+import { AgentEnvironmentPromptScope } from "../../../environments/prompt_scope.ts";
 
 type AgentSessionBootstrapContextInput = {
   agentId: string;

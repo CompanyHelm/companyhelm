@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentEnvironmentProvisioning } from "../src/services/agent/environment/provisioning.ts";
-import { AgentEnvironmentProvisioningService } from "../src/services/agent/environment/provisioning_service.ts";
+import { AgentEnvironmentProvisioning } from "../src/services/environments/provisioning.ts";
+import { AgentEnvironmentProvisioningService } from "../src/services/environments/provisioning_service.ts";
 import type { TransactionProviderInterface } from "../src/db/transaction_provider_interface.ts";
 
 const createdEnvironment = {

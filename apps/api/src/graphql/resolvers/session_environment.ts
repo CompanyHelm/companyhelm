@@ -1,14 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { agents } from "../../db/schema.ts";
-import { AgentComputeProviderRegistry } from "../../services/agent/compute/provider_registry.ts";
+import { AgentComputeProviderRegistry } from "../../services/environments/providers/provider_registry.ts";
 import type {
   AgentEnvironmentRecord,
   AgentEnvironmentStatus,
-} from "../../services/agent/compute/provider_interface.ts";
-import { AgentEnvironmentCatalogService } from "../../services/agent/environment/catalog_service.ts";
-import { AgentEnvironmentLeaseService } from "../../services/agent/environment/lease_service.ts";
-import { AgentEnvironmentSelectionService } from "../../services/agent/environment/selection_service.ts";
+} from "../../services/environments/providers/provider_interface.ts";
+import { AgentEnvironmentCatalogService } from "../../services/environments/catalog_service.ts";
+import { AgentEnvironmentLeaseService } from "../../services/environments/lease_service.ts";
+import { AgentEnvironmentSelectionService } from "../../services/environments/selection_service.ts";
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 

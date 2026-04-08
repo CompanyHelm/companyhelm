@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentEnvironmentAccessService } from "../src/services/agent/environment/access_service.ts";
+import { AgentEnvironmentAccessService } from "../src/services/environments/access_service.ts";
 
 class FakeEnvironmentShell {
   async executeCommand(command: string) {

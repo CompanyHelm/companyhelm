@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Sandbox as DesktopSandbox } from "@e2b/desktop";
 import { afterEach, test, vi } from "vitest";
 import { CommandExitError, Sandbox } from "e2b";
-import { AgentComputeE2bProvider } from "../src/services/agent/compute/e2b/e2b_provider.ts";
+import { AgentComputeE2bProvider } from "../src/services/environments/providers/e2b/e2b_provider.ts";
 
 function createComputeProviderDefinitionService() {
   return {

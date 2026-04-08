@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentSessionEnvironment } from "../src/services/agent/environment/session_environment.ts";
+import { AgentSessionEnvironment } from "../src/services/environments/session_environment.ts";
 
 test("AgentSessionEnvironment merges attached session secrets into executeCommand environment", async () => {
   const executionInputs: Array<Record<string, unknown>> = [];

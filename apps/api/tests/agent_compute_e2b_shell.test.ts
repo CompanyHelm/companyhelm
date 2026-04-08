@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentComputeE2bShell } from "../src/services/agent/compute/e2b/e2b_shell.ts";
-import { AgentEnvironmentShellTimeoutError } from "../src/services/agent/compute/shell_interface.ts";
+import { AgentComputeE2bShell } from "../src/services/environments/providers/e2b/e2b_shell.ts";
+import { AgentEnvironmentShellTimeoutError } from "../src/services/environments/providers/shell_interface.ts";
 
 test("AgentComputeE2bShell returns command output on successful execution", async () => {
   const shell = new AgentComputeE2bShell({

@@ -1,7 +1,7 @@
-import { AgentConversationService } from "../../../conversations/service.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
-import { AgentConversationToolProvider } from "../../../tools/conversations/provider.ts";
-import { AgentConversationToolService } from "../../../tools/conversations/service.ts";
+import { AgentConversationService } from "../../../../conversations/service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
+import { AgentConversationToolProvider } from "../tools/conversations/provider.ts";
+import { AgentConversationToolService } from "../tools/conversations/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

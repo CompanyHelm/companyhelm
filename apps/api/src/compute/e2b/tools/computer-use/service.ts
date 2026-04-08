@@ -1,7 +1,7 @@
 import type { CommandResult } from "e2b";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
-import { AgentEnvironmentPromptScope } from "../../../../services/agent/environment/prompt_scope.ts";
-import { AgentComputeE2bDesktopSandboxService } from "../../../../services/agent/compute/e2b/desktop_sandbox_service.ts";
+import { AgentEnvironmentPromptScope } from "../../../../services/environments/prompt_scope.ts";
+import { AgentComputeE2bDesktopSandboxService } from "../../../../services/environments/providers/e2b/desktop_sandbox_service.ts";
 
 type WaitAndVerifyInput = {
   command: string;

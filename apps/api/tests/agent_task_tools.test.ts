@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { AgentCreateTaskTool } from "../src/services/agent/tools/tasks/create_task.ts";
-import { AgentListAssignedTasksTool } from "../src/services/agent/tools/tasks/list_assigned_tasks.ts";
-import { AgentListTasksTool } from "../src/services/agent/tools/tasks/list_tasks.ts";
-import { AgentTaskToolProvider } from "../src/services/agent/tools/tasks/provider.ts";
-import { AgentUpdateTaskStatusTool } from "../src/services/agent/tools/tasks/update_task_status.ts";
+import { AgentCreateTaskTool } from "../src/services/agent/session/pi-mono/tools/tasks/create_task.ts";
+import { AgentListAssignedTasksTool } from "../src/services/agent/session/pi-mono/tools/tasks/list_assigned_tasks.ts";
+import { AgentListTasksTool } from "../src/services/agent/session/pi-mono/tools/tasks/list_tasks.ts";
+import { AgentTaskToolProvider } from "../src/services/agent/session/pi-mono/tools/tasks/provider.ts";
+import { AgentUpdateTaskStatusTool } from "../src/services/agent/session/pi-mono/tools/tasks/update_task_status.ts";
 
 type AgentToolExecutionResult = {
   content: Array<{

@@ -1,12 +1,12 @@
 import { Template, type BuildInfo, type TemplateClass, defaultBuildLogger } from "e2b";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
+import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
 import { AgentComputeE2bComputerUseToolProvider } from "./tools/computer-use/provider.ts";
 import { AgentComputeE2bComputerUseToolService } from "./tools/computer-use/service.ts";
-import { AgentEnvironmentPromptScope } from "../../services/agent/environment/prompt_scope.ts";
-import { AgentComputeE2bDesktopSandboxService } from "../../services/agent/compute/e2b/desktop_sandbox_service.ts";
+import { AgentEnvironmentPromptScope } from "../../services/environments/prompt_scope.ts";
+import { AgentComputeE2bDesktopSandboxService } from "../../services/environments/providers/e2b/desktop_sandbox_service.ts";
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
-import type { AgentToolProviderInterface } from "../../services/agent/tools/provider_interface.ts";
+import type { AgentToolProviderInterface } from "../../services/agent/session/pi-mono/tools/provider_interface.ts";
 
 /**
  * Encapsulates one CompanyHelm-managed E2B template definition and submits builds with the

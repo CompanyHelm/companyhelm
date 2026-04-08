@@ -1,8 +1,8 @@
 import { AgentComputeE2bComputerUseToolProvider } from "../../../../../compute/e2b/tools/computer-use/provider.ts";
 import { AgentComputeE2bComputerUseToolService } from "../../../../../compute/e2b/tools/computer-use/service.ts";
 import { ComputeProviderDefinitionService } from "../../../../compute_provider_definitions/service.ts";
-import { AgentComputeE2bDesktopSandboxService } from "../../../compute/e2b/desktop_sandbox_service.ts";
-import type { AgentToolProviderInterface } from "../../../tools/provider_interface.ts";
+import { AgentComputeE2bDesktopSandboxService } from "../../../../environments/providers/e2b/desktop_sandbox_service.ts";
+import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 

@@ -7,8 +7,8 @@ import {
   modelProviderCredentials,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
-import { AgentEnvironmentTemplateService } from "../../services/agent/environment/template_service.ts";
+import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
+import { AgentEnvironmentTemplateService } from "../../services/environments/template_service.ts";
 import { SecretService } from "../../services/secrets/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
