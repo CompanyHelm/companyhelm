@@ -12,11 +12,13 @@ export class E2bTemplatesManager {
       .fromTemplate("desktop")
       .aptInstall("gh")
       .aptInstall("ripgrep")
+      .aptInstall("tmux")
       .runCmd("curl -fsSL https://get.docker.com | sudo sh");
     const baseTemplate = Template()
       .fromBaseImage()
       .aptInstall("gh")
       .aptInstall("ripgrep")
+      .aptInstall("tmux")
       .runCmd("curl -fsSL https://get.docker.com | sudo sh");
 
     return [
