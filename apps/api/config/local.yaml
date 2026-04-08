@@ -41,6 +41,7 @@ web_search:
 companyhelm:
   e2b:
     api_key: "${E2B_API_KEY}"
+    # must match the E2B team name
     template_prefix: "realequityapps/"
 daytona:
   api_key: "${DAYTONA_API_KEY}"
