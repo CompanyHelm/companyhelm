@@ -15,11 +15,15 @@ import {
 import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
 import { AgentComputeE2bShell } from "./e2b_shell.ts";
 
-const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
+const E2B_SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
+const E2B_CONNECT_REQUEST_TIMEOUT_MS = 15_000;
 const E2B_DESKTOP_DISPLAY = ":0";
 const E2B_DESKTOP_DPI = 96;
 const E2B_DESKTOP_RESOLUTION = [1024, 768] as const;
 const E2B_DESKTOP_STREAM_PORT = 6080;
+const E2B_DESKTOP_BOOTSTRAP_TIMEOUT_MS = 10_000;
+const E2B_DESKTOP_STREAM_START_TIMEOUT_MS = 10_000;
+const E2B_GET_VNC_URL_TIMEOUT_MS = 30_000;
 
 /**
  * Bridges the shared compute-provider contract onto E2B sandboxes. The environment services decide
@@ -253,35 +257,48 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    try {
-      const sandbox = await DesktopSandbox.connect(environment.providerEnvironmentId, {
-        apiKey: definition.apiKey,
-        timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
-      });
-      await this.ensureDesktopRuntimeStarted(sandbox);
+    return this.withTimeout(
+      async () => {
+        try {
+          const sandbox = await DesktopSandbox.connect(environment.providerEnvironmentId, {
+            apiKey: definition.apiKey,
+            requestTimeoutMs: E2B_CONNECT_REQUEST_TIMEOUT_MS,
+            timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
+          });
+          await this.ensureDesktopRuntimeStarted(sandbox);
 
-      try {
-        await sandbox.stream.start();
-        return sandbox.stream.getUrl();
-      } catch (error) {
-        if (error instanceof Error && error.message === "Stream is already running") {
-          return this.buildStreamUrl(sandbox);
+          try {
+            await this.withTimeout(
+              async () => {
+                await sandbox.stream.start();
+              },
+              E2B_DESKTOP_STREAM_START_TIMEOUT_MS,
+              "Timed out starting the desktop stream.",
+            );
+            return sandbox.stream.getUrl();
+          } catch (error) {
+            if (error instanceof Error && error.message === "Stream is already running") {
+              return this.buildStreamUrl(sandbox);
+            }
+
+            throw error;
+          }
+        } catch (error) {
+          if (this.isDesktopBinaryMissingError(error)) {
+            throw new Error(
+              `Environment ${environment.id} does not support desktop streaming. Rebuild the E2B desktop template and recreate the environment.`,
+              {
+                cause: error,
+              },
+            );
+          }
+
+          throw error;
         }
-
-        throw error;
-      }
-    } catch (error) {
-      if (this.isDesktopBinaryMissingError(error)) {
-        throw new Error(
-          `Environment ${environment.id} does not support desktop streaming. Rebuild the E2B desktop template and recreate the environment.`,
-          {
-            cause: error,
-          },
-        );
-      }
-
-      throw error;
-    }
+      },
+      E2B_GET_VNC_URL_TIMEOUT_MS,
+      "Timed out waiting for the desktop stream URL.",
+    );
   }
 
   async createShell(
@@ -342,31 +359,37 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
    * a usable desktop before we ask the SDK to expose the VNC stream.
    */
   private async ensureDesktopRuntimeStarted(sandbox: DesktopSandbox): Promise<void> {
-    const display = sandbox.display || E2B_DESKTOP_DISPLAY;
-    const displayReady = await sandbox.waitAndVerify(
-      `xdpyinfo -display ${display}`,
-      (result) => result.exitCode === 0,
-      1,
-      0.25,
-    );
-    if (displayReady) {
-      return;
-    }
+    await this.withTimeout(
+      async () => {
+        const display = sandbox.display || E2B_DESKTOP_DISPLAY;
+        const displayReady = await sandbox.waitAndVerify(
+          `xdpyinfo -display ${display}`,
+          (result) => result.exitCode === 0,
+          1,
+          0.25,
+        );
+        if (displayReady) {
+          return;
+        }
 
-    await (
-      sandbox as DesktopSandbox & {
-        _start(
-          display: string,
-          opts?: {
-            dpi?: number;
-            resolution?: readonly [number, number];
-          },
-        ): Promise<void>;
-      }
-    )._start(display, {
-      dpi: E2B_DESKTOP_DPI,
-      resolution: E2B_DESKTOP_RESOLUTION,
-    });
+        await (
+          sandbox as DesktopSandbox & {
+            _start(
+              display: string,
+              opts?: {
+                dpi?: number;
+                resolution?: readonly [number, number];
+              },
+            ): Promise<void>;
+          }
+        )._start(display, {
+          dpi: E2B_DESKTOP_DPI,
+          resolution: E2B_DESKTOP_RESOLUTION,
+        });
+      },
+      E2B_DESKTOP_BOOTSTRAP_TIMEOUT_MS,
+      "Timed out bootstrapping the desktop runtime.",
+    );
   }
 
   private buildStreamUrl(sandbox: DesktopSandbox): string {
@@ -378,6 +401,28 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
 
   private isDesktopBinaryMissingError(error: unknown): boolean {
     return error instanceof CommandExitError && error.result.exitCode === 127;
+  }
+
+  private async withTimeout<T>(
+    callback: () => Promise<T>,
+    timeoutMs: number,
+    message: string,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(message));
+      }, timeoutMs);
+
+      callback()
+        .then((result) => {
+          clearTimeout(timeout);
+          resolve(result);
+        })
+        .catch((error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
   }
 
   private requireConfiguredTemplate(templateId: string): E2bTemplateBuild {

@@ -117,7 +117,7 @@ test("AgentComputeE2bProvider provisions E2B environments from the selected temp
       companyId: "company-1",
       sessionId: "session-1",
     },
-    timeoutMs: 60 * 60 * 1000,
+    timeoutMs: 15 * 60 * 1000,
   });
   assert.equal(getInfo.mock.calls.length, 1);
   assert.equal(provisionedEnvironment.providerEnvironmentId, "e2b-environment-1");
@@ -175,7 +175,8 @@ test("AgentComputeE2bProvider starts desktop streaming on demand and returns the
     "e2b-environment-1",
     {
       apiKey: "e2b-api-key",
-      timeoutMs: 60 * 60 * 1000,
+      requestTimeoutMs: 15_000,
+      timeoutMs: 15 * 60 * 1000,
     },
   ]);
   assert.equal(start.mock.calls.length, 1);
