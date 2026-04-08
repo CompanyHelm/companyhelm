@@ -97,22 +97,30 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
 
     const configuredTemplate = this.requireConfiguredTemplate(request.template.templateId);
     const template = configuredTemplate.toEnvironmentTemplate();
-    const sandbox = await E2bSandbox.create(
-      configuredTemplate.resolveTemplateReference(this.config.companyhelm.e2b.template_prefix),
-      {
-        apiKey: definition.apiKey,
-        lifecycle: {
-          autoResume: true,
-          onTimeout: "pause",
-        },
-        metadata: {
-          agentId: request.agentId,
-          companyId: request.companyId,
-          sessionId: request.sessionId,
-        },
-        timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
-      },
+    const templateReference = configuredTemplate.resolveTemplateReference(
+      this.config.companyhelm.e2b.template_prefix,
     );
+    const sandboxCreateOptions = {
+      apiKey: definition.apiKey,
+      lifecycle: {
+        autoResume: true,
+        onTimeout: "pause",
+      },
+      metadata: {
+        agentId: request.agentId,
+        companyId: request.companyId,
+        sessionId: request.sessionId,
+      },
+      timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
+    };
+    const sandbox = template.computerUse
+      ? await DesktopSandbox.create(templateReference, {
+          ...sandboxCreateOptions,
+          display: E2B_DESKTOP_DISPLAY,
+          dpi: E2B_DESKTOP_DPI,
+          resolution: [...E2B_DESKTOP_RESOLUTION],
+        })
+      : await E2bSandbox.create(templateReference, sandboxCreateOptions);
 
     try {
       const info = await sandbox.getInfo();
@@ -257,6 +265,13 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
+    const configuredTemplate = this.requireConfiguredTemplate(environment.templateId);
+    if (!configuredTemplate.isComputerUse()) {
+      throw new Error(
+        `Environment ${environment.id} does not support desktop streaming. Recreate it with a computer-use E2B template.`,
+      );
+    }
+
     return this.withTimeout(
       async () => {
         try {
@@ -284,13 +299,11 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
             throw error;
           }
         } catch (error) {
-          if (this.isDesktopBinaryMissingError(error)) {
-            throw new Error(
-              `Environment ${environment.id} does not support desktop streaming. Rebuild the E2B desktop template and recreate the environment.`,
-              {
-                cause: error,
-              },
-            );
+          if (
+            this.isDesktopBinaryMissingError(error)
+            || this.isDesktopRuntimeStartupError(error)
+          ) {
+            throw this.createDesktopRuntimeUnavailableError(environment, error);
           }
 
           throw error;
@@ -359,37 +372,95 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
    * a usable desktop before we ask the SDK to expose the VNC stream.
    */
   private async ensureDesktopRuntimeStarted(sandbox: DesktopSandbox): Promise<void> {
-    await this.withTimeout(
-      async () => {
-        const display = sandbox.display || E2B_DESKTOP_DISPLAY;
-        const displayReady = await sandbox.waitAndVerify(
-          `xdpyinfo -display ${display}`,
-          (result) => result.exitCode === 0,
-          1,
-          0.25,
-        );
-        if (displayReady) {
-          return;
-        }
+    const display = sandbox.display || E2B_DESKTOP_DISPLAY;
+    await this.withTimeout(async () => {
+      if (!await this.isDisplayReady(sandbox, display)) {
+        await this.startDisplay(sandbox, display);
+      }
 
-        await (
-          sandbox as DesktopSandbox & {
-            _start(
-              display: string,
-              opts?: {
-                dpi?: number;
-                resolution?: readonly [number, number];
-              },
-            ): Promise<void>;
-          }
-        )._start(display, {
-          dpi: E2B_DESKTOP_DPI,
-          resolution: E2B_DESKTOP_RESOLUTION,
-        });
+      if (!await this.isDesktopSessionRunning(sandbox)) {
+        await this.startDesktopSession(sandbox, display);
+      }
+    }, E2B_DESKTOP_BOOTSTRAP_TIMEOUT_MS, "Timed out bootstrapping the desktop runtime.");
+  }
+
+  /**
+   * Reconnected computer-use sandboxes may have their X server torn down while the filesystem and
+   * desktop packages remain intact. We start only the missing pieces explicitly so stale resumed
+   * environments can recover without relying on the SDK's create-only bootstrap path.
+   */
+  private async startDisplay(sandbox: DesktopSandbox, display: string): Promise<void> {
+    await sandbox.commands.run(
+      `Xvfb ${display} -ac -screen 0 ${E2B_DESKTOP_RESOLUTION[0]}x${E2B_DESKTOP_RESOLUTION[1]}x24 -retro -dpi ${E2B_DESKTOP_DPI} -nolisten tcp -nolisten unix`,
+      {
+        background: true,
+        timeoutMs: 0,
       },
-      E2B_DESKTOP_BOOTSTRAP_TIMEOUT_MS,
-      "Timed out bootstrapping the desktop runtime.",
     );
+
+    if (!await this.isDisplayReady(sandbox, display, 5)) {
+      throw new Error("Could not start Xvfb.");
+    }
+  }
+
+  /**
+   * XFCE expects the X display to be present in the command environment. Older CompanyHelm E2B
+   * environments were provisioned through the generic SDK path and missed DISPLAY, so we inject it
+   * here before asking the window manager to start.
+   */
+  private async startDesktopSession(sandbox: DesktopSandbox, display: string): Promise<void> {
+    await sandbox.commands.run("startxfce4", {
+      background: true,
+      envs: {
+        DISPLAY: display,
+      },
+      timeoutMs: 0,
+    });
+
+    if (!await this.waitForDesktopSession(sandbox)) {
+      throw new Error("Could not start xfce4-session.");
+    }
+  }
+
+  private async isDisplayReady(
+    sandbox: DesktopSandbox,
+    display: string,
+    timeoutSeconds = 1,
+  ): Promise<boolean> {
+    return sandbox.waitAndVerify(
+      `xdpyinfo -display ${display}`,
+      (result) => result.exitCode === 0,
+      timeoutSeconds,
+      0.25,
+    );
+  }
+
+  private async waitForDesktopSession(sandbox: DesktopSandbox): Promise<boolean> {
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      if (await this.isDesktopSessionRunning(sandbox)) {
+        return true;
+      }
+
+      await this.sleep(250);
+    }
+
+    return false;
+  }
+
+  private async isDesktopSessionRunning(sandbox: DesktopSandbox): Promise<boolean> {
+    try {
+      const result = await sandbox.commands.run(
+        "ps -ef | grep -E \"xfce4-session|xfwm4|xfsettingsd\" | grep -v grep",
+      );
+      return result.stdout.trim().length > 0;
+    } catch (error) {
+      if (error instanceof CommandExitError) {
+        return false;
+      }
+
+      throw error;
+    }
   }
 
   private buildStreamUrl(sandbox: DesktopSandbox): string {
@@ -401,6 +472,16 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
 
   private isDesktopBinaryMissingError(error: unknown): boolean {
     return error instanceof CommandExitError && error.result.exitCode === 127;
+  }
+
+  private isDesktopRuntimeStartupError(error: unknown): boolean {
+    return error instanceof Error && (
+      error.message === "Could not start Xvfb."
+      || error.message === "Could not start xfce4-session."
+      || error.message === "Timed out bootstrapping the desktop runtime."
+      || error.message === "Timed out starting the desktop stream."
+      || error.message === "Timed out waiting for the desktop stream URL."
+    );
   }
 
   private async withTimeout<T>(
@@ -423,6 +504,24 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
           reject(error);
         });
     });
+  }
+
+  private async sleep(durationMs: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      setTimeout(resolve, durationMs);
+    });
+  }
+
+  private createDesktopRuntimeUnavailableError(
+    environment: AgentEnvironmentRecord,
+    cause: unknown,
+  ): Error {
+    return new Error(
+      `Environment ${environment.id} could not start its desktop runtime. Recreate it with the current computer-use E2B template.`,
+      {
+        cause,
+      },
+    );
   }
 
   private requireConfiguredTemplate(templateId: string): E2bTemplateBuild {
