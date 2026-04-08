@@ -6,7 +6,6 @@ import type {
   AgentEnvironmentTerminalSession,
 } from "./environment_interface.ts";
 import { AgentEnvironmentPtyInterface } from "./pty_interface.ts";
-import { AgentEnvironmentShellPrivilegeProbe, type AgentEnvironmentShellPrivilegeMode } from "./shell_privilege_probe.ts";
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
 type TmuxCommandRun = {
@@ -30,18 +29,14 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   private static readonly STATE_DIRECTORY = "/tmp/companyhelm";
   private static readonly WAIT_TIMEOUT_EXIT_CODE = 124;
   private readonly environmentShell: AgentEnvironmentShellInterface;
-  private readonly privilegeProbe: AgentEnvironmentShellPrivilegeProbe;
   private homeDirectory: string | null = null;
-  private tmuxPrepared = false;
 
   constructor(environmentShell: AgentEnvironmentShellInterface) {
     super();
     this.environmentShell = environmentShell;
-    this.privilegeProbe = new AgentEnvironmentShellPrivilegeProbe(environmentShell);
   }
 
   async executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {
-    await this.ensureTmuxPrepared();
     if (input.command.trim().length === 0) {
       throw new Error("command is required.");
     }
@@ -90,7 +85,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     input: string,
     yieldTimeMilliseconds?: number,
   ): Promise<AgentEnvironmentCommandResult> {
-    await this.ensureTmuxPrepared();
     const resolvedYieldTimeMilliseconds = this.resolveYieldTimeMilliseconds({
       command: input,
       yield_time_ms: yieldTimeMilliseconds,
@@ -120,7 +114,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage> {
-    await this.ensureTmuxPrepared();
     await this.ensureExistingTmuxSession(sessionId);
     const fullOutput = await this.captureTmuxOutput(sessionId);
     const cursor = Math.max(0, afterOffset ?? 0);
@@ -144,7 +137,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   }
 
   async listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
-    await this.ensureTmuxPrepared();
     const output = await this.runRequiredRemoteCommand(
       `tmux list-sessions -F "#{session_name}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_attached}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_created}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_width}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_height}" 2>/dev/null || true`,
     );
@@ -159,7 +151,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   }
 
   async resizeSession(sessionId: string, columns: number, rows: number): Promise<void> {
-    await this.ensureTmuxPrepared();
     await this.ensureExistingTmuxSession(sessionId);
     await this.runRequiredRemoteCommand(
       `tmux resize-window -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -x ${columns} -y ${rows}`,
@@ -167,7 +158,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   }
 
   async killSession(sessionId: string): Promise<void> {
-    await this.ensureTmuxPrepared();
     await this.runRemoteCommand(
       `tmux kill-session -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} 2>/dev/null || true`,
     );
@@ -272,57 +262,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
 
     this.homeDirectory = homeDirectory;
     return this.homeDirectory;
-  }
-
-  private async ensureTmuxPrepared(): Promise<void> {
-    if (this.tmuxPrepared) {
-      return;
-    }
-
-    if (await this.hasTmuxInstalled()) {
-      this.tmuxPrepared = true;
-      return;
-    }
-
-    const privilegeMode = await this.privilegeProbe.getPrivilegeMode();
-    if (privilegeMode === "unprivileged") {
-      throw new Error(
-        "Failed to prepare tmux in environment: tmux is missing and the environment user is neither root nor passwordless sudo.",
-      );
-    }
-
-    await this.installTmux(privilegeMode);
-    this.tmuxPrepared = true;
-  }
-
-  private async hasTmuxInstalled(): Promise<boolean> {
-    const result = await this.environmentShell.executeCommand("tmux -V");
-    return result.exitCode === 0;
-  }
-
-  private async installTmux(
-    privilegeMode: Exclude<AgentEnvironmentShellPrivilegeMode, "unprivileged">,
-  ): Promise<void> {
-    const commandPrefix = privilegeMode === "root" ? "" : "sudo -n ";
-    const updateResult = await this.environmentShell.executeCommand(
-      `${commandPrefix}apt-get update`,
-      undefined,
-      undefined,
-      300,
-    );
-    if (updateResult.exitCode !== 0) {
-      throw new Error(`Failed to prepare tmux in environment: ${updateResult.stdout}`);
-    }
-
-    const installResult = await this.environmentShell.executeCommand(
-      `${commandPrefix}env DEBIAN_FRONTEND=noninteractive apt-get install -y tmux`,
-      undefined,
-      undefined,
-      300,
-    );
-    if (installResult.exitCode !== 0) {
-      throw new Error(`Failed to prepare tmux in environment: ${installResult.stdout}`);
-    }
   }
 
   private async startTmuxCommand(
