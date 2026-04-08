@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c6fc959e7088d532047e7dd208317889>>
+ * @generated SignedSource<<d8a38b0486d6af0e16b2f1f016140691>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -51,6 +51,10 @@ export type chatsPageQuery$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
@@ -315,6 +319,34 @@ v7 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "isCompacting",
         "storageKey": null
       },
@@ -393,16 +425,16 @@ return {
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "437834a9582b65d2226c7e0749848e53",
+    "cacheID": "57411f5d1b9daba510a3c3c63597b734",
     "id": null,
     "metadata": {},
     "name": "chatsPageQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "86d8dd469fde2f38de7143ef6b3cfd76";
+(node as any).hash = "add2e0c299fb6d829325eeabc8af31e3";
 
 export default node;

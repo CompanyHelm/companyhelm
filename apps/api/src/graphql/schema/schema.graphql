@@ -342,6 +342,10 @@ type Session {
   id: ID!
   agentId: ID!
   currentContextTokens: Int
+  forkedFromSessionAgentId: ID
+  forkedFromSessionId: ID
+  forkedFromSessionTitle: String
+  forkedFromTurnId: ID
   hasUnread: Boolean!
   modelProviderCredentialModelId: ID
   modelId: String!

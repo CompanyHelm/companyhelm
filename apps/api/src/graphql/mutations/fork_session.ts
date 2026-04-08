@@ -2,6 +2,10 @@ import { inject, injectable } from "inversify";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 import { SessionManagerService } from "../../services/agent/session/session_manager_service.ts";
+import {
+  SessionReadService,
+  type SessionGraphqlRecord,
+} from "../../services/agent/session/read_service.ts";
 
 type ForkSessionMutationArguments = {
   input: {
@@ -10,60 +14,28 @@ type ForkSessionMutationArguments = {
   };
 };
 
-type GraphqlSessionRecord = {
-  id: string;
-  agentId: string;
-  currentContextTokens: number | null;
-  hasUnread: boolean;
-  modelProviderCredentialModelId: string | null;
-  modelId: string;
-  reasoningLevel: string;
-  inferredTitle: string | null;
-  isCompacting: boolean;
-  isThinking: boolean;
-  maxContextTokens: number | null;
-  status: string;
-  thinkingText: string | null;
-  createdAt: string;
-  updatedAt: string;
-  userSetTitle: string | null;
-};
-
-type ServiceSessionRecord = {
-  id: string;
-  agentId: string;
-  currentContextTokens: number | null;
-  currentModelId: string;
-  currentModelProviderCredentialModelId: string;
-  currentReasoningLevel: string;
-  inferredTitle: string | null;
-  isCompacting: boolean;
-  isThinking: boolean;
-  maxContextTokens: number | null;
-  status: string;
-  thinkingText: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  userSetTitle: string | null;
-};
-
 /**
  * Branches one new persisted agent session from a completed turn checkpoint so the user can keep
  * exploring an alternate path without mutating the original session history.
  */
 @injectable()
-export class ForkSessionMutation extends Mutation<ForkSessionMutationArguments, GraphqlSessionRecord> {
+export class ForkSessionMutation extends Mutation<ForkSessionMutationArguments, SessionGraphqlRecord> {
   private readonly sessionManagerService: SessionManagerService;
+  private readonly sessionReadService: SessionReadService;
 
-  constructor(@inject(SessionManagerService) sessionManagerService: SessionManagerService) {
+  constructor(
+    @inject(SessionManagerService) sessionManagerService: SessionManagerService,
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
+  ) {
     super();
     this.sessionManagerService = sessionManagerService;
+    this.sessionReadService = sessionReadService;
   }
 
   protected resolve = async (
     arguments_: ForkSessionMutationArguments,
     context: GraphqlRequestContext,
-  ): Promise<GraphqlSessionRecord> => {
+  ): Promise<SessionGraphqlRecord> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -88,27 +60,16 @@ export class ForkSessionMutation extends Mutation<ForkSessionMutationArguments, 
       context.authSession.user.id,
     );
 
-    return ForkSessionMutation.serializeRecord(sessionRecord);
-  };
+    const nextSessionRecord = await this.sessionReadService.getSession(
+      context.app_runtime_transaction_provider,
+      context.authSession.company.id,
+      sessionRecord.id,
+      context.authSession.user.id,
+    );
+    if (!nextSessionRecord) {
+      throw new Error("Forked session not found.");
+    }
 
-  private static serializeRecord(sessionRecord: ServiceSessionRecord): GraphqlSessionRecord {
-    return {
-      id: sessionRecord.id,
-      agentId: sessionRecord.agentId,
-      currentContextTokens: sessionRecord.currentContextTokens,
-      hasUnread: false,
-      modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
-      modelId: sessionRecord.currentModelId,
-      reasoningLevel: sessionRecord.currentReasoningLevel,
-      inferredTitle: sessionRecord.inferredTitle,
-      isCompacting: sessionRecord.isCompacting,
-      isThinking: sessionRecord.isThinking,
-      maxContextTokens: sessionRecord.maxContextTokens,
-      status: sessionRecord.status,
-      thinkingText: sessionRecord.thinkingText,
-      createdAt: sessionRecord.createdAt.toISOString(),
-      updatedAt: sessionRecord.updatedAt.toISOString(),
-      userSetTitle: sessionRecord.userSetTitle,
-    };
+    return nextSessionRecord;
   }
 }

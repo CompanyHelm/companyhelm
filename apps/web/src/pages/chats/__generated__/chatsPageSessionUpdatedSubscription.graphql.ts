@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<31243ff90de901a9cc842c68ddfd1fbb>>
+ * @generated SignedSource<<d2f86e7b0f38a5734bf91e8402db312f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,10 @@ export type chatsPageSessionUpdatedSubscription$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
@@ -71,6 +75,34 @@ var v0 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
         "storageKey": null
       },
       {
@@ -179,16 +211,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "4936efb9a180acd922ff409a658dac27",
+    "cacheID": "9f2e0b59124f3d623fbb6bb2789a8cec",
     "id": null,
     "metadata": {},
     "name": "chatsPageSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "96d7430725dcf69803da27ade9ad85f5";
+(node as any).hash = "40877fdd11122141412273c35626c605";
 
 export default node;

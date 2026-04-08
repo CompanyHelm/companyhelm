@@ -21,6 +21,10 @@ class SessionsQueryTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
       auth: {
         provider: "clerk",
       },
@@ -49,6 +53,7 @@ class SessionsQueryTestHarness {
                           currentContextTokens: 32000,
                           currentModelProviderCredentialModelId: "model-row-1",
                           currentReasoningLevel: "medium",
+                          forkedFromTurnId: null,
                           inferredTitle: "Inferred older title",
                           isCompacting: false,
                           isThinking: false,
@@ -65,6 +70,7 @@ class SessionsQueryTestHarness {
                           currentContextTokens: null,
                           currentModelProviderCredentialModelId: "model-row-2",
                           currentReasoningLevel: "high",
+                          forkedFromTurnId: "turn-source-1",
                           inferredTitle: null,
                           isCompacting: true,
                           isThinking: true,
@@ -87,6 +93,38 @@ class SessionsQueryTestHarness {
                 from() {
                   return {
                     async where() {
+                      return [{
+                        id: "turn-source-1",
+                        sessionId: "session-source",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        agentId: "agent-source",
+                        id: "session-source",
+                        inferredTitle: "Original review thread",
+                        userSetTitle: null,
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
                       return [
                         {
                           id: "model-row-1",
@@ -103,7 +141,7 @@ class SessionsQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -186,6 +224,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
             agentId
             hasUnread
             currentContextTokens
+            forkedFromSessionAgentId
+            forkedFromSessionId
+            forkedFromSessionTitle
+            forkedFromTurnId
             isCompacting
             modelId
             maxContextTokens
@@ -209,6 +251,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       agentId: "agent-2",
       hasUnread: true,
       currentContextTokens: null,
+      forkedFromSessionAgentId: "agent-source",
+      forkedFromSessionId: "session-source",
+      forkedFromSessionTitle: "Original review thread",
+      forkedFromTurnId: "turn-source-1",
       isCompacting: true,
       modelId: "claude-3.7-sonnet",
       maxContextTokens: 200000,
@@ -224,6 +270,10 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       agentId: "agent-1",
       hasUnread: false,
       currentContextTokens: 32000,
+      forkedFromSessionAgentId: null,
+      forkedFromSessionId: null,
+      forkedFromSessionTitle: null,
+      forkedFromTurnId: null,
       isCompacting: false,
       modelId: "gpt-5.4",
       maxContextTokens: 200000,

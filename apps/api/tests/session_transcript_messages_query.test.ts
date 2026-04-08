@@ -43,46 +43,6 @@ class SessionTranscriptMessagesQueryTestHarness {
               return {
                 from() {
                   return {
-                    async where() {
-                      return [{
-                        forkedFromTurnId: null,
-                        id: "session-1",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 2) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [
-                        {
-                          endedAt: new Date("2026-03-24T08:03:00.000Z"),
-                          id: "turn-2",
-                          sessionId: "session-1",
-                          startedAt: new Date("2026-03-24T08:02:00.000Z"),
-                        },
-                        {
-                          endedAt: new Date("2026-03-24T08:02:00.000Z"),
-                          id: "turn-1",
-                          sessionId: "session-1",
-                          startedAt: new Date("2026-03-24T08:00:00.000Z"),
-                        },
-                      ];
-                    },
-                  };
-                },
-              };
-            }
-
-            if (selectCallCount === 3) {
-              return {
-                from() {
-                  return {
                     where() {
                       return {
                         orderBy() {
@@ -136,7 +96,7 @@ class SessionTranscriptMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 4) {
+            if (selectCallCount === 2) {
               return {
                 from() {
                   return {
@@ -201,7 +161,7 @@ class SessionTranscriptMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -433,7 +393,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
   await app.close();
 });
 
-test("GraphQL SessionTranscriptMessages query includes inherited transcript turns for forked sessions", async () => {
+test("GraphQL SessionTranscriptMessages query only returns the selected forked session transcript", async () => {
   const app = Fastify();
   const config = SessionTranscriptMessagesQueryTestHarness.createConfigMock();
   let selectCallCount = 0;
@@ -446,11 +406,27 @@ test("GraphQL SessionTranscriptMessages query includes inherited transcript turn
             return {
               from() {
                 return {
-                  async where() {
-                    return [{
-                      forkedFromTurnId: "turn-parent-1",
-                      id: "session-child",
-                    }];
+                  where() {
+                    return {
+                      orderBy() {
+                        return {
+                          async limit() {
+                            return [{
+                              id: "message-child-1",
+                              sessionId: "session-child",
+                              turnId: "turn-child-1",
+                              role: "assistant",
+                              status: "completed",
+                              toolCallId: null,
+                              toolName: null,
+                              isError: false,
+                              createdAt: new Date("2026-03-24T08:03:00.000Z"),
+                              updatedAt: new Date("2026-03-24T08:04:00.000Z"),
+                            }];
+                          },
+                        };
+                      },
+                    };
                   },
                 };
               },
@@ -462,7 +438,18 @@ test("GraphQL SessionTranscriptMessages query includes inherited transcript turn
               from() {
                 return {
                   async where() {
-                    return [];
+                    return [{
+                      arguments: null,
+                      data: null,
+                      messageId: "message-child-1",
+                      mimeType: null,
+                      structuredContent: null,
+                      text: "Only the child transcript is visible",
+                      toolCallId: null,
+                      toolName: null,
+                      type: "text",
+                      createdAt: new Date("2026-03-24T08:03:00.000Z"),
+                    }];
                   },
                 };
               },
@@ -475,113 +462,10 @@ test("GraphQL SessionTranscriptMessages query includes inherited transcript turn
                 return {
                   async where() {
                     return [{
-                      endedAt: new Date("2026-03-24T08:02:00.000Z"),
-                      id: "turn-parent-1",
-                      sessionId: "session-parent",
-                      startedAt: new Date("2026-03-24T08:00:00.000Z"),
-                    }];
-                  },
-                };
-              },
-            };
-          }
-
-          if (selectCallCount === 4) {
-            return {
-              from() {
-                return {
-                  async where() {
-                    return [{
-                      forkedFromTurnId: null,
-                      id: "session-parent",
-                    }];
-                  },
-                };
-              },
-            };
-          }
-
-          if (selectCallCount === 5) {
-            return {
-              from() {
-                return {
-                  async where() {
-                    return [{
-                      endedAt: new Date("2026-03-24T08:02:00.000Z"),
-                      id: "turn-parent-1",
-                      sessionId: "session-parent",
-                      startedAt: new Date("2026-03-24T08:00:00.000Z"),
-                    }];
-                  },
-                };
-              },
-            };
-          }
-
-          if (selectCallCount === 6) {
-            return {
-              from() {
-                return {
-                  where() {
-                    return {
-                      orderBy() {
-                        return {
-                          async limit() {
-                            return [{
-                              id: "message-parent-1",
-                              sessionId: "session-parent",
-                              turnId: "turn-parent-1",
-                              role: "assistant",
-                              status: "completed",
-                              toolCallId: null,
-                              toolName: null,
-                              isError: false,
-                              createdAt: new Date("2026-03-24T08:01:00.000Z"),
-                              updatedAt: new Date("2026-03-24T08:02:00.000Z"),
-                            }];
-                          },
-                        };
-                      },
-                    };
-                  },
-                };
-              },
-            };
-          }
-
-          if (selectCallCount === 7) {
-            return {
-              from() {
-                return {
-                  async where() {
-                    return [{
-                      arguments: null,
-                      data: null,
-                      messageId: "message-parent-1",
-                      mimeType: null,
-                      structuredContent: null,
-                      text: "Inherited answer",
-                      toolCallId: null,
-                      toolName: null,
-                      type: "text",
-                      createdAt: new Date("2026-03-24T08:01:00.000Z"),
-                    }];
-                  },
-                };
-              },
-            };
-          }
-
-          if (selectCallCount === 8) {
-            return {
-              from() {
-                return {
-                  async where() {
-                    return [{
-                      id: "turn-parent-1",
-                      sessionId: "session-parent",
-                      startedAt: new Date("2026-03-24T08:00:00.000Z"),
-                      endedAt: new Date("2026-03-24T08:02:00.000Z"),
+                      id: "turn-child-1",
+                      sessionId: "session-child",
+                      startedAt: new Date("2026-03-24T08:02:30.000Z"),
+                      endedAt: new Date("2026-03-24T08:04:00.000Z"),
                     }];
                   },
                 };
@@ -642,7 +526,7 @@ test("GraphQL SessionTranscriptMessages query includes inherited transcript turn
     },
     payload: {
       query: `
-        query SessionTranscriptMessagesInherited($sessionId: ID!, $first: Int!) {
+        query SessionTranscriptMessagesForked($sessionId: ID!, $first: Int!) {
           SessionTranscriptMessages(sessionId: $sessionId, first: $first) {
             edges {
               node {
@@ -677,20 +561,20 @@ test("GraphQL SessionTranscriptMessages query includes inherited transcript turn
   assert.deepEqual(document.data.SessionTranscriptMessages, {
     edges: [{
       node: {
-        id: "message-parent-1",
-        sessionId: "session-parent",
-        text: "Inherited answer",
-        turnId: "turn-parent-1",
+        id: "message-child-1",
+        sessionId: "session-child",
+        text: "Only the child transcript is visible",
+        turnId: "turn-child-1",
         turn: {
-          endedAt: "2026-03-24T08:02:00.000Z",
-          id: "turn-parent-1",
-          sessionId: "session-parent",
-          startedAt: "2026-03-24T08:00:00.000Z",
+          endedAt: "2026-03-24T08:04:00.000Z",
+          id: "turn-child-1",
+          sessionId: "session-child",
+          startedAt: "2026-03-24T08:02:30.000Z",
         },
       },
     }],
     pageInfo: {
-      endCursor: Buffer.from("session-message:2026-03-24T08:01:00.000Z|message-parent-1", "utf8").toString("base64url"),
+      endCursor: Buffer.from("session-message:2026-03-24T08:03:00.000Z|message-child-1", "utf8").toString("base64url"),
       hasNextPage: false,
     },
   });

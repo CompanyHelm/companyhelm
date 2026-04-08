@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
-import { inject, injectable } from "inversify";
+import { injectable } from "inversify";
 import {
   agentSessions,
   messageContents,
@@ -9,7 +9,6 @@ import {
   userSessionReads,
 } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import { SessionLineageService } from "./lineage_service.ts";
 
 type SessionRow = {
   id: string;
@@ -17,6 +16,7 @@ type SessionRow = {
   currentContextTokens: number | null;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
+  forkedFromTurnId: string | null;
   inferredTitle: string | null;
   isCompacting: boolean;
   isThinking: boolean;
@@ -46,6 +46,24 @@ type SessionTurnRow = {
   sessionId: string;
   startedAt: Date;
   endedAt: Date | null;
+};
+
+type SessionForkSourceTurnRow = {
+  id: string;
+  sessionId: string;
+};
+
+type SessionForkSourceSessionRow = {
+  agentId: string;
+  id: string;
+  inferredTitle: string | null;
+  userSetTitle: string | null;
+};
+
+type SessionForkSourceRecord = {
+  agentId: string;
+  sessionId: string;
+  title: string | null;
 };
 
 type MessageContentRow = {
@@ -81,6 +99,10 @@ export type SessionGraphqlRecord = {
   id: string;
   agentId: string;
   currentContextTokens: number | null;
+  forkedFromSessionAgentId: string | null;
+  forkedFromSessionId: string | null;
+  forkedFromSessionTitle: string | null;
+  forkedFromTurnId: string | null;
   hasUnread: boolean;
   modelProviderCredentialModelId: string | null;
   modelId: string;
@@ -187,15 +209,6 @@ function decodeSessionMessageCursor(cursor?: string | null): { createdAt: string
  */
 @injectable()
 export class SessionReadService {
-  private readonly sessionLineageService: SessionLineageService;
-
-  constructor(
-    @inject(SessionLineageService)
-    sessionLineageService: SessionLineageService = new SessionLineageService(),
-  ) {
-    this.sessionLineageService = sessionLineageService;
-  }
-
   async listSessions(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -210,6 +223,7 @@ export class SessionReadService {
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          forkedFromTurnId: agentSessions.forkedFromTurnId,
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
@@ -222,6 +236,7 @@ export class SessionReadService {
         })
         .from(agentSessions)
         .where(eq(agentSessions.companyId, companyId)) as SessionRow[];
+      const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, sessionRows);
       const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(
         selectableDatabase,
         companyId,
@@ -238,6 +253,7 @@ export class SessionReadService {
         .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
         .map((sessionRow) => this.serializeSession(
           sessionRow,
+          forkSourceBySessionId,
           modelOptionIdBySessionKey,
           readSessionIds.has(sessionRow.id),
         ));
@@ -259,6 +275,7 @@ export class SessionReadService {
           currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          forkedFromTurnId: agentSessions.forkedFromTurnId,
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
@@ -285,8 +302,9 @@ export class SessionReadService {
         companyId,
         [sessionRow],
       );
+      const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, [sessionRow]);
       const readSessionIds = await this.loadReadSessionIds(selectableDatabase, companyId, userId, [sessionId]);
-      return this.serializeSession(sessionRow, modelOptionIdBySessionKey, readSessionIds.has(sessionId));
+      return this.serializeSession(sessionRow, forkSourceBySessionId, modelOptionIdBySessionKey, readSessionIds.has(sessionId));
     });
   }
 
@@ -307,26 +325,11 @@ export class SessionReadService {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const pageSize = normalizeTranscriptPageSize(first);
-      const visibleTurnIds = await this.sessionLineageService.listVisibleTurnIds(
-        selectableDatabase,
-        companyId,
-        sessionId,
-      );
-      if (visibleTurnIds.length === 0) {
-        return {
-          edges: [],
-          pageInfo: {
-            hasNextPage: false,
-            endCursor: null,
-          },
-        };
-      }
-
       const cursor = decodeSessionMessageCursor(after);
       const transcriptFilter = cursor
         ? and(
           eq(sessionMessages.companyId, companyId),
-          inArray(sessionMessages.turnId, visibleTurnIds),
+          eq(sessionMessages.sessionId, sessionId),
           or(
             lt(sessionMessages.createdAt, new Date(cursor.createdAt)),
             and(
@@ -337,7 +340,7 @@ export class SessionReadService {
         )
         : and(
           eq(sessionMessages.companyId, companyId),
-          inArray(sessionMessages.turnId, visibleTurnIds),
+          eq(sessionMessages.sessionId, sessionId),
         );
 
       const persistedMessages = await selectableDatabase
@@ -617,8 +620,90 @@ export class SessionReadService {
     return new Set(readRows.map((readRow) => readRow.sessionId));
   }
 
+  /**
+   * Resolves each forked session's immediate source session so the web app can render a lightweight
+   * banner linking back to the source conversation without replaying ancestor transcript rows.
+   */
+  private async loadForkSourcesBySessionId(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionRows: ReadonlyArray<SessionRow>,
+  ): Promise<Map<string, SessionForkSourceRecord>> {
+    const forkedSessionRows = sessionRows.filter((sessionRow) => typeof sessionRow.forkedFromTurnId === "string");
+    if (forkedSessionRows.length === 0) {
+      return new Map();
+    }
+
+    const forkSourceTurnIds = [...new Set(
+      forkedSessionRows
+        .map((sessionRow) => sessionRow.forkedFromTurnId)
+        .filter((turnId) => typeof turnId === "string"),
+    )];
+    if (forkSourceTurnIds.length === 0) {
+      return new Map();
+    }
+
+    const forkSourceTurnRows = await selectableDatabase
+      .select({
+        id: sessionTurns.id,
+        sessionId: sessionTurns.sessionId,
+      })
+      .from(sessionTurns)
+      .where(and(
+        eq(sessionTurns.companyId, companyId),
+        inArray(sessionTurns.id, forkSourceTurnIds),
+      )) as SessionForkSourceTurnRow[];
+    if (forkSourceTurnRows.length === 0) {
+      return new Map();
+    }
+
+    const sourceSessionIds = [...new Set(forkSourceTurnRows.map((turnRow) => turnRow.sessionId))];
+    const sourceSessionRows = await selectableDatabase
+      .select({
+        agentId: agentSessions.agentId,
+        id: agentSessions.id,
+        inferredTitle: agentSessions.inferredTitle,
+        userSetTitle: agentSessions.userSetTitle,
+      })
+      .from(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        inArray(agentSessions.id, sourceSessionIds),
+      )) as SessionForkSourceSessionRow[];
+
+    const forkSourceTurnById = new Map(forkSourceTurnRows.map((turnRow) => [turnRow.id, turnRow]));
+    const sourceSessionById = new Map(sourceSessionRows.map((sessionRow) => [sessionRow.id, sessionRow]));
+    const forkSourceBySessionId = new Map<string, SessionForkSourceRecord>();
+
+    for (const sessionRow of forkedSessionRows) {
+      const forkSourceTurnId = sessionRow.forkedFromTurnId;
+      if (!forkSourceTurnId) {
+        continue;
+      }
+
+      const forkSourceTurn = forkSourceTurnById.get(forkSourceTurnId);
+      if (!forkSourceTurn) {
+        continue;
+      }
+
+      const sourceSession = sourceSessionById.get(forkSourceTurn.sessionId);
+      if (!sourceSession) {
+        continue;
+      }
+
+      forkSourceBySessionId.set(sessionRow.id, {
+        agentId: sourceSession.agentId,
+        sessionId: sourceSession.id,
+        title: sourceSession.userSetTitle ?? sourceSession.inferredTitle ?? null,
+      });
+    }
+
+    return forkSourceBySessionId;
+  }
+
   private serializeSession(
     sessionRow: SessionRow,
+    forkSourceBySessionId: Map<string, SessionForkSourceRecord>,
     modelIdByModelRecordId: Map<string, string>,
     isRead: boolean,
   ): SessionGraphqlRecord {
@@ -626,11 +711,16 @@ export class SessionReadService {
     if (!modelId) {
       throw new Error("Session model not found.");
     }
+    const forkSource = forkSourceBySessionId.get(sessionRow.id) ?? null;
 
     return {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
       currentContextTokens: sessionRow.currentContextTokens,
+      forkedFromSessionAgentId: forkSource?.agentId ?? null,
+      forkedFromSessionId: forkSource?.sessionId ?? null,
+      forkedFromSessionTitle: forkSource?.title ?? null,
+      forkedFromTurnId: sessionRow.forkedFromTurnId,
       hasUnread: !isRead,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,

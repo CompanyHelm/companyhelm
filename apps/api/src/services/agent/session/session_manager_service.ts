@@ -13,7 +13,6 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { SessionContextCheckpointService } from "./context_checkpoint_service.ts";
-import { SessionLineageService } from "./lineage_service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueueService } from "./process/queue.ts";
 import {
@@ -32,7 +31,6 @@ type ExistingSessionRow = {
   agentId: string;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
-  forkedFromTurnId?: string | null;
   id: string;
   inferredTitle?: string | null;
   status: string;
@@ -140,7 +138,6 @@ export class SessionManagerService {
   private readonly sessionProcessQueueService: SessionProcessQueueService;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
   private readonly sessionContextCheckpointService: SessionContextCheckpointService;
-  private readonly sessionLineageService: SessionLineageService;
   private readonly sessionQueuedMessageService: SessionQueuedMessageService;
 
   constructor(
@@ -152,8 +149,6 @@ export class SessionManagerService {
     @inject(SessionQueuedMessageService) sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
     @inject(SessionContextCheckpointService)
     sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
-    @inject(SessionLineageService)
-    sessionLineageService: SessionLineageService = new SessionLineageService(),
   ) {
     this.logger = logger.child({
       component: "session_manager_service",
@@ -164,7 +159,6 @@ export class SessionManagerService {
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
     this.sessionQueuedMessageService = sessionQueuedMessageService;
     this.sessionContextCheckpointService = sessionContextCheckpointService;
-    this.sessionLineageService = sessionLineageService;
   }
 
   async createSession(
@@ -462,7 +456,6 @@ export class SessionManagerService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
-          forkedFromTurnId: agentSessions.forkedFromTurnId,
           id: agentSessions.id,
           inferredTitle: agentSessions.inferredTitle,
           status: agentSessions.status,
@@ -477,21 +470,12 @@ export class SessionManagerService {
         throw new Error("Source session not found.");
       }
 
-      const visibleTurnIds = await this.sessionLineageService.listVisibleTurnIds(
-        selectableDatabase,
-        companyId,
-        sourceSession.id,
-      );
-      if (!visibleTurnIds.includes(forkedFromTurnId)) {
-        throw new Error("Fork source turn is unavailable.");
-      }
-
       const checkpoint = await this.sessionContextCheckpointService.getCheckpointForTurn(
         selectableDatabase,
         companyId,
         forkedFromTurnId,
       );
-      if (!checkpoint) {
+      if (!checkpoint || checkpoint.sessionId !== sourceSession.id) {
         throw new Error("Fork source turn is unavailable.");
       }
       checkpointSessionId = checkpoint.sessionId;

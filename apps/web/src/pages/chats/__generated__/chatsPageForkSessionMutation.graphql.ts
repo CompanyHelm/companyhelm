@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ee5021ddaa4d191183ee0feaafab3e26>>
+ * @generated SignedSource<<c94e943a4da136cc44bb29c5bc7275e8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,10 @@ export type chatsPageForkSessionMutation$data = {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
@@ -90,6 +94,34 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
         "storageKey": null
       },
       {
@@ -198,16 +230,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "cf69f7c59de6d18c16be7da4c598d81d",
+    "cacheID": "e93047acb75df5f00b92bd3ad90aaa4e",
     "id": null,
     "metadata": {},
     "name": "chatsPageForkSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageForkSessionMutation(\n  $input: ForkSessionInput!\n) {\n  ForkSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageForkSessionMutation(\n  $input: ForkSessionInput!\n) {\n  ForkSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "01e3546bc84f228e7340a2c9e8d8015e";
+(node as any).hash = "1ebfc49422d719aac033ff61ff7e9d53";
 
 export default node;

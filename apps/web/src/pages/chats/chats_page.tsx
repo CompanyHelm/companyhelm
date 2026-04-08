@@ -102,6 +102,10 @@ const chatsPageQueryNode = graphql`
       agentId
       hasUnread
       currentContextTokens
+      forkedFromSessionAgentId
+      forkedFromSessionId
+      forkedFromSessionTitle
+      forkedFromTurnId
       isCompacting
       maxContextTokens
       modelProviderCredentialModelId
@@ -262,6 +266,10 @@ const chatsPageForkSessionMutationNode = graphql`
       agentId
       hasUnread
       currentContextTokens
+      forkedFromSessionAgentId
+      forkedFromSessionId
+      forkedFromSessionTitle
+      forkedFromTurnId
       isCompacting
       maxContextTokens
       modelProviderCredentialModelId
@@ -419,6 +427,10 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
       agentId
       hasUnread
       currentContextTokens
+      forkedFromSessionAgentId
+      forkedFromSessionId
+      forkedFromSessionTitle
+      forkedFromTurnId
       isCompacting
       maxContextTokens
       modelProviderCredentialModelId
@@ -1752,6 +1764,52 @@ function TranscriptTurnSummaryRow({
   );
 }
 
+function ForkedSessionBanner({
+  session,
+}: {
+  session: SessionRecord;
+}) {
+  if (!session.forkedFromTurnId) {
+    return null;
+  }
+
+  const sourceSessionTitle = session.forkedFromSessionTitle || "the original session";
+  const sourceSessionSearch = session.forkedFromSessionAgentId && session.forkedFromSessionId
+    ? {
+        agentId: session.forkedFromSessionAgentId,
+        sessionId: session.forkedFromSessionId,
+      }
+    : null;
+
+  return (
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} pr-4`}>
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-2.5">
+        <div className="flex items-start gap-2">
+          <GitForkIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-foreground/70" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">Forked conversation</p>
+            <p className="mt-1 text-xs/relaxed text-muted-foreground">
+              This conversation was forked from{" "}
+              {sourceSessionSearch ? (
+                <Link
+                  className="font-medium text-foreground underline underline-offset-4 transition hover:text-primary"
+                  search={sourceSessionSearch}
+                  to="/chats"
+                >
+                  {sourceSessionTitle}
+                </Link>
+              ) : (
+                <span className="font-medium text-foreground">{sourceSessionTitle}</span>
+              )}
+              .
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChatsTranscript({
   forkingTurnId,
   session,
@@ -1790,16 +1848,23 @@ function ChatsTranscript({
 
   if (!hasVisibleTranscriptContent && !showTranscriptLoader) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
-          </p>
-          <p className="mt-2 text-xs/relaxed text-muted-foreground">
-            {isRunningSession(session)
-              ? "The session is running, but the user and assistant transcript has not been persisted yet."
-              : `No transcript messages have been persisted for ${fallbackTitle}.`}
-          </p>
+      <div
+        ref={transcriptScrollRef}
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]"
+        onScroll={onScroll}
+      >
+        <ForkedSessionBanner session={session} />
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
+            </p>
+            <p className="mt-2 text-xs/relaxed text-muted-foreground">
+              {isRunningSession(session)
+                ? "The session is running, but the user and assistant transcript has not been persisted yet."
+                : `No transcript messages have been persisted for ${fallbackTitle}.`}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -1811,6 +1876,7 @@ function ChatsTranscript({
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]"
       onScroll={onScroll}
     >
+      <ForkedSessionBanner session={session} />
       {showTranscriptLoader ? (
         <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex h-9 shrink-0 items-end pt-2`}>
           <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />

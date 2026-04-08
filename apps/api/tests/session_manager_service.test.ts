@@ -1507,7 +1507,7 @@ test("SessionManagerService prompt rejects archived sessions without queueing wo
   assert.deepEqual(wakeCalls, []);
 });
 
-test("SessionManagerService forkSession creates a stopped branch from an inherited turn and copies session secrets", async () => {
+test("SessionManagerService forkSession creates a stopped branch from the selected turn and copies session secrets", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   const insertedSessionValues: Array<Record<string, unknown>> = [];
@@ -1527,7 +1527,6 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
                   agentId: "agent-1",
                   currentModelProviderCredentialModelId: "model-row-1",
                   currentReasoningLevel: "high",
-                  forkedFromTurnId: "turn-parent-1",
                   id: "session-child",
                   inferredTitle: "Review the release plan",
                   status: "stopped",
@@ -1545,8 +1544,17 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
             return {
               async where() {
                 return [{
-                  forkedFromTurnId: "turn-parent-1",
-                  id: "session-child",
+                  companyId: "company-1",
+                  contextMessages: [{
+                    content: "Child branch context",
+                    role: "assistant",
+                    timestamp: 1712538600000,
+                  }],
+                  createdAt: new Date("2026-04-07T19:10:00.000Z"),
+                  currentContextTokens: 2048,
+                  maxContextTokens: 200000,
+                  sessionId: "session-child",
+                  turnId: "turn-child-1",
                 }];
               },
             };
@@ -1555,91 +1563,6 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
       }
 
       if (selectCallCount === 3) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 4) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  endedAt: new Date("2026-04-07T19:10:00.000Z"),
-                  id: "turn-parent-1",
-                  sessionId: "session-parent",
-                  startedAt: new Date("2026-04-07T19:00:00.000Z"),
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 5) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  forkedFromTurnId: null,
-                  id: "session-parent",
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 6) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  endedAt: new Date("2026-04-07T19:10:00.000Z"),
-                  id: "turn-parent-1",
-                  sessionId: "session-parent",
-                  startedAt: new Date("2026-04-07T19:00:00.000Z"),
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 7) {
-        return {
-          from() {
-            return {
-              async where() {
-                return [{
-                  companyId: "company-1",
-                  contextMessages: [{
-                    content: "Parent branch context",
-                    role: "assistant",
-                    timestamp: 1712538600000,
-                  }],
-                  createdAt: new Date("2026-04-07T19:10:00.000Z"),
-                  currentContextTokens: 2048,
-                  maxContextTokens: 200000,
-                  sessionId: "session-parent",
-                  turnId: "turn-parent-1",
-                }];
-              },
-            };
-          },
-        };
-      }
-
-      if (selectCallCount === 8) {
         return {
           from() {
             return {
@@ -1656,7 +1579,7 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
         };
       }
 
-      if (selectCallCount === 9) {
+      if (selectCallCount === 4) {
         return {
           from() {
             return {
@@ -1754,7 +1677,7 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "session-child",
-    "turn-parent-1",
+    "turn-child-1",
     "user-123",
   );
 
@@ -1762,11 +1685,11 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
   assert.equal(sessionRecord.currentModelId, "gpt-5.4");
   assert.equal(insertedSessionValues.length, 1);
   assert.equal(insertedSessionValues[0]?.companyId, "company-1");
-  assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-parent-1");
+  assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-child-1");
   assert.equal(insertedSessionValues[0]?.status, "stopped");
   assert.equal(insertedSessionValues[0]?.inferredTitle, "Fork of Review the release plan");
   assert.deepEqual(insertedSessionValues[0]?.context_messages, [{
-    content: "Parent branch context",
+    content: "Child branch context",
     role: "assistant",
     timestamp: 1712538600000,
   }]);
@@ -1789,9 +1712,9 @@ test("SessionManagerService forkSession creates a stopped branch from an inherit
     },
     message: "forked agent session",
     payload: {
-      checkpointSessionId: "session-parent",
+      checkpointSessionId: "session-child",
       companyId: "company-1",
-      forkedFromTurnId: "turn-parent-1",
+      forkedFromTurnId: "turn-child-1",
       sessionId: "session-fork-1",
       sourceSessionId: "session-child",
     },
