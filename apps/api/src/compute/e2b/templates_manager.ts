@@ -23,6 +23,13 @@ export class E2bTemplatesManager {
 
     return [
       new E2bTemplateBuild({
+        cpuCount: 8,
+        memoryMB: 8192,
+        computerUse: false,
+        template: desktopTemplate,
+        templateId: "large",
+      }),
+      new E2bTemplateBuild({
         cpuCount: 2,
         memoryMB: 4096,
         computerUse: true,
