@@ -1,5 +1,5 @@
 import { Sandbox as DesktopSandbox } from "@e2b/desktop";
-import { Sandbox as E2bSandbox, SandboxNotFoundError } from "e2b";
+import { CommandExitError, Sandbox as E2bSandbox, SandboxNotFoundError } from "e2b";
 import { inject, injectable } from "inversify";
 import { E2bTemplateBuild } from "../../../../compute/e2b/template_build.ts";
 import { E2bTemplatesManager } from "../../../../compute/e2b/templates_manager.ts";
@@ -16,6 +16,10 @@ import { AgentEnvironmentShellInterface } from "../shell_interface.ts";
 import { AgentComputeE2bShell } from "./e2b_shell.ts";
 
 const E2B_SANDBOX_TIMEOUT_MS = 60 * 60 * 1000;
+const E2B_DESKTOP_DISPLAY = ":0";
+const E2B_DESKTOP_DPI = 96;
+const E2B_DESKTOP_RESOLUTION = [1024, 768] as const;
+const E2B_DESKTOP_STREAM_PORT = 6080;
 
 /**
  * Bridges the shared compute-provider contract onto E2B sandboxes. The environment services decide
@@ -249,13 +253,35 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       throw new Error("Compute provider definition does not belong to E2B.");
     }
 
-    const sandbox = await DesktopSandbox.connect(environment.providerEnvironmentId, {
-      apiKey: definition.apiKey,
-      timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
-    });
-    await sandbox.stream.start();
+    try {
+      const sandbox = await DesktopSandbox.connect(environment.providerEnvironmentId, {
+        apiKey: definition.apiKey,
+        timeoutMs: E2B_SANDBOX_TIMEOUT_MS,
+      });
+      await this.ensureDesktopRuntimeStarted(sandbox);
 
-    return sandbox.stream.getUrl();
+      try {
+        await sandbox.stream.start();
+        return sandbox.stream.getUrl();
+      } catch (error) {
+        if (error instanceof Error && error.message === "Stream is already running") {
+          return this.buildStreamUrl(sandbox);
+        }
+
+        throw error;
+      }
+    } catch (error) {
+      if (this.isDesktopBinaryMissingError(error)) {
+        throw new Error(
+          `Environment ${environment.id} does not support desktop streaming. Rebuild the E2B desktop template and recreate the environment.`,
+          {
+            cause: error,
+          },
+        );
+      }
+
+      throw error;
+    }
   }
 
   async createShell(
@@ -308,6 +334,50 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       || errorRecord.code === 404
       || errorRecord.code === "404"
       || errorRecord.message?.toLowerCase().includes("not found") === true;
+  }
+
+  /**
+   * The E2B desktop SDK only runs its X server bootstrap during create(). Existing environments
+   * therefore need an explicit display check so reconnecting to a resumed sandbox still produces
+   * a usable desktop before we ask the SDK to expose the VNC stream.
+   */
+  private async ensureDesktopRuntimeStarted(sandbox: DesktopSandbox): Promise<void> {
+    const display = sandbox.display || E2B_DESKTOP_DISPLAY;
+    const displayReady = await sandbox.waitAndVerify(
+      `xdpyinfo -display ${display}`,
+      (result) => result.exitCode === 0,
+      1,
+      0.25,
+    );
+    if (displayReady) {
+      return;
+    }
+
+    await (
+      sandbox as DesktopSandbox & {
+        _start(
+          display: string,
+          opts?: {
+            dpi?: number;
+            resolution?: readonly [number, number];
+          },
+        ): Promise<void>;
+      }
+    )._start(display, {
+      dpi: E2B_DESKTOP_DPI,
+      resolution: E2B_DESKTOP_RESOLUTION,
+    });
+  }
+
+  private buildStreamUrl(sandbox: DesktopSandbox): string {
+    const url = new URL(`https://${sandbox.getHost(E2B_DESKTOP_STREAM_PORT)}/vnc.html`);
+    url.searchParams.set("autoconnect", "true");
+    url.searchParams.set("resize", "scale");
+    return url.toString();
+  }
+
+  private isDesktopBinaryMissingError(error: unknown): boolean {
+    return error instanceof CommandExitError && error.result.exitCode === 127;
   }
 
   private requireConfiguredTemplate(templateId: string): E2bTemplateBuild {
