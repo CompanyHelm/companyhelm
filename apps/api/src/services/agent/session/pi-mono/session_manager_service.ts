@@ -50,8 +50,10 @@ import { AgentEnvironmentWorkspacePath } from "../../environment/workspace_path.
 import { SessionContextCheckpointService } from "../context_checkpoint_service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
+import { E2bTemplatesManager } from "../../../../compute/e2b/templates_manager.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import { ExaWebClient } from "../../../web_search/exa_client.ts";
+import { AgentToolProviderInterface } from "../../tools/provider_interface.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -112,6 +114,7 @@ export class PiMonoSessionManagerService {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly modelProviderService: ModelProviderService;
   private readonly appModelRegistry: ModelRegistry;
+  private readonly e2bTemplatesManager: E2bTemplatesManager;
 
   constructor(
     @inject(ApiLogger) logger: ApiLogger,
@@ -146,6 +149,7 @@ export class PiMonoSessionManagerService {
     this.modelProviderService = modelProviderService;
     this.appModelRegistry = appModelRegistry;
     this.sessionContextCheckpointService = sessionContextCheckpointService;
+    this.e2bTemplatesManager = new E2bTemplatesManager();
   }
 
   async ensureSession(
@@ -219,8 +223,15 @@ export class PiMonoSessionManagerService {
       new TaskService(),
     );
     const webToolService = new AgentWebToolService(this.exaWebClient);
+    const environmentToolProviders = await this.resolveEnvironmentToolProviders(
+      transactionProvider,
+      runtimeConfig.companyId,
+      runtimeConfig.agentId,
+      promptScope,
+    );
     const agentToolsService = new AgentToolsService(promptScope, [
       new AgentTerminalToolProvider(promptScope, this.logger),
+      ...environmentToolProviders,
       new AgentSecretToolProvider(secretToolService),
       new AgentCompanyDirectoryToolProvider(companyDirectoryToolService),
       new AgentManagementToolProvider(agentManagementToolService),
@@ -391,6 +402,33 @@ export class PiMonoSessionManagerService {
     }
 
     return runtime;
+  }
+
+  private async resolveEnvironmentToolProviders(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+    promptScope: AgentEnvironmentPromptScope,
+  ): Promise<AgentToolProviderInterface[]> {
+    const selection = await this.templateService.getAgentTemplateSelection(
+      transactionProvider,
+      companyId,
+      agentId,
+    );
+    if (selection.provider !== "e2b") {
+      return [];
+    }
+
+    const templateBuild = this.e2bTemplatesManager.findBuild(selection.template.templateId);
+    if (!templateBuild) {
+      throw new Error(`E2B template build not found for template "${selection.template.templateId}".`);
+    }
+
+    return templateBuild.getTools({
+      computeProviderDefinitionService: this.computeProviderDefinitionService,
+      promptScope,
+      transactionProvider,
+    });
   }
 
   private resolveThinkingLevel(reasoningLevel?: string | null): ThinkingLevel | undefined {

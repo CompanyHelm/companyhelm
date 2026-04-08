@@ -1,3 +1,5 @@
+import type { AgentEnvironmentRecord } from "./provider_interface.ts";
+
 /**
  * Describes one terminal session that is currently reachable inside a leased agent environment.
  * Tool callers use these records to decide whether to reuse an existing shell or create a new one
@@ -64,6 +66,12 @@ export type AgentEnvironmentTerminalOutputPage = {
  * kept sticky for later follow-up turns.
  */
 export abstract class AgentEnvironmentInterface {
+  /**
+   * Returns the durable environment catalog row backing the current lease so provider-specific
+   * tools can inspect metadata such as provider, template id, and provider environment id.
+   */
+  abstract getRecord(): AgentEnvironmentRecord;
+
   /**
    * Executes a shell command inside the leased environment, optionally reusing an existing session
    * when the caller provides a previous session id.

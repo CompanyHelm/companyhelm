@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { AgentEnvironmentTemplateService } from "../src/services/agent/environment/template_service.ts";
 
-test("AgentEnvironmentTemplateService resolves the persisted agent template against provider templates", async () => {
+test("AgentEnvironmentTemplateService resolves the persisted agent template selection against provider templates", async () => {
   const service = new AgentEnvironmentTemplateService({
-    get(provider) {
+    get(provider: string) {
       assert.equal(provider, "e2b");
       return {
         async getTemplates() {
@@ -21,19 +21,25 @@ test("AgentEnvironmentTemplateService resolves the persisted agent template agai
     },
   } as never);
 
-  const template = await service.getAgentTemplate(
+  const selection = await service.getAgentTemplateSelection(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
-          select() {
+          select(selection: Record<string, unknown>) {
             return {
               from() {
                 return {
                   async where() {
+                    if ("defaultComputeProviderDefinitionId" in selection) {
+                      return [{
+                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+                        defaultEnvironmentTemplateId: "e2b/desktop",
+                        id: "agent-1",
+                      }];
+                    }
+
                     return [{
-                      defaultComputeProviderDefinitionId: "compute-provider-definition-1",
-                      defaultEnvironmentTemplateId: "e2b/desktop",
-                      id: "agent-1",
+                      id: "compute-provider-definition-1",
                       provider: "e2b",
                     }];
                   },
@@ -48,12 +54,16 @@ test("AgentEnvironmentTemplateService resolves the persisted agent template agai
     "agent-1",
   );
 
-  assert.deepEqual(template, {
-    computerUse: true,
-    cpuCount: 4,
-    diskSpaceGb: 20,
-    memoryGb: 8,
-    name: "Desktop",
-    templateId: "e2b/desktop",
+  assert.deepEqual(selection, {
+    provider: "e2b",
+    providerDefinitionId: "compute-provider-definition-1",
+    template: {
+      computerUse: true,
+      cpuCount: 4,
+      diskSpaceGb: 20,
+      memoryGb: 8,
+      name: "Desktop",
+      templateId: "e2b/desktop",
+    },
   });
 });

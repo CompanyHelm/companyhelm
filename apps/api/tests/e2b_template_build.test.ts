@@ -63,3 +63,59 @@ test("E2bTemplateBuild exposes the local environment template metadata", () => {
   });
   assert.equal(build.resolveTemplateReference("realequityapps/"), "realequityapps/medium");
 });
+
+test("E2bTemplateBuild exposes provider-specific computer-use tools only for computer-use templates", () => {
+  const mediumBuild = new E2bTemplateBuild({
+    cpuCount: 2,
+    memoryMB: 4096,
+    computerUse: true,
+    template: Template().fromBaseImage(),
+    templateId: "medium",
+  });
+  const smallBuild = new E2bTemplateBuild({
+    cpuCount: 1,
+    memoryMB: 2048,
+    computerUse: false,
+    template: Template().fromBaseImage(),
+    templateId: "small",
+  });
+
+  const mediumProviders = mediumBuild.getTools({
+    computeProviderDefinitionService: {} as never,
+    promptScope: {} as never,
+    transactionProvider: {} as never,
+  });
+  const smallProviders = smallBuild.getTools({
+    computeProviderDefinitionService: {} as never,
+    promptScope: {} as never,
+    transactionProvider: {} as never,
+  });
+
+  assert.deepEqual(
+    mediumProviders[0]?.createToolDefinitions().map((tool) => tool.name),
+    [
+      "computer_screenshot",
+      "computer_get_screen_size",
+      "computer_get_cursor_position",
+      "computer_move_mouse",
+      "computer_left_click",
+      "computer_double_click",
+      "computer_right_click",
+      "computer_middle_click",
+      "computer_mouse_press",
+      "computer_mouse_release",
+      "computer_drag",
+      "computer_scroll",
+      "computer_write",
+      "computer_press",
+      "computer_wait",
+      "computer_wait_and_verify",
+      "computer_open",
+      "computer_launch",
+      "computer_get_current_window_id",
+      "computer_get_application_windows",
+      "computer_get_window_title",
+    ],
+  );
+  assert.deepEqual(smallProviders, []);
+});

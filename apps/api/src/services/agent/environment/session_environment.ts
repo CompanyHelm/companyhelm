@@ -7,6 +7,7 @@ import type {
 } from "../compute/environment_interface.ts";
 import { AgentEnvironmentInterface as AgentEnvironmentInterfaceClass } from "../compute/environment_interface.ts";
 import { AgentEnvironmentPtyInterface } from "../compute/pty_interface.ts";
+import type { AgentEnvironmentRecord } from "../compute/provider_interface.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 import { SecretService } from "../../secrets/service.ts";
@@ -18,6 +19,7 @@ import { SecretService } from "../../secrets/service.ts";
 export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass implements AgentEnvironmentInterface {
   private static readonly HEARTBEAT_INTERVAL_MILLISECONDS = 60 * 1000;
 
+  private readonly environment: AgentEnvironmentRecord;
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly companyId: string;
   private readonly leaseId: string;
@@ -33,6 +35,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    environment: AgentEnvironmentRecord,
     leaseService: AgentEnvironmentLeaseService,
     secretService: SecretService,
     pty: AgentEnvironmentPtyInterface,
@@ -43,6 +46,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     this.transactionProvider = transactionProvider;
     this.companyId = companyId;
     this.sessionId = sessionId;
+    this.environment = environment;
     this.leaseId = leaseId;
     this.leaseOwnerToken = leaseOwnerToken;
     this.leaseService = leaseService;
@@ -53,6 +57,10 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
         .catch(() => undefined);
     }, AgentSessionEnvironment.HEARTBEAT_INTERVAL_MILLISECONDS);
     this.heartbeatHandle.unref?.();
+  }
+
+  getRecord(): AgentEnvironmentRecord {
+    return this.environment;
   }
 
   async executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult> {

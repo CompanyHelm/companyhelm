@@ -16,6 +16,12 @@ type ComputeProviderDefinitionRecord = {
   provider: ComputeProvider;
 };
 
+export type AgentEnvironmentTemplateSelection = {
+  provider: ComputeProvider;
+  providerDefinitionId: string;
+  template: AgentEnvironmentTemplate;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -82,16 +88,36 @@ export class AgentEnvironmentTemplateService {
     companyId: string,
     agentId: string,
   ): Promise<AgentEnvironmentTemplate> {
+    const selection = await this.getAgentTemplateSelection(transactionProvider, companyId, agentId);
+    return selection.template;
+  }
+
+  async getAgentTemplateSelection(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+  ): Promise<AgentEnvironmentTemplateSelection> {
     const agent = await this.requireAgent(transactionProvider, companyId, agentId);
     if (!agent.defaultComputeProviderDefinitionId) {
       throw new Error("Agent environment provider is required.");
     }
 
-    return this.resolveTemplateForProvider(transactionProvider, {
+    const template = await this.resolveTemplateForProvider(transactionProvider, {
       companyId,
       providerDefinitionId: agent.defaultComputeProviderDefinitionId,
       templateId: agent.defaultEnvironmentTemplateId,
     });
+    const providerDefinition = await this.requireProviderDefinition(
+      transactionProvider,
+      companyId,
+      agent.defaultComputeProviderDefinitionId,
+    );
+
+    return {
+      provider: providerDefinition.provider,
+      providerDefinitionId: providerDefinition.id,
+      template,
+    };
   }
 
   private async requireAgent(

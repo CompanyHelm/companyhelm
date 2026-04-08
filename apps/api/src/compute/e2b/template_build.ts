@@ -1,5 +1,12 @@
 import { Template, type BuildInfo, type TemplateClass, defaultBuildLogger } from "e2b";
+import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import type { AgentEnvironmentTemplate } from "../../services/agent/compute/provider_interface.ts";
+import { AgentComputeE2bComputerUseToolProvider } from "./tools/computer-use/provider.ts";
+import { AgentComputeE2bComputerUseToolService } from "./tools/computer-use/service.ts";
+import { AgentEnvironmentPromptScope } from "../../services/agent/environment/prompt_scope.ts";
+import { AgentComputeE2bDesktopSandboxService } from "../../services/agent/compute/e2b/desktop_sandbox_service.ts";
+import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
+import type { AgentToolProviderInterface } from "../../services/agent/tools/provider_interface.ts";
 
 /**
  * Encapsulates one CompanyHelm-managed E2B template definition and submits builds with the
@@ -50,6 +57,30 @@ export class E2bTemplateBuild {
       name: this.templateId,
       templateId: this.templateId,
     };
+  }
+
+  /**
+   * Builds the provider-specific tool providers that should be injected when a PI Mono session is
+   * created for this template. Non-computer-use templates contribute no extra tools.
+   */
+  getTools(input: {
+    computeProviderDefinitionService: ComputeProviderDefinitionService;
+    promptScope: AgentEnvironmentPromptScope;
+    transactionProvider: TransactionProviderInterface;
+  }): AgentToolProviderInterface[] {
+    if (!this.computerUse) {
+      return [];
+    }
+
+    return [
+      new AgentComputeE2bComputerUseToolProvider(
+        new AgentComputeE2bComputerUseToolService(
+          input.transactionProvider,
+          input.promptScope,
+          new AgentComputeE2bDesktopSandboxService(input.computeProviderDefinitionService),
+        ),
+      ),
+    ];
   }
 
   async build(apiKey: string, templatePrefix: string): Promise<BuildInfo> {

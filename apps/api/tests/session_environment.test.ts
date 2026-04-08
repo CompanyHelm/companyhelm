@@ -10,6 +10,24 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
     "company-123",
     "session-1",
     {
+      agentId: "agent-1",
+      companyId: "company-123",
+      cpuCount: 2,
+      createdAt: new Date(),
+      diskSpaceGb: 20,
+      displayName: null,
+      id: "environment-1",
+      lastSeenAt: null,
+      memoryGb: 4,
+      metadata: {},
+      platform: "linux",
+      provider: "e2b",
+      providerDefinitionId: "compute-provider-definition-1",
+      providerEnvironmentId: "sandbox-1",
+      templateId: "medium",
+      updatedAt: new Date(),
+    },
+    {
       async markLeaseIdle() {
         return undefined;
       },
@@ -18,7 +36,11 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
       },
     } as never,
     {
-      async resolveSessionEnvironmentVariables(_transactionProvider, companyId: string, sessionId: string) {
+      async resolveSessionEnvironmentVariables(
+        _transactionProvider: unknown,
+        companyId: string,
+        sessionId: string,
+      ) {
         assert.equal(companyId, "company-123");
         assert.equal(sessionId, "session-1");
 
@@ -35,7 +57,7 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
       async dispose() {
         return undefined;
       },
-      async executeCommand(input) {
+      async executeCommand(input: Record<string, unknown>) {
         executionInputs.push(input as unknown as Record<string, unknown>);
         return {
           completed: true,

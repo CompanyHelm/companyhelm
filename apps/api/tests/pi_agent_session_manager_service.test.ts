@@ -88,6 +88,93 @@ const logger = {
   },
 } as never;
 
+const baseToolNames = [
+  "list_pty_sessions",
+  "execute_command",
+  "apply_patch",
+  "send_pty_input",
+  "read_pty_output",
+  "resize_pty",
+  "kill_session",
+  "close_session",
+  "list_assigned_secrets",
+  "list_available_secrets",
+  "list_company_members",
+  "list_company_agents",
+  "list_agents",
+  "create_agent",
+  "update_agent",
+  "list_github_installations",
+  "gh_exec",
+  "web_search",
+  "web_fetch",
+  "ask_human_question",
+  "send_agent_message",
+  "list_tasks",
+  "list_assigned_tasks",
+  "create_task",
+  "update_task_status",
+  "list_artifacts",
+  "get_artifact",
+  "create_markdown_artifact",
+  "create_external_link_artifact",
+  "create_pull_request_artifact",
+  "update_artifact_metadata",
+  "update_markdown_artifact",
+  "update_external_link_artifact",
+  "archive_artifact",
+] as const;
+
+const computerUseToolNames = [
+  "computer_screenshot",
+  "computer_get_screen_size",
+  "computer_get_cursor_position",
+  "computer_move_mouse",
+  "computer_left_click",
+  "computer_double_click",
+  "computer_right_click",
+  "computer_middle_click",
+  "computer_mouse_press",
+  "computer_mouse_release",
+  "computer_drag",
+  "computer_scroll",
+  "computer_write",
+  "computer_press",
+  "computer_wait",
+  "computer_wait_and_verify",
+  "computer_open",
+  "computer_launch",
+  "computer_get_current_window_id",
+  "computer_get_application_windows",
+  "computer_get_window_title",
+] as const;
+
+const mediumTemplateSelection = {
+  provider: "e2b",
+  providerDefinitionId: "compute-provider-definition-1",
+  template: {
+    computerUse: true,
+    cpuCount: 2,
+    diskSpaceGb: 20,
+    memoryGb: 4,
+    name: "medium",
+    templateId: "medium",
+  },
+} as const;
+
+const smallTemplateSelection = {
+  provider: "e2b",
+  providerDefinitionId: "compute-provider-definition-1",
+  template: {
+    computerUse: false,
+    cpuCount: 1,
+    diskSpaceGb: 20,
+    memoryGb: 2,
+    name: "small",
+    templateId: "small",
+  },
+} as const;
+
 test("PiMonoSessionManagerService creates one runtime session and routes prompt plus steer calls through it", async () => {
   const storedMessages = [{
     content: "Earlier context",
@@ -185,11 +272,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       },
     } as never,
     {
-      async getRequirements() {
-        throw new Error("agent requirements should not be loaded during ensureSession");
-      },
-      async updateRequirements() {
-        throw new Error("agent requirements should not be updated during ensureSession");
+      async getAgentTemplateSelection() {
+        return mediumTemplateSelection;
       },
     } as never,
     {
@@ -350,42 +434,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
-    [
-      "list_pty_sessions",
-      "execute_command",
-      "apply_patch",
-      "send_pty_input",
-      "read_pty_output",
-      "resize_pty",
-      "kill_session",
-      "close_session",
-      "list_assigned_secrets",
-      "list_available_secrets",
-      "list_company_members",
-      "list_company_agents",
-      "list_agents",
-      "create_agent",
-      "update_agent",
-      "list_github_installations",
-      "gh_exec",
-      "web_search",
-      "web_fetch",
-      "ask_human_question",
-      "send_agent_message",
-      "list_tasks",
-      "list_assigned_tasks",
-      "create_task",
-      "update_task_status",
-      "list_artifacts",
-      "get_artifact",
-      "create_markdown_artifact",
-      "create_external_link_artifact",
-      "create_pull_request_artifact",
-      "update_artifact_metadata",
-      "update_markdown_artifact",
-      "update_external_link_artifact",
-      "archive_artifact",
-    ],
+    [...baseToolNames.slice(0, 8), ...computerUseToolNames, ...baseToolNames.slice(8)],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
     agentsFiles: [],
@@ -410,40 +459,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
     [[[
-      "list_pty_sessions",
-      "execute_command",
-      "apply_patch",
-      "send_pty_input",
-      "read_pty_output",
-      "resize_pty",
-      "kill_session",
-      "close_session",
-      "list_assigned_secrets",
-      "list_available_secrets",
-      "list_company_members",
-      "list_company_agents",
-      "list_agents",
-      "create_agent",
-      "update_agent",
-      "list_github_installations",
-      "gh_exec",
-      "web_search",
-      "web_fetch",
-      "ask_human_question",
-      "send_agent_message",
-      "list_tasks",
-      "list_assigned_tasks",
-      "create_task",
-      "update_task_status",
-      "list_artifacts",
-      "get_artifact",
-      "create_markdown_artifact",
-      "create_external_link_artifact",
-      "create_pull_request_artifact",
-      "update_artifact_metadata",
-      "update_markdown_artifact",
-      "update_external_link_artifact",
-      "archive_artifact",
+      ...baseToolNames.slice(0, 8),
+      ...computerUseToolNames,
+      ...baseToolNames.slice(8),
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
@@ -565,11 +583,8 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
       },
     } as never,
     {
-      async getRequirements() {
-        throw new Error("agent requirements should not be loaded during ensureSession");
-      },
-      async updateRequirements() {
-        throw new Error("agent requirements should not be updated during ensureSession");
+      async getAgentTemplateSelection() {
+        return smallTemplateSelection;
       },
     } as never,
     {
@@ -768,11 +783,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       },
     } as never,
     {
-      async getRequirements() {
-        throw new Error("agent requirements should not be loaded during ensureSession");
-      },
-      async updateRequirements() {
-        throw new Error("agent requirements should not be updated during ensureSession");
+      async getAgentTemplateSelection() {
+        return smallTemplateSelection;
       },
     } as never,
     {
@@ -871,41 +883,6 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[[]]]);
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
-    [[[
-      "list_pty_sessions",
-      "execute_command",
-      "apply_patch",
-      "send_pty_input",
-      "read_pty_output",
-      "resize_pty",
-      "kill_session",
-      "close_session",
-      "list_assigned_secrets",
-      "list_available_secrets",
-      "list_company_members",
-      "list_company_agents",
-      "list_agents",
-      "create_agent",
-      "update_agent",
-      "list_github_installations",
-      "gh_exec",
-      "web_search",
-      "web_fetch",
-      "ask_human_question",
-      "send_agent_message",
-      "list_tasks",
-      "list_assigned_tasks",
-      "create_task",
-      "update_task_status",
-      "list_artifacts",
-      "get_artifact",
-      "create_markdown_artifact",
-      "create_external_link_artifact",
-      "create_pull_request_artifact",
-      "update_artifact_metadata",
-      "update_markdown_artifact",
-      "update_external_link_artifact",
-      "archive_artifact",
-    ]]],
+    [[baseToolNames]],
   );
 });
