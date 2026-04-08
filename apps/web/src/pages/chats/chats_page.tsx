@@ -1439,13 +1439,15 @@ function ChatsQueuedMessagesComposerList({
                   <div className="flex shrink-0 items-center gap-1 self-center">
                     {canOpenFullscreen ? (
                       <button
-                        aria-label="Open queued message fullscreen"
-                        className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+                        aria-label="Open queued message full screen"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
                         onClick={() => setFullscreenQueuedMessageId(queuedMessage.id)}
-                        title="Open queued message fullscreen"
+                        title="Full screen"
                         type="button"
                       >
-                        Full
+                        <span aria-hidden="true" className="font-mono text-[11px] leading-none">
+                          {"<>"}
+                        </span>
                       </button>
                     ) : null}
                     {canSteer ? (
