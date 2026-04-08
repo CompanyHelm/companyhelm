@@ -439,7 +439,18 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
     agentsFiles: [],
   });
-  assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt(), []);
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt().join("\n\n") ?? "",
+    /## CompanyHelm Operating Model/u,
+  );
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt().join("\n\n") ?? "",
+    /## Terminal Tools/u,
+  );
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt().join("\n\n") ?? "",
+    /## Computer Use Tools/u,
+  );
   assert.match(
     createAgentSessionOptions.resourceLoader?.getSystemPrompt() ?? "",
     /do not have local filesystem access/i,
@@ -881,6 +892,15 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   assert.equal(piAgentMocks.disposeMock.mock.calls.length, 0);
   assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[[]]]);
+  const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
+    resourceLoader?: {
+      getAppendSystemPrompt(): string[];
+    };
+  };
+  assert.doesNotMatch(
+    createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt().join("\n\n") ?? "",
+    /## Computer Use Tools/u,
+  );
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
     [[baseToolNames]],

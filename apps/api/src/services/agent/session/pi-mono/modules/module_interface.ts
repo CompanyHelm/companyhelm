@@ -1,5 +1,7 @@
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
+import { AgentSessionModulePromptContext } from "./prompt_context.ts";
+import { AgentSessionModulePromptTemplate } from "./prompt_template.ts";
 
 /**
  * Defines one capability slice that can contribute prompt fragments and tools to a PI Mono session.
@@ -26,8 +28,11 @@ export abstract class AgentSessionModuleInterface {
    * order, so modules can contribute layered instructions without centralizing prompt text.
    */
   async createAppendSystemPrompts(context: AgentSessionBootstrapContext): Promise<string[]> {
-    void context;
-    return [];
+    return [
+      new AgentSessionModulePromptTemplate(this.getName()).render(
+        new AgentSessionModulePromptContext(context),
+      ),
+    ];
   }
 
   /**

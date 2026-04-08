@@ -2,9 +2,9 @@ import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
 
 /**
- * Supplies the CompanyHelm-owned append-system-prompt layers that should always wrap the shared
- * system prompt template. Keeping these two prompt sources in their own module makes later
- * capability-specific prompt additions fit the same assembly path as tool modules.
+ * Supplies the CompanyHelm-owned append-system-prompt layers that always apply to PI Mono. The
+ * module contributes the shared core operating guidance plus any company or agent-specific prompt
+ * overrides stored with the session runtime configuration.
  */
 export class CorePromptSessionModule extends AgentSessionModuleInterface {
   getName(): string {
@@ -13,6 +13,7 @@ export class CorePromptSessionModule extends AgentSessionModuleInterface {
 
   async createAppendSystemPrompts(context: AgentSessionBootstrapContext): Promise<string[]> {
     return [
+      ...(await super.createAppendSystemPrompts(context)),
       context.companyBaseSystemPrompt,
       context.agentSystemPrompt,
     ].filter((prompt): prompt is string => {
