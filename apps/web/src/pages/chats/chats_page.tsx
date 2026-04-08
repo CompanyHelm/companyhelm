@@ -18,13 +18,13 @@ import {
   SendHorizonalIcon,
   Settings2Icon,
   SquareIcon,
-  Trash2Icon,
   WrenchIcon,
   XIcon,
 } from "lucide-react";
 import { fetchQuery, graphql, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
+import { EnvironmentActions } from "@/components/environment_actions";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { MarkdownContent } from "@/components/markdown_content";
 import {
@@ -49,13 +49,17 @@ import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePr
 import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
 import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
 import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDeleteSessionQueuedMessageMutation.graphql";
+import type { chatsPageDeleteEnvironmentMutation } from "./__generated__/chatsPageDeleteEnvironmentMutation.graphql";
 import type { chatsPageInterruptSessionMutation } from "./__generated__/chatsPageInterruptSessionMutation.graphql";
+import type { chatsPageGetEnvironmentVncUrlMutation } from "./__generated__/chatsPageGetEnvironmentVncUrlMutation.graphql";
 import type { chatsPageResolveInboxHumanQuestionMutation } from "./__generated__/chatsPageResolveInboxHumanQuestionMutation.graphql";
 import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
+import type { chatsPageStartEnvironmentMutation } from "./__generated__/chatsPageStartEnvironmentMutation.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
+import type { chatsPageStopEnvironmentMutation } from "./__generated__/chatsPageStopEnvironmentMutation.graphql";
 import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
 import type { chatsPageUpdateSessionTitleMutation } from "./__generated__/chatsPageUpdateSessionTitleMutation.graphql";
 
@@ -204,6 +208,41 @@ const chatsPageSessionEnvironmentQueryNode = graphql`
         name
         provider
       }
+    }
+  }
+`;
+
+const chatsPageDeleteEnvironmentMutationNode = graphql`
+  mutation chatsPageDeleteEnvironmentMutation($input: DeleteEnvironmentInput!) {
+    DeleteEnvironment(input: $input) {
+      id
+    }
+  }
+`;
+
+const chatsPageStartEnvironmentMutationNode = graphql`
+  mutation chatsPageStartEnvironmentMutation($input: StartEnvironmentInput!) {
+    StartEnvironment(input: $input) {
+      id
+      status
+    }
+  }
+`;
+
+const chatsPageGetEnvironmentVncUrlMutationNode = graphql`
+  mutation chatsPageGetEnvironmentVncUrlMutation($input: GetEnvironmentVncUrlInput!) {
+    GetEnvironmentVncUrl(input: $input) {
+      environmentId
+      url
+    }
+  }
+`;
+
+const chatsPageStopEnvironmentMutationNode = graphql`
+  mutation chatsPageStopEnvironmentMutation($input: StopEnvironmentInput!) {
+    StopEnvironment(input: $input) {
+      id
+      status
     }
   }
 `;
@@ -1989,6 +2028,8 @@ function ChatsPageContent() {
   const [isLoadingSessionEnvironment, setIsLoadingSessionEnvironment] = useState(false);
   const [sessionEnvironmentInfo, setSessionEnvironmentInfo] = useState<SessionEnvironmentInfoRecord | null>(null);
   const [sessionEnvironmentErrorMessage, setSessionEnvironmentErrorMessage] = useState<string | null>(null);
+  const [actingSessionEnvironmentId, setActingSessionEnvironmentId] = useState<string | null>(null);
+  const [deletingSessionEnvironmentId, setDeletingSessionEnvironmentId] = useState<string | null>(null);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
   const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
@@ -2059,6 +2100,18 @@ function ChatsPageContent() {
   );
   const [commitDeleteQueuedMessage] = useMutation<chatsPageDeleteSessionQueuedMessageMutation>(
     chatsPageDeleteSessionQueuedMessageMutationNode,
+  );
+  const [commitDeleteEnvironment, isDeleteEnvironmentInFlight] = useMutation<chatsPageDeleteEnvironmentMutation>(
+    chatsPageDeleteEnvironmentMutationNode,
+  );
+  const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<chatsPageStartEnvironmentMutation>(
+    chatsPageStartEnvironmentMutationNode,
+  );
+  const [commitGetEnvironmentVncUrl, isGetEnvironmentVncUrlInFlight] = useMutation<chatsPageGetEnvironmentVncUrlMutation>(
+    chatsPageGetEnvironmentVncUrlMutationNode,
+  );
+  const [commitStopEnvironment, isStopEnvironmentInFlight] = useMutation<chatsPageStopEnvironmentMutation>(
+    chatsPageStopEnvironmentMutationNode,
   );
   const [commitSteerQueuedMessage] = useMutation<chatsPageSteerSessionQueuedMessageMutation>(
     chatsPageSteerSessionQueuedMessageMutationNode,
@@ -2323,6 +2376,225 @@ function ChatsPageContent() {
     }
   }, [environment]);
 
+  const updateCurrentSessionEnvironmentStatus = useCallback((environmentId: string, status: string) => {
+    setSessionEnvironmentInfo((currentInfo) => {
+      if (!currentInfo?.currentEnvironment || currentInfo.currentEnvironment.id !== environmentId) {
+        return currentInfo;
+      }
+
+      return {
+        ...currentInfo,
+        currentEnvironment: {
+          ...currentInfo.currentEnvironment,
+          status,
+        },
+      };
+    });
+  }, []);
+
+  const clearCurrentSessionEnvironment = useCallback((environmentId: string) => {
+    setSessionEnvironmentInfo((currentInfo) => {
+      if (!currentInfo?.currentEnvironment || currentInfo.currentEnvironment.id !== environmentId) {
+        return currentInfo;
+      }
+
+      return {
+        ...currentInfo,
+        currentEnvironment: null,
+      };
+    });
+  }, []);
+
+  const openSessionEnvironmentDesktop = useCallback(async (environmentId: string) => {
+    if (
+      isStartEnvironmentInFlight
+      || isDeleteEnvironmentInFlight
+      || isStopEnvironmentInFlight
+      || isGetEnvironmentVncUrlInFlight
+    ) {
+      return;
+    }
+
+    setSessionEnvironmentErrorMessage(null);
+    setActingSessionEnvironmentId(environmentId);
+    const openedWindow = window.open("about:blank", "_blank");
+    if (!openedWindow) {
+      setActingSessionEnvironmentId(null);
+      setSessionEnvironmentErrorMessage("Allow pop-ups to open the environment desktop.");
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      commitGetEnvironmentVncUrl({
+        variables: {
+          input: {
+            id: environmentId,
+          },
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const url = response.GetEnvironmentVncUrl?.url;
+          if (!url) {
+            reject(new Error("Environment desktop URL was not returned."));
+            return;
+          }
+
+          openedWindow.location.replace(url);
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      openedWindow.close();
+      setSessionEnvironmentErrorMessage(
+        error instanceof Error ? error.message : "Failed to open environment desktop.",
+      );
+    });
+
+    setActingSessionEnvironmentId(null);
+  }, [
+    commitGetEnvironmentVncUrl,
+    isDeleteEnvironmentInFlight,
+    isGetEnvironmentVncUrlInFlight,
+    isStartEnvironmentInFlight,
+    isStopEnvironmentInFlight,
+  ]);
+
+  const startSessionEnvironment = useCallback(async (environmentId: string) => {
+    if (
+      isStartEnvironmentInFlight
+      || isDeleteEnvironmentInFlight
+      || isStopEnvironmentInFlight
+      || isGetEnvironmentVncUrlInFlight
+    ) {
+      return;
+    }
+
+    setSessionEnvironmentErrorMessage(null);
+    setActingSessionEnvironmentId(environmentId);
+
+    await new Promise<void>((resolve, reject) => {
+      commitStartEnvironment({
+        variables: {
+          input: {
+            id: environmentId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).then(() => {
+      updateCurrentSessionEnvironmentStatus(environmentId, "running");
+    }).catch((error: unknown) => {
+      setSessionEnvironmentErrorMessage(error instanceof Error ? error.message : "Failed to start environment.");
+    });
+
+    setActingSessionEnvironmentId(null);
+  }, [
+    commitStartEnvironment,
+    isDeleteEnvironmentInFlight,
+    isGetEnvironmentVncUrlInFlight,
+    isStartEnvironmentInFlight,
+    isStopEnvironmentInFlight,
+    updateCurrentSessionEnvironmentStatus,
+  ]);
+
+  const stopSessionEnvironment = useCallback(async (environmentId: string) => {
+    if (
+      isStartEnvironmentInFlight
+      || isDeleteEnvironmentInFlight
+      || isStopEnvironmentInFlight
+      || isGetEnvironmentVncUrlInFlight
+    ) {
+      return;
+    }
+
+    setSessionEnvironmentErrorMessage(null);
+    setActingSessionEnvironmentId(environmentId);
+
+    await new Promise<void>((resolve, reject) => {
+      commitStopEnvironment({
+        variables: {
+          input: {
+            id: environmentId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).then(() => {
+      updateCurrentSessionEnvironmentStatus(environmentId, "stopped");
+    }).catch((error: unknown) => {
+      setSessionEnvironmentErrorMessage(error instanceof Error ? error.message : "Failed to stop environment.");
+    });
+
+    setActingSessionEnvironmentId(null);
+  }, [
+    commitStopEnvironment,
+    isDeleteEnvironmentInFlight,
+    isGetEnvironmentVncUrlInFlight,
+    isStartEnvironmentInFlight,
+    isStopEnvironmentInFlight,
+    updateCurrentSessionEnvironmentStatus,
+  ]);
+
+  const deleteSessionEnvironment = useCallback(async (environmentId: string, force: boolean) => {
+    if (isDeleteEnvironmentInFlight) {
+      return;
+    }
+
+    setSessionEnvironmentErrorMessage(null);
+    setDeletingSessionEnvironmentId(environmentId);
+
+    await new Promise<void>((resolve, reject) => {
+      commitDeleteEnvironment({
+        variables: {
+          input: {
+            force,
+            id: environmentId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).then(() => {
+      clearCurrentSessionEnvironment(environmentId);
+    }).catch((error: unknown) => {
+      setSessionEnvironmentErrorMessage(error instanceof Error ? error.message : "Failed to delete environment.");
+    });
+
+    setDeletingSessionEnvironmentId(null);
+  }, [clearCurrentSessionEnvironment, commitDeleteEnvironment, isDeleteEnvironmentInFlight]);
+
   const loadQueuedMessages = useCallback(async (sessionId: string) => {
     const requestId = queuedMessagesRequestIdRef.current + 1;
     queuedMessagesRequestIdRef.current = requestId;
@@ -2362,6 +2634,8 @@ function ChatsPageContent() {
       setSessionEnvironmentInfo(null);
       setSessionEnvironmentErrorMessage(null);
       setIsLoadingSessionEnvironment(false);
+      setActingSessionEnvironmentId(null);
+      setDeletingSessionEnvironmentId(null);
       return;
     }
 
@@ -4109,16 +4383,7 @@ function ChatsPageContent() {
                   Loading environment…
                 </div>
               ) : currentSessionEnvironment ? (
-                <button
-                  className="grid gap-3 rounded-xl border border-border/60 bg-card/50 p-4 text-left transition hover:border-border hover:bg-card"
-                  onClick={() => {
-                    setIsEnvironmentPanelOpen(false);
-                    void navigate({
-                      to: "/environments",
-                    });
-                  }}
-                  type="button"
-                >
+                <div className="grid gap-3 rounded-xl border border-border/60 bg-card/50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">
@@ -4131,7 +4396,21 @@ function ChatsPageContent() {
                         })}
                       </p>
                     </div>
-                    <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <Button
+                      className="shrink-0"
+                      onClick={() => {
+                        setIsEnvironmentPanelOpen(false);
+                        void navigate({
+                          to: "/environments",
+                        });
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      Manage
+                      <ChevronRightIcon className="size-4" />
+                    </Button>
                   </div>
                   <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
                     <p>Status: {currentSessionEnvironment.status}</p>
@@ -4140,7 +4419,22 @@ function ChatsPageContent() {
                     <p>Memory: {currentSessionEnvironment.memoryGb} GB</p>
                     <p>Disk: {currentSessionEnvironment.diskSpaceGb} GB</p>
                   </div>
-                </button>
+                  <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      Desktop, lifecycle, and cleanup controls for this environment.
+                    </p>
+                    <EnvironmentActions
+                      actingEnvironmentId={actingSessionEnvironmentId}
+                      deletingEnvironmentId={deletingSessionEnvironmentId}
+                      environment={currentSessionEnvironment}
+                      onDelete={deleteSessionEnvironment}
+                      onOpenDesktop={openSessionEnvironmentDesktop}
+                      onStart={startSessionEnvironment}
+                      onStop={stopSessionEnvironment}
+                      size="icon-sm"
+                    />
+                  </div>
+                </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
                   No reusable environment is currently attached to this session.

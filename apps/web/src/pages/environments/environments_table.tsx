@@ -1,20 +1,5 @@
-import { useState } from "react";
-import { MonitorIcon, PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelButton,
-  AlertDialogCancelAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { EnvironmentActions } from "@/components/environment_actions";
 import {
   Table,
   TableBody,
@@ -52,13 +37,6 @@ interface EnvironmentsTableProps {
   onStop: (environmentId: string) => Promise<void>;
 }
 
-interface DeleteEnvironmentDialogProps {
-  actingEnvironmentId: string | null;
-  deletingEnvironmentId: string | null;
-  environment: EnvironmentsTableRecord;
-  onDelete: (environmentId: string, force: boolean) => Promise<void>;
-}
-
 function formatProviderLabel(provider: string): string {
   if (provider.length === 0) {
     return "Unknown";
@@ -91,102 +69,6 @@ function formatTimestamp(value: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp);
-}
-
-function canStartEnvironment(status: string): boolean {
-  return status === "stopped" || status === "available";
-}
-
-function canStopEnvironment(status: string): boolean {
-  return status === "running";
-}
-
-function canOpenDesktop(environment: EnvironmentsTableRecord): boolean {
-  if (environment.provider !== "e2b") {
-    return false;
-  }
-
-  return environment.status === "available"
-    || environment.status === "running"
-    || environment.status === "stopped";
-}
-
-/**
- * Wraps the destructive environment removal confirmation so operators can choose between a strict
- * provider delete and a local force delete without cluttering the table row itself.
- */
-function DeleteEnvironmentDialog(props: DeleteEnvironmentDialogProps) {
-  const [forceDelete, setForceDelete] = useState(false);
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={
-            props.actingEnvironmentId === props.environment.id
-            || props.deletingEnvironmentId === props.environment.id
-          }
-        >
-          <Trash2Icon className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete environment</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete the CompanyHelm environment record and tear down the
-            backing compute environment. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <label className="mt-4 flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-border bg-background"
-            checked={forceDelete}
-            onChange={(event) => {
-              setForceDelete(event.target.checked);
-            }}
-          />
-          <span className="space-y-1">
-            <span className="block font-medium text-foreground">Force delete</span>
-            <span className="block text-xs leading-relaxed text-muted-foreground">
-              Ignore provider teardown errors and remove only the CompanyHelm record from the local
-              database.
-            </span>
-          </span>
-        </label>
-        <AlertDialogFooter>
-          <AlertDialogCancelAction asChild>
-            <AlertDialogCancelButton
-              variant="outline"
-              onClick={() => {
-                setForceDelete(false);
-              }}
-            >
-              Cancel
-            </AlertDialogCancelButton>
-          </AlertDialogCancelAction>
-          <AlertDialogPrimaryAction asChild>
-            <AlertDialogActionButton
-              variant="destructive"
-              disabled={
-                props.actingEnvironmentId === props.environment.id
-                || props.deletingEnvironmentId === props.environment.id
-              }
-              onClick={async () => {
-                await props.onDelete(props.environment.id, forceDelete);
-                setForceDelete(false);
-              }}
-            >
-              Delete
-            </AlertDialogActionButton>
-          </AlertDialogPrimaryAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
 }
 
 /**
@@ -265,51 +147,16 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
             <TableCell>{formatTimestamp(environment.lastSeenAt)}</TableCell>
             <TableCell>{formatTimestamp(environment.updatedAt)}</TableCell>
             <TableCell className="text-right">
-              <div className="flex items-center justify-end gap-1">
-                {canOpenDesktop(environment) ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Open desktop"
-                    disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
-                    onClick={async () => {
-                      await props.onOpenDesktop(environment.id);
-                    }}
-                  >
-                    <MonitorIcon className="h-4 w-4" />
-                  </Button>
-                ) : null}
-                {canStartEnvironment(environment.status) ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
-                    onClick={async () => {
-                      await props.onStart(environment.id);
-                    }}
-                  >
-                    <PlayIcon className="h-4 w-4" />
-                  </Button>
-                ) : null}
-                {canStopEnvironment(environment.status) ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    disabled={props.actingEnvironmentId === environment.id || props.deletingEnvironmentId === environment.id}
-                    onClick={async () => {
-                      await props.onStop(environment.id);
-                    }}
-                  >
-                    <SquareIcon className="h-4 w-4" />
-                  </Button>
-                ) : null}
-                <DeleteEnvironmentDialog
-                  actingEnvironmentId={props.actingEnvironmentId}
-                  deletingEnvironmentId={props.deletingEnvironmentId}
-                  environment={environment}
-                  onDelete={props.onDelete}
-                />
-              </div>
+              <EnvironmentActions
+                actingEnvironmentId={props.actingEnvironmentId}
+                className="justify-end"
+                deletingEnvironmentId={props.deletingEnvironmentId}
+                environment={environment}
+                onDelete={props.onDelete}
+                onOpenDesktop={props.onOpenDesktop}
+                onStart={props.onStart}
+                onStop={props.onStop}
+              />
             </TableCell>
           </TableRow>
         ))}
