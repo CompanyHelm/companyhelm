@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "audit:rls": "tsx scripts/check_rls_policies.ts",
+    "build-e2b-templates": "tsx scripts/build-e2b-templates.ts --config-path ./config/local.yaml",
     "dev": "tsx watch --include src/graphql/schema/schema.graphql src/main.ts --config-path ./config/local.yaml",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",

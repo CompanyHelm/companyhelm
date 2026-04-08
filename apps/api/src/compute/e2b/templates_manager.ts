@@ -8,8 +8,9 @@ export class E2bTemplatesManager {
   builds(): E2bTemplateBuild[] {
     return [
       new E2bTemplateBuild({
-        cpuCount: 1,
-        memoryMB: 1024,
+        cpuCount: 2,
+        memoryMB: 4096,
+        computerUse: true,
         template: Template()
           .fromBaseImage()
           .aptInstall("gh")

@@ -9,17 +9,20 @@ export class E2bTemplateBuild {
   private readonly memoryMB: number;
   private readonly template: TemplateClass;
   private readonly templateId: string;
+  private readonly computerUse: boolean;
 
   constructor(input: {
     cpuCount: number;
     memoryMB: number;
     template: TemplateClass;
     templateId: string;
+    computerUse: boolean;
   }) {
     this.cpuCount = input.cpuCount;
     this.memoryMB = input.memoryMB;
     this.template = input.template;
     this.templateId = input.templateId;
+    this.computerUse = input.computerUse;
   }
 
   async build(apiKey: string): Promise<BuildInfo> {
