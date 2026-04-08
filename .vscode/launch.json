@@ -6,8 +6,35 @@
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/apps/api",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "args": [
+        "watch",
+        "--include",
+        "src/graphql/schema/schema.graphql",
+        "src/main.ts",
+        "--config-path",
+        "${workspaceFolder}/apps/api/config/local.yaml"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "outputCapture": "std",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "API (dev)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/api",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+      "args": [
+        "watch",
+        "--include",
+        "src/graphql/schema/schema.graphql",
+        "src/main.ts",
+        "--config-path",
+        "${workspaceFolder}/apps/api/config/dev.yaml"
+      ],
+      "envFile": "${workspaceFolder}/apps/api/.env.dev",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "outputCapture": "std",
@@ -42,6 +69,11 @@
     {
       "name": "Full Stack (API + Web + Brave)",
       "configurations": ["API", "Web Dev Server", "Web (Brave)"],
+      "stopAll": true
+    },
+    {
+      "name": "Full Stack (API dev + Web + Brave)",
+      "configurations": ["API (dev)", "Web Dev Server", "Web (Brave)"],
       "stopAll": true
     }
   ]
