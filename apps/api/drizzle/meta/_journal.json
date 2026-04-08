@@ -512,6 +512,13 @@
       "when": 1775591100000,
       "tag": "0072_agent_environment_template_id",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1775592000000,
+      "tag": "0073_backfill_medium_environment_template",
+      "breakpoints": true
     }
   ]
 }
