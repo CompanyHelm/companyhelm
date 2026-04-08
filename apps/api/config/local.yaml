@@ -41,10 +41,7 @@ web_search:
 companyhelm:
   e2b:
     api_key: "${E2B_API_KEY}"
-    templates:
-      - name: "desktop"
-        computer_use: true
-        template_id: "desktop"
+    template_prefix: "realequityapps/"
 daytona:
   api_key: "${DAYTONA_API_KEY}"
   api_url: "https://app.daytona.io/api"

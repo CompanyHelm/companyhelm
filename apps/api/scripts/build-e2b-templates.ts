@@ -16,7 +16,10 @@ export class BuildE2bTemplatesScript {
     const templates = new E2bTemplatesManager();
 
     for (const template of templates.builds()) {
-      await template.build(config.companyhelm.e2b.api_key);
+      await template.build(
+        config.companyhelm.e2b.api_key,
+        config.companyhelm.e2b.template_prefix,
+      );
     }
   }
 }

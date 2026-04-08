@@ -137,6 +137,7 @@ web_search:
 companyhelm:
   e2b:
     api_key: "\${${params.companyHelmE2bApiKeyVariableName}}"
+    template_prefix: "realequityapps/"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"

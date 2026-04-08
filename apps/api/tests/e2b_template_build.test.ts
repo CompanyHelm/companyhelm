@@ -15,12 +15,13 @@ test("E2bTemplateBuild forwards the configured API key to Template.build", async
   const build = new E2bTemplateBuild({
     cpuCount: 1,
     memoryMB: 1024,
+    computerUse: true,
     template,
     templateId: "small",
   });
   const templateBuildSpy = vi.spyOn(Template, "build").mockResolvedValue(buildInfo);
 
-  const result = await build.build("configured-e2b-api-key");
+  const result = await build.build("configured-e2b-api-key", "realequityapps/");
   const buildCall = templateBuildSpy.mock.calls[0] as unknown as [
     unknown,
     string,
@@ -35,10 +36,30 @@ test("E2bTemplateBuild forwards the configured API key to Template.build", async
   assert.equal(result, buildInfo);
   assert.equal(templateBuildSpy.mock.calls.length, 1);
   assert.equal(buildCall[0], template);
-  assert.equal(buildCall[1], "small");
+  assert.equal(buildCall[1], "realequityapps/small");
   assert.equal(buildCall[2].apiKey, "configured-e2b-api-key");
   assert.equal(buildCall[2].cpuCount, 1);
   assert.equal(buildCall[2].memoryMB, 1024);
   assert.equal(typeof buildCall[2].onBuildLogs, "function");
   templateBuildSpy.mockRestore();
+});
+
+test("E2bTemplateBuild exposes the local environment template metadata", () => {
+  const build = new E2bTemplateBuild({
+    cpuCount: 2,
+    memoryMB: 4096,
+    computerUse: true,
+    template: Template().fromBaseImage(),
+    templateId: "medium",
+  });
+
+  assert.deepEqual(build.toEnvironmentTemplate(), {
+    computerUse: true,
+    cpuCount: 2,
+    diskSpaceGb: 20,
+    memoryGb: 4,
+    name: "medium",
+    templateId: "medium",
+  });
+  assert.equal(build.resolveTemplateReference("realequityapps/"), "realequityapps/medium");
 });

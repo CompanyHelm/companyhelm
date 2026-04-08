@@ -20,12 +20,6 @@ const ClerkAuthSchema = z.object({
   }),
 });
 
-const E2bConfiguredTemplateSchema = z.object({
-  name: NonEmptyStringSchema,
-  computer_use: z.boolean(),
-  template_id: NonEmptyStringSchema,
-});
-
 export const ConfigDocument = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
@@ -71,7 +65,7 @@ export const ConfigDocument = z.object({
   companyhelm: z.object({
     e2b: z.object({
       api_key: NonEmptyStringSchema,
-      templates: z.array(E2bConfiguredTemplateSchema).min(1),
+      template_prefix: NonEmptyStringSchema,
     }),
   }),
   github: z.object({
