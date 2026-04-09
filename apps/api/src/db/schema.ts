@@ -913,3 +913,45 @@ export const agentEnvironmentLeases = pgTable("agent_environment_leases", {
     .on(table.environmentId)
     .where(sql`${table.state} in ('active', 'idle')`),
 }));
+
+export const skills = pgTable("skills", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  // the skill name
+  name: text("name").notNull(),
+  // the skill description
+  description: text("description"),
+  instructions: text("instructions"),
+  // the list of files that are part of the skill, excluding the SKILL.md file
+  // a skill folder contains the SKILL.md file and the skill files at the same level
+  // includes nested folders and files
+  // if the skill has files they will need to instanciated in a enviornment on skill activation
+  fileList: text("file_list").array().notNull(),
+
+  skillGroupId: uuid("skill_group_id")
+    .references(() => skill_groups.id, { onDelete: "set null" }),
+
+  /****************** GITHUB SKILL FIELDS ********************/
+  repository: text("repository"),
+  // where in the repository the skill is located
+  skillDirectory: text("skill_directory"),
+}, (table) => ({
+  skillGroupIdIndex: index("skills_skill_group_id_idx").on(table.skillGroupId),
+  companyIdIndex: index("skills_company_id_idx").on(table.companyId),
+}));
+
+export const skill_groups = pgTable("skill_groups", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+}, (table) => ({
+  companyIdIndex: index("skill_groups_company_id_idx").on(table.companyId),
+}));
