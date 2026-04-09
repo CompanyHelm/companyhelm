@@ -5,6 +5,12 @@ import { AgentSessionEnvironment } from "../src/services/environments/session_en
 
 test("AgentSessionEnvironment merges attached session secrets into executeCommand environment", async () => {
   const executionInputs: Array<Record<string, unknown>> = [];
+  const directShellCalls: Array<{
+    command: string;
+    environment?: Record<string, string>;
+    timeoutSeconds?: number;
+    workingDirectory?: string;
+  }> = [];
   const environment = new AgentSessionEnvironment(
     {} as never,
     "company-123",
@@ -47,6 +53,25 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
         return {
           API_KEY: "secret-value",
           SHARED_VAR: "from-secret",
+        };
+      },
+    } as never,
+    {
+      async executeCommand(
+        command: string,
+        workingDirectory?: string,
+        environment?: Record<string, string>,
+        timeoutSeconds?: number,
+      ) {
+        directShellCalls.push({
+          command,
+          environment,
+          timeoutSeconds,
+          workingDirectory,
+        });
+        return {
+          exitCode: 0,
+          stdout: "direct-ok",
         };
       },
     } as never,
@@ -110,6 +135,31 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
       SHARED_VAR: "from-command",
       USER_VAR: "user-value",
     },
+  }]);
+
+  const directResult = await environment.executeBashCommand({
+    command: "echo \"$API_KEY\"",
+    environment: {
+      SHARED_VAR: "from-direct-command",
+      USER_VAR: "direct-user-value",
+    },
+    timeoutSeconds: 15,
+    workingDirectory: "/workspace",
+  });
+
+  assert.deepEqual(directResult, {
+    exitCode: 0,
+    output: "direct-ok",
+  });
+  assert.deepEqual(directShellCalls, [{
+    command: 'bash -lc \'echo "$API_KEY"\'',
+    environment: {
+      API_KEY: "secret-value",
+      SHARED_VAR: "from-direct-command",
+      USER_VAR: "direct-user-value",
+    },
+    timeoutSeconds: 15,
+    workingDirectory: "/workspace",
   }]);
 
   await environment.dispose();

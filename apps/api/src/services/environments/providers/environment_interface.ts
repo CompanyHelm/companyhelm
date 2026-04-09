@@ -41,6 +41,25 @@ export type AgentEnvironmentCommandResult = {
 };
 
 /**
+ * Carries the provider-direct one-shot shell execution inputs used by tools that do not need tmux
+ * session management and should instead execute through the provider shell adapter immediately.
+ */
+export type AgentEnvironmentDirectShellCommandInput = {
+  command: string;
+  environment?: Record<string, string>;
+  timeoutSeconds?: number;
+  workingDirectory?: string;
+};
+
+/**
+ * Reports the combined textual output and exit code from a direct provider shell execution.
+ */
+export type AgentEnvironmentDirectShellCommandResult = {
+  exitCode: number;
+  output: string;
+};
+
+/**
  * Represents one contiguous slice of terminal output returned from readOutput. Offsets are
  * character based because the PTY transcript is read as text.
  */
@@ -77,6 +96,14 @@ export abstract class AgentEnvironmentInterface {
    * when the caller provides a previous session id.
    */
   abstract executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult>;
+
+  /**
+   * Executes one bash command directly through the provider shell adapter without creating or
+   * reusing a tmux session.
+   */
+  abstract executeBashCommand(
+    input: AgentEnvironmentDirectShellCommandInput,
+  ): Promise<AgentEnvironmentDirectShellCommandResult>;
 
   /**
    * Sends raw terminal input into an existing session and waits for additional output until

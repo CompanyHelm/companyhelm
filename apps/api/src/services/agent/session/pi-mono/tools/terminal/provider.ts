@@ -4,6 +4,7 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentApplyPatchTool } from "./apply_patch.ts";
 import { AgentCloseTerminalSessionTool } from "./close_session.ts";
+import { AgentExecBashTool } from "./exec_bash.ts";
 import { AgentExecuteCommandTool } from "./execute_command.ts";
 import { AgentKillTerminalSessionTool } from "./kill_session.ts";
 import { AgentListTerminalSessionsTool } from "./list_sessions.ts";
@@ -29,6 +30,7 @@ export class AgentTerminalToolProvider extends AgentToolProviderInterface {
     return [
       new AgentListTerminalSessionsTool(this.promptScope).createDefinition(),
       new AgentExecuteCommandTool(this.promptScope, this.logger).createDefinition(),
+      new AgentExecBashTool(this.promptScope, this.logger).createDefinition(),
       new AgentApplyPatchTool(this.promptScope).createDefinition(),
       new AgentSendTerminalInputTool(this.promptScope).createDefinition(),
       new AgentReadTerminalOutputTool(this.promptScope).createDefinition(),

@@ -1,6 +1,8 @@
 import type {
   AgentEnvironmentCommandInput,
   AgentEnvironmentCommandResult,
+  AgentEnvironmentDirectShellCommandInput,
+  AgentEnvironmentDirectShellCommandResult,
   AgentEnvironmentInterface,
   AgentEnvironmentTerminalOutputPage,
   AgentEnvironmentTerminalSession,
@@ -8,6 +10,7 @@ import type {
 import { AgentEnvironmentInterface as AgentEnvironmentInterfaceClass } from "./providers/environment_interface.ts";
 import { AgentEnvironmentPtyInterface } from "./providers/pty_interface.ts";
 import type { AgentEnvironmentRecord } from "./providers/provider_interface.ts";
+import { AgentEnvironmentShellInterface } from "./providers/shell_interface.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentLeaseService } from "./lease_service.ts";
 import { SecretService } from "../secrets/service.ts";
@@ -26,6 +29,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
   private readonly leaseOwnerToken: string;
   private readonly leaseService: AgentEnvironmentLeaseService;
   private readonly pty: AgentEnvironmentPtyInterface;
+  private readonly shell: AgentEnvironmentShellInterface;
   private readonly secretService: SecretService;
   private readonly sessionId: string;
   private readonly heartbeatHandle: ReturnType<typeof setInterval>;
@@ -38,6 +42,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     environment: AgentEnvironmentRecord,
     leaseService: AgentEnvironmentLeaseService,
     secretService: SecretService,
+    shell: AgentEnvironmentShellInterface,
     pty: AgentEnvironmentPtyInterface,
     leaseId: string,
     leaseOwnerToken: string,
@@ -51,6 +56,7 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     this.leaseOwnerToken = leaseOwnerToken;
     this.leaseService = leaseService;
     this.secretService = secretService;
+    this.shell = shell;
     this.pty = pty;
     this.heartbeatHandle = setInterval(() => {
       void this.leaseService.heartbeatLease(this.transactionProvider, this.leaseId, this.leaseOwnerToken)
@@ -77,6 +83,30 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
         ...(input.environment ?? {}),
       },
     });
+  }
+
+  async executeBashCommand(
+    input: AgentEnvironmentDirectShellCommandInput,
+  ): Promise<AgentEnvironmentDirectShellCommandResult> {
+    const sessionEnvironmentVariables = await this.secretService.resolveSessionEnvironmentVariables(
+      this.transactionProvider,
+      this.companyId,
+      this.sessionId,
+    );
+    const result = await this.shell.executeCommand(
+      AgentSessionEnvironment.buildBashCommand(input.command),
+      input.workingDirectory,
+      {
+        ...sessionEnvironmentVariables,
+        ...(input.environment ?? {}),
+      },
+      input.timeoutSeconds,
+    );
+
+    return {
+      exitCode: result.exitCode,
+      output: result.stdout,
+    };
   }
 
   sendInput(sessionId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult> {
@@ -119,5 +149,13 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     } finally {
       await this.leaseService.markLeaseIdle(this.transactionProvider, this.leaseId, this.leaseOwnerToken);
     }
+  }
+
+  private static buildBashCommand(command: string): string {
+    return `bash -lc ${AgentSessionEnvironment.shellQuote(command)}`;
+  }
+
+  private static shellQuote(value: string): string {
+    return `'${value.replaceAll("'", `'"'"'`)}'`;
   }
 }

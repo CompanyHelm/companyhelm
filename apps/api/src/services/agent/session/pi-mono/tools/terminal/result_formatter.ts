@@ -1,5 +1,6 @@
 import type {
   AgentEnvironmentCommandResult,
+  AgentEnvironmentDirectShellCommandResult,
   AgentEnvironmentTerminalOutputPage,
   AgentEnvironmentTerminalSession,
 } from "../../../../../environments/providers/environment_interface.ts";
@@ -10,6 +11,11 @@ import type {
  */
 export class AgentTerminalResultFormatter {
   static formatCommandResult(result: AgentEnvironmentCommandResult): string {
+    const output = result.output.replace(/(?:\r?\n[ \t]*)+$/u, "");
+    return output.length > 0 ? output : "(no output)";
+  }
+
+  static formatDirectShellCommandResult(result: AgentEnvironmentDirectShellCommandResult): string {
     const output = result.output.replace(/(?:\r?\n[ \t]*)+$/u, "");
     return output.length > 0 ? output : "(no output)";
   }
