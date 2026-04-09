@@ -28,9 +28,9 @@ resolved_provider_definitions AS (
   SELECT
     "agents"."id" AS "agent_id",
     COALESCE(
-      selected_provider_definitions."provider",
-      company_default_provider_definitions."provider",
-      'daytona'::"compute_provider"
+      selected_provider_definitions."provider"::text,
+      company_default_provider_definitions."provider"::text,
+      'daytona'
     ) AS "provider"
   FROM "agents"
   LEFT JOIN "compute_provider_definitions" AS selected_provider_definitions

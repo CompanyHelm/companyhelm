@@ -75,10 +75,10 @@ ranked_model_provider_credential_models AS (
       PARTITION BY "model_provider_credential_models"."model_provider_credential_id"
       ORDER BY
         CASE
-          WHEN "model_provider_credentials"."model_provider" IN ('openai', 'openai-codex')
+          WHEN "model_provider_credentials"."model_provider"::text IN ('openai', 'openai-codex')
             AND "model_provider_credential_models"."model_id" = 'gpt-5.4'
             THEN 0
-          WHEN "model_provider_credentials"."model_provider" = 'anthropic'
+          WHEN "model_provider_credentials"."model_provider"::text = 'anthropic'
             AND "model_provider_credential_models"."model_id" = 'claude-opus-4-6'
             THEN 0
           ELSE 1
