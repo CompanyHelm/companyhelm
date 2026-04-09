@@ -5,8 +5,17 @@ import {
   OpenRouterCatalogService,
 } from "../src/services/ai_providers/openrouter_catalog_service.js";
 
+class TestOpenRouterCatalogService extends OpenRouterCatalogService {
+  protected buildReasoningSupportIndex(): Map<string, boolean> {
+    return new Map([
+      ["openrouter/auto", true],
+      ["moonshotai/kimi-k2.5", false],
+    ]);
+  }
+}
+
 test("OpenRouterCatalogService validates the key and maps remote models", async () => {
-  const service = new OpenRouterCatalogService();
+  const service = new TestOpenRouterCatalogService();
   const originalFetch = globalThis.fetch;
   const calls: string[] = [];
 
@@ -96,7 +105,7 @@ test("OpenRouterCatalogService validates the key and maps remote models", async 
         maxTokens: 4_096,
         modelId: "openrouter/auto",
         name: "Auto Router",
-        reasoningLevels: ["low", "medium", "high", "xhigh"],
+        reasoningSupported: true,
       },
       {
         contextWindow: 128_000,
@@ -111,7 +120,7 @@ test("OpenRouterCatalogService validates the key and maps remote models", async 
         maxTokens: 16_384,
         modelId: "moonshotai/kimi-k2.5",
         name: "Moonshot AI: Kimi K2.5",
-        reasoningLevels: null,
+        reasoningSupported: false,
       },
     ]);
   } finally {
@@ -120,7 +129,7 @@ test("OpenRouterCatalogService validates the key and maps remote models", async 
 });
 
 test("OpenRouterCatalogService rejects invalid API keys before loading the public catalog", async () => {
-  const service = new OpenRouterCatalogService();
+  const service = new TestOpenRouterCatalogService();
   const originalFetch = globalThis.fetch;
   let modelFetchAttempted = false;
 

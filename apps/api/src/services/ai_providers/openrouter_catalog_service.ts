@@ -1,3 +1,4 @@
+import { getModels } from "@mariozechner/pi-ai";
 import { injectable } from "inversify";
 
 export type OpenRouterCatalogModel = {
@@ -13,7 +14,7 @@ export type OpenRouterCatalogModel = {
   maxTokens: number;
   modelId: string;
   name: string;
-  reasoningLevels: string[] | null;
+  reasoningSupported: boolean;
 };
 
 type OpenRouterCatalogResponse = {
@@ -49,7 +50,6 @@ type OpenRouterRemoteModel = {
 @injectable()
 export class OpenRouterCatalogService {
   static readonly API_BASE_URL = "https://openrouter.ai/api/v1";
-  private static readonly REASONING_LEVELS = ["low", "medium", "high", "xhigh"];
 
   async fetchCatalog(
     apiKey: string,
@@ -81,8 +81,10 @@ export class OpenRouterCatalogService {
       throw new Error("Invalid model list response for openrouter.");
     }
 
+    const reasoningSupportByModelId = this.buildReasoningSupportIndex();
+
     return payload.data
-      .map((model) => this.toCatalogModel(model))
+      .map((model) => this.toCatalogModel(model, reasoningSupportByModelId))
       .filter((model): model is OpenRouterCatalogModel => model !== null);
   }
 
@@ -100,7 +102,10 @@ export class OpenRouterCatalogService {
     throw new Error(`Failed to validate openrouter API key: ${response.status} ${body}`);
   }
 
-  private toCatalogModel(model: OpenRouterRemoteModel): OpenRouterCatalogModel | null {
+  private toCatalogModel(
+    model: OpenRouterRemoteModel,
+    reasoningSupportByModelId: Map<string, boolean>,
+  ): OpenRouterCatalogModel | null {
     const modelId = typeof model.id === "string" ? model.id.trim() : "";
     const name = typeof model.name === "string" ? model.name.trim() : "";
     if (!modelId || !name) {
@@ -118,12 +123,6 @@ export class OpenRouterCatalogService {
       input.push("image");
     }
 
-    const supportedParameters = Array.isArray(model.supported_parameters) ? model.supported_parameters : [];
-    const reasoningLevels = supportedParameters.includes("reasoning")
-      || supportedParameters.includes("include_reasoning")
-      ? [...OpenRouterCatalogService.REASONING_LEVELS]
-      : null;
-
     return {
       contextWindow: Number(model.top_provider?.context_length ?? model.context_length) || 128000,
       cost: {
@@ -139,8 +138,18 @@ export class OpenRouterCatalogService {
       maxTokens: Number(model.top_provider?.max_completion_tokens) || 16384,
       modelId,
       name,
-      reasoningLevels,
+      reasoningSupported: reasoningSupportByModelId.get(modelId) ?? false,
     };
+  }
+
+  /**
+   * PI's OpenRouter catalog only exposes whether reasoning is supported at all, not a per-model
+   * list of selectable effort levels. We mirror that capability bit and leave exact levels unset.
+   */
+  protected buildReasoningSupportIndex(): Map<string, boolean> {
+    return new Map(
+      getModels("openrouter").map((model) => [model.id, Boolean(model.reasoning)]),
+    );
   }
 
   private parsePricingValue(value: string | undefined): number {

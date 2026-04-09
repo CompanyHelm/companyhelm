@@ -17,6 +17,7 @@ type ModelProviderCredentialModelRecord = {
   modelId: string;
   modelProviderCredentialId: string;
   name: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[] | null;
 };
 
@@ -27,6 +28,7 @@ type GraphqlModelProviderCredentialModelRecord = {
   modelId: string;
   modelProviderCredentialId: string;
   name: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[];
 };
 
@@ -80,6 +82,7 @@ export class SetDefaultModelProviderCredentialModelMutation extends Mutation<
           modelId: modelProviderCredentialModels.modelId,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           name: modelProviderCredentialModels.name,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -113,6 +116,7 @@ export class SetDefaultModelProviderCredentialModelMutation extends Mutation<
       return {
         ...model,
         isDefault: true,
+        reasoningSupported: model.reasoningSupported,
         reasoningLevels: model.reasoningLevels ?? [],
       };
     });

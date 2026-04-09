@@ -30,6 +30,7 @@ export type AgentCreateProviderOption = {
     id: string;
     modelId: string;
     name: string;
+    reasoningSupported: boolean;
     reasoningLevels: string[];
   }>;
 };

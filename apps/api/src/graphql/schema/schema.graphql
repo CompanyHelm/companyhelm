@@ -346,6 +346,7 @@ type AgentCreateModelOption {
   modelId: String!
   name: String!
   description: String!
+  reasoningSupported: Boolean!
   reasoningLevels: [String!]!
 }
 
@@ -495,6 +496,7 @@ type ModelProviderCredentialModel {
   modelId: String!
   name: String!
   description: String!
+  reasoningSupported: Boolean!
   reasoningLevels: [String!]!
 }
 

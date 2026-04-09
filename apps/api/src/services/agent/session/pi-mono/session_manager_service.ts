@@ -391,7 +391,7 @@ export class PiMonoSessionManagerService {
         input: model.input,
         maxTokens: model.maxTokens,
         name: model.name,
-        reasoning: Array.isArray(model.reasoningLevels) && model.reasoningLevels.length > 0,
+        reasoning: model.reasoningSupported,
       })),
     });
   }

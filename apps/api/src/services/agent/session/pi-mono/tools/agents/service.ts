@@ -67,6 +67,7 @@ export type AgentManagementToolCredentialModelOption = {
   id: string;
   modelId: string;
   name: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[];
 };
 
@@ -167,6 +168,7 @@ type ModelRecord = {
   modelId: string;
   modelProviderCredentialId: string;
   name: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[] | null;
 };
 
@@ -505,6 +507,7 @@ export class AgentManagementToolService {
           modelId: modelProviderCredentialModels.modelId,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           name: modelProviderCredentialModels.name,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -520,6 +523,7 @@ export class AgentManagementToolService {
               id: modelRecord.id,
               modelId: modelRecord.modelId,
               name: modelRecord.name,
+              reasoningSupported: modelRecord.reasoningSupported,
               reasoningLevels: modelRecord.reasoningLevels ?? [],
             }));
           const defaultModelRecord = credentialModelRecords.find((modelRecord) => modelRecord.isDefault)
@@ -641,6 +645,7 @@ export class AgentManagementToolService {
           modelId: modelProviderCredentialModels.modelId,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
           name: modelProviderCredentialModels.name,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -951,6 +956,7 @@ export class AgentManagementToolService {
         modelId: modelProviderCredentialModels.modelId,
         modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
         name: modelProviderCredentialModels.name,
+        reasoningSupported: modelProviderCredentialModels.reasoningSupported,
         reasoningLevels: modelProviderCredentialModels.reasoningLevels,
       })
       .from(modelProviderCredentialModels)

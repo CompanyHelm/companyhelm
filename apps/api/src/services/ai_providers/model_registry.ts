@@ -20,7 +20,6 @@ export class ModelRegistry {
   private static defaultReasoningLevels: Record<string, string> = {
     openai: "high",
     "openai-codex": "high",
-    openrouter: "high",
   };
 
 

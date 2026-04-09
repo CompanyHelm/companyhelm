@@ -91,6 +91,7 @@ const chatsPageQueryNode = graphql`
         modelId
         name
         description
+        reasoningSupported
         reasoningLevels
       }
     }
@@ -2378,6 +2379,7 @@ function ChatsPageContent() {
           modelId: modelOption.modelId,
           name: modelOption.name,
           providerLabel: providerOption.label,
+          reasoningSupported: modelOption.reasoningSupported,
           reasoningLevels: [...modelOption.reasoningLevels],
         }));
       })

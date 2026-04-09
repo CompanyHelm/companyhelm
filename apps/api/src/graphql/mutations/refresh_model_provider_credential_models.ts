@@ -26,6 +26,7 @@ type GraphqlModelProviderCredentialModelRecord = {
   modelId: string;
   name: string;
   description: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[];
 };
 
@@ -100,6 +101,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
 
     return updatedModels.map((model) => ({
       ...model,
+      reasoningSupported: model.reasoningSupported,
       reasoningLevels: model.reasoningLevels ?? [],
     }));
   };

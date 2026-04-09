@@ -13,6 +13,7 @@ export type ChatComposerModelOption = {
   modelId: string;
   name: string;
   providerLabel: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[];
 };
 

@@ -21,7 +21,8 @@ export class OpenRouterModelAdapter implements ModelAdapterInterface {
       modelId: model.modelId,
       name: model.name,
       description: model.description,
-      reasoningLevels: model.reasoningLevels,
+      reasoningSupported: model.reasoningSupported,
+      reasoningLevels: null,
     }));
   }
 }

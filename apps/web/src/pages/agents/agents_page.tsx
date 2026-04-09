@@ -40,6 +40,7 @@ const agentsPageQueryNode = graphql`
         id
         modelId
         name
+        reasoningSupported
         reasoningLevels
       }
     }
@@ -166,6 +167,7 @@ function AgentsPageContent() {
       id: modelOption.id,
       modelId: modelOption.modelId,
       name: modelOption.name,
+      reasoningSupported: modelOption.reasoningSupported,
       reasoningLevels: [...modelOption.reasoningLevels],
     })),
   }));

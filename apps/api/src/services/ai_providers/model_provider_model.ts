@@ -7,6 +7,7 @@ export class ModelProviderModel {
   readonly modelId: string;
   readonly name: string;
   readonly description: string;
+  readonly reasoningSupported: boolean;
   readonly reasoningLevels: string[] | null;
 
   constructor(input: {
@@ -14,6 +15,7 @@ export class ModelProviderModel {
     modelId: string;
     name: string;
     description: string;
+    reasoningSupported?: boolean;
     reasoningLevels?: string[] | null;
   }) {
     const normalizedProvider = String(input.provider || "").trim();
@@ -40,5 +42,8 @@ export class ModelProviderModel {
     this.reasoningLevels = Array.isArray(input.reasoningLevels) && input.reasoningLevels.length > 0
       ? input.reasoningLevels.map((level) => String(level || "").trim()).filter((level) => level.length > 0)
       : null;
+    this.reasoningSupported = typeof input.reasoningSupported === "boolean"
+      ? input.reasoningSupported
+      : this.reasoningLevels !== null;
   }
 }

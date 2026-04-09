@@ -24,6 +24,10 @@ class ModelProviderCredentialModelsQueryTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -35,6 +39,7 @@ class ModelProviderCredentialModelsQueryTestHarness {
       modelId: "gpt-5.4",
       name: "GPT-5.4",
       description: "Latest frontier agentic coding model.",
+      reasoningSupported: true,
       reasoningLevels: ["low", "medium"],
     }];
     const scopedCompanyIds: string[] = [];
@@ -121,6 +126,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
             modelId
             name
             description
+            reasoningSupported
             reasoningLevels
           }
         }
@@ -140,6 +146,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
     modelId: "gpt-5.4",
     name: "GPT-5.4",
     description: "Latest frontier agentic coding model.",
+    reasoningSupported: true,
     reasoningLevels: ["low", "medium"],
   }]);
   assert.deepEqual(database.scopedCompanyIds, ["company-123"]);

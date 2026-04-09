@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ae69deaf97840a2edff28430f27c6276>>
+ * @generated SignedSource<<81efc7637eda7f1c02dac283f59988d9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type credentialDetailPageRefreshModelsMutation$data = {
     readonly modelProviderCredentialId: string;
     readonly name: string;
     readonly reasoningLevels: ReadonlyArray<string>;
+    readonly reasoningSupported: boolean;
   }>;
 };
 export type credentialDetailPageRefreshModelsMutation = {
@@ -92,6 +93,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "reasoningSupported",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevels",
         "storageKey": null
       }
@@ -117,16 +125,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "d88159fa1d7dbdccbf7ef34ab98f7a23",
+    "cacheID": "dae92cd2354d82a6659c1c9f7db97bd2",
     "id": null,
     "metadata": {},
     "name": "credentialDetailPageRefreshModelsMutation",
     "operationKind": "mutation",
-    "text": "mutation credentialDetailPageRefreshModelsMutation(\n  $input: RefreshModelProviderCredentialModelsInput!\n) {\n  RefreshModelProviderCredentialModels(input: $input) {\n    id\n    modelProviderCredentialId\n    modelId\n    name\n    description\n    reasoningLevels\n  }\n}\n"
+    "text": "mutation credentialDetailPageRefreshModelsMutation(\n  $input: RefreshModelProviderCredentialModelsInput!\n) {\n  RefreshModelProviderCredentialModels(input: $input) {\n    id\n    modelProviderCredentialId\n    modelId\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "18930b66e2ccef90a069f1d1d254a470";
+(node as any).hash = "8e56ef62fa22ee11ec6886b498735116";
 
 export default node;

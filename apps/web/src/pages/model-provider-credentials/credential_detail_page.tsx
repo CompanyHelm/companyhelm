@@ -23,6 +23,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       isDefault
       name
       description
+      reasoningSupported
       reasoningLevels
     }
   }
@@ -49,6 +50,7 @@ const modelProviderCredentialDetailPageRefreshModelsMutationNode = graphql`
       modelId
       name
       description
+      reasoningSupported
       reasoningLevels
     }
   }
@@ -71,12 +73,19 @@ function ModelProviderCredentialDetailPageFallback() {
   );
 }
 
-function formatReasoningLevels(levels: string[]): string {
-  if (!levels.length) {
+function formatReasoning(model: {
+  reasoningSupported: boolean;
+  reasoningLevels: ReadonlyArray<string>;
+}): string {
+  if (model.reasoningLevels.length > 0) {
+    return model.reasoningLevels.join(", ");
+  }
+
+  if (!model.reasoningSupported) {
     return "—";
   }
 
-  return levels.join(", ");
+  return "Supported";
 }
 
 function ModelProviderCredentialDetailPageContent() {
@@ -182,7 +191,7 @@ function ModelProviderCredentialDetailPageContent() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Reasoning levels</TableHead>
+                  <TableHead>Reasoning</TableHead>
                   <TableHead className="w-24 text-right">Default</TableHead>
                 </TableRow>
               </TableHeader>
@@ -198,7 +207,7 @@ function ModelProviderCredentialDetailPageContent() {
                       </div>
                     </TableCell>
                     <TableCell>{model.description}</TableCell>
-                    <TableCell>{formatReasoningLevels(model.reasoningLevels)}</TableCell>
+                    <TableCell>{formatReasoning(model)}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         disabled={model.isDefault || isSetDefaultModelInFlight}

@@ -17,6 +17,7 @@ type StoredModelRecord = {
   modelId: string;
   name: string;
   description: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[] | null;
 };
 
@@ -109,6 +110,7 @@ export class ModelService {
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
           description: modelProviderCredentialModels.description,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -139,6 +141,7 @@ export class ModelService {
               modelId: fetchedModel.modelId,
               name: fetchedModel.name,
               description: fetchedModel.description,
+              reasoningSupported: fetchedModel.reasoningSupported,
               reasoningLevels: fetchedModel.reasoningLevels,
               isDefault: false,
             });
@@ -150,6 +153,7 @@ export class ModelService {
           .set({
             name: fetchedModel.name,
             description: fetchedModel.description,
+            reasoningSupported: fetchedModel.reasoningSupported,
             reasoningLevels: fetchedModel.reasoningLevels,
           })
           .where(and(
@@ -201,6 +205,7 @@ export class ModelService {
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
           description: modelProviderCredentialModels.description,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)

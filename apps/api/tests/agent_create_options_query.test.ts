@@ -24,6 +24,10 @@ class AgentCreateOptionsQueryTestHarness {
       auth: {
         provider: "clerk",
       },
+      log: {
+        json: false,
+        level: "info",
+      },
     } as Config;
   }
 
@@ -64,6 +68,7 @@ class AgentCreateOptionsQueryTestHarness {
                         modelId: "gpt-5.4",
                         name: "GPT-5.4",
                         description: "Latest frontier agentic coding model.",
+                        reasoningSupported: true,
                         reasoningLevels: ["low", "medium", "high"],
                       }];
                     },
@@ -145,6 +150,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
               modelId
               name
               description
+              reasoningSupported
               reasoningLevels
             }
           }
@@ -167,6 +173,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
       modelId: "gpt-5.4",
       name: "GPT-5.4",
       description: "Latest frontier agentic coding model.",
+      reasoningSupported: true,
       reasoningLevels: ["low", "medium", "high"],
     }],
   }]);

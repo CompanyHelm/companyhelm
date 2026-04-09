@@ -34,6 +34,7 @@ export class OpenAiCodexModelAdapter implements ModelAdapterInterface {
         modelId: model.id,
         name: model.name,
         description: curatedModel?.description ?? model.name,
+        reasoningSupported: Boolean(model.reasoning),
         reasoningLevels: model.reasoning ? curatedModel?.reasoningLevels ?? OPENAI_REASONING_LEVELS : null,
       });
     });

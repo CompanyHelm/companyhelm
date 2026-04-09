@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fbf2b58bb5035c5b65d815a6f3391304>>
+ * @generated SignedSource<<5ee1504cb76a34035228544315881e04>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type credentialDetailPageQuery$data = {
     readonly isDefault: boolean;
     readonly name: string;
     readonly reasoningLevels: ReadonlyArray<string>;
+    readonly reasoningSupported: boolean;
   }>;
   readonly ModelProviderCredentials: ReadonlyArray<{
     readonly id: string;
@@ -105,6 +106,13 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "reasoningSupported",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "reasoningLevels",
         "storageKey": null
       }
@@ -130,16 +138,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "26d3e93964ddb3b7fcc5b919e3cb5cb9",
+    "cacheID": "0db8c8df9d54f38335340e36a1e1fb5b",
     "id": null,
     "metadata": {},
     "name": "credentialDetailPageQuery",
     "operationKind": "query",
-    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    modelProvider\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningLevels\n  }\n}\n"
+    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    modelProvider\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2db89e969628581498c1edb15be6ae42";
+(node as any).hash = "d25c0c2ce5e8baa236f4ec5301246bf7";
 
 export default node;

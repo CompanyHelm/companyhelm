@@ -20,6 +20,7 @@ type ModelRecord = {
   modelId: string;
   name: string;
   description: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[] | null;
 };
 
@@ -28,6 +29,7 @@ type GraphqlAgentCreateModelOption = {
   modelId: string;
   name: string;
   description: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[];
 };
 
@@ -95,6 +97,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
           description: modelProviderCredentialModels.description,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -110,6 +113,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
               modelId: modelRecord.modelId,
               name: modelRecord.name,
               description: modelRecord.description,
+              reasoningSupported: modelRecord.reasoningSupported,
               reasoningLevels: modelRecord.reasoningLevels ?? [],
             }));
           const defaultModelRecord = credentialModelRecords.find((modelRecord) => modelRecord.isDefault)

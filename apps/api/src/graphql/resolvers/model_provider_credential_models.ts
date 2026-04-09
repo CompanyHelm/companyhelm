@@ -14,6 +14,7 @@ type ModelProviderCredentialModelRecord = {
   modelId: string;
   name: string;
   description: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[] | null;
 };
 
@@ -24,6 +25,7 @@ type GraphqlModelProviderCredentialModelRecord = {
   modelId: string;
   name: string;
   description: string;
+  reasoningSupported: boolean;
   reasoningLevels: string[];
 };
 
@@ -67,6 +69,7 @@ export class ModelProviderCredentialModelsQueryResolver {
           modelId: modelProviderCredentialModels.modelId,
           name: modelProviderCredentialModels.name,
           description: modelProviderCredentialModels.description,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
@@ -77,6 +80,7 @@ export class ModelProviderCredentialModelsQueryResolver {
 
       return models.map((model) => ({
         ...model,
+        reasoningSupported: model.reasoningSupported,
         reasoningLevels: model.reasoningLevels ?? [],
       }));
     });

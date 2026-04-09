@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cd90fa99cd7d159b045f0bbfcb2c8a8d>>
+ * @generated SignedSource<<f475b50dcd3d2e64714243bf6e098692>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type agentsPageQuery$data = {
       readonly modelId: string;
       readonly name: string;
       readonly reasoningLevels: ReadonlyArray<string>;
+      readonly reasoningSupported: boolean;
     }>;
   }>;
   readonly Agents: ReadonlyArray<{
@@ -210,6 +211,13 @@ v5 = [
             "alias": null,
             "args": null,
             "kind": "ScalarField",
+            "name": "reasoningSupported",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
             "name": "reasoningLevels",
             "storageKey": null
           }
@@ -361,16 +369,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "4faa538f3b31fcffd4a8f1b9a8a1792b",
+    "cacheID": "c74f7a7d32f1715fc6d7af79a3cf7ceb",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c8da777d41e84dee9457c2859ee1b0bf";
+(node as any).hash = "6070228952130f540061588fc218b3a4";
 
 export default node;

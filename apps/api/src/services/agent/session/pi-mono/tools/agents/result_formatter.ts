@@ -156,6 +156,7 @@ export class AgentManagementResultFormatter {
         `modelId: ${model.modelId}`,
         `name: ${model.name}`,
         `description: ${model.description}`,
+        `reasoningSupported: ${model.reasoningSupported}`,
         `reasoningLevels: ${AgentManagementResultFormatter.formatStringList(model.reasoningLevels)}`,
       ].join("\n"));
     }).join("\n\n");

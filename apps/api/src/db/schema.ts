@@ -604,6 +604,7 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
   modelId: text("model_id").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull(),
+  reasoningSupported: boolean("reasoning_supported").notNull().default(false),
   // null if the model does not support reasoning levels
   reasoningLevels: text("reasoning_levels").array(),
   isDefault: boolean("is_default").notNull().default(false),

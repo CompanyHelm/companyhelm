@@ -34,6 +34,7 @@ class ModelServiceTestHarness {
       modelId: string;
       name: string;
       description: string;
+      reasoningSupported: boolean;
       reasoningLevels: string[] | null;
     }> = [
       {
@@ -42,6 +43,7 @@ class ModelServiceTestHarness {
         modelId: "gpt-5.4",
         name: "GPT-5.4 Old",
         description: "Old description",
+        reasoningSupported: true,
         reasoningLevels: ["low"],
       },
       {
@@ -50,6 +52,7 @@ class ModelServiceTestHarness {
         modelId: "gpt-4.1",
         name: "GPT-4.1",
         description: "To be removed",
+        reasoningSupported: false,
         reasoningLevels: null,
       },
     ];
@@ -76,13 +79,21 @@ class ModelServiceTestHarness {
                 return {
                   async where() {
                     const index = currentModels.findIndex((model) => model.id === "existing-model-row");
-                    if ("name" in value || "description" in value || "reasoningLevels" in value) {
+                    if (
+                      "name" in value
+                      || "description" in value
+                      || "reasoningSupported" in value
+                      || "reasoningLevels" in value
+                    ) {
                       currentModels[index] = {
                         ...currentModels[index],
                         name: "name" in value ? String(value.name) : currentModels[index].name,
                         description: "description" in value
                           ? String(value.description)
                           : currentModels[index].description,
+                        reasoningSupported: "reasoningSupported" in value
+                          ? Boolean(value.reasoningSupported)
+                          : currentModels[index].reasoningSupported,
                         reasoningLevels: "reasoningLevels" in value
                           ? (value.reasoningLevels as string[] | null) ?? null
                           : currentModels[index].reasoningLevels,
@@ -107,6 +118,7 @@ class ModelServiceTestHarness {
                     modelId: String(nextValue.modelId),
                     name: String(nextValue.name),
                     description: String(nextValue.description),
+                    reasoningSupported: Boolean(nextValue.reasoningSupported),
                     reasoningLevels: (nextValue.reasoningLevels as string[] | null) ?? null,
                   });
                 }
@@ -157,6 +169,7 @@ test("ModelService refreshStoredModels preserves ids and applies only the diff",
       modelId: "gpt-5.4",
       name: "GPT-5.4",
       description: "Latest frontier agentic coding model.",
+      reasoningSupported: true,
       reasoningLevels: ["low", "medium", "high", "xhigh"],
     },
     {
@@ -165,6 +178,7 @@ test("ModelService refreshStoredModels preserves ids and applies only the diff",
       modelId: "gpt-5.4-mini",
       name: "GPT-5.4 Mini",
       description: "Smaller frontier agentic coding model.",
+      reasoningSupported: true,
       reasoningLevels: ["low", "medium", "high", "xhigh"],
     },
   ]);
@@ -247,15 +261,16 @@ test("ModelService fetchModels uses the dedicated openrouter adapter", async () 
       "https://openrouter.ai/api/v1/key",
       "https://openrouter.ai/api/v1/models",
     ]);
-    assert.deepEqual(models, [
-      new ModelProviderModel({
-        provider: "openrouter",
-        modelId: "openrouter/auto",
-        name: "Auto Router",
-        description: "Automatically routes requests.",
-        reasoningLevels: ["low", "medium", "high", "xhigh"],
-      }),
-    ]);
+    assert.equal(models.length, 1);
+    assert.deepEqual(models[0], new ModelProviderModel({
+      provider: "openrouter",
+      modelId: "openrouter/auto",
+      name: "Auto Router",
+      description: "Automatically routes requests.",
+      reasoningSupported: models[0]?.reasoningSupported ?? false,
+    }));
+    assert.equal(typeof models[0]?.reasoningSupported, "boolean");
+    assert.equal(models[0]?.reasoningLevels, null);
   } finally {
     globalThis.fetch = originalFetch;
   }

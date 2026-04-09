@@ -114,6 +114,7 @@ test("AgentListAgentsTool renders full agent management state", async () => {
             id: "model-1",
             modelId: "gpt-5.4",
             name: "GPT-5.4",
+            reasoningSupported: true,
             reasoningLevels: ["low", "medium", "high"],
           }],
         }],
