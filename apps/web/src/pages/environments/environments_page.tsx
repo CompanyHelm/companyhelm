@@ -256,7 +256,7 @@ function EnvironmentsPageContent() {
                       return;
                     }
 
-                    window.location.assign(url);
+                    window.open(url, "_blank", "noopener,noreferrer");
                     resolve();
                   },
                   onError: reject,
