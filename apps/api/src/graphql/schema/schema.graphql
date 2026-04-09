@@ -112,6 +112,7 @@ type Mutation {
 }
 
 type Subscription {
+  InboxHumanQuestionsUpdated: [InboxHumanQuestion!]!
   SessionUpdated: Session!
   SessionInboxHumanQuestionsUpdated(sessionId: ID!): [InboxHumanQuestion!]!
   SessionMessageUpdated(sessionId: ID!): SessionMessage!

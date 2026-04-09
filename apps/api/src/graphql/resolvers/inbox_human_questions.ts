@@ -1,11 +1,11 @@
 import { inject, injectable } from "inversify";
 import { AgentInboxService } from "../../services/inbox/service.ts";
-import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { Resolver } from "./resolver.ts";
 import {
   GraphqlInboxHumanQuestionRecord,
   InboxHumanQuestionPresenter,
-} from "./inbox_human_question_presenter.ts";
+} from "../inbox_human_question_presenter.ts";
+import type { GraphqlRequestContext } from "../graphql_request_context.ts";
+import { Resolver } from "./resolver.ts";
 
 /**
  * Exposes the open inbox questions that agents have escalated to humans. The inbox UI reads this

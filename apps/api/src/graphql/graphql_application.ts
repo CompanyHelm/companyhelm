@@ -94,6 +94,7 @@ import { GithubInstallationsQueryResolver } from "./resolvers/github_installatio
 import { GithubRepositoriesQueryResolver } from "./resolvers/github_repositories.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 import { InboxHumanQuestionsQueryResolver } from "./resolvers/inbox_human_questions.ts";
+import { InboxHumanQuestionsUpdatedSubscriptionResolver } from "./resolvers/inbox_human_questions_updated.ts";
 import { MeQueryResolver } from "./resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
@@ -176,6 +177,7 @@ export class GraphqlApplication {
   private readonly executeTaskMutation: ExecuteTaskMutation;
   private readonly forkSessionMutation: ForkSessionMutation;
   private readonly inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver;
+  private readonly inboxHumanQuestionsUpdatedSubscriptionResolver: InboxHumanQuestionsUpdatedSubscriptionResolver;
   private readonly interruptSessionMutation: InterruptSessionMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation;
@@ -532,6 +534,12 @@ export class GraphqlApplication {
         throw new Error("SessionInboxHumanQuestionsUpdated subscription is not configured.");
       },
     } as never),
+    @inject(InboxHumanQuestionsUpdatedSubscriptionResolver)
+    inboxHumanQuestionsUpdatedSubscriptionResolver: InboxHumanQuestionsUpdatedSubscriptionResolver = new InboxHumanQuestionsUpdatedSubscriptionResolver({
+      async listOpenHumanQuestions() {
+        throw new Error("InboxHumanQuestionsUpdated subscription is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -649,6 +657,7 @@ export class GraphqlApplication {
     this.executeTaskMutation = executeTaskMutation;
     this.forkSessionMutation = forkSessionMutation;
     this.inboxHumanQuestionsQueryResolver = inboxHumanQuestionsQueryResolver;
+    this.inboxHumanQuestionsUpdatedSubscriptionResolver = inboxHumanQuestionsUpdatedSubscriptionResolver;
     this.interruptSessionMutation = interruptSessionMutation;
     this.promptSessionMutation = promptSessionMutation;
     this.resolveInboxHumanQuestionMutation = resolveInboxHumanQuestionMutation;
@@ -859,6 +868,10 @@ export class GraphqlApplication {
           SessionInboxHumanQuestionsUpdated: {
             subscribe: this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver.subscribe,
             resolve: this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver.resolve,
+          },
+          InboxHumanQuestionsUpdated: {
+            subscribe: this.inboxHumanQuestionsUpdatedSubscriptionResolver.subscribe,
+            resolve: this.inboxHumanQuestionsUpdatedSubscriptionResolver.resolve,
           },
           SessionMessageUpdated: {
             subscribe: this.sessionMessageUpdatedSubscriptionResolver.subscribe,

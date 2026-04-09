@@ -54,6 +54,7 @@ import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated_
 import type { chatsPageDeleteEnvironmentMutation } from "./__generated__/chatsPageDeleteEnvironmentMutation.graphql";
 import type { chatsPageInterruptSessionMutation } from "./__generated__/chatsPageInterruptSessionMutation.graphql";
 import type { chatsPageGetEnvironmentVncUrlMutation } from "./__generated__/chatsPageGetEnvironmentVncUrlMutation.graphql";
+import type { chatsPageInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageInboxHumanQuestionsUpdatedSubscription.graphql";
 import type { chatsPageResolveInboxHumanQuestionMutation } from "./__generated__/chatsPageResolveInboxHumanQuestionMutation.graphql";
 import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageStartEnvironmentMutation } from "./__generated__/chatsPageStartEnvironmentMutation.graphql";
@@ -492,6 +493,24 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
 const chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
   subscription chatsPageSessionInboxHumanQuestionsUpdatedSubscription($sessionId: ID!) {
     SessionInboxHumanQuestionsUpdated(sessionId: $sessionId) {
+      id
+      sessionId
+      title
+      questionText
+      allowCustomAnswer
+      createdAt
+      proposals {
+        id
+        answerText
+        rating
+      }
+    }
+  }
+`;
+
+const chatsPageInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
+  subscription chatsPageInboxHumanQuestionsUpdatedSubscription {
+    InboxHumanQuestionsUpdated {
       id
       sessionId
       title
@@ -1258,6 +1277,40 @@ function isArchivedSession(session: Pick<SessionRecord, "status">): boolean {
 
 function isRunningSession(session: Pick<SessionRecord, "status">): boolean {
   return session.status.trim().toLowerCase() === "running";
+}
+
+function renderSessionListStatusIndicator(
+  input: {
+    hasOpenHumanQuestion: boolean;
+    hasUnread: boolean;
+    isSessionRunning: boolean;
+  },
+): React.ReactNode {
+  if (input.hasOpenHumanQuestion) {
+    return (
+      <span
+        className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500/20 px-1 text-[10px] font-semibold leading-none text-amber-600"
+        title="Pending human question"
+      >
+        ?
+      </span>
+    );
+  }
+
+  if (input.isSessionRunning) {
+    return (
+      <Loader2Icon
+        className="size-3.5 animate-spin text-muted-foreground"
+        title="Session running"
+      />
+    );
+  }
+
+  if (input.hasUnread) {
+    return <span className="size-2 rounded-full bg-blue-500" />;
+  }
+
+  return null;
 }
 
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
@@ -2253,6 +2306,9 @@ function ChatsPageContent() {
       fetchPolicy: "store-and-network",
     },
   );
+  const [inboxHumanQuestions, setInboxHumanQuestions] = useState<InboxHumanQuestionRecord[]>(() => {
+    return [...data.InboxHumanQuestions].sort(compareInboxHumanQuestionsByCreatedAt);
+  });
   const [commitCreateSession, isCreateSessionInFlight] = useMutation<chatsPageCreateSessionMutation>(
     chatsPageCreateSessionMutationNode,
   );
@@ -2353,6 +2409,9 @@ function ChatsPageContent() {
   const sessionById = useMemo(() => {
     return new Map(activeSessions.map((session) => [session.id, session]));
   }, [activeSessions]);
+  const sessionIdsWithOpenHumanQuestions = useMemo(() => {
+    return new Set(inboxHumanQuestions.map((question) => question.sessionId));
+  }, [inboxHumanQuestions]);
 
   const resolvedSelectedSession = search.sessionId ? sessionById.get(search.sessionId) ?? null : null;
   const resolvedSelectedAgentId = search.agentId ?? resolvedSelectedSession?.agentId ?? "";
@@ -2368,10 +2427,10 @@ function ChatsPageContent() {
 
     return [
       ...(liveSessionHumanQuestionsBySessionId[selectedSessionId]
-        ?? data.InboxHumanQuestions.filter((question) => question.sessionId === selectedSessionId)),
+        ?? inboxHumanQuestions.filter((question) => question.sessionId === selectedSessionId)),
     ]
       .sort(compareInboxHumanQuestionsByCreatedAt)[0] ?? null;
-  }, [data.InboxHumanQuestions, liveSessionHumanQuestionsBySessionId, selectedSessionId]);
+  }, [inboxHumanQuestions, liveSessionHumanQuestionsBySessionId, selectedSessionId]);
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const shouldUseCompactComposerSettings = isMobile;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
@@ -2410,6 +2469,10 @@ function ChatsPageContent() {
   const chatListPanelStyle = {
     "--chats-list-width": `${chatListWidth}px`,
   } as CSSProperties;
+
+  useEffect(() => {
+    setInboxHumanQuestions([...data.InboxHumanQuestions].sort(compareInboxHumanQuestionsByCreatedAt));
+  }, [data.InboxHumanQuestions]);
 
   useEffect(() => {
     selectedSessionUpdatedAtRef.current = selectedSession?.updatedAt ?? null;
@@ -3360,6 +3423,28 @@ function ChatsPageContent() {
   }, [environment, markSessionRead, selectedSessionId]);
 
   useEffect(() => {
+    const disposable = requestSubscription<chatsPageInboxHumanQuestionsUpdatedSubscription>(environment, {
+      subscription: chatsPageInboxHumanQuestionsUpdatedSubscriptionNode,
+      variables: {},
+      onNext: (response) => {
+        const nextQuestions = response?.InboxHumanQuestionsUpdated;
+        if (!nextQuestions) {
+          return;
+        }
+
+        setInboxHumanQuestions([...nextQuestions].sort(compareInboxHumanQuestionsByCreatedAt));
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [environment]);
+
+  useEffect(() => {
     if (!selectedSession) {
       return;
     }
@@ -3827,6 +3912,12 @@ function ChatsPageContent() {
     });
   };
 
+  const removeInboxHumanQuestion = useCallback((inboxItemId: string) => {
+    setInboxHumanQuestions((currentQuestions) => {
+      return currentQuestions.filter((question) => question.id !== inboxItemId);
+    });
+  }, []);
+
   const resolveHumanQuestion = async (
     input: {
       customAnswerText?: string;
@@ -3852,6 +3943,7 @@ function ChatsPageContent() {
               return;
             }
 
+            removeInboxHumanQuestion(input.inboxItemId);
             resolve();
           },
           onError: reject,
@@ -3898,6 +3990,7 @@ function ChatsPageContent() {
               return;
             }
 
+            removeInboxHumanQuestion(inboxItemId);
             resolve();
           },
           onError: reject,
@@ -4259,6 +4352,7 @@ function ChatsPageContent() {
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
+                            const hasOpenHumanQuestion = sessionIdsWithOpenHumanQuestions.has(session.id);
                             const isSessionRunning = isRunningSession(session);
 
                             return (
@@ -4279,14 +4373,11 @@ function ChatsPageContent() {
                                     type="button"
                                   >
                                     <span className="flex h-8 w-6 shrink-0 items-center justify-center">
-                                      {isSessionRunning ? (
-                                        <Loader2Icon
-                                          className="size-3.5 animate-spin text-sidebar-foreground/70"
-                                          title="Session running"
-                                        />
-                                      ) : session.hasUnread ? (
-                                        <span className="size-2 rounded-full bg-blue-500" />
-                                      ) : null}
+                                      {renderSessionListStatusIndicator({
+                                        hasOpenHumanQuestion,
+                                        hasUnread: session.hasUnread,
+                                        isSessionRunning,
+                                      })}
                                     </span>
                                     <p className="block min-w-0 truncate text-xs font-medium text-sidebar-foreground">
                                       {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
@@ -4415,6 +4506,7 @@ function ChatsPageContent() {
                           {agentSessions.map((session) => {
                             const isSessionSelected = selectedSession?.id === session.id;
                             const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
+                            const hasOpenHumanQuestion = sessionIdsWithOpenHumanQuestions.has(session.id);
                             const isSessionRunning = isRunningSession(session);
 
                             return (
@@ -4435,14 +4527,11 @@ function ChatsPageContent() {
                                     type="button"
                                   >
                                     <span className="flex h-8 w-6 shrink-0 items-center justify-center">
-                                      {isSessionRunning ? (
-                                        <Loader2Icon
-                                          className="size-3.5 animate-spin text-muted-foreground"
-                                          title="Session running"
-                                        />
-                                      ) : session.hasUnread ? (
-                                        <span className="size-2 rounded-full bg-blue-500" />
-                                      ) : null}
+                                      {renderSessionListStatusIndicator({
+                                        hasOpenHumanQuestion,
+                                        hasUnread: session.hasUnread,
+                                        isSessionRunning,
+                                      })}
                                     </span>
                                     <p className="block min-w-0 truncate text-xs font-medium text-foreground">
                                       {resolveSessionTitleOverride(session, sessionTitleOverridesById)}

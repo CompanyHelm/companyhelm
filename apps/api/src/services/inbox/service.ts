@@ -10,10 +10,11 @@ import {
   agents,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-import { SessionManagerService } from "../agent/session/session_manager_service.ts";
-import { SessionProcessPubSubNames } from "../agent/session/process/pub_sub_names.ts";
 import { RedisCompanyScopedService } from "../redis/company_scoped_service.ts";
 import { RedisService } from "../redis/service.ts";
+import { SessionManagerService } from "../agent/session/session_manager_service.ts";
+import { SessionProcessPubSubNames } from "../agent/session/process/pub_sub_names.ts";
+import { AgentInboxPubSubNames } from "./pub_sub_names.ts";
 
 export type AgentInboxHumanQuestionProposalRecord = {
   answerText: string;
@@ -140,6 +141,7 @@ type DeletableDatabase = {
  */
 @injectable()
 export class AgentInboxService {
+  private readonly inboxPubSubNames: AgentInboxPubSubNames;
   private readonly redisService: RedisService;
   private readonly sessionManagerService: SessionManagerService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
@@ -149,10 +151,12 @@ export class AgentInboxService {
     @inject(RedisService) redisService: RedisService,
     @inject(SessionProcessPubSubNames)
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
+    @inject(AgentInboxPubSubNames) inboxPubSubNames: AgentInboxPubSubNames = new AgentInboxPubSubNames(),
   ) {
     this.redisService = redisService;
     this.sessionManagerService = sessionManagerService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
+    this.inboxPubSubNames = inboxPubSubNames;
   }
 
   async createHumanQuestion(
@@ -246,6 +250,7 @@ export class AgentInboxService {
     }
 
     await this.publishSessionHumanQuestionsUpdated(input.companyId, input.sessionId);
+    await this.publishHumanQuestionsUpdate(input.companyId);
     return createdQuestion;
   }
 
@@ -393,6 +398,7 @@ export class AgentInboxService {
     }
 
     await this.publishSessionHumanQuestionsUpdated(input.companyId, resolvedQuestion.sessionId);
+    await this.publishHumanQuestionsUpdate(input.companyId);
     return resolvedQuestion;
   }
 
@@ -444,7 +450,13 @@ export class AgentInboxService {
     }
 
     await this.publishSessionHumanQuestionsUpdated(input.companyId, dismissedQuestion.sessionId);
+    await this.publishHumanQuestionsUpdate(input.companyId);
     return dismissedQuestion;
+  }
+
+  private async publishHumanQuestionsUpdate(companyId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.inboxPubSubNames.getHumanQuestionsUpdateChannel());
   }
 
   private async reopenQuestion(
