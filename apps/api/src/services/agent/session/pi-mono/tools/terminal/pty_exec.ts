@@ -7,13 +7,13 @@ import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/p
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
- * Executes shell commands inside the leased environment, creating a tmux-backed PTY session when
- * needed and returning the session id so later tool calls can continue the same shell.
+ * Executes shell commands inside one leased-environment PTY, creating the PTY under the requested
+ * id when it does not already exist.
  */
 export class AgentPtyExecTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     columns: Type.Optional(Type.Number({
-      description: "Optional terminal width to use when creating a new PTY session.",
+      description: "Optional terminal width to use if pty_exec needs to create the requested PTY first.",
     })),
     command: Type.String({
       description: "Shell command to execute inside the environment PTY session.",
@@ -25,14 +25,11 @@ export class AgentPtyExecTool {
         description: "Optional environment variables to apply for this PTY command execution.",
       },
     )),
-    keepSession: Type.Optional(Type.Boolean({
-      description: "Whether to preserve a newly created PTY session if the command finishes before this call returns. If the command is still running when yield_time_ms elapses, the session stays alive regardless.",
-    })),
+    pty_id: Type.String({
+      description: "Required logical PTY identifier. If the PTY does not exist yet, pty_exec creates it under this id first.",
+    }),
     rows: Type.Optional(Type.Number({
-      description: "Optional terminal height to use when creating a new PTY session.",
-    })),
-    sessionId: Type.Optional(Type.String({
-      description: "Existing environment session id to reuse for follow-up PTY commands.",
+      description: "Optional terminal height to use if pty_exec needs to create the requested PTY first.",
     })),
     workingDirectory: Type.Optional(Type.String({
       description: "Optional working directory to use for this PTY command execution.",
@@ -57,7 +54,15 @@ export class AgentPtyExecTool {
         const environment = await this.promptScope.getEnvironment();
         let result;
         try {
-          result = await environment.executeCommand(params);
+          result = await environment.executeCommand({
+            columns: params.columns,
+            command: params.command,
+            environment: params.environment,
+            ptyId: params.pty_id,
+            rows: params.rows,
+            workingDirectory: params.workingDirectory,
+            yield_time_ms: params.yield_time_ms,
+          });
         } catch (error) {
           if (error instanceof AgentEnvironmentShellTimeoutError) {
             this.logger.warn({
@@ -81,8 +86,8 @@ export class AgentPtyExecTool {
             completed: result.completed,
             cwd: params.workingDirectory ?? null,
             exitCode: result.exitCode,
-            sessionId: result.sessionId,
-            type: "terminal",
+            pty_id: result.ptyId,
+            type: "pty",
           },
         };
       },
@@ -90,11 +95,10 @@ export class AgentPtyExecTool {
       name: "pty_exec",
       parameters: AgentPtyExecTool.parameters,
       promptGuidelines: [
-        "Use pty_exec to create or continue work in an environment PTY session.",
-        "When sessionId is omitted pty_exec creates a fresh tmux-backed PTY session.",
-        "If the command is still running when the tool returns after yield_time_ms, the session remains open and sessionId is returned regardless of keepSession.",
-        "Completed one-shot commands auto-close their newly created PTY session unless keepSession is true.",
-        "Reuse the returned sessionId when you want follow-up tool calls to target the same shell.",
+        "Use pty_exec to create or continue work in one named environment PTY.",
+        "pty_exec requires pty_id. If that PTY does not exist yet, pty_exec creates it first under the requested id.",
+        "PTYs are durable and are not automatically garbage-collected after commands finish.",
+        "Use pty_kill when you are done with a PTY and want to remove it.",
       ],
       promptSnippet: "Execute commands in the environment PTY",
     };

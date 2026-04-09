@@ -59,12 +59,13 @@ type ToolExecutionResult = {
 };
 
 type TerminalStructuredContent = {
-  type: "terminal";
+  type: "pty" | "terminal";
   command: string;
   completed: boolean;
   cwd: string | null;
   exitCode: number | null;
-  sessionId: string | null;
+  pty_id?: string | null;
+  sessionId?: string | null;
 };
 
 type SessionMessage = {
@@ -549,7 +550,10 @@ export class PiMonoSessionEventHandler {
     timestamp: Date,
   ): Array<Record<string, unknown>> {
     const messageContent = this.resolveMessageContent(message);
-    const structuredContent = message.structuredContent?.type === "terminal" ? message.structuredContent : null;
+    const structuredContent = message.structuredContent
+      && (message.structuredContent.type === "terminal" || message.structuredContent.type === "pty")
+      ? message.structuredContent
+      : null;
 
     return messageContent
       .flatMap((contentBlock, contentIndex) => {
@@ -754,21 +758,34 @@ export class PiMonoSessionEventHandler {
     if (
       typeof terminalDetails.command !== "string"
       || typeof terminalDetails.completed !== "boolean"
-      || (terminalDetails.sessionId !== null && typeof terminalDetails.sessionId !== "string")
+      || !(
+        (terminalDetails.sessionId === undefined
+          || terminalDetails.sessionId === null
+          || typeof terminalDetails.sessionId === "string")
+        && (terminalDetails.pty_id === undefined
+          || terminalDetails.pty_id === null
+          || typeof terminalDetails.pty_id === "string")
+      )
     ) {
       return null;
     }
 
     const cwd = typeof terminalDetails.cwd === "string" ? terminalDetails.cwd : null;
     const exitCode = typeof terminalDetails.exitCode === "number" ? terminalDetails.exitCode : null;
+    const type = terminalDetails.type === "pty" ? "pty" : "terminal";
 
     return {
-      type: "terminal",
+      type,
       command: terminalDetails.command,
       completed: terminalDetails.completed,
       cwd,
       exitCode,
-      sessionId: terminalDetails.sessionId,
+      ...(terminalDetails.pty_id !== undefined
+        ? { pty_id: terminalDetails.pty_id as string | null }
+        : {}),
+      ...(terminalDetails.sessionId !== undefined
+        ? { sessionId: terminalDetails.sessionId as string | null }
+        : {}),
     };
   }
 

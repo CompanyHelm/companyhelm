@@ -1,29 +1,30 @@
 import type { AgentEnvironmentRecord } from "./provider_interface.ts";
 
 /**
- * Describes one terminal session that is currently reachable inside a leased agent environment.
- * Tool callers use these records to decide whether to reuse an existing shell or create a new one
+ * Describes one PTY that is currently reachable inside a leased agent environment. Tool callers
+ * use these records to decide whether to reuse an existing shell or create a new one
  * with pty_exec.
  */
-export type AgentEnvironmentTerminalSession = {
+export type AgentEnvironmentPty = {
   attached: boolean;
   createdAt: string;
   height: number;
-  id: string;
+  ptyId: string;
   width: number;
 };
 
 /**
- * Carries the provider-agnostic terminal execution inputs used by both pty_exec and
- * follow-up terminal interactions.
+ * Carries the provider-agnostic tmux execution inputs used by both the explicit PTY tools and the
+ * older internal shell-session tools such as apply_patch and gh_exec.
  */
 export type AgentEnvironmentCommandInput = {
   columns?: number;
   command: string;
   environment?: Record<string, string>;
   keepSession?: boolean;
-  sessionId?: string | null;
+  ptyId?: string | null;
   rows?: number;
+  sessionId?: string | null;
   workingDirectory?: string;
   yield_time_ms?: number;
 };
@@ -37,6 +38,7 @@ export type AgentEnvironmentCommandResult = {
   completed: boolean;
   exitCode: number | null;
   output: string;
+  ptyId: string | null;
   sessionId: string | null;
 };
 
@@ -92,8 +94,9 @@ export abstract class AgentEnvironmentInterface {
   abstract getRecord(): AgentEnvironmentRecord;
 
   /**
-   * Executes a shell command inside the leased environment, optionally reusing an existing session
-   * when the caller provides a previous session id.
+   * Executes a shell command inside the leased environment. When ptyId is provided, the command
+   * runs in a durable named PTY that is created automatically if missing. Otherwise the older
+   * session-oriented tmux behavior remains available for internal tools.
    */
   abstract executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult>;
 
@@ -106,34 +109,34 @@ export abstract class AgentEnvironmentInterface {
   ): Promise<AgentEnvironmentDirectShellCommandResult>;
 
   /**
-   * Sends raw terminal input into an existing session and waits for additional output until
+   * Sends raw terminal input into an existing PTY and waits for additional output until
    * the yield deadline elapses or the shell exits.
    */
-  abstract sendInput(sessionId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult>;
+  abstract sendInput(ptyId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult>;
 
   /**
    * Reads terminal output directly from the active PTY implementation starting at the requested offset.
    */
   abstract readOutput(
-    sessionId: string,
+    ptyId: string,
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage>;
 
   /**
-   * Lists the terminal sessions that currently exist inside the leased environment.
+   * Lists the PTYs that currently exist inside the leased environment.
    */
-  abstract listSessions(): Promise<AgentEnvironmentTerminalSession[]>;
+  abstract listPtys(): Promise<AgentEnvironmentPty[]>;
 
   /**
-   * Resizes an existing terminal session so terminal applications can react to the new dimensions.
+   * Resizes an existing PTY so terminal applications can react to the new dimensions.
    */
-  abstract resizeSession(sessionId: string, columns: number, rows: number): Promise<void>;
+  abstract resizePty(ptyId: string, columns: number, rows: number): Promise<void>;
 
   /**
-   * Kills a terminal session immediately.
+   * Kills one PTY immediately.
    */
-  abstract killSession(sessionId: string): Promise<void>;
+  abstract killPty(ptyId: string): Promise<void>;
 
   /**
    * Ends prompt-run ownership of the leased environment. Implementations should dispose any

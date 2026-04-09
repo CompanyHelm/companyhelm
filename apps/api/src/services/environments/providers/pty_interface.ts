@@ -1,49 +1,51 @@
 import type {
   AgentEnvironmentCommandInput,
   AgentEnvironmentCommandResult,
+  AgentEnvironmentPty,
   AgentEnvironmentTerminalOutputPage,
-  AgentEnvironmentTerminalSession,
 } from "./environment_interface.ts";
 
 /**
- * Defines the reusable PTY/session operations that agent tools expect once an environment has been
+ * Defines the reusable PTY operations that agent tools expect once an environment has been
  * leased. Concrete implementations can be backed by tmux, Windows terminals, or other provider-
  * specific PTY mechanisms without changing the tool layer.
  */
 export abstract class AgentEnvironmentPtyInterface {
   /**
-   * Executes a shell command inside the leased environment.
+   * Executes a shell command inside the leased environment. When ptyId is provided, the command
+   * runs in a durable named PTY that is created automatically if missing. Otherwise the older
+   * session-oriented tmux behavior remains available for internal tools.
    */
   abstract executeCommand(input: AgentEnvironmentCommandInput): Promise<AgentEnvironmentCommandResult>;
 
   /**
-   * Writes additional terminal input into an existing session.
+   * Writes additional terminal input into an existing PTY.
    */
-  abstract sendInput(sessionId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult>;
+  abstract sendInput(ptyId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult>;
 
   /**
-   * Reads output from an existing terminal session.
+   * Reads output from an existing PTY.
    */
   abstract readOutput(
-    sessionId: string,
+    ptyId: string,
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage>;
 
   /**
-   * Lists terminal sessions that currently exist inside the environment.
+   * Lists PTYs that currently exist inside the environment.
    */
-  abstract listSessions(): Promise<AgentEnvironmentTerminalSession[]>;
+  abstract listPtys(): Promise<AgentEnvironmentPty[]>;
 
   /**
-   * Resizes an existing terminal session.
+   * Resizes an existing PTY.
    */
-  abstract resizeSession(sessionId: string, columns: number, rows: number): Promise<void>;
+  abstract resizePty(ptyId: string, columns: number, rows: number): Promise<void>;
 
   /**
-   * Terminates an existing terminal session immediately.
+   * Terminates an existing PTY immediately.
    */
-  abstract killSession(sessionId: string): Promise<void>;
+  abstract killPty(ptyId: string): Promise<void>;
 
   /**
    * Releases any PTY-local resources held by the implementation itself.

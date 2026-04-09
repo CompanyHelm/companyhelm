@@ -139,7 +139,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
   assert.deepEqual(
     tools.map((tool) => tool.name),
     [
-      "pty_list_sessions",
+      "pty_list",
       "pty_exec",
       "bash_exec",
       "apply_patch",
@@ -444,7 +444,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
   assert.deepEqual(
     session.agent.state.tools.map((tool) => tool.name),
     [
-      "pty_list_sessions",
+      "pty_list",
       "pty_exec",
       "bash_exec",
       "apply_patch",

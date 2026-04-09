@@ -217,7 +217,7 @@ class FakeEnvironmentShell {
   }
 }
 
-test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes sessions", async () => {
+test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes PTYs", async () => {
   const fakeEnvironmentShell = new FakeEnvironmentShell();
   fakeEnvironmentShell.sessions.set("stray-session", {
     createdAt: "67890",
@@ -229,33 +229,35 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
 
   const executionResult = await pty.executeCommand({
     command: "ls -la",
+    ptyId: "workspace",
     yield_time_ms: 0,
   });
-  const executionSessionId = executionResult.sessionId;
+  const executionPtyId = executionResult.ptyId;
 
-  assert.match(executionSessionId ?? "", /^pty-[a-f0-9]{32}$/);
+  assert.equal(executionPtyId, "workspace");
+  assert.equal(executionResult.sessionId, null);
   assert.equal(executionResult.completed, false);
   assert.equal(executionResult.output, "ran: ls -la");
-  assert.ok(executionSessionId);
+  assert.ok(executionPtyId);
 
-  const sessions = await pty.listSessions();
-  assert.ok(sessions.some((session) => session.id === executionSessionId));
-  assert.ok(sessions.some((session) => session.id === "stray-session"));
+  const ptys = await pty.listPtys();
+  assert.ok(ptys.some((listedPty) => listedPty.ptyId === executionPtyId));
+  assert.ok(ptys.some((listedPty) => listedPty.ptyId === "stray-session"));
 
-  const firstPage = await pty.readOutput(executionSessionId, null, 4_000);
+  const firstPage = await pty.readOutput(executionPtyId, null, 4_000);
   assert.equal(firstPage.chunks.length, 1);
   assert.ok(firstPage.chunks[0]?.text.includes("wrapper command that should be hidden"));
   assert.ok(firstPage.chunks[0]?.text.includes("ran: ls -la"));
 
-  const secondPage = await pty.readOutput(executionSessionId, firstPage.nextOffset, 4_000);
+  const secondPage = await pty.readOutput(executionPtyId, firstPage.nextOffset, 4_000);
   assert.deepEqual(secondPage.chunks, []);
 
-  await pty.resizeSession(executionSessionId, 120, 40);
-  assert.equal(fakeEnvironmentShell.sessions.get(executionSessionId)?.width, 120);
-  assert.equal(fakeEnvironmentShell.sessions.get(executionSessionId)?.height, 40);
+  await pty.resizePty(executionPtyId, 120, 40);
+  assert.equal(fakeEnvironmentShell.sessions.get(executionPtyId)?.width, 120);
+  assert.equal(fakeEnvironmentShell.sessions.get(executionPtyId)?.height, 40);
 
-  await pty.killSession(executionSessionId);
-  assert.equal(fakeEnvironmentShell.sessions.has(executionSessionId), false);
+  await pty.killPty(executionPtyId);
+  assert.equal(fakeEnvironmentShell.sessions.has(executionPtyId), false);
 });
 
 test("AgentEnvironmentTmuxPty creates a fresh session id for each executeCommand call when sessionId is omitted", async () => {
@@ -317,51 +319,53 @@ test("AgentEnvironmentTmuxPty keeps a completed new session when keepSession is 
   assert.equal(fakeEnvironmentShell.sessions.has(result.sessionId as string), true);
 });
 
-test("AgentEnvironmentTmuxPty uses the provided logical session name when creating tmux sessions", async () => {
+test("AgentEnvironmentTmuxPty uses the provided pty id when creating tmux PTYs", async () => {
   const fakeEnvironmentShell = new FakeEnvironmentShell();
   const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
   const result = await pty.executeCommand({
     command: "npm run dev",
-    sessionId: "web",
+    ptyId: "web",
     yield_time_ms: 0,
   });
 
-  assert.equal(result.sessionId, "web");
+  assert.equal(result.ptyId, "web");
+  assert.equal(result.sessionId, null);
   assert.ok(fakeEnvironmentShell.sessions.has("web"));
 });
 
-test("AgentEnvironmentTmuxPty reuses tmux sessions by session id across PTY instances", async () => {
+test("AgentEnvironmentTmuxPty reuses PTYs by pty id across PTY instances", async () => {
   const fakeEnvironmentShell = new FakeEnvironmentShell();
   const firstPty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
  
 
   const createdSession = await firstPty.executeCommand({
     command: "tail -f log.txt",
+    ptyId: "logs",
     yield_time_ms: 0,
   });
   const secondPty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
-  const createdSessionId = createdSession.sessionId;
+  const createdPtyId = createdSession.ptyId;
 
-  assert.ok(createdSessionId);
+  assert.equal(createdPtyId, "logs");
 
-  await secondPty.sendInput(createdSessionId, "q\n", 0);
-  const outputPage = await secondPty.readOutput(createdSessionId, null, 4_000);
+  await secondPty.sendInput(createdPtyId, "q\n", 0);
+  const outputPage = await secondPty.readOutput(createdPtyId, null, 4_000);
 
   assert.ok(outputPage.chunks[0]?.text.includes("ran: tail -f log.txt"));
   assert.ok(outputPage.chunks[0]?.text.includes("q\n"));
 
-  await secondPty.killSession(createdSessionId);
-  assert.equal(fakeEnvironmentShell.sessions.has(createdSessionId), false);
+  await secondPty.killPty(createdPtyId);
+  assert.equal(fakeEnvironmentShell.sessions.has(createdPtyId), false);
 });
 
-test("AgentEnvironmentTmuxPty expands home-relative working directories before creating tmux sessions", async () => {
+test("AgentEnvironmentTmuxPty expands home-relative working directories before creating PTYs", async () => {
   const fakeEnvironmentShell = new FakeEnvironmentShell();
   const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
   await pty.executeCommand({
     command: "pwd",
-    sessionId: "workspace",
+    ptyId: "workspace",
     workingDirectory: "~/workspace/project",
     yield_time_ms: 0,
   });
@@ -420,14 +424,15 @@ test("AgentEnvironmentTmuxPty waits for the yield window once when sending input
 
   const createdSession = await pty.executeCommand({
     command: "tail -f log.txt",
+    ptyId: "tailer",
     yield_time_ms: 0,
   });
   fakeEnvironmentShell.executedCommands.length = 0;
-  const createdSessionId = createdSession.sessionId;
+  const createdPtyId = createdSession.ptyId;
 
-  assert.ok(createdSessionId);
+  assert.equal(createdPtyId, "tailer");
 
-  await pty.sendInput(createdSessionId, "q\n", 1);
+  await pty.sendInput(createdPtyId, "q\n", 1);
 
   const hasSessionCalls = fakeEnvironmentShell.executedCommands.filter((command) => {
     return command.startsWith("tmux has-session -t ");
@@ -436,27 +441,27 @@ test("AgentEnvironmentTmuxPty waits for the yield window once when sending input
   assert.equal(hasSessionCalls.length, 2);
 });
 
-test("AgentEnvironmentTmuxPty parses flattened tmux session listings into reusable session ids", async () => {
+test("AgentEnvironmentTmuxPty parses flattened tmux PTY listings into reusable PTY ids", async () => {
   const fakeEnvironmentShell = new FakeEnvironmentShell();
   fakeEnvironmentShell.listedSessionsOutput = "pty-22ffc1cb214c4c0791235fd457e2d415_0_1774825845_80_20";
   const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  const sessions = await pty.listSessions();
+  const ptys = await pty.listPtys();
 
-  assert.deepEqual(sessions, [{
+  assert.deepEqual(ptys, [{
     attached: false,
     createdAt: "1774825845",
     height: 20,
-    id: "pty-22ffc1cb214c4c0791235fd457e2d415",
+    ptyId: "pty-22ffc1cb214c4c0791235fd457e2d415",
     width: 80,
   }]);
 });
 
-test("AgentEnvironmentTmuxPty lists sessions without shelling through login sh", async () => {
+test("AgentEnvironmentTmuxPty lists PTYs without shelling through login sh", async () => {
   const fakeEnvironmentShell = new FakeEnvironmentShell();
   const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  await pty.listSessions();
+  await pty.listPtys();
 
   assert.ok(fakeEnvironmentShell.executedCommands.some((command) => {
     return command.startsWith("tmux list-sessions -F ");
@@ -475,13 +480,13 @@ test("AgentEnvironmentTmuxPty ignores malformed session list lines", async () =>
   ].join("\n");
   const pty = new AgentEnvironmentTmuxPty(fakeEnvironmentShell);
 
-  const sessions = await pty.listSessions();
+  const ptys = await pty.listPtys();
 
-  assert.deepEqual(sessions, [{
+  assert.deepEqual(ptys, [{
     attached: false,
     createdAt: "1774825845",
     height: 20,
-    id: "main",
+    ptyId: "main",
     width: 80,
   }]);
 });

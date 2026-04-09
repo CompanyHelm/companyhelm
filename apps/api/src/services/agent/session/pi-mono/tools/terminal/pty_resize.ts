@@ -15,8 +15,8 @@ export class AgentPtyResizeTool {
     rows: Type.Number({
       description: "Target terminal height in rows.",
     }),
-    sessionId: Type.String({
-      description: "Environment session id returned by pty_exec.",
+    pty_id: Type.String({
+      description: "Environment PTY identifier returned by pty_exec.",
     }),
   });
 
@@ -31,10 +31,10 @@ export class AgentPtyResizeTool {
       description: "Resize the tmux window backing an existing environment PTY session.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
-        await environment.resizeSession(params.sessionId, params.columns, params.rows);
+        await environment.resizePty(params.pty_id, params.columns, params.rows);
         return {
           content: [{
-            text: `Resized session ${params.sessionId} to ${params.columns} columns by ${params.rows} rows.`,
+            text: `Resized PTY ${params.pty_id} to ${params.columns} columns by ${params.rows} rows.`,
             type: "text",
           }],
         };

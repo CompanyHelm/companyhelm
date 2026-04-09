@@ -13,8 +13,8 @@ export class AgentPtySendInputTool {
     input: Type.String({
       description: "Raw terminal input to write into the running environment PTY session.",
     }),
-    sessionId: Type.String({
-      description: "Environment session id returned by pty_exec.",
+    pty_id: Type.String({
+      description: "Environment PTY identifier returned by pty_exec.",
     }),
     yield_time_ms: Type.Optional(Type.Number({
       description: "How long to wait for output before returning control, in milliseconds.",
@@ -32,7 +32,7 @@ export class AgentPtySendInputTool {
       description: "Send additional terminal input to an existing environment PTY session and return new output.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
-        const result = await environment.sendInput(params.sessionId, params.input, params.yield_time_ms);
+        const result = await environment.sendInput(params.pty_id, params.input, params.yield_time_ms);
         return {
           content: [{
             text: AgentTerminalResultFormatter.formatCommandResult(result),

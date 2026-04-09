@@ -4,8 +4,8 @@ import type {
   AgentEnvironmentDirectShellCommandInput,
   AgentEnvironmentDirectShellCommandResult,
   AgentEnvironmentInterface,
+  AgentEnvironmentPty,
   AgentEnvironmentTerminalOutputPage,
-  AgentEnvironmentTerminalSession,
 } from "./providers/environment_interface.ts";
 import { AgentEnvironmentInterface as AgentEnvironmentInterfaceClass } from "./providers/environment_interface.ts";
 import { AgentEnvironmentPtyInterface } from "./providers/pty_interface.ts";
@@ -109,28 +109,28 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     };
   }
 
-  sendInput(sessionId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult> {
-    return this.pty.sendInput(sessionId, input, yieldTimeMilliseconds);
+  sendInput(ptyId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult> {
+    return this.pty.sendInput(ptyId, input, yieldTimeMilliseconds);
   }
 
   readOutput(
-    sessionId: string,
+    ptyId: string,
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage> {
-    return this.pty.readOutput(sessionId, afterOffset, limit);
+    return this.pty.readOutput(ptyId, afterOffset, limit);
   }
 
-  listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
-    return this.pty.listSessions();
+  listPtys(): Promise<AgentEnvironmentPty[]> {
+    return this.pty.listPtys();
   }
 
-  resizeSession(sessionId: string, columns: number, rows: number): Promise<void> {
-    return this.pty.resizeSession(sessionId, columns, rows);
+  resizePty(ptyId: string, columns: number, rows: number): Promise<void> {
+    return this.pty.resizePty(ptyId, columns, rows);
   }
 
-  killSession(sessionId: string): Promise<void> {
-    return this.pty.killSession(sessionId);
+  killPty(ptyId: string): Promise<void> {
+    return this.pty.killPty(ptyId);
   }
 
   async dispose(): Promise<void> {

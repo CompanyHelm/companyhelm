@@ -8,8 +8,8 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
  */
 export class AgentPtyKillTool {
   private static readonly parameters = AgentToolParameterSchema.object({
-    sessionId: Type.String({
-      description: "Environment session id returned by pty_exec.",
+    pty_id: Type.String({
+      description: "Environment PTY identifier returned by pty_exec.",
     }),
   });
 
@@ -24,10 +24,10 @@ export class AgentPtyKillTool {
       description: "Kill an environment PTY session immediately.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
-        await environment.killSession(params.sessionId);
+        await environment.killPty(params.pty_id);
         return {
           content: [{
-            text: `Killed session ${params.sessionId}.`,
+            text: `Killed PTY ${params.pty_id}.`,
             type: "text",
           }],
         };

@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import type {
   AgentEnvironmentCommandInput,
   AgentEnvironmentCommandResult,
+  AgentEnvironmentPty,
   AgentEnvironmentTerminalOutputPage,
-  AgentEnvironmentTerminalSession,
 } from "./environment_interface.ts";
 import { AgentEnvironmentPtyInterface } from "./pty_interface.ts";
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
@@ -17,7 +17,7 @@ type TmuxCommandRun = {
 
 /**
  * Implements tmux-backed PTY management on top of the generic environment shell contract. This
- * keeps tmux session orchestration reusable across providers that can execute normal shell
+ * keeps tmux PTY orchestration reusable across providers that can execute normal shell
  * commands, while provider adapters stay focused on reaching the remote environment itself.
  */
 export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
@@ -46,11 +46,16 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     const interactionTimeoutSeconds = this.resolveInteractionRemoteCommandTimeoutSeconds(
       yieldTimeMilliseconds,
     );
-    const sessionId = AgentEnvironmentTmuxPty.resolveSessionId(input.sessionId);
-    await this.ensureTmuxSession(sessionId, resolvedInput, interactionTimeoutSeconds);
-    const startOffset = await this.captureTmuxOutputLength(sessionId, interactionTimeoutSeconds);
+    const ptyId = input.ptyId?.trim() ? AgentEnvironmentTmuxPty.requirePtyId(input.ptyId) : null;
+    const tmuxTargetId = ptyId ?? AgentEnvironmentTmuxPty.resolveSessionId(input.sessionId);
+    if (ptyId) {
+      await this.ensureTmuxPty(tmuxTargetId, resolvedInput, interactionTimeoutSeconds);
+    } else {
+      await this.ensureTmuxSession(tmuxTargetId, resolvedInput, interactionTimeoutSeconds);
+    }
+    const startOffset = await this.captureTmuxOutputLength(tmuxTargetId, interactionTimeoutSeconds);
     const commandRun = await this.startTmuxCommand(
-      sessionId,
+      tmuxTargetId,
       resolvedInput,
       interactionTimeoutSeconds,
     );
@@ -60,28 +65,31 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       interactionTimeoutSeconds,
     );
     const output = this.sanitizeCommandOutput(
-      await this.captureTmuxOutputSince(sessionId, startOffset, interactionTimeoutSeconds),
+      await this.captureTmuxOutputSince(tmuxTargetId, startOffset, interactionTimeoutSeconds),
       commandRun.outputStartMarker,
       commandRun.outputEndMarker,
     );
     if (waitResult.completed) {
       await this.deleteRemoteFile(commandRun.rcFile, interactionTimeoutSeconds);
     }
-    const shouldKeepSession = AgentEnvironmentTmuxPty.shouldKeepSession(input, waitResult.completed);
-    if (waitResult.completed && !shouldKeepSession) {
-      await this.killSession(sessionId);
+    const shouldKeepSession = ptyId
+      ? true
+      : AgentEnvironmentTmuxPty.shouldKeepSession(input, waitResult.completed);
+    if (!ptyId && waitResult.completed && !shouldKeepSession) {
+      await this.killPty(tmuxTargetId);
     }
 
     return {
       completed: waitResult.completed,
       exitCode: waitResult.exitCode,
       output,
-      sessionId: waitResult.completed && !shouldKeepSession ? null : sessionId,
+      ptyId,
+      sessionId: ptyId ? null : (waitResult.completed && !shouldKeepSession ? null : tmuxTargetId),
     };
   }
 
   async sendInput(
-    sessionId: string,
+    ptyId: string,
     input: string,
     yieldTimeMilliseconds?: number,
   ): Promise<AgentEnvironmentCommandResult> {
@@ -92,30 +100,33 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     const interactionTimeoutSeconds = this.resolveInteractionRemoteCommandTimeoutSeconds(
       resolvedYieldTimeMilliseconds,
     );
-    await this.ensureExistingTmuxSession(sessionId, interactionTimeoutSeconds);
-    const startOffset = await this.captureTmuxOutputLength(sessionId, interactionTimeoutSeconds);
-    await this.sendInputToTmuxSession(sessionId, input, false, interactionTimeoutSeconds);
+    const normalizedPtyId = AgentEnvironmentTmuxPty.requirePtyId(ptyId);
+    await this.ensureExistingTmuxSession(normalizedPtyId, interactionTimeoutSeconds);
+    const startOffset = await this.captureTmuxOutputLength(normalizedPtyId, interactionTimeoutSeconds);
+    await this.sendInputToTmuxSession(normalizedPtyId, input, false, interactionTimeoutSeconds);
     await AgentEnvironmentTmuxPty.delay(resolvedYieldTimeMilliseconds);
-    const completed = !await this.hasTmuxSession(sessionId, interactionTimeoutSeconds);
+    const completed = !await this.hasTmuxSession(normalizedPtyId, interactionTimeoutSeconds);
     const output = completed
       ? ""
-      : await this.captureTmuxOutputSince(sessionId, startOffset, interactionTimeoutSeconds);
+      : await this.captureTmuxOutputSince(normalizedPtyId, startOffset, interactionTimeoutSeconds);
 
     return {
       completed,
       exitCode: null,
       output,
-      sessionId,
+      ptyId: normalizedPtyId,
+      sessionId: null,
     };
   }
 
   async readOutput(
-    sessionId: string,
+    ptyId: string,
     afterOffset: number | null,
     limit: number,
   ): Promise<AgentEnvironmentTerminalOutputPage> {
-    await this.ensureExistingTmuxSession(sessionId);
-    const fullOutput = await this.captureTmuxOutput(sessionId);
+    const normalizedPtyId = AgentEnvironmentTmuxPty.requirePtyId(ptyId);
+    await this.ensureExistingTmuxSession(normalizedPtyId);
+    const fullOutput = await this.captureTmuxOutput(normalizedPtyId);
     const cursor = Math.max(0, afterOffset ?? 0);
     const nextOffset = Math.min(
       fullOutput.length,
@@ -136,7 +147,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     };
   }
 
-  async listSessions(): Promise<AgentEnvironmentTerminalSession[]> {
+  async listPtys(): Promise<AgentEnvironmentPty[]> {
     const output = await this.runRequiredRemoteCommand(
       `tmux list-sessions -F "#{session_name}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_attached}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{session_created}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_width}${AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR}#{window_height}" 2>/dev/null || true`,
     );
@@ -145,26 +156,37 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-      .map((line) => this.parseSessionListLine(line))
-      .filter((session): session is AgentEnvironmentTerminalSession => session !== null)
-      .filter((session) => session.id.length > 0);
+      .map((line) => this.parsePtyListLine(line))
+      .filter((pty): pty is AgentEnvironmentPty => pty !== null)
+      .filter((pty) => pty.ptyId.length > 0);
   }
 
-  async resizeSession(sessionId: string, columns: number, rows: number): Promise<void> {
-    await this.ensureExistingTmuxSession(sessionId);
+  async resizePty(ptyId: string, columns: number, rows: number): Promise<void> {
+    const normalizedPtyId = AgentEnvironmentTmuxPty.requirePtyId(ptyId);
+    await this.ensureExistingTmuxSession(normalizedPtyId);
     await this.runRequiredRemoteCommand(
-      `tmux resize-window -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} -x ${columns} -y ${rows}`,
+      `tmux resize-window -t ${AgentEnvironmentTmuxPty.shellQuote(normalizedPtyId)} -x ${columns} -y ${rows}`,
     );
   }
 
-  async killSession(sessionId: string): Promise<void> {
+  async killPty(ptyId: string): Promise<void> {
+    const normalizedPtyId = AgentEnvironmentTmuxPty.requirePtyId(ptyId);
     await this.runRemoteCommand(
-      `tmux kill-session -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} 2>/dev/null || true`,
+      `tmux kill-session -t ${AgentEnvironmentTmuxPty.shellQuote(normalizedPtyId)} 2>/dev/null || true`,
     );
   }
 
   async dispose(): Promise<void> {
     return undefined;
+  }
+
+  private static requirePtyId(ptyId?: string | null): string {
+    const normalizedPtyId = ptyId?.trim() ?? "";
+    if (normalizedPtyId.length === 0) {
+      throw new Error("ptyId is required.");
+    }
+
+    return normalizedPtyId;
   }
 
   private static resolveSessionId(sessionId?: string | null): string {
@@ -210,14 +232,36 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
   }
 
   private async ensureExistingTmuxSession(
-    sessionId: string,
+    ptyId: string,
     timeoutSeconds = AgentEnvironmentTmuxPty.REMOTE_COMMAND_TIMEOUT_SECONDS,
   ): Promise<void> {
-    if (await this.hasTmuxSession(sessionId, timeoutSeconds)) {
+    if (await this.hasTmuxSession(ptyId, timeoutSeconds)) {
       return;
     }
 
-    throw new Error(`Sandbox session ${sessionId} was not found.`);
+    throw new Error(`PTY ${ptyId} was not found.`);
+  }
+
+  private async ensureTmuxPty(
+    ptyId: string,
+    input: AgentEnvironmentCommandInput,
+    timeoutSeconds: number,
+  ): Promise<void> {
+    if (await this.hasTmuxSession(ptyId, timeoutSeconds)) {
+      return;
+    }
+
+    const creationCommand = [
+      `mkdir -p ${AgentEnvironmentTmuxPty.shellQuote(AgentEnvironmentTmuxPty.STATE_DIRECTORY)}`,
+      "&&",
+      "tmux new-session -d",
+      `-s ${AgentEnvironmentTmuxPty.shellQuote(ptyId)}`,
+      input.columns ? `-x ${input.columns}` : "",
+      input.rows ? `-y ${input.rows}` : "",
+      input.workingDirectory ? `-c ${AgentEnvironmentTmuxPty.shellQuote(input.workingDirectory)}` : "",
+      AgentEnvironmentTmuxPty.shellQuote(this.buildShellBootstrapCommand(input.environment)),
+    ].filter((segment) => segment.length > 0).join(" ");
+    await this.runRequiredRemoteCommand(creationCommand, timeoutSeconds);
   }
 
   private async resolveInputWorkingDirectory(
@@ -403,35 +447,35 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     return visibleOutput.replace(/(?:\r?\n[ \t]*)+$/u, "");
   }
 
-  private parseSessionListLine(line: string): AgentEnvironmentTerminalSession | null {
+  private parsePtyListLine(line: string): AgentEnvironmentPty | null {
     const separatorDelimitedParts = line.split(AgentEnvironmentTmuxPty.SESSION_LIST_FIELD_SEPARATOR);
     if (separatorDelimitedParts.length === 5) {
-      return this.buildTerminalSessionRecord(separatorDelimitedParts);
+      return this.buildPtyRecord(separatorDelimitedParts);
     }
 
     const tabDelimitedParts = line.split("\t");
     if (tabDelimitedParts.length === 5) {
-      return this.buildTerminalSessionRecord(tabDelimitedParts);
+      return this.buildPtyRecord(tabDelimitedParts);
     }
 
     const flattenedMatch = /^(.*)_([01])_(\d+)_(\d+)_(\d+)$/.exec(line);
     if (flattenedMatch) {
-      const [, id, attached, createdAt, width, height] = flattenedMatch;
-      return this.buildTerminalSessionRecord([id, attached, createdAt, width, height]);
+      const [, ptyId, attached, createdAt, width, height] = flattenedMatch;
+      return this.buildPtyRecord([ptyId, attached, createdAt, width, height]);
     }
 
     return null;
   }
 
-  private buildTerminalSessionRecord(parts: string[]): AgentEnvironmentTerminalSession | null {
-    const [id, attached, createdAt, width, height] = parts;
-    const normalizedId = id?.trim() ?? "";
+  private buildPtyRecord(parts: string[]): AgentEnvironmentPty | null {
+    const [ptyId, attached, createdAt, width, height] = parts;
+    const normalizedPtyId = ptyId?.trim() ?? "";
     const normalizedCreatedAt = createdAt?.trim() ?? "";
     const normalizedAttached = attached?.trim() ?? "";
     const parsedWidth = Number(width ?? "");
     const parsedHeight = Number(height ?? "");
 
-    if (normalizedId.length === 0 || normalizedCreatedAt.length === 0) {
+    if (normalizedPtyId.length === 0 || normalizedCreatedAt.length === 0) {
       return null;
     }
 
@@ -447,7 +491,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
       attached: normalizedAttached === "1",
       createdAt: normalizedCreatedAt,
       height: parsedHeight,
-      id: normalizedId,
+      ptyId: normalizedPtyId,
       width: parsedWidth,
     };
   }

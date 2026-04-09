@@ -89,7 +89,7 @@ const logger = {
 } as never;
 
 const baseToolNames = [
-  "pty_list_sessions",
+  "pty_list",
   "pty_exec",
   "bash_exec",
   "apply_patch",

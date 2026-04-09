@@ -85,13 +85,14 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
           completed: true,
           exitCode: 0,
           output: "ok",
-          sessionId: "main",
+          ptyId: "workspace",
+          sessionId: null,
         };
       },
-      async killSession() {
+      async killPty() {
         return undefined;
       },
-      async listSessions() {
+      async listPtys() {
         return [];
       },
       async readOutput() {
@@ -100,7 +101,7 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
           nextOffset: null,
         };
       },
-      async resizeSession() {
+      async resizePty() {
         return undefined;
       },
       async sendInput() {
@@ -108,7 +109,8 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
           completed: true,
           exitCode: 0,
           output: "",
-          sessionId: "main",
+          ptyId: "workspace",
+          sessionId: null,
         };
       },
     } as never,
@@ -122,6 +124,7 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
       SHARED_VAR: "from-command",
       USER_VAR: "user-value",
     },
+    ptyId: "workspace",
   });
 
   assert.equal(result.output, "ok");
@@ -132,6 +135,7 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
       SHARED_VAR: "from-command",
       USER_VAR: "user-value",
     },
+    ptyId: "workspace",
   }]);
 
   const directResult = await environment.executeBashCommand({

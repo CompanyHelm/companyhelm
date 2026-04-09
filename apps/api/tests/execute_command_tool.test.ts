@@ -15,6 +15,7 @@ test("AgentPtyExecTool returns terminal metadata in details", async () => {
       completed: true,
       exitCode: 2,
       output: "file-a\nfile-b",
+      ptyId: "workspace",
       sessionId: null,
     };
   });
@@ -30,6 +31,7 @@ test("AgentPtyExecTool returns terminal metadata in details", async () => {
 
   const result = await tool.execute("tool-call-1", {
     command: "ls -la",
+    pty_id: "workspace",
     workingDirectory: "/workspace",
   });
 
@@ -38,8 +40,8 @@ test("AgentPtyExecTool returns terminal metadata in details", async () => {
     completed: true,
     cwd: "/workspace",
     exitCode: 2,
-    sessionId: null,
-    type: "terminal",
+    pty_id: "workspace",
+    type: "pty",
   });
   assert.deepEqual(result.content, [{
     text: "file-a\nfile-b",
@@ -47,18 +49,24 @@ test("AgentPtyExecTool returns terminal metadata in details", async () => {
   }]);
   assert.deepEqual(executeCommand.mock.calls, [[{
     command: "ls -la",
+    columns: undefined,
+    environment: undefined,
+    ptyId: "workspace",
+    rows: undefined,
     workingDirectory: "/workspace",
+    yield_time_ms: undefined,
   }]]);
 });
 
-test("AgentPtyExecTool forwards keepSession when requested", async () => {
+test("AgentPtyExecTool forwards pty creation metadata when provided", async () => {
   const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
     void input;
     return {
       completed: false,
       exitCode: null,
       output: "starting dev server",
-      sessionId: "pty-keep",
+      ptyId: "web",
+      sessionId: null,
     };
   });
   const tool = new AgentPtyExecTool({
@@ -72,13 +80,20 @@ test("AgentPtyExecTool forwards keepSession when requested", async () => {
   };
 
   await tool.execute("tool-call-1", {
+    columns: 140,
     command: "npm run dev",
-    keepSession: true,
+    pty_id: "web",
+    rows: 50,
   });
 
   assert.deepEqual(executeCommand.mock.calls, [[{
+    columns: 140,
     command: "npm run dev",
-    keepSession: true,
+    environment: undefined,
+    ptyId: "web",
+    rows: 50,
+    workingDirectory: undefined,
+    yield_time_ms: undefined,
   }]]);
 });
 
@@ -108,6 +123,7 @@ test("AgentPtyExecTool logs shell timeouts with the command and rethrows", async
   await assert.rejects(async () => {
     await tool.execute("tool-call-1", {
       command: "ss -ltnp | grep ':4000 ' || true",
+      pty_id: "workspace",
       workingDirectory: "/workspace/companyhelm-ng",
     });
   }, timeoutError);

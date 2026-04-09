@@ -4,10 +4,10 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
- * Lists tmux-backed PTY sessions that currently exist inside the leased environment so the agent
- * can decide which session id to reuse.
+ * Lists tmux-backed PTYs that currently exist inside the leased environment so the agent can
+ * decide which named PTY to reuse.
  */
-export class AgentPtyListSessionsTool {
+export class AgentPtyListTool {
   private static readonly parameters = AgentToolParameterSchema.object({});
   private readonly promptScope: AgentEnvironmentPromptScope;
 
@@ -15,26 +15,26 @@ export class AgentPtyListSessionsTool {
     this.promptScope = promptScope;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentPtyListSessionsTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtyListTool.parameters> {
     return {
-      description: "List the tmux-backed PTY sessions currently available inside the environment.",
+      description: "List the tmux-backed PTYs currently available inside the environment.",
       execute: async () => {
         const environment = await this.promptScope.getEnvironment();
-        const sessions = await environment.listSessions();
+        const ptys = await environment.listPtys();
         return {
           content: [{
-            text: AgentTerminalResultFormatter.formatSessionList(sessions),
+            text: AgentTerminalResultFormatter.formatPtyList(ptys),
             type: "text",
           }],
         };
       },
-      label: "pty_list_sessions",
-      name: "pty_list_sessions",
-      parameters: AgentPtyListSessionsTool.parameters,
+      label: "pty_list",
+      name: "pty_list",
+      parameters: AgentPtyListTool.parameters,
       promptGuidelines: [
-        "Use pty_list_sessions when you need to inspect existing tmux-backed PTY sessions before choosing one to reuse.",
+        "Use pty_list when you need to inspect existing tmux-backed PTYs before choosing one to reuse.",
       ],
-      promptSnippet: "List environment PTY sessions",
+      promptSnippet: "List environment PTYs",
     };
   }
 }

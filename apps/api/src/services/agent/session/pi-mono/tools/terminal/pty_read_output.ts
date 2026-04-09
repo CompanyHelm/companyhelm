@@ -15,8 +15,8 @@ export class AgentPtyReadOutputTool {
     limit: Type.Optional(Type.Number({
       description: "Maximum number of characters to return from the tmux pane capture.",
     })),
-    sessionId: Type.String({
-      description: "Environment session id returned by pty_exec.",
+    pty_id: Type.String({
+      description: "Environment PTY identifier returned by pty_exec.",
     }),
   });
 
@@ -31,10 +31,10 @@ export class AgentPtyReadOutputTool {
       description: "Read pane output directly from an existing environment PTY session.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
-        const page = await environment.readOutput(params.sessionId, params.afterOffset ?? null, params.limit ?? 4_000);
+        const page = await environment.readOutput(params.pty_id, params.afterOffset ?? null, params.limit ?? 4_000);
         return {
           content: [{
-            text: AgentTerminalResultFormatter.formatOutputResult(params.sessionId, page),
+            text: AgentTerminalResultFormatter.formatOutputResult(params.pty_id, page),
             type: "text",
           }],
         };

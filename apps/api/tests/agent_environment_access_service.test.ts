@@ -94,7 +94,7 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
 
   assert.equal(activateLease.mock.calls.length, 1);
   assert.equal(createShell.mock.calls.length, 1);
-  assert.deepEqual(await environment.listSessions(), []);
+  assert.deepEqual(await environment.listPtys(), []);
 });
 
 test("AgentEnvironmentAccessService prefers historical reuse before provisioning a new environment", async () => {

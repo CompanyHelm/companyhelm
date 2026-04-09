@@ -6,7 +6,7 @@ import { AgentApplyPatchTool } from "./apply_patch.ts";
 import { AgentBashExecTool } from "./bash_exec.ts";
 import { AgentPtyExecTool } from "./pty_exec.ts";
 import { AgentPtyKillTool } from "./pty_kill.ts";
-import { AgentPtyListSessionsTool } from "./pty_list_sessions.ts";
+import { AgentPtyListTool } from "./pty_list.ts";
 import { AgentPtyReadOutputTool } from "./pty_read_output.ts";
 import { AgentPtyResizeTool } from "./pty_resize.ts";
 import { AgentPtySendInputTool } from "./pty_send_input.ts";
@@ -27,7 +27,7 @@ export class AgentTerminalToolProvider extends AgentToolProviderInterface {
 
   createToolDefinitions(): ToolDefinition[] {
     return [
-      new AgentPtyListSessionsTool(this.promptScope).createDefinition(),
+      new AgentPtyListTool(this.promptScope).createDefinition(),
       new AgentPtyExecTool(this.promptScope, this.logger).createDefinition(),
       new AgentBashExecTool(this.promptScope, this.logger).createDefinition(),
       new AgentApplyPatchTool(this.promptScope).createDefinition(),
