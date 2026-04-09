@@ -921,11 +921,9 @@ export const skills = pgTable("skills", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
-  // the skill name
   name: text("name").notNull(),
-  // the skill description
-  description: text("description"),
-  instructions: text("instructions"),
+  description: text("description").notNull(),
+  instructions: text("instructions").notNull(),
   // the list of files that are part of the skill, excluding the SKILL.md file
   // a skill folder contains the SKILL.md file and the skill files at the same level
   // includes nested folders and files
