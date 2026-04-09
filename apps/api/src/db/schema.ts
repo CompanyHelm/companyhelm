@@ -36,7 +36,7 @@ export const artifactStateEnum = pgEnum("artifact_state", ["draft", "active", "a
 export const artifactPullRequestProviderEnum = pgEnum("artifact_pull_request_provider", ["github"]);
 export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
 export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
-export const computeProviderEnum = pgEnum("compute_provider", ["daytona", "e2b"]);
+export const computeProviderEnum = pgEnum("compute_provider", ["e2b"]);
 
 
 export const companies = pgTable("companies", {
@@ -560,17 +560,6 @@ export const computeProviderDefinitions = pgTable("compute_provider_definitions"
     .where(sql`${table.isDefault}`),
   companyNameLowerUnique: uniqueIndex("compute_provider_definitions_company_name_lower_uidx")
     .on(table.companyId, sql`lower(${table.name})`),
-}));
-
-export const daytonaComputeProviderDefinitions = pgTable("daytona_compute_provider_definitions", {
-  computeProviderDefinitionId: uuid("compute_provider_definition_id")
-    .primaryKey()
-    .references(() => computeProviderDefinitions.id, { onDelete: "cascade" }),
-  apiUrl: text("api_url").notNull(),
-  encryptedApiKey: text("encrypted_api_key").notNull(),
-  encryptionKeyId: text("encryption_key_id").notNull(),
-}, (table) => ({
-  apiUrlIndex: index("daytona_compute_provider_definitions_api_url_idx").on(table.apiUrl),
 }));
 
 export const e2bComputeProviderDefinitions = pgTable("e2b_compute_provider_definitions", {

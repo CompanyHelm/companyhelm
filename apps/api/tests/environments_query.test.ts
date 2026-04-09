@@ -58,10 +58,10 @@ class EnvironmentsQueryTestHarness {
                         lastSeenAt: new Date("2026-03-27T15:00:00.000Z"),
                         memoryGb: 16,
                         platform: "linux",
-                        provider: "daytona",
+                        provider: "e2b",
                         providerDefinitionId: "definition-1",
-                        providerEnvironmentId: "daytona-env-1",
-                        templateId: "daytona/default",
+                        providerEnvironmentId: "e2b-env-1",
+                        templateId: "e2b/desktop",
                         updatedAt: new Date("2026-03-27T15:00:00.000Z"),
                       }];
                     },
@@ -153,7 +153,7 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     },
     getEnvironmentStatus,
     getProvider() {
-      return "daytona";
+      return "e2b";
     },
     async provisionEnvironment() {
       throw new Error("provisionEnvironment should not run for the environments query");
@@ -206,8 +206,8 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     id: "env-1",
     agentId: "agent-1",
     agentName: "Research Agent",
-    provider: "daytona",
-    providerEnvironmentId: "daytona-env-1",
+    provider: "e2b",
+    providerEnvironmentId: "e2b-env-1",
     displayName: "Research Ubuntu Box",
     platform: "linux",
     status: "stopped",

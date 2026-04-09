@@ -26,9 +26,6 @@ const computeProviderDefinitionsPageQueryNode = graphql`
       name
       provider
       description
-      daytona {
-        apiUrl
-      }
       e2b {
         hasApiKey
       }
@@ -48,9 +45,6 @@ const computeProviderDefinitionsPageAddMutationNode = graphql`
       name
       provider
       description
-      daytona {
-        apiUrl
-      }
       e2b {
         hasApiKey
       }
@@ -70,9 +64,6 @@ const computeProviderDefinitionsPageUpdateMutationNode = graphql`
       name
       provider
       description
-      daytona {
-        apiUrl
-      }
       e2b {
         hasApiKey
       }
@@ -168,12 +159,11 @@ function ComputeProviderDefinitionsPageContent() {
   const definitions = useMemo<ComputeProviderDefinitionTableRecord[]>(() => {
     return data.ComputeProviderDefinitions.map((definition) => ({
       description: definition.description,
-      daytonaApiUrl: definition.daytona?.apiUrl ?? null,
-      hasApiKey: definition.e2b?.hasApiKey ?? definition.daytona !== null,
+      hasApiKey: definition.e2b?.hasApiKey ?? false,
       id: definition.id,
       isDefault: definition.isDefault,
       name: definition.name,
-      provider: definition.provider as "daytona" | "e2b",
+      provider: definition.provider as "e2b",
       updatedAt: definition.updatedAt,
     }));
   }, [data.ComputeProviderDefinitions]);
@@ -271,7 +261,6 @@ function ComputeProviderDefinitionsPageContent() {
             onEdit={(definition) => {
               setDialogDefinition({
                 description: definition.description,
-                daytonaApiUrl: definition.daytonaApiUrl,
                 id: definition.id,
                 name: definition.name,
                 provider: definition.provider,

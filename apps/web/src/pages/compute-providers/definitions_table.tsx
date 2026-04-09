@@ -28,12 +28,11 @@ import {
 
 export type ComputeProviderDefinitionTableRecord = {
   description: string | null;
-  daytonaApiUrl: string | null;
   hasApiKey: boolean;
   id: string;
   isDefault: boolean;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   updatedAt: string;
 };
 
@@ -137,7 +136,7 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
         <p className="text-sm font-medium text-foreground">No compute providers yet</p>
         <p className="mt-2 text-xs/relaxed text-muted-foreground">
-          Add a Daytona or E2B definition before assigning an environment backend to an agent.
+          Add an E2B definition before assigning an environment backend to an agent.
         </p>
       </div>
     );
@@ -172,16 +171,14 @@ export function ComputeProviderDefinitionsTable(props: ComputeProviderDefinition
             </TableCell>
             <TableCell className="min-w-56">
               <div className="grid gap-1 text-xs text-muted-foreground">
-                <p>CPU: {ComputeProviderLimitsCatalog.formatCpuRange(definition.provider)}</p>
-                <p>Memory: {ComputeProviderLimitsCatalog.formatMemoryRange(definition.provider)}</p>
-                <p>Disk: {ComputeProviderLimitsCatalog.formatDiskRange(definition.provider)}</p>
+                <p>CPU: {ComputeProviderLimitsCatalog.formatCpuRange()}</p>
+                <p>Memory: {ComputeProviderLimitsCatalog.formatMemoryRange()}</p>
+                <p>Disk: {ComputeProviderLimitsCatalog.formatDiskRange()}</p>
               </div>
             </TableCell>
             <TableCell className="text-sm text-muted-foreground">
               {CompanyHelmComputeProvider.isManagedDefinition(definition)
                 ? "Managed"
-                : definition.provider === "daytona"
-                ? (definition.daytonaApiUrl ?? "Missing API URL")
                 : definition.hasApiKey
                   ? "API key configured"
                   : "Missing API key"}

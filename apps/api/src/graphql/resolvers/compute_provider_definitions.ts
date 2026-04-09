@@ -6,17 +6,14 @@ import { Resolver } from "./resolver.ts";
 type GraphqlComputeProviderDefinitionRecord = {
   companyId: string;
   createdAt: string;
-  daytona: {
-    apiUrl: string;
-  } | null;
   description: string | null;
   e2b: {
     hasApiKey: boolean;
-  } | null;
+  };
   id: string;
   isDefault: boolean;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   updatedAt: string;
 };
 
@@ -52,7 +49,6 @@ export class ComputeProviderDefinitionsQueryResolver extends Resolver<GraphqlCom
     return definitions.map((definition) => ({
       companyId: definition.companyId,
       createdAt: definition.createdAt.toISOString(),
-      daytona: definition.daytona,
       description: definition.description,
       e2b: definition.e2b,
       id: definition.id,

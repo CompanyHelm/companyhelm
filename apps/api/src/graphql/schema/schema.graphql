@@ -305,15 +305,10 @@ type ComputeProviderDefinition {
   name: String!
   provider: String!
   description: String
-  daytona: DaytonaComputeProviderDefinition
   e2b: E2bComputeProviderDefinition
   templates: [AgentEnvironmentTemplate!]!
   createdAt: String!
   updatedAt: String!
-}
-
-type DaytonaComputeProviderDefinition {
-  apiUrl: String!
 }
 
 type E2bComputeProviderDefinition {
@@ -601,15 +596,8 @@ input DeleteEnvironmentInput {
 input AddComputeProviderDefinitionInput {
   isDefault: Boolean
   name: String!
-  provider: String!
   description: String
-  daytona: AddDaytonaComputeProviderDefinitionInput
   e2b: AddE2bComputeProviderDefinitionInput
-}
-
-input AddDaytonaComputeProviderDefinitionInput {
-  apiUrl: String
-  apiKey: String!
 }
 
 input AddE2bComputeProviderDefinitionInput {
@@ -710,13 +698,7 @@ input UpdateComputeProviderDefinitionInput {
   id: ID!
   name: String!
   description: String
-  daytona: UpdateDaytonaComputeProviderDefinitionInput
   e2b: UpdateE2bComputeProviderDefinitionInput
-}
-
-input UpdateDaytonaComputeProviderDefinitionInput {
-  apiUrl: String
-  apiKey: String
 }
 
 input UpdateE2bComputeProviderDefinitionInput {

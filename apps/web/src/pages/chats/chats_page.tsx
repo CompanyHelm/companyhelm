@@ -746,7 +746,7 @@ function resolveToolDisplayName(toolName: string): string {
 
 function formatComputeProviderLabel(definition: {
   name?: string | null;
-  provider: "daytona" | "e2b" | string;
+  provider: "e2b" | string;
 }): string {
   return CompanyHelmComputeProvider.formatProviderLabel(definition);
 }

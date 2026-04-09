@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<20da225a7013435391c099ea7e1f0fe5>>
+ * @generated SignedSource<<5a53e51f3241a6e8ddc05b360d076fa6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,15 +10,10 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type UpdateComputeProviderDefinitionInput = {
-  daytona?: UpdateDaytonaComputeProviderDefinitionInput | null | undefined;
   description?: string | null | undefined;
   e2b?: UpdateE2bComputeProviderDefinitionInput | null | undefined;
   id: string;
   name: string;
-};
-export type UpdateDaytonaComputeProviderDefinitionInput = {
-  apiKey?: string | null | undefined;
-  apiUrl?: string | null | undefined;
 };
 export type UpdateE2bComputeProviderDefinitionInput = {
   apiKey?: string | null | undefined;
@@ -29,9 +24,6 @@ export type computeProviderDefinitionsPageUpdateMutation$variables = {
 export type computeProviderDefinitionsPageUpdateMutation$data = {
   readonly UpdateComputeProviderDefinition: {
     readonly createdAt: string;
-    readonly daytona: {
-      readonly apiUrl: string;
-    } | null | undefined;
     readonly description: string | null | undefined;
     readonly e2b: {
       readonly hasApiKey: boolean;
@@ -109,24 +101,6 @@ v1 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "DaytonaComputeProviderDefinition",
-        "kind": "LinkedField",
-        "name": "daytona",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "apiUrl",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
         "concreteType": "E2bComputeProviderDefinition",
         "kind": "LinkedField",
         "name": "e2b",
@@ -178,16 +152,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1c05438995fe3f35e3d97cf1cc247d76",
+    "cacheID": "d0e003481d66174387483109d26fec13",
     "id": null,
     "metadata": {},
     "name": "computeProviderDefinitionsPageUpdateMutation",
     "operationKind": "mutation",
-    "text": "mutation computeProviderDefinitionsPageUpdateMutation(\n  $input: UpdateComputeProviderDefinitionInput!\n) {\n  UpdateComputeProviderDefinition(input: $input) {\n    id\n    isDefault\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation computeProviderDefinitionsPageUpdateMutation(\n  $input: UpdateComputeProviderDefinitionInput!\n) {\n  UpdateComputeProviderDefinition(input: $input) {\n    id\n    isDefault\n    name\n    provider\n    description\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cd4b08e8eba837965f1d00f4246f97a7";
+(node as any).hash = "b7792386804bdc3be466558335018fba";
 
 export default node;

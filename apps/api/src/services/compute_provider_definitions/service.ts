@@ -4,11 +4,10 @@ import {
   agentEnvironments,
   agents,
   computeProviderDefinitions,
-  daytonaComputeProviderDefinitions,
   e2bComputeProviderDefinitions,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
-import type { ComputeProvider } from "../agent/compute/provider_interface.ts";
+import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { SecretEncryptionService } from "../secrets/encryption.ts";
 import { CompanyHelmComputeProviderService } from "./companyhelm_service.ts";
 
@@ -21,13 +20,6 @@ type BaseDefinitionRecord = {
   name: string;
   provider: ComputeProvider;
   updatedAt: Date;
-};
-
-type DaytonaDefinitionRecord = {
-  apiUrl: string;
-  computeProviderDefinitionId: string;
-  encryptedApiKey: string;
-  encryptionKeyId: string;
 };
 
 type E2bDefinitionRecord = {
@@ -75,13 +67,10 @@ type DeletableDatabase = {
 export type ComputeProviderDefinitionRecord = {
   companyId: string;
   createdAt: Date;
-  daytona: {
-    apiUrl: string;
-  } | null;
   description: string | null;
   e2b: {
     hasApiKey: boolean;
-  } | null;
+  };
   id: string;
   isDefault: boolean;
   name: string;
@@ -89,83 +78,46 @@ export type ComputeProviderDefinitionRecord = {
   updatedAt: Date;
 };
 
-export type RuntimeComputeProviderDefinition =
-  | {
-      apiKey: string;
-      apiUrl: string;
-      companyId: string;
-      description: string | null;
-      id: string;
-      name: string;
-      provider: "daytona";
-    }
-  | {
-      apiKey: string;
-      companyId: string;
-      description: string | null;
-      id: string;
-      name: string;
-      provider: "e2b";
-    };
+export type RuntimeComputeProviderDefinition = {
+  apiKey: string;
+  companyId: string;
+  description: string | null;
+  id: string;
+  name: string;
+  provider: "e2b";
+};
 
-type CreateComputeProviderDefinitionInput =
-  | {
-      companyId: string;
-      createdByUserId: string;
-      daytona: {
-        apiKey: string;
-        apiUrl?: string | null;
-      };
-      description?: string | null;
-      isDefault?: boolean | null;
-      name: string;
-      provider: "daytona";
-    }
-  | {
-      companyId: string;
-      createdByUserId: string;
-      description?: string | null;
-      e2b: {
-        apiKey: string;
-      };
-      isDefault?: boolean | null;
-      name: string;
-      provider: "e2b";
-    };
+type CreateComputeProviderDefinitionInput = {
+  companyId: string;
+  createdByUserId: string;
+  description?: string | null;
+  e2b: {
+    apiKey: string;
+  };
+  isDefault?: boolean | null;
+  name: string;
+  provider: "e2b";
+};
 
-type UpdateComputeProviderDefinitionInput =
-  | {
-      companyId: string;
-      daytona: {
-        apiKey?: string | null;
-        apiUrl?: string | null;
-      };
-      definitionId: string;
-      description?: string | null;
-      name: string;
-      provider: "daytona";
-      updatedByUserId: string;
-    }
-  | {
-      companyId: string;
-      definitionId: string;
-      description?: string | null;
-      e2b: {
-        apiKey?: string | null;
-      };
-      name: string;
-      provider: "e2b";
-      updatedByUserId: string;
-    };
+type UpdateComputeProviderDefinitionInput = {
+  companyId: string;
+  definitionId: string;
+  description?: string | null;
+  e2b: {
+    apiKey?: string | null;
+  };
+  name: string;
+  provider: "e2b";
+  updatedByUserId: string;
+};
 
 /**
  * Owns the company-scoped compute provider definitions that back environment provisioning. It
- * keeps provider-specific storage typed in dedicated tables while exposing one unified surface for
- * GraphQL, agent configuration, and runtime provider resolution.
+ * keeps provider-specific storage typed in dedicated tables while exposing one unified E2B-backed
+ * surface for GraphQL, agent configuration, and runtime provider resolution.
  */
 @injectable()
 export class ComputeProviderDefinitionService {
-  private static readonly DEFAULT_DAYTONA_API_URL = "https://app.daytona.io/api";
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly secretEncryptionService: SecretEncryptionService;
 
@@ -245,35 +197,6 @@ export class ComputeProviderDefinitionService {
         });
       }
 
-      if (baseDefinition.provider === "daytona") {
-        const daytonaDefinitions = await selectableDatabase
-          .select({
-            apiUrl: daytonaComputeProviderDefinitions.apiUrl,
-            computeProviderDefinitionId: daytonaComputeProviderDefinitions.computeProviderDefinitionId,
-            encryptedApiKey: daytonaComputeProviderDefinitions.encryptedApiKey,
-            encryptionKeyId: daytonaComputeProviderDefinitions.encryptionKeyId,
-          })
-          .from(daytonaComputeProviderDefinitions)
-          .where(eq(daytonaComputeProviderDefinitions.computeProviderDefinitionId, definitionId)) as DaytonaDefinitionRecord[];
-        const daytonaDefinition = daytonaDefinitions[0];
-        if (!daytonaDefinition) {
-          throw new Error("Daytona compute provider definition is incomplete.");
-        }
-
-        return {
-          apiKey: this.secretEncryptionService.decrypt(
-            daytonaDefinition.encryptedApiKey,
-            daytonaDefinition.encryptionKeyId,
-          ),
-          apiUrl: this.resolveDaytonaApiUrl(daytonaDefinition.apiUrl),
-          companyId: baseDefinition.companyId,
-          description: baseDefinition.description,
-          id: baseDefinition.id,
-          name: baseDefinition.name,
-          provider: "daytona",
-        };
-      }
-
       const e2bDefinitions = await selectableDatabase
         .select({
           computeProviderDefinitionId: e2bComputeProviderDefinitions.computeProviderDefinitionId,
@@ -351,26 +274,14 @@ export class ComputeProviderDefinitionService {
         );
       }
 
-      if (input.provider === "daytona") {
-        const encryptedApiKey = this.secretEncryptionService.encrypt(input.daytona.apiKey);
-        await insertableDatabase
-          .insert(daytonaComputeProviderDefinitions)
-          .values({
-            apiUrl: this.resolveDaytonaApiUrl(input.daytona.apiUrl),
-            computeProviderDefinitionId: createdDefinition.id,
-            encryptedApiKey: encryptedApiKey.encryptedValue,
-            encryptionKeyId: encryptedApiKey.encryptionKeyId,
-          });
-      } else {
-        const encryptedApiKey = this.secretEncryptionService.encrypt(input.e2b.apiKey);
-        await insertableDatabase
-          .insert(e2bComputeProviderDefinitions)
-          .values({
-            computeProviderDefinitionId: createdDefinition.id,
-            encryptedApiKey: encryptedApiKey.encryptedValue,
-            encryptionKeyId: encryptedApiKey.encryptionKeyId,
-          });
-      }
+      const encryptedApiKey = this.secretEncryptionService.encrypt(input.e2b.apiKey);
+      await insertableDatabase
+        .insert(e2bComputeProviderDefinitions)
+        .values({
+          computeProviderDefinitionId: createdDefinition.id,
+          encryptedApiKey: encryptedApiKey.encryptedValue,
+          encryptionKeyId: encryptedApiKey.encryptionKeyId,
+        });
 
       const [reloadedDefinition] = await selectableDatabase
         .select(this.baseSelection())
@@ -438,63 +349,32 @@ export class ComputeProviderDefinitionService {
           eq(computeProviderDefinitions.id, input.definitionId),
         ));
 
-      if (input.provider === "daytona") {
-        const daytonaDefinitions = await selectableDatabase
-          .select({
-            apiUrl: daytonaComputeProviderDefinitions.apiUrl,
-            computeProviderDefinitionId: daytonaComputeProviderDefinitions.computeProviderDefinitionId,
-            encryptedApiKey: daytonaComputeProviderDefinitions.encryptedApiKey,
-            encryptionKeyId: daytonaComputeProviderDefinitions.encryptionKeyId,
-          })
-          .from(daytonaComputeProviderDefinitions)
-          .where(eq(daytonaComputeProviderDefinitions.computeProviderDefinitionId, input.definitionId)) as DaytonaDefinitionRecord[];
-        const daytonaDefinition = daytonaDefinitions[0];
-        if (!daytonaDefinition) {
-          throw new Error("Daytona compute provider definition is incomplete.");
-        }
-
-        const encryptedApiKey = input.daytona.apiKey && input.daytona.apiKey.trim().length > 0
-          ? this.secretEncryptionService.encrypt(input.daytona.apiKey)
-          : {
-              encryptedValue: daytonaDefinition.encryptedApiKey,
-              encryptionKeyId: daytonaDefinition.encryptionKeyId,
-            };
-        await updatableDatabase
-          .update(daytonaComputeProviderDefinitions)
-          .set({
-            apiUrl: this.resolveDaytonaApiUrl(input.daytona.apiUrl),
-            encryptedApiKey: encryptedApiKey.encryptedValue,
-            encryptionKeyId: encryptedApiKey.encryptionKeyId,
-          })
-          .where(eq(daytonaComputeProviderDefinitions.computeProviderDefinitionId, input.definitionId));
-      } else {
-        const e2bDefinitions = await selectableDatabase
-          .select({
-            computeProviderDefinitionId: e2bComputeProviderDefinitions.computeProviderDefinitionId,
-            encryptedApiKey: e2bComputeProviderDefinitions.encryptedApiKey,
-            encryptionKeyId: e2bComputeProviderDefinitions.encryptionKeyId,
-          })
-          .from(e2bComputeProviderDefinitions)
-          .where(eq(e2bComputeProviderDefinitions.computeProviderDefinitionId, input.definitionId)) as E2bDefinitionRecord[];
-        const e2bDefinition = e2bDefinitions[0];
-        if (!e2bDefinition) {
-          throw new Error("E2B compute provider definition is incomplete.");
-        }
-
-        const encryptedApiKey = input.e2b.apiKey && input.e2b.apiKey.trim().length > 0
-          ? this.secretEncryptionService.encrypt(input.e2b.apiKey)
-          : {
-              encryptedValue: e2bDefinition.encryptedApiKey,
-              encryptionKeyId: e2bDefinition.encryptionKeyId,
-            };
-        await updatableDatabase
-          .update(e2bComputeProviderDefinitions)
-          .set({
-            encryptedApiKey: encryptedApiKey.encryptedValue,
-            encryptionKeyId: encryptedApiKey.encryptionKeyId,
-          })
-          .where(eq(e2bComputeProviderDefinitions.computeProviderDefinitionId, input.definitionId));
+      const e2bDefinitions = await selectableDatabase
+        .select({
+          computeProviderDefinitionId: e2bComputeProviderDefinitions.computeProviderDefinitionId,
+          encryptedApiKey: e2bComputeProviderDefinitions.encryptedApiKey,
+          encryptionKeyId: e2bComputeProviderDefinitions.encryptionKeyId,
+        })
+        .from(e2bComputeProviderDefinitions)
+        .where(eq(e2bComputeProviderDefinitions.computeProviderDefinitionId, input.definitionId)) as E2bDefinitionRecord[];
+      const e2bDefinition = e2bDefinitions[0];
+      if (!e2bDefinition) {
+        throw new Error("E2B compute provider definition is incomplete.");
       }
+
+      const encryptedApiKey = input.e2b.apiKey && input.e2b.apiKey.trim().length > 0
+        ? this.secretEncryptionService.encrypt(input.e2b.apiKey)
+        : {
+            encryptedValue: e2bDefinition.encryptedApiKey,
+            encryptionKeyId: e2bDefinition.encryptionKeyId,
+          };
+      await updatableDatabase
+        .update(e2bComputeProviderDefinitions)
+        .set({
+          encryptedApiKey: encryptedApiKey.encryptedValue,
+          encryptionKeyId: encryptedApiKey.encryptionKeyId,
+        })
+        .where(eq(e2bComputeProviderDefinitions.computeProviderDefinitionId, input.definitionId));
 
       const [updatedBaseDefinition] = await selectableDatabase
         .select(this.baseSelection())
@@ -627,29 +507,14 @@ export class ComputeProviderDefinitionService {
     }
 
     const definitionIds = baseDefinitions.map((definition) => definition.id);
-    const [daytonaDefinitions, e2bDefinitions] = await Promise.all([
-      selectableDatabase
-        .select({
-          apiUrl: daytonaComputeProviderDefinitions.apiUrl,
-          computeProviderDefinitionId: daytonaComputeProviderDefinitions.computeProviderDefinitionId,
-          encryptedApiKey: daytonaComputeProviderDefinitions.encryptedApiKey,
-          encryptionKeyId: daytonaComputeProviderDefinitions.encryptionKeyId,
-        })
-        .from(daytonaComputeProviderDefinitions)
-        .where(inArray(daytonaComputeProviderDefinitions.computeProviderDefinitionId, definitionIds)) as Promise<DaytonaDefinitionRecord[]>,
-      selectableDatabase
-        .select({
-          computeProviderDefinitionId: e2bComputeProviderDefinitions.computeProviderDefinitionId,
-          encryptedApiKey: e2bComputeProviderDefinitions.encryptedApiKey,
-          encryptionKeyId: e2bComputeProviderDefinitions.encryptionKeyId,
-        })
-        .from(e2bComputeProviderDefinitions)
-        .where(inArray(e2bComputeProviderDefinitions.computeProviderDefinitionId, definitionIds)) as Promise<E2bDefinitionRecord[]>,
-    ]);
-
-    const daytonaByDefinitionId = new Map(
-      daytonaDefinitions.map((definition) => [definition.computeProviderDefinitionId, definition]),
-    );
+    const e2bDefinitions = await selectableDatabase
+      .select({
+        computeProviderDefinitionId: e2bComputeProviderDefinitions.computeProviderDefinitionId,
+        encryptedApiKey: e2bComputeProviderDefinitions.encryptedApiKey,
+        encryptionKeyId: e2bComputeProviderDefinitions.encryptionKeyId,
+      })
+      .from(e2bComputeProviderDefinitions)
+      .where(inArray(e2bComputeProviderDefinitions.computeProviderDefinitionId, definitionIds)) as E2bDefinitionRecord[];
     const e2bByDefinitionId = new Map(
       e2bDefinitions.map((definition) => [definition.computeProviderDefinitionId, definition]),
     );
@@ -659,18 +524,11 @@ export class ComputeProviderDefinitionService {
       .map((definition) => ({
         companyId: definition.companyId,
         createdAt: definition.createdAt,
-        daytona: definition.provider === "daytona"
-          ? {
-              apiUrl: this.resolveDaytonaApiUrl(daytonaByDefinitionId.get(definition.id)?.apiUrl),
-            }
-          : null,
         description: definition.description,
-        e2b: definition.provider === "e2b"
-          ? {
-              hasApiKey: this.companyHelmComputeProviderService.matchesDefinition(definition)
-                || Boolean(e2bByDefinitionId.get(definition.id)?.encryptedApiKey),
-            }
-          : null,
+        e2b: {
+          hasApiKey: this.companyHelmComputeProviderService.matchesDefinition(definition)
+            || Boolean(e2bByDefinitionId.get(definition.id)?.encryptedApiKey),
+        },
         id: definition.id,
         isDefault: definition.isDefault,
         name: definition.name,
@@ -798,18 +656,5 @@ export class ComputeProviderDefinitionService {
     }
 
     return value.length === 0 ? null : value;
-  }
-
-  private resolveDaytonaApiUrl(value: string | null | undefined): string {
-    if (!value) {
-      return ComputeProviderDefinitionService.DEFAULT_DAYTONA_API_URL;
-    }
-
-    const trimmedValue = value.trim();
-    if (trimmedValue.length === 0) {
-      return ComputeProviderDefinitionService.DEFAULT_DAYTONA_API_URL;
-    }
-
-    return trimmedValue;
   }
 }

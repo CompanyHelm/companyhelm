@@ -51,8 +51,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "daytona_sandbox_id": {
-          "name": "daytona_sandbox_id",
+        "provider_sandbox_id": {
+          "name": "provider_sandbox_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -134,11 +134,11 @@
           "method": "btree",
           "with": {}
         },
-        "agent_sandboxes_daytona_sandbox_id_idx": {
-          "name": "agent_sandboxes_daytona_sandbox_id_idx",
+        "agent_sandboxes_provider_sandbox_id_idx": {
+          "name": "agent_sandboxes_provider_sandbox_id_idx",
           "columns": [
             {
-              "expression": "daytona_sandbox_id",
+              "expression": "provider_sandbox_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

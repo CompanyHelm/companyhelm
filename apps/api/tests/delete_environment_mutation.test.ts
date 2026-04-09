@@ -76,9 +76,9 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
         memoryGb: 8,
         metadata: {},
         platform: "linux" as const,
-        provider: "daytona" as const,
-        providerEnvironmentId: "daytona-env-1",
-        templateId: "daytona/default",
+        provider: "e2b" as const,
+        providerEnvironmentId: "e2b-env-1",
+        templateId: "e2b/desktop",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -95,9 +95,9 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
         memoryGb: 8,
         metadata: {},
         platform: "linux" as const,
-        provider: "daytona" as const,
-        providerEnvironmentId: "daytona-env-1",
-        templateId: "daytona/default",
+        provider: "e2b" as const,
+        providerEnvironmentId: "e2b-env-1",
+        templateId: "e2b/desktop",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -133,7 +133,7 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
         return "running";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
       async provisionEnvironment() {
         throw new Error("provisionEnvironment should not run for DeleteEnvironment");
@@ -173,7 +173,7 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
   const document = response.json();
   assert.deepEqual(document.data.DeleteEnvironment, {
     id: "env-1",
-    providerEnvironmentId: "daytona-env-1",
+    providerEnvironmentId: "e2b-env-1",
     status: "deleting",
   });
   assert.equal(providerDeleteEnvironment.mock.calls.length, 1);
@@ -226,9 +226,9 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
         memoryGb: 8,
         metadata: {},
         platform: "linux" as const,
-        provider: "daytona" as const,
-        providerEnvironmentId: "daytona-env-1",
-        templateId: "daytona/default",
+        provider: "e2b" as const,
+        providerEnvironmentId: "e2b-env-1",
+        templateId: "e2b/desktop",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -245,9 +245,9 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
         memoryGb: 8,
         metadata: {},
         platform: "linux" as const,
-        provider: "daytona" as const,
-        providerEnvironmentId: "daytona-env-1",
-        templateId: "daytona/default",
+        provider: "e2b" as const,
+        providerEnvironmentId: "e2b-env-1",
+        templateId: "e2b/desktop",
         updatedAt: new Date("2026-03-29T11:00:00.000Z"),
       };
     },
@@ -283,7 +283,7 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
         return "running";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
       async provisionEnvironment() {
         throw new Error("provisionEnvironment should not run for DeleteEnvironment");
@@ -324,7 +324,7 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
   const document = response.json();
   assert.deepEqual(document.data.DeleteEnvironment, {
     id: "env-1",
-    providerEnvironmentId: "daytona-env-1",
+    providerEnvironmentId: "e2b-env-1",
     status: "deleting",
   });
   assert.equal(providerDeleteEnvironment.mock.calls.length, 1);

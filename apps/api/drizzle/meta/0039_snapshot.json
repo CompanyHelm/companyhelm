@@ -2343,7 +2343,7 @@
       "name": "compute_provider",
       "schema": "public",
       "values": [
-        "daytona"
+        "legacy"
       ]
     },
     "public.message_content_type": {

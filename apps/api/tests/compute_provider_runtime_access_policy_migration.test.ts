@@ -14,19 +14,11 @@ test("compute provider runtime access migration replaces stray compute provider 
   );
   assert.match(
     migrationSql,
-    /ALTER TABLE "daytona_compute_provider_definitions" ENABLE ROW LEVEL SECURITY;/,
-  );
-  assert.match(
-    migrationSql,
     /ALTER TABLE "e2b_compute_provider_definitions" ENABLE ROW LEVEL SECURITY;/,
   );
   assert.match(
     migrationSql,
     /FROM pg_policies\s+WHERE schemaname = 'public'\s+AND tablename = 'compute_provider_definitions'/,
-  );
-  assert.match(
-    migrationSql,
-    /FROM pg_policies\s+WHERE schemaname = 'public'\s+AND tablename = 'daytona_compute_provider_definitions'/,
   );
   assert.match(
     migrationSql,
@@ -42,15 +34,7 @@ test("compute provider runtime access migration replaces stray compute provider 
   );
   assert.match(
     migrationSql,
-    /CREATE POLICY "daytona_compute_provider_definitions_company_scope_policy"/,
-  );
-  assert.match(
-    migrationSql,
     /CREATE POLICY "e2b_compute_provider_definitions_company_scope_policy"/,
-  );
-  assert.match(
-    migrationSql,
-    /WHERE "cpd"\."id" = "daytona_compute_provider_definitions"\."compute_provider_definition_id"\s+AND "cpd"\."company_id" = current_setting\('app.current_company_id', true\)::uuid/s,
   );
   assert.match(
     migrationSql,

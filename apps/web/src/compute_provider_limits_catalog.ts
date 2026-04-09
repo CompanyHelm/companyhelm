@@ -4,19 +4,6 @@
  * provider-specific limits across forms and detail views.
  */
 export class ComputeProviderLimitsCatalog {
-  private static readonly DAYTONA_LIMITS = {
-    maxCpuCount: 4,
-    maxDiskSpaceGb: 10,
-    maxMemoryGb: 8,
-    cpuRangeLabel: "1 to 4 vCPU",
-    diskRangeLabel: "3 to 10 GiB",
-    memoryRangeLabel: "1 to 8 GB",
-    minCpuCount: 1,
-    minDiskSpaceGb: 3,
-    minMemoryGb: 1,
-    providerLabel: "Daytona",
-  };
-
   private static readonly E2B_LIMITS = {
     maxCpuCount: 8,
     maxDiskSpaceGb: 20,
@@ -30,50 +17,50 @@ export class ComputeProviderLimitsCatalog {
     providerLabel: "E2B",
   };
 
-  static formatCpuRange(provider: "daytona" | "e2b"): string {
-    return ComputeProviderLimitsCatalog.getProviderLimits(provider).cpuRangeLabel;
+  static formatCpuRange(): string {
+    return ComputeProviderLimitsCatalog.E2B_LIMITS.cpuRangeLabel;
   }
 
-  static formatDiskRange(provider: "daytona" | "e2b"): string {
-    return ComputeProviderLimitsCatalog.getProviderLimits(provider).diskRangeLabel;
+  static formatDiskRange(): string {
+    return ComputeProviderLimitsCatalog.E2B_LIMITS.diskRangeLabel;
   }
 
-  static formatMemoryRange(provider: "daytona" | "e2b"): string {
-    return ComputeProviderLimitsCatalog.getProviderLimits(provider).memoryRangeLabel;
+  static formatMemoryRange(): string {
+    return ComputeProviderLimitsCatalog.E2B_LIMITS.memoryRangeLabel;
   }
 
-  static formatPublishedRangeSummary(provider: "daytona" | "e2b"): string {
-    const limits = ComputeProviderLimitsCatalog.getProviderLimits(provider);
+  static formatPublishedRangeSummary(): string {
+    const limits = ComputeProviderLimitsCatalog.E2B_LIMITS;
     return `CPU ${limits.cpuRangeLabel} • Memory ${limits.memoryRangeLabel} • Disk ${limits.diskRangeLabel}`;
   }
 
-  static getCpuBounds(provider: "daytona" | "e2b"): {
+  static getCpuBounds(): {
     max: number;
     min: number;
   } {
-    const limits = ComputeProviderLimitsCatalog.getProviderLimits(provider);
+    const limits = ComputeProviderLimitsCatalog.E2B_LIMITS;
     return {
       max: limits.maxCpuCount,
       min: limits.minCpuCount,
     };
   }
 
-  static getDiskBounds(provider: "daytona" | "e2b"): {
+  static getDiskBounds(): {
     max: number;
     min: number;
   } {
-    const limits = ComputeProviderLimitsCatalog.getProviderLimits(provider);
+    const limits = ComputeProviderLimitsCatalog.E2B_LIMITS;
     return {
       max: limits.maxDiskSpaceGb,
       min: limits.minDiskSpaceGb,
     };
   }
 
-  static getMemoryBounds(provider: "daytona" | "e2b"): {
+  static getMemoryBounds(): {
     max: number;
     min: number;
   } {
-    const limits = ComputeProviderLimitsCatalog.getProviderLimits(provider);
+    const limits = ComputeProviderLimitsCatalog.E2B_LIMITS;
     return {
       max: limits.maxMemoryGb,
       min: limits.minMemoryGb,
@@ -81,14 +68,13 @@ export class ComputeProviderLimitsCatalog {
   }
 
   static getValidationMessage(
-    provider: "daytona" | "e2b",
     requirements: {
       minCpuCount: number;
       minDiskSpaceGb: number;
       minMemoryGb: number;
     },
   ): string | null {
-    const limits = ComputeProviderLimitsCatalog.getProviderLimits(provider);
+    const limits = ComputeProviderLimitsCatalog.E2B_LIMITS;
 
     if (requirements.minCpuCount < limits.minCpuCount || requirements.minCpuCount > limits.maxCpuCount) {
       return `CPU must be between ${limits.minCpuCount} and ${limits.maxCpuCount} for ${limits.providerLabel}.`;
@@ -108,11 +94,5 @@ export class ComputeProviderLimitsCatalog {
 
   static getPublishedRangeDisclaimer(): string {
     return "Validation uses the providers' published standard ranges. Enterprise or support-adjusted accounts may need broader limits than the app currently allows.";
-  }
-
-  private static getProviderLimits(provider: "daytona" | "e2b") {
-    return provider === "e2b"
-      ? ComputeProviderLimitsCatalog.E2B_LIMITS
-      : ComputeProviderLimitsCatalog.DAYTONA_LIMITS;
   }
 }

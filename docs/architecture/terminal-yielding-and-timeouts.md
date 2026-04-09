@@ -157,31 +157,19 @@ If this were a single blocking provider SDK command instead of a tmux-backed ses
 The provider shell adapters are:
 
 - `apps/api/src/services/agent/compute/e2b/e2b_shell.ts`
-- `apps/api/src/services/agent/compute/daytona/daytona_shell.ts`
 
-Both implement the same low-level shell contract:
+The adapter implements the same low-level shell contract:
 
 - command string
 - optional cwd
 - optional environment
 - optional timeout
 
-The difference is only how they hand that timeout to the provider SDK.
-
 ### E2B
 
 `AgentComputeE2bShell` maps `timeoutSeconds` to `timeoutMs` in `sandbox.commands.run(...)`.
 
 This is why E2B error messages often mention `timeoutMs`. That field belongs to the provider SDK request, not to the public `execute_command` tool schema.
-
-### Daytona
-
-`AgentComputeDaytonaShell` passes `timeoutSeconds` through to `remoteSandbox.process.executeCommand(...)`.
-
-The meaning is still the same:
-
-- it is the timeout for the raw helper shell call,
-- not the long-running lifetime of the user command once tmux has started it
 
 ## Why a provider timeout can still happen even when yield is short
 
@@ -297,5 +285,5 @@ That separation is what allows CompanyHelm agents to:
 
 - return quickly from long-running commands,
 - keep shell state alive across tool calls,
-- work the same way across E2B and Daytona,
+- work the same way across E2B environments,
 - and avoid coupling the public tool API to provider-specific timeout parameters such as E2B `timeoutMs`.

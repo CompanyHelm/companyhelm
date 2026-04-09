@@ -92,9 +92,9 @@ class StartStopEnvironmentMutationTestHarness {
           memoryGb: 8,
           metadata: {},
           platform: "linux" as const,
-          provider: "daytona" as const,
-          providerEnvironmentId: "daytona-env-1",
-          templateId: "daytona/default",
+          provider: "e2b" as const,
+          providerEnvironmentId: "e2b-env-1",
+          templateId: "e2b/desktop",
           updatedAt: new Date("2026-03-29T11:00:00.000Z"),
         };
       },
@@ -124,7 +124,7 @@ test("GraphQL StartEnvironment mutation starts a company environment through the
         return "stopped";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
       async provisionEnvironment() {
         throw new Error("provisionEnvironment should not run for StartEnvironment");
@@ -197,7 +197,7 @@ test("GraphQL StopEnvironment mutation stops a company environment through the p
         return "running";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
       async provisionEnvironment() {
         throw new Error("provisionEnvironment should not run for StopEnvironment");

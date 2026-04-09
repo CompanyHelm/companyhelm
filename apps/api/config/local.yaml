@@ -46,12 +46,6 @@ companyhelm:
       height: 1080
     # must match the E2B team name
     template_prefix: "realequityapps/"
-daytona:
-  api_key: "${DAYTONA_API_KEY}"
-  api_url: "https://app.daytona.io/api"
-  disk_gb: 10
-  memory_gb: 8
-  cpu_count: 4
 github:
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"

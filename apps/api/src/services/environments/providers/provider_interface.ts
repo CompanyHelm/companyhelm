@@ -1,7 +1,7 @@
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentShellInterface } from "./shell_interface.ts";
 
-export type ComputeProvider = "daytona" | "e2b";
+export type ComputeProvider = "e2b";
 export type AgentEnvironmentStatus = "available" | "deleting" | "provisioning" | "running" | "stopped" | "unhealthy";
 
 /**

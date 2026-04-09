@@ -30,7 +30,7 @@ resolved_provider_definitions AS (
     COALESCE(
       selected_provider_definitions."provider"::text,
       company_default_provider_definitions."provider"::text,
-      'daytona'
+      'e2b'
     ) AS "provider"
   FROM "agents"
   LEFT JOIN "compute_provider_definitions" AS selected_provider_definitions
@@ -39,10 +39,7 @@ resolved_provider_definitions AS (
     ON company_default_provider_definitions."company_id" = "agents"."company_id"
 )
 UPDATE "agents"
-SET "default_environment_template_id" = CASE resolved_provider_definitions."provider"
-  WHEN 'e2b' THEN 'e2b/desktop'
-  ELSE 'daytona/default'
-END
+SET "default_environment_template_id" = 'e2b/desktop'
 FROM resolved_provider_definitions
 WHERE "agents"."id" = resolved_provider_definitions."agent_id"
   AND "agents"."default_environment_template_id" IS NULL;--> statement-breakpoint

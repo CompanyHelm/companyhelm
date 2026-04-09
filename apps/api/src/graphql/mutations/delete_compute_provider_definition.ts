@@ -12,16 +12,13 @@ type DeleteComputeProviderDefinitionMutationArguments = {
 type GraphqlComputeProviderDefinitionRecord = {
   companyId: string;
   createdAt: string;
-  daytona: {
-    apiUrl: string;
-  } | null;
   description: string | null;
   e2b: {
     hasApiKey: boolean;
-  } | null;
+  };
   id: string;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   updatedAt: string;
 };
 
@@ -71,7 +68,6 @@ export class DeleteComputeProviderDefinitionMutation extends Mutation<
     return {
       companyId: deletedDefinition.companyId,
       createdAt: deletedDefinition.createdAt.toISOString(),
-      daytona: deletedDefinition.daytona,
       description: deletedDefinition.description,
       e2b: deletedDefinition.e2b,
       id: deletedDefinition.id,

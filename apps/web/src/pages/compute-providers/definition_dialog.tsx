@@ -10,20 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export type ComputeProviderDefinitionDialogRecord = {
   description: string | null;
-  daytonaApiUrl: string | null;
   id: string;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
 };
 
 interface ComputeProviderDefinitionDialogProps {
@@ -36,32 +28,11 @@ interface ComputeProviderDefinitionDialogProps {
   onSave: (input:
     | {
         description?: string;
-        daytona: {
-          apiKey: string;
-          apiUrl?: string;
-        };
-        isDefault?: boolean;
-        name: string;
-        provider: "daytona";
-      }
-    | {
-        description?: string;
         e2b: {
           apiKey: string;
         };
         isDefault?: boolean;
         name: string;
-        provider: "e2b";
-      }
-    | {
-        daytona: {
-          apiKey?: string;
-          apiUrl?: string;
-        };
-        description?: string;
-        id: string;
-        name: string;
-        provider: "daytona";
       }
     | {
         description?: string;
@@ -70,25 +41,17 @@ interface ComputeProviderDefinitionDialogProps {
         };
         id: string;
         name: string;
-        provider: "e2b";
       }
   ) => Promise<void>;
 }
 
-function formatProviderLabel(provider: "daytona" | "e2b"): string {
-  return provider === "e2b" ? "E2B" : "Daytona";
-}
-
 /**
- * Collects the typed configuration for one compute provider definition. The dialog keeps provider
- * selection and provider-specific fields in one place so the page can reuse it for both create and
- * edit flows.
+ * Collects the typed configuration for one E2B compute provider definition. The dialog stays
+ * intentionally small because CompanyHelm only supports E2B-backed compute definitions now.
  */
 export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinitionDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [provider, setProvider] = useState<"daytona" | "e2b">("daytona");
-  const [daytonaApiUrl, setDaytonaApiUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const isEditing = props.definition !== null;
@@ -97,8 +60,6 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
     if (!props.isOpen) {
       setName("");
       setDescription("");
-      setProvider("daytona");
-      setDaytonaApiUrl("");
       setApiKey("");
       setIsDefault(props.suggestDefault);
       return;
@@ -107,8 +68,6 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
     if (!props.definition) {
       setName("");
       setDescription("");
-      setProvider("daytona");
-      setDaytonaApiUrl("");
       setApiKey("");
       setIsDefault(props.suggestDefault);
       return;
@@ -116,16 +75,14 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
 
     setName(props.definition.name);
     setDescription(props.definition.description ?? "");
-    setProvider(props.definition.provider);
-    setDaytonaApiUrl(props.definition.daytonaApiUrl ?? "");
     setApiKey("");
     setIsDefault(false);
   }, [props.definition, props.isOpen, props.suggestDefault]);
 
   const title = isEditing ? "Edit compute provider" : "Create compute provider";
   const descriptionText = isEditing
-    ? "Update the shared company definition that agents can use for environment provisioning."
-    : "Add a shared Daytona or E2B definition that agents can use as their environment backend.";
+    ? "Update the shared E2B definition that agents can use for environment provisioning."
+    : "Add a shared E2B definition that agents can use as their environment backend.";
   const apiKeyLabel = isEditing ? "API key (optional)" : "API key";
   const isSaveDisabled = useMemo(() => {
     if (name.trim().length === 0) {
@@ -137,7 +94,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
     }
 
     return false;
-  }, [apiKey, daytonaApiUrl, isEditing, name, provider]);
+  }, [apiKey, isEditing, name]);
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -166,31 +123,13 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
             <label className="text-xs font-medium text-foreground" htmlFor="compute-provider-type">
               Provider
             </label>
-            <Select
-              items={[
-                { label: "Daytona", value: "daytona" },
-                { label: "E2B", value: "e2b" },
-              ]}
-              onValueChange={(value) => {
-                setProvider(value as "daytona" | "e2b");
-              }}
-              value={provider}
-            >
-              <SelectTrigger disabled={isEditing} id="compute-provider-type">
-                <SelectValue placeholder="Select a compute provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daytona">Daytona</SelectItem>
-                <SelectItem value="e2b">E2B</SelectItem>
-              </SelectContent>
-            </Select>
-            {isEditing ? (
-              <p className="text-xs text-muted-foreground">
-                Provider type is fixed after creation.
-              </p>
-            ) : null}
+            <Input
+              disabled
+              id="compute-provider-type"
+              value="E2B"
+            />
             <p className="text-xs text-muted-foreground">
-              Published range: {ComputeProviderLimitsCatalog.formatPublishedRangeSummary(provider)}
+              Published range: {ComputeProviderLimitsCatalog.formatPublishedRangeSummary()}
             </p>
             <p className="text-xs text-muted-foreground">
               {ComputeProviderLimitsCatalog.getPublishedRangeDisclaimer()}
@@ -206,7 +145,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
               onChange={(event) => {
                 setDescription(event.target.value);
               }}
-              placeholder={`${formatProviderLabel(provider)} sandbox configuration`}
+              placeholder="E2B sandbox configuration"
               value={description}
             />
           </div>
@@ -230,25 +169,6 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
             </label>
           ) : null}
 
-          {provider === "daytona" ? (
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="compute-provider-api-url">
-                API URL (optional)
-              </label>
-              <Input
-                id="compute-provider-api-url"
-                onChange={(event) => {
-                  setDaytonaApiUrl(event.target.value);
-                }}
-                placeholder="https://app.daytona.io/api"
-                value={daytonaApiUrl}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave empty to use the default Daytona API endpoint.
-              </p>
-            </div>
-          ) : null}
-
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="compute-provider-api-key">
               {apiKeyLabel}
@@ -258,7 +178,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
               onChange={(event) => {
                 setApiKey(event.target.value);
               }}
-              placeholder={provider === "e2b" ? "e2b_api_key" : "daytona_api_key"}
+              placeholder="e2b_api_key"
               type="password"
               value={apiKey}
             />
@@ -283,31 +203,6 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
           <Button
             disabled={isSaveDisabled || props.isSaving}
             onClick={async () => {
-              if (provider === "daytona") {
-                await props.onSave(isEditing && props.definition
-                  ? {
-                      daytona: {
-                        apiKey,
-                        apiUrl: daytonaApiUrl.trim() ? daytonaApiUrl : undefined,
-                      },
-                      description,
-                      id: props.definition.id,
-                      name,
-                      provider: "daytona",
-                    }
-                  : {
-                      daytona: {
-                        apiKey,
-                        apiUrl: daytonaApiUrl.trim() ? daytonaApiUrl : undefined,
-                      },
-                      description,
-                      ...(isDefault ? { isDefault: true } : {}),
-                      name,
-                      provider: "daytona",
-                    });
-                return;
-              }
-
               await props.onSave(isEditing && props.definition
                 ? {
                     description,
@@ -316,7 +211,6 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                     },
                     id: props.definition.id,
                     name,
-                    provider: "e2b",
                   }
                 : {
                     description,
@@ -325,7 +219,6 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
                     },
                     ...(isDefault ? { isDefault: true } : {}),
                     name,
-                    provider: "e2b",
                   });
             }}
           >

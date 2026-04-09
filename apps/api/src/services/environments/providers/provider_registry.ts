@@ -1,5 +1,4 @@
 import { inject, injectable } from "inversify";
-import { AgentComputeDaytonaProvider } from "./daytona/daytona_provider.ts";
 import { AgentComputeE2bProvider } from "./e2b/e2b_provider.ts";
 import type { AgentComputeProviderInterface, ComputeProvider } from "./provider_interface.ts";
 
@@ -13,11 +12,9 @@ export class AgentComputeProviderRegistry {
   private readonly providerById: Map<ComputeProvider, AgentComputeProviderInterface>;
 
   constructor(
-    @inject(AgentComputeDaytonaProvider) daytonaProvider: AgentComputeDaytonaProvider,
     @inject(AgentComputeE2bProvider) e2bProvider: AgentComputeE2bProvider,
   ) {
     this.providerById = new Map([
-      [daytonaProvider.getProvider(), daytonaProvider],
       [e2bProvider.getProvider(), e2bProvider],
     ]);
   }

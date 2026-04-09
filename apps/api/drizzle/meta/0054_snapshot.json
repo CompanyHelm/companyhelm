@@ -2629,8 +2629,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.daytona_compute_provider_definitions": {
-      "name": "daytona_compute_provider_definitions",
+    "public.legacy_compute_provider_definitions": {
+      "name": "legacy_compute_provider_definitions",
       "schema": "",
       "columns": {
         "compute_provider_definition_id": {
@@ -2659,8 +2659,8 @@
         }
       },
       "indexes": {
-        "daytona_compute_provider_definitions_api_url_idx": {
-          "name": "daytona_compute_provider_definitions_api_url_idx",
+        "legacy_compute_provider_definitions_api_url_idx": {
+          "name": "legacy_compute_provider_definitions_api_url_idx",
           "columns": [
             {
               "expression": "api_url",
@@ -2676,9 +2676,9 @@
         }
       },
       "foreignKeys": {
-        "daytona_compute_provider_definitions_compute_provider_definition_id_compute_provider_definitions_id_fk": {
-          "name": "daytona_compute_provider_definitions_compute_provider_definition_id_compute_provider_definitions_id_fk",
-          "tableFrom": "daytona_compute_provider_definitions",
+        "legacy_compute_provider_definitions_compute_provider_definition_id_compute_provider_definitions_id_fk": {
+          "name": "legacy_compute_provider_definitions_compute_provider_definition_id_compute_provider_definitions_id_fk",
+          "tableFrom": "legacy_compute_provider_definitions",
           "tableTo": "compute_provider_definitions",
           "columnsFrom": [
             "compute_provider_definition_id"
@@ -4354,7 +4354,7 @@
       "name": "compute_provider",
       "schema": "public",
       "values": [
-        "daytona",
+        "legacy",
         "e2b"
       ]
     },

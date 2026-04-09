@@ -32,7 +32,7 @@ type GraphqlEnvironmentRecord = {
   lastSeenAt: string | null;
   memoryGb: number;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;
@@ -44,16 +44,13 @@ type GraphqlEnvironmentRecord = {
 type GraphqlComputeProviderDefinitionRecord = {
   companyId: string;
   createdAt: string;
-  daytona: {
-    apiUrl: string;
-  } | null;
   description: string | null;
   e2b: {
     hasApiKey: boolean;
-  } | null;
+  };
   id: string;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   updatedAt: string;
 };
 
@@ -191,7 +188,6 @@ export class SessionEnvironmentQueryResolver {
         ? {
             companyId: defaultComputeProviderDefinition.companyId,
             createdAt: defaultComputeProviderDefinition.createdAt.toISOString(),
-            daytona: defaultComputeProviderDefinition.daytona,
             description: defaultComputeProviderDefinition.description,
             e2b: defaultComputeProviderDefinition.e2b,
             id: defaultComputeProviderDefinition.id,

@@ -44,7 +44,7 @@ export type AgentCreateComputeProviderDefinitionOption = {
   id: string;
   isDefault: boolean;
   label: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   templates: AgentCreateEnvironmentTemplateOption[];
 };
 

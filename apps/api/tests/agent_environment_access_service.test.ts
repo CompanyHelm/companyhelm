@@ -41,8 +41,9 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
           memoryGb: 4,
           metadata: {},
           platform: "linux",
-          provider: "daytona",
-          providerEnvironmentId: "daytona-environment-1",
+          provider: "e2b",
+          providerEnvironmentId: "e2b-environment-1",
+          templateId: "e2b/desktop",
           updatedAt: new Date("2026-03-27T20:00:00.000Z"),
         };
       },
@@ -75,7 +76,7 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
         return "running";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
     } as never,
     {
@@ -114,8 +115,9 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
     memoryGb: 4,
     metadata: {},
     platform: "linux" as const,
-    provider: "daytona" as const,
-    providerEnvironmentId: "daytona-environment-2",
+    provider: "e2b" as const,
+    providerEnvironmentId: "e2b-environment-2",
+    templateId: "e2b/desktop",
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   };
   const service = new AgentEnvironmentAccessService(
@@ -149,7 +151,7 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
         return "running";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
     } as never,
     {
@@ -185,8 +187,9 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
     memoryGb: 4,
     metadata: {},
     platform: "linux" as const,
-    provider: "daytona" as const,
-    providerEnvironmentId: "daytona-environment-4",
+    provider: "e2b" as const,
+    providerEnvironmentId: "e2b-environment-4",
+    templateId: "e2b/desktop",
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   };
   const activateLease = vi.fn(async () => ({
@@ -213,8 +216,9 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
           memoryGb: 4,
           metadata: {},
           platform: "linux",
-          provider: "daytona",
-          providerEnvironmentId: "daytona-environment-1",
+          provider: "e2b",
+          providerEnvironmentId: "e2b-environment-1",
+          templateId: "e2b/desktop",
           updatedAt: new Date("2026-03-27T20:00:00.000Z"),
         };
       },
@@ -249,7 +253,7 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
         return "unhealthy";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
     } as never,
     {
@@ -288,8 +292,9 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
     memoryGb: 4,
     metadata: {},
     platform: "linux" as const,
-    provider: "daytona" as const,
-    providerEnvironmentId: "daytona-environment-3",
+    provider: "e2b" as const,
+    providerEnvironmentId: "e2b-environment-3",
+    templateId: "e2b/desktop",
     updatedAt: new Date("2026-03-27T20:00:00.000Z"),
   };
   const provisionEnvironmentForSession = vi.fn(async () => provisionedEnvironment);
@@ -324,7 +329,7 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
         return "running";
       },
       getProvider() {
-        return "daytona";
+        return "e2b";
       },
     } as never,
     {

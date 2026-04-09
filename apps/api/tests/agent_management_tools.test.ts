@@ -84,7 +84,6 @@ test("AgentListAgentsTool renders full agent management state", async () => {
         availableComputeProviderDefinitions: [{
           companyId: "company-1",
           createdAt: new Date("2026-04-04T18:00:00.000Z"),
-          daytona: null,
           description: "Managed provider",
           e2b: {
             hasApiKey: true,

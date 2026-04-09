@@ -16,10 +16,10 @@ const createdEnvironment = {
   memoryGb: 4,
   metadata: {},
   platform: "linux" as const,
-  provider: "daytona" as const,
+  provider: "e2b" as const,
   providerDefinitionId: "compute-provider-definition-1",
-  providerEnvironmentId: "daytona-environment-1",
-  templateId: "daytona/large",
+  providerEnvironmentId: "e2b-environment-1",
+  templateId: "e2b/desktop",
   updatedAt: new Date("2026-03-29T20:00:00.000Z"),
 };
 
@@ -27,7 +27,7 @@ class AgentEnvironmentProvisioningServiceTestTransactions {
   private readonly defaultComputeProviderDefinitionId: string | null;
   private readonly defaultEnvironmentTemplateId: string;
 
-  constructor(defaultComputeProviderDefinitionId: string | null, defaultEnvironmentTemplateId = "daytona/default") {
+  constructor(defaultComputeProviderDefinitionId: string | null, defaultEnvironmentTemplateId = "e2b/desktop") {
     this.defaultComputeProviderDefinitionId = defaultComputeProviderDefinitionId;
     this.defaultEnvironmentTemplateId = defaultEnvironmentTemplateId;
   }
@@ -86,7 +86,7 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
     memoryGb: 4,
     metadata: {},
     platform: "linux" as const,
-    providerEnvironmentId: "daytona-environment-1",
+    providerEnvironmentId: "e2b-environment-1",
   }));
   const createEnvironment = vi.fn(async () => createdEnvironment);
   const bootstrapProvision = vi.fn(async () => undefined);
@@ -102,17 +102,17 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
       async loadDefinitionById() {
         return {
           id: "compute-provider-definition-1",
-          name: "Primary Daytona",
-          provider: "daytona" as const,
+          name: "Primary E2B",
+          provider: "e2b" as const,
         };
       },
     } as never,
     {
       get(provider) {
-        assert.equal(provider, "daytona");
+        assert.equal(provider, "e2b");
         return {
           getProvider() {
-            return "daytona" as const;
+            return "e2b" as const;
           },
           provisionEnvironment: providerProvisionEnvironment,
           supportsOnDemandProvisioning() {
@@ -131,8 +131,8 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
           cpuCount: 6,
           diskSpaceGb: 40,
           memoryGb: 12,
-          name: "Large",
-          templateId: "daytona/large",
+          name: "Desktop",
+          templateId: "e2b/desktop",
         };
       },
     } as never,
@@ -154,14 +154,14 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
       cpuCount: 6,
       diskSpaceGb: 40,
       memoryGb: 12,
-      name: "Large",
-      templateId: "daytona/large",
+      name: "Desktop",
+      templateId: "e2b/desktop",
     },
     providerDefinitionId: "compute-provider-definition-1",
     sessionId: "session-1",
   });
   assert.equal(createEnvironment.mock.calls.length, 1);
-  assert.equal(createEnvironment.mock.calls[0]?.[1]?.templateId, "daytona/large");
+  assert.equal(createEnvironment.mock.calls[0]?.[1]?.templateId, "e2b/desktop");
   assert.deepEqual(bootstrapProvision.mock.calls, [[transactionProvider, createdEnvironment]]);
 });
 
@@ -183,17 +183,17 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
       async loadDefinitionById() {
         return {
           id: "compute-provider-definition-1",
-          name: "Primary Daytona",
-          provider: "daytona" as const,
+          name: "Primary E2B",
+          provider: "e2b" as const,
         };
       },
     } as never,
     {
       get(provider) {
-        assert.equal(provider, "daytona");
+        assert.equal(provider, "e2b");
         return {
           getProvider() {
-            return "daytona" as const;
+            return "e2b" as const;
           },
           async provisionEnvironment() {
             return {
@@ -204,7 +204,7 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
               memoryGb: 4,
               metadata: {},
               platform: "linux" as const,
-              providerEnvironmentId: "daytona-environment-1",
+              providerEnvironmentId: "e2b-environment-1",
             };
           },
           supportsOnDemandProvisioning() {
@@ -225,8 +225,8 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
           cpuCount: 2,
           diskSpaceGb: 20,
           memoryGb: 4,
-          name: "Default",
-          templateId: "daytona/default",
+          name: "Desktop",
+          templateId: "e2b/desktop",
         };
       },
     } as never,

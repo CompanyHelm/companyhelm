@@ -37,13 +37,13 @@ class UpdateAgentMutationTestHarness {
       minDiskSpaceGb: number;
       minMemoryGb: number;
     } | null;
-    provider?: "daytona" | "e2b";
+    provider?: "e2b";
     providerName?: string;
   }) {
     const updatedValues: Array<Record<string, unknown>> = [];
     let selectCallCount = 0;
     const provider = options?.provider ?? "e2b";
-    const providerName = options?.providerName ?? (provider === "e2b" ? "Primary E2B" : "Primary Daytona");
+    const providerName = options?.providerName ?? "Primary E2B";
     const currentRequirements = options?.currentRequirements ?? null;
 
     return {

@@ -28,9 +28,6 @@ export class CompanyHelmComputeProvider {
     if (definition.provider === "e2b") {
       return "E2B";
     }
-    if (definition.provider === "daytona") {
-      return "Daytona";
-    }
 
     return definition.provider;
   }

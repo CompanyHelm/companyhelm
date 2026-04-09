@@ -55,11 +55,11 @@ type ExistingAgentRecord = {
 type ComputeProviderDefinitionRecord = {
   id: string;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
 };
 
 type GraphqlAgentRecord = {
-  defaultComputeProvider: "daytona" | "e2b" | null;
+  defaultComputeProvider: "e2b" | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultComputeProviderDefinitionName: string | null;
   defaultEnvironmentTemplateId: string;

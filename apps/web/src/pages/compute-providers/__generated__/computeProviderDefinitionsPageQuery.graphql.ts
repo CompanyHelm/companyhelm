@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ca2352668a44b15f50415400ee95552d>>
+ * @generated SignedSource<<5382500d55d7cb9316a51703e3caba01>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,9 +13,6 @@ export type computeProviderDefinitionsPageQuery$variables = Record<PropertyKey, 
 export type computeProviderDefinitionsPageQuery$data = {
   readonly ComputeProviderDefinitions: ReadonlyArray<{
     readonly createdAt: string;
-    readonly daytona: {
-      readonly apiUrl: string;
-    } | null | undefined;
     readonly description: string | null | undefined;
     readonly e2b: {
       readonly hasApiKey: boolean;
@@ -80,24 +77,6 @@ var v0 = [
       {
         "alias": null,
         "args": null,
-        "concreteType": "DaytonaComputeProviderDefinition",
-        "kind": "LinkedField",
-        "name": "daytona",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "apiUrl",
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
         "concreteType": "E2bComputeProviderDefinition",
         "kind": "LinkedField",
         "name": "e2b",
@@ -149,16 +128,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "bfba2628243bdbee446533a66d7f4b9b",
+    "cacheID": "42ffcebc2d88eff2647c8364df3dac5f",
     "id": null,
     "metadata": {},
     "name": "computeProviderDefinitionsPageQuery",
     "operationKind": "query",
-    "text": "query computeProviderDefinitionsPageQuery {\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    description\n    daytona {\n      apiUrl\n    }\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query computeProviderDefinitionsPageQuery {\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    description\n    e2b {\n      hasApiKey\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6c0f10ed445767223363f1ba0dc2207c";
+(node as any).hash = "116d98760720adbda715af92ddfb1a52";
 
 export default node;

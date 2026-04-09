@@ -80,13 +80,10 @@ export type AgentManagementToolCredentialOption = {
 export type AgentManagementToolComputeProviderDefinition = {
   companyId: string;
   createdAt: Date;
-  daytona: {
-    apiUrl: string;
-  } | null;
   description: string | null;
   e2b: {
     hasApiKey: boolean;
-  } | null;
+  };
   id: string;
   isDefault: boolean;
   name: string;

@@ -1,6 +1,6 @@
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
-import type { ComputeProvider } from "../agent/compute/provider_interface.ts";
+import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import type { RuntimeComputeProviderDefinition } from "./service.ts";
 
 /**

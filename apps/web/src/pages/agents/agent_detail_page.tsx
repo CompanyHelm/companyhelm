@@ -256,7 +256,7 @@ function AgentDetailPageContent() {
       id: definition.id,
       isDefault: definition.isDefault,
       label: CompanyHelmComputeProvider.formatDefinitionOptionLabel(definition),
-      provider: definition.provider as "daytona" | "e2b",
+      provider: definition.provider as "e2b",
       templates: definition.templates.map((template) => ({
         computerUse: template.computerUse,
         cpuCount: template.cpuCount,

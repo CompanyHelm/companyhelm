@@ -12,15 +12,14 @@ test("SetDefaultComputeProviderDefinitionMutation promotes one definition for th
       return {
         companyId: "company-123",
         createdAt: new Date("2026-04-05T00:00:00.000Z"),
-        daytona: {
-          apiUrl: "https://daytona.example.com",
+        description: "Default E2B workspace provider",
+        e2b: {
+          hasApiKey: true,
         },
-        description: "Default Daytona workspace provider",
-        e2b: null,
         id: "definition-2",
         isDefault: true,
-        name: "Daytona Prod",
-        provider: "daytona" as const,
+        name: "Primary E2B",
+        provider: "e2b" as const,
         updatedAt: new Date("2026-04-05T00:05:00.000Z"),
       };
     },
@@ -43,15 +42,14 @@ test("SetDefaultComputeProviderDefinitionMutation promotes one definition for th
   assert.deepEqual(result, {
     companyId: "company-123",
     createdAt: "2026-04-05T00:00:00.000Z",
-    daytona: {
-      apiUrl: "https://daytona.example.com",
+    description: "Default E2B workspace provider",
+    e2b: {
+      hasApiKey: true,
     },
-    description: "Default Daytona workspace provider",
-    e2b: null,
     id: "definition-2",
     isDefault: true,
-    name: "Daytona Prod",
-    provider: "daytona",
+    name: "Primary E2B",
+    provider: "e2b",
     updatedAt: "2026-04-05T00:05:00.000Z",
   });
 });

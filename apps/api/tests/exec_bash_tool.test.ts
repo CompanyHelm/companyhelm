@@ -52,7 +52,7 @@ test("AgentBashExecTool returns bash execution metadata in details", async () =>
 
 test("AgentBashExecTool logs shell timeouts with the command and rethrows", async () => {
   const timeoutError = new AgentEnvironmentShellTimeoutError(
-    "daytona",
+    "e2b",
     "bash -lc 'sleep 10'",
     10,
     "/workspace",
@@ -85,7 +85,7 @@ test("AgentBashExecTool logs shell timeouts with the command and rethrows", asyn
   assert.deepEqual(warn.mock.calls[0], [{
     command: "bash -lc 'sleep 10'",
     err: timeoutError,
-    provider: "daytona",
+    provider: "e2b",
     timeoutSeconds: 10,
     workingDirectory: "/workspace",
   }, "environment shell command timed out"]);

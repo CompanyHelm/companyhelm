@@ -23,7 +23,7 @@ type GraphqlEnvironmentRecord = {
   lastSeenAt: string | null;
   memoryGb: number;
   platform: "linux" | "macos" | "windows";
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   providerDefinitionId: string | null;
   providerDefinitionName: string | null;
   providerEnvironmentId: string;

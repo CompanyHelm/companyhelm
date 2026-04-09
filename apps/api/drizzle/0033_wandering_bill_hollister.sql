@@ -7,7 +7,7 @@ CREATE TABLE "agent_sandboxes" (
 	"lease_expires_at" timestamp with time zone,
 	"last_used_at" timestamp with time zone,
 	"status" "agent_sandbox_status" NOT NULL,
-	"daytona_sandbox_id" text NOT NULL,
+	"provider_sandbox_id" text NOT NULL,
 	"cpu_count" integer NOT NULL,
 	"memory_gb" integer NOT NULL,
 	"disk_space_gb" integer NOT NULL,
@@ -21,4 +21,4 @@ ALTER TABLE "agent_sandboxes" ADD CONSTRAINT "agent_sandboxes_current_session_id
 CREATE INDEX "agent_sandboxes_company_id_idx" ON "agent_sandboxes" USING btree ("company_id");--> statement-breakpoint
 CREATE INDEX "agent_sandboxes_agent_id_idx" ON "agent_sandboxes" USING btree ("agent_id");--> statement-breakpoint
 CREATE INDEX "agent_sandboxes_current_session_id_idx" ON "agent_sandboxes" USING btree ("current_session_id");--> statement-breakpoint
-CREATE INDEX "agent_sandboxes_daytona_sandbox_id_idx" ON "agent_sandboxes" USING btree ("daytona_sandbox_id");
+CREATE INDEX "agent_sandboxes_provider_sandbox_id_idx" ON "agent_sandboxes" USING btree ("provider_sandbox_id");

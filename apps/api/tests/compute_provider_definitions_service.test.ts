@@ -3,7 +3,6 @@ import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import {
   computeProviderDefinitions,
-  daytonaComputeProviderDefinitions,
   e2bComputeProviderDefinitions,
 } from "../src/db/schema.ts";
 import type { TransactionProviderInterface } from "../src/db/transaction_provider_interface.ts";
@@ -17,7 +16,7 @@ type BaseDefinitionRow = {
   id: string;
   isDefault: boolean;
   name: string;
-  provider: "daytona" | "e2b";
+  provider: "e2b";
   updatedAt: Date;
 };
 
@@ -28,16 +27,13 @@ type BaseDefinitionRow = {
  */
 class ComputeProviderDefinitionServiceTestHarness {
   private readonly baseDefinitions: BaseDefinitionRow[];
-  private readonly daytonaDefinitions: Array<Record<string, unknown>>;
   private readonly e2bDefinitions: Array<Record<string, unknown>>;
 
   constructor(params?: {
     baseDefinitions?: BaseDefinitionRow[];
-    daytonaDefinitions?: Array<Record<string, unknown>>;
     e2bDefinitions?: Array<Record<string, unknown>>;
   }) {
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
-    this.daytonaDefinitions = [...(params?.daytonaDefinitions ?? [])];
     this.e2bDefinitions = [...(params?.e2bDefinitions ?? [])];
   }
 
@@ -66,7 +62,6 @@ class ComputeProviderDefinitionServiceTestHarness {
 
   buildTransactionProvider(): TransactionProviderInterface {
     const baseDefinitions = this.baseDefinitions;
-    const daytonaDefinitions = this.daytonaDefinitions;
     const e2bDefinitions = this.e2bDefinitions;
 
     return {
@@ -94,7 +89,7 @@ class ComputeProviderDefinitionServiceTestHarness {
                     id: "companyhelm-definition-1",
                     isDefault: Boolean(value.isDefault),
                     name: value.name as string,
-                    provider: value.provider as "daytona" | "e2b",
+                    provider: value.provider as "e2b",
                     updatedAt: value.updatedAt as Date,
                   };
                   baseDefinitions.push(row);
@@ -138,9 +133,6 @@ class ComputeProviderDefinitionServiceTestHarness {
                   async where() {
                     if (table === computeProviderDefinitions) {
                       return [...baseDefinitions];
-                    }
-                    if (table === daytonaComputeProviderDefinitions) {
-                      return [...daytonaDefinitions];
                     }
                     if (table === e2bComputeProviderDefinitions) {
                       return [...e2bDefinitions];

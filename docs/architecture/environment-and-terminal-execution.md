@@ -2,7 +2,7 @@
 
 This document explains the classes and interfaces involved in environment selection, provisioning, leasing, and terminal command execution for agent sessions. The important distinction in this codebase is that "environment management" and "`execute_command`" are not the same layer.
 
-`execute_command` is the agent-facing tool. It runs on top of a leased environment, which itself runs on top of a provider shell, which itself runs on top of a compute provider such as Daytona or E2B.
+`execute_command` is the agent-facing tool. It runs on top of a leased environment, which itself runs on top of a provider shell, which itself runs on top of a compute provider such as E2B.
 
 ## High-level flow
 
@@ -47,9 +47,8 @@ This is the lifecycle boundary for real compute backends. It is responsible for:
 - deleting provider environments,
 - creating a raw shell adapter for an already selected environment row.
 
-Concrete implementations:
+Concrete implementation:
 
-- `AgentComputeDaytonaProvider`
 - `AgentComputeE2bProvider`
 
 This layer knows about provider APIs, persisted provider definitions, and provider environment ids. It does not know about tmux sessions or agent terminal tools.
@@ -66,9 +65,8 @@ This is the smallest possible provider-agnostic shell primitive:
 - optionally set a timeout,
 - return combined text output and exit code.
 
-Concrete implementations:
+Concrete implementation:
 
-- `AgentComputeDaytonaShell`
 - `AgentComputeE2bShell`
 
 This layer does not provide persistent interactive terminal sessions. It is just enough to bootstrap and control a higher-level PTY mechanism.
@@ -337,34 +335,11 @@ This helper detects whether the remote shell is:
 - allowed to run passwordless sudo,
 - or fully unprivileged.
 
-`AgentEnvironmentTmuxPty` uses it when tmux is missing and needs to be installed. Keeping this helper generic avoids hardcoding E2B or Daytona assumptions into the PTY layer.
+`AgentEnvironmentTmuxPty` uses it when tmux is missing and needs to be installed. Keeping this helper generic avoids hardcoding E2B assumptions into the PTY layer.
 
 ## Provider implementations and their differences
 
 The provider implementations follow the same interfaces, but the details differ.
-
-### `AgentComputeDaytonaProvider`
-
-File: `apps/api/src/services/agent/compute/daytona/daytona_provider.ts`
-
-This class maps the provider contract onto the Daytona SDK. It:
-
-- provisions a Daytona sandbox,
-- maps Daytona sandbox state to the shared status enum,
-- starts and stops the sandbox,
-- deletes it,
-- creates a Daytona shell adapter.
-
-Notable behavior:
-
-- it uses the configured Daytona API URL and API key from the selected provider definition,
-- it ensures the sandbox is started before returning a shell.
-
-### `AgentComputeDaytonaShell`
-
-File: `apps/api/src/services/agent/compute/daytona/daytona_shell.ts`
-
-This adapter calls `remoteSandbox.process.executeCommand(...)` and maps the result into the shared shell contract.
 
 ### `AgentComputeE2bProvider`
 
@@ -374,7 +349,7 @@ This class maps the provider contract onto E2B sandboxes. It:
 
 - provisions sandboxes with auto-resume and pause-on-timeout lifecycle settings,
 - looks up live status through E2B,
-- pauses instead of stopping in the Daytona sense,
+- pauses instead of deleting the environment when asked to stop,
 - kills missing environments defensively,
 - creates an E2B shell adapter.
 
@@ -399,7 +374,7 @@ Notable behavior:
 
 ### `execute_command` vs raw provider shell execution
 
-`execute_command` does not call Daytona or E2B directly. It goes through:
+`execute_command` does not call E2B directly. It goes through:
 
 1. `AgentExecuteCommandTool`
 2. `AgentEnvironmentPromptScope`
@@ -445,7 +420,7 @@ Both target an existing session, but:
 
 ## Why tmux exists in the middle
 
-Neither Daytona nor E2B is exposed directly to the agent as a persistent shell abstraction. The codebase deliberately inserts tmux between the raw provider shell and the tool layer so that:
+E2B is not exposed directly to the agent as a persistent shell abstraction. The codebase deliberately inserts tmux between the raw provider shell and the tool layer so that:
 
 - session ids are stable across multiple tool calls,
 - long-running commands can continue after a short yield,
