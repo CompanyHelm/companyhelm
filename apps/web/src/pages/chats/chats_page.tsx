@@ -1398,85 +1398,16 @@ function ChatsQueuedMessagesComposerList({
       <div className="px-2.5 pt-2 pb-1.5">
         <div className="grid gap-1.5">
           {queuedMessages.map((queuedMessage) => {
-            const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
-            const previewText = resolveQueuedMessagePreview(queuedMessage.text);
-            const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
-            const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
-            const canOpenFullscreen = queuedMessage.text.trim().length > 0 || queuedMessage.images.length > 0;
-            const isSteering = steeringQueuedMessageId === queuedMessage.id;
-            const isDeleting = deletingQueuedMessageId === queuedMessage.id;
-
             return (
-              <div
-                className="flex items-start gap-2 rounded-2xl border border-border/60 bg-background/70 px-2.5 py-2"
+              <ChatsQueuedMessagesComposerListItem
                 key={queuedMessage.id}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      {queuedMessage.shouldSteer ? "Steer" : "Queue"}
-                    </span>
-                  </div>
-                  {previewText.trim().length > 0 ? (
-                    <p className="mt-1 truncate text-sm leading-5 text-foreground">
-                      {previewText}
-                    </p>
-                  ) : null}
-                  {queuedMessage.images.length > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {queuedMessage.images.map((image) => (
-                        <img
-                          key={image.id}
-                          alt="Queued attachment"
-                          className="h-12 w-12 rounded-lg border border-border/60 object-cover"
-                          src={resolveInlineImageDataUrl(image)}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                {canOpenFullscreen || canSteer || canDelete ? (
-                  <div className="flex shrink-0 items-center gap-1 self-center">
-                    {canOpenFullscreen ? (
-                      <button
-                        aria-label="Open queued message full screen"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
-                        onClick={() => setFullscreenQueuedMessageId(queuedMessage.id)}
-                        title="Full screen"
-                        type="button"
-                      >
-                        <span aria-hidden="true" className="font-mono text-[11px] leading-none">
-                          {"<>"}
-                        </span>
-                      </button>
-                    ) : null}
-                    {canSteer ? (
-                      <button
-                        aria-label="Steer queued message"
-                        className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={isSteering}
-                        onClick={() => onSteer(queuedMessage.id)}
-                        title={isSteering ? "Steering queued message..." : "Steer queued message"}
-                        type="button"
-                      >
-                        {isSteering ? <Loader2Icon className="size-4 animate-spin" /> : "Steer"}
-                      </button>
-                    ) : null}
-                    {canDelete ? (
-                      <button
-                        aria-label="Delete queued message"
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={isDeleting}
-                        onClick={() => onDelete(queuedMessage.id)}
-                        title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
-                        type="button"
-                      >
-                        {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+                deletingQueuedMessageId={deletingQueuedMessageId}
+                onDelete={onDelete}
+                onOpenFullscreen={setFullscreenQueuedMessageId}
+                onSteer={onSteer}
+                queuedMessage={queuedMessage}
+                steeringQueuedMessageId={steeringQueuedMessageId}
+              />
             );
           })}
         </div>
@@ -1522,6 +1453,126 @@ function ChatsQueuedMessagesComposerList({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ChatsQueuedMessagesComposerListItem({
+  queuedMessage,
+  steeringQueuedMessageId,
+  deletingQueuedMessageId,
+  onSteer,
+  onDelete,
+  onOpenFullscreen,
+}: {
+  queuedMessage: QueuedMessageRecord;
+  steeringQueuedMessageId: string | null;
+  deletingQueuedMessageId: string | null;
+  onSteer: (queuedMessageId: string) => void;
+  onDelete: (queuedMessageId: string) => void;
+  onOpenFullscreen: (queuedMessageId: string) => void;
+}) {
+  const previewTextElementRef = useRef<HTMLParagraphElement | null>(null);
+  const [isPreviewOverflowing, setIsPreviewOverflowing] = useState(false);
+  const normalizedStatus = normalizeQueuedMessageStatus(queuedMessage.status);
+  const previewText = resolveQueuedMessagePreview(queuedMessage.text);
+  const hasHiddenQueuedMessageText = queuedMessage.text !== previewText;
+  const canSteer = !queuedMessage.shouldSteer && normalizedStatus === "pending";
+  const canDelete = !queuedMessage.shouldSteer && normalizedStatus === "pending";
+  const shouldShowFullscreen = hasHiddenQueuedMessageText || isPreviewOverflowing;
+  const isSteering = steeringQueuedMessageId === queuedMessage.id;
+  const isDeleting = deletingQueuedMessageId === queuedMessage.id;
+
+  useLayoutEffect(() => {
+    const previewTextElement = previewTextElementRef.current;
+    if (!previewTextElement || previewText.length === 0) {
+      setIsPreviewOverflowing(false);
+      return undefined;
+    }
+
+    const updateOverflowState = () => {
+      setIsPreviewOverflowing((previewTextElement.scrollWidth - previewTextElement.clientWidth) > 1);
+    };
+
+    updateOverflowState();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateOverflowState();
+    });
+    resizeObserver.observe(previewTextElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [previewText]);
+
+  return (
+    <div className="flex items-start gap-2 rounded-2xl border border-border/60 bg-background/70 px-2.5 py-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            {queuedMessage.shouldSteer ? "Steer" : "Queue"}
+          </span>
+        </div>
+        {previewText.trim().length > 0 ? (
+          <p className="mt-1 truncate text-sm leading-5 text-foreground" ref={previewTextElementRef}>
+            {hasHiddenQueuedMessageText && !isPreviewOverflowing ? `${previewText}...` : previewText}
+          </p>
+        ) : null}
+        {queuedMessage.images.length > 0 ? (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {queuedMessage.images.map((image) => (
+              <img
+                key={image.id}
+                alt="Queued attachment"
+                className="h-12 w-12 rounded-lg border border-border/60 object-cover"
+                src={resolveInlineImageDataUrl(image)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+      {shouldShowFullscreen || canSteer || canDelete ? (
+        <div className="flex shrink-0 items-center gap-1 self-center">
+          {shouldShowFullscreen ? (
+            <button
+              aria-label="Open queued message full screen"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground"
+              onClick={() => onOpenFullscreen(queuedMessage.id)}
+              title="Full screen"
+              type="button"
+            >
+              <span aria-hidden="true" className="font-mono text-[11px] leading-none">
+                {"<>"}
+              </span>
+            </button>
+          ) : null}
+          {canSteer ? (
+            <button
+              aria-label="Steer queued message"
+              className="inline-flex h-7 items-center justify-center rounded-full px-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isSteering}
+              onClick={() => onSteer(queuedMessage.id)}
+              title={isSteering ? "Steering queued message..." : "Steer queued message"}
+              type="button"
+            >
+              {isSteering ? <Loader2Icon className="size-4 animate-spin" /> : "Steer"}
+            </button>
+          ) : null}
+          {canDelete ? (
+            <button
+              aria-label="Delete queued message"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isDeleting}
+              onClick={() => onDelete(queuedMessage.id)}
+              title={isDeleting ? "Deleting queued message..." : "Delete queued message"}
+              type="button"
+            >
+              {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
