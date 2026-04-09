@@ -76,9 +76,6 @@ test("AgentSessionEnvironment merges attached session secrets into executeComman
       },
     } as never,
     {
-      async closeSession() {
-        return undefined;
-      },
       async dispose() {
         return undefined;
       },

@@ -833,7 +833,7 @@ test("PiMonoSessionEventHandler stores terminal structured content from tool exe
         },
       },
       toolCallId: "tool-call-terminal",
-      toolName: "execute_command",
+      toolName: "pty_exec",
       type: "tool_execution_update",
     });
     await handler.handle({
@@ -852,7 +852,7 @@ test("PiMonoSessionEventHandler stores terminal structured content from tool exe
         },
       },
       toolCallId: "tool-call-terminal",
-      toolName: "execute_command",
+      toolName: "pty_exec",
       type: "tool_execution_end",
     });
   } finally {

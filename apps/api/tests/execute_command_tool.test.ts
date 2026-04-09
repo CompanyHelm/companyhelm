@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AgentEnvironmentShellTimeoutError } from "../src/services/environments/providers/shell_interface.ts";
-import { AgentExecuteCommandTool } from "../src/services/agent/session/pi-mono/tools/terminal/execute_command.ts";
+import { AgentPtyExecTool } from "../src/services/agent/session/pi-mono/tools/terminal/pty_exec.ts";
 
 type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
   content: Array<{ text: string; type: string }>;
   details?: Record<string, unknown>;
 }>;
 
-test("AgentExecuteCommandTool returns terminal metadata in details", async () => {
+test("AgentPtyExecTool returns terminal metadata in details", async () => {
   const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
     void input;
     return {
@@ -18,7 +18,7 @@ test("AgentExecuteCommandTool returns terminal metadata in details", async () =>
       sessionId: null,
     };
   });
-  const tool = new AgentExecuteCommandTool({
+  const tool = new AgentPtyExecTool({
     async getEnvironment() {
       return {
         executeCommand,
@@ -51,7 +51,7 @@ test("AgentExecuteCommandTool returns terminal metadata in details", async () =>
   }]]);
 });
 
-test("AgentExecuteCommandTool forwards keepSession when requested", async () => {
+test("AgentPtyExecTool forwards keepSession when requested", async () => {
   const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
     void input;
     return {
@@ -61,7 +61,7 @@ test("AgentExecuteCommandTool forwards keepSession when requested", async () => 
       sessionId: "pty-keep",
     };
   });
-  const tool = new AgentExecuteCommandTool({
+  const tool = new AgentPtyExecTool({
     async getEnvironment() {
       return {
         executeCommand,
@@ -82,7 +82,7 @@ test("AgentExecuteCommandTool forwards keepSession when requested", async () => 
   }]]);
 });
 
-test("AgentExecuteCommandTool logs shell timeouts with the command and rethrows", async () => {
+test("AgentPtyExecTool logs shell timeouts with the command and rethrows", async () => {
   const timeoutError = new AgentEnvironmentShellTimeoutError(
     "e2b",
     "ss -ltnp | grep ':4000 ' || true",
@@ -93,7 +93,7 @@ test("AgentExecuteCommandTool logs shell timeouts with the command and rethrows"
     throw timeoutError;
   });
   const warn = vi.fn();
-  const tool = new AgentExecuteCommandTool({
+  const tool = new AgentPtyExecTool({
     async getEnvironment() {
       return {
         executeCommand,

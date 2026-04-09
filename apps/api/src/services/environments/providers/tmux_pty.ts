@@ -69,7 +69,7 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     }
     const shouldKeepSession = AgentEnvironmentTmuxPty.shouldKeepSession(input, waitResult.completed);
     if (waitResult.completed && !shouldKeepSession) {
-      await this.closeSession(sessionId);
+      await this.killSession(sessionId);
     }
 
     return {
@@ -161,10 +161,6 @@ export class AgentEnvironmentTmuxPty extends AgentEnvironmentPtyInterface {
     await this.runRemoteCommand(
       `tmux kill-session -t ${AgentEnvironmentTmuxPty.shellQuote(sessionId)} 2>/dev/null || true`,
     );
-  }
-
-  async closeSession(sessionId: string): Promise<void> {
-    await this.killSession(sessionId);
   }
 
   async dispose(): Promise<void> {

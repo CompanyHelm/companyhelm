@@ -4,10 +4,10 @@ import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 
 /**
- * Adjusts the tmux window size for an existing session so interactive terminal programs can react
- * to the requested viewport dimensions.
+ * Adjusts the tmux window size for an existing PTY session so interactive terminal programs can
+ * react to the requested viewport dimensions.
  */
-export class AgentResizeTerminalSessionTool {
+export class AgentPtyResizeTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     columns: Type.Number({
       description: "Target terminal width in columns.",
@@ -16,7 +16,7 @@ export class AgentResizeTerminalSessionTool {
       description: "Target terminal height in rows.",
     }),
     sessionId: Type.String({
-      description: "Environment session id returned by execute_command.",
+      description: "Environment session id returned by pty_exec.",
     }),
   });
 
@@ -26,9 +26,9 @@ export class AgentResizeTerminalSessionTool {
     this.promptScope = promptScope;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentResizeTerminalSessionTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtyResizeTool.parameters> {
     return {
-      description: "Resize the tmux window backing an existing environment session.",
+      description: "Resize the tmux window backing an existing environment PTY session.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
         await environment.resizeSession(params.sessionId, params.columns, params.rows);
@@ -39,13 +39,13 @@ export class AgentResizeTerminalSessionTool {
           }],
         };
       },
-      label: "resize_pty",
-      name: "resize_pty",
-      parameters: AgentResizeTerminalSessionTool.parameters,
+      label: "pty_resize",
+      name: "pty_resize",
+      parameters: AgentPtyResizeTool.parameters,
       promptGuidelines: [
-        "Resize the session when terminal applications depend on viewport dimensions.",
+        "Use pty_resize when terminal applications depend on viewport dimensions.",
       ],
-      promptSnippet: "Resize an environment terminal session",
+      promptSnippet: "Resize an environment PTY session",
     };
   }
 }

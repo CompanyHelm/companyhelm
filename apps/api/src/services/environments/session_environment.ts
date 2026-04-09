@@ -133,10 +133,6 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     return this.pty.killSession(sessionId);
   }
 
-  closeSession(sessionId: string): Promise<void> {
-    return this.pty.closeSession(sessionId);
-  }
-
   async dispose(): Promise<void> {
     if (this.disposed) {
       return;

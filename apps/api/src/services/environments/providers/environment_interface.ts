@@ -3,7 +3,7 @@ import type { AgentEnvironmentRecord } from "./provider_interface.ts";
 /**
  * Describes one terminal session that is currently reachable inside a leased agent environment.
  * Tool callers use these records to decide whether to reuse an existing shell or create a new one
- * with execute_command.
+ * with pty_exec.
  */
 export type AgentEnvironmentTerminalSession = {
   attached: boolean;
@@ -14,7 +14,7 @@ export type AgentEnvironmentTerminalSession = {
 };
 
 /**
- * Carries the provider-agnostic terminal execution inputs used by both execute_command and
+ * Carries the provider-agnostic terminal execution inputs used by both pty_exec and
  * follow-up terminal interactions.
  */
 export type AgentEnvironmentCommandInput = {
@@ -134,11 +134,6 @@ export abstract class AgentEnvironmentInterface {
    * Kills a terminal session immediately.
    */
   abstract killSession(sessionId: string): Promise<void>;
-
-  /**
-   * Closes a terminal session when the agent no longer needs to preserve its shell state.
-   */
-  abstract closeSession(sessionId: string): Promise<void>;
 
   /**
    * Ends prompt-run ownership of the leased environment. Implementations should dispose any

@@ -32,7 +32,7 @@ export class AgentListAssignedSecretsTool {
       name: "list_assigned_secrets",
       parameters: AgentListAssignedSecretsTool.parameters,
       promptGuidelines: [
-        "Use list_assigned_secrets when you need to confirm which secrets are already available to execute_command or other exec-style tools in this session.",
+        "Use list_assigned_secrets when you need to confirm which secrets are already available to pty_exec, bash_exec, or other exec-style tools in this session.",
       ],
       promptSnippet: "List secrets attached to this session",
     };

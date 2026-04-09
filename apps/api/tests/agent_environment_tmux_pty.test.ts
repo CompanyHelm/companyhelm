@@ -254,7 +254,7 @@ test("AgentEnvironmentTmuxPty executes commands, reads tmux output, and resizes 
   assert.equal(fakeEnvironmentShell.sessions.get(executionSessionId)?.width, 120);
   assert.equal(fakeEnvironmentShell.sessions.get(executionSessionId)?.height, 40);
 
-  await pty.closeSession(executionSessionId);
+  await pty.killSession(executionSessionId);
   assert.equal(fakeEnvironmentShell.sessions.has(executionSessionId), false);
 });
 

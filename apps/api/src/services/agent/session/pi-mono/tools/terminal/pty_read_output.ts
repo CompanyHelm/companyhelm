@@ -5,9 +5,9 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
- * Reads terminal output directly from tmux without relying on any API-side PTY buffer.
+ * Reads PTY output directly from tmux without relying on any API-side terminal buffer.
  */
-export class AgentReadTerminalOutputTool {
+export class AgentPtyReadOutputTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     afterOffset: Type.Optional(Type.Number({
       description: "Character offset cursor returned by the previous read. Omit for the first page.",
@@ -16,7 +16,7 @@ export class AgentReadTerminalOutputTool {
       description: "Maximum number of characters to return from the tmux pane capture.",
     })),
     sessionId: Type.String({
-      description: "Environment session id returned by execute_command.",
+      description: "Environment session id returned by pty_exec.",
     }),
   });
 
@@ -26,9 +26,9 @@ export class AgentReadTerminalOutputTool {
     this.promptScope = promptScope;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentReadTerminalOutputTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtyReadOutputTool.parameters> {
     return {
-      description: "Read pane output directly from an existing environment tmux session.",
+      description: "Read pane output directly from an existing environment PTY session.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
         const page = await environment.readOutput(params.sessionId, params.afterOffset ?? null, params.limit ?? 4_000);
@@ -39,13 +39,13 @@ export class AgentReadTerminalOutputTool {
           }],
         };
       },
-      label: "read_pty_output",
-      name: "read_pty_output",
-      parameters: AgentReadTerminalOutputTool.parameters,
+      label: "pty_read_output",
+      name: "pty_read_output",
+      parameters: AgentPtyReadOutputTool.parameters,
       promptGuidelines: [
-        "Use read_pty_output to fetch more output from a tmux session after an earlier execute or input call.",
+        "Use pty_read_output to fetch more output from a PTY session after an earlier execute or input call.",
       ],
-      promptSnippet: "Read environment terminal output",
+      promptSnippet: "Read environment PTY output",
     };
   }
 }

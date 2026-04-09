@@ -89,15 +89,14 @@ const logger = {
 } as never;
 
 const baseToolNames = [
-  "list_pty_sessions",
-  "execute_command",
-  "exec_bash",
+  "pty_list_sessions",
+  "pty_exec",
+  "bash_exec",
   "apply_patch",
-  "send_pty_input",
-  "read_pty_output",
-  "resize_pty",
-  "kill_session",
-  "close_session",
+  "pty_send_input",
+  "pty_read_output",
+  "pty_resize",
+  "pty_kill",
   "list_assigned_secrets",
   "list_available_secrets",
   "list_company_members",
@@ -435,7 +434,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
-    [...baseToolNames.slice(0, 9), ...computerUseToolNames, ...baseToolNames.slice(9)],
+    [...baseToolNames.slice(0, 8), ...computerUseToolNames, ...baseToolNames.slice(8)],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
     agentsFiles: [],
@@ -471,9 +470,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
     [[[
-      ...baseToolNames.slice(0, 9),
+      ...baseToolNames.slice(0, 8),
       ...computerUseToolNames,
-      ...baseToolNames.slice(9),
+      ...baseToolNames.slice(8),
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);

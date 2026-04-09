@@ -4,10 +4,10 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
- * Lists tmux sessions that currently exist inside the leased environment so the agent can decide
- * which session id to reuse.
+ * Lists tmux-backed PTY sessions that currently exist inside the leased environment so the agent
+ * can decide which session id to reuse.
  */
-export class AgentListTerminalSessionsTool {
+export class AgentPtyListSessionsTool {
   private static readonly parameters = AgentToolParameterSchema.object({});
   private readonly promptScope: AgentEnvironmentPromptScope;
 
@@ -15,9 +15,9 @@ export class AgentListTerminalSessionsTool {
     this.promptScope = promptScope;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentListTerminalSessionsTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtyListSessionsTool.parameters> {
     return {
-      description: "List the tmux-backed sessions currently available inside the environment.",
+      description: "List the tmux-backed PTY sessions currently available inside the environment.",
       execute: async () => {
         const environment = await this.promptScope.getEnvironment();
         const sessions = await environment.listSessions();
@@ -28,13 +28,13 @@ export class AgentListTerminalSessionsTool {
           }],
         };
       },
-      label: "list_pty_sessions",
-      name: "list_pty_sessions",
-      parameters: AgentListTerminalSessionsTool.parameters,
+      label: "pty_list_sessions",
+      name: "pty_list_sessions",
+      parameters: AgentPtyListSessionsTool.parameters,
       promptGuidelines: [
-        "Use list_pty_sessions when you need to inspect existing tmux sessions before choosing one to reuse.",
+        "Use pty_list_sessions when you need to inspect existing tmux-backed PTY sessions before choosing one to reuse.",
       ],
-      promptSnippet: "List environment terminal sessions",
+      promptSnippet: "List environment PTY sessions",
     };
   }
 }

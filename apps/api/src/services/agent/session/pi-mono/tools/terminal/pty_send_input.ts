@@ -5,16 +5,16 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
- * Continues interacting with an existing tmux session by sending raw terminal input and returning
+ * Continues interacting with an existing PTY session by sending raw terminal input and returning
  * the newly emitted pane output.
  */
-export class AgentSendTerminalInputTool {
+export class AgentPtySendInputTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     input: Type.String({
-      description: "Raw terminal input to write into the running environment tmux session.",
+      description: "Raw terminal input to write into the running environment PTY session.",
     }),
     sessionId: Type.String({
-      description: "Environment session id returned by execute_command.",
+      description: "Environment session id returned by pty_exec.",
     }),
     yield_time_ms: Type.Optional(Type.Number({
       description: "How long to wait for output before returning control, in milliseconds.",
@@ -27,9 +27,9 @@ export class AgentSendTerminalInputTool {
     this.promptScope = promptScope;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentSendTerminalInputTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtySendInputTool.parameters> {
     return {
-      description: "Send additional terminal input to an existing environment tmux session and return new output.",
+      description: "Send additional terminal input to an existing environment PTY session and return new output.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
         const result = await environment.sendInput(params.sessionId, params.input, params.yield_time_ms);
@@ -40,13 +40,13 @@ export class AgentSendTerminalInputTool {
           }],
         };
       },
-      label: "send_pty_input",
-      name: "send_pty_input",
-      parameters: AgentSendTerminalInputTool.parameters,
+      label: "pty_send_input",
+      name: "pty_send_input",
+      parameters: AgentPtySendInputTool.parameters,
       promptGuidelines: [
-        "Use send_pty_input to continue interacting with an existing tmux shell after execute_command returns.",
+        "Use pty_send_input to continue interacting with an existing tmux-backed PTY shell after pty_exec returns.",
       ],
-      promptSnippet: "Send input to an environment terminal session",
+      promptSnippet: "Send input to an environment PTY session",
     };
   }
 }

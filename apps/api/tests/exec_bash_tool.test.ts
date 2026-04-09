@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AgentEnvironmentShellTimeoutError } from "../src/services/environments/providers/shell_interface.ts";
-import { AgentExecBashTool } from "../src/services/agent/session/pi-mono/tools/terminal/exec_bash.ts";
+import { AgentBashExecTool } from "../src/services/agent/session/pi-mono/tools/terminal/bash_exec.ts";
 
 type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
   content: Array<{ text: string; type: string }>;
   details?: Record<string, unknown>;
 }>;
 
-test("AgentExecBashTool returns bash execution metadata in details", async () => {
+test("AgentBashExecTool returns bash execution metadata in details", async () => {
   const executeBashCommand = vi.fn(async (input: Record<string, unknown>) => {
     void input;
     return {
@@ -16,7 +16,7 @@ test("AgentExecBashTool returns bash execution metadata in details", async () =>
       output: "stdout\nstderr",
     };
   });
-  const tool = new AgentExecBashTool({
+  const tool = new AgentBashExecTool({
     async getEnvironment() {
       return {
         executeBashCommand,
@@ -50,7 +50,7 @@ test("AgentExecBashTool returns bash execution metadata in details", async () =>
   }]]);
 });
 
-test("AgentExecBashTool logs shell timeouts with the command and rethrows", async () => {
+test("AgentBashExecTool logs shell timeouts with the command and rethrows", async () => {
   const timeoutError = new AgentEnvironmentShellTimeoutError(
     "daytona",
     "bash -lc 'sleep 10'",
@@ -61,7 +61,7 @@ test("AgentExecBashTool logs shell timeouts with the command and rethrows", asyn
     throw timeoutError;
   });
   const warn = vi.fn();
-  const tool = new AgentExecBashTool({
+  const tool = new AgentBashExecTool({
     async getEnvironment() {
       return {
         executeBashCommand,

@@ -4,12 +4,12 @@ import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 
 /**
- * Closes an environment tmux session when the agent is done with that shell state.
+ * Terminates an existing tmux-backed PTY session immediately.
  */
-export class AgentCloseTerminalSessionTool {
+export class AgentPtyKillTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     sessionId: Type.String({
-      description: "Environment session id returned by execute_command.",
+      description: "Environment session id returned by pty_exec.",
     }),
   });
 
@@ -19,26 +19,26 @@ export class AgentCloseTerminalSessionTool {
     this.promptScope = promptScope;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentCloseTerminalSessionTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtyKillTool.parameters> {
     return {
-      description: "Close an environment tmux session by killing it and releasing its shell state.",
+      description: "Kill an environment PTY session immediately.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
-        await environment.closeSession(params.sessionId);
+        await environment.killSession(params.sessionId);
         return {
           content: [{
-            text: `Closed session ${params.sessionId}.`,
+            text: `Killed session ${params.sessionId}.`,
             type: "text",
           }],
         };
       },
-      label: "close_session",
-      name: "close_session",
-      parameters: AgentCloseTerminalSessionTool.parameters,
+      label: "pty_kill",
+      name: "pty_kill",
+      parameters: AgentPtyKillTool.parameters,
       promptGuidelines: [
-        "Use close_session when you are done with a tmux session and no longer need its shell state.",
+        "Use pty_kill when a tmux-backed PTY shell is hung or must be terminated immediately.",
       ],
-      promptSnippet: "Close an environment terminal session",
+      promptSnippet: "Kill an environment PTY session",
     };
   }
 }

@@ -8,9 +8,9 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
  * Executes a one-shot bash command directly through the provider shell adapter without allocating
- * a tmux session.
+ * a tmux-backed PTY session.
  */
-export class AgentExecBashTool {
+export class AgentBashExecTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     command: Type.String({
       description: "Bash command body to execute with bash -lc inside the leased environment.",
@@ -38,7 +38,7 @@ export class AgentExecBashTool {
     this.logger = logger;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentExecBashTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentBashExecTool.parameters> {
     return {
       description: "Execute a one-shot bash command directly through the environment provider shell.",
       execute: async (_toolCallId, params) => {
@@ -73,13 +73,13 @@ export class AgentExecBashTool {
           },
         };
       },
-      label: "exec_bash",
-      name: "exec_bash",
-      parameters: AgentExecBashTool.parameters,
+      label: "bash_exec",
+      name: "bash_exec",
+      parameters: AgentBashExecTool.parameters,
       promptGuidelines: [
-        "Use exec_bash for one-shot commands that should execute directly through the provider shell instead of a tmux session.",
+        "Use bash_exec for one-shot commands that should execute directly through the provider shell instead of a tmux-backed PTY session.",
         "The command always runs through bash -lc, so shell features such as pipes, globs, and command substitution are available.",
-        "Use execute_command instead when you need a reusable tmux session or follow-up interaction through send_pty_input.",
+        "Use pty_exec instead when you need a reusable PTY session or follow-up interaction through pty_send_input.",
         "Pass timeoutSeconds when the command should fail instead of waiting indefinitely on the provider shell.",
       ],
       promptSnippet: "Execute a one-shot bash command",

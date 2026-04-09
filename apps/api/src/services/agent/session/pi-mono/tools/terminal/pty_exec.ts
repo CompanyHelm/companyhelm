@@ -7,38 +7,38 @@ import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/p
 import { AgentTerminalResultFormatter } from "./result_formatter.ts";
 
 /**
- * Executes shell commands inside the leased environment, creating a tmux session when needed and
- * returning the session id so later tool calls can continue the same shell.
+ * Executes shell commands inside the leased environment, creating a tmux-backed PTY session when
+ * needed and returning the session id so later tool calls can continue the same shell.
  */
-export class AgentExecuteCommandTool {
+export class AgentPtyExecTool {
   private static readonly parameters = AgentToolParameterSchema.object({
     columns: Type.Optional(Type.Number({
-      description: "Optional terminal width to use when creating a new session.",
+      description: "Optional terminal width to use when creating a new PTY session.",
     })),
     command: Type.String({
-      description: "Shell command to execute inside the environment tmux session.",
+      description: "Shell command to execute inside the environment PTY session.",
     }),
     environment: Type.Optional(Type.Record(
       Type.String(),
       Type.String(),
       {
-        description: "Optional environment variables to apply for this command execution.",
+        description: "Optional environment variables to apply for this PTY command execution.",
       },
     )),
     keepSession: Type.Optional(Type.Boolean({
-      description: "Whether to preserve a newly created session if the command finishes before this call returns. If the command is still running when yield_time_ms elapses, the session stays alive regardless.",
+      description: "Whether to preserve a newly created PTY session if the command finishes before this call returns. If the command is still running when yield_time_ms elapses, the session stays alive regardless.",
     })),
     rows: Type.Optional(Type.Number({
-      description: "Optional terminal height to use when creating a new session.",
+      description: "Optional terminal height to use when creating a new PTY session.",
     })),
     sessionId: Type.Optional(Type.String({
-      description: "Existing environment session id to reuse for follow-up commands.",
+      description: "Existing environment session id to reuse for follow-up PTY commands.",
     })),
     workingDirectory: Type.Optional(Type.String({
-      description: "Optional working directory to use for this command execution.",
+      description: "Optional working directory to use for this PTY command execution.",
     })),
     yield_time_ms: Type.Optional(Type.Number({
-      description: "How long to wait for output before returning control, in milliseconds.",
+      description: "How long to wait for PTY output before returning control, in milliseconds.",
     })),
   });
 
@@ -50,9 +50,9 @@ export class AgentExecuteCommandTool {
     this.logger = logger;
   }
 
-  createDefinition(): ToolDefinition<typeof AgentExecuteCommandTool.parameters> {
+  createDefinition(): ToolDefinition<typeof AgentPtyExecTool.parameters> {
     return {
-      description: "Execute a shell command inside an agent environment tmux session and return captured output.",
+      description: "Execute a shell command inside an agent environment PTY session and return captured output.",
       execute: async (_toolCallId, params) => {
         const environment = await this.promptScope.getEnvironment();
         let result;
@@ -86,17 +86,17 @@ export class AgentExecuteCommandTool {
           },
         };
       },
-      label: "execute_command",
-      name: "execute_command",
-      parameters: AgentExecuteCommandTool.parameters,
+      label: "pty_exec",
+      name: "pty_exec",
+      parameters: AgentPtyExecTool.parameters,
       promptGuidelines: [
-        "Use execute_command to create or continue work in an environment tmux session.",
-        "When sessionId is omitted execute_command creates a fresh tmux session.",
+        "Use pty_exec to create or continue work in an environment PTY session.",
+        "When sessionId is omitted pty_exec creates a fresh tmux-backed PTY session.",
         "If the command is still running when the tool returns after yield_time_ms, the session remains open and sessionId is returned regardless of keepSession.",
-        "Completed one-shot commands auto-close their newly created session unless keepSession is true.",
+        "Completed one-shot commands auto-close their newly created PTY session unless keepSession is true.",
         "Reuse the returned sessionId when you want follow-up tool calls to target the same shell.",
       ],
-      promptSnippet: "Execute commands in the environment",
+      promptSnippet: "Execute commands in the environment PTY",
     };
   }
 }

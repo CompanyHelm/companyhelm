@@ -11,7 +11,7 @@ import { AgentToolParameterSchema } from "../src/services/agent/session/pi-mono/
 test("validateToolArguments names unexpected root properties in validation errors", () => {
   const tool = {
     description: "Runs a terminal command",
-    name: "execute_command",
+    name: "pty_exec",
     parameters: AgentToolParameterSchema.object({
       command: Type.String(),
     }),
@@ -24,7 +24,7 @@ test("validateToolArguments names unexpected root properties in validation error
         timeoutMs: 120000,
       },
       id: "tool-call-1",
-      name: "execute_command",
+      name: "pty_exec",
       type: "toolCall",
     }),
     (error) => {
@@ -37,7 +37,7 @@ test("validateToolArguments names unexpected root properties in validation error
 test("validateToolArguments names unexpected nested properties in validation errors", () => {
   const tool = {
     description: "Runs a terminal command",
-    name: "execute_command",
+    name: "pty_exec",
     parameters: AgentToolParameterSchema.object({
       environment: AgentToolParameterSchema.object({
         PATH: Type.String(),
@@ -54,7 +54,7 @@ test("validateToolArguments names unexpected nested properties in validation err
         },
       },
       id: "tool-call-1",
-      name: "execute_command",
+      name: "pty_exec",
       type: "toolCall",
     }),
     (error) => {

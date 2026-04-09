@@ -46,11 +46,6 @@ export abstract class AgentEnvironmentPtyInterface {
   abstract killSession(sessionId: string): Promise<void>;
 
   /**
-   * Closes an existing terminal session when the agent is done with it.
-   */
-  abstract closeSession(sessionId: string): Promise<void>;
-
-  /**
    * Releases any PTY-local resources held by the implementation itself.
    */
   abstract dispose(): Promise<void>;
