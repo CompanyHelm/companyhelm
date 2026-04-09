@@ -806,6 +806,10 @@ function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["
   };
 }
 
+function isCommandToolName(toolName: string | null | undefined): boolean {
+  return toolName === "execute_command" || toolName === "bash_exec" || toolName === "pty_exec";
+}
+
 function buildToolCallSummaryById(
   messages: ReadonlyArray<SessionMessageRecord>,
 ): Map<string, ToolCallSummaryRecord> {
@@ -1691,7 +1695,7 @@ function ToolTranscriptMessage(
   const defaultToolName = resolveToolDisplayName(toolCallSummary?.toolName ?? message.toolName ?? "Tool");
   const commandToolArguments = parseCommandToolArguments(toolCallSummary?.argumentsValue);
   const commandToolYieldTimeMs = commandToolArguments?.yieldTimeMs ?? null;
-  const isCommandTool = defaultToolName === "execute_command" && commandToolArguments !== null;
+  const isCommandTool = isCommandToolName(toolCallSummary?.toolName ?? message.toolName) && commandToolArguments !== null;
   const collapsedSummary = isCommandTool ? commandToolArguments.command : defaultToolName;
 
   return (
@@ -1794,6 +1798,36 @@ function ToolTranscriptMessage(
                   className="max-h-[28rem] max-w-full rounded-xl border border-border/60 object-contain"
                   src={`data:${content.mimeType};base64,${content.data}`}
                 />
+              );
+            }
+
+            if (content.type === "text" && isCommandTool) {
+              const commandOutputText = sanitizeTerminalDisplayOutput(content.text);
+              return (
+                <div
+                  key={`${message.id}-content-${contentIndex}`}
+                  className="overflow-hidden rounded-xl border border-border/60 bg-background/60"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
+                    <code className="text-xs font-medium text-foreground">{commandToolArguments.command}</code>
+                    <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {normalizedStatus === "running" ? "Running" : message.isError ? "Error" : "Completed"}
+                    </span>
+                  </div>
+                  {(commandToolArguments.workingDirectory || commandToolYieldTimeMs !== null) ? (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[11px] text-muted-foreground">
+                      {commandToolArguments.workingDirectory ? <span>cwd: {commandToolArguments.workingDirectory}</span> : null}
+                      {commandToolYieldTimeMs !== null ? <span>yield: {commandToolYieldTimeMs}ms</span> : null}
+                    </div>
+                  ) : null}
+                  <pre className="max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+                    {commandOutputText.length > 0
+                      ? commandOutputText
+                      : normalizedStatus === "running"
+                      ? "Waiting for command output..."
+                      : "(no output)"}
+                  </pre>
+                </div>
               );
             }
 
