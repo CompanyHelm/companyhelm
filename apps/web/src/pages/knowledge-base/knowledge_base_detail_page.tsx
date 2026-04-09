@@ -7,6 +7,8 @@ import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { knowledgeBaseDetailPageQuery } from "./__generated__/knowledgeBaseDetailPageQuery.graphql";
 import type { knowledgeBaseDetailPageUpdateArtifactMutation } from "./__generated__/knowledgeBaseDetailPageUpdateArtifactMutation.graphql";
 import type { knowledgeBaseDetailPageUpdateMarkdownArtifactMutation } from "./__generated__/knowledgeBaseDetailPageUpdateMarkdownArtifactMutation.graphql";
@@ -113,6 +115,7 @@ function KnowledgeBaseDetailPageFallback() {
 }
 
 function KnowledgeBaseDetailPageContent() {
+  const organizationSlug = useCurrentOrganizationSlug();
   const { artifactId } = useParams({ strict: false });
   const normalizedArtifactId = String(artifactId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
@@ -298,7 +301,7 @@ function KnowledgeBaseDetailPageContent() {
           </CardHeader>
           <CardContent>
             <Button asChild type="button">
-              <Link to="/knowledge-base">Back to Knowledge Base</Link>
+              <Link params={{ organizationSlug }} to={OrganizationPath.route("/knowledge-base")}>Back to Knowledge Base</Link>
             </Button>
           </CardContent>
         </Card>

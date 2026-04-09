@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon, FolderGit2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   Card,
   CardAction,
@@ -60,6 +62,7 @@ export function RepositoriesSection(props: {
   repositories: DashboardRepositoryRecord[];
   totalCount: number;
 }) {
+  const organizationSlug = useCurrentOrganizationSlug();
   const installationLabelById = new Map(
     props.installations.map((installation) => [
       installation.id,
@@ -71,7 +74,11 @@ export function RepositoriesSection(props: {
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardAction>
-          <Link className="text-xs font-medium text-primary hover:underline" to="/repositories">
+          <Link
+            className="text-xs font-medium text-primary hover:underline"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/repositories")}
+          >
             Show all
           </Link>
         </CardAction>

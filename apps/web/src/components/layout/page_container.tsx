@@ -5,6 +5,7 @@ import { ApplicationHeader } from "@/components/layout/application_header";
 import { ApplicationSidebar } from "@/components/layout/application_sidebar";
 import { ErrorBoundary } from "@/components/error_boundary";
 import { ErrorState } from "@/components/error_state";
+import { OrganizationPath } from "@/lib/organization_path";
 import { cn } from "@/lib/utils";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -19,8 +20,9 @@ export function PageContainer(props: PageContainerProps) {
   const locationKey = useRouterState({
     select: (state) => state.location.href,
   });
-  const isChatsPage = pathname.startsWith("/chats");
-  const isTasksBoardPage = pathname === "/tasks";
+  const normalizedPathname = OrganizationPath.stripPrefix(pathname);
+  const isChatsPage = normalizedPathname.startsWith("/chats");
+  const isTasksBoardPage = normalizedPathname === "/tasks";
   const isFullHeightBoardPage = isChatsPage || isTasksBoardPage;
 
   return (

@@ -4,6 +4,8 @@ import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { CreateSkillDialog, type CreateSkillDialogGroupOption } from "./create_skill_dialog";
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
 import type { skillsPageCreateSkillMutation } from "./__generated__/skillsPageCreateSkillMutation.graphql";
@@ -103,6 +105,7 @@ function SkillsPageFallback() {
 
 function SkillsPageContent() {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
@@ -261,7 +264,10 @@ function SkillsPageContent() {
             <Button
               onClick={() => {
                 void navigate({
-                  to: "/skill-groups",
+                  params: {
+                    organizationSlug,
+                  },
+                  to: OrganizationPath.route("/skill-groups"),
                 });
               }}
               size="sm"

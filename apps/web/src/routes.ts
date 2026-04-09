@@ -29,7 +29,10 @@ import { SettingsPage } from "./pages/settings/settings_page";
 import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
+import { OrganizationPath } from "./lib/organization_path";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
+import { OrganizationHomeRoute } from "./pages/root/organization_home_route";
+import { OrganizationRoute } from "./pages/root/organization_route";
 import { PageContainerRoute } from "./pages/root/page_container_route";
 import { RootErrorComponent } from "./pages/root/root_error_component";
 
@@ -129,74 +132,87 @@ const pageContainerRoute = createRoute({
 const rootIndexRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/",
+  component: OrganizationHomeRoute,
+});
+
+const organizationRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  id: "org",
+  path: OrganizationPath.route("/"),
+  component: OrganizationRoute,
+});
+
+const organizationDashboardRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/"),
   component: DashboardPage,
 });
 
 const flagsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/flags",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/flags"),
   component: FlagsPage,
 });
 
 const modelProviderCredentialsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/model-provider-credentials",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/model-provider-credentials"),
   component: ModelProviderCredentialsPage,
 });
 
 const agentsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/agents",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/agents"),
   component: AgentsPage,
 });
 
 const environmentsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/environments",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/environments"),
   component: EnvironmentsPage,
 });
 
 const computeProvidersRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/compute-providers",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/compute-providers"),
   component: ComputeProviderDefinitionsPage,
 });
 
 const chatsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/chats",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/chats"),
   validateSearch: validateChatsRouteSearch,
   component: ChatsPage,
 });
 
 const inboxRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/inbox",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/inbox"),
   component: InboxPage,
 });
 
 const conversationsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/conversations",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/conversations"),
   validateSearch: validateConversationsRouteSearch,
   component: ConversationsPage,
 });
 
 const secretsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/secrets",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/secrets"),
   component: SecretsPage,
 });
 
 const skillsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/skills",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/skills"),
   component: SkillsPage,
 });
 
 const skillGroupsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/skill-groups",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/skill-groups"),
   component: SkillGroupsPage,
 });
 
@@ -207,65 +223,65 @@ const githubInstallRoute = createRoute({
 });
 
 const repositoriesRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/repositories",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/repositories"),
   component: RepositoriesPage,
 });
 
 const knowledgeBaseRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/knowledge-base",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/knowledge-base"),
   component: KnowledgeBasePage,
 });
 
 const knowledgeBaseDetailRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/knowledge-base/$artifactId",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/knowledge-base/$artifactId"),
   component: KnowledgeBaseDetailPage,
 });
 
 const tasksRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/tasks",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/tasks"),
   validateSearch: validateTasksRouteSearch,
   component: TasksPage,
 });
 
 const taskDetailRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/tasks/$taskId",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/tasks/$taskId"),
   validateSearch: validateTaskDetailRouteSearch,
   component: TaskDetailPage,
 });
 
 const taskArtifactDetailRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/tasks/$taskId/artifacts/$artifactId",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/tasks/$taskId/artifacts/$artifactId"),
   component: ArtifactDetailPage,
 });
 
 const settingsRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/settings",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/settings"),
   validateSearch: validateSettingsRouteSearch,
   component: SettingsPage,
 });
 
 const agentDetailRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/agents/$agentId",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/agents/$agentId"),
   component: AgentDetailPage,
 });
 
 const modelProviderCredentialDetailRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/model-provider-credentials/$credentialId",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/model-provider-credentials/$credentialId"),
   component: ModelProviderCredentialDetailPage,
 });
 
 const skillDetailRoute = createRoute({
-  getParentRoute: () => pageContainerRoute,
-  path: "/skills/$skillId",
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/skills/$skillId"),
   component: SkillDetailPage,
 });
 
@@ -285,28 +301,31 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     pageContainerRoute.addChildren([
       rootIndexRoute,
-      flagsRoute,
-      agentsRoute,
-      environmentsRoute,
-      computeProvidersRoute,
-      chatsRoute,
-      inboxRoute,
-      conversationsRoute,
-      secretsRoute,
-      skillsRoute,
-      skillGroupsRoute,
+      organizationRoute.addChildren([
+        organizationDashboardRoute,
+        flagsRoute,
+        agentsRoute,
+        environmentsRoute,
+        computeProvidersRoute,
+        chatsRoute,
+        inboxRoute,
+        conversationsRoute,
+        secretsRoute,
+        skillsRoute,
+        skillGroupsRoute,
+        repositoriesRoute,
+        knowledgeBaseRoute,
+        knowledgeBaseDetailRoute,
+        tasksRoute,
+        taskDetailRoute,
+        taskArtifactDetailRoute,
+        settingsRoute,
+        agentDetailRoute,
+        modelProviderCredentialsRoute,
+        modelProviderCredentialDetailRoute,
+        skillDetailRoute,
+      ]),
       githubInstallRoute,
-      repositoriesRoute,
-      knowledgeBaseRoute,
-      knowledgeBaseDetailRoute,
-      tasksRoute,
-      taskDetailRoute,
-      taskArtifactDetailRoute,
-      settingsRoute,
-      agentDetailRoute,
-      modelProviderCredentialsRoute,
-      modelProviderCredentialDetailRoute,
-      skillDetailRoute,
     ]),
   ]),
   signInRoute,

@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { githubInstallCallbackPageAddGithubInstallationMutation } from "./__generated__/githubInstallCallbackPageAddGithubInstallationMutation.graphql";
 
 type StoreRecord = {
@@ -93,6 +95,7 @@ function resolveCallbackSearch(): GithubInstallCallbackSearch {
 }
 
 export function GithubInstallCallbackPage() {
+  const organizationSlug = useCurrentOrganizationSlug();
   const callbackHandledRef = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [commitAddInstallation] =
@@ -181,7 +184,7 @@ export function GithubInstallCallbackPage() {
         }
 
         if (typeof window !== "undefined") {
-          window.location.replace("/repositories");
+          window.location.replace(OrganizationPath.href(organizationSlug, "/repositories"));
         }
       },
       onError: (error: Error) => {
@@ -206,7 +209,11 @@ export function GithubInstallCallbackPage() {
                 {errorMessage}
               </div>
               <div>
-                <Button render={<Link to="/repositories" />} size="sm" variant="outline">
+                <Button
+                  render={<Link params={{ organizationSlug }} to={OrganizationPath.route("/repositories")} />}
+                  size="sm"
+                  variant="outline"
+                >
                   Back to repositories
                 </Button>
               </div>

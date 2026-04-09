@@ -17,6 +17,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   CreateDocumentDialog,
   type CreateDocumentDialogEditorState,
@@ -157,6 +159,7 @@ function KnowledgeBasePageFallback() {
 
 function KnowledgeBasePageContent() {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const [isCreateDocumentDialogOpen, setCreateDocumentDialogOpen] = useState(false);
   const [createDocumentState, setCreateDocumentState] = useState<CreateDocumentDialogEditorState>(
     createEmptyDocumentEditorState,
@@ -224,8 +227,9 @@ function KnowledgeBasePageContent() {
       void navigate({
         params: {
           artifactId: response.CreateMarkdownArtifact.id,
+          organizationSlug,
         },
-        to: "/knowledge-base/$artifactId",
+        to: OrganizationPath.route("/knowledge-base/$artifactId"),
       });
     } catch (error: unknown) {
       setCreateDocumentErrorMessage(
@@ -319,8 +323,8 @@ function KnowledgeBasePageContent() {
               <div key={artifact.id} className="relative">
                 <Link
                   className="group block"
-                  params={{ artifactId: artifact.id }}
-                  to="/knowledge-base/$artifactId"
+                  params={{ artifactId: artifact.id, organizationSlug }}
+                  to={OrganizationPath.route("/knowledge-base/$artifactId")}
                 >
                   <Card className="h-full rounded-2xl border border-border/60 bg-card/70 shadow-sm transition group-hover:border-border/80 group-hover:bg-card group-hover:shadow-md">
                     <CardHeader className="border-b border-border/40 pr-14">

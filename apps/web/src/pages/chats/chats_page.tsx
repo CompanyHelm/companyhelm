@@ -37,6 +37,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { formatProviderLabel as formatModelProviderLabel } from "../model-provider-credentials/provider_label";
 import { ChatComposerModelPicker, type ChatComposerModelOption } from "./chat_composer_model_picker";
 import { ChatComposerImage, type ChatComposerImageDraft } from "./chat_composer_image";
@@ -2031,7 +2033,9 @@ function TranscriptTurnSummaryRow({
 
 function ForkedSessionBanner({
   session,
+  organizationSlug,
 }: {
+  organizationSlug: string;
   session: SessionRecord;
 }) {
   if (!session.forkedFromTurnId) {
@@ -2058,8 +2062,9 @@ function ForkedSessionBanner({
               {sourceSessionSearch ? (
                 <Link
                   className="font-medium text-foreground underline underline-offset-4 transition hover:text-primary"
+                  params={{ organizationSlug }}
                   search={sourceSessionSearch}
-                  to="/chats"
+                  to={OrganizationPath.route("/chats")}
                 >
                   {sourceSessionTitle}
                 </Link>
@@ -2077,6 +2082,7 @@ function ForkedSessionBanner({
 
 function ChatsTranscript({
   forkingTurnId,
+  organizationSlug,
   session,
   sessionMessages,
   transcriptScrollRef,
@@ -2086,6 +2092,7 @@ function ChatsTranscript({
   onScroll,
 }: {
   forkingTurnId: string | null;
+  organizationSlug: string;
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
   transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
@@ -2118,7 +2125,7 @@ function ChatsTranscript({
         className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]"
         onScroll={onScroll}
       >
-        <ForkedSessionBanner session={session} />
+        <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
         <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
           <div>
             <p className="text-sm font-medium text-foreground">
@@ -2141,7 +2148,7 @@ function ChatsTranscript({
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]"
       onScroll={onScroll}
     >
-      <ForkedSessionBanner session={session} />
+      <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
       {showTranscriptLoader ? (
         <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex h-9 shrink-0 items-end pt-2`}>
           <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
@@ -2233,6 +2240,7 @@ function ChatsTranscript({
 
 function ChatsPageContent() {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const environment = useRelayEnvironment();
   const subscriptionConnectionStatus = useGraphqlSubscriptionConnectionStatus();
   const sessionTranscriptRetentionStore = useSessionTranscriptRetentionStore();
@@ -2564,14 +2572,17 @@ function ChatsPageContent() {
     }
 
     void navigate({
+      params: {
+        organizationSlug,
+      },
       replace: true,
-      to: "/chats",
+      to: OrganizationPath.route("/chats"),
       search: {
         agentId: latestActiveSession.agentId,
         sessionId: latestActiveSession.id,
       },
     });
-  }, [latestActiveSession, navigate, search.agentId, search.sessionId]);
+  }, [latestActiveSession, navigate, organizationSlug, search.agentId, search.sessionId]);
 
   useEffect(() => {
     const hasSelectedChatTarget = Boolean(search.agentId || search.sessionId);
@@ -3077,13 +3088,16 @@ function ChatsPageContent() {
     }
 
     void navigate({
+      params: {
+        organizationSlug,
+      },
       replace: true,
-      to: "/chats",
+      to: OrganizationPath.route("/chats"),
       search: {
         agentId: search.agentId,
       },
     });
-  }, [navigate, pendingCreatedSessionId, search.agentId, search.sessionId, selectedSession]);
+  }, [navigate, organizationSlug, pendingCreatedSessionId, search.agentId, search.sessionId, selectedSession]);
 
   useEffect(() => {
     if (!selectedSession) {
@@ -3541,7 +3555,10 @@ function ChatsPageContent() {
     setDraftImages([]);
     setIsMobileChatListOpen(false);
     await navigate({
-      to: "/chats",
+      params: {
+        organizationSlug,
+      },
+      to: OrganizationPath.route("/chats"),
       search: {
         agentId,
       },
@@ -3552,7 +3569,10 @@ function ChatsPageContent() {
     setErrorMessage(null);
     setIsMobileChatListOpen(false);
     await navigate({
-      to: "/chats",
+      params: {
+        organizationSlug,
+      },
+      to: OrganizationPath.route("/chats"),
       search: {
         agentId,
         sessionId,
@@ -3660,7 +3680,10 @@ function ChatsPageContent() {
     setPendingCreatedSessionId(nextSessionId);
 
     await navigate({
-      to: "/chats",
+      params: {
+        organizationSlug,
+      },
+      to: OrganizationPath.route("/chats"),
       search: {
         agentId: selectedAgent.id,
         sessionId: nextSessionId,
@@ -3716,7 +3739,10 @@ function ChatsPageContent() {
             setPendingCreatedSessionId(null);
             if (search.sessionId !== createdSession.id || search.agentId !== createdSession.agentId) {
               await navigate({
-                to: "/chats",
+                params: {
+                  organizationSlug,
+                },
+                to: OrganizationPath.route("/chats"),
                 search: {
                   agentId: createdSession.agentId,
                   sessionId: createdSession.id,
@@ -3784,7 +3810,10 @@ function ChatsPageContent() {
           try {
             if (search.sessionId !== forkedSession.id || search.agentId !== forkedSession.agentId) {
               await navigate({
-                to: "/chats",
+                params: {
+                  organizationSlug,
+                },
+                to: OrganizationPath.route("/chats"),
                 search: {
                   agentId: forkedSession.agentId,
                   sessionId: forkedSession.id,
@@ -4283,7 +4312,15 @@ function ChatsPageContent() {
               <div className="rounded-xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-sidebar-foreground">No agents yet</p>
                 <p className="mt-2 text-xs/relaxed text-sidebar-foreground/65">
-                  Create an agent first from the <Link className="text-sidebar-primary hover:underline" to="/agents">Agents</Link> page.
+                  Create an agent first from the{" "}
+                  <Link
+                    className="text-sidebar-primary hover:underline"
+                    params={{ organizationSlug }}
+                    to={OrganizationPath.route("/agents")}
+                  >
+                    Agents
+                  </Link>{" "}
+                  page.
                 </p>
               </div>
             ) : null}
@@ -4437,7 +4474,15 @@ function ChatsPageContent() {
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">No agents yet</p>
                 <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                  Create an agent first from the <Link className="text-primary hover:underline" to="/agents">Agents</Link> page.
+                  Create an agent first from the{" "}
+                  <Link
+                    className="text-primary hover:underline"
+                    params={{ organizationSlug }}
+                    to={OrganizationPath.route("/agents")}
+                  >
+                    Agents
+                  </Link>{" "}
+                  page.
                 </p>
               </div>
             ) : null}
@@ -4719,7 +4764,10 @@ function ChatsPageContent() {
                       onClick={() => {
                         setIsEnvironmentPanelOpen(false);
                         void navigate({
-                          to: "/environments",
+                          params: {
+                            organizationSlug,
+                          },
+                          to: OrganizationPath.route("/environments"),
                         });
                       }}
                       size="sm"

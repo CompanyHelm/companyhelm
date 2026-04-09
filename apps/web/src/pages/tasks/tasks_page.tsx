@@ -3,6 +3,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { CreateTaskDialog } from "./create_task_dialog";
 import { TaskBoard } from "./task_board";
 import type { tasksPageCreateTaskMutation } from "./__generated__/tasksPageCreateTaskMutation.graphql";
@@ -177,6 +179,7 @@ function TasksPageFallback() {
 
 function TasksPageContent() {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const search = useSearch({ strict: false }) as TasksPageSearch;
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -259,7 +262,10 @@ function TasksPageContent() {
                 onClick={() => {
                   if (filterOption.key === undefined) {
                     void navigate({
-                      to: "/tasks",
+                      params: {
+                        organizationSlug,
+                      },
+                      to: OrganizationPath.route("/tasks"),
                       search: {},
                     });
                     return;
@@ -274,7 +280,10 @@ function TasksPageContent() {
                       });
 
                   void navigate({
-                    to: "/tasks",
+                    params: {
+                      organizationSlug,
+                    },
+                    to: OrganizationPath.route("/tasks"),
                     search: nextSelectedCategoryKeys.length > 0
                       ? { category: nextSelectedCategoryKeys.join(",") }
                       : {},
@@ -407,10 +416,11 @@ function TasksPageContent() {
           }}
           onOpenTask={(taskId) => {
             void navigate({
-              to: "/tasks/$taskId",
               params: {
+                organizationSlug,
                 taskId,
               },
+              to: OrganizationPath.route("/tasks/$taskId"),
             });
           }}
           tasks={visibleTasks.map((task: TasksPageTask) => ({

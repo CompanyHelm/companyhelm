@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -14,41 +16,43 @@ export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const organizationSlug = useCurrentOrganizationSlug();
+  const normalizedPathname = OrganizationPath.stripPrefix(pathname);
   const { detailLabel, headerActions, headerClassName, headerContent } = useApplicationBreadcrumb();
-  const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
-  const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
-  const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(pathname);
-  const isSkillDetailPage = /^\/skills\/[^/]+$/.test(pathname);
-  const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(pathname);
-  const pageTitle = pathname.startsWith("/model-provider-credentials")
+  const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(normalizedPathname);
+  const isAgentDetailPage = /^\/agents\/[^/]+$/.test(normalizedPathname);
+  const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(normalizedPathname);
+  const isSkillDetailPage = /^\/skills\/[^/]+$/.test(normalizedPathname);
+  const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(normalizedPathname);
+  const pageTitle = normalizedPathname.startsWith("/model-provider-credentials")
     ? "LLM Credentials"
-    : pathname.startsWith("/compute-providers")
+    : normalizedPathname.startsWith("/compute-providers")
       ? "Compute Providers"
-        : pathname.startsWith("/environments")
+        : normalizedPathname.startsWith("/environments")
           ? "Environments"
-        : pathname.startsWith("/secrets")
+        : normalizedPathname.startsWith("/secrets")
           ? "Secrets"
-          : pathname.startsWith("/skill-groups")
+          : normalizedPathname.startsWith("/skill-groups")
             ? "Skill Groups"
-          : pathname.startsWith("/skills")
-            ? "Skills"
-    : pathname.startsWith("/chats")
+          : normalizedPathname.startsWith("/skills")
+    ? "Skills"
+    : normalizedPathname.startsWith("/chats")
       ? "Chats"
-      : pathname.startsWith("/conversations")
+      : normalizedPathname.startsWith("/conversations")
         ? "Agent Conversations"
-      : pathname.startsWith("/repositories")
+      : normalizedPathname.startsWith("/repositories")
         ? "Repositories"
-        : pathname.startsWith("/knowledge-base")
+        : normalizedPathname.startsWith("/knowledge-base")
           ? "Knowledge Base"
-          : pathname.startsWith("/inbox")
+          : normalizedPathname.startsWith("/inbox")
             ? "Inbox"
-          : pathname.startsWith("/tasks")
+          : normalizedPathname.startsWith("/tasks")
             ? "Tasks"
-            : pathname.startsWith("/flags")
+            : normalizedPathname.startsWith("/flags")
               ? "Feature Flags"
-              : pathname.startsWith("/settings")
+              : normalizedPathname.startsWith("/settings")
                 ? "Settings"
-                : pathname.startsWith("/agents")
+                : normalizedPathname.startsWith("/agents")
                   ? "Agents"
                   : "Dashboard";
   const detailPageTitle = detailLabel
@@ -62,15 +66,15 @@ export function ApplicationHeader() {
           ? "Task"
           : "Credential");
   const detailPageHref = isCredentialDetailPage
-    ? "/model-provider-credentials"
+    ? OrganizationPath.route("/model-provider-credentials")
     : isAgentDetailPage
-      ? "/agents"
+      ? OrganizationPath.route("/agents")
       : isKnowledgeBaseDetailPage
-        ? "/knowledge-base"
+        ? OrganizationPath.route("/knowledge-base")
         : isSkillDetailPage
-          ? "/skills"
+          ? OrganizationPath.route("/skills")
         : isTaskDetailPage
-          ? "/tasks"
+          ? OrganizationPath.route("/tasks")
       : null;
   const isDetailPage = isCredentialDetailPage
     || isAgentDetailPage
@@ -93,6 +97,7 @@ export function ApplicationHeader() {
                   {isDetailPage && detailPageHref ? (
                     <Link
                       className="font-medium text-muted-foreground transition hover:text-foreground"
+                      params={{ organizationSlug }}
                       to={detailPageHref}
                     >
                       {pageTitle}

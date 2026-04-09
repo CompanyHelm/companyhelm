@@ -8,6 +8,8 @@ import { MarkdownContent } from "@/components/markdown_content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { taskDetailPageExecuteTaskMutation } from "./__generated__/taskDetailPageExecuteTaskMutation.graphql";
 import type { taskDetailPageQuery } from "./__generated__/taskDetailPageQuery.graphql";
 import type { taskDetailPageUpdateTaskMutation } from "./__generated__/taskDetailPageUpdateTaskMutation.graphql";
@@ -266,6 +268,7 @@ function TaskDetailPageContent() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as TaskDetailPageSearch;
   const { taskId } = useParams({ strict: false });
+  const organizationSlug = useCurrentOrganizationSlug();
   const normalizedTaskId = String(taskId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   if (!normalizedTaskId) {
@@ -476,10 +479,11 @@ function TaskDetailPageContent() {
                   onClick={() => {
                     void navigate({
                       params: {
+                        organizationSlug,
                         taskId: task.id,
                       },
                       search: tab.key === "details" ? {} : { tab: tab.key },
-                      to: "/tasks/$taskId",
+                      to: OrganizationPath.route("/tasks/$taskId"),
                     });
                   }}
                   type="button"
@@ -676,11 +680,14 @@ function TaskDetailPageContent() {
                       <Button
                         onClick={() => {
                           void navigate({
+                            params: {
+                              organizationSlug,
+                            },
                             search: {
                               agentId: taskRun.agentId,
                               sessionId: taskRun.sessionId ?? undefined,
                             },
-                            to: "/chats",
+                            to: OrganizationPath.route("/chats"),
                           });
                         }}
                         size="sm"
@@ -762,9 +769,10 @@ function TaskDetailPageContent() {
                     void navigate({
                       params: {
                         artifactId: artifact.id,
+                        organizationSlug,
                         taskId: task.id,
                       },
-                      to: "/tasks/$taskId/artifacts/$artifactId",
+                      to: OrganizationPath.route("/tasks/$taskId/artifacts/$artifactId"),
                     });
                   }}
                   type="button"

@@ -26,6 +26,8 @@ import { ErrorBoundary } from "@/components/error_boundary";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   Sidebar,
   SidebarContent,
@@ -99,6 +101,7 @@ export function ApplicationSidebar() {
   const featureFlags = useFeatureFlags();
   const sidebarState = useSidebar();
   const themeState = useTheme();
+  const organizationSlug = useCurrentOrganizationSlug();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -196,7 +199,8 @@ export function ApplicationSidebar() {
           <Link
             className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-2 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
             onClick={handleNavigationClick}
-            to="/"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/")}
           >
             <img className="size-7 rounded-md" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
             <span className="truncate font-semibold tracking-tight">CompanyHelm</span>
@@ -205,7 +209,10 @@ export function ApplicationSidebar() {
         </div>
         <div className="px-2 pt-2 group-data-[collapsible=icon]:hidden">
           <div>
-            <OrganizationSwitcher />
+            <OrganizationSwitcher
+              afterCreateOrganizationUrl="/orgs/:slug"
+              afterSelectOrganizationUrl="/orgs/:slug"
+            />
           </div>
         </div>
       </SidebarHeader>
@@ -223,7 +230,7 @@ export function ApplicationSidebar() {
                     <SidebarMenuButton
                       isActive={isNavigationItemActive(pathname, item.to)}
                       onClick={handleNavigationClick}
-                      render={<Link to={item.to} />}
+                      render={<Link params={{ organizationSlug }} to={OrganizationPath.route(item.to)} />}
                       tooltip={item.label}
                     >
                       <ItemIcon />
@@ -255,7 +262,7 @@ export function ApplicationSidebar() {
                     <SidebarMenuButton
                       isActive={isNavigationItemActive(pathname, item.to)}
                       onClick={handleNavigationClick}
-                      render={<Link to={item.to} />}
+                      render={<Link params={{ organizationSlug }} to={OrganizationPath.route(item.to)} />}
                       tooltip={item.label}
                     >
                       <ItemIcon />
@@ -292,7 +299,7 @@ export function ApplicationSidebar() {
                 <SidebarMenuButton
                   isActive={isNavigationItemActive(pathname, "/settings")}
                   onClick={handleNavigationClick}
-                  render={<Link to="/settings" />}
+                  render={<Link params={{ organizationSlug }} to={OrganizationPath.route("/settings")} />}
                   tooltip="Settings"
                 >
                   <Settings2Icon />

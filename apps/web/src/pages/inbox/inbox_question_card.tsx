@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { MessageSquareReplyIcon, StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 
 export type InboxQuestionCardRecord = {
   agentId: string;
@@ -57,6 +59,7 @@ function renderRating(rating: number) {
  */
 export function InboxQuestionCard(props: InboxQuestionCardProps) {
   const [customAnswerText, setCustomAnswerText] = useState("");
+  const organizationSlug = useCurrentOrganizationSlug();
   const hasCustomAnswer = customAnswerText.trim().length > 0;
   const isBusy = props.isResolving || props.isDismissing;
 
@@ -74,7 +77,8 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
               agentId: props.question.agentId,
               sessionId: props.question.sessionId,
             }}
-            to="/chats"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/chats")}
           >
             <MessageSquareReplyIcon className="size-3.5" />
             Open chat

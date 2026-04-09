@@ -23,6 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 export type CredentialsTableRecord = {
@@ -61,6 +63,7 @@ function formatTimestamp(value: string): string {
 
 export function CredentialsTable(props: CredentialsTableProps) {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
 
   if (props.isLoading) {
     return (
@@ -100,9 +103,10 @@ export function CredentialsTable(props: CredentialsTableProps) {
             className="cursor-pointer transition hover:bg-muted/40"
             onClick={() => {
               void navigate({
-                to: "/model-provider-credentials/$credentialId",
+                to: OrganizationPath.route("/model-provider-credentials/$credentialId"),
                 params: {
                   credentialId: credential.id,
+                  organizationSlug,
                 },
               });
             }}

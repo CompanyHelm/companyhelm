@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   Card,
   CardAction,
@@ -64,12 +66,17 @@ function resolveSessionTitle(session: DashboardSessionRecord): string {
  */
 export function SessionsSection(props: { sessions: DashboardSessionRecord[]; totalCount: number }) {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
 
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardAction>
-          <Link className="text-xs font-medium text-primary hover:underline" to="/chats">
+          <Link
+            className="text-xs font-medium text-primary hover:underline"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/chats")}
+          >
             Show all
           </Link>
         </CardAction>
@@ -104,7 +111,10 @@ export function SessionsSection(props: { sessions: DashboardSessionRecord[]; tot
                   className="cursor-pointer"
                   onClick={() => {
                     void navigate({
-                      to: "/chats",
+                      params: {
+                        organizationSlug,
+                      },
+                      to: OrganizationPath.route("/chats"),
                       search: {
                         agentId: session.agentId,
                         sessionId: session.id,

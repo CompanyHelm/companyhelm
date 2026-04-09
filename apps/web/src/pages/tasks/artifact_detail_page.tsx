@@ -7,6 +7,8 @@ import { MarkdownContent } from "@/components/markdown_content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { artifactDetailPageQuery } from "./__generated__/artifactDetailPageQuery.graphql";
 
 type TaskArtifactType = "markdown_document" | "external_link" | "pull_request";
@@ -91,6 +93,7 @@ function ArtifactDetailPageFallback() {
 
 function ArtifactDetailPageContent() {
   const { artifactId, taskId } = useParams({ strict: false });
+  const organizationSlug = useCurrentOrganizationSlug();
   const normalizedArtifactId = String(artifactId || "").trim();
   const normalizedTaskId = String(taskId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
@@ -133,7 +136,11 @@ function ArtifactDetailPageContent() {
           </CardHeader>
           <CardContent>
             <Button asChild type="button">
-              <Link params={{ taskId: normalizedTaskId }} search={{ tab: "artifacts" }} to="/tasks/$taskId">
+              <Link
+                params={{ organizationSlug, taskId: normalizedTaskId }}
+                search={{ tab: "artifacts" }}
+                to={OrganizationPath.route("/tasks/$taskId")}
+              >
                 Back to Task Artifacts
               </Link>
             </Button>

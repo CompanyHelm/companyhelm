@@ -5,6 +5,8 @@ import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { TaskCategoryDialog } from "./task_category_dialog";
 import type { settingsPageCreateTaskCategoryMutation } from "./__generated__/settingsPageCreateTaskCategoryMutation.graphql";
 import type { settingsPageDeleteTaskCategoryMutation } from "./__generated__/settingsPageDeleteTaskCategoryMutation.graphql";
@@ -98,6 +100,7 @@ function SettingsPageFallback() {
 
 function SettingsPageContent() {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const search = useSearch({ strict: false }) as SettingsPageSearch;
   const [taskErrorMessage, setTaskErrorMessage] = useState<string | null>(null);
   const [isTaskCategoryDialogOpen, setTaskCategoryDialogOpen] = useState(false);
@@ -157,10 +160,13 @@ function SettingsPageContent() {
                   }`}
                   onClick={() => {
                     void navigate({
+                      params: {
+                        organizationSlug,
+                      },
                       search: {
                         tab: tab.key,
                       },
-                      to: "/settings",
+                      to: OrganizationPath.route("/settings"),
                     });
                   }}
                   type="button"

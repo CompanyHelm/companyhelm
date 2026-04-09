@@ -7,6 +7,8 @@ import { useToast } from "@/components/toast_provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { ComputeProviderDefinitionDialog, type ComputeProviderDefinitionDialogRecord } from "./definition_dialog";
 import {
   ComputeProviderDefinitionsTable,
@@ -376,6 +378,7 @@ function ComputeProviderDefinitionsPageContent() {
 
 export function ComputeProviderDefinitionsPage() {
   const featureFlags = useFeatureFlags();
+  const organizationSlug = useCurrentOrganizationSlug();
   if (!featureFlags.isEnabled("computer_providers")) {
     return (
       <main className="flex flex-1 flex-col gap-6">
@@ -392,7 +395,8 @@ export function ComputeProviderDefinitionsPage() {
           <CardContent className="flex items-center gap-3">
             <Link
               className="inline-flex h-6 items-center rounded-md border border-border px-2 text-xs font-medium text-foreground transition hover:bg-input/50"
-              to="/flags"
+              params={{ organizationSlug }}
+              to={OrganizationPath.route("/flags")}
             >
               Open feature flags
             </Link>

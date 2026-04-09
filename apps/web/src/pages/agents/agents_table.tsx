@@ -23,6 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { formatProviderLabel } from "../model-provider-credentials/provider_label";
 
 export type AgentsTableRecord = {
@@ -63,6 +65,7 @@ function formatTimestamp(value: string): string {
  */
 export function AgentsTable(props: AgentsTableProps) {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
 
   if (props.isLoading) {
     return (
@@ -103,9 +106,10 @@ export function AgentsTable(props: AgentsTableProps) {
             className="cursor-pointer transition hover:bg-muted/40"
             onClick={() => {
               void navigate({
-                to: "/agents/$agentId",
+                to: OrganizationPath.route("/agents/$agentId"),
                 params: {
                   agentId: agent.id,
+                  organizationSlug,
                 },
               });
             }}

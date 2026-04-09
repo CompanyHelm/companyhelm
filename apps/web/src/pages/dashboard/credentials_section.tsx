@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   Card,
   CardAction,
@@ -49,6 +51,7 @@ export function CredentialsSection(props: {
   totalCount: number;
 }) {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
 
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -56,7 +59,8 @@ export function CredentialsSection(props: {
         <CardAction>
           <Link
             className="text-xs font-medium text-primary hover:underline"
-            to="/model-provider-credentials"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/model-provider-credentials")}
           >
             Show all
           </Link>
@@ -92,8 +96,8 @@ export function CredentialsSection(props: {
                   className="cursor-pointer"
                   onClick={() => {
                     void navigate({
-                      params: { credentialId: credential.id },
-                      to: "/model-provider-credentials/$credentialId",
+                      params: { credentialId: credential.id, organizationSlug },
+                      to: OrganizationPath.route("/model-provider-credentials/$credentialId"),
                     });
                   }}
                 >

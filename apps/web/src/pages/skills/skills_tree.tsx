@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 
 export type SkillsTreeSkillRecord = {
   fileCount: number;
@@ -41,6 +43,7 @@ interface SkillsTreeProps {
  */
 export function SkillsTree(props: SkillsTreeProps) {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const [dropTargetKey, setDropTargetKey] = useState("");
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Record<string, boolean>>({});
   const suppressOpenSkillIdRef = useRef<string | null>(null);
@@ -141,9 +144,10 @@ export function SkillsTree(props: SkillsTreeProps) {
 
                       void navigate({
                         params: {
+                          organizationSlug,
                           skillId: skill.id,
                         },
-                        to: "/skills/$skillId",
+                        to: OrganizationPath.route("/skills/$skillId"),
                       });
                     }}
                     onDragEnd={() => {
@@ -166,9 +170,10 @@ export function SkillsTree(props: SkillsTreeProps) {
                       event.preventDefault();
                       void navigate({
                         params: {
+                          organizationSlug,
                           skillId: skill.id,
                         },
-                        to: "/skills/$skillId",
+                        to: OrganizationPath.route("/skills/$skillId"),
                       });
                     }}
                     role="button"

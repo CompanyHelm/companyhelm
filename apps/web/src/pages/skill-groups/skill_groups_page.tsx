@@ -4,6 +4,8 @@ import { FolderPlusIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { CreateGroupDialog } from "./create_group_dialog";
 import type { skillGroupsPageCreateSkillGroupMutation } from "./__generated__/skillGroupsPageCreateSkillGroupMutation.graphql";
 import type { skillGroupsPageDeleteSkillGroupMutation } from "./__generated__/skillGroupsPageDeleteSkillGroupMutation.graphql";
@@ -69,6 +71,7 @@ function sortGroupRecords(records: RelayLinkedRecord[]): RelayLinkedRecord[] {
 }
 
 function SkillGroupsPageFallback() {
+  const organizationSlug = useCurrentOrganizationSlug();
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -81,7 +84,7 @@ function SkillGroupsPageFallback() {
           </div>
           <CardAction className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
-              <Link to="/skills">Back to skills</Link>
+              <Link params={{ organizationSlug }} to={OrganizationPath.route("/skills")}>Back to skills</Link>
             </Button>
             <Button disabled size="sm">
               <PlusIcon />
@@ -104,6 +107,7 @@ function SkillGroupsPageFallback() {
  * main skill list. Deleting a group intentionally ungroups skills instead of deleting them.
  */
 function SkillGroupsPageContent() {
+  const organizationSlug = useCurrentOrganizationSlug();
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
@@ -150,7 +154,7 @@ function SkillGroupsPageContent() {
           </div>
           <CardAction className="flex items-center gap-2">
             <Button asChild size="sm" variant="outline">
-              <Link to="/skills">Back to skills</Link>
+              <Link params={{ organizationSlug }} to={OrganizationPath.route("/skills")}>Back to skills</Link>
             </Button>
             <Button
               onClick={() => {

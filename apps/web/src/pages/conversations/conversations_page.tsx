@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { ConversationList, type ConversationListRecord } from "./conversation_list";
 import {
   ConversationTranscript,
@@ -103,6 +105,7 @@ function formatConversationTimestamp(value: string): string {
 
 function ConversationsPageContent() {
   const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const search = useSearch({ strict: false }) as ConversationsPageSearch;
   const isMobile = useIsMobile();
   const [conversationListWidth, setConversationListWidth] = useState(loadConversationListWidth);
@@ -166,12 +169,15 @@ function ConversationsPageContent() {
 
   const openConversation = useCallback((conversationId: string) => {
     void navigate({
+      params: {
+        organizationSlug,
+      },
       search: {
         conversationId,
       },
-      to: "/conversations",
+      to: OrganizationPath.route("/conversations"),
     });
-  }, [navigate]);
+  }, [navigate, organizationSlug]);
 
   useEffect(() => {
     if (!selectedConversationId || selectedConversationId === search.conversationId) {
@@ -179,13 +185,16 @@ function ConversationsPageContent() {
     }
 
     void navigate({
+      params: {
+        organizationSlug,
+      },
       replace: true,
       search: {
         conversationId: selectedConversationId,
       },
-      to: "/conversations",
+      to: OrganizationPath.route("/conversations"),
     });
-  }, [navigate, search.conversationId, selectedConversationId]);
+  }, [navigate, organizationSlug, search.conversationId, selectedConversationId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

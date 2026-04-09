@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   Card,
   CardAction,
@@ -72,11 +74,16 @@ export function EnvironmentsSection(props: {
   stoppedCount: number;
   totalCount: number;
 }) {
+  const organizationSlug = useCurrentOrganizationSlug();
   return (
     <Card className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardAction>
-          <Link className="text-xs font-medium text-primary hover:underline" to="/environments">
+          <Link
+            className="text-xs font-medium text-primary hover:underline"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/environments")}
+          >
             Show all
           </Link>
         </CardAction>
