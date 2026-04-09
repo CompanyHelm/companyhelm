@@ -13,6 +13,7 @@ import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
+import { SecretEncryptionService } from "../src/services/secrets/encryption.ts";
 
 class UpdateSecretMutationTestHarness {
   static createConfigMock(): Config {
@@ -23,6 +24,10 @@ class UpdateSecretMutationTestHarness {
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
+      },
+      log: {
+        json: false,
+        level: "info",
       },
       security: {
         encryption: {
@@ -96,6 +101,7 @@ class UpdateSecretMutationTestHarness {
 test("GraphQL UpdateSecret mutation rotates encrypted values without exposing plaintext", async () => {
   const app = Fastify();
   const config = UpdateSecretMutationTestHarness.createConfigMock();
+  const encryptionService = new SecretEncryptionService(config);
   const database = UpdateSecretMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
@@ -158,7 +164,7 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
           envVarName: "GITHUB_APP_TOKEN",
           id: "secret-1",
           name: "github app token",
-          value: "new-plaintext-secret",
+          value: "rotated\nmultiline\nsecret\n",
         },
       },
     },
@@ -182,7 +188,14 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
   assert.equal(updatedSecret?.envVarName, "GITHUB_APP_TOKEN");
   assert.equal(updatedSecret?.updatedByUserId, "user-123");
   assert.equal(updatedSecret?.encryptionKeyId, "companyhelm-test-key");
-  assert.notEqual(updatedSecret?.encryptedValue, "new-plaintext-secret");
+  assert.notEqual(updatedSecret?.encryptedValue, "rotated\nmultiline\nsecret\n");
+  assert.equal(
+    encryptionService.decrypt(
+      String(updatedSecret?.encryptedValue),
+      String(updatedSecret?.encryptionKeyId),
+    ),
+    "rotated\nmultiline\nsecret\n",
+  );
 
   await app.close();
 });

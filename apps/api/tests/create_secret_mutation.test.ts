@@ -13,6 +13,7 @@ import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
+import { SecretEncryptionService } from "../src/services/secrets/encryption.ts";
 
 class CreateSecretMutationTestHarness {
   static createConfigMock(): Config {
@@ -23,6 +24,10 @@ class CreateSecretMutationTestHarness {
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
+      },
+      log: {
+        json: false,
+        level: "info",
       },
       security: {
         encryption: {
@@ -72,6 +77,7 @@ class CreateSecretMutationTestHarness {
 test("GraphQL CreateSecret mutation encrypts the value and defaults the env var name", async () => {
   const app = Fastify();
   const config = CreateSecretMutationTestHarness.createConfigMock();
+  const encryptionService = new SecretEncryptionService(config);
   const database = CreateSecretMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
@@ -134,7 +140,7 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
         input: {
           description: "Main production key",
           name: "api key primary",
-          value: "super-secret-value",
+          value: "line one\nline two\n",
         },
       },
     },
@@ -158,7 +164,14 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
   assert.equal(insertedSecret?.updatedByUserId, "user-123");
   assert.equal(insertedSecret?.envVarName, "API_KEY_PRIMARY");
   assert.equal(insertedSecret?.encryptionKeyId, "companyhelm-test-key");
-  assert.notEqual(insertedSecret?.encryptedValue, "super-secret-value");
+  assert.notEqual(insertedSecret?.encryptedValue, "line one\nline two\n");
+  assert.equal(
+    encryptionService.decrypt(
+      String(insertedSecret?.encryptedValue),
+      String(insertedSecret?.encryptionKeyId),
+    ),
+    "line one\nline two\n",
+  );
 
   await app.close();
 });

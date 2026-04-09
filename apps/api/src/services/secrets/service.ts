@@ -107,14 +107,13 @@ export class SecretService {
       throw new Error("Secret name is required.");
     }
 
-    const value = input.value.trim();
-    if (value.length === 0) {
+    if (input.value.trim().length === 0) {
       throw new Error("Secret value is required.");
     }
 
     const description = this.normalizeOptionalText(input.description);
     const envVarName = this.resolveEnvVarName(name, input.envVarName);
-    const encryptedSecret = this.encryptionService.encrypt(value);
+    const encryptedSecret = this.encryptionService.encrypt(input.value);
 
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
@@ -501,12 +500,11 @@ export class SecretService {
   }
 
   private requireNonEmptyValue(value: string): string {
-    const normalizedValue = value.trim();
-    if (normalizedValue.length === 0) {
+    if (value.trim().length === 0) {
       throw new Error("Secret value is required.");
     }
 
-    return normalizedValue;
+    return value;
   }
 
   private resolveEnvVarName(name: string, envVarName?: string | null): string {

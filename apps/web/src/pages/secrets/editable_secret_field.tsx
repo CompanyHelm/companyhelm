@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { EyeIcon, EyeOffIcon, Loader2Icon, PencilIcon } from "lucide-react";
+import { Loader2Icon, PencilIcon } from "lucide-react";
 import { useToast } from "@/components/toast_provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SecretValueInput } from "./secret_value_input";
 
 interface EditableSecretFieldProps {
   displayValue: string;
@@ -50,8 +51,8 @@ export function EditableSecretField(props: EditableSecretFieldProps) {
       return;
     }
 
-    const normalizedValue = nextValue.trim();
-    if (normalizedValue.length === 0 && props.emptyEditCancels !== false) {
+    const normalizedValue = props.valueType === "password" ? nextValue : nextValue.trim();
+    if (nextValue.trim().length === 0 && props.emptyEditCancels !== false) {
       setDraftValue(props.value ?? "");
       setErrorMessage(null);
       setEditing(false);
@@ -106,51 +107,54 @@ export function EditableSecretField(props: EditableSecretFieldProps) {
 
       <div className="mt-3">
         {isEditing ? (
-          <div className="relative">
-            <Input
-              className={props.valueType === "password" ? "pr-10" : undefined}
-              onBlur={async (event) => {
-                await commitValue(event.target.value);
+          props.valueType === "password" ? (
+            <SecretValueInput
+              autoFocus
+              isVisible={isValueVisible}
+              onBlur={async (value) => {
+                await commitValue(value);
               }}
-              onChange={(event) => {
-                setDraftValue(event.target.value);
+              onCancel={() => {
+                setDraftValue(props.value ?? "");
+                setErrorMessage(null);
+                setEditing(false);
               }}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  setDraftValue(props.value ?? "");
-                  setErrorMessage(null);
-                  setEditing(false);
-                  return;
-                }
-
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  event.currentTarget.blur();
-                }
+              onChange={setDraftValue}
+              onToggleVisibility={() => {
+                setValueVisible((currentValue) => !currentValue);
               }}
               placeholder={props.placeholder}
-              ref={inputRef}
-              type={props.valueType === "password" && isValueVisible ? "text" : (props.valueType ?? "text")}
               value={draftValue}
             />
-            {props.valueType === "password" ? (
-              <Button
-                aria-label={isValueVisible ? "Hide secret value" : "Show secret value"}
-                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
-                onClick={() => {
-                  setValueVisible((currentValue) => !currentValue);
+          ) : (
+            <div className="relative">
+              <Input
+                onBlur={async (event) => {
+                  await commitValue(event.target.value);
                 }}
-                onMouseDown={(event) => {
-                  event.preventDefault();
+                onChange={(event) => {
+                  setDraftValue(event.target.value);
                 }}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                {isValueVisible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
-              </Button>
-            ) : null}
-          </div>
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setDraftValue(props.value ?? "");
+                    setErrorMessage(null);
+                    setEditing(false);
+                    return;
+                  }
+
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder={props.placeholder}
+                ref={inputRef}
+                type="text"
+                value={draftValue}
+              />
+            </div>
+          )
         ) : (
           <p className="whitespace-pre-wrap text-sm text-foreground">{props.displayValue}</p>
         )}

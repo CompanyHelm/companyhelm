@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { EnvVarNameResolver } from "./env_var_name_resolver";
+import { SecretValueInput } from "./secret_value_input";
 
 interface CreateSecretDialogProps {
   errorMessage: string | null;
@@ -123,34 +123,16 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
             <label className="text-xs font-medium text-foreground" htmlFor="secret-value">
               Secret value
             </label>
-            <div className="relative">
-              <Input
-                autoComplete="off"
-                className="pr-10"
-                id="secret-value"
-                onChange={(event) => {
-                  setValue(event.target.value);
-                }}
-                placeholder="ghp_..."
-                type={isSecretValueVisible ? "text" : "password"}
-                value={value}
-              />
-              <Button
-                aria-label={isSecretValueVisible ? "Hide secret value" : "Show secret value"}
-                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
-                onClick={() => {
-                  setSecretValueVisible((currentValue) => !currentValue);
-                }}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                {isSecretValueVisible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
-              </Button>
-            </div>
+            <SecretValueInput
+              id="secret-value"
+              isVisible={isSecretValueVisible}
+              onChange={setValue}
+              onToggleVisibility={() => {
+                setSecretValueVisible((currentValue) => !currentValue);
+              }}
+              placeholder="ghp_..."
+              value={value}
+            />
           </div>
 
           {localErrorMessage || props.errorMessage ? (
