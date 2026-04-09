@@ -24,6 +24,7 @@ import { ConversationSessionModule } from "./conversation.ts";
 import { CorePromptSessionModule } from "./core_prompt.ts";
 import { GithubSessionModule } from "./github.ts";
 import { InboxSessionModule } from "./inbox.ts";
+import { RuntimeSessionModule } from "./runtime.ts";
 import { SecretsSessionModule } from "./secrets.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
@@ -54,6 +55,7 @@ export class DefaultAgentSessionModuleRegistry {
   constructor(input: DefaultAgentSessionModuleRegistryInput) {
     this.registry = new AgentSessionModuleRegistry([
       new CorePromptSessionModule(),
+      new RuntimeSessionModule(),
       new TerminalSessionModule(input.logger),
       new ComputerUseSessionModule(input.config, input.computeProviderDefinitionService),
       new SecretsSessionModule(input.secretService),

@@ -11,7 +11,6 @@ import { AgentComputeE2bComputerUseScreenshotTool } from "./screenshot.ts";
 import { AgentComputeE2bComputerUseScreenStateTool } from "./screen_state.ts";
 import { AgentComputeE2bComputerUseScrollTool } from "./scroll.ts";
 import { AgentComputeE2bComputerUseToolService } from "./service.ts";
-import { AgentComputeE2bComputerUseWaitTool } from "./wait.ts";
 import { AgentComputeE2bComputerUseWaitAndVerifyTool } from "./wait_and_verify.ts";
 import { AgentComputeE2bComputerUseWindowTool } from "./window.ts";
 import { AgentComputeE2bComputerUseWriteTool } from "./write.ts";
@@ -44,7 +43,6 @@ export class AgentComputeE2bComputerUseToolProvider extends AgentToolProviderInt
       new AgentComputeE2bComputerUseScrollTool(this.toolService).createDefinition(),
       new AgentComputeE2bComputerUseWriteTool(this.toolService).createDefinition(),
       new AgentComputeE2bComputerUsePressTool(this.toolService).createDefinition(),
-      new AgentComputeE2bComputerUseWaitTool(this.toolService).createDefinition(),
       new AgentComputeE2bComputerUseWaitAndVerifyTool(this.toolService).createDefinition(),
       new AgentComputeE2bComputerUseOpenTool(this.toolService).createDefinition(),
       new AgentComputeE2bComputerUseLaunchTool(this.toolService).createDefinition(),

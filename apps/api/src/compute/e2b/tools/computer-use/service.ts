@@ -128,11 +128,6 @@ export class AgentComputeE2bComputerUseToolService {
     await sandbox.scroll(direction, amount);
   }
 
-  async wait(milliseconds: number): Promise<void> {
-    const sandbox = await this.getSandbox();
-    await sandbox.wait(milliseconds);
-  }
-
   async waitAndVerify(input: WaitAndVerifyInput): Promise<boolean> {
     const sandbox = await this.getSandbox();
     return sandbox.waitAndVerify(

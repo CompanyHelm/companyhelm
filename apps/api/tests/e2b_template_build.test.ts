@@ -128,7 +128,6 @@ test("E2bTemplateBuild exposes provider-specific computer-use tools only for com
       "computer_scroll",
       "computer_write",
       "computer_press",
-      "computer_wait",
       "computer_wait_and_verify",
       "computer_open",
       "computer_launch",
