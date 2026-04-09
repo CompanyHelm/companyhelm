@@ -2863,7 +2863,9 @@ function ChatsPageContent() {
   }, [environment]);
 
   useEffect(() => {
-    if (!selectedSession) {
+    const selectedSessionId = selectedSession?.id ?? null;
+
+    if (!selectedSessionId) {
       setIsEnvironmentPanelOpen(false);
       setSessionEnvironmentInfo(null);
       setSessionEnvironmentErrorMessage(null);
@@ -2877,8 +2879,8 @@ function ChatsPageContent() {
       return;
     }
 
-    void loadSessionEnvironmentInfo(selectedSession.id);
-  }, [isEnvironmentPanelOpen, loadSessionEnvironmentInfo, selectedSession]);
+    void loadSessionEnvironmentInfo(selectedSessionId);
+  }, [isEnvironmentPanelOpen, loadSessionEnvironmentInfo, selectedSession?.id]);
 
   const updateSessionTitleOverride = useCallback((sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => {
     const nextTitle = formatSessionTitle(messages);
