@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { AgentEnvironmentShellTimeoutError } from "../src/services/environments/providers/shell_interface.ts";
 import { AgentGithubCloneRepositoryTool } from "../src/services/agent/session/pi-mono/tools/github/clone_repository.ts";
 import { AgentGithubExecTool } from "../src/services/agent/session/pi-mono/tools/github/exec.ts";
 import { AgentGithubToolProvider } from "../src/services/agent/session/pi-mono/tools/github/provider.ts";
@@ -68,19 +69,17 @@ test("AgentListGithubInstallationsTool renders linked installations and reposito
 });
 
 test("AgentGithubCloneRepositoryTool clones with installation-backed git auth without exposing the token", async () => {
-  const executeCommand = vi.fn(async (input: Record<string, unknown>) => {
+  const executeBashCommand = vi.fn(async (input: Record<string, unknown>) => {
     void input;
     return {
-      completed: true,
       exitCode: 0,
       output: "Cloning into 'companyhelm-ng'...\n",
-      sessionId: null,
     };
   });
   const tool = new AgentGithubCloneRepositoryTool({
     async getEnvironment() {
       return {
-        executeCommand,
+        executeBashCommand,
       };
     },
   } as never, {
@@ -96,19 +95,18 @@ test("AgentGithubCloneRepositoryTool clones with installation-backed git auth wi
     installationId: "110600868",
     repository: "CompanyHelm/companyhelm-ng",
     workingDirectory: "~/workspace",
-    yield_time_ms: 20_000,
   });
 
-  assert.equal(executeCommand.mock.calls.length, 1);
-  assert.deepEqual(executeCommand.mock.calls[0]?.[0], {
+  assert.equal(executeBashCommand.mock.calls.length, 1);
+  assert.deepEqual(executeBashCommand.mock.calls[0]?.[0], {
     command: "AUTH_HEADER=$(printf '%s' \"x-access-token:${GITHUB_INSTALLATION_TOKEN}\" | base64 | tr -d '\\n') && git -c credential.helper= -c http.https://github.com/.extraheader=\"AUTHORIZATION: basic ${AUTH_HEADER}\" clone -- 'https://github.com/CompanyHelm/companyhelm-ng.git' 'companyhelm-ng'",
     environment: {
       GH_PROMPT_DISABLED: "1",
       GITHUB_INSTALLATION_TOKEN: "ghs_installation_token",
       GIT_TERMINAL_PROMPT: "0",
     },
+    timeoutSeconds: 120,
     workingDirectory: "~/workspace",
-    yield_time_ms: 20_000,
   });
   assert.deepEqual(result, {
     content: [{
@@ -117,15 +115,72 @@ test("AgentGithubCloneRepositoryTool clones with installation-backed git auth wi
     }],
     details: {
       command: "git clone 'https://github.com/CompanyHelm/companyhelm-ng.git' 'companyhelm-ng'",
-      completed: true,
       cwd: "~/workspace",
       directory: "companyhelm-ng",
       exitCode: 0,
       installationId: 110600868,
       repository: "CompanyHelm/companyhelm-ng",
-      sessionId: null,
+      timeoutSeconds: 120,
     },
   });
+});
+
+test("AgentGithubCloneRepositoryTool allows the agent to override the clone timeout", async () => {
+  const executeBashCommand = vi.fn(async () => {
+    return {
+      exitCode: 0,
+      output: "",
+    };
+  });
+  const tool = new AgentGithubCloneRepositoryTool({
+    async getEnvironment() {
+      return {
+        executeBashCommand,
+      };
+    },
+  } as never, {
+    async getInstallationAccessToken() {
+      return "ghs_installation_token";
+    },
+  } as never);
+  const definition = tool.createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
+
+  await definition.execute("tool-call-1", {
+    installationId: "110600868",
+    repository: "CompanyHelm/companyhelm-ng",
+    timeoutSeconds: 30,
+  });
+
+  assert.equal(executeBashCommand.mock.calls[0]?.[0]?.timeoutSeconds, 30);
+});
+
+test("AgentGithubCloneRepositoryTool turns shell timeouts into tool errors", async () => {
+  const tool = new AgentGithubCloneRepositoryTool({
+    async getEnvironment() {
+      return {
+        async executeBashCommand() {
+          throw new AgentEnvironmentShellTimeoutError("e2b", "git clone", 120, "~/workspace");
+        },
+      };
+    },
+  } as never, {
+    async getInstallationAccessToken() {
+      return "ghs_installation_token";
+    },
+  } as never);
+  const definition = tool.createDefinition() as unknown as {
+    execute: ToolExecuteFunction;
+  };
+
+  await assert.rejects(
+    definition.execute("tool-call-1", {
+      installationId: "110600868",
+      repository: "CompanyHelm/companyhelm-ng",
+    }),
+    /clone_github_repository timed out after 120 seconds/,
+  );
 });
 
 test("AgentGithubExecTool injects the installation access token only into the command execution environment", async () => {

@@ -1,4 +1,7 @@
-import type { AgentEnvironmentCommandResult } from "../../../../../environments/providers/environment_interface.ts";
+import type {
+  AgentEnvironmentCommandResult,
+  AgentEnvironmentDirectShellCommandResult,
+} from "../../../../../environments/providers/environment_interface.ts";
 import type { AgentGithubInstallation } from "./installation_service.ts";
 
 /**
@@ -7,6 +10,11 @@ import type { AgentGithubInstallation } from "./installation_service.ts";
  */
 export class AgentGithubResultFormatter {
   static formatExecResult(result: AgentEnvironmentCommandResult): string {
+    const output = result.output.replace(/(?:\r?\n[ \t]*)+$/u, "");
+    return output.length > 0 ? output : "(no output)";
+  }
+
+  static formatDirectShellResult(result: AgentEnvironmentDirectShellCommandResult): string {
     const output = result.output.replace(/(?:\r?\n[ \t]*)+$/u, "");
     return output.length > 0 ? output : "(no output)";
   }

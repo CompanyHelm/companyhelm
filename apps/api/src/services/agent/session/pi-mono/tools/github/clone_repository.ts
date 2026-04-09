@@ -2,6 +2,7 @@ import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
+import { AgentEnvironmentShellTimeoutError } from "../../../../../environments/providers/shell_interface.ts";
 import { GithubClient } from "../../../../../../github/client.ts";
 import { AgentGithubInstallationService } from "./installation_service.ts";
 import { AgentGithubResultFormatter } from "./result_formatter.ts";
@@ -12,6 +13,8 @@ import { AgentGithubResultFormatter } from "./result_formatter.ts";
  * API-token flow and must be forced into a non-interactive mode.
  */
 export class AgentGithubCloneRepositoryTool {
+  private static readonly defaultTimeoutSeconds = 120;
+
   private static readonly parameters = AgentToolParameterSchema.object({
     directory: Type.Optional(Type.String({
       description: "Optional directory name to clone into. Defaults to the repository name.",
@@ -22,11 +25,11 @@ export class AgentGithubCloneRepositoryTool {
     repository: Type.String({
       description: "Repository full name in owner/name form.",
     }),
+    timeoutSeconds: Type.Optional(Type.Number({
+      description: "Optional timeout in seconds for the repository clone. Defaults to 120 seconds.",
+    })),
     workingDirectory: Type.Optional(Type.String({
       description: "Optional working directory to use for the clone command.",
-    })),
-    yield_time_ms: Type.Optional(Type.Number({
-      description: "How long to wait for output before returning control, in milliseconds.",
     })),
   });
 
@@ -49,31 +52,41 @@ export class AgentGithubCloneRepositoryTool {
         const token = await this.installationService.getInstallationAccessToken(params.installationId);
         const environment = await this.promptScope.getEnvironment();
         const directory = AgentGithubCloneRepositoryTool.resolveDirectory(repository, params.directory);
-        const result = await environment.executeCommand({
-          command: AgentGithubCloneRepositoryTool.buildShellCommand(repository, directory),
-          environment: {
-            GH_PROMPT_DISABLED: "1",
-            GIT_TERMINAL_PROMPT: "0",
-            GITHUB_INSTALLATION_TOKEN: token,
-          },
-          workingDirectory: params.workingDirectory,
-          yield_time_ms: params.yield_time_ms,
-        });
+        const timeoutSeconds = params.timeoutSeconds ?? AgentGithubCloneRepositoryTool.defaultTimeoutSeconds;
+        let result;
+        try {
+          result = await environment.executeBashCommand({
+            command: AgentGithubCloneRepositoryTool.buildShellCommand(repository, directory),
+            environment: {
+              GH_PROMPT_DISABLED: "1",
+              GIT_TERMINAL_PROMPT: "0",
+              GITHUB_INSTALLATION_TOKEN: token,
+            },
+            timeoutSeconds,
+            workingDirectory: params.workingDirectory,
+          });
+        } catch (error) {
+          if (error instanceof AgentEnvironmentShellTimeoutError) {
+            throw new Error(`clone_github_repository timed out after ${timeoutSeconds} seconds.`, {
+              cause: error,
+            });
+          }
+          throw error;
+        }
 
         return {
           content: [{
-            text: AgentGithubResultFormatter.formatExecResult(result),
+            text: AgentGithubResultFormatter.formatDirectShellResult(result),
             type: "text",
           }],
           details: {
             command: AgentGithubCloneRepositoryTool.buildDisplayCommand(repository, directory),
-            completed: result.completed,
             cwd: params.workingDirectory ?? null,
             directory,
             exitCode: result.exitCode,
             installationId: GithubClient.validateInstallationId(params.installationId),
             repository,
-            sessionId: result.sessionId,
+            timeoutSeconds,
           },
         };
       },
@@ -85,6 +98,8 @@ export class AgentGithubCloneRepositoryTool {
         "Call list_github_installations first if you do not already know the installation id to target.",
         "Pass repository in owner/name form.",
         "Use directory when the checkout should land in a custom folder name.",
+        "The clone uses a direct shell execution with a default 120 second timeout instead of a reusable PTY session.",
+        "Set timeoutSeconds only when the clone needs a different hard timeout budget.",
       ],
       promptSnippet: "Clone a repository from a linked GitHub installation",
     };
