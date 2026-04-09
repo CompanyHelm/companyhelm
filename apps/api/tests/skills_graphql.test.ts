@@ -1,0 +1,293 @@
+import "reflect-metadata";
+import assert from "node:assert/strict";
+import Fastify from "fastify";
+import { test } from "vitest";
+import type { Config } from "../src/config/schema.ts";
+import { skill_groups, skills } from "../src/db/schema.ts";
+import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
+import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
+import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
+import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
+import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
+import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
+import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
+import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
+import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
+
+type MockSkillGroupRecord = {
+  companyId: string;
+  id: string;
+  name: string;
+};
+
+type MockSkillRecord = {
+  companyId: string;
+  description: string;
+  fileList: string[];
+  id: string;
+  instructions: string;
+  name: string;
+  repository: string | null;
+  skillDirectory: string | null;
+  skillGroupId: string | null;
+};
+
+class SkillsGraphqlTestHarness {
+  static createConfigMock(): Config {
+    return {
+      auth: {
+        provider: "clerk",
+      },
+      graphql: {
+        endpoint: "/graphql",
+        graphiql: false,
+      },
+      log: {
+        json: false,
+        level: "info",
+      },
+      redis: {
+        host: "127.0.0.1",
+        password: "",
+        port: 6379,
+        username: "",
+      },
+      security: {
+        encryption: {
+          key: "companyhelm-test-encryption-key",
+          key_id: "companyhelm-test-key",
+        },
+      },
+    } as Config;
+  }
+
+  static createDatabaseMock() {
+    const groups: MockSkillGroupRecord[] = [{
+      companyId: "company-123",
+      id: "group-research",
+      name: "Research",
+    }, {
+      companyId: "company-123",
+      id: "group-automation",
+      name: "Automation",
+    }];
+    const skillRecords: MockSkillRecord[] = [{
+      companyId: "company-123",
+      description: "Runs browser tasks.",
+      fileList: ["scripts/open.sh"],
+      id: "skill-browser",
+      instructions: "Read SKILL.md first.",
+      name: "Browser automation",
+      repository: "companyhelm/skills",
+      skillDirectory: "skills/browser",
+      skillGroupId: "group-automation",
+    }];
+    const insertedValues: Array<Record<string, unknown>> = [];
+
+    return {
+      insertedValues,
+      getDatabase() {
+        return {
+          insert(table: unknown) {
+            if (table !== skills) {
+              throw new Error("Unexpected insert table.");
+            }
+
+            return {
+              values(value: Record<string, unknown>) {
+                insertedValues.push(value);
+                const createdSkill: MockSkillRecord = {
+                  companyId: String(value.companyId),
+                  description: String(value.description),
+                  fileList: [...(value.fileList as string[])],
+                  id: "skill-new",
+                  instructions: String(value.instructions),
+                  name: String(value.name),
+                  repository: null,
+                  skillDirectory: null,
+                  skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
+                };
+                skillRecords.push(createdSkill);
+
+                return {
+                  async returning() {
+                    return [createdSkill];
+                  },
+                };
+              },
+            };
+          },
+          select() {
+            return {
+              from(table: unknown) {
+                return {
+                  async where(_condition: unknown) {
+                    void _condition;
+                    if (table === skills) {
+                      return [...skillRecords];
+                    }
+                    if (table === skill_groups) {
+                      return [...groups];
+                    }
+
+                    throw new Error("Unexpected select table.");
+                  },
+                };
+              },
+            };
+          },
+        } as never;
+      },
+      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        return callback(this.getDatabase());
+      },
+    };
+  }
+}
+
+test("GraphQL skills query and create mutation expose the skill catalog and group assignment", async () => {
+  const app = Fastify();
+  const config = SkillsGraphqlTestHarness.createConfigMock();
+  const database = SkillsGraphqlTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+        token: "jwt-token",
+        user: {
+          email: "user@example.com",
+          firstName: "User",
+          id: "user-123",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+      };
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const initialQueryResponse = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query SkillsPageQuery {
+          SkillGroups {
+            companyId
+            id
+            name
+          }
+          Skills {
+            companyId
+            id
+            name
+            skillGroupId
+            repository
+            skillDirectory
+            fileList
+          }
+        }
+      `,
+    },
+  });
+
+  assert.equal(initialQueryResponse.statusCode, 200);
+  const initialDocument = initialQueryResponse.json();
+  assert.deepEqual(initialDocument.data.SkillGroups, [{
+    companyId: "company-123",
+    id: "group-automation",
+    name: "Automation",
+  }, {
+    companyId: "company-123",
+    id: "group-research",
+    name: "Research",
+  }]);
+  assert.deepEqual(initialDocument.data.Skills, [{
+    companyId: "company-123",
+    id: "skill-browser",
+    name: "Browser automation",
+    skillGroupId: "group-automation",
+    repository: "companyhelm/skills",
+    skillDirectory: "skills/browser",
+    fileList: ["scripts/open.sh"],
+  }]);
+
+  const createResponse = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation CreateSkill($input: CreateSkillInput!) {
+          CreateSkill(input: $input) {
+            id
+            companyId
+            name
+            description
+            instructions
+            skillGroupId
+            fileList
+            repository
+            skillDirectory
+          }
+        }
+      `,
+      variables: {
+        input: {
+          description: "Reusable QA guidance",
+          instructions: "Open the checklist first.",
+          name: "QA checklist",
+          skillGroupId: "group-research",
+        },
+      },
+    },
+  });
+
+  assert.equal(createResponse.statusCode, 200);
+  const createDocument = createResponse.json();
+  assert.deepEqual(createDocument.data.CreateSkill, {
+    id: "skill-new",
+    companyId: "company-123",
+    name: "QA checklist",
+    description: "Reusable QA guidance",
+    instructions: "Open the checklist first.",
+    skillGroupId: "group-research",
+    fileList: [],
+    repository: null,
+    skillDirectory: null,
+  });
+
+  const [insertedSkill] = database.insertedValues;
+  assert.equal(insertedSkill?.companyId, "company-123");
+  assert.equal(insertedSkill?.name, "QA checklist");
+  assert.equal(insertedSkill?.skillGroupId, "group-research");
+  assert.deepEqual(insertedSkill?.fileList, []);
+
+  await app.close();
+});

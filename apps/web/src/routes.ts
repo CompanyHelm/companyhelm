@@ -22,6 +22,8 @@ import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
+import { SkillDetailPage } from "./pages/skills/skill_detail_page";
+import { SkillsPage } from "./pages/skills/skills_page";
 import { SettingsPage } from "./pages/settings/settings_page";
 import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
@@ -185,6 +187,12 @@ const secretsRoute = createRoute({
   component: SecretsPage,
 });
 
+const skillsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/skills",
+  component: SkillsPage,
+});
+
 const githubInstallRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/github/install",
@@ -248,6 +256,12 @@ const modelProviderCredentialDetailRoute = createRoute({
   component: ModelProviderCredentialDetailPage,
 });
 
+const skillDetailRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/skills/$skillId",
+  component: SkillDetailPage,
+});
+
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/sign-in",
@@ -272,6 +286,7 @@ const routeTree = rootRoute.addChildren([
       inboxRoute,
       conversationsRoute,
       secretsRoute,
+      skillsRoute,
       githubInstallRoute,
       repositoriesRoute,
       knowledgeBaseRoute,
@@ -283,6 +298,7 @@ const routeTree = rootRoute.addChildren([
       agentDetailRoute,
       modelProviderCredentialsRoute,
       modelProviderCredentialDetailRoute,
+      skillDetailRoute,
     ]),
   ]),
   signInRoute,

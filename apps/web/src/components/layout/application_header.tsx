@@ -18,15 +18,18 @@ export function ApplicationHeader() {
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(pathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(pathname);
   const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(pathname);
+  const isSkillDetailPage = /^\/skills\/[^/]+$/.test(pathname);
   const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(pathname);
   const pageTitle = pathname.startsWith("/model-provider-credentials")
     ? "LLM Credentials"
     : pathname.startsWith("/compute-providers")
       ? "Compute Providers"
-      : pathname.startsWith("/environments")
-        ? "Environments"
+        : pathname.startsWith("/environments")
+          ? "Environments"
         : pathname.startsWith("/secrets")
           ? "Secrets"
+          : pathname.startsWith("/skills")
+            ? "Skills"
     : pathname.startsWith("/chats")
       ? "Chats"
       : pathname.startsWith("/conversations")
@@ -51,6 +54,8 @@ export function ApplicationHeader() {
       ? "Agent"
       : isKnowledgeBaseDetailPage
         ? "Artifact"
+        : isSkillDetailPage
+          ? "Skill"
         : isTaskDetailPage
           ? "Task"
           : "Credential");
@@ -60,10 +65,16 @@ export function ApplicationHeader() {
       ? "/agents"
       : isKnowledgeBaseDetailPage
         ? "/knowledge-base"
+        : isSkillDetailPage
+          ? "/skills"
         : isTaskDetailPage
           ? "/tasks"
       : null;
-  const isDetailPage = isCredentialDetailPage || isAgentDetailPage || isKnowledgeBaseDetailPage || isTaskDetailPage;
+  const isDetailPage = isCredentialDetailPage
+    || isAgentDetailPage
+    || isKnowledgeBaseDetailPage
+    || isSkillDetailPage
+    || isTaskDetailPage;
 
   return (
     <header className={cn(

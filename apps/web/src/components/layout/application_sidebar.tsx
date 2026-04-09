@@ -16,6 +16,7 @@ import {
   MoonIcon,
   ServerIcon,
   Settings2Icon,
+  SparklesIcon,
   SunIcon,
   WorkflowIcon,
 } from "lucide-react";
@@ -158,6 +159,11 @@ export function ApplicationSidebar() {
       icon: LockKeyholeIcon,
       label: "Secrets",
       to: "/secrets",
+    },
+    {
+      icon: SparklesIcon,
+      label: "Skills",
+      to: "/skills",
     },
     {
       icon: ServerIcon,

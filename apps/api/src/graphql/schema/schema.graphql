@@ -12,6 +12,9 @@ type Query {
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
+  Skill(id: ID!): Skill!
+  SkillGroups: [SkillGroup!]!
+  Skills: [Skill!]!
   Secrets: [Secret!]!
   AgentSecrets(agentId: ID!): [Secret!]!
   Sessions: [Session!]!
@@ -57,6 +60,7 @@ type Mutation {
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
+  CreateSkill(input: CreateSkillInput!): Skill!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteArtifact(input: DeleteArtifactInput!): Artifact!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
@@ -101,6 +105,7 @@ type Mutation {
   UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
   UpdateMarkdownArtifact(input: UpdateMarkdownArtifactInput!): Artifact!
   UpdateSecret(input: UpdateSecretInput!): Secret!
+  UpdateSkill(input: UpdateSkillInput!): Skill!
 }
 
 type Subscription {
@@ -454,6 +459,24 @@ type Secret {
   updatedAt: String!
 }
 
+type Skill {
+  id: ID!
+  companyId: ID!
+  skillGroupId: ID
+  name: String!
+  description: String!
+  instructions: String!
+  fileList: [String!]!
+  repository: String
+  skillDirectory: String
+}
+
+type SkillGroup {
+  id: ID!
+  companyId: ID!
+  name: String!
+}
+
 type ModelProviderCredentialModel {
   id: ID!
   isDefault: Boolean!
@@ -694,6 +717,13 @@ input CreateSecretInput {
   value: String!
 }
 
+input CreateSkillInput {
+  name: String!
+  description: String!
+  instructions: String!
+  skillGroupId: ID
+}
+
 input UpdateComputeProviderDefinitionInput {
   id: ID!
   name: String!
@@ -714,6 +744,14 @@ input UpdateSecretInput {
   name: String
   envVarName: String
   value: String
+}
+
+input UpdateSkillInput {
+  id: ID!
+  name: String
+  description: String
+  instructions: String
+  skillGroupId: ID
 }
 
 input AttachSecretToSessionInput {

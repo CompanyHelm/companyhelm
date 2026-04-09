@@ -21,6 +21,7 @@ import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateExternalLinkArtifactMutation } from "./mutations/create_external_link_artifact.ts";
 import { CreateMarkdownArtifactMutation } from "./mutations/create_markdown_artifact.ts";
 import { CreatePullRequestArtifactMutation } from "./mutations/create_pull_request_artifact.ts";
+import { CreateSkillMutation } from "./mutations/create_skill.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSecretMutation } from "./mutations/create_secret.ts";
@@ -61,6 +62,7 @@ import { UpdateComputeProviderDefinitionMutation } from "./mutations/update_comp
 import { UpdateExternalLinkArtifactMutation } from "./mutations/update_external_link_artifact.ts";
 import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_artifact.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
+import { UpdateSkillMutation } from "./mutations/update_skill.ts";
 import { UpdateSessionTitleMutation } from "./mutations/update_session_title.ts";
 import { UpdateTaskMutation } from "./mutations/update_task.ts";
 import {
@@ -94,6 +96,9 @@ import { ModelProviderCredentialModelsQueryResolver } from "./resolvers/model_pr
 import { ModelProviderCredentialsQueryResolver } from "./resolvers/model_provider_credentials.ts";
 import { ModelProvidersQueryResolver } from "./resolvers/model_providers.ts";
 import { SecretsQueryResolver } from "./resolvers/secrets.ts";
+import { SkillGroupsQueryResolver } from "./resolvers/skill_groups.ts";
+import { SkillQueryResolver } from "./resolvers/skill.ts";
+import { SkillsQueryResolver } from "./resolvers/skills.ts";
 import { SessionSecretsQueryResolver } from "./resolvers/session_secrets.ts";
 import { TaskQueryResolver } from "./resolvers/task.ts";
 import { TaskAssignableUsersQueryResolver } from "./resolvers/task_assignable_users.ts";
@@ -109,6 +114,7 @@ import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_tran
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
 import { AgentEnvironmentTemplateService } from "../services/environments/template_service.ts";
+import { SkillService } from "../services/skills/service.ts";
 
 /**
  * Registers the GraphQL transport and keeps schema wiring out of the server bootstrap.
@@ -138,6 +144,7 @@ export class GraphqlApplication {
   private readonly createExternalLinkArtifactMutation: CreateExternalLinkArtifactMutation;
   private readonly createMarkdownArtifactMutation: CreateMarkdownArtifactMutation;
   private readonly createPullRequestArtifactMutation: CreatePullRequestArtifactMutation;
+  private readonly createSkillMutation: CreateSkillMutation;
   private readonly createTaskCategoryMutation: CreateTaskCategoryMutation;
   private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSecretMutation: CreateSecretMutation;
@@ -178,6 +185,9 @@ export class GraphqlApplication {
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
   private readonly secretsQueryResolver: SecretsQueryResolver;
+  private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
+  private readonly skillQueryResolver: SkillQueryResolver;
+  private readonly skillsQueryResolver: SkillsQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
   private readonly sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver;
   private readonly sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver;
@@ -206,6 +216,7 @@ export class GraphqlApplication {
   private readonly updateExternalLinkArtifactMutation: UpdateExternalLinkArtifactMutation;
   private readonly updateMarkdownArtifactMutation: UpdateMarkdownArtifactMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
+  private readonly updateSkillMutation: UpdateSkillMutation;
   private readonly updateSessionTitleMutation: UpdateSessionTitleMutation;
   private readonly updateTaskMutation: UpdateTaskMutation;
   private readonly redisService: RedisService;
@@ -491,8 +502,19 @@ export class GraphqlApplication {
         throw new Error("ForkSession mutation is not configured.");
       },
     } as never),
+    @inject(CreateSkillMutation)
+    createSkillMutation?: CreateSkillMutation,
+    @inject(UpdateSkillMutation)
+    updateSkillMutation?: UpdateSkillMutation,
+    @inject(SkillGroupsQueryResolver)
+    skillGroupsQueryResolver?: SkillGroupsQueryResolver,
+    @inject(SkillQueryResolver)
+    skillQueryResolver?: SkillQueryResolver,
+    @inject(SkillsQueryResolver)
+    skillsQueryResolver?: SkillsQueryResolver,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
+    const defaultSkillService = new SkillService();
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
       ?? ({
         async getAgentTemplate() {
@@ -572,6 +594,7 @@ export class GraphqlApplication {
     this.createExternalLinkArtifactMutation = createExternalLinkArtifactMutation;
     this.createMarkdownArtifactMutation = createMarkdownArtifactMutation;
     this.createPullRequestArtifactMutation = createPullRequestArtifactMutation;
+    this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
     this.createTaskCategoryMutation = createTaskCategoryMutation;
     this.createTaskMutation = createTaskMutation;
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
@@ -597,6 +620,7 @@ export class GraphqlApplication {
     this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
       ?? new DetachSecretFromAgentMutation(defaultSecretService);
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
+    this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
     this.executeTaskMutation = executeTaskMutation;
@@ -619,6 +643,9 @@ export class GraphqlApplication {
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
+    this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
+    this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
+    this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
     this.sessionEnvironmentQueryResolver = sessionEnvironmentQueryResolver;
     this.sessionQueuedMessagesQueryResolver = sessionQueuedMessagesQueryResolver;
@@ -729,6 +756,9 @@ export class GraphqlApplication {
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
           ModelProviders: this.modelProvidersQueryResolver.execute,
           Secrets: this.secretsQueryResolver.execute,
+          Skill: this.skillQueryResolver.execute,
+          SkillGroups: this.skillGroupsQueryResolver.execute,
+          Skills: this.skillsQueryResolver.execute,
           SessionQueuedMessages: this.sessionQueuedMessagesQueryResolver.execute,
           SessionEnvironment: this.sessionEnvironmentQueryResolver.execute,
           Task: this.taskQueryResolver.execute,
@@ -759,6 +789,7 @@ export class GraphqlApplication {
           CreateMarkdownArtifact: this.createMarkdownArtifactMutation.execute,
           CreatePullRequestArtifact: this.createPullRequestArtifactMutation.execute,
           CreateSecret: this.createSecretMutation.execute,
+          CreateSkill: this.createSkillMutation.execute,
           CreateTask: this.createTaskMutation.execute,
           CreateTaskCategory: this.createTaskCategoryMutation.execute,
           CreateSession: this.createSessionMutation.execute,
@@ -794,6 +825,7 @@ export class GraphqlApplication {
           UpdateExternalLinkArtifact: this.updateExternalLinkArtifactMutation.execute,
           UpdateMarkdownArtifact: this.updateMarkdownArtifactMutation.execute,
           UpdateSecret: this.updateSecretMutation.execute,
+          UpdateSkill: this.updateSkillMutation.execute,
           UpdateTask: this.updateTaskMutation.execute,
         },
         Subscription: {
