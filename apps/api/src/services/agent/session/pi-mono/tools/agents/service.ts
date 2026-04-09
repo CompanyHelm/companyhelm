@@ -301,6 +301,7 @@ export class AgentManagementToolService {
       await this.replaceAgentSecrets(
         createdAgent.id,
         input.secretIds,
+        scopedTransactionProvider,
         tx as SelectableDatabase & InsertableDatabase & DeletableDatabase,
       );
 
@@ -425,6 +426,7 @@ export class AgentManagementToolService {
         await this.replaceAgentSecrets(
           updatedAgent.id,
           input.secretIds,
+          scopedTransactionProvider,
           tx as SelectableDatabase & InsertableDatabase & DeletableDatabase,
         );
       }
@@ -737,6 +739,7 @@ export class AgentManagementToolService {
   private async replaceAgentSecrets(
     agentId: string,
     secretIds: string[] | null | undefined,
+    transactionProvider: TransactionProviderInterface,
     database: SelectableDatabase & InsertableDatabase & DeletableDatabase,
   ): Promise<void> {
     const desiredSecretIds = [...new Set((secretIds ?? []).filter((secretId) => secretId.length > 0))];
@@ -754,27 +757,23 @@ export class AgentManagementToolService {
 
     for (const secretId of currentSecretIds) {
       if (!desiredSecretIds.includes(secretId)) {
-        await database
-          .delete(agentDefaultSecrets)
-          .where(and(
-            eq(agentDefaultSecrets.companyId, this.companyId),
-            eq(agentDefaultSecrets.agentId, agentId),
-            eq(agentDefaultSecrets.secretId, secretId),
-          ));
+        await this.secretService.detachSecretFromAgent(
+          transactionProvider,
+          this.companyId,
+          agentId,
+          secretId,
+        );
       }
     }
 
     for (const secretId of desiredSecretIds) {
       if (!currentSecretIds.includes(secretId)) {
-        await database
-          .insert(agentDefaultSecrets)
-          .values({
-            agentId,
-            companyId: this.companyId,
-            createdAt: new Date(),
-            createdByUserId: null,
-            secretId,
-          });
+        await this.secretService.attachSecretToAgent(transactionProvider, {
+          agentId,
+          companyId: this.companyId,
+          secretId,
+          userId: null,
+        });
       }
     }
   }

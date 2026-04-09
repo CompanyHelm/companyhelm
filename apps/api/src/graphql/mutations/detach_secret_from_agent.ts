@@ -31,8 +31,8 @@ type GraphqlSecretRecord = {
 };
 
 /**
- * Removes one agent default secret without touching any existing session attachments that may have
- * been copied earlier from that agent configuration.
+ * Removes one agent default secret and also removes it from that agent's existing sessions so the
+ * session attachments stay aligned with the current agent secret configuration.
  */
 @injectable()
 export class DetachSecretFromAgentMutation extends Mutation<

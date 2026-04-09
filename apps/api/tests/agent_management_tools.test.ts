@@ -3,6 +3,7 @@ import { test } from "vitest";
 import { AgentCreateAgentTool } from "../src/services/agent/session/pi-mono/tools/agents/create_agent.ts";
 import { AgentListAgentsTool } from "../src/services/agent/session/pi-mono/tools/agents/list_agents.ts";
 import { AgentManagementToolProvider } from "../src/services/agent/session/pi-mono/tools/agents/provider.ts";
+import { AgentManagementToolService } from "../src/services/agent/session/pi-mono/tools/agents/service.ts";
 import { AgentUpdateAgentTool } from "../src/services/agent/session/pi-mono/tools/agents/update_agent.ts";
 
 type AgentToolExecutionResult = {
@@ -188,4 +189,102 @@ test("AgentUpdateAgentTool returns the updated agent summary", async () => {
   assert.equal(result.details?.agentId, "agent-1");
   assert.match(result.content[0]?.text ?? "", /name: Operator Prime/);
   assert.match(result.content[0]?.text ?? "", /defaultComputeProviderDefinitionName: CompanyHelm/);
+});
+
+test("AgentManagementToolService replaceAgentSecrets routes changes through SecretService propagation", async () => {
+  const attachCalls: Array<Record<string, unknown>> = [];
+  const detachCalls: Array<Record<string, unknown>> = [];
+  let selectCallCount = 0;
+  const service = new AgentManagementToolService(
+    {} as never,
+    "company-1",
+    "agent-1",
+    {
+      async attachSecretToAgent(
+        transactionProvider: unknown,
+        input: Record<string, unknown>,
+      ) {
+        attachCalls.push({
+          ...input,
+          transactionProvider,
+        });
+        return sampleAgent.secrets[0];
+      },
+      async detachSecretFromAgent(
+        transactionProvider: unknown,
+        companyId: string,
+        agentId: string,
+        secretId: string,
+      ) {
+        detachCalls.push({
+          agentId,
+          companyId,
+          secretId,
+          transactionProvider,
+        });
+        return sampleAgent.secrets[0];
+      },
+      async listSecrets() {
+        return [];
+      },
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  const database = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{ id: "secret-2" }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{ secretId: "secret-1" }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+  };
+  const transactionProvider = {
+    marker: "tx",
+  };
+
+  await (service as never).replaceAgentSecrets(
+    "agent-1",
+    ["secret-2"],
+    transactionProvider,
+    database,
+  );
+
+  assert.deepEqual(detachCalls, [{
+    agentId: "agent-1",
+    companyId: "company-1",
+    secretId: "secret-1",
+    transactionProvider,
+  }]);
+  assert.deepEqual(attachCalls, [{
+    agentId: "agent-1",
+    companyId: "company-1",
+    secretId: "secret-2",
+    transactionProvider,
+    userId: null,
+  }]);
 });

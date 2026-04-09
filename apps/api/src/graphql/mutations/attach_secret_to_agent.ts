@@ -31,8 +31,8 @@ type GraphqlSecretRecord = {
 };
 
 /**
- * Attaches one reusable company secret to an agent as a default so future sessions start with the
- * same environment variable available without mutating any existing session attachments.
+ * Attaches one reusable company secret to an agent as a default and propagates it to that
+ * agent's existing sessions so the secret stays consistent across the full agent session set.
  */
 @injectable()
 export class AttachSecretToAgentMutation extends Mutation<

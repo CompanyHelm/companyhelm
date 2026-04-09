@@ -36,6 +36,14 @@ type SessionRecord = {
   status: string;
 };
 
+type AgentSessionIdRecord = {
+  id: string;
+};
+
+type SessionSecretAttachmentRecord = {
+  sessionId: string;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -72,8 +80,8 @@ type UpdatableDatabase = {
 
 /**
  * Owns the company secret catalog plus the agent and session attachment layers. It keeps secret
- * values encrypted at rest, copies agent defaults into sessions at creation time elsewhere, and
- * never exposes plaintext back through GraphQL.
+ * values encrypted at rest, fans agent default secret changes out to existing sessions for that
+ * agent, and never exposes plaintext back through GraphQL.
  */
 @injectable()
 export class SecretService {
@@ -325,7 +333,7 @@ export class SecretService {
       agentId: string;
       companyId: string;
       secretId: string;
-      userId: string;
+      userId: string | null;
     },
   ): Promise<SecretRecord> {
     return transactionProvider.transaction(async (tx) => {
@@ -355,6 +363,14 @@ export class SecretService {
             secretId: input.secretId,
           });
       }
+      await this.attachSecretToExistingAgentSessions(
+        selectableDatabase,
+        insertableDatabase,
+        input.companyId,
+        input.agentId,
+        input.secretId,
+        input.userId,
+      );
 
       return secret;
     });
@@ -415,6 +431,13 @@ export class SecretService {
       if (!deletedAttachment) {
         throw new Error("Secret is not attached to the agent.");
       }
+      await this.detachSecretFromExistingAgentSessions(
+        selectableDatabase,
+        deletableDatabase,
+        companyId,
+        agentId,
+        secretId,
+      );
 
       return secret;
     });
@@ -586,6 +609,87 @@ export class SecretService {
     }
 
     return session;
+  }
+
+  private async listAgentSessionIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    agentId: string,
+  ): Promise<string[]> {
+    const sessions = await selectableDatabase
+      .select({
+        id: agentSessions.id,
+      })
+      .from(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        eq(agentSessions.agentId, agentId),
+      )) as AgentSessionIdRecord[];
+
+    return sessions.map((session) => session.id);
+  }
+
+  private async attachSecretToExistingAgentSessions(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+    agentId: string,
+    secretId: string,
+    userId: string | null,
+  ): Promise<void> {
+    const sessionIds = await this.listAgentSessionIds(selectableDatabase, companyId, agentId);
+    if (sessionIds.length === 0) {
+      return;
+    }
+
+    const existingAttachments = await selectableDatabase
+      .select({
+        sessionId: agentSessionSecrets.sessionId,
+      })
+      .from(agentSessionSecrets)
+      .where(and(
+        eq(agentSessionSecrets.companyId, companyId),
+        eq(agentSessionSecrets.secretId, secretId),
+        inArray(agentSessionSecrets.sessionId, sessionIds),
+      )) as SessionSecretAttachmentRecord[];
+    const existingSessionIds = new Set(existingAttachments.map((attachment) => attachment.sessionId));
+
+    for (const sessionId of sessionIds) {
+      if (existingSessionIds.has(sessionId)) {
+        continue;
+      }
+
+      await insertableDatabase
+        .insert(agentSessionSecrets)
+        .values({
+          companyId,
+          createdAt: new Date(),
+          createdByUserId: userId,
+          secretId,
+          sessionId,
+        });
+    }
+  }
+
+  private async detachSecretFromExistingAgentSessions(
+    selectableDatabase: SelectableDatabase,
+    deletableDatabase: DeletableDatabase,
+    companyId: string,
+    agentId: string,
+    secretId: string,
+  ): Promise<void> {
+    const sessionIds = await this.listAgentSessionIds(selectableDatabase, companyId, agentId);
+    if (sessionIds.length === 0) {
+      return;
+    }
+
+    await deletableDatabase
+      .delete(agentSessionSecrets)
+      .where(and(
+        eq(agentSessionSecrets.companyId, companyId),
+        eq(agentSessionSecrets.secretId, secretId),
+        inArray(agentSessionSecrets.sessionId, sessionIds),
+      ));
   }
 
   private secretSelection(): Record<string, unknown> {
