@@ -63,6 +63,7 @@ export class AgentGithubExecTool {
           columns: params.columns,
           command: AgentGithubExecTool.buildShellCommand(params.args),
           environment: {
+            GH_PROMPT_DISABLED: "1",
             GH_TOKEN: token,
           },
           keepSession: params.keepSession,
@@ -108,6 +109,10 @@ export class AgentGithubExecTool {
 
     if ((args[0] ?? "") === "auth") {
       throw new Error("gh auth commands are not allowed in gh_exec.");
+    }
+
+    if ((args[0] ?? "") === "repo" && (args[1] ?? "") === "clone") {
+      throw new Error("Use clone_github_repository instead of gh_exec for repository clones.");
     }
   }
 
