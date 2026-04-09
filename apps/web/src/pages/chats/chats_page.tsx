@@ -58,6 +58,7 @@ import type { chatsPageResolveInboxHumanQuestionMutation } from "./__generated__
 import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
 import type { chatsPageStartEnvironmentMutation } from "./__generated__/chatsPageStartEnvironmentMutation.graphql";
 import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
+import type { chatsPageSessionInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageSessionInboxHumanQuestionsUpdatedSubscription.graphql";
 import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
 import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
 import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
@@ -484,6 +485,24 @@ const chatsPageSessionUpdatedSubscriptionNode = graphql`
       createdAt
       updatedAt
       userSetTitle
+    }
+  }
+`;
+
+const chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
+  subscription chatsPageSessionInboxHumanQuestionsUpdatedSubscription($sessionId: ID!) {
+    SessionInboxHumanQuestionsUpdated(sessionId: $sessionId) {
+      id
+      sessionId
+      title
+      questionText
+      allowCustomAnswer
+      createdAt
+      proposals {
+        id
+        answerText
+        rating
+      }
     }
   }
 `;
@@ -2177,6 +2196,9 @@ function ChatsPageContent() {
   const transcriptEndCursorRef = useRef<string | null>(null);
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const [sessionTitleOverridesById, setSessionTitleOverridesById] = useState<Record<string, string>>({});
+  const [liveSessionHumanQuestionsBySessionId, setLiveSessionHumanQuestionsBySessionId] = useState<
+    Record<string, InboxHumanQuestionRecord[]>
+  >({});
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessageRecord[]>([]);
   const [steeringQueuedMessageId, setSteeringQueuedMessageId] = useState<string | null>(null);
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
@@ -2310,10 +2332,12 @@ function ChatsPageContent() {
       return null;
     }
 
-    return [...data.InboxHumanQuestions]
-      .filter((question) => question.sessionId === selectedSessionId)
+    return [
+      ...(liveSessionHumanQuestionsBySessionId[selectedSessionId]
+        ?? data.InboxHumanQuestions.filter((question) => question.sessionId === selectedSessionId)),
+    ]
       .sort(compareInboxHumanQuestionsByCreatedAt)[0] ?? null;
-  }, [data.InboxHumanQuestions, selectedSessionId]);
+  }, [data.InboxHumanQuestions, liveSessionHumanQuestionsBySessionId, selectedSessionId]);
   const selectedComposerModelOption = composerModelOptionById.get(composerModelOptionId) ?? null;
   const shouldUseCompactComposerSettings = isMobile;
   const selectedSessionMessages = selectedSession ? transcriptMessages : [];
@@ -3307,6 +3331,36 @@ function ChatsPageContent() {
     }
 
     const subscriptionVariables = { sessionId: selectedSession.id };
+    const disposable = requestSubscription<chatsPageSessionInboxHumanQuestionsUpdatedSubscription>(environment, {
+      subscription: chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode,
+      variables: subscriptionVariables,
+      onNext: (response) => {
+        const nextQuestions = response?.SessionInboxHumanQuestionsUpdated;
+        if (!nextQuestions) {
+          return;
+        }
+
+        setLiveSessionHumanQuestionsBySessionId((currentValue) => ({
+          ...currentValue,
+          [selectedSession.id]: [...nextQuestions].sort(compareInboxHumanQuestionsByCreatedAt),
+        }));
+      },
+      onError: (error) => {
+        setErrorMessage((currentMessage) => currentMessage ?? error.message);
+      },
+    });
+
+    return () => {
+      disposable.dispose();
+    };
+  }, [environment, selectedSession?.id]);
+
+  useEffect(() => {
+    if (!selectedSession) {
+      return;
+    }
+
+    const subscriptionVariables = { sessionId: selectedSession.id };
     const disposable = requestSubscription<chatsPageSessionMessageUpdatedSubscription>(environment, {
       subscription: chatsPageSessionMessageUpdatedSubscriptionNode,
       variables: subscriptionVariables,
@@ -3769,6 +3823,19 @@ function ChatsPageContent() {
           onError: reject,
         });
       });
+      if (selectedSessionId) {
+        setLiveSessionHumanQuestionsBySessionId((currentValue) => {
+          const currentQuestions = currentValue[selectedSessionId];
+          if (!currentQuestions) {
+            return currentValue;
+          }
+
+          return {
+            ...currentValue,
+            [selectedSessionId]: currentQuestions.filter((question) => question.id !== input.inboxItemId),
+          };
+        });
+      }
       return true;
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to send answer.");
@@ -3802,6 +3869,19 @@ function ChatsPageContent() {
           onError: reject,
         });
       });
+      if (selectedSessionId) {
+        setLiveSessionHumanQuestionsBySessionId((currentValue) => {
+          const currentQuestions = currentValue[selectedSessionId];
+          if (!currentQuestions) {
+            return currentValue;
+          }
+
+          return {
+            ...currentValue,
+            [selectedSessionId]: currentQuestions.filter((question) => question.id !== inboxItemId),
+          };
+        });
+      }
       return true;
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to dismiss question.");

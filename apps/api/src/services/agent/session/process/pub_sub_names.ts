@@ -23,6 +23,14 @@ export class SessionProcessPubSubNames {
     return "session:*:update";
   }
 
+  getSessionInboxHumanQuestionsUpdateChannel(sessionId: string): string {
+    return `session:${sessionId}:inbox:update`;
+  }
+
+  getSessionInboxHumanQuestionsUpdatePattern(sessionId: string): string {
+    return this.getSessionInboxHumanQuestionsUpdateChannel(sessionId);
+  }
+
   getSessionMessageUpdateChannel(sessionId: string, messageId: string): string {
     return `session:${sessionId}:message:${messageId}:update`;
   }

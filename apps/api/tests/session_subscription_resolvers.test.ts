@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { SessionInboxHumanQuestionsUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_inbox_human_questions_updated.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_message_updated.ts";
 import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_queued_messages_updated.ts";
 import { SessionUpdatedSubscriptionResolver } from "../src/graphql/resolvers/session_updated.ts";
@@ -390,6 +391,96 @@ test("SessionQueuedMessagesUpdated subscription reloads the full queued snapshot
   });
   assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:queued:update");
   assert.deepEqual(sessionQueuedMessageService.listQueued.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    "company-1",
+    "session-123",
+  ]);
+
+  await iterator.return?.();
+  assert.equal(unsubscribe.mock.calls.length, 1);
+});
+
+test("SessionInboxHumanQuestionsUpdated subscription reloads the open inbox snapshot for the selected session", async () => {
+  const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
+  const inboxService = {
+    listOpenHumanQuestionsForSession: vi.fn(async () => ([{
+      agentId: "agent-1",
+      agentName: "Support Agent",
+      allowCustomAnswer: true,
+      answer: null,
+      createdAt: new Date("2026-04-08T20:00:00.000Z"),
+      id: "inbox-1",
+      proposals: [{
+        answerText: "Ship it",
+        cons: [],
+        createdAt: new Date("2026-04-08T20:00:00.000Z"),
+        id: "proposal-1",
+        inboxItemId: "inbox-1",
+        pros: ["Fast"],
+        rating: 5,
+        sortOrder: 0,
+      }],
+      questionText: "Should I ship this now?",
+      resolvedAt: null,
+      resolvedByUserId: null,
+      sessionId: "session-123",
+      sessionTitle: "Deploy checkout flow",
+      status: "open",
+      summary: "Should I ship this now?",
+      title: "Shipping decision",
+      toolCallId: null,
+      updatedAt: new Date("2026-04-08T20:00:30.000Z"),
+    }])),
+  };
+  const resolver = new SessionInboxHumanQuestionsUpdatedSubscriptionResolver(inboxService as never);
+  const context = {
+    authSession: {
+      company: {
+        id: "company-1",
+      },
+    },
+    app_runtime_transaction_provider: {
+      transaction: vi.fn(),
+    },
+    redisCompanyScopedService: {
+      subscribePattern,
+    },
+  };
+
+  const iterator = resolver.subscribe({}, { sessionId: "session-123" }, context as never);
+  const nextEventPromise = iterator.next();
+  const listener = await waitForListener(getListener);
+  listener("", "company:company-1:session:session-123:inbox:update");
+  const nextEvent = await nextEventPromise;
+
+  assert.deepEqual(nextEvent.value, {
+    SessionInboxHumanQuestionsUpdated: [{
+      agentId: "agent-1",
+      agentName: "Support Agent",
+      allowCustomAnswer: true,
+      answer: null,
+      createdAt: "2026-04-08T20:00:00.000Z",
+      id: "inbox-1",
+      proposals: [{
+        answerText: "Ship it",
+        cons: [],
+        id: "proposal-1",
+        pros: ["Fast"],
+        rating: 5,
+      }],
+      questionText: "Should I ship this now?",
+      resolvedAt: null,
+      resolvedByUserId: null,
+      sessionId: "session-123",
+      sessionTitle: "Deploy checkout flow",
+      status: "open",
+      summary: "Should I ship this now?",
+      title: "Shipping decision",
+      updatedAt: "2026-04-08T20:00:30.000Z",
+    }],
+  });
+  assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:inbox:update");
+  assert.deepEqual(inboxService.listOpenHumanQuestionsForSession.mock.calls[0], [
     context.app_runtime_transaction_provider,
     "company-1",
     "session-123",

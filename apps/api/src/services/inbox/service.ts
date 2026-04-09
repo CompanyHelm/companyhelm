@@ -11,6 +11,9 @@ import {
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { SessionManagerService } from "../agent/session/session_manager_service.ts";
+import { SessionProcessPubSubNames } from "../agent/session/process/pub_sub_names.ts";
+import { RedisCompanyScopedService } from "../redis/company_scoped_service.ts";
+import { RedisService } from "../redis/service.ts";
 
 export type AgentInboxHumanQuestionProposalRecord = {
   answerText: string;
@@ -137,12 +140,19 @@ type DeletableDatabase = {
  */
 @injectable()
 export class AgentInboxService {
+  private readonly redisService: RedisService;
   private readonly sessionManagerService: SessionManagerService;
+  private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
 
   constructor(
     @inject(SessionManagerService) sessionManagerService: SessionManagerService,
+    @inject(RedisService) redisService: RedisService,
+    @inject(SessionProcessPubSubNames)
+    sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
   ) {
+    this.redisService = redisService;
     this.sessionManagerService = sessionManagerService;
+    this.sessionProcessPubSubNames = sessionProcessPubSubNames;
   }
 
   async createHumanQuestion(
@@ -235,6 +245,7 @@ export class AgentInboxService {
       throw new Error("Failed to create inbox question.");
     }
 
+    await this.publishSessionHumanQuestionsUpdated(input.companyId, input.sessionId);
     return createdQuestion;
   }
 
@@ -246,6 +257,19 @@ export class AgentInboxService {
       transactionProvider,
       companyId,
       "open",
+    );
+  }
+
+  async listOpenHumanQuestionsForSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<AgentInboxHumanQuestionRecord[]> {
+    return this.loadHumanQuestions(
+      transactionProvider,
+      companyId,
+      "open",
+      sessionId,
     );
   }
 
@@ -368,6 +392,7 @@ export class AgentInboxService {
       throw new Error("Resolved inbox item not found.");
     }
 
+    await this.publishSessionHumanQuestionsUpdated(input.companyId, resolvedQuestion.sessionId);
     return resolvedQuestion;
   }
 
@@ -418,6 +443,7 @@ export class AgentInboxService {
       throw new Error("Resolved inbox item not found.");
     }
 
+    await this.publishSessionHumanQuestionsUpdated(input.companyId, dismissedQuestion.sessionId);
     return dismissedQuestion;
   }
 
@@ -451,10 +477,12 @@ export class AgentInboxService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     status: "open" | "resolved",
+    sessionId: string | null = null,
   ): Promise<AgentInboxHumanQuestionRecord[]> {
     return transactionProvider.transaction(async (tx) => {
       return this.loadHumanQuestionsInTransaction(tx as SelectableDatabase, companyId, {
         ids: null,
+        sessionId,
         status,
       });
     });
@@ -477,6 +505,7 @@ export class AgentInboxService {
   ): Promise<AgentInboxHumanQuestionRecord[]> {
     return this.loadHumanQuestionsInTransaction(selectableDatabase, companyId, {
       ids,
+      sessionId: null,
       status: null,
     });
   }
@@ -486,6 +515,7 @@ export class AgentInboxService {
     companyId: string,
     input: {
       ids: string[] | null;
+      sessionId: string | null;
       status: "open" | "resolved" | null;
     },
   ): Promise<AgentInboxHumanQuestionRecord[]> {
@@ -495,6 +525,9 @@ export class AgentInboxService {
     ];
     if (input.status) {
       conditions.push(eq(agentInboxItems.status, input.status));
+    }
+    if (input.sessionId) {
+      conditions.push(eq(agentInboxItems.sessionId, input.sessionId));
     }
     if (input.ids && input.ids.length > 0) {
       conditions.push(inArray(agentInboxItems.id, input.ids));
@@ -626,6 +659,16 @@ export class AgentInboxService {
           updatedAt: item.updatedAt,
         };
       });
+  }
+
+  private async publishSessionHumanQuestionsUpdated(
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(
+      this.sessionProcessPubSubNames.getSessionInboxHumanQuestionsUpdateChannel(sessionId),
+    );
   }
 
   private validateCreateInput(input: {

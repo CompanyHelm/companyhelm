@@ -403,12 +403,6 @@ export class GraphqlApplication {
         throw new Error("InboxHumanQuestions query is not configured.");
       },
     } as never),
-    @inject(SessionInboxHumanQuestionsUpdatedSubscriptionResolver)
-    sessionInboxHumanQuestionsUpdatedSubscriptionResolver: SessionInboxHumanQuestionsUpdatedSubscriptionResolver = new SessionInboxHumanQuestionsUpdatedSubscriptionResolver({
-      async listOpenHumanQuestionsForSession() {
-        throw new Error("SessionInboxHumanQuestionsUpdated subscription is not configured.");
-      },
-    } as never),
     @inject(ResolveInboxHumanQuestionMutation)
     resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation = new ResolveInboxHumanQuestionMutation({
       async resolveHumanQuestion() {
@@ -528,6 +522,12 @@ export class GraphqlApplication {
     createSkillGroupMutation?: CreateSkillGroupMutation,
     @inject(DeleteSkillGroupMutation)
     deleteSkillGroupMutation?: DeleteSkillGroupMutation,
+    @inject(SessionInboxHumanQuestionsUpdatedSubscriptionResolver)
+    sessionInboxHumanQuestionsUpdatedSubscriptionResolver: SessionInboxHumanQuestionsUpdatedSubscriptionResolver = new SessionInboxHumanQuestionsUpdatedSubscriptionResolver({
+      async listOpenHumanQuestionsForSession() {
+        throw new Error("SessionInboxHumanQuestionsUpdated subscription is not configured.");
+      },
+    } as never),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
