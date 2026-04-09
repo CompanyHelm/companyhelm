@@ -159,31 +159,44 @@ class SkillsGraphqlTestHarness {
             };
           },
           delete(table: unknown) {
-            if (table !== skill_groups) {
-              throw new Error("Unexpected delete table.");
+            if (table === skill_groups) {
+              return {
+                where(_condition: unknown) {
+                  void _condition;
+                  return {
+                    async returning() {
+                      const [deletedGroup] = groups.splice(0, 1);
+                      if (!deletedGroup) {
+                        return [];
+                      }
+
+                      for (const skillRecord of skillRecords) {
+                        if (skillRecord.skillGroupId === deletedGroup.id) {
+                          skillRecord.skillGroupId = null;
+                        }
+                      }
+
+                      return [deletedGroup];
+                    },
+                  };
+                },
+              };
+            }
+            if (table === skills) {
+              return {
+                where(_condition: unknown) {
+                  void _condition;
+                  return {
+                    async returning() {
+                      const [deletedSkill] = skillRecords.splice(0, 1);
+                      return deletedSkill ? [deletedSkill] : [];
+                    },
+                  };
+                },
+              };
             }
 
-            return {
-              where(_condition: unknown) {
-                void _condition;
-                return {
-                  async returning() {
-                    const [deletedGroup] = groups.splice(0, 1);
-                    if (!deletedGroup) {
-                      return [];
-                    }
-
-                    for (const skillRecord of skillRecords) {
-                      if (skillRecord.skillGroupId === deletedGroup.id) {
-                        skillRecord.skillGroupId = null;
-                      }
-                    }
-
-                    return [deletedGroup];
-                  },
-                };
-              },
-            };
+            throw new Error("Unexpected delete table.");
           },
         } as never;
       },
@@ -494,6 +507,83 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     id: "skill-research",
     skillGroupId: null,
   }]);
+
+  await app.close();
+});
+
+test("GraphQL skill deletion removes the catalog entry", async () => {
+  const app = Fastify();
+  const config = SkillsGraphqlTestHarness.createConfigMock();
+  const database = SkillsGraphqlTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+        token: "jwt-token",
+        user: {
+          email: "user@example.com",
+          firstName: "User",
+          id: "user-123",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+      };
+    },
+  };
+
+  await new GraphqlApplication(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const deleteSkillResponse = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation DeleteSkill($input: DeleteSkillInput!) {
+          DeleteSkill(input: $input) {
+            id
+            companyId
+            name
+          }
+        }
+      `,
+      variables: {
+        input: {
+          id: "skill-browser",
+        },
+      },
+    },
+  });
+
+  assert.equal(deleteSkillResponse.statusCode, 200);
+  const deleteSkillDocument = deleteSkillResponse.json();
+  assert.deepEqual(deleteSkillDocument.data.DeleteSkill, {
+    id: "skill-browser",
+    companyId: "company-123",
+    name: "Browser automation",
+  });
+  assert.equal(database.skillRecords.length, 0);
 
   await app.close();
 });

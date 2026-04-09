@@ -33,6 +33,7 @@ import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_comp
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { DeleteSkillMutation } from "./mutations/delete_skill.ts";
 import { DeleteSkillGroupMutation } from "./mutations/delete_skill_group.ts";
 import { DeleteTaskCategoryMutation } from "./mutations/delete_task_category.ts";
 import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
@@ -163,6 +164,7 @@ export class GraphqlApplication {
   private readonly getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private readonly deleteSkillMutation: DeleteSkillMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
   private readonly deleteTaskCategoryMutation: DeleteTaskCategoryMutation;
   private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
@@ -520,6 +522,8 @@ export class GraphqlApplication {
     skillsQueryResolver?: SkillsQueryResolver,
     @inject(CreateSkillGroupMutation)
     createSkillGroupMutation?: CreateSkillGroupMutation,
+    @inject(DeleteSkillMutation)
+    deleteSkillMutation?: DeleteSkillMutation,
     @inject(DeleteSkillGroupMutation)
     deleteSkillGroupMutation?: DeleteSkillGroupMutation,
     @inject(SessionInboxHumanQuestionsUpdatedSubscriptionResolver)
@@ -629,6 +633,7 @@ export class GraphqlApplication {
     this.stopEnvironmentMutation = stopEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.deleteTaskCategoryMutation = deleteTaskCategoryMutation;
     this.deleteSessionQueuedMessageMutation = deleteSessionQueuedMessageMutation;
@@ -817,6 +822,7 @@ export class GraphqlApplication {
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          DeleteSkill: this.deleteSkillMutation.execute,
           DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
           DeleteTaskCategory: this.deleteTaskCategoryMutation.execute,
           DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,

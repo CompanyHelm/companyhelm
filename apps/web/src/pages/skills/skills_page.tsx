@@ -7,6 +7,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { CreateSkillDialog, type CreateSkillDialogGroupOption } from "./create_skill_dialog";
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
 import type { skillsPageCreateSkillMutation } from "./__generated__/skillsPageCreateSkillMutation.graphql";
+import type { skillsPageDeleteSkillMutation } from "./__generated__/skillsPageDeleteSkillMutation.graphql";
 import type { skillsPageQuery } from "./__generated__/skillsPageQuery.graphql";
 import type { skillsPageUpdateSkillMutation } from "./__generated__/skillsPageUpdateSkillMutation.graphql";
 
@@ -19,11 +20,8 @@ const skillsPageQueryNode = graphql`
     Skills {
       id
       name
-      description
-      instructions
       skillGroupId
       repository
-      skillDirectory
       fileList
     }
   }
@@ -40,6 +38,14 @@ const skillsPageCreateSkillMutationNode = graphql`
       repository
       skillDirectory
       fileList
+    }
+  }
+`;
+
+const skillsPageDeleteSkillMutationNode = graphql`
+  mutation skillsPageDeleteSkillMutation($input: DeleteSkillInput!) {
+    DeleteSkill(input: $input) {
+      id
     }
   }
 `;
@@ -81,7 +87,14 @@ function SkillsPageFallback() {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <SkillsTree groups={[]} isLoading movingSkillId={null} onMoveSkill={async () => undefined} />
+          <SkillsTree
+            deletingSkillId={null}
+            groups={[]}
+            isLoading
+            movingSkillId={null}
+            onDeleteSkill={async () => undefined}
+            onMoveSkill={async () => undefined}
+          />
         </CardContent>
       </Card>
     </main>
@@ -90,6 +103,7 @@ function SkillsPageFallback() {
 
 function SkillsPageContent() {
   const navigate = useNavigate();
+  const [deletingSkillId, setDeletingSkillId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [movingSkillId, setMovingSkillId] = useState<string | null>(null);
@@ -102,6 +116,9 @@ function SkillsPageContent() {
   );
   const [commitCreateSkill, isCreateSkillInFlight] = useMutation<skillsPageCreateSkillMutation>(
     skillsPageCreateSkillMutationNode,
+  );
+  const [commitDeleteSkill] = useMutation<skillsPageDeleteSkillMutation>(
+    skillsPageDeleteSkillMutationNode,
   );
   const [commitUpdateSkill] = useMutation<skillsPageUpdateSkillMutation>(
     skillsPageUpdateSkillMutationNode,
@@ -119,12 +136,10 @@ function SkillsPageContent() {
     for (const skill of sortedSkills) {
       const currentSkills = skillsByGroupId.get(skill.skillGroupId) ?? [];
       currentSkills.push({
-        description: skill.description,
         fileCount: skill.fileList.length,
         id: skill.id,
         name: skill.name,
         repository: skill.repository,
-        skillDirectory: skill.skillDirectory,
         skillGroupId: skill.skillGroupId,
       });
       skillsByGroupId.set(skill.skillGroupId, currentSkills);
@@ -187,6 +202,51 @@ function SkillsPageContent() {
     }
   }
 
+  async function deleteSkill(skillId: string) {
+    setDeletingSkillId(skillId);
+    setErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitDeleteSkill({
+          variables: {
+            input: {
+              id: skillId,
+            },
+          },
+          updater: (store) => {
+            const deletedSkill = store.getRootField("DeleteSkill");
+            if (!deletedSkill) {
+              return;
+            }
+
+            const rootRecord = store.getRoot();
+            const currentSkills = rootRecord.getLinkedRecords("Skills") || [];
+            rootRecord.setLinkedRecords(
+              currentSkills.filter((record) => record.getDataID() !== deletedSkill.getDataID()),
+              "Skills",
+            );
+          },
+          onCompleted: (_response, errors) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to delete skill.");
+      throw error;
+    } finally {
+      setDeletingSkillId(null);
+    }
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -228,9 +288,11 @@ function SkillsPageContent() {
           ) : null}
 
           <SkillsTree
+            deletingSkillId={deletingSkillId}
             groups={groupedSkills}
             isLoading={false}
             movingSkillId={movingSkillId}
+            onDeleteSkill={deleteSkill}
             onMoveSkill={moveSkill}
           />
         </CardContent>

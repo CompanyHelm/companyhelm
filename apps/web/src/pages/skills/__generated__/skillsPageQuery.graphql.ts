@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2e58615fb22b1a1e25caafd90ee39bb3>>
+ * @generated SignedSource<<0af2cd3c8d2bf05224d8319a26f73a61>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,13 +16,10 @@ export type skillsPageQuery$data = {
     readonly name: string;
   }>;
   readonly Skills: ReadonlyArray<{
-    readonly description: string;
     readonly fileList: ReadonlyArray<string>;
     readonly id: string;
-    readonly instructions: string;
     readonly name: string;
     readonly repository: string | null | undefined;
-    readonly skillDirectory: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
   }>;
 };
@@ -74,20 +71,6 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "instructions",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "skillGroupId",
         "storageKey": null
       },
@@ -96,13 +79,6 @@ v2 = [
         "args": null,
         "kind": "ScalarField",
         "name": "repository",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "skillDirectory",
         "storageKey": null
       },
       {
@@ -134,16 +110,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "d570da7bd2786fed7a6219c672ae2c9c",
+    "cacheID": "2ec025c412e6452e357b738a113a3367",
     "id": null,
     "metadata": {},
     "name": "skillsPageQuery",
     "operationKind": "query",
-    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
+    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    repository\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8b9821585f56161c411c1b564189d539";
+(node as any).hash = "04bbef063ad2ff847a60ab3158bd9772";
 
 export default node;

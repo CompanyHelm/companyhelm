@@ -96,31 +96,44 @@ class SkillServiceTestHarness {
         };
       },
       delete(table: unknown) {
-        if (table !== skill_groups) {
-          throw new Error("Unexpected delete table.");
+        if (table === skill_groups) {
+          return {
+            where(_condition: unknown) {
+              void _condition;
+              return {
+                async returning() {
+                  const [deletedGroup] = groups.splice(0, 1);
+                  if (!deletedGroup) {
+                    return [];
+                  }
+
+                  for (const skillRecord of skillRecords) {
+                    if (skillRecord.skillGroupId === deletedGroup.id) {
+                      skillRecord.skillGroupId = null;
+                    }
+                  }
+
+                  return [deletedGroup];
+                },
+              };
+            },
+          };
+        }
+        if (table === skills) {
+          return {
+            where(_condition: unknown) {
+              void _condition;
+              return {
+                async returning() {
+                  const [deletedSkill] = skillRecords.splice(0, 1);
+                  return deletedSkill ? [deletedSkill] : [];
+                },
+              };
+            },
+          };
         }
 
-        return {
-          where(_condition: unknown) {
-            void _condition;
-            return {
-              async returning() {
-                const [deletedGroup] = groups.splice(0, 1);
-                if (!deletedGroup) {
-                  return [];
-                }
-
-                for (const skillRecord of skillRecords) {
-                  if (skillRecord.skillGroupId === deletedGroup.id) {
-                    skillRecord.skillGroupId = null;
-                  }
-                }
-
-                return [deletedGroup];
-              },
-            };
-          },
-        };
+        throw new Error("Unexpected delete table.");
       },
       update(table: unknown) {
         if (table !== skills) {
@@ -209,6 +222,32 @@ test("SkillService deletes a skill group and clears existing assignments", async
   assert.equal(deletedGroup.id, "group-automation");
   assert.equal(transactionProvider.groups.length, 0);
   assert.equal(transactionProvider.skillRecords[0]?.skillGroupId, null);
+});
+
+test("SkillService deletes one skill from the catalog", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [],
+    skills: [{
+      companyId: "company-123",
+      description: "Initial description",
+      fileList: [],
+      id: "skill-1",
+      instructions: "Initial instructions",
+      name: "Browser skill",
+      repository: null,
+      skillDirectory: null,
+      skillGroupId: null,
+    }],
+  });
+  const service = new SkillService();
+
+  const deletedSkill = await service.deleteSkill(transactionProvider as never, {
+    companyId: "company-123",
+    skillId: "skill-1",
+  });
+
+  assert.equal(deletedSkill.id, "skill-1");
+  assert.equal(transactionProvider.skillRecords.length, 0);
 });
 
 test("SkillService updates the editable fields and clears the group assignment", async () => {

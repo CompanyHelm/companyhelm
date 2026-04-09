@@ -194,6 +194,31 @@ export class SkillService {
     });
   }
 
+  async deleteSkill(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      skillId: string;
+    },
+  ): Promise<SkillRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const deletableDatabase = tx as DeletableDatabase;
+      const [deletedSkill] = await deletableDatabase
+        .delete(skills)
+        .where(and(
+          eq(skills.companyId, input.companyId),
+          eq(skills.id, input.skillId),
+        ))
+        .returning?.(this.skillSelection()) as SkillRecord[];
+
+      if (!deletedSkill) {
+        throw new Error("Skill not found.");
+      }
+
+      return deletedSkill;
+    });
+  }
+
   async updateSkill(
     transactionProvider: TransactionProviderInterface,
     input: {

@@ -7,17 +7,16 @@ import {
   FolderOpenIcon,
   GithubIcon,
   SparklesIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 export type SkillsTreeSkillRecord = {
-  description: string;
   fileCount: number;
   id: string;
   name: string;
   repository: string | null;
-  skillDirectory: string | null;
   skillGroupId: string | null;
 };
 
@@ -28,9 +27,11 @@ export type SkillsTreeGroupRecord = {
 };
 
 interface SkillsTreeProps {
+  deletingSkillId: string | null;
   groups: SkillsTreeGroupRecord[];
   isLoading: boolean;
   movingSkillId: string | null;
+  onDeleteSkill(skillId: string): Promise<void>;
   onMoveSkill(skillId: string, skillGroupId: string | null): Promise<void>;
 }
 
@@ -82,7 +83,7 @@ export function SkillsTree(props: SkillsTreeProps) {
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-2.5">
       {groups.map((group) => {
         const isExpanded = expandedGroupKeys[group.key] ?? true;
         const GroupIcon = isExpanded ? FolderOpenIcon : FolderIcon;
@@ -91,7 +92,7 @@ export function SkillsTree(props: SkillsTreeProps) {
           <Card key={group.key} className="border border-border/60 bg-card/70 shadow-sm">
             <button
               aria-expanded={isExpanded}
-              className="flex w-full items-center justify-between gap-3 rounded-t-xl px-4 py-3 text-left transition hover:bg-accent/30"
+              className="flex w-full items-center justify-between gap-3 rounded-t-xl px-4 py-2.5 text-left transition hover:bg-accent/30"
               onClick={() => {
                 setExpandedGroupKeys((currentState) => ({
                   ...currentState,
@@ -105,9 +106,6 @@ export function SkillsTree(props: SkillsTreeProps) {
                 <GroupIcon className="size-4 text-primary" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-foreground">{group.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {group.skills.length} {group.skills.length === 1 ? "skill" : "skills"}
-                  </p>
                 </div>
               </div>
               <Badge variant="outline">{group.skills.length}</Badge>
@@ -115,7 +113,7 @@ export function SkillsTree(props: SkillsTreeProps) {
 
             {isExpanded ? (
               <CardContent
-                className={`grid gap-2 border-t border-border/60 p-3 ${dropTargetKey === group.key ? "rounded-b-xl bg-accent/25" : ""}`}
+                className={`grid gap-2 border-t border-border/60 p-2.5 ${dropTargetKey === group.key ? "rounded-b-xl bg-accent/25" : ""}`}
                 onDragLeave={() => {
                   setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
                 }}
@@ -126,7 +124,7 @@ export function SkillsTree(props: SkillsTreeProps) {
                 onDrop={(event) => void handleDrop(event, group.id, group.key)}
               >
                 {group.skills.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-center text-xs text-muted-foreground">
+                  <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-center text-xs text-muted-foreground">
                     Drop skills here.
                   </div>
                 ) : null}
@@ -134,7 +132,7 @@ export function SkillsTree(props: SkillsTreeProps) {
                 {group.skills.map((skill) => (
                   <article
                     key={skill.id}
-                    className={`cursor-grab rounded-xl border border-border/60 bg-background/90 px-4 py-3 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing ${props.movingSkillId === skill.id ? "opacity-60" : ""}`}
+                    className={`cursor-grab rounded-lg border border-border/60 bg-background/90 px-3 py-2.5 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing ${(props.movingSkillId === skill.id || props.deletingSkillId === skill.id) ? "opacity-60" : ""}`}
                     draggable
                     onClick={() => {
                       if (suppressOpenSkillIdRef.current === skill.id) {
@@ -176,17 +174,12 @@ export function SkillsTree(props: SkillsTreeProps) {
                     role="button"
                     tabIndex={0}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <SparklesIcon className="size-4 text-primary" />
-                          <p className="truncate text-sm font-semibold text-foreground">{skill.name}</p>
-                        </div>
-                        <p className="mt-2 line-clamp-2 text-xs/relaxed text-muted-foreground">
-                          {skill.description}
-                        </p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <SparklesIcon className="size-4 shrink-0 text-primary" />
+                        <p className="truncate text-sm font-semibold text-foreground">{skill.name}</p>
                       </div>
-                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                      <div className="flex shrink-0 items-center justify-end gap-2">
                         <Badge variant="outline">{skill.fileCount} files</Badge>
                         {skill.repository ? (
                           <Badge className="gap-1" variant="secondary">
@@ -196,15 +189,21 @@ export function SkillsTree(props: SkillsTreeProps) {
                         ) : (
                           <Badge variant="outline">Manual</Badge>
                         )}
+                        <button
+                          aria-label={`Delete ${skill.name}`}
+                          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={props.deletingSkillId === skill.id}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void props.onDeleteSkill(skill.id);
+                          }}
+                          type="button"
+                        >
+                          <Trash2Icon className="size-4" />
+                        </button>
                       </div>
                     </div>
-
-                    {(skill.repository || skill.skillDirectory) ? (
-                      <div className="mt-3 grid gap-1 text-[11px] text-muted-foreground">
-                        {skill.repository ? <p className="truncate">{skill.repository}</p> : null}
-                        {skill.skillDirectory ? <p className="truncate">{skill.skillDirectory}</p> : null}
-                      </div>
-                    ) : null}
                   </article>
                 ))}
               </CardContent>

@@ -68,6 +68,7 @@ type Mutation {
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
+  DeleteSkill(input: DeleteSkillInput!): Skill!
   DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
@@ -743,6 +744,10 @@ input UpdateE2bComputeProviderDefinitionInput {
 }
 
 input DeleteSecretInput {
+  id: ID!
+}
+
+input DeleteSkillInput {
   id: ID!
 }
 
