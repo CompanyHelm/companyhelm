@@ -1,18 +1,10 @@
 import { useMemo, useState } from "react";
-import { Loader2Icon, XIcon } from "lucide-react";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { agentSecretDefaultsCardAttachSecretToAgentMutation } from "./__generated__/agentSecretDefaultsCardAttachSecretToAgentMutation.graphql";
 import type { agentSecretDefaultsCardDetachSecretFromAgentMutation } from "./__generated__/agentSecretDefaultsCardDetachSecretFromAgentMutation.graphql";
+import { DefaultAttachmentSection } from "./default_attachment_section";
 
 type AgentSecretRecord = {
   description: string | null;
@@ -127,7 +119,6 @@ function removeAgentSecretFromStore(
  */
 export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [busySecretId, setBusySecretId] = useState<string | null>(null);
   const [commitAttachSecret, isAttachSecretInFlight] = useMutation<agentSecretDefaultsCardAttachSecretToAgentMutation>(
     agentSecretDefaultsCardAttachSecretToAgentMutationNode,
@@ -188,7 +179,6 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to attach secret.");
     } finally {
       setBusySecretId(null);
-      setPendingSelection(null);
     }
   };
 
@@ -242,69 +232,32 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="grid gap-2">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Add default secret</p>
-          <Select
-            disabled={isMutating || availableSecretOptions.length === 0}
-            items={availableSecretOptions}
-            onValueChange={async (value) => {
-              if (typeof value !== "string" || value.length === 0) {
-                setPendingSelection(null);
-                return;
-              }
-
-              setPendingSelection(value);
-              await attachSecret(value);
+          <DefaultAttachmentSection
+            addLabel="Add default secret"
+            availableEmptyLabel="All company secrets already added"
+            availableOptions={availableSecretOptions.map((option) => ({
+              description: option.description,
+              id: option.value,
+              label: option.label,
+            }))}
+            busyItemId={busySecretId}
+            currentLabel="Current defaults"
+            disabled={isMutating}
+            emptyStateLabel="No default secrets configured for this agent yet."
+            onAdd={async (secretId) => {
+              await attachSecret(secretId);
             }}
-            value={pendingSelection ?? undefined}
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={availableSecretOptions.length > 0 ? "Select a secret" : "All company secrets already added"}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {availableSecretOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-2">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Current defaults</p>
-          {props.agentSecrets.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {props.agentSecrets.map((secret) => (
-                <Badge
-                  className="h-auto gap-2 rounded-full px-3 py-1 text-xs"
-                  key={secret.id}
-                  variant="outline"
-                >
-                  <span>{secret.name}</span>
-                  <span className="text-[0.6rem] uppercase tracking-[0.16em] text-muted-foreground">
-                    {secret.envVarName}
-                  </span>
-                  <button
-                    aria-label={`Remove ${secret.name}`}
-                    className="rounded-full p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isMutating}
-                    onClick={async () => {
-                      await detachSecret(secret.id);
-                    }}
-                    type="button"
-                  >
-                    {busySecretId === secret.id ? <Loader2Icon className="size-3 animate-spin" /> : <XIcon className="size-3" />}
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-              No default secrets configured for this agent yet.
-            </div>
-          )}
+            onRemove={async (secretId) => {
+              await detachSecret(secretId);
+            }}
+            placeholder="Select a secret"
+            selectedOptions={props.agentSecrets.map((secret) => ({
+              description: secret.description,
+              id: secret.id,
+              label: secret.name,
+              metaLabel: secret.envVarName,
+            }))}
+          />
         </div>
 
         {errorMessage ? (

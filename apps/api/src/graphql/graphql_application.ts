@@ -16,6 +16,8 @@ import { AddGithubInstallationMutation } from "./mutations/add_github_installati
 import { AddModelProviderCredentialMutation } from "./mutations/add_model_provider_credential.ts";
 import { ArchiveArtifactMutation } from "./mutations/archive_artifact.ts";
 import { AttachSecretToAgentMutation } from "./mutations/attach_secret_to_agent.ts";
+import { AttachSkillGroupToAgentMutation } from "./mutations/attach_skill_group_to_agent.ts";
+import { AttachSkillToAgentMutation } from "./mutations/attach_skill_to_agent.ts";
 import { AttachSecretToSessionMutation } from "./mutations/attach_secret_to_session.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateExternalLinkArtifactMutation } from "./mutations/create_external_link_artifact.ts";
@@ -41,6 +43,8 @@ import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DeleteTaskMutation } from "./mutations/delete_task.ts";
 import { DismissInboxHumanQuestionMutation } from "./mutations/dismiss_inbox_human_question.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
+import { DetachSkillGroupFromAgentMutation } from "./mutations/detach_skill_group_from_agent.ts";
+import { DetachSkillFromAgentMutation } from "./mutations/detach_skill_from_agent.ts";
 import { DetachSecretFromSessionMutation } from "./mutations/detach_secret_from_session.ts";
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
 import { ForkSessionMutation } from "./mutations/fork_session.ts";
@@ -82,6 +86,8 @@ import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "./resolvers/agent_create_options.ts";
 import { AgentEnvironmentTemplateResolver } from "./resolvers/agent_environment_template.ts";
 import { AgentSecretsQueryResolver } from "./resolvers/agent_secrets.ts";
+import { AgentSkillGroupsQueryResolver } from "./resolvers/agent_skill_groups.ts";
+import { AgentSkillsQueryResolver } from "./resolvers/agent_skills.ts";
 import { AgentsQueryResolver } from "./resolvers/agents.ts";
 import { ArtifactQueryResolver } from "./resolvers/artifact.ts";
 import { ArtifactsQueryResolver } from "./resolvers/artifacts.ts";
@@ -134,6 +140,8 @@ export class GraphqlApplication {
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly archiveArtifactMutation: ArchiveArtifactMutation;
   private readonly attachSecretToAgentMutation: AttachSecretToAgentMutation;
+  private readonly attachSkillGroupToAgentMutation: AttachSkillGroupToAgentMutation;
+  private readonly attachSkillToAgentMutation: AttachSkillToAgentMutation;
   private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
   private readonly agentConversationMessagesQueryResolver: AgentConversationMessagesQueryResolver;
   private readonly agentConversationsQueryResolver: AgentConversationsQueryResolver;
@@ -141,6 +149,8 @@ export class GraphqlApplication {
   private readonly agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
   private readonly agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolver;
   private readonly agentSecretsQueryResolver: AgentSecretsQueryResolver;
+  private readonly agentSkillGroupsQueryResolver: AgentSkillGroupsQueryResolver;
+  private readonly agentSkillsQueryResolver: AgentSkillsQueryResolver;
   private readonly agentsQueryResolver: AgentsQueryResolver;
   private readonly artifactQueryResolver: ArtifactQueryResolver;
   private readonly artifactsQueryResolver: ArtifactsQueryResolver;
@@ -173,6 +183,8 @@ export class GraphqlApplication {
   private readonly deleteTaskMutation: DeleteTaskMutation;
   private readonly dismissInboxHumanQuestionMutation: DismissInboxHumanQuestionMutation;
   private readonly detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
+  private readonly detachSkillGroupFromAgentMutation: DetachSkillGroupFromAgentMutation;
+  private readonly detachSkillFromAgentMutation: DetachSkillFromAgentMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
   private readonly executeTaskMutation: ExecuteTaskMutation;
   private readonly forkSessionMutation: ForkSessionMutation;
@@ -349,6 +361,10 @@ export class GraphqlApplication {
     @inject(EnvironmentsQueryResolver) environmentsQueryResolver: EnvironmentsQueryResolver = new EnvironmentsQueryResolver(),
     @inject(AttachSecretToAgentMutation)
     attachSecretToAgentMutation?: AttachSecretToAgentMutation,
+    @inject(AttachSkillGroupToAgentMutation)
+    attachSkillGroupToAgentMutation?: AttachSkillGroupToAgentMutation,
+    @inject(AttachSkillToAgentMutation)
+    attachSkillToAgentMutation?: AttachSkillToAgentMutation,
     @inject(AttachSecretToSessionMutation)
     attachSecretToSessionMutation?: AttachSecretToSessionMutation,
     @inject(CreateSecretMutation)
@@ -357,12 +373,20 @@ export class GraphqlApplication {
     deleteSecretMutation?: DeleteSecretMutation,
     @inject(DetachSecretFromAgentMutation)
     detachSecretFromAgentMutation?: DetachSecretFromAgentMutation,
+    @inject(DetachSkillGroupFromAgentMutation)
+    detachSkillGroupFromAgentMutation?: DetachSkillGroupFromAgentMutation,
+    @inject(DetachSkillFromAgentMutation)
+    detachSkillFromAgentMutation?: DetachSkillFromAgentMutation,
     @inject(UpdateSecretMutation)
     updateSecretMutation?: UpdateSecretMutation,
     @inject(DetachSecretFromSessionMutation)
     detachSecretFromSessionMutation?: DetachSecretFromSessionMutation,
     @inject(AgentSecretsQueryResolver)
     agentSecretsQueryResolver?: AgentSecretsQueryResolver,
+    @inject(AgentSkillGroupsQueryResolver)
+    agentSkillGroupsQueryResolver?: AgentSkillGroupsQueryResolver,
+    @inject(AgentSkillsQueryResolver)
+    agentSkillsQueryResolver?: AgentSkillsQueryResolver,
     @inject(SecretsQueryResolver)
     secretsQueryResolver?: SecretsQueryResolver,
     @inject(SessionSecretsQueryResolver)
@@ -597,13 +621,17 @@ export class GraphqlApplication {
 
     this.configDocument = config;
     this.addAgentMutation = addAgentMutation
-      ?? new AddAgentMutation(defaultSecretService, defaultAgentEnvironmentTemplateService);
+      ?? new AddAgentMutation(defaultSecretService, defaultSkillService, defaultAgentEnvironmentTemplateService);
     this.addComputeProviderDefinitionMutation = addComputeProviderDefinitionMutation;
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.addModelProviderCredentialMutation = addModelProviderCredentialMutation;
     this.archiveArtifactMutation = archiveArtifactMutation;
     this.attachSecretToAgentMutation = attachSecretToAgentMutation
       ?? new AttachSecretToAgentMutation(defaultSecretService);
+    this.attachSkillGroupToAgentMutation = attachSkillGroupToAgentMutation
+      ?? new AttachSkillGroupToAgentMutation(defaultSkillService);
+    this.attachSkillToAgentMutation = attachSkillToAgentMutation
+      ?? new AttachSkillToAgentMutation(defaultSkillService);
     this.attachSecretToSessionMutation = attachSecretToSessionMutation
       ?? new AttachSecretToSessionMutation(defaultSecretService);
     this.agentConversationMessagesQueryResolver = agentConversationMessagesQueryResolver;
@@ -614,6 +642,10 @@ export class GraphqlApplication {
       ?? new AgentEnvironmentTemplateResolver(defaultAgentEnvironmentTemplateService);
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
+    this.agentSkillGroupsQueryResolver = agentSkillGroupsQueryResolver
+      ?? new AgentSkillGroupsQueryResolver(defaultSkillService);
+    this.agentSkillsQueryResolver = agentSkillsQueryResolver
+      ?? new AgentSkillsQueryResolver(defaultSkillService);
     this.agentsQueryResolver = agentsQueryResolver;
     this.artifactQueryResolver = artifactQueryResolver;
     this.artifactsQueryResolver = artifactsQueryResolver;
@@ -650,6 +682,10 @@ export class GraphqlApplication {
     this.dismissInboxHumanQuestionMutation = dismissInboxHumanQuestionMutation;
     this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
       ?? new DetachSecretFromAgentMutation(defaultSecretService);
+    this.detachSkillGroupFromAgentMutation = detachSkillGroupFromAgentMutation
+      ?? new DetachSkillGroupFromAgentMutation(defaultSkillService);
+    this.detachSkillFromAgentMutation = detachSkillFromAgentMutation
+      ?? new DetachSkillFromAgentMutation(defaultSkillService);
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
@@ -789,6 +825,8 @@ export class GraphqlApplication {
           ModelProviderCredentials: this.modelProviderCredentialsQueryResolver.execute,
           ModelProviders: this.modelProvidersQueryResolver.execute,
           Secrets: this.secretsQueryResolver.execute,
+          AgentSkillGroups: this.agentSkillGroupsQueryResolver.execute,
+          AgentSkills: this.agentSkillsQueryResolver.execute,
           Skill: this.skillQueryResolver.execute,
           SkillGroups: this.skillGroupsQueryResolver.execute,
           Skills: this.skillsQueryResolver.execute,
@@ -816,6 +854,8 @@ export class GraphqlApplication {
           AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
           ArchiveArtifact: this.archiveArtifactMutation.execute,
           AttachSecretToAgent: this.attachSecretToAgentMutation.execute,
+          AttachSkillGroupToAgent: this.attachSkillGroupToAgentMutation.execute,
+          AttachSkillToAgent: this.attachSkillToAgentMutation.execute,
           AttachSecretToSession: this.attachSecretToSessionMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
           CreateExternalLinkArtifact: this.createExternalLinkArtifactMutation.execute,
@@ -839,6 +879,8 @@ export class GraphqlApplication {
           DeleteTask: this.deleteTaskMutation.execute,
           DismissInboxHumanQuestion: this.dismissInboxHumanQuestionMutation.execute,
           DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
+          DetachSkillGroupFromAgent: this.detachSkillGroupFromAgentMutation.execute,
+          DetachSkillFromAgent: this.detachSkillFromAgentMutation.execute,
           DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
           ExecuteTask: this.executeTaskMutation.execute,
           ForkSession: this.forkSessionMutation.execute,

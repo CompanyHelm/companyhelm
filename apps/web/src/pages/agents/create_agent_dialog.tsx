@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DefaultAttachmentSection } from "./default_attachment_section";
 
 export type AgentCreateProviderOption = {
   id: string;
@@ -38,6 +39,18 @@ export type AgentCreateSecretOption = {
   envVarName: string;
   id: string;
   name: string;
+};
+
+export type AgentCreateSkillGroupOption = {
+  id: string;
+  name: string;
+};
+
+export type AgentCreateSkillOption = {
+  description: string;
+  id: string;
+  name: string;
+  skillGroupId: string | null;
 };
 
 export type AgentCreateComputeProviderDefinitionOption = {
@@ -64,6 +77,8 @@ interface CreateAgentDialogProps {
   isSaving: boolean;
   providerOptions: AgentCreateProviderOption[];
   secretOptions: AgentCreateSecretOption[];
+  skillGroupOptions: AgentCreateSkillGroupOption[];
+  skillOptions: AgentCreateSkillOption[];
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
@@ -72,6 +87,8 @@ interface CreateAgentDialogProps {
     name: string;
     reasoningLevel?: string;
     secretIds?: string[];
+    skillGroupIds?: string[];
+    skillIds?: string[];
     systemPrompt?: string;
   }): Promise<void>;
   onOpenChange(open: boolean): void;
@@ -92,6 +109,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [reasoningLevel, setReasoningLevel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
+  const [selectedSkillGroupIds, setSelectedSkillGroupIds] = useState<string[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
   }, [props.providerOptions, providerOptionId]);
@@ -190,6 +209,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setReasoningLevel("");
       setSystemPrompt("");
       setSelectedSecretIds([]);
+      setSelectedSkillGroupIds([]);
+      setSelectedSkillIds([]);
     }
   }, [props.isOpen]);
 
@@ -273,8 +294,68 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const isReasoningLevelRequired = selectedReasoningLevels.length > 0;
   const advancedSummary = [
     selectedSecretIds.length > 0 ? `${selectedSecretIds.length} secret${selectedSecretIds.length === 1 ? "" : "s"}` : null,
+    selectedSkillGroupIds.length > 0
+      ? `${selectedSkillGroupIds.length} group${selectedSkillGroupIds.length === 1 ? "" : "s"}`
+      : null,
+    selectedSkillIds.length > 0 ? `${selectedSkillIds.length} skill${selectedSkillIds.length === 1 ? "" : "s"}` : null,
   ].filter((value): value is string => Boolean(value)).join(" • ");
-  const shouldScrollSecrets = props.secretOptions.length > 7;
+  const selectedSecretOptions = useMemo(() => {
+    return props.secretOptions
+      .filter((secretOption) => selectedSecretIds.includes(secretOption.id))
+      .map((secretOption) => ({
+        description: secretOption.description,
+        id: secretOption.id,
+        label: secretOption.name,
+        metaLabel: secretOption.envVarName,
+      }));
+  }, [props.secretOptions, selectedSecretIds]);
+  const availableSecretOptions = useMemo(() => {
+    const attachedSecretIds = new Set(selectedSecretIds);
+    return props.secretOptions
+      .filter((secretOption) => !attachedSecretIds.has(secretOption.id))
+      .map((secretOption) => ({
+        description: secretOption.description,
+        id: secretOption.id,
+        label: `${secretOption.name} (${secretOption.envVarName})`,
+        metaLabel: secretOption.envVarName,
+      }));
+  }, [props.secretOptions, selectedSecretIds]);
+  const selectedSkillGroupOptions = useMemo(() => {
+    return props.skillGroupOptions
+      .filter((skillGroupOption) => selectedSkillGroupIds.includes(skillGroupOption.id))
+      .map((skillGroupOption) => ({
+        id: skillGroupOption.id,
+        label: skillGroupOption.name,
+      }));
+  }, [props.skillGroupOptions, selectedSkillGroupIds]);
+  const availableSkillGroupOptions = useMemo(() => {
+    const attachedSkillGroupIds = new Set(selectedSkillGroupIds);
+    return props.skillGroupOptions
+      .filter((skillGroupOption) => !attachedSkillGroupIds.has(skillGroupOption.id))
+      .map((skillGroupOption) => ({
+        id: skillGroupOption.id,
+        label: skillGroupOption.name,
+      }));
+  }, [props.skillGroupOptions, selectedSkillGroupIds]);
+  const selectedSkillOptions = useMemo(() => {
+    return props.skillOptions
+      .filter((skillOption) => selectedSkillIds.includes(skillOption.id))
+      .map((skillOption) => ({
+        description: skillOption.description,
+        id: skillOption.id,
+        label: skillOption.name,
+      }));
+  }, [props.skillOptions, selectedSkillIds]);
+  const availableSkillOptions = useMemo(() => {
+    const attachedSkillIds = new Set(selectedSkillIds);
+    return props.skillOptions
+      .filter((skillOption) => !attachedSkillIds.has(skillOption.id))
+      .map((skillOption) => ({
+        description: skillOption.description,
+        id: skillOption.id,
+        label: skillOption.name,
+      }));
+  }, [props.skillOptions, selectedSkillIds]);
   const isCreateDisabled = agentName.length === 0
     || computeProviderDefinitionId.length === 0
     || environmentTemplateId.length === 0
@@ -483,7 +564,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Advanced</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Add default secrets that should be attached to future sessions.
+                  Add default secrets, skill groups, and skills that should be stored on the agent.
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -502,65 +583,53 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
             {isAdvancedOpen ? (
               <div className="grid gap-4 border-t border-border/60 pt-3">
-                <div className="grid gap-2">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Default secrets
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Selected secrets are attached to future sessions created from this agent.
-                    </p>
-                  </div>
+                <DefaultAttachmentSection
+                  addLabel="Add default secret"
+                  availableEmptyLabel="All company secrets already added"
+                  availableOptions={availableSecretOptions}
+                  currentLabel="Current default secrets"
+                  emptyStateLabel="No default secrets selected yet."
+                  onAdd={(secretId) => {
+                    setSelectedSecretIds((currentValue) => [...currentValue, secretId]);
+                  }}
+                  onRemove={(secretId) => {
+                    setSelectedSecretIds((currentValue) => currentValue.filter((value) => value !== secretId));
+                  }}
+                  placeholder="Select a secret"
+                  selectedOptions={selectedSecretOptions}
+                />
 
-                  {props.secretOptions.length > 0 ? (
-                    <div className={shouldScrollSecrets ? "max-h-[28rem] overflow-y-auto pr-1" : undefined}>
-                      <div className="grid gap-2">
-                        {props.secretOptions.map((secretOption) => {
-                          const isSelected = selectedSecretIds.includes(secretOption.id);
+                <DefaultAttachmentSection
+                  addLabel="Add skill group"
+                  availableEmptyLabel="All company skill groups already added"
+                  availableOptions={availableSkillGroupOptions}
+                  currentLabel="Current skill groups"
+                  emptyStateLabel="No skill groups selected yet."
+                  onAdd={(skillGroupId) => {
+                    setSelectedSkillGroupIds((currentValue) => [...currentValue, skillGroupId]);
+                  }}
+                  onRemove={(skillGroupId) => {
+                    setSelectedSkillGroupIds((currentValue) => currentValue.filter((value) => value !== skillGroupId));
+                  }}
+                  placeholder="Select a skill group"
+                  selectedOptions={selectedSkillGroupOptions}
+                />
 
-                          return (
-                            <button
-                              key={secretOption.id}
-                              aria-pressed={isSelected}
-                              className={`rounded-lg border px-3 py-3 text-left transition ${
-                                isSelected
-                                  ? "border-primary/60 bg-primary/10"
-                                  : "border-border/60 bg-background/40 hover:border-border hover:bg-background/70"
-                              }`}
-                              onClick={() => {
-                                setSelectedSecretIds((currentValue) => {
-                                  if (currentValue.includes(secretOption.id)) {
-                                    return currentValue.filter((secretId) => secretId !== secretOption.id);
-                                  }
-
-                                  return [...currentValue, secretOption.id];
-                                });
-                              }}
-                              type="button"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-medium text-foreground">{secretOption.name}</p>
-                                <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                                  {secretOption.envVarName}
-                                </span>
-                              </div>
-                              {secretOption.description ? (
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {secretOption.description}
-                                </p>
-                              ) : null}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      No reusable company secrets are available yet.
-                    </p>
-                  )}
-                </div>
-
+                <DefaultAttachmentSection
+                  addLabel="Add individual skill"
+                  availableEmptyLabel="All company skills already added"
+                  availableOptions={availableSkillOptions}
+                  currentLabel="Current individual skills"
+                  emptyStateLabel="No individual skills selected yet."
+                  onAdd={(skillId) => {
+                    setSelectedSkillIds((currentValue) => [...currentValue, skillId]);
+                  }}
+                  onRemove={(skillId) => {
+                    setSelectedSkillIds((currentValue) => currentValue.filter((value) => value !== skillId));
+                  }}
+                  placeholder="Select a skill"
+                  selectedOptions={selectedSkillOptions}
+                />
               </div>
             ) : null}
           </div>
@@ -593,6 +662,8 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
                 secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,
+                skillGroupIds: selectedSkillGroupIds.length > 0 ? selectedSkillGroupIds : undefined,
+                skillIds: selectedSkillIds.length > 0 ? selectedSkillIds : undefined,
                 systemPrompt: systemPrompt.length === 0 ? undefined : systemPrompt,
               });
             }}

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<041a137e6855236a21258c6601c49c50>>
+ * @generated SignedSource<<dc0c19addb561f02f720baffb38e3683>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,8 @@ export type AddAgentInput = {
   name: string;
   reasoningLevel?: string | null | undefined;
   secretIds?: ReadonlyArray<string> | null | undefined;
+  skillGroupIds?: ReadonlyArray<string> | null | undefined;
+  skillIds?: ReadonlyArray<string> | null | undefined;
   systemPrompt?: string | null | undefined;
 };
 export type agentsPageAddAgentMutation$variables = {

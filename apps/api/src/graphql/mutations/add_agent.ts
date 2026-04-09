@@ -10,6 +10,7 @@ import type { TransactionProviderInterface } from "../../db/transaction_provider
 import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
 import { AgentEnvironmentTemplateService } from "../../services/environments/template_service.ts";
 import { SecretService } from "../../services/secrets/service.ts";
+import { SkillService } from "../../services/skills/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -22,6 +23,8 @@ type AddAgentMutationArguments = {
     name: string;
     reasoningLevel?: string | null;
     secretIds?: string[] | null;
+    skillGroupIds?: string[] | null;
+    skillIds?: string[] | null;
     systemPrompt?: string | null;
   };
 };
@@ -94,10 +97,25 @@ type DatabaseTransaction = {
 @injectable()
 export class AddAgentMutation extends Mutation<AddAgentMutationArguments, GraphqlAgentRecord> {
   private readonly secretService: SecretService;
+  private readonly skillService: SkillService;
   private readonly templateService: AgentEnvironmentTemplateService;
 
   constructor(
-    @inject(SecretService) secretService: SecretService,
+    @inject(SecretService)
+    secretService: SecretService = {
+      async attachSecretToAgent() {
+        throw new Error("Secret service is not configured.");
+      },
+    } as never,
+    @inject(SkillService)
+    skillService: SkillService = {
+      async attachSkillGroupToAgent() {
+        throw new Error("Skill service is not configured.");
+      },
+      async attachSkillToAgent() {
+        throw new Error("Skill service is not configured.");
+      },
+    } as never,
     @inject(AgentEnvironmentTemplateService)
     templateService: AgentEnvironmentTemplateService = {
       async resolveTemplateForProvider(
@@ -121,6 +139,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   ) {
     super();
     this.secretService = secretService;
+    this.skillService = skillService;
     this.templateService = templateService;
   }
 
@@ -257,6 +276,22 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           userId: authSession.user.id,
         });
       }
+      for (const skillGroupId of AddAgentMutation.resolveDistinctIds(arguments_.input.skillGroupIds)) {
+        await this.skillService.attachSkillGroupToAgent(transactionProvider, {
+          agentId: agentRecord.id,
+          companyId: authSession.company.id,
+          skillGroupId,
+          userId: authSession.user.id,
+        });
+      }
+      for (const skillId of AddAgentMutation.resolveDistinctIds(arguments_.input.skillIds)) {
+        await this.skillService.attachSkillToAgent(transactionProvider, {
+          agentId: agentRecord.id,
+          companyId: authSession.company.id,
+          skillId,
+          userId: authSession.user.id,
+        });
+      }
 
       return AddAgentMutation.serializeRecord(
         agentRecord,
@@ -299,11 +334,15 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   }
 
   private static resolveSecretIds(secretIds: string[] | null | undefined): string[] {
-    if (!secretIds || secretIds.length === 0) {
+    return AddAgentMutation.resolveDistinctIds(secretIds);
+  }
+
+  private static resolveDistinctIds(ids: string[] | null | undefined): string[] {
+    if (!ids || ids.length === 0) {
       return [];
     }
 
-    return [...new Set(secretIds.filter((secretId) => secretId.length > 0))];
+    return [...new Set(ids.filter((id) => id.length > 0))];
   }
 
   private static serializeRecord(

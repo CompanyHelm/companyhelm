@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<182043292dab0c7ffd6a81ddeb6b8afe>>
+ * @generated SignedSource<<cd90fa99cd7d159b045f0bbfcb2c8a8d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -55,6 +55,16 @@ export type agentsPageQuery$data = {
     readonly id: string;
     readonly name: string;
   }>;
+  readonly SkillGroups: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+  }>;
+  readonly Skills: ReadonlyArray<{
+    readonly description: string;
+    readonly id: string;
+    readonly name: string;
+    readonly skillGroupId: string | null | undefined;
+  }>;
 };
 export type agentsPageQuery = {
   response: agentsPageQuery$data;
@@ -90,7 +100,14 @@ v3 = {
   "name": "isDefault",
   "storageKey": null
 },
-v4 = [
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v5 = [
   {
     "alias": null,
     "args": null,
@@ -212,18 +229,46 @@ v4 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
+      (v4/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "envVarName",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "SkillGroup",
+    "kind": "LinkedField",
+    "name": "SkillGroups",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Skill",
+    "kind": "LinkedField",
+    "name": "Skills",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "skillGroupId",
         "storageKey": null
       }
     ],
@@ -304,7 +349,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentsPageQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -313,19 +358,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "agentsPageQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "7ea1532287b4306116f09c9f8d9bc066",
+    "cacheID": "4faa538f3b31fcffd4a8f1b9a8a1792b",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3030502c436cdfc52a5d8111596be88b";
+(node as any).hash = "c8da777d41e84dee9457c2859ee1b0bf";
 
 export default node;

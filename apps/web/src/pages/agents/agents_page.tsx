@@ -9,6 +9,8 @@ import {
   CreateAgentDialog,
   type AgentCreateComputeProviderDefinitionOption,
   type AgentCreateSecretOption,
+  type AgentCreateSkillGroupOption,
+  type AgentCreateSkillOption,
   type AgentCreateProviderOption,
 } from "./create_agent_dialog";
 import type { agentsPageAddAgentMutation } from "./__generated__/agentsPageAddAgentMutation.graphql";
@@ -46,6 +48,16 @@ const agentsPageQueryNode = graphql`
       name
       description
       envVarName
+    }
+    SkillGroups {
+      id
+      name
+    }
+    Skills {
+      id
+      name
+      description
+      skillGroupId
     }
     ComputeProviderDefinitions {
       id
@@ -162,6 +174,16 @@ function AgentsPageContent() {
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
+  }));
+  const skillGroupOptions: AgentCreateSkillGroupOption[] = data.SkillGroups.map((skillGroup) => ({
+    id: skillGroup.id,
+    name: skillGroup.name,
+  }));
+  const skillOptions: AgentCreateSkillOption[] = data.Skills.map((skill) => ({
+    description: skill.description,
+    id: skill.id,
+    name: skill.name,
+    skillGroupId: skill.skillGroupId,
   }));
   const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] =
     data.ComputeProviderDefinitions.map((definition) => ({
@@ -297,6 +319,8 @@ function AgentsPageContent() {
         isSaving={isCreateAgentInFlight}
         providerOptions={providerOptions}
         secretOptions={secretOptions}
+        skillGroupOptions={skillGroupOptions}
+        skillOptions={skillOptions}
         onCreate={async (input) => {
           setErrorMessage(null);
 

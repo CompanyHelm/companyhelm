@@ -17,6 +17,8 @@ type Query {
   Skills: [Skill!]!
   Secrets: [Secret!]!
   AgentSecrets(agentId: ID!): [Secret!]!
+  AgentSkillGroups(agentId: ID!): [SkillGroup!]!
+  AgentSkills(agentId: ID!): [Skill!]!
   Sessions: [Session!]!
   SessionEnvironment(sessionId: ID!): SessionEnvironmentInfo!
   SessionSecrets(sessionId: ID!): [Secret!]!
@@ -52,6 +54,8 @@ type Mutation {
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
+  AttachSkillGroupToAgent(input: AttachSkillGroupToAgentInput!): SkillGroup!
+  AttachSkillToAgent(input: AttachSkillToAgentInput!): Skill!
   AttachSecretToSession(input: AttachSecretToSessionInput!): Secret!
   ArchiveSession(input: ArchiveSessionInput!): Session!
   ArchiveArtifact(input: ArchiveArtifactInput!): Artifact!
@@ -71,6 +75,8 @@ type Mutation {
   DeleteSkill(input: DeleteSkillInput!): Skill!
   DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
+  DetachSkillGroupFromAgent(input: DetachSkillGroupFromAgentInput!): SkillGroup!
+  DetachSkillFromAgent(input: DetachSkillFromAgentInput!): Skill!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   InterruptSession(input: InterruptSessionInput!): Session!
   DismissInboxHumanQuestion(input: DismissInboxHumanQuestionInput!): InboxHumanQuestion!
@@ -591,6 +597,8 @@ input AddAgentInput {
   reasoningLevel: String
   systemPrompt: String
   secretIds: [ID!]
+  skillGroupIds: [ID!]
+  skillIds: [ID!]
 }
 
 input UpdateAgentInput {
@@ -781,9 +789,29 @@ input AttachSecretToAgentInput {
   secretId: ID!
 }
 
+input AttachSkillGroupToAgentInput {
+  agentId: ID!
+  skillGroupId: ID!
+}
+
+input AttachSkillToAgentInput {
+  agentId: ID!
+  skillId: ID!
+}
+
 input DetachSecretFromAgentInput {
   agentId: ID!
   secretId: ID!
+}
+
+input DetachSkillGroupFromAgentInput {
+  agentId: ID!
+  skillGroupId: ID!
+}
+
+input DetachSkillFromAgentInput {
+  agentId: ID!
+  skillId: ID!
 }
 
 input DetachSecretFromSessionInput {

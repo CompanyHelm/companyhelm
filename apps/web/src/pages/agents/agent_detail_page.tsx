@@ -6,9 +6,12 @@ import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
+import { AgentSkillDefaultsCard } from "./agent_skill_defaults_card";
 import type {
   AgentCreateComputeProviderDefinitionOption,
   AgentCreateProviderOption,
+  AgentCreateSkillGroupOption,
+  AgentCreateSkillOption,
 } from "./create_agent_dialog";
 import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.graphql";
 import type { agentDetailPageUpdateAgentMutation } from "./__generated__/agentDetailPageUpdateAgentMutation.graphql";
@@ -49,6 +52,16 @@ const agentDetailPageQueryNode = graphql`
       description
       envVarName
     }
+    AgentSkillGroups(agentId: $agentId) {
+      id
+      name
+    }
+    AgentSkills(agentId: $agentId) {
+      id
+      name
+      description
+      skillGroupId
+    }
     AgentCreateOptions {
       id
       isDefault
@@ -69,6 +82,16 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       envVarName
+    }
+    SkillGroups {
+      id
+      name
+    }
+    Skills {
+      id
+      name
+      description
+      skillGroupId
     }
     ComputeProviderDefinitions {
       id
@@ -234,6 +257,26 @@ function AgentDetailPageContent() {
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
+  }));
+  const agentSkillGroups = data.AgentSkillGroups.map((skillGroup) => ({
+    id: skillGroup.id,
+    name: skillGroup.name,
+  }));
+  const agentSkills = data.AgentSkills.map((skill) => ({
+    description: skill.description,
+    id: skill.id,
+    name: skill.name,
+    skillGroupId: skill.skillGroupId,
+  }));
+  const companySkillGroups: AgentCreateSkillGroupOption[] = data.SkillGroups.map((skillGroup) => ({
+    id: skillGroup.id,
+    name: skillGroup.name,
+  }));
+  const companySkills: AgentCreateSkillOption[] = data.Skills.map((skill) => ({
+    description: skill.description,
+    id: skill.id,
+    name: skill.name,
+    skillGroupId: skill.skillGroupId,
   }));
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
@@ -515,6 +558,14 @@ function AgentDetailPageContent() {
         agentId={agent.id}
         agentSecrets={agentSecrets}
         companySecrets={companySecrets}
+      />
+
+      <AgentSkillDefaultsCard
+        agentId={agent.id}
+        agentSkillGroups={agentSkillGroups}
+        agentSkills={agentSkills}
+        companySkillGroups={companySkillGroups}
+        companySkills={companySkills}
       />
 
       <Card className="rounded-2xl border border-border/60 shadow-sm">

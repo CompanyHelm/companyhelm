@@ -146,10 +146,7 @@ class AddAgentMutationTestHarness {
                 from() {
                   return {
                     async where() {
-                      return [{
-                        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
-                        id: "agent-1",
-                      }];
+                      return [];
                     },
                   };
                 },
