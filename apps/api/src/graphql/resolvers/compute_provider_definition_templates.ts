@@ -42,10 +42,22 @@ export class ComputeProviderDefinitionTemplatesResolver {
       throw new Error("Authentication required.");
     }
 
-    return this.templateService.listTemplatesForProvider(
-      context.app_runtime_transaction_provider,
-      context.authSession.company.id,
-      definition.id,
-    );
+    try {
+      return await this.templateService.listTemplatesForProvider(
+        context.app_runtime_transaction_provider,
+        context.authSession.company.id,
+        definition.id,
+      );
+    } catch (error) {
+      if (ComputeProviderDefinitionTemplatesResolver.isUnsupportedProviderError(error)) {
+        return [];
+      }
+
+      throw error;
+    }
   };
+
+  private static isUnsupportedProviderError(error: unknown): boolean {
+    return error instanceof Error && /^Compute provider .+ is not configured\.$/.test(error.message);
+  }
 }
