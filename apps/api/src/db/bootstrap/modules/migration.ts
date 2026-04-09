@@ -6,6 +6,7 @@ import { inject, injectable } from "inversify";
 import { Config } from "../../../config/schema.ts";
 import { AdminDatabase } from "../../admin_database.ts";
 import type { BootstrapModuleInterface } from "../bootstrap_module_interface.ts";
+import { MigrationJournalAuditor } from "./migration_journal_auditor.ts";
 
 /**
  * Applies the checked-in Drizzle migrations through the admin database session.
@@ -34,6 +35,8 @@ export class MigrationBootstrapModule implements BootstrapModuleInterface {
     if (!existsSync(migrationsFolder)) {
       throw new Error(`Drizzle migrations folder not found at "${migrationsFolder}".`);
     }
+
+    new MigrationJournalAuditor(migrationsFolder).assertSynchronized();
 
     await sqlClient`SET statement_timeout = 0`;
     await sqlClient`

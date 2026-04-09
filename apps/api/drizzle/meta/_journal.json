@@ -554,6 +554,13 @@
       "when": 1775714900000,
       "tag": "0078_openrouter_model_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1775730600000,
+      "tag": "0079_reasoning_supported_model_metadata",
+      "breakpoints": true
     }
   ]
 }
