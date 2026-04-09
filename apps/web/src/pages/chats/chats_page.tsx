@@ -2537,12 +2537,6 @@ function ChatsPageContent() {
 
     setSessionEnvironmentErrorMessage(null);
     setActingSessionEnvironmentId(environmentId);
-    const openedWindow = window.open("about:blank", "_blank");
-    if (!openedWindow) {
-      setActingSessionEnvironmentId(null);
-      setSessionEnvironmentErrorMessage("Allow pop-ups to open the environment desktop.");
-      return;
-    }
 
     await new Promise<void>((resolve, reject) => {
       commitGetEnvironmentVncUrl({
@@ -2564,13 +2558,12 @@ function ChatsPageContent() {
             return;
           }
 
-          openedWindow.location.replace(url);
+          window.location.assign(url);
           resolve();
         },
         onError: reject,
       });
     }).catch((error: unknown) => {
-      openedWindow.close();
       setSessionEnvironmentErrorMessage(
         error instanceof Error ? error.message : "Failed to open environment desktop.",
       );

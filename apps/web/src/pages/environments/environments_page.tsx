@@ -235,12 +235,6 @@ function EnvironmentsPageContent() {
 
               setErrorMessage(null);
               setActingEnvironmentId(environmentId);
-              const openedWindow = window.open("about:blank", "_blank");
-              if (!openedWindow) {
-                setActingEnvironmentId(null);
-                setErrorMessage("Allow pop-ups to open the environment desktop.");
-                return;
-              }
 
               await new Promise<void>((resolve, reject) => {
                 commitGetEnvironmentVncUrl({
@@ -262,13 +256,12 @@ function EnvironmentsPageContent() {
                       return;
                     }
 
-                    openedWindow.location.replace(url);
+                    window.location.assign(url);
                     resolve();
                   },
                   onError: reject,
                 });
               }).catch((error: unknown) => {
-                openedWindow.close();
                 setErrorMessage(error instanceof Error ? error.message : "Failed to open environment desktop.");
               });
 
