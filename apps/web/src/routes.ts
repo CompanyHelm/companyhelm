@@ -138,7 +138,6 @@ const rootIndexRoute = createRoute({
 const organizationRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   id: "org",
-  path: OrganizationPath.route("/"),
   component: OrganizationRoute,
 });
 
