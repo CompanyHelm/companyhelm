@@ -1,6 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolParameterSchema } from "../../../../services/agent/session/pi-mono/tools/parameter_schema.ts";
-import { AgentComputeE2bComputerUseResultFormatter } from "./result_formatter.ts";
 import { AgentComputeE2bComputerUseToolService } from "./service.ts";
 
 /**
@@ -22,11 +21,11 @@ export class AgentComputeE2bComputerUseScreenshotTool {
         const screenshot = await this.toolService.screenshot();
         return {
           content: [{
-            text: AgentComputeE2bComputerUseResultFormatter.formatScreenshot(screenshot.byteLength),
-            type: "text",
+            data: screenshot.base64EncodedPng,
+            mimeType: "image/png",
+            type: "image",
           }],
           details: {
-            base64EncodedPng: screenshot.base64EncodedPng,
             byteLength: screenshot.byteLength,
             type: "computer_use_screenshot",
           },

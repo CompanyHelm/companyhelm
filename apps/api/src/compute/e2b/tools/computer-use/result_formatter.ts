@@ -1,6 +1,6 @@
 /**
  * Formats human-readable summaries for E2B desktop SDK tool calls so transcript entries stay
- * concise while still surfacing the key coordinates, window ids, or screenshot payload sizes.
+ * concise while still surfacing the key coordinates, window ids, or wait results.
  */
 export class AgentComputeE2bComputerUseResultFormatter {
   static formatAction(message: string): string {
@@ -21,10 +21,6 @@ export class AgentComputeE2bComputerUseResultFormatter {
     }
 
     return `Found ${windowIds.length} window(s) for "${application}": ${windowIds.join(", ")}.`;
-  }
-
-  static formatScreenshot(byteLength: number): string {
-    return `Captured a PNG screenshot (${byteLength} bytes, returned as base64 in details.base64EncodedPng).`;
   }
 
   static formatWaitAndVerify(success: boolean, command: string): string {
