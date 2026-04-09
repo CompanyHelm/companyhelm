@@ -36,6 +36,9 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during initialization");
       },
+      async readAssignedSecret() {
+        throw new Error("assigned secret reads should not be loaded during initialization");
+      },
       async listAvailableSecrets() {
         throw new Error("available secrets should not be loaded during initialization");
       },
@@ -148,6 +151,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "pty_resize",
       "pty_kill",
       "list_assigned_secrets",
+      "read_secret",
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",
@@ -196,6 +200,9 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during cleanup");
+      },
+      async readAssignedSecret() {
+        throw new Error("assigned secret reads should not be loaded during cleanup");
       },
       async listAvailableSecrets() {
         throw new Error("available secrets should not be loaded during cleanup");
@@ -327,6 +334,9 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during session creation");
       },
+      async readAssignedSecret() {
+        throw new Error("assigned secret reads should not be loaded during session creation");
+      },
       async listAvailableSecrets() {
         throw new Error("available secrets should not be loaded during session creation");
       },
@@ -453,6 +463,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "pty_resize",
       "pty_kill",
       "list_assigned_secrets",
+      "read_secret",
       "list_available_secrets",
       "list_company_members",
       "list_company_agents",

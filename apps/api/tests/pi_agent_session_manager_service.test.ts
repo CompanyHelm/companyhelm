@@ -98,6 +98,7 @@ const baseToolNames = [
   "pty_resize",
   "pty_kill",
   "list_assigned_secrets",
+  "read_secret",
   "list_available_secrets",
   "list_company_members",
   "list_company_agents",

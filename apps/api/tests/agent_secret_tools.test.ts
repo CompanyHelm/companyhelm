@@ -3,11 +3,15 @@ import { test } from "vitest";
 import { AgentListAssignedSecretsTool } from "../src/services/agent/session/pi-mono/tools/secrets/list_assigned.ts";
 import { AgentListAvailableSecretsTool } from "../src/services/agent/session/pi-mono/tools/secrets/list_available.ts";
 import { AgentSecretToolProvider } from "../src/services/agent/session/pi-mono/tools/secrets/provider.ts";
+import { AgentReadSecretTool } from "../src/services/agent/session/pi-mono/tools/secrets/read.ts";
 
-test("AgentSecretToolProvider contributes the assigned and available secret tools", () => {
+test("AgentSecretToolProvider contributes the session secret tools", () => {
   const provider = new AgentSecretToolProvider({
     async listAssignedSecrets() {
       throw new Error("assigned secret lookup is lazy");
+    },
+    async readAssignedSecret() {
+      throw new Error("assigned secret reads are lazy");
     },
     async listAvailableSecrets() {
       throw new Error("available secret lookup is lazy");
@@ -16,7 +20,7 @@ test("AgentSecretToolProvider contributes the assigned and available secret tool
 
   assert.deepEqual(
     provider.createToolDefinitions().map((tool) => tool.name),
-    ["list_assigned_secrets", "list_available_secrets"],
+    ["list_assigned_secrets", "read_secret", "list_available_secrets"],
   );
 });
 
@@ -42,6 +46,41 @@ test("AgentListAssignedSecretsTool renders attached session secret metadata", as
       ].join("\n"),
       type: "text",
     }],
+  });
+});
+
+test("AgentReadSecretTool returns plaintext only in details and keeps transcript text non-sensitive", async () => {
+  const tool = new AgentReadSecretTool({
+    async readAssignedSecret(envVarName: string) {
+      assert.equal(envVarName, "GITHUB_TOKEN");
+      return {
+        description: "Used for GitHub API calls.",
+        envVarName: "GITHUB_TOKEN",
+        name: "GitHub Token",
+        value: "super-secret-value",
+      };
+    },
+  } as never);
+
+  const result = await tool.createDefinition().execute("tool-call-1", {
+    envVarName: "GITHUB_TOKEN",
+  });
+
+  assert.deepEqual(result, {
+    content: [{
+      text: [
+        "Read secret metadata for GitHub Token.",
+        "envVarName: GITHUB_TOKEN",
+        "Prefer using this secret through environment variables in pty_exec, bash_exec, or gh_exec instead of reading plaintext directly.",
+      ].join("\n"),
+      type: "text",
+    }],
+    details: {
+      envVarName: "GITHUB_TOKEN",
+      name: "GitHub Token",
+      type: "secret",
+      value: "super-secret-value",
+    },
   });
 });
 

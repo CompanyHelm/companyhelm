@@ -1,4 +1,4 @@
-import type { AgentSecretSummary } from "./service.ts";
+import type { AgentSecretSummary, AgentSecretValue } from "./service.ts";
 
 /**
  * Formats secret metadata for transcript persistence without ever including secret plaintext.
@@ -20,6 +20,14 @@ export class AgentSecretResultFormatter {
     }
 
     return AgentSecretResultFormatter.formatSecretList(secrets);
+  }
+
+  static formatReadSecret(secret: AgentSecretValue): string {
+    return [
+      `Read secret metadata for ${secret.name}.`,
+      `envVarName: ${secret.envVarName}`,
+      "Prefer using this secret through environment variables in pty_exec, bash_exec, or gh_exec instead of reading plaintext directly.",
+    ].join("\n");
   }
 
   private static formatSecretList(secrets: AgentSecretSummary[]): string {
