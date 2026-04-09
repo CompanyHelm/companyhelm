@@ -3,12 +3,16 @@ export function formatProviderLabel(value: string): string {
     return "OpenAI (API key)";
   }
 
+  if (value === "openrouter") {
+    return "OpenRouter (API key)";
+  }
+
   if (value === "openai-codex") {
     return "OpenAI (Subscription)";
   }
 
   if (value === "anthropic") {
-    return "Anthropic (API Key)";
+    return "Anthropic (API key)";
   }
 
   return value;

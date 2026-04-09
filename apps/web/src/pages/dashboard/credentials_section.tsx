@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatProviderLabel } from "../model-provider-credentials/provider_label";
 
 export type DashboardCredentialRecord = {
   id: string;
@@ -24,13 +25,6 @@ export type DashboardCredentialRecord = {
   type: string;
   updatedAt: string;
 };
-
-function formatProviderLabel(provider: string): string {
-  return provider
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function formatTimestamp(value: string): string {
   const timestamp = new Date(value);

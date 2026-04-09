@@ -8,6 +8,7 @@ import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_mo
 import type { ModelAdapterInterface } from "../providers/models-adapters/model_adapter_interface.js";
 import { OpenAiCodexModelAdapter } from "../providers/models-adapters/openai_codex_model_adapter.js";
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
+import { OpenRouterModelAdapter } from "../providers/models-adapters/openrouter_model_adapter.js";
 
 type StoredModelRecord = {
   id: string;
@@ -63,6 +64,7 @@ export class ModelService {
       ["openai", new OpenAiModelAdapter(modelRegistry)],
       ["openai-codex", new OpenAiCodexModelAdapter(modelRegistry)],
       ["anthropic", new AnthropicModelAdapter(modelRegistry)],
+      ["openrouter", new OpenRouterModelAdapter()],
     ]);
   }
 

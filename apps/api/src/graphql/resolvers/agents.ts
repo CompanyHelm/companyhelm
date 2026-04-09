@@ -6,6 +6,7 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
+import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
 
@@ -29,7 +30,7 @@ type ModelRecord = {
 
 type CredentialRecord = {
   id: string;
-  modelProvider: "openai" | "anthropic" | "openai-codex";
+  modelProvider: ModelProviderId;
 };
 
 type ComputeProviderDefinitionRecord = {
@@ -47,7 +48,7 @@ type GraphqlAgentRecord = {
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
-  modelProvider: "openai" | "anthropic" | "openai-codex" | null;
+  modelProvider: ModelProviderId | null;
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;

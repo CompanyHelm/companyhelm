@@ -14,11 +14,13 @@ export class ModelRegistry {
     openai: "gpt-5.4",
     "openai-codex": "gpt-5.4",
     anthropic: "claude-opus-4-6",
+    openrouter: "openrouter/auto",
   };
 
   private static defaultReasoningLevels: Record<string, string> = {
     openai: "high",
     "openai-codex": "high",
+    openrouter: "high",
   };
 
 

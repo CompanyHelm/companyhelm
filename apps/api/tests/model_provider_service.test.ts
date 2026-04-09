@@ -23,6 +23,13 @@ test("ModelProviderService returns provider metadata for API key providers", () 
     authorizationInstructionsMarkdown:
       "Create an API key in the [Anthropic API getting started guide](https://docs.anthropic.com/en/api/getting-started).",
   });
+  assert.deepEqual(service.get("openrouter"), {
+    id: "openrouter",
+    name: "OpenRouter",
+    type: ModelProviderAuthorizationType.ApiKey,
+    authorizationInstructionsMarkdown:
+      "Create an API key in the [OpenRouter keys settings](https://openrouter.ai/settings/keys).",
+  });
 });
 
 test("ModelProviderService returns oauth instructions for openai-codex", () => {
@@ -46,7 +53,7 @@ test("ModelProviderService lists supported providers in modal order", () => {
 
   assert.deepEqual(
     service.list().map((provider) => provider.id),
-    ["openai", "anthropic", "openai-codex"],
+    ["openai", "anthropic", "openrouter", "openai-codex"],
   );
 });
 

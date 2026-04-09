@@ -21,6 +21,10 @@ class ModelProvidersQueryTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
       auth: {
         provider: "clerk",
       },
@@ -109,6 +113,13 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
       type: "api_key",
       authorizationInstructionsMarkdown:
         "Create an API key in the [Anthropic API getting started guide](https://docs.anthropic.com/en/api/getting-started).",
+    },
+    {
+      id: "openrouter",
+      name: "OpenRouter",
+      type: "api_key",
+      authorizationInstructionsMarkdown:
+        "Create an API key in the [OpenRouter keys settings](https://openrouter.ai/settings/keys).",
     },
     {
       id: "openai-codex",

@@ -22,6 +22,7 @@ import { AgentEnvironmentTemplateService } from "../../../environments/template_
 import { AgentInboxService } from "../../../inbox/service.ts";
 import { ModelRegistry } from "../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../ai_providers/model_provider_service.ts";
+import { OpenRouterCatalogService } from "../../../ai_providers/openrouter_catalog_service.js";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { AgentEnvironmentWorkspacePath } from "../../../environments/workspace_path.ts";
@@ -86,6 +87,7 @@ export class PiMonoSessionManagerService {
   private readonly templateService: AgentEnvironmentTemplateService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly modelProviderService: ModelProviderService;
+  private readonly openRouterCatalogService: OpenRouterCatalogService;
   private readonly appModelRegistry: ModelRegistry;
   private readonly sessionModuleRegistry: DefaultAgentSessionModuleRegistry;
 
@@ -104,6 +106,7 @@ export class PiMonoSessionManagerService {
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(ModelProviderService) modelProviderService: ModelProviderService,
+    openRouterCatalogService: OpenRouterCatalogService = new OpenRouterCatalogService(),
     @inject(ModelRegistry) appModelRegistry: ModelRegistry,
     @inject(SessionContextCheckpointService)
     sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
@@ -121,6 +124,7 @@ export class PiMonoSessionManagerService {
     this.templateService = templateService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.modelProviderService = modelProviderService;
+    this.openRouterCatalogService = openRouterCatalogService;
     this.appModelRegistry = appModelRegistry;
     this.sessionContextCheckpointService = sessionContextCheckpointService;
     this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
@@ -156,6 +160,9 @@ export class PiMonoSessionManagerService {
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(bootstrapContext.modelProviderId, bootstrapContext.modelApiKey);
     const modelRegistry = new PiMonoModelRegistry(authStorage);
+    if (bootstrapContext.modelProviderId === "openrouter") {
+      await this.configureOpenRouterProvider(bootstrapContext.modelApiKey, modelRegistry);
+    }
     const sessionModuleResolution = await this.sessionModuleRegistry.resolve(bootstrapContext);
     const agentToolsService = new AgentToolsService(
       bootstrapContext.promptScope,
@@ -359,6 +366,33 @@ export class PiMonoSessionManagerService {
     }
 
     return reasoningLevel as ThinkingLevel;
+  }
+
+  private async configureOpenRouterProvider(
+    apiKey: string,
+    modelRegistry: PiMonoModelRegistry,
+  ): Promise<void> {
+    const models = await this.openRouterCatalogService.fetchCatalog(apiKey, {
+      validateCredential: false,
+    });
+    if (models.length === 0) {
+      throw new Error("OpenRouter did not return any models.");
+    }
+
+    modelRegistry.registerProvider("openrouter", {
+      api: "openai-completions",
+      apiKey,
+      baseUrl: OpenRouterCatalogService.API_BASE_URL,
+      models: models.map((model) => ({
+        contextWindow: model.contextWindow,
+        cost: model.cost,
+        id: model.modelId,
+        input: model.input,
+        maxTokens: model.maxTokens,
+        name: model.name,
+        reasoning: Array.isArray(model.reasoningLevels) && model.reasoningLevels.length > 0,
+      })),
+    });
   }
 
   private async loadStoredContextMessages(

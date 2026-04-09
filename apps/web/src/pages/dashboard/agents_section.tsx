@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatProviderLabel } from "../model-provider-credentials/provider_label";
 
 export type DashboardAgentRecord = {
   id: string;
@@ -27,12 +28,12 @@ export type DashboardAgentRecord = {
   updatedAt: string;
 };
 
-function formatProviderLabel(provider: string | null): string {
+function formatDashboardProviderLabel(provider: string | null): string {
   if (!provider) {
     return "Not configured";
   }
 
-  return provider.charAt(0).toUpperCase() + provider.slice(1);
+  return formatProviderLabel(provider);
 }
 
 function formatReasoningLabel(value: string | null): string {
@@ -113,7 +114,7 @@ export function AgentsSection(props: { agents: DashboardAgentRecord[]; totalCoun
                     <div className="min-w-0">
                       <p className="truncate font-medium text-foreground">{agent.name}</p>
                       <p className="mt-1 truncate text-[0.7rem] text-muted-foreground">
-                        {formatProviderLabel(agent.modelProvider)}
+                        {formatDashboardProviderLabel(agent.modelProvider)}
                       </p>
                     </div>
                   </TableCell>

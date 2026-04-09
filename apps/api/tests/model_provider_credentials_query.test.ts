@@ -21,6 +21,10 @@ class ModelProviderCredentialsQueryTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
       auth: {
         provider: "clerk",
       },

@@ -76,13 +76,19 @@ class ModelServiceTestHarness {
                 return {
                   async where() {
                     const index = currentModels.findIndex((model) => model.id === "existing-model-row");
-                    currentModels[index] = {
-                      ...currentModels[index],
-                      name: String(value.name),
-                      description: String(value.description),
-                      reasoningLevels: (value.reasoningLevels as string[] | null) ?? null,
-                    };
-                    updatedIds.push("existing-model-row");
+                    if ("name" in value || "description" in value || "reasoningLevels" in value) {
+                      currentModels[index] = {
+                        ...currentModels[index],
+                        name: "name" in value ? String(value.name) : currentModels[index].name,
+                        description: "description" in value
+                          ? String(value.description)
+                          : currentModels[index].description,
+                        reasoningLevels: "reasoningLevels" in value
+                          ? (value.reasoningLevels as string[] | null) ?? null
+                          : currentModels[index].reasoningLevels,
+                      };
+                      updatedIds.push("existing-model-row");
+                    }
                   },
                 };
               },
@@ -183,6 +189,73 @@ test("ModelService fetchModels uses the dedicated openai-codex adapter", async (
     assert.equal(fetchCallCount, 0);
     assert.equal(models[0]?.provider, "openai-codex");
     assert.ok(models.some((model) => model.modelId === "gpt-5.4"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("ModelService fetchModels uses the dedicated openrouter adapter", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    calls.push(url);
+
+    if (url.endsWith("/key")) {
+      return new Response(JSON.stringify({ data: { label: "Primary key" } }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      });
+    }
+
+    if (url.endsWith("/models")) {
+      return new Response(JSON.stringify({
+        data: [
+          {
+            id: "openrouter/auto",
+            name: "Auto Router",
+            description: "Automatically routes requests.",
+            architecture: {
+              input_modalities: ["text", "image"],
+            },
+            context_length: 2_000_000,
+            supported_parameters: ["reasoning"],
+            top_provider: {
+              max_completion_tokens: 4_096,
+            },
+          },
+        ],
+      }), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+        },
+      });
+    }
+
+    throw new Error(`Unexpected fetch: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const modelService = new ModelService(new ModelRegistry());
+
+    const models = await modelService.fetchModels("openrouter", "sk-or-v1");
+
+    assert.deepEqual(calls, [
+      "https://openrouter.ai/api/v1/key",
+      "https://openrouter.ai/api/v1/models",
+    ]);
+    assert.deepEqual(models, [
+      new ModelProviderModel({
+        provider: "openrouter",
+        modelId: "openrouter/auto",
+        name: "Auto Router",
+        description: "Automatically routes requests.",
+        reasoningLevels: ["low", "medium", "high", "xhigh"],
+      }),
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

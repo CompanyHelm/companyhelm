@@ -6,6 +6,7 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
+import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
 import { AgentEnvironmentTemplateService } from "../../services/environments/template_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -45,7 +46,7 @@ type ModelRecord = {
 
 type CredentialRecord = {
   id: string;
-  modelProvider: "openai" | "anthropic" | "openai-codex";
+  modelProvider: ModelProviderId;
 };
 
 type ExistingAgentRecord = {
@@ -68,7 +69,7 @@ type GraphqlAgentRecord = {
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
-  modelProvider: "openai" | "anthropic" | "openai-codex" | null;
+  modelProvider: ModelProviderId | null;
   modelName: string | null;
   reasoningLevel: string | null;
   systemPrompt: string | null;

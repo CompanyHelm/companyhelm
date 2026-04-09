@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
+import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -16,7 +17,7 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   createdAt: Date;
   isDefault: boolean;
-  modelProvider: "openai" | "anthropic" | "openai-codex";
+  modelProvider: ModelProviderId;
   name: string;
   refreshedAt: Date | null;
   refreshToken: string | null;
@@ -38,7 +39,7 @@ type GraphqlModelProviderCredentialRecord = {
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   isDefault: boolean;
-  modelProvider: "openai" | "anthropic" | "openai-codex";
+  modelProvider: ModelProviderId;
   name: string;
   refreshedAt: string | null;
   refreshToken: string | null;

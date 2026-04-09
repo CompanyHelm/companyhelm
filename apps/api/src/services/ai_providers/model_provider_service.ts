@@ -1,5 +1,7 @@
 import { injectable } from "inversify";
 
+export type ModelProviderId = "anthropic" | "openai" | "openai-codex" | "openrouter";
+
 export enum ModelProviderAuthorizationType {
   ApiKey = "api_key",
   Oauth = "oauth",
@@ -38,6 +40,16 @@ export class ModelProviderService {
         type: ModelProviderAuthorizationType.ApiKey,
         authorizationInstructionsMarkdown:
           "Create an API key in the [Anthropic API getting started guide](https://docs.anthropic.com/en/api/getting-started).",
+      },
+    ],
+    [
+      "openrouter",
+      {
+        id: "openrouter",
+        name: "OpenRouter",
+        type: ModelProviderAuthorizationType.ApiKey,
+        authorizationInstructionsMarkdown:
+          "Create an API key in the [OpenRouter keys settings](https://openrouter.ai/settings/keys).",
       },
     ],
     [

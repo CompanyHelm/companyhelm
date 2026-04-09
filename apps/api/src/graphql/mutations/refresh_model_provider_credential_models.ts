@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
 import { ModelService } from "../../services/ai_providers/model_service.js";
+import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -14,7 +15,7 @@ type RefreshModelProviderCredentialModelsMutationArguments = {
 type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
-  modelProvider: "openai" | "anthropic";
+  modelProvider: ModelProviderId;
   encryptedApiKey: string;
 };
 
