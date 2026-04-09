@@ -3,7 +3,13 @@ DECLARE
   runtime_role_name text := NULLIF(BTRIM(current_setting('app.runtime_role', true)), '');
 BEGIN
   IF runtime_role_name IS NULL THEN
-    RAISE EXCEPTION 'Missing session setting app.runtime_role for runtime role grants migration.';
+    RAISE NOTICE 'Skipping runtime role grants migration because app.runtime_role is not set.';
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = runtime_role_name) THEN
+    RAISE NOTICE 'Skipping runtime role grants migration because role % does not exist yet.', runtime_role_name;
+    RETURN;
   END IF;
 
   EXECUTE format('REVOKE ALL PRIVILEGES ON SCHEMA public FROM %I', runtime_role_name);
