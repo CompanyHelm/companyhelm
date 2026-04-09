@@ -13,7 +13,10 @@ import type {
   TransactionProviderInterface,
 } from "../../../../../../db/transaction_provider_interface.ts";
 import { ModelRegistry } from "../../../../../ai_providers/model_registry.ts";
-import { ModelProviderService } from "../../../../../ai_providers/model_provider_service.ts";
+import {
+  type ModelProviderId,
+  ModelProviderService,
+} from "../../../../../ai_providers/model_provider_service.ts";
 import type {
   AgentEnvironmentTemplate,
   ComputeProvider,
@@ -47,7 +50,7 @@ export type AgentManagementToolAgent = {
   modelDescription: string | null;
   modelId: string | null;
   modelName: string | null;
-  modelProvider: "anthropic" | "openai" | "openai-codex" | null;
+  modelProvider: ModelProviderId | null;
   modelProviderCredentialId: string | null;
   modelProviderCredentialLabel: string | null;
   modelProviderCredentialModelId: string | null;
@@ -73,7 +76,7 @@ export type AgentManagementToolCredentialOption = {
   id: string;
   isDefault: boolean;
   label: string;
-  modelProvider: "anthropic" | "openai" | "openai-codex";
+  modelProvider: ModelProviderId;
   models: AgentManagementToolCredentialModelOption[];
 };
 
@@ -144,7 +147,7 @@ type AgentSecretAttachmentRecord = {
 type CredentialRecord = {
   id: string;
   isDefault: boolean;
-  modelProvider: "anthropic" | "openai" | "openai-codex";
+  modelProvider: ModelProviderId;
   name: string;
 };
 
