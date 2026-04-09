@@ -106,6 +106,7 @@ export class PiMonoSessionManagerService {
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(ModelProviderService) modelProviderService: ModelProviderService,
+    @inject(OpenRouterCatalogService)
     openRouterCatalogService: OpenRouterCatalogService = new OpenRouterCatalogService(),
     @inject(ModelRegistry) appModelRegistry: ModelRegistry,
     @inject(SessionContextCheckpointService)
