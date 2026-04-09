@@ -133,9 +133,11 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   forkedFromTurnId: uuid("forked_from_turn_id")
     .references(() => sessionTurns.id, { onDelete: "set null" }),
-  // the session context messages from pi mono session.agent.state.messages
-  // it is used to reload messages into context when resuming the session
-  context_messages: jsonb("context_messages"),
+  // the latest persisted runtime context from pi mono session.agent.state.messages.
+  // It is used to reload the live session state after worker restarts without replaying the full
+  // transcript.
+  contextMessagesSnapshot: jsonb("context_messages_snapshot"),
+  contextMessagesSnapshotAt: timestamp("context_messages_snapshot_at", { withTimezone: true }),
   isThinking: boolean("is_thinking").notNull(),
   thinkingText: text("thinking_text"),
   currentContextTokens: integer("current_context_tokens"),
@@ -177,7 +179,7 @@ export const sessionContextCheckpoints = pgTable("session_context_checkpoints", 
   sessionId: uuid("session_id")
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
-  contextMessages: jsonb("context_messages").notNull(),
+  contextMessagesSnapshot: jsonb("context_messages_snapshot").notNull(),
   currentContextTokens: integer("current_context_tokens"),
   maxContextTokens: integer("max_context_tokens"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),

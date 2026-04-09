@@ -67,6 +67,11 @@ type UpdatableDatabase = {
   };
 };
 
+type StoredContextMessagesSnapshot = {
+  contextMessagesSnapshot: AgentMessage[];
+  contextMessagesSnapshotAt: Date | null;
+};
+
 /**
  * Owns the process-local PI Mono runtime sessions keyed by CompanyHelm session id. Its scope is
  * creating the SDK runtime for the currently leased turn, restoring persisted context into it, and
@@ -178,7 +183,7 @@ export class PiMonoSessionManagerService {
     sessionManager.newSession({
       id: sessionId,
     });
-    const storedContextMessages = await this.loadStoredContextMessages(transactionProvider, sessionId);
+    const storedContextMessagesSnapshot = await this.loadStoredContextMessagesSnapshot(transactionProvider, sessionId);
     const resourceLoader = new CompanyHelmResourceLoader(
       bootstrapContext.toSystemPromptTemplateContext(),
       sessionModuleResolution.appendSystemPrompts,
@@ -200,13 +205,15 @@ export class PiMonoSessionManagerService {
       thinkingLevel: this.resolveThinkingLevel(bootstrapContext.reasoningLevel),
     });
     session.setActiveToolsByName(initializedTools.map((tool) => tool.name));
-    session.agent.replaceMessages(storedContextMessages);
+    session.agent.replaceMessages(storedContextMessagesSnapshot.contextMessagesSnapshot);
     const sessionEventHandler = new PiMonoSessionEventHandler(
       transactionProvider,
       sessionId,
       this.redisService,
       {
+        contextMessagesSnapshotProvider: () => session.agent.state.messages,
         contextSnapshotProvider: () => this.buildContextSnapshot(session),
+        initialContextMessagesSnapshotAt: storedContextMessagesSnapshot.contextMessagesSnapshotAt,
         logger: this.logger,
       },
     );
@@ -253,7 +260,7 @@ export class PiMonoSessionManagerService {
       completedTurnAt = new Date();
       completedTurnId = await runtime.eventHandler.finishPromptTurn(completedTurnAt);
     }
-    await this.persistContextMessages(
+    await this.persistContextMessagesSnapshot(
       transactionProvider,
       runtime.getCompanyId(),
       sessionId,
@@ -279,7 +286,7 @@ export class PiMonoSessionManagerService {
 
     const session = runtime.session;
     await session.steer(message, images);
-    await this.persistContextMessages(
+    await this.persistContextMessagesSnapshot(
       transactionProvider,
       runtime.getCompanyId(),
       sessionId,
@@ -396,27 +403,32 @@ export class PiMonoSessionManagerService {
     });
   }
 
-  private async loadStoredContextMessages(
+  private async loadStoredContextMessagesSnapshot(
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
-  ): Promise<AgentMessage[]> {
+  ): Promise<StoredContextMessagesSnapshot> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const [sessionRecord] = await selectableDatabase
         .select({
-          contextMessages: agentSessions.context_messages,
+          contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
+          contextMessagesSnapshotAt: agentSessions.contextMessagesSnapshotAt,
         })
         .from(agentSessions)
         .where(eq(agentSessions.id, sessionId));
-      if (!Array.isArray(sessionRecord?.contextMessages)) {
-        return [];
-      }
 
-      return sessionRecord.contextMessages as AgentMessage[];
+      return {
+        contextMessagesSnapshot: Array.isArray(sessionRecord?.contextMessagesSnapshot)
+          ? sessionRecord.contextMessagesSnapshot as AgentMessage[]
+          : [],
+        contextMessagesSnapshotAt: sessionRecord?.contextMessagesSnapshotAt instanceof Date
+          ? sessionRecord.contextMessagesSnapshotAt
+          : null,
+      };
     });
   }
 
-  private async persistContextMessages(
+  private async persistContextMessagesSnapshot(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
@@ -443,7 +455,11 @@ export class PiMonoSessionManagerService {
       await updatableDatabase
         .update(agentSessions)
         .set({
-          context_messages: messages,
+          contextMessagesSnapshot: messages,
+          contextMessagesSnapshotAt: completedTurnAt,
+          currentContextTokens: contextSnapshot.currentContextTokens,
+          isCompacting: contextSnapshot.isCompacting,
+          maxContextTokens: contextSnapshot.maxContextTokens,
           updated_at: new Date(),
         })
         .where(eq(agentSessions.id, sessionId));
@@ -454,7 +470,7 @@ export class PiMonoSessionManagerService {
 
       await this.sessionContextCheckpointService.createCheckpointInTransaction(insertableDatabase, {
         companyId,
-        contextMessages: messages,
+        contextMessagesSnapshot: messages,
         createdAt: completedTurnAt,
         currentContextTokens: contextSnapshot.currentContextTokens,
         maxContextTokens: contextSnapshot.maxContextTokens,

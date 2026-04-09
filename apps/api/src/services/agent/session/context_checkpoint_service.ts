@@ -4,7 +4,7 @@ import { sessionContextCheckpoints } from "../../../db/schema.ts";
 
 type SessionContextCheckpointRecord = {
   companyId: string;
-  contextMessages: unknown;
+  contextMessagesSnapshot: unknown;
   createdAt: Date;
   currentContextTokens: number | null;
   maxContextTokens: number | null;
@@ -28,7 +28,7 @@ type InsertableDatabase = {
 
 export type SessionContextCheckpointInput = {
   companyId: string;
-  contextMessages: unknown;
+  contextMessagesSnapshot: unknown;
   createdAt: Date;
   currentContextTokens: number | null;
   maxContextTokens: number | null;
@@ -51,7 +51,7 @@ export class SessionContextCheckpointService {
       .insert(sessionContextCheckpoints)
       .values({
         companyId: input.companyId,
-        contextMessages: input.contextMessages,
+        contextMessagesSnapshot: input.contextMessagesSnapshot,
         createdAt: input.createdAt,
         currentContextTokens: input.currentContextTokens,
         maxContextTokens: input.maxContextTokens,
@@ -68,7 +68,7 @@ export class SessionContextCheckpointService {
     const [checkpointRecord] = await selectableDatabase
       .select({
         companyId: sessionContextCheckpoints.companyId,
-        contextMessages: sessionContextCheckpoints.contextMessages,
+        contextMessagesSnapshot: sessionContextCheckpoints.contextMessagesSnapshot,
         createdAt: sessionContextCheckpoints.createdAt,
         currentContextTokens: sessionContextCheckpoints.currentContextTokens,
         maxContextTokens: sessionContextCheckpoints.maxContextTokens,

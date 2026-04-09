@@ -1545,7 +1545,7 @@ test("SessionManagerService forkSession creates a stopped branch from the select
               async where() {
                 return [{
                   companyId: "company-1",
-                  contextMessages: [{
+                  contextMessagesSnapshot: [{
                     content: "Child branch context",
                     role: "assistant",
                     timestamp: 1712538600000,
@@ -1688,11 +1688,15 @@ test("SessionManagerService forkSession creates a stopped branch from the select
   assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-child-1");
   assert.equal(insertedSessionValues[0]?.status, "stopped");
   assert.equal(insertedSessionValues[0]?.inferredTitle, "Fork of Review the release plan");
-  assert.deepEqual(insertedSessionValues[0]?.context_messages, [{
+  assert.deepEqual(insertedSessionValues[0]?.contextMessagesSnapshot, [{
     content: "Child branch context",
     role: "assistant",
     timestamp: 1712538600000,
   }]);
+  assert.equal(
+    (insertedSessionValues[0]?.contextMessagesSnapshotAt as Date | undefined)?.toISOString(),
+    "2026-04-07T19:10:00.000Z",
+  );
   assert.equal(insertedSessionValues[0]?.currentContextTokens, 2048);
   assert.equal(insertedSessionValues[0]?.maxContextTokens, 200000);
   assert.deepEqual(insertedSessionSecretValues, [{

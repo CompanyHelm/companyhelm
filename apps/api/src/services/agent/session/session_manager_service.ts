@@ -490,7 +490,8 @@ export class SessionManagerService {
         .insert(agentSessions)
         .values({
           companyId,
-          context_messages: checkpoint.contextMessages,
+          contextMessagesSnapshot: checkpoint.contextMessagesSnapshot,
+          contextMessagesSnapshotAt: checkpoint.createdAt,
           currentContextTokens: checkpoint.currentContextTokens,
           agentId: sourceSession.agentId,
           currentModelProviderCredentialModelId: sourceSession.currentModelProviderCredentialModelId,

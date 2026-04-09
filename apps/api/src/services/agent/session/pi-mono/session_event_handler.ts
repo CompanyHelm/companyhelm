@@ -111,7 +111,9 @@ type QueuedUserMessageDispatch = {
 };
 
 type PiMonoSessionEventHandlerDependencies = {
+  contextMessagesSnapshotProvider?: () => unknown;
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
+  initialContextMessagesSnapshotAt?: Date | null;
   logger?: PinoLogger;
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
   userSessionReadService?: UserSessionReadService;
@@ -126,6 +128,7 @@ export class PiMonoSessionEventHandler {
   private static readonly fallbackLogger = pino({
     level: "silent",
   });
+  private static readonly contextMessagesSnapshotIntervalMilliseconds = 60_000;
 
   private readonly redisService: RedisService;
   private readonly transactionProvider: TransactionProviderInterface;
@@ -133,6 +136,7 @@ export class PiMonoSessionEventHandler {
   private readonly logger: PinoLogger;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly userSessionReadService: UserSessionReadService;
+  private readonly contextMessagesSnapshotProvider: () => unknown;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
   private readonly messageIdByEventKey = new Map<string, string>();
   private readonly messageIdsByTurnId = new Map<string, Set<string>>();
@@ -147,6 +151,7 @@ export class PiMonoSessionEventHandler {
   private thinkingText = "";
   private persistedThinkingContent = "";
   private lastPersistedTimestampMilliseconds = 0;
+  private lastContextMessagesSnapshotAtMilliseconds: number | null;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
@@ -161,11 +166,13 @@ export class PiMonoSessionEventHandler {
       component: "pi_mono_session_event_handler",
       sessionId,
     });
+    this.contextMessagesSnapshotProvider = dependencies.contextMessagesSnapshotProvider ?? (() => []);
     this.contextSnapshotProvider = dependencies.contextSnapshotProvider ?? (() => ({
       currentContextTokens: null,
       isCompacting: false,
       maxContextTokens: null,
     }));
+    this.lastContextMessagesSnapshotAtMilliseconds = dependencies.initialContextMessagesSnapshotAt?.getTime() ?? null;
     this.sessionProcessPubSubNames = dependencies.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
     this.userSessionReadService = dependencies.userSessionReadService ?? new UserSessionReadService();
   }
@@ -303,6 +310,7 @@ export class PiMonoSessionEventHandler {
       companyId,
       sessionId: this.sessionId,
     });
+    await this.persistContextMessagesSnapshot(new Date(), true);
     await this.updateSessionStatus("stopped");
   }
 
@@ -352,6 +360,7 @@ export class PiMonoSessionEventHandler {
   }
 
   private async handleMessageEnd(sessionEvent: SessionEvent): Promise<void> {
+    const snapshotTimestamp = this.resolveMessageTimestamp(sessionEvent.message?.timestamp);
     switch (sessionEvent.message?.role) {
       case "user": {
         const queuedUserMessageDispatch = this.shiftQueuedUserMessageDispatch();
@@ -361,12 +370,14 @@ export class PiMonoSessionEventHandler {
         if (queuedUserMessageDispatch?.queuedMessageId) {
           await this.deleteQueuedUserMessage(queuedUserMessageDispatch.queuedMessageId);
         }
+        await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
         this.logDebug("pi mono user message completed", sessionEvent);
         return;
       }
       case "assistant":
         await this.upsertSessionMessage("completed", sessionEvent);
         await this.clearThinkingState(true, true);
+        await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
         this.persistedThinkingContent = "";
         this.logDebug("pi mono assistant message completed", sessionEvent);
         return;
@@ -376,6 +387,7 @@ export class PiMonoSessionEventHandler {
           return;
         }
         await this.upsertSessionMessage("completed", sessionEvent);
+        await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
         this.logDebug("pi mono tool result message completed", sessionEvent);
         return;
       default:
@@ -851,6 +863,43 @@ export class PiMonoSessionEventHandler {
       isCompacting: contextSnapshot.isCompacting,
       maxContextTokens: contextSnapshot.maxContextTokens,
     };
+  }
+
+  private async persistContextMessagesSnapshot(snapshotAt: Date, force: boolean): Promise<void> {
+    const snapshotAtMilliseconds = snapshotAt.getTime();
+    if (
+      !force
+      && this.lastContextMessagesSnapshotAtMilliseconds !== null
+      && snapshotAtMilliseconds - this.lastContextMessagesSnapshotAtMilliseconds
+        < PiMonoSessionEventHandler.contextMessagesSnapshotIntervalMilliseconds
+    ) {
+      return;
+    }
+
+    const contextMessagesSnapshot = this.contextMessagesSnapshotProvider();
+    if (!Array.isArray(contextMessagesSnapshot)) {
+      this.logError("cannot persist session context snapshot without an array of messages", {
+        type: "context_messages_snapshot_invalid",
+      });
+      return;
+    }
+
+    await this.transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(agentSessions)
+        .set({
+          contextMessagesSnapshot,
+          contextMessagesSnapshotAt: snapshotAt,
+          ...this.buildContextSnapshotValues(),
+        })
+        .where(and(
+          eq(agentSessions.id, this.sessionId),
+          ne(agentSessions.status, "archived"),
+        ));
+    });
+
+    this.lastContextMessagesSnapshotAtMilliseconds = snapshotAtMilliseconds;
   }
 
   private async persistSessionState(

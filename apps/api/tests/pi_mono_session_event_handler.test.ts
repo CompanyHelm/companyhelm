@@ -44,6 +44,8 @@ class PiMonoSessionEventHandlerTestHarness {
       maxContextTokens: null as number | null,
     };
     const sessionState = {
+      contextMessagesSnapshot: null as unknown[] | null,
+      contextMessagesSnapshotAt: null as Date | null,
       currentContextTokens: null as number | null,
       isCompacting: false,
       isThinking: false,
@@ -158,6 +160,16 @@ class PiMonoSessionEventHandlerTestHarness {
                         if ("currentContextTokens" in value) {
                           sessionState.currentContextTokens = typeof value.currentContextTokens === "number"
                             ? value.currentContextTokens
+                            : null;
+                        }
+                        if ("contextMessagesSnapshot" in value) {
+                          sessionState.contextMessagesSnapshot = Array.isArray(value.contextMessagesSnapshot)
+                            ? value.contextMessagesSnapshot as unknown[]
+                            : null;
+                        }
+                        if ("contextMessagesSnapshotAt" in value) {
+                          sessionState.contextMessagesSnapshotAt = value.contextMessagesSnapshotAt instanceof Date
+                            ? value.contextMessagesSnapshotAt
                             : null;
                         }
                         if (typeof value.isCompacting === "boolean") {
@@ -426,6 +438,11 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
     "session-1",
     harness.redisService as never,
     {
+      contextMessagesSnapshotProvider: () => [{
+        content: "Final assistant context",
+        role: "assistant",
+        timestamp: 4096,
+      }],
       contextSnapshotProvider: () => harness.contextSnapshot,
     },
   );
@@ -438,15 +455,27 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
     harness.restore();
   }
 
-  assert.equal(harness.sessionStatusUpdates.length, 1);
-  assert.equal(harness.sessionStatusUpdates[0]?.status, "stopped");
+  assert.equal(harness.sessionStatusUpdates.length, 2);
+  assert.deepEqual(harness.sessionStatusUpdates[0]?.contextMessagesSnapshot, [{
+    content: "Final assistant context",
+    role: "assistant",
+    timestamp: 4096,
+  }]);
+  assert.ok(harness.sessionStatusUpdates[0]?.contextMessagesSnapshotAt instanceof Date);
+  assert.equal(harness.sessionStatusUpdates[1]?.status, "stopped");
   assert.deepEqual(harness.clearedSessionReadSessionIds, ["session-1"]);
-  assert.equal(harness.sessionStatusUpdates[0]?.currentContextTokens, 4096);
-  assert.equal(harness.sessionStatusUpdates[0]?.isThinking, false);
-  assert.equal(harness.sessionStatusUpdates[0]?.isCompacting, false);
-  assert.equal(harness.sessionStatusUpdates[0]?.maxContextTokens, 200000);
-  assert.equal(harness.sessionStatusUpdates[0]?.thinkingText, null);
-  assert.ok(harness.sessionStatusUpdates[0]?.updated_at instanceof Date);
+  assert.equal(harness.sessionStatusUpdates[1]?.currentContextTokens, 4096);
+  assert.equal(harness.sessionStatusUpdates[1]?.isThinking, false);
+  assert.equal(harness.sessionStatusUpdates[1]?.isCompacting, false);
+  assert.equal(harness.sessionStatusUpdates[1]?.maxContextTokens, 200000);
+  assert.equal(harness.sessionStatusUpdates[1]?.thinkingText, null);
+  assert.ok(harness.sessionStatusUpdates[1]?.updated_at instanceof Date);
+  assert.deepEqual(harness.sessionState.contextMessagesSnapshot, [{
+    content: "Final assistant context",
+    role: "assistant",
+    timestamp: 4096,
+  }]);
+  assert.ok(harness.sessionState.contextMessagesSnapshotAt instanceof Date);
   assert.equal(harness.sessionState.currentContextTokens, 4096);
   assert.equal(harness.sessionState.isCompacting, false);
   assert.equal(harness.sessionState.status, "stopped");
@@ -457,6 +486,63 @@ test("PiMonoSessionEventHandler marks the session stopped on agent end", async (
     channel: "company:company-1:session:session-1:update",
     message: "",
   }]);
+});
+
+test("PiMonoSessionEventHandler throttles live context snapshots to once per minute on message end", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  harness.contextSnapshot.currentContextTokens = 12000;
+  harness.contextSnapshot.maxContextTokens = 200000;
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      contextMessagesSnapshotProvider: () => [{
+        content: "Latest runtime context",
+        role: "assistant",
+        timestamp: 62000,
+      }],
+      contextSnapshotProvider: () => harness.contextSnapshot,
+    },
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: "First user message",
+        role: "user",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+    await handler.handle({
+      message: {
+        content: "Second user message",
+        role: "user",
+        timestamp: 2000,
+      },
+      type: "message_end",
+    });
+    await handler.handle({
+      message: {
+        content: "Third user message",
+        role: "user",
+        timestamp: 62000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const contextSnapshotUpdates = harness.sessionStatusUpdates.filter((update) => {
+    return "contextMessagesSnapshot" in update;
+  });
+  const firstSnapshotAt = contextSnapshotUpdates[0]?.contextMessagesSnapshotAt as Date | undefined;
+  const secondSnapshotAt = contextSnapshotUpdates[1]?.contextMessagesSnapshotAt as Date | undefined;
+  assert.equal(contextSnapshotUpdates.length, 2);
+  assert.equal(firstSnapshotAt?.getTime(), 1000);
+  assert.equal(secondSnapshotAt?.getTime(), 62000);
 });
 
 test("PiMonoSessionEventHandler persists assistant messages across start update and end", async () => {

@@ -107,6 +107,7 @@ const baseToolNames = [
   "create_agent",
   "update_agent",
   "list_github_installations",
+  "clone_github_repository",
   "gh_exec",
   "web_search",
   "web_fetch",
@@ -325,7 +326,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
                   async where() {
                     return [{
                       companyId: "company-1",
-                      contextMessages: storedMessages,
+                      contextMessagesSnapshot: storedMessages,
+                      contextMessagesSnapshotAt: new Date("2026-04-09T08:00:00.000Z"),
                     }];
                   },
                 };
@@ -494,17 +496,17 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
   assert.deepEqual(piAgentMocks.continueMock.mock.calls, []);
   assert.equal(piAgentMocks.abortMock.mock.calls.length, 1);
-  assert.equal(persistedContextUpdates.filter((value) => "context_messages" in value).length, 2);
+  assert.equal(persistedContextUpdates.filter((value) => "contextMessagesSnapshot" in value).length, 2);
   assert.deepEqual(
     persistedContextUpdates
-      .filter((value) => "context_messages" in value)
-      .map((value) => value.context_messages),
+      .filter((value) => "contextMessagesSnapshot" in value)
+      .map((value) => value.contextMessagesSnapshot),
     [createdSession.agent.state.messages, createdSession.agent.state.messages],
   );
   assert.equal(persistedCheckpointInserts.length, 1);
   assert.equal(persistedCheckpointInserts[0]?.companyId, "company-1");
   assert.equal(persistedCheckpointInserts[0]?.sessionId, "session-1");
-  assert.deepEqual(persistedCheckpointInserts[0]?.contextMessages, createdSession.agent.state.messages);
+  assert.deepEqual(persistedCheckpointInserts[0]?.contextMessagesSnapshot, createdSession.agent.state.messages);
   assert.equal(persistedCheckpointInserts[0]?.currentContextTokens, null);
   assert.equal(persistedCheckpointInserts[0]?.maxContextTokens, null);
   assert.ok(typeof persistedCheckpointInserts[0]?.turnId === "string");
@@ -661,7 +663,8 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
                   async where() {
                     return [{
                       companyId: "company-1",
-                      contextMessages: storedMessages,
+                      contextMessagesSnapshot: storedMessages,
+                      contextMessagesSnapshotAt: new Date("2026-04-09T08:00:00.000Z"),
                     }];
                   },
                 };
@@ -738,7 +741,7 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
   assert.equal(piAgentMocks.continueMock.mock.calls.length, 2);
   assert.equal(pendingMessageCount, 0);
-  assert.equal(persistedContextUpdates.filter((value) => "context_messages" in value).length, 1);
+  assert.equal(persistedContextUpdates.filter((value) => "contextMessagesSnapshot" in value).length, 1);
 });
 
 test("PiMonoSessionManagerService reuses the live runtime session for repeated ensureSession calls", async () => {
@@ -863,7 +866,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
                 return {
                   async where() {
                     return [{
-                      contextMessages: [],
+                      contextMessagesSnapshot: [],
+                      contextMessagesSnapshotAt: null,
                     }];
                   },
                 };
@@ -895,11 +899,12 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
                 return {
                   async where() {
                     return [{
-                      contextMessages: [{
+                      contextMessagesSnapshot: [{
                         content: "ignored on reuse",
                         role: "user",
                         timestamp: 1,
                       }],
+                      contextMessagesSnapshotAt: new Date("2026-04-09T08:00:00.000Z"),
                     }];
                   },
                 };
