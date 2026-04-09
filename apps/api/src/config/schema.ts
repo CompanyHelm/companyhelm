@@ -65,6 +65,10 @@ export const ConfigDocument = z.object({
   companyhelm: z.object({
     e2b: z.object({
       api_key: NonEmptyStringSchema,
+      desktop_resolution: z.object({
+        height: PositiveIntegerSchema,
+        width: PositiveIntegerSchema,
+      }),
       template_prefix: NonEmptyStringSchema,
     }),
   }),

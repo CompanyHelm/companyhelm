@@ -137,6 +137,9 @@ web_search:
 companyhelm:
   e2b:
     api_key: "\${${params.companyHelmE2bApiKeyVariableName}}"
+    desktop_resolution:
+      width: 1920
+      height: 1080
     template_prefix: "realequityapps/"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
@@ -207,6 +210,10 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     key_id: "companyhelm-local-key",
   });
   assert.equal(document.companyhelm.e2b.api_key, "e2b-local-api-key");
+  assert.deepEqual(document.companyhelm.e2b.desktop_resolution, {
+    height: 1080,
+    width: 1920,
+  });
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");

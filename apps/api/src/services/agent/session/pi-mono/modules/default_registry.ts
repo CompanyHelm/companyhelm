@@ -1,5 +1,6 @@
 import type { Logger as PinoLogger } from "pino";
 import { GithubClient } from "../../../../../github/client.ts";
+import { Config } from "../../../../../config/schema.ts";
 import { ArtifactService } from "../../../../artifact_service.ts";
 import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../../ai_providers/model_provider_service.ts";
@@ -30,6 +31,7 @@ import { WebSessionModule } from "./web.ts";
 
 type DefaultAgentSessionModuleRegistryInput = {
   agentConversationService: AgentConversationService;
+  config: Config;
   computeProviderDefinitionService: ComputeProviderDefinitionService;
   exaWebClient: ExaWebClient;
   githubClient: GithubClient;
@@ -53,7 +55,7 @@ export class DefaultAgentSessionModuleRegistry {
     this.registry = new AgentSessionModuleRegistry([
       new CorePromptSessionModule(),
       new TerminalSessionModule(input.logger),
-      new ComputerUseSessionModule(input.computeProviderDefinitionService),
+      new ComputerUseSessionModule(input.config, input.computeProviderDefinitionService),
       new SecretsSessionModule(input.secretService),
       new CompanyDirectorySessionModule(),
       new AgentManagementSessionModule({

@@ -19,7 +19,6 @@ const E2B_SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
 const E2B_CONNECT_REQUEST_TIMEOUT_MS = 15_000;
 const E2B_DESKTOP_DISPLAY = ":0";
 const E2B_DESKTOP_DPI = 96;
-const E2B_DESKTOP_RESOLUTION = [1024, 768] as const;
 const E2B_DESKTOP_STREAM_PORT = 6080;
 const E2B_DESKTOP_BOOTSTRAP_TIMEOUT_MS = 10_000;
 const E2B_DESKTOP_STREAM_START_TIMEOUT_MS = 10_000;
@@ -118,7 +117,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
           ...sandboxCreateOptions,
           display: E2B_DESKTOP_DISPLAY,
           dpi: E2B_DESKTOP_DPI,
-          resolution: [...E2B_DESKTOP_RESOLUTION],
+          resolution: this.resolveDesktopResolution(),
         })
       : await E2bSandbox.create(templateReference, sandboxCreateOptions);
 
@@ -391,7 +390,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
    */
   private async startDisplay(sandbox: DesktopSandbox, display: string): Promise<void> {
     await sandbox.commands.run(
-      `Xvfb ${display} -ac -screen 0 ${E2B_DESKTOP_RESOLUTION[0]}x${E2B_DESKTOP_RESOLUTION[1]}x24 -retro -dpi ${E2B_DESKTOP_DPI} -nolisten tcp -nolisten unix`,
+      `Xvfb ${display} -ac -screen 0 ${this.config.companyhelm.e2b.desktop_resolution.width}x${this.config.companyhelm.e2b.desktop_resolution.height}x24 -retro -dpi ${E2B_DESKTOP_DPI} -nolisten tcp -nolisten unix`,
       {
         background: true,
         timeoutMs: 0,
@@ -531,5 +530,12 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     }
 
     return template;
+  }
+
+  private resolveDesktopResolution(): [number, number] {
+    return [
+      this.config.companyhelm.e2b.desktop_resolution.width,
+      this.config.companyhelm.e2b.desktop_resolution.height,
+    ];
   }
 }

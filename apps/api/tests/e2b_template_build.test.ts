@@ -81,11 +81,31 @@ test("E2bTemplateBuild exposes provider-specific computer-use tools only for com
   });
 
   const mediumProviders = mediumBuild.getTools({
+    config: {
+      companyhelm: {
+        e2b: {
+          desktop_resolution: {
+            height: 1080,
+            width: 1920,
+          },
+        },
+      },
+    } as never,
     computeProviderDefinitionService: {} as never,
     promptScope: {} as never,
     transactionProvider: {} as never,
   });
   const smallProviders = smallBuild.getTools({
+    config: {
+      companyhelm: {
+        e2b: {
+          desktop_resolution: {
+            height: 1080,
+            width: 1920,
+          },
+        },
+      },
+    } as never,
     computeProviderDefinitionService: {} as never,
     promptScope: {} as never,
     transactionProvider: {} as never,

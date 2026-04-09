@@ -223,6 +223,16 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
+    {
+      companyhelm: {
+        e2b: {
+          desktop_resolution: {
+            height: 1080,
+            width: 1920,
+          },
+        },
+      },
+    } as never,
     logger,
     {
       async getClient() {
@@ -545,6 +555,16 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
+    {
+      companyhelm: {
+        e2b: {
+          desktop_resolution: {
+            height: 1080,
+            width: 1920,
+          },
+        },
+      },
+    } as never,
     logger,
     {
       async getClient() {
@@ -745,6 +765,16 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
+    {
+      companyhelm: {
+        e2b: {
+          desktop_resolution: {
+            height: 1080,
+            width: 1920,
+          },
+        },
+      },
+    } as never,
     logger,
     {
       async getClient() {

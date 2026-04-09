@@ -1,4 +1,5 @@
 import { Template, type BuildInfo, type TemplateClass, defaultBuildLogger } from "e2b";
+import type { Config } from "../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import type { AgentEnvironmentTemplate } from "../../services/environments/providers/provider_interface.ts";
 import { AgentComputeE2bComputerUseToolProvider } from "./tools/computer-use/provider.ts";
@@ -64,6 +65,7 @@ export class E2bTemplateBuild {
    * created for this template. Non-computer-use templates contribute no extra tools.
    */
   getTools(input: {
+    config: Config;
     computeProviderDefinitionService: ComputeProviderDefinitionService;
     promptScope: AgentEnvironmentPromptScope;
     transactionProvider: TransactionProviderInterface;
@@ -77,7 +79,10 @@ export class E2bTemplateBuild {
         new AgentComputeE2bComputerUseToolService(
           input.transactionProvider,
           input.promptScope,
-          new AgentComputeE2bDesktopSandboxService(input.computeProviderDefinitionService),
+          new AgentComputeE2bDesktopSandboxService(
+            input.config,
+            input.computeProviderDefinitionService,
+          ),
         ),
       ),
     ];

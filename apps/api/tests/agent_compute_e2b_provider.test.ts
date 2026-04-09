@@ -23,6 +23,10 @@ function createConfig() {
   return {
     companyhelm: {
       e2b: {
+        desktop_resolution: {
+          height: 1080,
+          width: 1920,
+        },
         template_prefix: "realequityapps/",
       },
     },
@@ -145,7 +149,7 @@ test("AgentComputeE2bProvider provisions computer-use environments through the d
       companyId: "company-1",
       sessionId: "session-1",
     },
-    resolution: [1024, 768],
+    resolution: [1920, 1080],
     timeoutMs: 15 * 60 * 1000,
   });
   assert.equal(getInfo.mock.calls.length, 1);
@@ -287,7 +291,7 @@ test("AgentComputeE2bProvider bootstraps the desktop runtime when a reconnected 
   assert.equal(connect.mock.calls.length, 1);
   assert.equal(run.mock.calls.length, 4);
   assert.deepEqual(run.mock.calls[0], [
-    "Xvfb :0 -ac -screen 0 1024x768x24 -retro -dpi 96 -nolisten tcp -nolisten unix",
+    "Xvfb :0 -ac -screen 0 1920x1080x24 -retro -dpi 96 -nolisten tcp -nolisten unix",
     {
       background: true,
       timeoutMs: 0,

@@ -1,5 +1,6 @@
 import { AgentComputeE2bComputerUseToolProvider } from "../../../../../compute/e2b/tools/computer-use/provider.ts";
 import { AgentComputeE2bComputerUseToolService } from "../../../../../compute/e2b/tools/computer-use/service.ts";
+import { Config } from "../../../../../config/schema.ts";
 import { ComputeProviderDefinitionService } from "../../../../compute_provider_definitions/service.ts";
 import { AgentComputeE2bDesktopSandboxService } from "../../../../environments/providers/e2b/desktop_sandbox_service.ts";
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
@@ -11,10 +12,12 @@ import { AgentSessionModuleInterface } from "./module_interface.ts";
  * template explicitly advertises desktop interaction support.
  */
 export class ComputerUseSessionModule extends AgentSessionModuleInterface {
+  private readonly config: Config;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
 
-  constructor(computeProviderDefinitionService: ComputeProviderDefinitionService) {
+  constructor(config: Config, computeProviderDefinitionService: ComputeProviderDefinitionService) {
     super();
+    this.config = config;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
   }
 
@@ -32,7 +35,10 @@ export class ComputerUseSessionModule extends AgentSessionModuleInterface {
         new AgentComputeE2bComputerUseToolService(
           context.transactionProvider,
           context.promptScope,
-          new AgentComputeE2bDesktopSandboxService(this.computeProviderDefinitionService),
+          new AgentComputeE2bDesktopSandboxService(
+            this.config,
+            this.computeProviderDefinitionService,
+          ),
         ),
       ),
     ];

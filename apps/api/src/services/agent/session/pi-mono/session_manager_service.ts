@@ -33,6 +33,7 @@ import { ExaWebClient } from "../../../web_search/exa_client.ts";
 import { AgentSessionBootstrapContext } from "./bootstrap_context.ts";
 import { DefaultAgentSessionModuleRegistry } from "./modules/default_registry.ts";
 import { AgentSessionRuntimeContext } from "./runtime_context.ts";
+import { Config } from "../../../../config/schema.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -89,6 +90,7 @@ export class PiMonoSessionManagerService {
   private readonly sessionModuleRegistry: DefaultAgentSessionModuleRegistry;
 
   constructor(
+    @inject(Config) config: Config,
     @inject(ApiLogger) logger: ApiLogger,
     @inject(RedisService) redisService: RedisService,
     @inject(AgentEnvironmentAccessService) agentEnvironmentAccessService: AgentEnvironmentAccessService,
@@ -123,6 +125,7 @@ export class PiMonoSessionManagerService {
     this.sessionContextCheckpointService = sessionContextCheckpointService;
     this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
       agentConversationService: this.agentConversationService,
+      config,
       computeProviderDefinitionService: this.computeProviderDefinitionService,
       exaWebClient: this.exaWebClient,
       githubClient: this.githubClient,

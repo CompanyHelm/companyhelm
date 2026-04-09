@@ -1,6 +1,7 @@
 import { CommandExitError } from "e2b";
 import { Sandbox as DesktopSandbox } from "@e2b/desktop";
 import { inject, injectable } from "inversify";
+import { Config } from "../../../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
 import type { AgentEnvironmentRecord } from "../provider_interface.ts";
@@ -9,7 +10,6 @@ const E2B_SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
 const E2B_CONNECT_REQUEST_TIMEOUT_MS = 15_000;
 const E2B_DESKTOP_DISPLAY = ":0";
 const E2B_DESKTOP_DPI = 96;
-const E2B_DESKTOP_RESOLUTION = [1024, 768] as const;
 
 /**
  * Connects to an existing E2B desktop sandbox and ensures the XFCE desktop runtime is usable
@@ -17,12 +17,15 @@ const E2B_DESKTOP_RESOLUTION = [1024, 768] as const;
  */
 @injectable()
 export class AgentComputeE2bDesktopSandboxService {
+  private readonly config: Config;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
 
   constructor(
+    @inject(Config) config: Config,
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
   ) {
+    this.config = config;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
   }
 
@@ -70,7 +73,7 @@ export class AgentComputeE2bDesktopSandboxService {
 
   private async startDisplay(sandbox: DesktopSandbox, display: string): Promise<void> {
     await sandbox.commands.run(
-      `Xvfb ${display} -ac -screen 0 ${E2B_DESKTOP_RESOLUTION[0]}x${E2B_DESKTOP_RESOLUTION[1]}x24 -retro -dpi ${E2B_DESKTOP_DPI} -nolisten tcp -nolisten unix`,
+      `Xvfb ${display} -ac -screen 0 ${this.config.companyhelm.e2b.desktop_resolution.width}x${this.config.companyhelm.e2b.desktop_resolution.height}x24 -retro -dpi ${E2B_DESKTOP_DPI} -nolisten tcp -nolisten unix`,
       {
         background: true,
         timeoutMs: 0,
