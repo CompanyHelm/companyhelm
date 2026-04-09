@@ -38,6 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import type { repositoriesPageCreateGithubInstallationUrlMutation } from "./__generated__/repositoriesPageCreateGithubInstallationUrlMutation.graphql";
 import type { repositoriesPageDeleteGithubInstallationMutation } from "./__generated__/repositoriesPageDeleteGithubInstallationMutation.graphql";
 import type { repositoriesPageQuery } from "./__generated__/repositoriesPageQuery.graphql";
 import type { repositoriesPageRefreshGithubInstallationRepositoriesMutation } from "./__generated__/repositoriesPageRefreshGithubInstallationRepositoriesMutation.graphql";
@@ -49,10 +51,6 @@ const repositoriesPageQueryNode = graphql`
         id
         name
       }
-    }
-    GithubAppConfig {
-      appClientId
-      appLink
     }
     GithubInstallations {
       id
@@ -71,6 +69,16 @@ const repositoriesPageQueryNode = graphql`
       archived
       createdAt
       updatedAt
+    }
+  }
+`;
+
+const repositoriesPageCreateGithubInstallationUrlMutationNode = graphql`
+  mutation repositoriesPageCreateGithubInstallationUrlMutation(
+    $input: CreateGithubInstallationUrlInput!
+  ) {
+    CreateGithubInstallationUrl(input: $input) {
+      url
     }
   }
 `;
@@ -145,23 +153,6 @@ function formatTimestamp(value: string): string {
   }).format(parsedDate);
 }
 
-function buildGithubInstallationUrl(appLink: string): string {
-  const normalizedAppLink = String(appLink || "").trim();
-  if (!normalizedAppLink) {
-    return "";
-  }
-
-  try {
-    const url = new URL(normalizedAppLink);
-    if (!/\/installations\/new\/?$/.test(url.pathname)) {
-      url.pathname = `${url.pathname.replace(/\/+$/, "")}/installations/new`;
-    }
-    return url.toString();
-  } catch {
-    return normalizedAppLink;
-  }
-}
-
 function filterStoreRecords(records: ReadonlyArray<unknown>): StoreRecord[] {
   return records.filter((record): record is StoreRecord => {
     return typeof record === "object"
@@ -196,6 +187,7 @@ function RepositoriesPageFallback() {
 }
 
 function RepositoriesPageContent() {
+  const organizationSlug = useCurrentOrganizationSlug();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [refreshedInstallationId, setRefreshedInstallationId] = useState<string | null>(null);
@@ -211,6 +203,10 @@ function RepositoriesPageContent() {
   const [commitDeleteInstallation, isDeleteInstallationInFlight] =
     useMutation<repositoriesPageDeleteGithubInstallationMutation>(
       repositoriesPageDeleteGithubInstallationMutationNode,
+    );
+  const [commitCreateGithubInstallationUrl, isCreateGithubInstallationUrlInFlight] =
+    useMutation<repositoriesPageCreateGithubInstallationUrlMutation>(
+      repositoriesPageCreateGithubInstallationUrlMutationNode,
     );
   const [commitRefreshRepositories, isRefreshRepositoriesInFlight] =
     useMutation<repositoriesPageRefreshGithubInstallationRepositoriesMutation>(
@@ -256,10 +252,6 @@ function RepositoriesPageContent() {
 
     return nextMap;
   }, [repositories]);
-  const githubInstallUrl = useMemo(() => {
-    return buildGithubInstallationUrl(data.GithubAppConfig.appLink);
-  }, [data.GithubAppConfig.appLink]);
-
   const updateRepositoriesStore = (
     store: {
       getRoot(): {
@@ -301,14 +293,40 @@ function RepositoriesPageContent() {
           </div>
           <CardAction>
             <Button
-              disabled={!githubInstallUrl}
+              disabled={isCreateGithubInstallationUrlInFlight}
               onClick={() => {
-                window.location.assign(githubInstallUrl);
+                setErrorMessage(null);
+                setNoticeMessage(null);
+                commitCreateGithubInstallationUrl({
+                  variables: {
+                    input: {
+                      organizationSlug,
+                    },
+                  },
+                  onCompleted: (response, errors) => {
+                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                    if (nextErrorMessage) {
+                      setErrorMessage(nextErrorMessage);
+                      return;
+                    }
+
+                    const installationUrl = String(response.CreateGithubInstallationUrl?.url || "").trim();
+                    if (!installationUrl) {
+                      setErrorMessage("GitHub installation URL was empty.");
+                      return;
+                    }
+
+                    window.location.assign(installationUrl);
+                  },
+                  onError: (error: Error) => {
+                    setErrorMessage(error.message || "Failed to open the GitHub installation flow.");
+                  },
+                });
               }}
               size="sm"
             >
               <PlusIcon />
-              Install GitHub App
+              {isCreateGithubInstallationUrlInFlight ? "Preparing GitHub install..." : "Install GitHub App"}
             </Button>
           </CardAction>
         </CardHeader>

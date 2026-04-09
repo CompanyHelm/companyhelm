@@ -93,6 +93,21 @@ export class GithubClient {
     return this.appLink;
   }
 
+  buildInstallationUrl(state: string): string {
+    const normalizedState = GithubClient.normalizeTextValue(state);
+    if (!normalizedState) {
+      throw new Error("GitHub installation state is required.");
+    }
+
+    const url = new URL(this.getAppLink());
+    if (!/\/installations\/new\/?$/.test(url.pathname)) {
+      url.pathname = `${url.pathname.replace(/\/+$/, "")}/installations/new`;
+    }
+    url.searchParams.set("state", normalizedState);
+
+    return url.toString();
+  }
+
   async getInstallationRepositories(
     installationIdValue: string | number | bigint,
     options: {

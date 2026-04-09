@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
-import { companyGithubInstallations, githubRepositories } from "../../db/schema.ts";
+import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
+import { companyGithubInstallations, companyMembers, githubRepositories } from "../../db/schema.ts";
 import {
   type GithubInstallationRepository,
   GithubClient,
 } from "../../github/client.ts";
+import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -14,6 +16,7 @@ type AddGithubInstallationMutationArguments = {
   input: {
     installationId: string;
     setupAction?: string | null;
+    state?: string | null;
   };
 };
 
@@ -58,6 +61,7 @@ type GraphqlGithubRepositoryRecord = {
 
 type GraphqlAddGithubInstallationPayload = {
   githubInstallation: GraphqlGithubInstallationRecord;
+  organizationSlug: string | null;
   repositories: GraphqlGithubRepositoryRecord[];
 };
 
@@ -65,8 +69,8 @@ type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): {
-        limit(limit: number): Promise<GithubInstallationRecord[]>;
-        orderBy(...fields: unknown[]): Promise<GithubRepositoryRecord[]>;
+        limit(limit: number): Promise<unknown[]>;
+        orderBy(...fields: unknown[]): Promise<unknown[]>;
       };
     };
   };
@@ -75,9 +79,18 @@ type SelectableDatabase = {
 type InsertableDatabase = {
   insert(table: unknown): {
     values(value: Record<string, unknown> | Array<Record<string, unknown>>): {
-      returning(selection?: Record<string, unknown>): Promise<GithubInstallationRecord[]>;
+      returning(selection?: Record<string, unknown>): Promise<unknown[]>;
     };
   };
+};
+
+type CompanyScopedDatabase = SelectableDatabase & InsertableDatabase;
+
+type InstallationTarget = {
+  companyId: string;
+  organizationSlug: string | null;
+  requiresMembershipCheck: boolean;
+  userId: string;
 };
 
 /**
@@ -88,11 +101,22 @@ export class AddGithubInstallationMutation extends Mutation<
   AddGithubInstallationMutationArguments,
   GraphqlAddGithubInstallationPayload
 > {
+  private readonly appRuntimeDatabase: AppRuntimeDatabase;
   private readonly githubClient: GithubClient;
+  private readonly githubInstallationStateService: GithubInstallationStateService;
 
-  constructor(@inject(GithubClient) githubClient: GithubClient = new GithubClient({} as Config)) {
+  constructor(
+    @inject(GithubClient) githubClient: GithubClient = new GithubClient({} as Config),
+    @inject(GithubInstallationStateService)
+    githubInstallationStateService: GithubInstallationStateService =
+      new GithubInstallationStateService({} as Config),
+    @inject(AppRuntimeDatabase)
+    appRuntimeDatabase: AppRuntimeDatabase = new AppRuntimeDatabase({} as Config),
+  ) {
     super();
+    this.appRuntimeDatabase = appRuntimeDatabase;
     this.githubClient = githubClient;
+    this.githubInstallationStateService = githubInstallationStateService;
   }
 
   protected resolve = async (
@@ -102,97 +126,167 @@ export class AddGithubInstallationMutation extends Mutation<
     const installationId = GithubClient.validateInstallationId(arguments_.input.installationId);
     void arguments_.input.setupAction;
 
-    if (!context.authSession?.company) {
+    if (!context.authSession) {
       throw new Error("Authentication required.");
     }
-    if (!context.app_runtime_transaction_provider) {
-      throw new Error("Authentication required.");
-    }
+    const installationTarget = this.resolveInstallationTarget(arguments_, context);
 
-    const [existingInstallation] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      return selectableDatabase
+    return this.executeForInstallationTarget(context, installationTarget, async (database) => {
+      await this.ensureMembership(database, installationTarget);
+
+      const [existingInstallation] = await (database
         .select({
           installationId: companyGithubInstallations.installationId,
           createdAt: companyGithubInstallations.createdAt,
         })
         .from(companyGithubInstallations)
         .where(and(
-          eq(companyGithubInstallations.companyId, context.authSession.company.id),
+          eq(companyGithubInstallations.companyId, installationTarget.companyId),
           eq(companyGithubInstallations.installationId, installationId),
         ))
-        .limit(1);
-    });
+        .limit(1)) as GithubInstallationRecord[];
 
-    if (existingInstallation) {
-      const repositories = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-        return AddGithubInstallationMutation.loadRepositoriesForInstallation(tx as SelectableDatabase, {
-          companyId: context.authSession.company.id,
+      if (existingInstallation) {
+        const repositories = await AddGithubInstallationMutation.loadRepositoriesForInstallation(database, {
+          companyId: installationTarget.companyId,
           installationId,
         });
-      });
 
-      return {
-        githubInstallation: AddGithubInstallationMutation.serializeInstallation(existingInstallation),
-        repositories: repositories.map((repository) => AddGithubInstallationMutation.serializeRepository(repository)),
-      };
-    }
+        return {
+          githubInstallation: AddGithubInstallationMutation.serializeInstallation(existingInstallation),
+          organizationSlug: installationTarget.organizationSlug,
+          repositories: repositories.map((repository) =>
+            AddGithubInstallationMutation.serializeRepository(repository)
+          ),
+        };
+      }
 
-    const githubInstallationRepositories = await this.githubClient.getInstallationRepositories(installationId);
-    const now = new Date();
-    const repositoryInsertValues = githubInstallationRepositories.map((repository) =>
-      AddGithubInstallationMutation.createRepositoryInsertValue({
-        companyId: context.authSession.company.id,
-        installationId,
-        repository,
-        timestamp: now,
-      })
-    );
+      const githubInstallationRepositories = await this.githubClient.getInstallationRepositories(installationId);
+      const now = new Date();
+      const repositoryInsertValues = githubInstallationRepositories.map((repository) =>
+        AddGithubInstallationMutation.createRepositoryInsertValue({
+          companyId: installationTarget.companyId,
+          installationId,
+          repository,
+          timestamp: now,
+        })
+      );
 
-    try {
-      const [createdInstallation] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-        const insertableDatabase = tx as InsertableDatabase;
-        const [installationRecord] = await insertableDatabase
+      try {
+        const [createdInstallation] = await (database
           .insert(companyGithubInstallations)
           .values({
             installationId,
-            companyId: context.authSession.company.id,
+            companyId: installationTarget.companyId,
             createdAt: now,
           })
           .returning({
             installationId: companyGithubInstallations.installationId,
             createdAt: companyGithubInstallations.createdAt,
-          });
+          })) as GithubInstallationRecord[];
 
         if (repositoryInsertValues.length > 0) {
-          await insertableDatabase
+          await database
             .insert(githubRepositories)
             .values(repositoryInsertValues)
             .returning();
         }
 
-        return [installationRecord];
-      });
+        if (!createdInstallation) {
+          throw new Error("Failed to add GitHub installation.");
+        }
 
-      if (!createdInstallation) {
-        throw new Error("Failed to add GitHub installation.");
+        return {
+          githubInstallation: AddGithubInstallationMutation.serializeInstallation(createdInstallation),
+          organizationSlug: installationTarget.organizationSlug,
+          repositories: repositoryInsertValues.map((repository) =>
+            AddGithubInstallationMutation.serializeInsertedRepository(repository)
+          ),
+        };
+      } catch (error) {
+        if (AddGithubInstallationMutation.isUniqueViolation(error)) {
+          throw new Error(
+            `GitHub installation ${installationId} is already linked to another company.`,
+            { cause: error },
+          );
+        }
+
+        throw error;
+      }
+    });
+  };
+
+  private resolveInstallationTarget(
+    arguments_: AddGithubInstallationMutationArguments,
+    context: GraphqlRequestContext,
+  ): InstallationTarget {
+    const serializedState = String(arguments_.input.state || "").trim();
+    if (!serializedState) {
+      if (!context.authSession?.company) {
+        throw new Error("Authentication required.");
       }
 
       return {
-        githubInstallation: AddGithubInstallationMutation.serializeInstallation(createdInstallation),
-        repositories: repositoryInsertValues.map((repository) =>
-          AddGithubInstallationMutation.serializeInsertedRepository(repository)
-        ),
+        companyId: context.authSession.company.id,
+        organizationSlug: null,
+        requiresMembershipCheck: false,
+        userId: context.authSession.user.id,
       };
-    } catch (error) {
-      if (AddGithubInstallationMutation.isUniqueViolation(error)) {
-        throw new Error(
-          `GitHub installation ${installationId} is already linked to another company.`,
-          { cause: error },
-        );
-      }
+    }
 
-      throw error;
+    const installationState = this.githubInstallationStateService.readState(serializedState);
+    if (installationState.userId !== context.authSession.user.id) {
+      throw new Error("GitHub installation state does not match the authenticated user.");
+    }
+
+    return {
+      companyId: installationState.companyId,
+      organizationSlug: installationState.organizationSlug,
+      requiresMembershipCheck: true,
+      userId: context.authSession.user.id,
+    };
+  }
+
+  private async executeForInstallationTarget<T>(
+    context: GraphqlRequestContext,
+    installationTarget: InstallationTarget,
+    callback: (database: CompanyScopedDatabase) => Promise<T>,
+  ): Promise<T> {
+    if (installationTarget.requiresMembershipCheck) {
+      return this.appRuntimeDatabase.withCompanyContext(installationTarget.companyId, async (database) => {
+        return callback(database as CompanyScopedDatabase);
+      });
+    }
+
+    if (!context.app_runtime_transaction_provider) {
+      throw new Error("Authentication required.");
+    }
+
+    return context.app_runtime_transaction_provider.transaction(async (database) => {
+      return callback(database as CompanyScopedDatabase);
+    });
+  }
+
+  private async ensureMembership(
+    database: CompanyScopedDatabase,
+    installationTarget: InstallationTarget,
+  ): Promise<void> {
+    if (!installationTarget.requiresMembershipCheck) {
+      return;
+    }
+
+    const [membership] = await (database
+      .select({
+        userId: companyMembers.userId,
+      })
+      .from(companyMembers)
+      .where(and(
+        eq(companyMembers.companyId, installationTarget.companyId),
+        eq(companyMembers.userId, installationTarget.userId),
+      ))
+      .limit(1)) as Array<{ userId: string }>;
+    if (!membership) {
+      throw new Error("GitHub installation state is no longer valid for this company.");
     }
   };
 
@@ -203,7 +297,7 @@ export class AddGithubInstallationMutation extends Mutation<
       installationId: number;
     },
   ): Promise<GithubRepositoryRecord[]> {
-    return selectableDatabase
+    return (selectableDatabase
       .select({
         id: githubRepositories.id,
         installationId: githubRepositories.installationId,
@@ -222,7 +316,7 @@ export class AddGithubInstallationMutation extends Mutation<
         eq(githubRepositories.companyId, params.companyId),
         eq(githubRepositories.installationId, params.installationId),
       ))
-      .orderBy(asc(githubRepositories.fullName), asc(githubRepositories.externalId));
+      .orderBy(asc(githubRepositories.fullName), asc(githubRepositories.externalId))) as GithubRepositoryRecord[];
   }
 
   private static serializeInstallation(record: GithubInstallationRecord): GraphqlGithubInstallationRecord {

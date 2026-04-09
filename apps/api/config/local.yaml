@@ -50,6 +50,7 @@ github:
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
   app_link: "${GITHUB_APP_URL}"
+  key_id: "companyhelm-local-github-state-key"
 auth:
   provider: "clerk"
   clerk:

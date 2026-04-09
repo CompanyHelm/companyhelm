@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6423f2b3d84d02b0c01143181d5e440c>>
+ * @generated SignedSource<<75e0135160b17ab2c115e62d7177708a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,10 +11,6 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type repositoriesPageQuery$variables = Record<PropertyKey, never>;
 export type repositoriesPageQuery$data = {
-  readonly GithubAppConfig: {
-    readonly appClientId: string;
-    readonly appLink: string;
-  };
   readonly GithubInstallations: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
@@ -87,31 +83,6 @@ v3 = [
           (v0/*: any*/),
           (v1/*: any*/)
         ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  },
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "GithubAppConfig",
-    "kind": "LinkedField",
-    "name": "GithubAppConfig",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "appClientId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "appLink",
         "storageKey": null
       }
     ],
@@ -226,16 +197,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "d8d62f0edcc944a74fb55ad8ca96c410",
+    "cacheID": "c83b877ed36607659d2ec652be9c9e9a",
     "id": null,
     "metadata": {},
     "name": "repositoriesPageQuery",
     "operationKind": "query",
-    "text": "query repositoriesPageQuery {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  GithubAppConfig {\n    appClientId\n    appLink\n  }\n  GithubInstallations {\n    id\n    installationId\n    createdAt\n  }\n  GithubRepositories {\n    id\n    githubInstallationId\n    externalId\n    name\n    fullName\n    htmlUrl\n    isPrivate\n    defaultBranch\n    archived\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query repositoriesPageQuery {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  GithubInstallations {\n    id\n    installationId\n    createdAt\n  }\n  GithubRepositories {\n    id\n    githubInstallationId\n    externalId\n    name\n    fullName\n    htmlUrl\n    isPrivate\n    defaultBranch\n    archived\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f3ff5547a394b5e4ad4303ab5ab0023b";
+(node as any).hash = "38a137213fa4ec9dbc1d0fb6bd7c9995";
 
 export default node;

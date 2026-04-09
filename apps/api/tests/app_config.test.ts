@@ -19,6 +19,7 @@ class AppConfigTestHarness {
     clerkJwksUrlVariableName: string;
     exaApiKeyVariableName: string;
     githubClientVariableName: string;
+    githubKeyIdVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
   } {
@@ -29,6 +30,7 @@ class AppConfigTestHarness {
     const clerkPublishableKeyVariableName = "COMPANYHELM_TEST_CLERK_PUBLISHABLE_KEY";
     const clerkJwksUrlVariableName = "COMPANYHELM_TEST_CLERK_JWKS_URL";
     const githubClientVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT";
+    const githubKeyIdVariableName = "COMPANYHELM_TEST_GITHUB_KEY_ID";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
     const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
@@ -38,6 +40,7 @@ class AppConfigTestHarness {
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
     process.env[clerkJwksUrlVariableName] = "https://clerk.example/.well-known/jwks.json";
     process.env[githubClientVariableName] = "client-id";
+    process.env[githubKeyIdVariableName] = "github-state-key";
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
     process.env[exaApiKeyVariableName] = "exa-local-api-key";
@@ -49,6 +52,7 @@ class AppConfigTestHarness {
       AppConfigTestHarness.createConfigDocument({
         companyHelmE2bApiKeyVariableName,
         githubClientVariableName,
+        githubKeyIdVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
         exaApiKeyVariableName,
@@ -66,6 +70,7 @@ class AppConfigTestHarness {
       clerkPublishableKeyVariableName,
       clerkJwksUrlVariableName,
       githubClientVariableName,
+      githubKeyIdVariableName,
       githubKeyVariableName,
       githubUrlVariableName,
       exaApiKeyVariableName,
@@ -75,6 +80,7 @@ class AppConfigTestHarness {
   private static createConfigDocument(params: {
     companyHelmE2bApiKeyVariableName: string;
     githubClientVariableName: string;
+    githubKeyIdVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
     exaApiKeyVariableName: string;
@@ -143,6 +149,7 @@ companyhelm:
     template_prefix: "realequityapps/"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
+  key_id: "\${${params.githubKeyIdVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
   app_link: "\${${params.githubUrlVariableName}}"
 ${authDocument}
@@ -215,6 +222,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     width: 1920,
   });
   assert.equal(document.github.app_client_id, "client-id");
+  assert.equal(document.github.key_id, "github-state-key");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");

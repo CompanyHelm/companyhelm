@@ -45,6 +45,7 @@ type Query {
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
+  CreateGithubInstallationUrl(input: CreateGithubInstallationUrlInput!): CreateGithubInstallationUrlPayload!
   DeleteEnvironment(input: DeleteEnvironmentInput!): Environment!
   DeleteComputeProviderDefinition(input: DeleteComputeProviderDefinitionInput!): ComputeProviderDefinition!
   GetEnvironmentVncUrl(input: GetEnvironmentVncUrlInput!): EnvironmentVncUrl!
@@ -229,7 +230,12 @@ type InboxHumanQuestionAnswer {
 
 type AddGithubInstallationPayload {
   githubInstallation: GithubInstallation!
+  organizationSlug: String
   repositories: [GithubRepository!]!
+}
+
+type CreateGithubInstallationUrlPayload {
+  url: String!
 }
 
 type DeleteGithubInstallationPayload {
@@ -588,6 +594,11 @@ input AddModelProviderCredentialInput {
 input AddGithubInstallationInput {
   installationId: ID!
   setupAction: String
+  state: String
+}
+
+input CreateGithubInstallationUrlInput {
+  organizationSlug: String!
 }
 
 input AddAgentInput {

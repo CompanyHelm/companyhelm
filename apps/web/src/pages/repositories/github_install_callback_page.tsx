@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
-import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { githubInstallCallbackPageAddGithubInstallationMutation } from "./__generated__/githubInstallCallbackPageAddGithubInstallationMutation.graphql";
 
 type StoreRecord = {
@@ -22,6 +21,7 @@ type StoreRecord = {
 type GithubInstallCallbackSearch = {
   installationId: string;
   setupAction: string;
+  state: string;
 };
 
 const githubInstallCallbackPageAddGithubInstallationMutationNode = graphql`
@@ -32,6 +32,7 @@ const githubInstallCallbackPageAddGithubInstallationMutationNode = graphql`
         installationId
         createdAt
       }
+      organizationSlug
       repositories {
         id
         githubInstallationId
@@ -83,6 +84,7 @@ function resolveCallbackSearch(): GithubInstallCallbackSearch {
     return {
       installationId: "",
       setupAction: "",
+      state: "",
     };
   }
 
@@ -91,11 +93,11 @@ function resolveCallbackSearch(): GithubInstallCallbackSearch {
   return {
     installationId: normalizeInstallationId(locationSearch.get("installation_id")),
     setupAction: String(locationSearch.get("setup_action") || "").trim(),
+    state: String(locationSearch.get("state") || "").trim(),
   };
 }
 
 export function GithubInstallCallbackPage() {
-  const organizationSlug = useCurrentOrganizationSlug();
   const callbackHandledRef = useRef<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [commitAddInstallation] =
@@ -107,7 +109,8 @@ export function GithubInstallCallbackPage() {
   useEffect(() => {
     const callbackInstallationId = callbackSearch.installationId;
     const callbackSetupAction = callbackSearch.setupAction;
-    const callbackKey = [callbackInstallationId, callbackSetupAction].join("|");
+    const callbackState = callbackSearch.state;
+    const callbackKey = [callbackInstallationId, callbackSetupAction, callbackState].join("|");
 
     if (!callbackKey.replace(/\|/g, "")) {
       setErrorMessage("GitHub install callback is missing installation details.");
@@ -173,25 +176,31 @@ export function GithubInstallCallbackPage() {
         input: {
           installationId: callbackInstallationId,
           setupAction: callbackSetupAction || null,
+          state: callbackState || null,
         },
       },
       updater: updateRepositoriesStore,
-      onCompleted: (_response, errors) => {
+      onCompleted: (response, errors) => {
         const nextErrorMessage = String(errors?.[0]?.message || "").trim();
         if (nextErrorMessage) {
           setErrorMessage(nextErrorMessage);
           return;
         }
 
+        const organizationSlug = String(response.AddGithubInstallation?.organizationSlug || "").trim();
         if (typeof window !== "undefined") {
-          window.location.replace(OrganizationPath.href(organizationSlug, "/repositories"));
+          window.location.replace(
+            organizationSlug
+              ? OrganizationPath.href(organizationSlug, "/repositories")
+              : "/",
+          );
         }
       },
       onError: (error: Error) => {
         setErrorMessage(error.message || "Failed to link GitHub installation.");
       },
     });
-  }, [callbackSearch.installationId, callbackSearch.setupAction, commitAddInstallation]);
+  }, [callbackSearch.installationId, callbackSearch.setupAction, callbackSearch.state, commitAddInstallation]);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -210,7 +219,7 @@ export function GithubInstallCallbackPage() {
               </div>
               <div>
                 <Button
-                  render={<Link params={{ organizationSlug }} to={OrganizationPath.route("/repositories")} />}
+                  render={<Link to="/" />}
                   size="sm"
                   variant="outline"
                 >

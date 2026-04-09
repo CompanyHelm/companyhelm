@@ -3,8 +3,10 @@ import type { FastifyInstance } from "fastify";
 import GraphQLJSON from "graphql-type-json";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
+import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 import { GithubClient } from "../github/client.ts";
+import { GithubInstallationStateService } from "../github/installation_state_service.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import { SecretEncryptionService } from "../services/secrets/encryption.ts";
 import { SecretService } from "../services/secrets/service.ts";
@@ -21,6 +23,7 @@ import { AttachSkillToAgentMutation } from "./mutations/attach_skill_to_agent.ts
 import { AttachSecretToSessionMutation } from "./mutations/attach_secret_to_session.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateExternalLinkArtifactMutation } from "./mutations/create_external_link_artifact.ts";
+import { CreateGithubInstallationUrlMutation } from "./mutations/create_github_installation_url.ts";
 import { CreateMarkdownArtifactMutation } from "./mutations/create_markdown_artifact.ts";
 import { CreatePullRequestArtifactMutation } from "./mutations/create_pull_request_artifact.ts";
 import { CreateSkillMutation } from "./mutations/create_skill.ts";
@@ -157,6 +160,7 @@ export class GraphqlApplication {
   private readonly environmentsQueryResolver: EnvironmentsQueryResolver;
   private readonly archiveSessionMutation: ArchiveSessionMutation;
   private readonly createExternalLinkArtifactMutation: CreateExternalLinkArtifactMutation;
+  private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
   private readonly createMarkdownArtifactMutation: CreateMarkdownArtifactMutation;
   private readonly createPullRequestArtifactMutation: CreatePullRequestArtifactMutation;
   private readonly createSkillMutation: CreateSkillMutation;
@@ -341,9 +345,19 @@ export class GraphqlApplication {
     githubInstallationsQueryResolver: GithubInstallationsQueryResolver = new GithubInstallationsQueryResolver(),
     @inject(GithubRepositoriesQueryResolver)
     githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver = new GithubRepositoriesQueryResolver(),
+    @inject(CreateGithubInstallationUrlMutation)
+    createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation =
+      new CreateGithubInstallationUrlMutation(
+        new GithubClient(config),
+        new GithubInstallationStateService(config),
+      ),
     @inject(AddGithubInstallationMutation)
     addGithubInstallationMutation: AddGithubInstallationMutation =
-      new AddGithubInstallationMutation(new GithubClient(config)),
+      new AddGithubInstallationMutation(
+        new GithubClient(config),
+        new GithubInstallationStateService(config),
+        new AppRuntimeDatabase(config),
+      ),
     @inject(DeleteGithubInstallationMutation)
     deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
     @inject(DeleteSessionQueuedMessageMutation)
@@ -652,6 +666,7 @@ export class GraphqlApplication {
     this.environmentsQueryResolver = environmentsQueryResolver;
     this.archiveSessionMutation = archiveSessionMutation;
     this.createExternalLinkArtifactMutation = createExternalLinkArtifactMutation;
+    this.createGithubInstallationUrlMutation = createGithubInstallationUrlMutation;
     this.createMarkdownArtifactMutation = createMarkdownArtifactMutation;
     this.createPullRequestArtifactMutation = createPullRequestArtifactMutation;
     this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
@@ -859,6 +874,7 @@ export class GraphqlApplication {
           AttachSecretToSession: this.attachSecretToSessionMutation.execute,
           ArchiveSession: this.archiveSessionMutation.execute,
           CreateExternalLinkArtifact: this.createExternalLinkArtifactMutation.execute,
+          CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
           CreateMarkdownArtifact: this.createMarkdownArtifactMutation.execute,
           CreatePullRequestArtifact: this.createPullRequestArtifactMutation.execute,
           CreateSecret: this.createSecretMutation.execute,
