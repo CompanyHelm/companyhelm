@@ -1,4 +1,5 @@
 import { Suspense, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,10 @@ function SkillsPageFallback() {
               editable from the web UI.
             </CardDescription>
           </div>
-          <CardAction>
+          <CardAction className="flex items-center gap-2">
+            <Button disabled size="sm" variant="outline">
+              Manage groups
+            </Button>
             <Button disabled size="sm">
               <PlusIcon />
               Create skill
@@ -85,6 +89,7 @@ function SkillsPageFallback() {
 }
 
 function SkillsPageContent() {
+  const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [movingSkillId, setMovingSkillId] = useState<string | null>(null);
@@ -192,7 +197,18 @@ function SkillsPageContent() {
               editable from the web UI.
             </CardDescription>
           </div>
-          <CardAction>
+          <CardAction className="flex items-center gap-2">
+            <Button
+              onClick={() => {
+                void navigate({
+                  to: "/skill-groups",
+                });
+              }}
+              size="sm"
+              variant="outline"
+            >
+              Manage groups
+            </Button>
             <Button
               onClick={() => {
                 setCreateDialogOpen(true);

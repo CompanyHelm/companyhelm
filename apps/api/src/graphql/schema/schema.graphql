@@ -61,12 +61,14 @@ type Mutation {
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
   CreateSkill(input: CreateSkillInput!): Skill!
+  CreateSkillGroup(input: CreateSkillGroupInput!): SkillGroup!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteArtifact(input: DeleteArtifactInput!): Artifact!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
+  DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
   InterruptSession(input: InterruptSessionInput!): Session!
@@ -110,6 +112,7 @@ type Mutation {
 
 type Subscription {
   SessionUpdated: Session!
+  SessionInboxHumanQuestionsUpdated(sessionId: ID!): [InboxHumanQuestion!]!
   SessionMessageUpdated(sessionId: ID!): SessionMessage!
   SessionQueuedMessagesUpdated(sessionId: ID!): [SessionQueuedMessage!]!
 }
@@ -724,6 +727,10 @@ input CreateSkillInput {
   skillGroupId: ID
 }
 
+input CreateSkillGroupInput {
+  name: String!
+}
+
 input UpdateComputeProviderDefinitionInput {
   id: ID!
   name: String!
@@ -736,6 +743,10 @@ input UpdateE2bComputeProviderDefinitionInput {
 }
 
 input DeleteSecretInput {
+  id: ID!
+}
+
+input DeleteSkillGroupInput {
   id: ID!
 }
 

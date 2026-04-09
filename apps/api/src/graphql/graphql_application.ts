@@ -22,6 +22,7 @@ import { CreateExternalLinkArtifactMutation } from "./mutations/create_external_
 import { CreateMarkdownArtifactMutation } from "./mutations/create_markdown_artifact.ts";
 import { CreatePullRequestArtifactMutation } from "./mutations/create_pull_request_artifact.ts";
 import { CreateSkillMutation } from "./mutations/create_skill.ts";
+import { CreateSkillGroupMutation } from "./mutations/create_skill_group.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { CreateSecretMutation } from "./mutations/create_secret.ts";
@@ -32,6 +33,7 @@ import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_comp
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { DeleteSkillGroupMutation } from "./mutations/delete_skill_group.ts";
 import { DeleteTaskCategoryMutation } from "./mutations/delete_task_category.ts";
 import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
@@ -107,6 +109,7 @@ import { TaskRunsQueryResolver } from "./resolvers/task_runs.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
 import { SessionMessagesQueryResolver } from "./resolvers/session_messages.ts";
 import { SessionQueuedMessagesQueryResolver } from "./resolvers/session_queued_messages.ts";
+import { SessionInboxHumanQuestionsUpdatedSubscriptionResolver } from "./resolvers/session_inbox_human_questions_updated.ts";
 import { SessionQueuedMessagesUpdatedSubscriptionResolver } from "./resolvers/session_queued_messages_updated.ts";
 import { SessionMessageUpdatedSubscriptionResolver } from "./resolvers/session_message_updated.ts";
 import { SessionEnvironmentQueryResolver } from "./resolvers/session_environment.ts";
@@ -145,6 +148,7 @@ export class GraphqlApplication {
   private readonly createMarkdownArtifactMutation: CreateMarkdownArtifactMutation;
   private readonly createPullRequestArtifactMutation: CreatePullRequestArtifactMutation;
   private readonly createSkillMutation: CreateSkillMutation;
+  private readonly createSkillGroupMutation: CreateSkillGroupMutation;
   private readonly createTaskCategoryMutation: CreateTaskCategoryMutation;
   private readonly createTaskMutation: CreateTaskMutation;
   private readonly createSecretMutation: CreateSecretMutation;
@@ -159,6 +163,7 @@ export class GraphqlApplication {
   private readonly getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
+  private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
   private readonly deleteTaskCategoryMutation: DeleteTaskCategoryMutation;
   private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
@@ -190,6 +195,7 @@ export class GraphqlApplication {
   private readonly skillsQueryResolver: SkillsQueryResolver;
   private readonly sessionMessagesQueryResolver: SessionMessagesQueryResolver;
   private readonly sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver;
+  private readonly sessionInboxHumanQuestionsUpdatedSubscriptionResolver: SessionInboxHumanQuestionsUpdatedSubscriptionResolver;
   private readonly sessionQueuedMessagesQueryResolver: SessionQueuedMessagesQueryResolver;
   private readonly sessionMessageUpdatedSubscriptionResolver: SessionMessageUpdatedSubscriptionResolver;
   private readonly sessionQueuedMessagesUpdatedSubscriptionResolver: SessionQueuedMessagesUpdatedSubscriptionResolver;
@@ -397,6 +403,12 @@ export class GraphqlApplication {
         throw new Error("InboxHumanQuestions query is not configured.");
       },
     } as never),
+    @inject(SessionInboxHumanQuestionsUpdatedSubscriptionResolver)
+    sessionInboxHumanQuestionsUpdatedSubscriptionResolver: SessionInboxHumanQuestionsUpdatedSubscriptionResolver = new SessionInboxHumanQuestionsUpdatedSubscriptionResolver({
+      async listOpenHumanQuestionsForSession() {
+        throw new Error("SessionInboxHumanQuestionsUpdated subscription is not configured.");
+      },
+    } as never),
     @inject(ResolveInboxHumanQuestionMutation)
     resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation = new ResolveInboxHumanQuestionMutation({
       async resolveHumanQuestion() {
@@ -512,6 +524,10 @@ export class GraphqlApplication {
     skillQueryResolver?: SkillQueryResolver,
     @inject(SkillsQueryResolver)
     skillsQueryResolver?: SkillsQueryResolver,
+    @inject(CreateSkillGroupMutation)
+    createSkillGroupMutation?: CreateSkillGroupMutation,
+    @inject(DeleteSkillGroupMutation)
+    deleteSkillGroupMutation?: DeleteSkillGroupMutation,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -595,6 +611,7 @@ export class GraphqlApplication {
     this.createMarkdownArtifactMutation = createMarkdownArtifactMutation;
     this.createPullRequestArtifactMutation = createPullRequestArtifactMutation;
     this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
+    this.createSkillGroupMutation = createSkillGroupMutation ?? new CreateSkillGroupMutation(defaultSkillService);
     this.createTaskCategoryMutation = createTaskCategoryMutation;
     this.createTaskMutation = createTaskMutation;
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
@@ -612,6 +629,7 @@ export class GraphqlApplication {
     this.stopEnvironmentMutation = stopEnvironmentMutation;
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
+    this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.deleteTaskCategoryMutation = deleteTaskCategoryMutation;
     this.deleteSessionQueuedMessageMutation = deleteSessionQueuedMessageMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
@@ -648,6 +666,7 @@ export class GraphqlApplication {
     this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
     this.sessionMessagesQueryResolver = sessionMessagesQueryResolver;
     this.sessionEnvironmentQueryResolver = sessionEnvironmentQueryResolver;
+    this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver = sessionInboxHumanQuestionsUpdatedSubscriptionResolver;
     this.sessionQueuedMessagesQueryResolver = sessionQueuedMessagesQueryResolver;
     this.sessionMessageUpdatedSubscriptionResolver = sessionMessageUpdatedSubscriptionResolver;
     this.sessionQueuedMessagesUpdatedSubscriptionResolver = sessionQueuedMessagesUpdatedSubscriptionResolver;
@@ -790,6 +809,7 @@ export class GraphqlApplication {
           CreatePullRequestArtifact: this.createPullRequestArtifactMutation.execute,
           CreateSecret: this.createSecretMutation.execute,
           CreateSkill: this.createSkillMutation.execute,
+          CreateSkillGroup: this.createSkillGroupMutation.execute,
           CreateTask: this.createTaskMutation.execute,
           CreateTaskCategory: this.createTaskCategoryMutation.execute,
           CreateSession: this.createSessionMutation.execute,
@@ -797,6 +817,7 @@ export class GraphqlApplication {
           DeleteAgent: this.deleteAgentMutation.execute,
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
+          DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
           DeleteTaskCategory: this.deleteTaskCategoryMutation.execute,
           DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,
           DeleteSecret: this.deleteSecretMutation.execute,
@@ -829,6 +850,10 @@ export class GraphqlApplication {
           UpdateTask: this.updateTaskMutation.execute,
         },
         Subscription: {
+          SessionInboxHumanQuestionsUpdated: {
+            subscribe: this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver.subscribe,
+            resolve: this.sessionInboxHumanQuestionsUpdatedSubscriptionResolver.resolve,
+          },
           SessionMessageUpdated: {
             subscribe: this.sessionMessageUpdatedSubscriptionResolver.subscribe,
             resolve: this.sessionMessageUpdatedSubscriptionResolver.resolve,

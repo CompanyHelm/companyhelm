@@ -28,6 +28,8 @@ export function ApplicationHeader() {
           ? "Environments"
         : pathname.startsWith("/secrets")
           ? "Secrets"
+          : pathname.startsWith("/skill-groups")
+            ? "Skill Groups"
           : pathname.startsWith("/skills")
             ? "Skills"
     : pathname.startsWith("/chats")

@@ -22,6 +22,7 @@ import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
+import { SkillGroupsPage } from "./pages/skill-groups/skill_groups_page";
 import { SkillDetailPage } from "./pages/skills/skill_detail_page";
 import { SkillsPage } from "./pages/skills/skills_page";
 import { SettingsPage } from "./pages/settings/settings_page";
@@ -193,6 +194,12 @@ const skillsRoute = createRoute({
   component: SkillsPage,
 });
 
+const skillGroupsRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/skill-groups",
+  component: SkillGroupsPage,
+});
+
 const githubInstallRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/github/install",
@@ -287,6 +294,7 @@ const routeTree = rootRoute.addChildren([
       conversationsRoute,
       secretsRoute,
       skillsRoute,
+      skillGroupsRoute,
       githubInstallRoute,
       repositoriesRoute,
       knowledgeBaseRoute,

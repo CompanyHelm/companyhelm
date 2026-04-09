@@ -47,12 +47,47 @@ type UpdatableDatabase = {
   };
 };
 
+type DeletableDatabase = {
+  delete(table: unknown): {
+    where(condition: unknown): {
+      returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
+    };
+  };
+};
+
 /**
  * Owns the company skill catalog and centralizes skill validation plus persistence so GraphQL only
  * needs to orchestrate transport concerns.
  */
 @injectable()
 export class SkillService {
+  async createSkillGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      name: string;
+    },
+  ): Promise<SkillGroupRecord> {
+    const name = this.requireNonEmptyValue(input.name, "Skill group name");
+
+    return transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const [createdGroup] = await insertableDatabase
+        .insert(skill_groups)
+        .values({
+          companyId: input.companyId,
+          name,
+        })
+        .returning?.(this.skillGroupSelection()) as SkillGroupRecord[];
+
+      if (!createdGroup) {
+        throw new Error("Failed to create skill group.");
+      }
+
+      return createdGroup;
+    });
+  }
+
   async createSkill(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -131,6 +166,31 @@ export class SkillService {
         .where(eq(skills.companyId, companyId)) as SkillRecord[];
 
       return [...records].sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async deleteSkillGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      skillGroupId: string;
+    },
+  ): Promise<SkillGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const deletableDatabase = tx as DeletableDatabase;
+      const [deletedGroup] = await deletableDatabase
+        .delete(skill_groups)
+        .where(and(
+          eq(skill_groups.companyId, input.companyId),
+          eq(skill_groups.id, input.skillGroupId),
+        ))
+        .returning?.(this.skillGroupSelection()) as SkillGroupRecord[];
+
+      if (!deletedGroup) {
+        throw new Error("Skill group not found.");
+      }
+
+      return deletedGroup;
     });
   }
 

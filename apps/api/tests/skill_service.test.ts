@@ -31,32 +31,50 @@ class SkillServiceTestHarness {
 
     const database = {
       insert(table: unknown) {
-        if (table !== skills) {
-          throw new Error("Unexpected insert table.");
+        if (table === skills) {
+          return {
+            values(value: Record<string, unknown>) {
+              const createdSkill: MockSkillRecord = {
+                companyId: String(value.companyId),
+                description: String(value.description),
+                fileList: [...(value.fileList as string[])],
+                id: `skill-${skillRecords.length + 1}`,
+                instructions: String(value.instructions),
+                name: String(value.name),
+                repository: null,
+                skillDirectory: null,
+                skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
+              };
+              skillRecords.push(createdSkill);
+
+              return {
+                async returning() {
+                  return [createdSkill];
+                },
+              };
+            },
+          };
+        }
+        if (table === skill_groups) {
+          return {
+            values(value: Record<string, unknown>) {
+              const createdGroup: MockSkillGroupRecord = {
+                companyId: String(value.companyId),
+                id: `group-${groups.length + 1}`,
+                name: String(value.name),
+              };
+              groups.push(createdGroup);
+
+              return {
+                async returning() {
+                  return [createdGroup];
+                },
+              };
+            },
+          };
         }
 
-        return {
-          values(value: Record<string, unknown>) {
-            const createdSkill: MockSkillRecord = {
-              companyId: String(value.companyId),
-              description: String(value.description),
-              fileList: [...(value.fileList as string[])],
-              id: `skill-${skillRecords.length + 1}`,
-              instructions: String(value.instructions),
-              name: String(value.name),
-              repository: null,
-              skillDirectory: null,
-              skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
-            };
-            skillRecords.push(createdSkill);
-
-            return {
-              async returning() {
-                return [createdSkill];
-              },
-            };
-          },
-        };
+        throw new Error("Unexpected insert table.");
       },
       select() {
         return {
@@ -72,6 +90,33 @@ class SkillServiceTestHarness {
                 }
 
                 throw new Error("Unexpected select table.");
+              },
+            };
+          },
+        };
+      },
+      delete(table: unknown) {
+        if (table !== skill_groups) {
+          throw new Error("Unexpected delete table.");
+        }
+
+        return {
+          where(_condition: unknown) {
+            void _condition;
+            return {
+              async returning() {
+                const [deletedGroup] = groups.splice(0, 1);
+                if (!deletedGroup) {
+                  return [];
+                }
+
+                for (const skillRecord of skillRecords) {
+                  if (skillRecord.skillGroupId === deletedGroup.id) {
+                    skillRecord.skillGroupId = null;
+                  }
+                }
+
+                return [deletedGroup];
               },
             };
           },
@@ -118,6 +163,53 @@ class SkillServiceTestHarness {
     };
   }
 }
+
+test("SkillService creates a skill group for the authenticated company", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [],
+    skills: [],
+  });
+  const service = new SkillService();
+
+  const createdGroup = await service.createSkillGroup(transactionProvider as never, {
+    companyId: "company-123",
+    name: "Research",
+  });
+
+  assert.equal(createdGroup.name, "Research");
+  assert.equal(transactionProvider.groups[0]?.name, "Research");
+});
+
+test("SkillService deletes a skill group and clears existing assignments", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [{
+      companyId: "company-123",
+      id: "group-automation",
+      name: "Automation",
+    }],
+    skills: [{
+      companyId: "company-123",
+      description: "Initial description",
+      fileList: [],
+      id: "skill-1",
+      instructions: "Initial instructions",
+      name: "Browser skill",
+      repository: null,
+      skillDirectory: null,
+      skillGroupId: "group-automation",
+    }],
+  });
+  const service = new SkillService();
+
+  const deletedGroup = await service.deleteSkillGroup(transactionProvider as never, {
+    companyId: "company-123",
+    skillGroupId: "group-automation",
+  });
+
+  assert.equal(deletedGroup.id, "group-automation");
+  assert.equal(transactionProvider.groups.length, 0);
+  assert.equal(transactionProvider.skillRecords[0]?.skillGroupId, null);
+});
 
 test("SkillService updates the editable fields and clears the group assignment", async () => {
   const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
