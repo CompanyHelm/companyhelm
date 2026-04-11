@@ -1,11 +1,14 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { SessionContextCheckpointService } from "../src/services/agent/session/context_checkpoint_service.ts";
+import { SessionLifecycleService } from "../src/services/agent/session/session_lifecycle_service.ts";
 import { SessionProcessPubSubNames } from "../src/services/agent/session/process/pub_sub_names.ts";
 import { SessionManagerService } from "../src/services/agent/session/session_manager_service.ts";
-import { SessionProcessQueueService } from "../src/services/agent/session/process/queue.ts";
+import { SessionModelSelectionService } from "../src/services/agent/session/session_model_selection_service.ts";
 import { SessionProcessQueuedNames } from "../src/services/agent/session/process/queued_names.ts";
-import { SessionQueuedMessageService } from "../src/services/agent/session/process/queued_messages.ts";
+import { SessionPromptService } from "../src/services/agent/session/session_prompt_service.ts";
+import { SessionSecretCopyService } from "../src/services/agent/session/session_secret_copy_service.ts";
 
 class SessionManagerServiceTestHarness {
   static createLoggerMock(logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }>) {
@@ -30,6 +33,78 @@ class SessionManagerServiceTestHarness {
         return callback(transaction);
       },
     };
+  }
+
+  static createService(input: {
+    logs?: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }>;
+    redisService?: unknown;
+    sessionContextCheckpointService?: unknown;
+    sessionProcessPubSubNames?: SessionProcessPubSubNames;
+    sessionProcessQueueService?: unknown;
+    sessionProcessQueuedNames?: SessionProcessQueuedNames;
+    sessionQueuedMessageService?: unknown;
+  }): SessionManagerService {
+    const sessionModelSelectionService = new SessionModelSelectionService();
+    const sessionProcessPubSubNames = input.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
+    const sessionProcessQueuedNames = input.sessionProcessQueuedNames ?? new SessionProcessQueuedNames();
+    const sessionPromptService = new SessionPromptService(
+      (input.redisService ?? {
+        async getClient() {
+          return {
+            async publish() {
+              return 1;
+            },
+          };
+        },
+      }) as never,
+      sessionModelSelectionService,
+      sessionProcessPubSubNames,
+      (input.sessionProcessQueueService ?? {
+        async enqueueSessionWake() {
+          return undefined;
+        },
+      }) as never,
+      sessionProcessQueuedNames,
+      (input.sessionQueuedMessageService ?? {
+        async deleteAllForSessionInTransaction() {
+          return undefined;
+        },
+        async deletePendingUserMessage() {
+          throw new Error("deletePendingUserMessage was not expected in this test.");
+        },
+        async enqueueInTransaction() {
+          return {
+            id: "queued-default",
+          };
+        },
+        async markSteer() {
+          throw new Error("markSteer was not expected in this test.");
+        },
+      }) as never,
+    );
+    const sessionLifecycleService = new SessionLifecycleService(
+      (input.redisService ?? {
+        async getClient() {
+          return {
+            async publish() {
+              return 1;
+            },
+          };
+        },
+      }) as never,
+      sessionModelSelectionService,
+      sessionPromptService,
+      new SessionSecretCopyService(),
+      (input.sessionContextCheckpointService as SessionContextCheckpointService | undefined) ?? new SessionContextCheckpointService(),
+      sessionProcessPubSubNames,
+      sessionProcessQueuedNames,
+    );
+
+    return new SessionManagerService(
+      SessionManagerServiceTestHarness.createLoggerMock(input.logs ?? []) as never,
+      sessionLifecycleService,
+      sessionPromptService,
+    );
   }
 }
 
@@ -114,9 +189,9 @@ test("SessionManagerService createSession persists a queued session, stores the 
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -128,26 +203,24 @@ test("SessionManagerService createSession persists a queued session, stores the 
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake(companyId: string, sessionId: string) {
         wakeCalls.push({
           companyId,
           sessionId,
         });
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
         queuedMessages.push(input);
         return {
           id: "queued-1",
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.createSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -280,33 +353,16 @@ test("SessionManagerService createSession infers an image title when the first p
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
-      async getClient() {
-        return {
-          async publish() {
-            return 1;
-          },
-        };
-      },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
-      async enqueueSessionWake() {
-        return undefined;
-      },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    sessionQueuedMessageService: {
       async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
         queuedMessages.push(input);
         return {
           id: "queued-1",
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.createSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -413,30 +469,18 @@ test("SessionManagerService createSession persists explicit model, reasoning, an
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
-      async getClient() {
-        return {
-          async publish() {
-            return 1;
-          },
-        };
-      },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    sessionProcessQueueService: {
       async enqueueSessionWake() {},
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction() {
         return {
           id: "queued-1",
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   await service.createSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -539,30 +583,18 @@ test("SessionManagerService createSession copies agent default secrets into the 
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
-      async getClient() {
-        return {
-          async publish() {
-            return 1;
-          },
-        };
-      },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    sessionProcessQueueService: {
       async enqueueSessionWake() {},
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction() {
         return {
           id: "queued-1",
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   await service.createSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -667,9 +699,9 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -681,23 +713,21 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not be touched while archiving.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
         deleteQueuedCalls.push({
           companyId,
           sessionId,
         });
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.archiveSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -810,9 +840,8 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -824,23 +853,21 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not be touched while archiving.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
         deleteQueuedCalls.push({
           companyId,
           sessionId,
         });
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.archiveSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -888,9 +915,9 @@ test("SessionManagerService interruptSession publishes the interrupt channel onl
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -902,16 +929,14 @@ test("SessionManagerService interruptSession publishes the interrupt channel onl
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not be touched while interrupting.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {} as SessionQueuedMessageService,
-  );
+    },
+    sessionQueuedMessageService: {},
+  });
 
   await service.interruptSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -956,9 +981,8 @@ test("SessionManagerService interruptSession is a no-op for stopped sessions", a
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -970,16 +994,14 @@ test("SessionManagerService interruptSession is a no-op for stopped sessions", a
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not be touched while interrupting.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {} as SessionQueuedMessageService,
-  );
+    },
+    sessionQueuedMessageService: {},
+  });
 
   await service.interruptSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -1068,9 +1090,9 @@ test("SessionManagerService updateSessionTitle stores the custom title and publi
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -1082,20 +1104,18 @@ test("SessionManagerService updateSessionTitle stores the custom title and publi
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("updateSessionTitle should not enqueue wake jobs");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction() {
         throw new Error("updateSessionTitle should not queue messages");
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.updateSessionTitle(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -1200,9 +1220,9 @@ test("SessionManagerService prompt queues the message, publishes session updates
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -1214,26 +1234,24 @@ test("SessionManagerService prompt queues the message, publishes session updates
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake(companyId: string, sessionId: string) {
         wakeCalls.push({
           companyId,
           sessionId,
         });
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
         queuedMessages.push(input);
         return {
           id: "queued-2",
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.prompt(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -1301,9 +1319,9 @@ test("SessionManagerService prompt queues the message, publishes session updates
 test("SessionManagerService steerQueuedMessage marks the queued row and publishes queue plus steer updates", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -1315,15 +1333,13 @@ test("SessionManagerService steerQueuedMessage marks the queued row and publishe
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not be touched while steering an existing queued row.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async markSteer() {
         return {
           createdAt: new Date("2026-03-31T17:00:00.000Z"),
@@ -1336,8 +1352,8 @@ test("SessionManagerService steerQueuedMessage marks the queued row and publishe
           updatedAt: new Date("2026-03-31T17:01:00.000Z"),
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const queuedMessage = await service.steerQueuedMessage(
     SessionManagerServiceTestHarness.createTransactionProviderMock({}) as never,
@@ -1372,9 +1388,9 @@ test("SessionManagerService steerQueuedMessage marks the queued row and publishe
 test("SessionManagerService deleteQueuedMessage publishes the queue update", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -1386,15 +1402,13 @@ test("SessionManagerService deleteQueuedMessage publishes the queue update", asy
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not be touched while deleting an existing queued row.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async deletePendingUserMessage() {
         return {
           createdAt: new Date("2026-03-31T17:00:00.000Z"),
@@ -1407,8 +1421,8 @@ test("SessionManagerService deleteQueuedMessage publishes the queue update", asy
           updatedAt: new Date("2026-03-31T17:01:00.000Z"),
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const queuedMessage = await service.deleteQueuedMessage(
     SessionManagerServiceTestHarness.createTransactionProviderMock({}) as never,
@@ -1459,9 +1473,8 @@ test("SessionManagerService prompt rejects archived sessions without queueing wo
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -1473,26 +1486,24 @@ test("SessionManagerService prompt rejects archived sessions without queueing wo
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake(companyId: string, sessionId: string) {
         wakeCalls.push({
           companyId,
           sessionId,
         });
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction(_database: unknown, input: Record<string, unknown>) {
         queuedMessages.push(input);
         return {
           id: "queued-2",
         };
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   await assert.rejects(
     service.prompt(
@@ -1646,9 +1657,9 @@ test("SessionManagerService forkSession creates a stopped branch from the select
     },
   };
 
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock(logs) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
       async getClient() {
         return {
           async publish(channel: string, message: string) {
@@ -1660,20 +1671,18 @@ test("SessionManagerService forkSession creates a stopped branch from the select
           },
         };
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not run while forking an existing session.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction() {
         throw new Error("Forking should not enqueue a new user message.");
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   const sessionRecord = await service.forkSession(
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
@@ -1749,26 +1758,23 @@ test("SessionManagerService prompt rejects sessions owned by another user", asyn
       };
     },
   };
-  const service = new SessionManagerService(
-    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
-    {
+  const service = SessionManagerServiceTestHarness.createService({
+    redisService: {
       async getClient() {
         throw new Error("Redis should not be touched when access is denied.");
       },
-    } as never,
-    new SessionProcessPubSubNames(),
-    {
+    },
+    sessionProcessQueueService: {
       async enqueueSessionWake() {
         throw new Error("Wake queue should not run when access is denied.");
       },
-    } as SessionProcessQueueService,
-    new SessionProcessQueuedNames(),
-    {
+    },
+    sessionQueuedMessageService: {
       async enqueueInTransaction() {
         throw new Error("Queued messages should not be created when access is denied.");
       },
-    } as SessionQueuedMessageService,
-  );
+    },
+  });
 
   await assert.rejects(
     service.prompt(
