@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGridIcon, ListIcon, SlidersHorizontalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { TaskCategoryFilterPill } from "@/components/task_category_filter_pill";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -503,26 +504,15 @@ function TasksPageContent() {
             const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
 
             return (
-              <Button
+              <TaskCategoryFilterPill
                 key={filterOption.key}
-                className={cn(
-                  "h-8 shrink-0 gap-1.5 rounded-full px-3",
-                  isSelected
-                    ? "border-border/70 bg-muted text-foreground hover:bg-muted/90"
-                    : "border-border/40 bg-background/40 text-muted-foreground hover:bg-muted/30 hover:text-foreground",
-                )}
+                count={filterOption.count}
+                isSelected={isSelected}
+                label={filterOption.label}
                 onClick={() => {
                   toggleCategory(filterOption.key);
                 }}
-                size="default"
-                type="button"
-                variant="outline"
-              >
-                {filterOption.label}
-                <span className="text-xs/relaxed tabular-nums text-muted-foreground/80">
-                  {filterOption.count}
-                </span>
-              </Button>
+              />
             );
           })}
         </div>
