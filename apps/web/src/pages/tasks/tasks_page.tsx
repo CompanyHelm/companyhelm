@@ -2,7 +2,6 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGridIcon, ListIcon, SlidersHorizontalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
-import { TaskCategoryFilterPill } from "@/components/task_category_filter_pill";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -504,15 +503,31 @@ function TasksPageContent() {
             const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
 
             return (
-              <TaskCategoryFilterPill
+              <button
                 key={filterOption.key}
-                count={filterOption.count}
-                isSelected={isSelected}
-                label={filterOption.label}
+                className={cn(
+                  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+                  isSelected
+                    ? "border-border/70 bg-muted/80 text-foreground hover:bg-muted"
+                    : "border-border/40 bg-background/40 text-muted-foreground hover:border-border/60 hover:bg-muted/30 hover:text-foreground",
+                )}
                 onClick={() => {
                   toggleCategory(filterOption.key);
                 }}
-              />
+                type="button"
+              >
+                <span className="leading-none">{filterOption.label}</span>
+                <span
+                  className={cn(
+                    "inline-flex min-w-4 items-center justify-center rounded-full px-1.5 text-[11px] leading-none tabular-nums",
+                    isSelected
+                      ? "bg-background/80 text-muted-foreground"
+                      : "bg-muted/40 text-muted-foreground/90",
+                  )}
+                >
+                  {filterOption.count}
+                </span>
+              </button>
             );
           })}
         </div>
