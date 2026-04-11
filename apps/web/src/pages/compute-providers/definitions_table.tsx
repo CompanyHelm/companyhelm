@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 
 export type ComputeProviderDefinitionTableRecord = {
-  description: string | null;
+  description: string | null | undefined;
   hasApiKey: boolean;
   id: string;
   isDefault: boolean;

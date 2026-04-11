@@ -232,9 +232,15 @@ function ComputeProviderDefinitionsPageContent() {
 
                     const deletedId = deletedDefinition.getDataID();
                     const rootRecord = store.getRoot();
-                    const currentDefinitions = rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [];
+                    const currentDefinitions = (rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [])
+                      .filter((record): record is { getDataID(): string } => {
+                        return typeof record === "object"
+                          && record !== null
+                          && "getDataID" in record
+                          && typeof record.getDataID === "function";
+                      });
                     rootRecord.setLinkedRecords(
-                      currentDefinitions.filter((record) => record && record.getDataID() !== deletedId),
+                      currentDefinitions.filter((record) => record.getDataID() !== deletedId),
                       "ComputeProviderDefinitions",
                     );
                   },
@@ -260,7 +266,7 @@ function ComputeProviderDefinitionsPageContent() {
             }}
             onEdit={(definition) => {
               setDialogDefinition({
-                description: definition.description,
+                description: definition.description ?? null,
                 id: definition.id,
                 name: definition.name,
                 provider: definition.provider,
@@ -291,9 +297,17 @@ function ComputeProviderDefinitionsPageContent() {
 
                     const updatedId = updatedDefinition.getDataID();
                     const rootRecord = store.getRoot();
-                    const currentDefinitions = rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [];
+                    const currentDefinitions = (rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [])
+                      .filter((record): record is { getDataID(): string; setValue(value: unknown, key: string): void } => {
+                        return typeof record === "object"
+                          && record !== null
+                          && "getDataID" in record
+                          && typeof record.getDataID === "function"
+                          && "setValue" in record
+                          && typeof record.setValue === "function";
+                      });
                     currentDefinitions.forEach((record) => {
-                      record?.setValue(record?.getDataID() === updatedId, "isDefault");
+                      record.setValue(record.getDataID() === updatedId, "isDefault");
                     });
                   },
                   onCompleted: (_response, errors) => {
@@ -330,26 +344,40 @@ function ComputeProviderDefinitionsPageContent() {
         onSave={async (input) => {
           setErrorMessage(null);
 
-          const mutation = "id" in input ? commitUpdateDefinition : commitAddDefinition;
-          const mutationName = "id" in input ? "UpdateComputeProviderDefinition" : "AddComputeProviderDefinition";
-
           await new Promise<void>((resolve, reject) => {
-            mutation({
-              variables: {
-                input,
-              },
-              updater: "id" in input
-                ? undefined
-                : (store) => {
-                  const newDefinition = store.getRootField(mutationName);
-                  if (!newDefinition) {
+            if ("id" in input) {
+              commitUpdateDefinition({
+                variables: {
+                  input,
+                },
+                onCompleted: (_response, errors) => {
+                  const nextErrorMessage = errors?.[0]?.message;
+                  if (nextErrorMessage) {
+                    reject(new Error(nextErrorMessage));
                     return;
                   }
 
-                  const rootRecord = store.getRoot();
-                  const currentDefinitions = rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [];
-                  rootRecord.setLinkedRecords([newDefinition, ...currentDefinitions], "ComputeProviderDefinitions");
+                  resolve();
                 },
+                onError: reject,
+              });
+              return;
+            }
+
+            commitAddDefinition({
+              variables: {
+                input,
+              },
+              updater: (store) => {
+                const newDefinition = store.getRootField("AddComputeProviderDefinition");
+                if (!newDefinition) {
+                  return;
+                }
+
+                const rootRecord = store.getRoot();
+                const currentDefinitions = rootRecord.getLinkedRecords("ComputeProviderDefinitions") || [];
+                rootRecord.setLinkedRecords([newDefinition, ...currentDefinitions], "ComputeProviderDefinitions");
+              },
               onCompleted: (_response, errors) => {
                 const nextErrorMessage = errors?.[0]?.message;
                 if (nextErrorMessage) {

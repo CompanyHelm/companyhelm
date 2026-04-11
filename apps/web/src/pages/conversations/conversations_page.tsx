@@ -2,6 +2,7 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import type { CSSProperties, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { MessageSquareTextIcon, XIcon } from "lucide-react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
@@ -512,14 +513,7 @@ function ConversationsPageContent() {
               conversationId,
             },
           },
-          updater: (store: {
-            delete?(dataId: string): void;
-            getRoot(): {
-              getLinkedRecords(name: string): ReadonlyArray<unknown> | null | undefined;
-              setLinkedRecords(records: ConversationStoreRecord[], name: string): void;
-            };
-            getRootField(name: string): { getValue(name: string): unknown } | null | undefined;
-          }) => {
+          updater: (store: RecordSourceSelectorProxy) => {
             const payload = store.getRootField("DeleteAgentConversation");
             const deletedConversationId = String(payload?.getValue("deletedConversationId") || "");
             if (!deletedConversationId) {

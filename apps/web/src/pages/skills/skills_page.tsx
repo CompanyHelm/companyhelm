@@ -288,7 +288,16 @@ function SkillsPageContent() {
 
             const rootRecord = store.getRoot();
             const currentSkills = (rootRecord.getLinkedRecords("Skills") || [])
-              .filter((record): record is NonNullable<typeof record> => record !== null);
+              .filter((record): record is RelayLinkedRecord => {
+                return typeof record === "object"
+                  && record !== null
+                  && "getDataID" in record
+                  && typeof record.getDataID === "function"
+                  && "getValue" in record
+                  && typeof record.getValue === "function"
+                  && "setValue" in record
+                  && typeof record.setValue === "function";
+              });
             rootRecord.setLinkedRecords(
               currentSkills.filter((record) => record.getDataID() !== deletedSkill.getDataID()),
               "Skills",

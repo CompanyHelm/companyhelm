@@ -1,4 +1,5 @@
 import { Suspense, useState } from "react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { InboxIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
@@ -91,9 +92,9 @@ function InboxPageContent() {
     id: question.id,
     proposals: question.proposals.map((proposal) => ({
       answerText: proposal.answerText,
-      cons: proposal.cons,
+      cons: [...proposal.cons],
       id: proposal.id,
-      pros: proposal.pros,
+      pros: [...proposal.pros],
       rating: proposal.rating,
     })),
     questionText: question.questionText,
@@ -103,13 +104,7 @@ function InboxPageContent() {
     title: question.title,
   }));
 
-  const removeQuestionFromStore = (store: {
-    getRoot(): {
-      getLinkedRecords(name: string): Array<{ getDataID(): string } | null> | null;
-      setLinkedRecords(records: Array<{ getDataID(): string }>, name: string): void;
-    };
-    getRootField(name: string): { getDataID(): string } | null;
-  }, rootFieldName: string) => {
+  const removeQuestionFromStore = (store: RecordSourceSelectorProxy, rootFieldName: string) => {
     const resolvedQuestion = store.getRootField(rootFieldName);
     const resolvedId = resolvedQuestion?.getDataID();
     if (!resolvedId) {
@@ -120,7 +115,11 @@ function InboxPageContent() {
     const currentQuestions = rootRecord.getLinkedRecords("InboxHumanQuestions") || [];
     rootRecord.setLinkedRecords(
       currentQuestions.filter((record): record is { getDataID(): string } => {
-        return Boolean(record) && record.getDataID() !== resolvedId;
+        return typeof record === "object"
+          && record !== null
+          && "getDataID" in record
+          && typeof record.getDataID === "function"
+          && record.getDataID() !== resolvedId;
       }),
       "InboxHumanQuestions",
     );

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { Loader2Icon } from "lucide-react";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { formatProviderLabel as formatModelProviderLabel } from "../model-provider-credentials/provider_label";
@@ -765,17 +766,7 @@ export function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ get
 }
 
 export function upsertRootLinkedRecord(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(
-        records: ReadonlyArray<{ getDataID(): string }>,
-        name: string,
-        args?: Record<string, unknown>,
-      ): void;
-    };
-    getRootField(name: string): { getDataID(): string } | null;
-  },
+  store: RecordSourceSelectorProxy,
   fieldName: string,
   rootFieldName: string,
   args?: Record<string, unknown>,
@@ -799,17 +790,7 @@ export function upsertRootLinkedRecord(
 }
 
 export function removeRootLinkedRecord(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(
-        records: ReadonlyArray<{ getDataID(): string }>,
-        name: string,
-        args?: Record<string, unknown>,
-      ): void;
-    };
-    getRootField(name: string): { getDataID(): string } | null;
-  },
+  store: RecordSourceSelectorProxy,
   fieldName: string,
   rootFieldName: string,
   args?: Record<string, unknown>,

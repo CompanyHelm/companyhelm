@@ -133,7 +133,7 @@ function formatReasoning(model: {
 function ModelProviderCredentialDetailPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
-  const { credentialId } = useParams({ strict: false });
+  const { credentialId } = useParams({ strict: false }) as { credentialId?: string };
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedCredentialId = String(credentialId || "").trim();
   if (!normalizedCredentialId) {
@@ -346,9 +346,17 @@ function ModelProviderCredentialDetailPageContent() {
 
                                 const updatedId = updatedModel.getDataID();
                                 const rootRecord = store.getRoot();
-                                const currentModels = rootRecord.getLinkedRecords("ModelProviderCredentialModels") || [];
+                                const currentModels = (rootRecord.getLinkedRecords("ModelProviderCredentialModels") || [])
+                                  .filter((record): record is { getDataID(): string; setValue(value: unknown, fieldName: string): void } => {
+                                    return typeof record === "object"
+                                      && record !== null
+                                      && "getDataID" in record
+                                      && typeof record.getDataID === "function"
+                                      && "setValue" in record
+                                      && typeof record.setValue === "function";
+                                  });
                                 currentModels.forEach((record) => {
-                                  record?.setValue(record?.getDataID() === updatedId, "isDefault");
+                                  record.setValue(record.getDataID() === updatedId, "isDefault");
                                 });
                               },
                               onCompleted: (_response, errors) => {

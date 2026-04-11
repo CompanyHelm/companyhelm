@@ -25,7 +25,7 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
   const activateLease = vi.fn(async () => ({
     id: "lease-1",
   }));
-  const createShell = vi.fn(async (_transactionProvider: unknown, _environment: unknown) => new FakeEnvironmentShell());
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const service = new AgentEnvironmentAccessService(
     {
@@ -112,10 +112,7 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
   const acquireLease = vi.fn(async () => ({
     id: "lease-2",
   }));
-  const createShell = vi.fn(async (
-    _transactionProvider: unknown,
-    _environment: typeof historicalEnvironment,
-  ) => new FakeEnvironmentShell());
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const historicalEnvironment = {
     agentId: "agent-1",
@@ -222,10 +219,7 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
   const acquireLease = vi.fn(async () => ({
     id: "lease-4",
   }));
-  const createShell = vi.fn(async (
-    _transactionProvider: unknown,
-    _environment: typeof provisionedEnvironment,
-  ) => new FakeEnvironmentShell());
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const provisionEnvironmentForSession = vi.fn(async () => provisionedEnvironment);
   const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const service = new AgentEnvironmentAccessService(
@@ -315,10 +309,7 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
   const acquireLease = vi.fn(async () => ({
     id: "lease-3",
   }));
-  const createShell = vi.fn(async (
-    _transactionProvider: unknown,
-    _environment: typeof provisionedEnvironment,
-  ) => new FakeEnvironmentShell());
+  const createShell = vi.fn(async () => new FakeEnvironmentShell());
   const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const provisionedEnvironment = {
     agentId: "agent-1",

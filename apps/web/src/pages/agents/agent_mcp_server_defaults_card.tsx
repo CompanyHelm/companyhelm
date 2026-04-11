@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import type { agentMcpServerDefaultsCardAttachMcpServerToAgentMutation } from "./__generated__/agentMcpServerDefaultsCardAttachMcpServerToAgentMutation.graphql";
 import type { agentMcpServerDefaultsCardDetachMcpServerFromAgentMutation } from "./__generated__/agentMcpServerDefaultsCardDetachMcpServerFromAgentMutation.graphql";
+import type { AgentCreateMcpServerOption } from "./create_agent_dialog";
 import { DefaultAttachmentSection } from "./default_attachment_section";
 
 type AgentMcpServerRecord = {
-  description: string | null;
+  description: string | null | undefined;
   id: string;
   name: string;
   url: string;
@@ -21,7 +23,7 @@ type StoreMcpServerRecord = {
 interface AgentMcpServerDefaultsCardProps {
   agentId: string;
   agentMcpServers: AgentMcpServerRecord[];
-  companyMcpServers: AgentMcpServerRecord[];
+  companyMcpServers: AgentCreateMcpServerOption[];
 }
 
 const agentMcpServerDefaultsCardAttachMcpServerToAgentMutationNode = graphql`
@@ -65,13 +67,7 @@ function sortStoreMcpServerRecords(records: StoreMcpServerRecord[]): StoreMcpSer
 }
 
 function upsertAgentMcpServerInStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreMcpServerRecord>, name: string, args?: Record<string, unknown>): void;
-    };
-    getRootField(name: string): StoreMcpServerRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   agentId: string,
 ) {
   const nextServer = store.getRootField("AttachMcpServerToAgent");
@@ -90,13 +86,7 @@ function upsertAgentMcpServerInStore(
 }
 
 function removeAgentMcpServerFromStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreMcpServerRecord>, name: string, args?: Record<string, unknown>): void;
-    };
-    getRootField(name: string): StoreMcpServerRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   agentId: string,
 ) {
   const deletedServer = store.getRootField("DetachMcpServerFromAgent");

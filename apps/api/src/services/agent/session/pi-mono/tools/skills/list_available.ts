@@ -19,7 +19,7 @@ export class AgentListAvailableSkillsTool {
     return {
       description:
         "List all skills available to this company and whether each one is already active for the current chat session.",
-      execute: async (_toolCallId, _params, _signal, _onUpdate, _ctx) => {
+      execute: async () => {
         const skills = await this.skillToolService.listAvailableSkills();
         return {
           content: [{

@@ -4,8 +4,8 @@ import { cn } from "@/lib/cn";
 export type ConversationListRecord = {
   createdAt: string;
   id: string;
-  latestMessageAt: string | null;
-  latestMessagePreview: string | null;
+  latestMessageAt: string | null | undefined;
+  latestMessagePreview: string | null | undefined;
   participants: Array<{
     agentId: string;
     agentName: string;

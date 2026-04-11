@@ -22,15 +22,15 @@ import { formatProviderLabel } from "../model-provider-credentials/provider_labe
 
 export type DashboardAgentRecord = {
   id: string;
-  modelName: string | null;
-  modelProvider: string | null;
+  modelName: string | null | undefined;
+  modelProvider: string | null | undefined;
   name: string;
-  reasoningLevel: string | null;
+  reasoningLevel: string | null | undefined;
   sessionCount: number;
   updatedAt: string;
 };
 
-function formatDashboardProviderLabel(provider: string | null): string {
+function formatDashboardProviderLabel(provider: string | null | undefined): string {
   if (!provider) {
     return "Not configured";
   }
@@ -38,7 +38,7 @@ function formatDashboardProviderLabel(provider: string | null): string {
   return formatProviderLabel(provider);
 }
 
-function formatReasoningLabel(value: string | null): string {
+function formatReasoningLabel(value: string | null | undefined): string {
   if (!value) {
     return "Default";
   }

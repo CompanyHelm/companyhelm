@@ -67,7 +67,7 @@ function SkillDetailPageFallback() {
  */
 function SkillDetailPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const { skillId } = useParams({ strict: false });
+  const { skillId } = useParams({ strict: false }) as { skillId?: string };
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedSkillId = String(skillId || "").trim();
   if (!normalizedSkillId) {

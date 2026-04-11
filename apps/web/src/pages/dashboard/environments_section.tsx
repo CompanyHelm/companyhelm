@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/table";
 
 export type DashboardEnvironmentRecord = {
-  agentName: string | null;
-  displayName: string | null;
+  agentName: string | null | undefined;
+  displayName: string | null | undefined;
   id: string;
   provider: string;
   providerEnvironmentId: string;

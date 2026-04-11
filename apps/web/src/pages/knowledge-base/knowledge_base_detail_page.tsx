@@ -116,7 +116,7 @@ function KnowledgeBaseDetailPageFallback() {
 
 function KnowledgeBaseDetailPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
-  const { artifactId } = useParams({ strict: false });
+  const { artifactId } = useParams({ strict: false }) as { artifactId?: string };
   const normalizedArtifactId = String(artifactId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   const [editorState, setEditorState] = useState<KnowledgeBaseArtifactEditorState>(

@@ -83,7 +83,7 @@ export class GraphqlSubscriptionClient {
       const unsubscribe = this.client.subscribe<GraphqlSubscriptionPayload>({
         operationName: parameters.name,
         query: parameters.text,
-        variables,
+        variables: variables as Record<string, unknown>,
       }, {
         complete: () => {
           finishOperation();

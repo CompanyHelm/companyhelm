@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -6,13 +7,14 @@ import type { agentSkillDefaultsCardAttachSkillGroupToAgentMutation } from "./__
 import type { agentSkillDefaultsCardAttachSkillToAgentMutation } from "./__generated__/agentSkillDefaultsCardAttachSkillToAgentMutation.graphql";
 import type { agentSkillDefaultsCardDetachSkillGroupFromAgentMutation } from "./__generated__/agentSkillDefaultsCardDetachSkillGroupFromAgentMutation.graphql";
 import type { agentSkillDefaultsCardDetachSkillFromAgentMutation } from "./__generated__/agentSkillDefaultsCardDetachSkillFromAgentMutation.graphql";
+import type { AgentCreateSkillOption } from "./create_agent_dialog";
 import { DefaultAttachmentSection } from "./default_attachment_section";
 
 type AgentSkillRecord = {
   description: string;
   id: string;
   name: string;
-  skillGroupId: string | null;
+  skillGroupId: string | null | undefined;
 };
 
 type AgentSkillGroupRecord = {
@@ -30,7 +32,7 @@ interface AgentSkillDefaultsCardProps {
   agentSkillGroups: AgentSkillGroupRecord[];
   agentSkills: AgentSkillRecord[];
   companySkillGroups: AgentSkillGroupRecord[];
-  companySkills: AgentSkillRecord[];
+  companySkills: AgentCreateSkillOption[];
 }
 
 const agentSkillDefaultsCardAttachSkillGroupToAgentMutationNode = graphql`
@@ -87,13 +89,7 @@ function sortStoreRecords(records: StoreRecord[]): StoreRecord[] {
 }
 
 function upsertAttachmentInStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreRecord>, name: string, args?: Record<string, unknown>): void;
-    };
-    getRootField(name: string): StoreRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   fieldArguments: { agentId: string },
   listFieldName: string,
   mutationFieldName: string,
@@ -113,13 +109,7 @@ function upsertAttachmentInStore(
 }
 
 function removeAttachmentFromStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreRecord>, name: string, args?: Record<string, unknown>): void;
-    };
-    getRootField(name: string): StoreRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   fieldArguments: { agentId: string },
   listFieldName: string,
   mutationFieldName: string,
