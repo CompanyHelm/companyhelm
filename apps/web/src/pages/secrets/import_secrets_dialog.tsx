@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { UploadIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,6 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
   const [pastedFileContents, setPastedFileContents] = useState("");
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [shouldOverwriteExistingSecrets, setShouldOverwriteExistingSecrets] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const existingSecretsByEnvVarName = new Map(
     props.existingSecrets.map((secret) => [secret.envVarName.toLowerCase(), secret]),
   );
@@ -115,23 +114,6 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
         </DialogHeader>
 
         <div className="grid gap-4">
-          <input
-            ref={fileInputRef}
-            accept=".env,text/plain"
-            className="hidden"
-            onChange={async (event) => {
-              const selectedFile = event.target.files?.[0];
-              event.target.value = "";
-
-              if (!selectedFile) {
-                return;
-              }
-
-              await loadSelectedFile(selectedFile);
-            }}
-            type="file"
-          />
-
           <div
             className={cn(
               "grid gap-3 rounded-xl border border-dashed px-4 py-5 transition-colors",
@@ -171,37 +153,30 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">
-                  {selectedFileName ?? "Drop a .env file here"}
+                  Drop a .env file here
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Drag and drop a file into this panel, or pick one directly from disk.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  macOS hides dotfiles in the picker by default. Use drag and drop, press Cmd+Shift+. in
-                  the picker, or paste the file contents below.
+                  Drag and drop the file into this panel, or paste the contents below.
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-                type="button"
-                variant="outline"
-              >
-                Choose file
-              </Button>
-              {selectedFileName ? (
-                <span className="text-xs text-muted-foreground">Loaded {selectedFileName}</span>
-              ) : null}
-            </div>
+            {selectedFileName ? (
+              <span className="text-xs text-muted-foreground">Loaded {selectedFileName}</span>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border/60" />
+            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              or
+            </span>
+            <div className="h-px flex-1 bg-border/60" />
           </div>
 
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-3">
               <label className="text-xs font-medium text-foreground" htmlFor="secret-env-paste">
-                Paste .env contents
+                Paste the contents
               </label>
               <Button
                 disabled={!pastedFileContents.trim()}
