@@ -223,15 +223,15 @@ export function TaskBoard(props: TaskBoardProps) {
                 >
                   <div className="flex h-full flex-col">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h3 className="overflow-hidden text-xs font-medium leading-5 text-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                           {task.name}
                         </h3>
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                        <div className="mt-1.5 flex items-center gap-2">
                           <Badge className="h-5 px-1.5 text-[0.625rem]" variant={resolveTaskStatusVariant(task.status)}>
                             {formatTaskStatus(task.status)}
                           </Badge>
-                          <span className="shrink-0 text-[0.625rem] uppercase tracking-[0.16em] text-muted-foreground/80">
+                          <span className="ml-auto shrink-0 text-[0.625rem] tabular-nums text-muted-foreground/80">
                             {formatTaskTimestamp(task.createdAt)}
                           </span>
                         </div>
