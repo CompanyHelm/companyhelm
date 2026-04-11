@@ -1,4 +1,4 @@
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { AgentGraphqlRegistry } from "./agent_graphql_registry.ts";
 import { ArtifactGraphqlRegistry } from "./artifact_graphql_registry.ts";
 import { ConversationGraphqlRegistry } from "./conversation_graphql_registry.ts";
@@ -14,11 +14,17 @@ import { TaskGraphqlRegistry } from "./task_graphql_registry.ts";
 @injectable()
 export class GraphqlResolverRegistry implements GraphqlRegistryInterface {
   constructor(
+    @inject(AgentGraphqlRegistry)
     private readonly agentGraphqlRegistry: AgentGraphqlRegistry,
+    @inject(ArtifactGraphqlRegistry)
     private readonly artifactGraphqlRegistry: ArtifactGraphqlRegistry,
+    @inject(ConversationGraphqlRegistry)
     private readonly conversationGraphqlRegistry: ConversationGraphqlRegistry,
+    @inject(EnvironmentGraphqlRegistry)
     private readonly environmentGraphqlRegistry: EnvironmentGraphqlRegistry,
+    @inject(ManagementGraphqlRegistry)
     private readonly managementGraphqlRegistry: ManagementGraphqlRegistry,
+    @inject(TaskGraphqlRegistry)
     private readonly taskGraphqlRegistry: TaskGraphqlRegistry,
   ) {}
 
