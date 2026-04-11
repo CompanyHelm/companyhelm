@@ -503,31 +503,33 @@ function TasksPageContent() {
             const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
 
             return (
-              <button
+              <Button
                 key={filterOption.key}
                 className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+                  "h-6 shrink-0 gap-1 rounded-full px-2.5 text-[11px]/none font-medium whitespace-nowrap",
                   isSelected
-                    ? "border-border/70 bg-muted/80 text-foreground hover:bg-muted"
-                    : "border-border/40 bg-background/40 text-muted-foreground hover:border-border/60 hover:bg-muted/30 hover:text-foreground",
+                    ? "border-border/70 bg-muted/70 text-foreground hover:bg-muted/85"
+                    : "border-border/40 bg-background/25 text-muted-foreground hover:border-border/60 hover:bg-muted/25 hover:text-foreground",
                 )}
                 onClick={() => {
                   toggleCategory(filterOption.key);
                 }}
+                size="xs"
                 type="button"
+                variant={isSelected ? "secondary" : "outline"}
               >
                 <span className="leading-none">{filterOption.label}</span>
                 <span
                   className={cn(
-                    "inline-flex min-w-4 items-center justify-center rounded-full px-1.5 text-[11px] leading-none tabular-nums",
+                    "text-[10px]/none tabular-nums opacity-70",
                     isSelected
-                      ? "bg-background/80 text-muted-foreground"
-                      : "bg-muted/40 text-muted-foreground/90",
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/90",
                   )}
                 >
                   {filterOption.count}
                 </span>
-              </button>
+              </Button>
             );
           })}
         </div>
