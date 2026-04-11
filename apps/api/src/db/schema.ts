@@ -19,6 +19,7 @@ import { sql } from "drizzle-orm/sql";
 
 export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic", "openai-codex", "openrouter"]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
+export const modelProviderCredentialStatusEnum = pgEnum("model_provider_credential_status", ["active", "error"]);
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["queued", "running", "stopped", "archived"]);
@@ -36,7 +37,7 @@ export const artifactStateEnum = pgEnum("artifact_state", ["draft", "active", "a
 export const artifactPullRequestProviderEnum = pgEnum("artifact_pull_request_provider", ["github"]);
 export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
 export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
-export const computeProviderEnum = pgEnum("compute_provider", ["e2b"]);
+export const computeProviderEnum = pgEnum("compute_provider", ["daytona", "e2b"]);
 
 
 export const companies = pgTable("companies", {
@@ -124,9 +125,8 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   // inferred from first message or based on LLM generated title
   inferredTitle: text("inferred_title"),
-  // user initiated chat, optional if session was created by the system
-  createdByUserId: uuid("created_by_user_id")
-    .references(() => users.id, { onDelete: "set null" }),
+  ownerUserId: uuid("owner_user_id")
+    .references(() => users.id, { onDelete: "cascade" }),
   // user explicitly set title, it should take precedence over the inferred title
   userSetTitle: text("user_set_title"),
   currentReasoningLevel: text("current_reasoning_level").notNull(),
@@ -250,6 +250,7 @@ export const sessionMessages = pgTable("session_messages", {
   toolCallId: text("tool_call_id"),
   toolName: text("tool_name"),
   isError: boolean("is_error").notNull(),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
@@ -491,18 +492,15 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
   isDefault: boolean("is_default").notNull().default(false),
+  status: modelProviderCredentialStatusEnum("status").notNull(),
+  errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 },
 (table) => ({
-  companyIdIndex: index("model_provider_credentials_company_id_idx").on(table.companyId),
   companyDefaultUnique: uniqueIndex("model_provider_credentials_company_default_uidx")
     .on(table.companyId)
     .where(sql`${table.isDefault}`),
-  oauthRefreshTokenCheck: check(
-    "model_provider_credentials_oauth_refresh_token_check",
-    sql`${table.type} <> 'oauth_token' OR ${table.refreshToken} IS NOT NULL`,
-  ),
 }));
 
 export const companySecrets = pgTable("company_secrets", {
@@ -574,6 +572,17 @@ export const e2bComputeProviderDefinitions = pgTable("e2b_compute_provider_defin
   encryptedApiKey: text("encrypted_api_key").notNull(),
   encryptionKeyId: text("encryption_key_id").notNull(),
 });
+
+export const daytonaComputeProviderDefinitions = pgTable("daytona_compute_provider_definitions", {
+  computeProviderDefinitionId: uuid("compute_provider_definition_id")
+    .primaryKey()
+    .references(() => computeProviderDefinitions.id, { onDelete: "cascade" }),
+  apiUrl: text("api_url").notNull(),
+  encryptedApiKey: text("encrypted_api_key").notNull(),
+  encryptionKeyId: text("encryption_key_id").notNull(),
+}, (table) => ({
+  apiUrlIndex: index("daytona_compute_provider_definitions_api_url_idx").on(table.apiUrl),
+}));
 
 export const agentDefaultSecrets = pgTable("agent_default_secrets", {
   companyId: uuid("company_id")
@@ -943,9 +952,30 @@ export const skills = pgTable("skills", {
   repository: text("repository"),
   // where in the repository the skill is located
   skillDirectory: text("skill_directory"),
+  githubBranchName: text("github_branch_name"),
+  githubTrackedCommitSha: text("github_tracked_commit_sha"),
 }, (table) => ({
   skillGroupIdIndex: index("skills_skill_group_id_idx").on(table.skillGroupId),
   companyIdIndex: index("skills_company_id_idx").on(table.companyId),
+  companyIdNameUnique: uniqueIndex("skills_company_id_name_uidx").on(table.companyId, table.name),
+}));
+
+export const agentSessionActiveSkills = pgTable("agent_session_active_skills", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" })
+    .notNull(),
+  skillId: uuid("skill_id")
+    .references(() => skills.id, { onDelete: "cascade" })
+    .notNull(),
+  activatedAt: timestamp("activated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.sessionId, table.skillId], name: "agent_session_active_skills_session_id_skill_id_pk" }),
+  companyIdIndex: index("agent_session_active_skills_company_id_idx").on(table.companyId),
+  sessionIdIndex: index("agent_session_active_skills_session_id_idx").on(table.sessionId),
+  skillIdIndex: index("agent_session_active_skills_skill_id_idx").on(table.skillId),
 }));
 
 export const skill_groups = pgTable("skill_groups", {
