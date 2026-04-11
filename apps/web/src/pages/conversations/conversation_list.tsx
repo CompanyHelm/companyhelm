@@ -62,23 +62,6 @@ function resolveConversationTitle(conversation: ConversationListRecord): string 
   return names.length > 0 ? names.join(" / ") : "Untitled conversation";
 }
 
-function resolveConversationSubtitle(conversation: ConversationListRecord): string {
-  const sessionTitles = conversation.participants
-    .map((participant) => participant.sessionTitle.trim())
-    .filter((sessionTitle) => sessionTitle.length > 0);
-
-  return sessionTitles.length > 0 ? sessionTitles.join(" · ") : "No session titles";
-}
-
-function resolveConversationPreview(conversation: ConversationListRecord): string {
-  const preview = conversation.latestMessagePreview?.trim();
-  if (preview && preview.length > 0) {
-    return preview;
-  }
-
-  return "No canonical messages have been persisted yet.";
-}
-
 export function ConversationList(properties: ConversationListProperties) {
   const tone = properties.tone ?? "desktop";
   const emptyStateTone = properties.emptyStateTone ?? tone;
@@ -126,8 +109,6 @@ export function ConversationList(properties: ConversationListProperties) {
         const isSelected = properties.selectedConversationId === conversation.id;
         const isDeletingConversation = properties.deletingConversationId === conversation.id;
         const title = resolveConversationTitle(conversation);
-        const subtitle = resolveConversationSubtitle(conversation);
-        const preview = resolveConversationPreview(conversation);
         const timestampLabel = formatConversationListTimestamp(
           conversation.latestMessageAt ?? conversation.updatedAt ?? conversation.createdAt,
         );
@@ -158,19 +139,11 @@ export function ConversationList(properties: ConversationListProperties) {
                 <div className="min-w-0">
                   <div
                     className={cn(
-                      "truncate text-sm font-semibold",
+                      "text-sm font-semibold leading-5",
                       tone === "mobile" ? "text-sidebar-foreground" : "text-foreground",
                     )}
                   >
                     {title}
-                  </div>
-                  <div
-                    className={cn(
-                      "mt-1 truncate text-xs",
-                      tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
-                    )}
-                  >
-                    {subtitle}
                   </div>
                 </div>
                 {timestampLabel ? (
@@ -184,13 +157,27 @@ export function ConversationList(properties: ConversationListProperties) {
                   </div>
                 ) : null}
               </div>
-              <div
-                className={cn(
-                  "mt-3 line-clamp-2 text-xs leading-5",
-                  tone === "mobile" ? "text-sidebar-foreground/75" : "text-muted-foreground",
-                )}
-              >
-                {preview}
+              <div className="mt-3 grid gap-2">
+                {conversation.participants.map((participant) => (
+                  <div className="grid gap-0.5" key={participant.id}>
+                    <div
+                      className={cn(
+                        "text-xs font-medium leading-5",
+                        tone === "mobile" ? "text-sidebar-foreground/85" : "text-foreground",
+                      )}
+                    >
+                      {participant.agentName}
+                    </div>
+                    <div
+                      className={cn(
+                        "text-xs leading-5",
+                        tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
+                      )}
+                    >
+                      {participant.sessionTitle}
+                    </div>
+                  </div>
+                ))}
               </div>
             </button>
             {properties.onDeleteConversation ? (
