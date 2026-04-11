@@ -169,8 +169,8 @@ const organizationDashboardRoute = createRoute({
 });
 
 const flagsRoute = createRoute({
-  getParentRoute: () => organizationRoute,
-  path: OrganizationPath.route("/flags"),
+  getParentRoute: () => pageContainerRoute,
+  path: "/flags",
   component: FlagsPage,
 });
 

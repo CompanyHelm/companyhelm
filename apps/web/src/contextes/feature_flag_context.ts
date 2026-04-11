@@ -9,6 +9,7 @@ import {
 
 export interface FeatureFlags {
   computer_providers: boolean;
+  mcp_servers: boolean;
   tasks_management: boolean;
 }
 
@@ -24,6 +25,7 @@ const FEATURE_FLAGS_STORAGE_KEY = "companyhelm-feature-flags";
 
 const defaultFeatureFlags: FeatureFlags = {
   computer_providers: false,
+  mcp_servers: false,
   tasks_management: false,
 };
 
@@ -40,6 +42,9 @@ function parseFeatureFlags(source: unknown): FeatureFlags {
     computer_providers: typeof storedFlags.computer_providers === "boolean"
       ? storedFlags.computer_providers
       : defaultFeatureFlags.computer_providers,
+    mcp_servers: typeof storedFlags.mcp_servers === "boolean"
+      ? storedFlags.mcp_servers
+      : defaultFeatureFlags.mcp_servers,
     tasks_management: typeof storedFlags.tasks_management === "boolean"
       ? storedFlags.tasks_management
       : defaultFeatureFlags.tasks_management,
