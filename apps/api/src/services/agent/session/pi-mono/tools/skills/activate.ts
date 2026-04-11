@@ -5,8 +5,7 @@ import { AgentSkillResultFormatter } from "./result_formatter.ts";
 import { AgentSkillToolService } from "./service.ts";
 
 /**
- * Activates one skill for the current chat session and eagerly materializes any file-backed
- * payload into an already leased environment when one exists.
+ * Activates one skill for the current chat session so later prompts can rely on its instructions.
  */
 export class AgentActivateSkillTool {
   private static readonly parameters = AgentToolParameterSchema.object({
@@ -23,8 +22,11 @@ export class AgentActivateSkillTool {
   createDefinition(): ToolDefinition<typeof AgentActivateSkillTool.parameters> {
     return {
       description:
-        "Activate one skill by name for this chat session. File-backed skills are synchronized into an already leased environment immediately and otherwise materialize on the next lease.",
-      execute: async (_toolCallId, params, _signal, _onUpdate, _ctx) => {
+        "Activate one skill by name for this chat session.",
+      execute: async (_toolCallId, params, signal, onUpdate, ctx) => {
+        void signal;
+        void onUpdate;
+        void ctx;
         const activation = await this.skillToolService.activateSkill(params.skillName);
         return {
           content: [{
@@ -33,8 +35,7 @@ export class AgentActivateSkillTool {
           }],
           details: {
             alreadyActive: activation.alreadyActive,
-            fileBacked: activation.skill.fileBacked,
-            materializedIntoLeasedEnvironment: activation.materialized,
+            files: activation.skill.files,
             skillName: activation.skill.name,
           },
         };

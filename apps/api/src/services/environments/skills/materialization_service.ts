@@ -34,7 +34,7 @@ export class AgentEnvironmentSkillMaterializationService {
 
     await this.checkoutCacheService.prepareCheckout(environmentShell, skill);
 
-    const materializationDirectory = this.pathService.getSkillMaterializationDirectory(skill.id);
+    const materializationDirectory = this.pathService.getSkillMaterializationDirectory(skill.name);
     const copyInstructions = [{
       sourcePath: this.pathService.getSkillDocumentCheckoutPath(fileBackedSkill),
       targetPath: `${materializationDirectory}/SKILL.md`,

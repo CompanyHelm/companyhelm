@@ -26,8 +26,7 @@ test("AgentListAvailableSkillsTool renders the company skill catalog", async () 
       return [{
         active: false,
         description: "Browser automation guidance.",
-        fileBacked: true,
-        fileCount: 1,
+        files: ["scripts/open.sh", "references/FOO.md"],
         githubTrackedCommitSha: "commit-sha-1",
         name: "Browser skill",
         repository: "companyhelm/skills",
@@ -49,8 +48,7 @@ test("AgentListAvailableSkillsTool renders the company skill catalog", async () 
       text: [
         "name: Browser skill",
         "active: no",
-        "fileBacked: yes",
-        "files: 1",
+        'files: ["scripts/open.sh","references/FOO.md"]',
         "description: Browser automation guidance.",
         "repository: companyhelm/skills",
         "skillDirectory: skills/browser",
@@ -60,17 +58,15 @@ test("AgentListAvailableSkillsTool renders the company skill catalog", async () 
   });
 });
 
-test("AgentActivateSkillTool reports whether the skill was materialized immediately", async () => {
+test("AgentActivateSkillTool renders the activated skill with relative file paths", async () => {
   const tool = new AgentActivateSkillTool({
     async activateSkill() {
       return {
         alreadyActive: false,
-        materialized: true,
         skill: {
           active: true,
           description: "Browser automation guidance.",
-          fileBacked: true,
-          fileCount: 1,
+          files: ["scripts/open.sh", "references/FOO.md"],
           githubTrackedCommitSha: "commit-sha-1",
           name: "Browser skill",
           repository: "companyhelm/skills",
@@ -95,9 +91,7 @@ test("AgentActivateSkillTool reports whether the skill was materialized immediat
       text: [
         "Activated skill Browser skill.",
         "alreadyActive: no",
-        "materializedIntoLeasedEnvironment: yes",
-        "fileBacked: yes",
-        "files: 1",
+        'files: ["scripts/open.sh","references/FOO.md"]',
         "description: Browser automation guidance.",
         "repository: companyhelm/skills",
         "skillDirectory: skills/browser",
@@ -107,8 +101,7 @@ test("AgentActivateSkillTool reports whether the skill was materialized immediat
     }],
     details: {
       alreadyActive: false,
-      fileBacked: true,
-      materializedIntoLeasedEnvironment: true,
+      files: ["scripts/open.sh", "references/FOO.md"],
       skillName: "Browser skill",
     },
   });

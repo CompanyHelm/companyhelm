@@ -1,13 +1,13 @@
 import type { TransactionProviderInterface } from "../../../../../../db/transaction_provider_interface.ts";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
+import { AgentEnvironmentSkillPathService } from "../../../../../environments/skills/path_service.ts";
 import { SessionSkillService } from "../../../../../skills/session_service.ts";
 import { SkillService } from "../../../../../skills/service.ts";
 
 export type AgentSkillSummary = {
   active: boolean;
   description: string;
-  fileBacked: boolean;
-  fileCount: number;
+  files: string[];
   githubTrackedCommitSha: string | null;
   name: string;
   repository: string | null;
@@ -16,7 +16,6 @@ export type AgentSkillSummary = {
 
 export type AgentSkillActivationResult = {
   alreadyActive: boolean;
-  materialized: boolean;
   skill: AgentSkillSummary;
 };
 
@@ -29,6 +28,7 @@ export class AgentSkillToolService {
   private readonly promptScope: AgentEnvironmentPromptScope;
   private readonly sessionId: string;
   private readonly sessionSkillService: SessionSkillService;
+  private readonly skillPathService: AgentEnvironmentSkillPathService;
   private readonly skillService: SkillService;
   private readonly transactionProvider: TransactionProviderInterface;
 
@@ -46,6 +46,7 @@ export class AgentSkillToolService {
     this.sessionId = sessionId;
     void agentId;
     this.promptScope = promptScope;
+    this.skillPathService = new AgentEnvironmentSkillPathService();
     this.skillService = skillService;
     this.sessionSkillService = sessionSkillService;
   }
@@ -56,9 +57,8 @@ export class AgentSkillToolService {
       sessionId: this.sessionId,
       skillName,
     });
-    let materialized: boolean;
     try {
-      materialized = await this.promptScope.syncSkillIfEnvironmentLeased(activation.skill);
+      await this.promptScope.syncSkillIfEnvironmentLeased(activation.skill);
     } catch (error) {
       if (activation.inserted) {
         await this.sessionSkillService.deactivateSkill(this.transactionProvider, {
@@ -77,7 +77,6 @@ export class AgentSkillToolService {
 
     return {
       alreadyActive: !activation.inserted,
-      materialized,
       skill: this.toSkillSummary(activation.skill, true),
     };
   }
@@ -99,12 +98,24 @@ export class AgentSkillToolService {
     return {
       active,
       description: skill.description,
-      fileBacked: skill.fileList.length > 0,
-      fileCount: skill.fileList.length,
+      files: this.toSkillFiles(skill),
       githubTrackedCommitSha: skill.githubTrackedCommitSha,
       name: skill.name,
       repository: skill.repository,
       skillDirectory: skill.skillDirectory,
     };
+  }
+
+  private toSkillFiles(skill: Awaited<ReturnType<SkillService["getSkill"]>>): string[] {
+    if (skill.fileList.length === 0) {
+      return [];
+    }
+
+    const fileBackedSkill = this.skillPathService.resolveFileBackedSkill(skill);
+    if (!fileBackedSkill) {
+      return [];
+    }
+
+    return skill.fileList.map((repositoryPath) => this.skillPathService.toSkillRelativePath(fileBackedSkill, repositoryPath));
   }
 }

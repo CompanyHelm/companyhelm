@@ -5,7 +5,7 @@ import { AgentSkillToolService } from "../src/services/agent/session/pi-mono/too
 const browserSkillRecord = {
   companyId: "company-123",
   description: "Browser automation guidance.",
-  fileList: ["skills/browser/scripts/open.sh"],
+  fileList: ["skills/browser/scripts/open.sh", "skills/browser/references/FOO.md"],
   githubBranchName: "main",
   githubTrackedCommitSha: "commit-sha-1",
   id: "skill-1",
@@ -113,8 +113,7 @@ test("AgentSkillToolService lists the catalog with active flags", async () => {
   assert.deepEqual(skills, [{
     active: true,
     description: "Browser automation guidance.",
-    fileBacked: true,
-    fileCount: 1,
+    files: ["scripts/open.sh", "references/FOO.md"],
     githubTrackedCommitSha: "commit-sha-1",
     name: "Browser skill",
     repository: "companyhelm/skills",

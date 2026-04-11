@@ -9,18 +9,13 @@ export class AgentSkillResultFormatter {
     const lines = [
       `Activated skill ${result.skill.name}.`,
       `alreadyActive: ${result.alreadyActive ? "yes" : "no"}`,
-      `materializedIntoLeasedEnvironment: ${result.materialized ? "yes" : "no"}`,
-      `fileBacked: ${result.skill.fileBacked ? "yes" : "no"}`,
-      `files: ${result.skill.fileCount}`,
+      `files: ${AgentSkillResultFormatter.formatFiles(result.skill.files)}`,
       `description: ${result.skill.description}`,
     ];
-    if (result.skill.fileBacked) {
+    if (result.skill.files.length > 0) {
       lines.push(`repository: ${result.skill.repository ?? "(missing)"}`);
       lines.push(`skillDirectory: ${result.skill.skillDirectory ?? "(missing)"}`);
       lines.push(`githubTrackedCommitSha: ${result.skill.githubTrackedCommitSha ?? "(missing)"}`);
-      if (!result.materialized) {
-        lines.push("note: The skill will be materialized the next time this session leases an environment.");
-      }
     }
 
     return lines.join("\n");
@@ -35,16 +30,19 @@ export class AgentSkillResultFormatter {
       const lines = [
         `name: ${skill.name}`,
         `active: ${skill.active ? "yes" : "no"}`,
-        `fileBacked: ${skill.fileBacked ? "yes" : "no"}`,
-        `files: ${skill.fileCount}`,
+        `files: ${AgentSkillResultFormatter.formatFiles(skill.files)}`,
         `description: ${skill.description}`,
       ];
-      if (skill.fileBacked) {
+      if (skill.files.length > 0) {
         lines.push(`repository: ${skill.repository ?? "(missing)"}`);
         lines.push(`skillDirectory: ${skill.skillDirectory ?? "(missing)"}`);
       }
 
       return lines.join("\n");
     }).join("\n\n");
+  }
+
+  private static formatFiles(files: string[]): string {
+    return JSON.stringify(files);
   }
 }

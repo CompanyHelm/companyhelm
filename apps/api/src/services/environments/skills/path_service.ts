@@ -37,13 +37,18 @@ export class AgentEnvironmentSkillPathService {
     return `${this.getSkillCacheDirectory(skill)}/checkout`;
   }
 
-  getSkillMaterializationDirectory(skillId: string): string {
-    const normalizedSkillId = String(skillId || "").trim();
-    if (normalizedSkillId.length === 0) {
-      throw new Error("Skill id is required.");
+  getSkillMaterializationDirectory(skillName: string): string {
+    if (skillName.length === 0) {
+      throw new Error("Skill name is required.");
+    }
+    if (skillName === "." || skillName === "..") {
+      throw new Error(`Skill name ${skillName} cannot be materialized as a directory.`);
+    }
+    if (skillName.includes("/") || skillName.includes("\\")) {
+      throw new Error(`Skill name ${skillName} cannot contain path separators.`);
     }
 
-    return `${this.getSkillRootDirectory()}/${normalizedSkillId}`;
+    return `${this.getSkillRootDirectory()}/${skillName}`;
   }
 
   getSkillDocumentRepositoryPath(skill: FileBackedSkillRecord): string {

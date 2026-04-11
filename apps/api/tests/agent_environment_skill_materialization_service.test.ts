@@ -18,10 +18,13 @@ const fileBackedSkillRecord = {
 };
 
 test("AgentEnvironmentSkillCheckoutCacheService fetches one tracked commit and checks out only the declared files", async () => {
-  const executeCommand = vi.fn(async (_command: string) => ({
-    exitCode: 0,
-    stdout: "",
-  }));
+  const executeCommand = vi.fn(async (command: string) => {
+    void command;
+    return {
+      exitCode: 0,
+      stdout: "",
+    };
+  });
   const service = new AgentEnvironmentSkillCheckoutCacheService();
 
   await service.prepareCheckout({
@@ -37,10 +40,13 @@ test("AgentEnvironmentSkillCheckoutCacheService fetches one tracked commit and c
 });
 
 test("AgentEnvironmentSkillMaterializationService copies SKILL.md and each declared file into the session skill directory", async () => {
-  const executeCommand = vi.fn(async (_command: string) => ({
-    exitCode: 0,
-    stdout: "",
-  }));
+  const executeCommand = vi.fn(async (command: string) => {
+    void command;
+    return {
+      exitCode: 0,
+      stdout: "",
+    };
+  });
   const service = new AgentEnvironmentSkillMaterializationService({
     async prepareCheckout() {
       return undefined;
@@ -52,7 +58,7 @@ test("AgentEnvironmentSkillMaterializationService copies SKILL.md and each decla
   } as never, fileBackedSkillRecord);
 
   const command = String(executeCommand.mock.calls[0]?.[0] ?? "");
-  assert.match(command, /'~\/skills\/skill-1\/SKILL\.md'/);
-  assert.match(command, /'~\/skills\/skill-1\/scripts\/open\.sh'/);
+  assert.match(command, /'~\/skills\/Browser skill\/SKILL\.md'/);
+  assert.match(command, /'~\/skills\/Browser skill\/scripts\/open\.sh'/);
   assert.match(command, /'~\/\.companyhelm\/skill-cache\/companyhelm\/skills\/commit-sha-1\/checkout\/skills\/browser\/SKILL\.md'/);
 });
