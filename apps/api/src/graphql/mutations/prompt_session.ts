@@ -68,7 +68,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
     arguments_: PromptSessionMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlSessionRecord> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -92,6 +92,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       arguments_.input.reasoningLevel,
       arguments_.input.shouldSteer === true,
       images,
+      context.authSession.user.id,
     );
 
     return PromptSessionMutation.serializeRecord(sessionRecord);

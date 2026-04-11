@@ -21,6 +21,7 @@ type SessionRow = {
   isCompacting: boolean;
   isThinking: boolean;
   maxContextTokens: number | null;
+  ownerUserId: string | null;
   status: string;
   thinkingText: string | null;
   createdAt: Date;
@@ -228,6 +229,7 @@ export class SessionReadService {
           isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
           maxContextTokens: agentSessions.maxContextTokens,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
           thinkingText: agentSessions.thinkingText,
           createdAt: agentSessions.created_at,
@@ -236,20 +238,21 @@ export class SessionReadService {
         })
         .from(agentSessions)
         .where(eq(agentSessions.companyId, companyId)) as SessionRow[];
-      const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, sessionRows);
+      const accessibleSessionRows = sessionRows.filter((sessionRow) => this.canUserAccessSession(sessionRow.ownerUserId, userId));
+      const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, accessibleSessionRows);
       const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(
         selectableDatabase,
         companyId,
-        sessionRows,
+        accessibleSessionRows,
       );
       const readSessionIds = await this.loadReadSessionIds(
         selectableDatabase,
         companyId,
         userId,
-        sessionRows.map((sessionRow) => sessionRow.id),
+        accessibleSessionRows.map((sessionRow) => sessionRow.id),
       );
 
-      return [...sessionRows]
+      return [...accessibleSessionRows]
         .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
         .map((sessionRow) => this.serializeSession(
           sessionRow,
@@ -280,6 +283,7 @@ export class SessionReadService {
           isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
           maxContextTokens: agentSessions.maxContextTokens,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
           thinkingText: agentSessions.thinkingText,
           createdAt: agentSessions.created_at,
@@ -293,7 +297,7 @@ export class SessionReadService {
         )) as SessionRow[];
 
       const sessionRow = sessionRows[0];
-      if (!sessionRow) {
+      if (!sessionRow || !this.canUserAccessSession(sessionRow.ownerUserId, userId)) {
         return null;
       }
 
@@ -311,19 +315,37 @@ export class SessionReadService {
   async listMessages(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
+    userId: string,
   ): Promise<SessionMessageGraphqlRecord[]> {
-    return this.listMessagesForFilter(transactionProvider, companyId);
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const accessibleSessionIds = await this.loadAccessibleSessionIds(selectableDatabase, companyId, userId);
+      if (accessibleSessionIds.length === 0) {
+        return [];
+      }
+
+      return this.listMessagesForFilterInTransaction(
+        selectableDatabase,
+        companyId,
+        accessibleSessionIds,
+      );
+    });
   }
 
   async listTranscriptMessages(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    userId: string,
     first?: number | null,
     after?: string | null,
   ): Promise<SessionTranscriptMessageConnectionGraphqlRecord> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const accessibleSessionIds = await this.loadAccessibleSessionIds(selectableDatabase, companyId, userId, [sessionId]);
+      if (accessibleSessionIds.length === 0) {
+        throw new Error("Session not found.");
+      }
       const pageSize = normalizeTranscriptPageSize(first);
       const cursor = decodeSessionMessageCursor(after);
       const transcriptFilter = cursor
@@ -406,6 +428,7 @@ export class SessionReadService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     messageId: string,
+    userId: string,
   ): Promise<SessionMessageGraphqlRecord | null> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -432,6 +455,15 @@ export class SessionReadService {
       if (!persistedMessage) {
         return null;
       }
+      const accessibleSessionIds = await this.loadAccessibleSessionIds(
+        selectableDatabase,
+        companyId,
+        userId,
+        [persistedMessage.sessionId],
+      );
+      if (accessibleSessionIds.length === 0) {
+        return null;
+      }
 
       const contentsByMessageId = await this.loadContentsByMessageId(selectableDatabase, companyId, [persistedMessage.id]);
       const turnsById = await this.loadTurnsById(selectableDatabase, companyId, [persistedMessage.turnId]);
@@ -439,53 +471,53 @@ export class SessionReadService {
     });
   }
 
-  private async listMessagesForFilter(
-    transactionProvider: TransactionProviderInterface,
+  private async listMessagesForFilterInTransaction(
+    selectableDatabase: SelectableDatabase,
     companyId: string,
-    sessionId?: string,
+    sessionIds?: ReadonlyArray<string>,
   ): Promise<SessionMessageGraphqlRecord[]> {
-    return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const persistedMessages = await selectableDatabase
-        .select({
-          id: sessionMessages.id,
-          sessionId: sessionMessages.sessionId,
-          turnId: sessionMessages.turnId,
-          role: sessionMessages.role,
-          status: sessionMessages.status,
-          toolCallId: sessionMessages.toolCallId,
-          toolName: sessionMessages.toolName,
-          isError: sessionMessages.isError,
-          createdAt: sessionMessages.createdAt,
-          updatedAt: sessionMessages.updatedAt,
-        })
-        .from(sessionMessages)
-        .where(sessionId
-          ? and(
-            eq(sessionMessages.companyId, companyId),
-            eq(sessionMessages.sessionId, sessionId),
-          )
-          : eq(sessionMessages.companyId, companyId)) as SessionMessageRow[];
+    if (sessionIds && sessionIds.length === 0) {
+      return [];
+    }
+    const persistedMessages = await selectableDatabase
+      .select({
+        id: sessionMessages.id,
+        sessionId: sessionMessages.sessionId,
+        turnId: sessionMessages.turnId,
+        role: sessionMessages.role,
+        status: sessionMessages.status,
+        toolCallId: sessionMessages.toolCallId,
+        toolName: sessionMessages.toolName,
+        isError: sessionMessages.isError,
+        createdAt: sessionMessages.createdAt,
+        updatedAt: sessionMessages.updatedAt,
+      })
+      .from(sessionMessages)
+      .where(sessionIds
+        ? and(
+          eq(sessionMessages.companyId, companyId),
+          inArray(sessionMessages.sessionId, [...sessionIds]),
+        )
+        : eq(sessionMessages.companyId, companyId)) as SessionMessageRow[];
 
-      if (persistedMessages.length === 0) {
-        return [];
-      }
+    if (persistedMessages.length === 0) {
+      return [];
+    }
 
-      const contentsByMessageId = await this.loadContentsByMessageId(
-        selectableDatabase,
-        companyId,
-        persistedMessages.map((message) => message.id),
-      );
-      const turnsById = await this.loadTurnsById(
-        selectableDatabase,
-        companyId,
-        persistedMessages.map((message) => message.turnId),
-      );
+    const contentsByMessageId = await this.loadContentsByMessageId(
+      selectableDatabase,
+      companyId,
+      persistedMessages.map((message) => message.id),
+    );
+    const turnsById = await this.loadTurnsById(
+      selectableDatabase,
+      companyId,
+      persistedMessages.map((message) => message.turnId),
+    );
 
-      return [...persistedMessages]
-        .sort((leftMessage, rightMessage) => leftMessage.createdAt.getTime() - rightMessage.createdAt.getTime())
-        .map((message) => this.serializeMessage(message, contentsByMessageId, turnsById));
-    });
+    return [...persistedMessages]
+      .sort((leftMessage, rightMessage) => leftMessage.createdAt.getTime() - rightMessage.createdAt.getTime())
+      .map((message) => this.serializeMessage(message, contentsByMessageId, turnsById));
   }
 
   private async loadTurnsById(
@@ -618,6 +650,35 @@ export class SessionReadService {
       )) as Array<{ sessionId: string }>;
 
     return new Set(readRows.map((readRow) => readRow.sessionId));
+  }
+
+  private async loadAccessibleSessionIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    userId: string,
+    sessionIds?: ReadonlyArray<string>,
+  ): Promise<string[]> {
+    const uniqueSessionIds = sessionIds ? [...new Set(sessionIds)] : null;
+    if (uniqueSessionIds && uniqueSessionIds.length === 0) {
+      return [];
+    }
+
+    const sessionRows = await selectableDatabase
+      .select({
+        id: agentSessions.id,
+        ownerUserId: agentSessions.ownerUserId,
+      })
+      .from(agentSessions)
+      .where(uniqueSessionIds
+        ? and(
+          eq(agentSessions.companyId, companyId),
+          inArray(agentSessions.id, uniqueSessionIds),
+        )
+        : eq(agentSessions.companyId, companyId)) as Array<{ id: string; ownerUserId: string | null }>;
+
+    return sessionRows
+      .filter((sessionRow) => this.canUserAccessSession(sessionRow.ownerUserId, userId))
+      .map((sessionRow) => sessionRow.id);
   }
 
   /**
@@ -768,5 +829,9 @@ export class SessionReadService {
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),
     };
+  }
+
+  private canUserAccessSession(ownerUserId: string | null, userId: string): boolean {
+    return ownerUserId === null || ownerUserId === userId;
   }
 }

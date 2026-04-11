@@ -575,6 +575,13 @@
       "when": 1775767761735,
       "tag": "0081_cooing_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1775850000000,
+      "tag": "0082_session_owner_user",
+      "breakpoints": true
     }
   ]
 }

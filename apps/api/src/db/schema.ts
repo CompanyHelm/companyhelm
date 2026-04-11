@@ -124,8 +124,8 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   // inferred from first message or based on LLM generated title
   inferredTitle: text("inferred_title"),
-  // user initiated chat, optional if session was created by the system
-  createdByUserId: uuid("created_by_user_id")
+  // owner of a user-initiated chat, optional when the session was created by the system
+  ownerUserId: uuid("owner_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   // user explicitly set title, it should take precedence over the inferred title
   userSetTitle: text("user_set_title"),

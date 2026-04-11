@@ -33,6 +33,21 @@ class PromptSessionMutationTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
+      database: {
+        host: "localhost",
+        name: "companyhelm",
+        port: 5432,
+        roles: {
+          app_runtime: {
+            username: "app-runtime",
+            password: "secret",
+          },
+        },
+      },
       auth: {
         provider: "clerk",
       },
@@ -89,6 +104,7 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
       reasoningLevel: string | null | undefined,
       shouldSteer: boolean,
       images?: Array<{ base64EncodedImage: string; mimeType: string }>,
+      userId?: string | null,
     ) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
@@ -101,6 +117,7 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
         base64EncodedImage: "encoded-image",
         mimeType: "image/jpeg",
       }]);
+      assert.equal(userId, "user-123");
 
       return {
         id: "session-1",

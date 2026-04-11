@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
 import { SecretService } from "../../services/secrets/service.ts";
+import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type SessionSecretsQueryArguments = {
@@ -33,9 +34,14 @@ type GraphqlSecretRecord = {
 @injectable()
 export class SessionSecretsQueryResolver {
   private readonly secretService: SecretService;
+  private readonly sessionReadService: SessionReadService;
 
-  constructor(@inject(SecretService) secretService: SecretService) {
+  constructor(
+    @inject(SecretService) secretService: SecretService,
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
+  ) {
     this.secretService = secretService;
+    this.sessionReadService = sessionReadService;
   }
 
   execute = async (
@@ -43,8 +49,18 @@ export class SessionSecretsQueryResolver {
     arguments_: SessionSecretsQueryArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlSecretRecord[]> => {
-    if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
+    if (!context.authSession?.company || !context.authSession.user || !context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
+    }
+
+    const sessionRecord = await this.sessionReadService.getSession(
+      context.app_runtime_transaction_provider,
+      context.authSession.company.id,
+      arguments_.sessionId,
+      context.authSession.user.id,
+    );
+    if (!sessionRecord) {
+      throw new Error("Session not found.");
     }
 
     const secrets = await this.secretService.listSessionSecrets(

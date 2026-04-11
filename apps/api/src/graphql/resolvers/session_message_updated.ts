@@ -46,7 +46,7 @@ export class SessionMessageUpdatedSubscriptionResolver {
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionMessageUpdated: SessionMessageGraphqlRecord }> {
     const requestContext = await this.resolveRequestContext(context);
-    if (!requestContext.authSession?.company) {
+    if (!requestContext.authSession?.company || !requestContext.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!requestContext.app_runtime_transaction_provider) {
@@ -59,6 +59,15 @@ export class SessionMessageUpdatedSubscriptionResolver {
     const sessionId = String(arguments_.sessionId || "").trim();
     if (sessionId.length === 0) {
       throw new Error("sessionId is required.");
+    }
+    const sessionRecord = await this.sessionReadService.getSession(
+      requestContext.app_runtime_transaction_provider,
+      requestContext.authSession.company.id,
+      sessionId,
+      requestContext.authSession.user.id,
+    );
+    if (!sessionRecord) {
+      throw new Error("Session not found.");
     }
 
     const iterator = new RedisPatternAsyncIterator(
@@ -77,6 +86,7 @@ export class SessionMessageUpdatedSubscriptionResolver {
           requestContext.app_runtime_transaction_provider,
           requestContext.authSession.company.id,
           messageId,
+          requestContext.authSession.user.id,
         );
         if (!messageRecord || messageRecord.sessionId !== sessionId) {
           continue;

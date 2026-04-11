@@ -231,6 +231,9 @@ test("SessionUpdated subscription ignores message and queued channels that share
 test("SessionMessageUpdated subscription reloads the message row from Postgres for the selected session", async () => {
   const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
   const sessionReadService = {
+    getSession: vi.fn(async () => ({
+      id: "session-123",
+    })),
     getMessage: vi.fn(async () => ({
       id: "message-1",
       sessionId: "session-123",
@@ -267,6 +270,9 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
     authSession: {
       company: {
         id: "company-1",
+      },
+      user: {
+        id: "user-1",
       },
     },
     app_runtime_transaction_provider: {
@@ -316,10 +322,17 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
     },
   });
   assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:message:*:update");
+  assert.deepEqual(sessionReadService.getSession.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    "company-1",
+    "session-123",
+    "user-1",
+  ]);
   assert.deepEqual(sessionReadService.getMessage.mock.calls[0], [
     context.app_runtime_transaction_provider,
     "company-1",
     "message-1",
+    "user-1",
   ]);
 
   await iterator.return?.();
@@ -328,6 +341,11 @@ test("SessionMessageUpdated subscription reloads the message row from Postgres f
 
 test("SessionQueuedMessagesUpdated subscription reloads the full queued snapshot for the selected session", async () => {
   const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
+  const sessionReadService = {
+    getSession: vi.fn(async () => ({
+      id: "session-123",
+    })),
+  };
   const sessionQueuedMessageService = {
     listQueued: vi.fn(async () => ([{
       claimedAt: new Date("2026-03-31T09:00:30.000Z"),
@@ -350,11 +368,15 @@ test("SessionQueuedMessagesUpdated subscription reloads the full queued snapshot
     undefined,
     undefined,
     sessionQueuedMessageService as never,
+    sessionReadService as never,
   );
   const context = {
     authSession: {
       company: {
         id: "company-1",
+      },
+      user: {
+        id: "user-1",
       },
     },
     app_runtime_transaction_provider: {
@@ -390,6 +412,12 @@ test("SessionQueuedMessagesUpdated subscription reloads the full queued snapshot
     }],
   });
   assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:queued:update");
+  assert.deepEqual(sessionReadService.getSession.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    "company-1",
+    "session-123",
+    "user-1",
+  ]);
   assert.deepEqual(sessionQueuedMessageService.listQueued.mock.calls[0], [
     context.app_runtime_transaction_provider,
     "company-1",
@@ -402,6 +430,11 @@ test("SessionQueuedMessagesUpdated subscription reloads the full queued snapshot
 
 test("SessionInboxHumanQuestionsUpdated subscription reloads the open inbox snapshot for the selected session", async () => {
   const { getListener, subscribePattern, unsubscribe } = createSubscribePatternHarness();
+  const sessionReadService = {
+    getSession: vi.fn(async () => ({
+      id: "session-123",
+    })),
+  };
   const inboxService = {
     listOpenHumanQuestionsForSession: vi.fn(async () => ([{
       agentId: "agent-1",
@@ -432,11 +465,18 @@ test("SessionInboxHumanQuestionsUpdated subscription reloads the open inbox snap
       updatedAt: new Date("2026-04-08T20:00:30.000Z"),
     }])),
   };
-  const resolver = new SessionInboxHumanQuestionsUpdatedSubscriptionResolver(inboxService as never);
+  const resolver = new SessionInboxHumanQuestionsUpdatedSubscriptionResolver(
+    inboxService as never,
+    undefined,
+    sessionReadService as never,
+  );
   const context = {
     authSession: {
       company: {
         id: "company-1",
+      },
+      user: {
+        id: "user-1",
       },
     },
     app_runtime_transaction_provider: {
@@ -480,6 +520,12 @@ test("SessionInboxHumanQuestionsUpdated subscription reloads the open inbox snap
     }],
   });
   assert.equal(subscribePattern.mock.calls[0]?.[0], "session:session-123:inbox:update");
+  assert.deepEqual(sessionReadService.getSession.mock.calls[0], [
+    context.app_runtime_transaction_provider,
+    "company-1",
+    "session-123",
+    "user-1",
+  ]);
   assert.deepEqual(inboxService.listOpenHumanQuestionsForSession.mock.calls[0], [
     context.app_runtime_transaction_provider,
     "company-1",

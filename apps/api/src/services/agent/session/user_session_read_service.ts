@@ -25,6 +25,7 @@ type DeletableDatabase = {
 
 type SessionRecord = {
   id: string;
+  ownerUserId: string | null;
 };
 
 /**
@@ -50,6 +51,7 @@ export class UserSessionReadService {
       const [sessionRecord] = await selectableDatabase
         .select({
           id: agentSessions.id,
+          ownerUserId: agentSessions.ownerUserId,
         })
         .from(agentSessions)
         .where(and(
@@ -57,6 +59,9 @@ export class UserSessionReadService {
           eq(agentSessions.id, input.sessionId),
         )) as SessionRecord[];
       if (!sessionRecord) {
+        throw new Error("Session not found.");
+      }
+      if (sessionRecord.ownerUserId && sessionRecord.ownerUserId !== input.userId) {
         throw new Error("Session not found.");
       }
 

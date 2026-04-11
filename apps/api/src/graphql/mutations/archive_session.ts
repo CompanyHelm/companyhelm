@@ -54,7 +54,7 @@ export class ArchiveSessionMutation extends Mutation<ArchiveSessionMutationArgum
     arguments_: ArchiveSessionMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlSessionRecord> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -68,6 +68,7 @@ export class ArchiveSessionMutation extends Mutation<ArchiveSessionMutationArgum
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       arguments_.input.id,
+      context.authSession.user.id,
     );
 
     return ArchiveSessionMutation.serializeRecord(sessionRecord);

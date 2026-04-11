@@ -68,7 +68,7 @@ export class CreateSessionMutation extends Mutation<CreateSessionMutationArgumen
     arguments_: CreateSessionMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlSessionRecord> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {

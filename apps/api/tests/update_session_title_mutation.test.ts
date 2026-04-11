@@ -23,6 +23,21 @@ class UpdateSessionTitleMutationTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
+      database: {
+        host: "localhost",
+        name: "companyhelm",
+        port: 5432,
+        roles: {
+          app_runtime: {
+            username: "app-runtime",
+            password: "secret",
+          },
+        },
+      },
       auth: {
         provider: "clerk",
       },
@@ -69,19 +84,21 @@ test("GraphQL UpdateSessionTitle mutation updates the custom session title", asy
       };
     },
   };
-  const updateCalls: Array<{ companyId: string; sessionId: string; title: string | null }> = [];
+  const updateCalls: Array<{ companyId: string; sessionId: string; title: string | null; userId: string }> = [];
   const sessionManagerService = {
     async updateSessionTitle(
       transactionProvider: unknown,
       companyId: string,
       sessionId: string,
       title: string | null,
+      userId: string,
     ) {
       assert.ok(transactionProvider);
       updateCalls.push({
         companyId,
         sessionId,
         title,
+        userId,
       });
       return {
         id: sessionId,
@@ -185,6 +202,7 @@ test("GraphQL UpdateSessionTitle mutation updates the custom session title", asy
     companyId: "company-123",
     sessionId: "session-1",
     title: "Launch prep",
+    userId: "user-123",
   }]);
   const document = response.json();
   assert.deepEqual(document.data.UpdateSessionTitle, {
