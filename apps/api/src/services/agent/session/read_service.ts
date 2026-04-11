@@ -38,6 +38,7 @@ type SessionMessageRow = {
   toolCallId: string | null;
   toolName: string | null;
   isError: boolean;
+  errorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -131,6 +132,7 @@ export type SessionMessageGraphqlRecord = {
   contents: SessionMessageContentGraphqlRecord[];
   text: string;
   isError: boolean;
+  errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -375,6 +377,7 @@ export class SessionReadService {
           toolCallId: sessionMessages.toolCallId,
           toolName: sessionMessages.toolName,
           isError: sessionMessages.isError,
+          errorMessage: sessionMessages.errorMessage,
           createdAt: sessionMessages.createdAt,
           updatedAt: sessionMessages.updatedAt,
         })
@@ -442,6 +445,7 @@ export class SessionReadService {
           toolCallId: sessionMessages.toolCallId,
           toolName: sessionMessages.toolName,
           isError: sessionMessages.isError,
+          errorMessage: sessionMessages.errorMessage,
           createdAt: sessionMessages.createdAt,
           updatedAt: sessionMessages.updatedAt,
         })
@@ -489,6 +493,7 @@ export class SessionReadService {
         toolCallId: sessionMessages.toolCallId,
         toolName: sessionMessages.toolName,
         isError: sessionMessages.isError,
+        errorMessage: sessionMessages.errorMessage,
         createdAt: sessionMessages.createdAt,
         updatedAt: sessionMessages.updatedAt,
       })
@@ -826,6 +831,7 @@ export class SessionReadService {
       toolName: messageRow.toolName,
       text,
       isError: messageRow.isError,
+      errorMessage: messageRow.errorMessage,
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),
     };

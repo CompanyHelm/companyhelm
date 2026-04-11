@@ -30,6 +30,7 @@ export type chatsPageTranscriptQuery$data = {
           readonly type: string;
         }>;
         readonly createdAt: string;
+        readonly errorMessage: string | null | undefined;
         readonly id: string;
         readonly isError: boolean;
         readonly role: string;
@@ -110,7 +111,14 @@ v7 = {
   "name": "text",
   "storageKey": null
 },
-v8 = [
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "errorMessage",
+  "storageKey": null
+},
+v9 = [
   {
     "alias": null,
     "args": [
@@ -267,6 +275,7 @@ v8 = [
                 "name": "isError",
                 "storageKey": null
               },
+              (v8/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -326,7 +335,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageTranscriptQuery",
-    "selections": (v8/*: any*/),
+    "selections": (v9/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -339,7 +348,7 @@ return {
     ],
     "kind": "Operation",
     "name": "chatsPageTranscriptQuery",
-    "selections": (v8/*: any*/)
+    "selections": (v9/*: any*/)
   },
   "params": {
     "cacheID": "45704b4e467ab2520cad13be6892cb21",
@@ -347,7 +356,7 @@ return {
     "metadata": {},
     "name": "chatsPageTranscriptQuery",
     "operationKind": "query",
-    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();

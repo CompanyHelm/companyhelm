@@ -73,6 +73,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   toolCallId: null,
                                   toolName: null,
                                   isError: false,
+                                  errorMessage: "Latest answer failed earlier",
                                   createdAt: new Date("2026-03-24T08:02:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:03:00.000Z"),
                                 },
@@ -85,6 +86,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   toolCallId: null,
                                   toolName: null,
                                   isError: false,
+                                  errorMessage: null,
                                   createdAt: new Date("2026-03-24T08:01:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:02:00.000Z"),
                                 },
@@ -97,6 +99,7 @@ class SessionTranscriptMessagesQueryTestHarness {
                                   toolCallId: null,
                                   toolName: null,
                                   isError: false,
+                                  errorMessage: null,
                                   createdAt: new Date("2026-03-24T08:00:00.000Z"),
                                   updatedAt: new Date("2026-03-24T08:00:00.000Z"),
                                 },
@@ -117,25 +120,6 @@ class SessionTranscriptMessagesQueryTestHarness {
                   return {
                     async where() {
                       return [
-                        {
-                          arguments: null,
-                          data: null,
-                          messageId: "message-3",
-                          mimeType: null,
-                          structuredContent: {
-                            type: "terminal",
-                            command: "ls -la",
-                            completed: false,
-                            cwd: "/workspace",
-                            exitCode: null,
-                            sessionId: "pty-123",
-                          },
-                          text: "Latest answer",
-                          toolCallId: null,
-                          toolName: null,
-                          type: "text",
-                          createdAt: new Date("2026-03-24T08:02:00.000Z"),
-                        },
                         {
                           arguments: null,
                           data: null,
@@ -291,6 +275,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
                 }
                 text
                 isError
+                errorMessage
                 createdAt
                 updatedAt
               }
@@ -329,27 +314,10 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
           status: "completed",
           toolCallId: null,
           toolName: null,
-          contents: [
-            {
-              type: "text",
-              text: "Latest answer",
-              data: null,
-              mimeType: null,
-              structuredContent: {
-                type: "terminal",
-                command: "ls -la",
-                completed: false,
-                cwd: "/workspace",
-                exitCode: null,
-                sessionId: "pty-123",
-              },
-              arguments: null,
-              toolCallId: null,
-              toolName: null,
-            },
-          ],
-          text: "Latest answer",
+          contents: [],
+          text: "",
           isError: false,
+          errorMessage: "Latest answer failed earlier",
           createdAt: "2026-03-24T08:02:00.000Z",
           updatedAt: "2026-03-24T08:03:00.000Z",
         },
@@ -394,6 +362,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
           ],
           text: "Line one\nLine two",
           isError: false,
+          errorMessage: null,
           createdAt: "2026-03-24T08:01:00.000Z",
           updatedAt: "2026-03-24T08:02:00.000Z",
         },

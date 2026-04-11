@@ -298,6 +298,12 @@ function resolveAssistantDisplayContents(
   if (contentMode === "thinking-only") {
     return [];
   }
+  if (typeof message.errorMessage === "string" && message.errorMessage.trim().length > 0) {
+    return [{
+      text: message.errorMessage,
+      type: "text",
+    }];
+  }
   if (message.text.trim().length === 0) {
     return [];
   }

@@ -25,6 +25,7 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
       readonly type: string;
     }>;
     readonly createdAt: string;
+    readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isError: boolean;
     readonly role: string;
@@ -91,7 +92,14 @@ v5 = {
   "name": "text",
   "storageKey": null
 },
-v6 = [
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "errorMessage",
+  "storageKey": null
+},
+v7 = [
   {
     "alias": null,
     "args": [
@@ -215,6 +223,7 @@ v6 = [
         "name": "isError",
         "storageKey": null
       },
+      (v6/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -239,7 +248,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageSessionMessageUpdatedSubscription",
-    "selections": (v6/*: any*/),
+    "selections": (v7/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -248,7 +257,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageSessionMessageUpdatedSubscription",
-    "selections": (v6/*: any*/)
+    "selections": (v7/*: any*/)
   },
   "params": {
     "cacheID": "7f969d5f8906a6739c2b6b5981d48ed2",
@@ -256,7 +265,7 @@ return {
     "metadata": {},
     "name": "chatsPageSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();

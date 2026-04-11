@@ -426,6 +426,7 @@ type SessionMessage {
   contents: [SessionMessageContent!]!
   text: String!
   isError: Boolean!
+  errorMessage: String
   createdAt: String!
   updatedAt: String!
 }

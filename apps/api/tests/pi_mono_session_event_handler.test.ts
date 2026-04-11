@@ -5,6 +5,7 @@ import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages,
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 
 type SessionMessageRecord = Record<string, unknown> & {
+  errorMessage?: string | null;
   id: string;
   role: string;
   sessionId: string;
@@ -665,6 +666,41 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   );
   assert.equal(harness.sessionState.currentContextTokens, 12000);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
+});
+
+test("PiMonoSessionEventHandler persists assistant error text on failed message end", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: [],
+        errorMessage: "The model provider request failed.",
+        role: "assistant",
+        stopReason: "error",
+        timestamp: 1000,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.equal(messageRecord?.role, "assistant");
+  assert.equal(messageRecord?.status, "completed");
+  assert.equal(messageRecord?.isError, true);
+  assert.equal(messageRecord?.errorMessage, "The model provider request failed.");
+
+  const messageContentRecords = harness.messageContentRecordsByMessageId.get(messageRecord.id);
+  assert.equal(messageContentRecords, undefined);
 });
 
 test("PiMonoSessionEventHandler stamps a stable turn id across one turn and rotates it for the next turn", async () => {

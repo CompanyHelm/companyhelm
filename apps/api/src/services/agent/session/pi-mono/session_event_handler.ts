@@ -429,6 +429,7 @@ export class PiMonoSessionEventHandler {
         await updatableDatabase
           .update(sessionMessages)
           .set({
+            errorMessage: messageRecord.errorMessage,
             isError: messageRecord.isError,
             status: messageRecord.status,
             toolCallId: messageRecord.toolCallId,
@@ -534,6 +535,7 @@ export class PiMonoSessionEventHandler {
     return {
       companyId,
       createdAt: timestamp,
+      errorMessage: this.resolveMessageErrorMessage(message),
       id: messageId,
       isError: this.resolveIsError(message),
       role: message.role,
@@ -933,6 +935,10 @@ export class PiMonoSessionEventHandler {
     }
 
     return message.stopReason === "error" || message.stopReason === "aborted" || typeof message.errorMessage === "string";
+  }
+
+  private resolveMessageErrorMessage(message: SessionMessage): string | null {
+    return typeof message.errorMessage === "string" ? message.errorMessage : null;
   }
 
   private resolveMessageToolCallId(message: SessionMessage): string | null {
