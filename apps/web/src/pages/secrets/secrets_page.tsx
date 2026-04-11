@@ -234,8 +234,12 @@ function SecretsPageContent() {
             const rootRecord = store.getRoot();
             const currentSecrets = rootRecord.getLinkedRecords("Secrets") || [];
             rootRecord.setLinkedRecords(
-              currentSecrets.filter((record): record is NonNullable<typeof record> => {
-                return record !== null && record.getDataID() !== deletedId;
+              currentSecrets.filter((record): record is { getDataID(): string } => {
+                return typeof record === "object"
+                  && record !== null
+                  && "getDataID" in record
+                  && typeof record.getDataID === "function"
+                  && record.getDataID() !== deletedId;
               }),
               "Secrets",
             );

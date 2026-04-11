@@ -23,10 +23,10 @@ export type DashboardSessionRecord = {
   agentId: string;
   agentName: string;
   id: string;
-  inferredTitle: string | null;
+  inferredTitle: string | null | undefined;
   status: string;
   updatedAt: string;
-  userSetTitle: string | null;
+  userSetTitle: string | null | undefined;
 };
 
 function formatStatusLabel(status: string): string {

@@ -3,20 +3,20 @@ export type TaskStatus = "draft" | "in_progress" | "completed";
 export type TaskViewType = "board" | "list";
 
 export type TaskRecord = {
-  assignedAt: string | null;
+  assignedAt: string | null | undefined;
   assignee: {
-    email: string | null;
+    email: string | null | undefined;
     id: string;
     kind: "agent" | "user";
     name: string;
   } | null;
   createdAt: string;
-  description: string | null;
+  description: string | null | undefined;
   id: string;
   name: string;
   status: TaskStatus;
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskCategoryId: string | null | undefined;
+  taskCategoryName: string | null | undefined;
   updatedAt: string;
 };
 

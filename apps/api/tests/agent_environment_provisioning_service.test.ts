@@ -53,18 +53,19 @@ class AgentEnvironmentProvisioningServiceTestTransactions {
 }
 
 test("AgentEnvironmentProvisioning provisions the workspace directory through the provider shell", async () => {
-  const executeCommand = vi.fn(async (_command: string) => ({
+  const executeCommand = vi.fn(async () => ({
     exitCode: 0,
     stdout: "",
   }));
-  const createShell = vi.fn(async (_transactionProvider: unknown, _environment: typeof createdEnvironment) => ({
+  const createShell = vi.fn(async () => ({
     executeCommand,
   }));
   const provisioning = new AgentEnvironmentProvisioning({
     get() {
       return {
         async createShell(_transactionProvider: unknown, environment: typeof createdEnvironment) {
-          return createShell(_transactionProvider, environment);
+          void _transactionProvider;
+          return createShell(environment);
         },
       };
     },
@@ -83,7 +84,7 @@ test("AgentEnvironmentProvisioning provisions the workspace directory through th
 });
 
 test("AgentEnvironmentProvisioningService bootstraps the created environment before returning it", async () => {
-  const providerProvisionEnvironment = vi.fn(async (_transactionProvider: unknown, _input: unknown) => ({
+  const providerProvisionEnvironment = vi.fn(async () => ({
     cleanup: vi.fn(async () => undefined),
     cpuCount: 2,
     diskSpaceGb: 20,
@@ -93,14 +94,8 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
     platform: "linux" as const,
     providerEnvironmentId: "e2b-environment-1",
   }));
-  const createEnvironment = vi.fn(async (
-    _transactionProvider: unknown,
-    _input: { templateId: string },
-  ) => createdEnvironment);
-  const bootstrapProvision = vi.fn(async (
-    _transactionProvider: unknown,
-    _environment: typeof createdEnvironment,
-  ) => undefined);
+  const createEnvironment = vi.fn(async () => createdEnvironment);
+  const bootstrapProvision = vi.fn(async () => undefined);
   const transactions = new AgentEnvironmentProvisioningServiceTestTransactions(
     "compute-provider-definition-1",
   );
@@ -178,11 +173,7 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
 
 test("AgentEnvironmentProvisioningService deletes the catalog row and remote environment when bootstrap fails", async () => {
   const cleanup = vi.fn(async () => undefined);
-  const deleteEnvironment = vi.fn(async (
-    _transactionProvider: unknown,
-    _environmentId: string,
-    _companyId: string,
-  ) => createdEnvironment);
+  const deleteEnvironment = vi.fn(async () => createdEnvironment);
   const transactions = new AgentEnvironmentProvisioningServiceTestTransactions(
     "compute-provider-definition-1",
   );

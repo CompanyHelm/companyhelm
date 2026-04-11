@@ -549,7 +549,7 @@ function TaskDetailPageContent() {
                     description: value === "" ? null : value,
                   });
                 }}
-                value={task.description}
+                value={task.description ?? null}
               />
 
               <EditableField

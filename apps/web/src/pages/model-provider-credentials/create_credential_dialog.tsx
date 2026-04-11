@@ -87,7 +87,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                 setAuthFileContents("");
                 setApiKey("");
                 setLocalErrorMessage(null);
-                setModelProvider(value);
+                setModelProvider(value ?? "");
               }}
               value={modelProvider}
             >

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import {
@@ -130,17 +131,7 @@ export function GithubInstallCallbackPage() {
     setErrorMessage(null);
 
     const updateRepositoriesStore = (
-      store: {
-        getRoot(): {
-          getLinkedRecords(name: string): ReadonlyArray<unknown> | null;
-          setLinkedRecords(records: ReadonlyArray<unknown>, name: string): void;
-        };
-        getRootField(name: string): {
-          getLinkedRecord(name: string): StoreRecord | null;
-          getLinkedRecords(name: string): ReadonlyArray<unknown> | null;
-          getValue(name: string): unknown;
-        } | null;
-      },
+      store: RecordSourceSelectorProxy,
     ) => {
       const payload = store.getRootField("AddGithubInstallation");
       const newInstallation = payload?.getLinkedRecord("githubInstallation");

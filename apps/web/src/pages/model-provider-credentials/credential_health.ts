@@ -1,5 +1,5 @@
 type CredentialHealthRecord = {
-  errorMessage: string | null;
+  errorMessage: string | null | undefined;
   status: string;
   type: string;
 };

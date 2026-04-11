@@ -342,7 +342,7 @@ function SettingsPageContent() {
                   });
                 });
               }}
-              value={data.CompanySettings.baseSystemPrompt}
+              value={data.CompanySettings.baseSystemPrompt ?? null}
             />
 
             <div className="rounded-xl border border-border/60 bg-card/50 p-4">

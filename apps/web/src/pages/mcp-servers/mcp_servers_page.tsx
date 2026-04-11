@@ -1,5 +1,6 @@
 import { Suspense, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -88,13 +89,7 @@ function filterStoreMcpServerRecords(records: ReadonlyArray<unknown>): StoreMcpS
 }
 
 function upsertMcpServerInStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreMcpServerRecord>, name: string): void;
-    };
-    getRootField(name: string): StoreMcpServerRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   rootFieldName: "CreateMcpServer" | "UpdateMcpServer",
 ) {
   const nextServer = store.getRootField(rootFieldName);
@@ -116,13 +111,7 @@ function upsertMcpServerInStore(
 }
 
 function removeMcpServerFromStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreMcpServerRecord>, name: string): void;
-    };
-    getRootField(name: string): StoreMcpServerRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
 ) {
   const deletedServer = store.getRootField("DeleteMcpServer");
   if (!deletedServer) {

@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import type { applicationSidebarInboxCountQuery } from "./__generated__/applicationSidebarInboxCountQuery.graphql";
 import {
   Sidebar,
   SidebarContent,
@@ -78,7 +79,7 @@ function ApplicationSidebarVersion() {
 }
 
 function ApplicationSidebarInboxBadge() {
-  const data = useLazyLoadQuery(
+  const data = useLazyLoadQuery<applicationSidebarInboxCountQuery>(
     applicationSidebarInboxCountQueryNode,
     {},
     {

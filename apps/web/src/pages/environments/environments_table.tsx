@@ -11,16 +11,16 @@ import {
 
 export type EnvironmentsTableRecord = {
   agentId: string;
-  agentName: string | null;
+  agentName: string | null | undefined;
   cpuCount: number;
   diskSpaceGb: number;
-  displayName: string | null;
+  displayName: string | null | undefined;
   id: string;
-  lastSeenAt: string | null;
+  lastSeenAt: string | null | undefined;
   memoryGb: number;
   platform: string;
   provider: string;
-  providerDefinitionName: string | null;
+  providerDefinitionName: string | null | undefined;
   providerEnvironmentId: string;
   status: string;
   updatedAt: string;
@@ -52,7 +52,7 @@ function formatStatusLabel(status: string): string {
     .join(" ");
 }
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
     return "—";
   }

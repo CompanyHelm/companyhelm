@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -63,13 +64,7 @@ function sortStoreSecretRecords(records: StoreSecretRecord[]): StoreSecretRecord
 }
 
 function upsertAgentSecretInStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreSecretRecord>, name: string, args?: Record<string, unknown>): void;
-    };
-    getRootField(name: string): StoreSecretRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   agentId: string,
 ) {
   const nextSecret = store.getRootField("AttachSecretToAgent");
@@ -88,13 +83,7 @@ function upsertAgentSecretInStore(
 }
 
 function removeAgentSecretFromStore(
-  store: {
-    getRoot(): {
-      getLinkedRecords(name: string, args?: Record<string, unknown>): ReadonlyArray<unknown> | null;
-      setLinkedRecords(records: ReadonlyArray<StoreSecretRecord>, name: string, args?: Record<string, unknown>): void;
-    };
-    getRootField(name: string): StoreSecretRecord | null;
-  },
+  store: RecordSourceSelectorProxy,
   agentId: string,
 ) {
   const deletedSecret = store.getRootField("DetachSecretFromAgent");

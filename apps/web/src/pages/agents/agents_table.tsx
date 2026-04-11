@@ -30,9 +30,9 @@ import { formatProviderLabel } from "../model-provider-credentials/provider_labe
 export type AgentsTableRecord = {
   id: string;
   name: string;
-  modelName: string | null;
-  modelProvider: string | null;
-  reasoningLevel: string | null;
+  modelName: string | null | undefined;
+  modelProvider: string | null | undefined;
+  reasoningLevel: string | null | undefined;
   createdAt: string;
   updatedAt: string;
 };

@@ -25,8 +25,8 @@ export type AgentCreateProviderOption = {
   isDefault: boolean;
   label: string;
   modelProvider: string;
-  defaultModelId: string | null;
-  defaultReasoningLevel: string | null;
+  defaultModelId: string | null | undefined;
+  defaultReasoningLevel: string | null | undefined;
   models: Array<{
     id: string;
     modelProviderCredentialModelId: string;
@@ -38,7 +38,7 @@ export type AgentCreateProviderOption = {
 };
 
 export type AgentCreateSecretOption = {
-  description: string | null;
+  description: string | null | undefined;
   envVarName: string;
   id: string;
   name: string;
@@ -53,11 +53,11 @@ export type AgentCreateSkillOption = {
   description: string;
   id: string;
   name: string;
-  skillGroupId: string | null;
+  skillGroupId: string | null | undefined;
 };
 
 export type AgentCreateMcpServerOption = {
-  description: string | null;
+  description: string | null | undefined;
   id: string;
   name: string;
   url: string;

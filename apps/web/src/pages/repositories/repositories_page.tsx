@@ -6,6 +6,7 @@ import {
   RefreshCwIcon,
   Trash2Icon,
 } from "lucide-react";
+import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,9 +126,9 @@ type RepositoryRecord = {
   externalId: string;
   name: string;
   fullName: string;
-  htmlUrl: string | null;
+  htmlUrl: string | null | undefined;
   isPrivate: boolean;
-  defaultBranch: string | null;
+  defaultBranch: string | null | undefined;
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -253,17 +254,7 @@ function RepositoriesPageContent() {
     return nextMap;
   }, [repositories]);
   const updateRepositoriesStore = (
-    store: {
-      getRoot(): {
-        getLinkedRecords(name: string): ReadonlyArray<unknown> | null;
-        setLinkedRecords(records: ReadonlyArray<unknown>, name: string): void;
-      };
-      getRootField(name: string): {
-        getLinkedRecord(name: string): StoreRecord | null;
-        getLinkedRecords(name: string): ReadonlyArray<unknown> | null;
-        getValue(name: string): unknown;
-      } | null;
-    },
+    store: RecordSourceSelectorProxy,
     installationId: string,
     newRepositoryFieldName: string,
   ) => {

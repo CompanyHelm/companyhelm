@@ -20,19 +20,19 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 type TaskStatus = "draft" | "in_progress" | "completed";
 
 export type TaskBoardTask = {
-  assignedAt: string | null;
+  assignedAt: string | null | undefined;
   assignee: {
-    email: string | null;
+    email: string | null | undefined;
     id: string;
     kind: "agent" | "user";
     name: string;
   } | null;
   id: string;
   name: string;
-  description: string | null;
+  description: string | null | undefined;
   status: TaskStatus;
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskCategoryId: string | null | undefined;
+  taskCategoryName: string | null | undefined;
   createdAt: string;
   updatedAt: string;
 };

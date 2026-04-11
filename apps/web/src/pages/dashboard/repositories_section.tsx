@@ -22,10 +22,10 @@ import {
 
 export type DashboardRepositoryRecord = {
   archived: boolean;
-  defaultBranch: string | null;
+  defaultBranch: string | null | undefined;
   fullName: string;
   githubInstallationId: string;
-  htmlUrl: string | null;
+  htmlUrl: string | null | undefined;
   id: string;
   isPrivate: boolean;
   name: string;
