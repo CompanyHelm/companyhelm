@@ -26,12 +26,6 @@ export type CreateSkillDialogGroupOption = {
   name: string;
 };
 
-export type CreateSkillDialogGithubRepositoryOption = {
-  archived: boolean;
-  fullName: string;
-  id: string;
-};
-
 type CreateSkillDialogGithubDirectoryOption = {
   fileList: string[];
   name: string;
@@ -41,7 +35,6 @@ type CreateSkillDialogGithubDirectoryOption = {
 interface CreateSkillDialogProps {
   errorMessage: string | null;
   groups: CreateSkillDialogGroupOption[];
-  githubRepositories: CreateSkillDialogGithubRepositoryOption[];
   isOpen: boolean;
   isSaving: boolean;
   onCreate(input: {
@@ -51,7 +44,7 @@ interface CreateSkillDialogProps {
     skillGroupId?: string | null;
   }): Promise<void>;
   onImportGithub(input: {
-    repositoryId: string;
+    repositoryUrl: string;
     skillDirectory: string;
     skillGroupId?: string | null;
   }): Promise<void>;
@@ -63,8 +56,8 @@ const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
 type CreateSkillDialogMode = "choose" | "github" | "manual";
 
 const createSkillDialogGithubSkillDirectoriesQueryNode = graphql`
-  query createSkillDialogGithubSkillDirectoriesQuery($repositoryId: ID!) {
-    GithubSkillDirectories(repositoryId: $repositoryId) {
+  query createSkillDialogGithubSkillDirectoriesQuery($repositoryUrl: String!) {
+    GithubSkillDirectories(repositoryUrl: $repositoryUrl) {
       name
       path
       fileList
@@ -74,12 +67,12 @@ const createSkillDialogGithubSkillDirectoriesQueryNode = graphql`
 
 /**
  * Hosts the new-skill flow, starting with a source chooser and then branching into either manual
- * authoring or GitHub-backed import from linked repositories.
+ * authoring or GitHub-backed import from a pasted public repository URL.
  */
 export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const environment = useRelayEnvironment();
   const [description, setDescription] = useState("");
-  const [githubRepositoryId, setGithubRepositoryId] = useState("");
+  const [githubRepositoryUrl, setGithubRepositoryUrl] = useState("");
   const [githubSkillDirectories, setGithubSkillDirectories] = useState<CreateSkillDialogGithubDirectoryOption[]>([]);
   const [githubSkillDirectoryPath, setGithubSkillDirectoryPath] = useState("");
   const [isLoadingGithubSkillDirectories, setIsLoadingGithubSkillDirectories] = useState(false);
@@ -92,7 +85,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   useEffect(() => {
     if (!props.isOpen) {
       setDescription("");
-      setGithubRepositoryId("");
+      setGithubRepositoryUrl("");
       setGithubSkillDirectories([]);
       setGithubSkillDirectoryPath("");
       setIsLoadingGithubSkillDirectories(false);
@@ -104,65 +97,44 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     }
   }, [props.isOpen]);
 
-  useEffect(() => {
-    if (mode !== "github") {
-      return;
-    }
-    if (!githubRepositoryId) {
+  async function discoverGithubSkillDirectories() {
+    const normalizedRepositoryUrl = githubRepositoryUrl.trim();
+    if (!normalizedRepositoryUrl) {
+      setLocalErrorMessage("Paste a public GitHub repository URL first.");
       setGithubSkillDirectories([]);
       setGithubSkillDirectoryPath("");
-      setIsLoadingGithubSkillDirectories(false);
       return;
     }
 
-    let isMounted = true;
     setIsLoadingGithubSkillDirectories(true);
     setGithubSkillDirectoryPath("");
     setLocalErrorMessage(null);
 
-    void fetchQuery<createSkillDialogGithubSkillDirectoriesQuery>(
+    try {
+      const response = await fetchQuery<createSkillDialogGithubSkillDirectoriesQuery>(
       environment,
       createSkillDialogGithubSkillDirectoriesQueryNode,
       {
-        repositoryId: githubRepositoryId,
+          repositoryUrl: normalizedRepositoryUrl,
       },
     )
-      .toPromise()
-      .then((response) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setGithubSkillDirectories(
-          (response?.GithubSkillDirectories ?? []).map((directory) => ({
-            fileList: [...directory.fileList],
-            name: directory.name,
-            path: directory.path,
-          })),
-        );
-      })
-      .catch((error: unknown) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setGithubSkillDirectories([]);
-        setLocalErrorMessage(
-          error instanceof Error ? error.message : "Failed to load GitHub skill directories.",
-        );
-      })
-      .finally(() => {
-        if (!isMounted) {
-          return;
-        }
-
-        setIsLoadingGithubSkillDirectories(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [environment, githubRepositoryId, mode]);
+        .toPromise();
+      setGithubSkillDirectories(
+        (response?.GithubSkillDirectories ?? []).map((directory) => ({
+          fileList: [...directory.fileList],
+          name: directory.name,
+          path: directory.path,
+        })),
+      );
+    } catch (error: unknown) {
+      setGithubSkillDirectories([]);
+      setLocalErrorMessage(
+        error instanceof Error ? error.message : "Failed to load GitHub skill directories.",
+      );
+    } finally {
+      setIsLoadingGithubSkillDirectories(false);
+    }
+  }
 
   const selectedGithubSkillDirectory = githubSkillDirectories.find((directory) =>
     directory.path === githubSkillDirectoryPath
@@ -175,7 +147,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
             Add a reusable skill for your company, either by creating it manually now or by
-            importing a linked GitHub skill package.
+            importing a GitHub skill package from a public repository URL.
           </DialogDescription>
         </DialogHeader>
 
@@ -196,16 +168,16 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">Import from GitHub</p>
-                  <p className="text-xs text-muted-foreground">Discover linked `SKILL.md` packages</p>
+                  <p className="text-xs text-muted-foreground">Paste a public repo URL and discover skills</p>
                 </div>
               </div>
               <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Linked repositories
+                  Public repositories
                 </p>
                 <p className="mt-3 text-sm text-foreground">
-                  Browse repositories from your GitHub installations, choose a discovered skill
-                  directory, and import its tracked files into the catalog.
+                  Paste a public GitHub repository URL, discover importable `SKILL.md` directories,
+                  and import the selected skill package into the catalog.
                 </p>
               </div>
               <p className="mt-auto pt-5 text-xs text-muted-foreground">
@@ -257,46 +229,51 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 <div>
                   <p className="text-sm font-semibold text-foreground">GitHub import</p>
                   <p className="text-xs text-muted-foreground">
-                    Import any linked repository directory that contains `SKILL.md`.
+                    Import any public repository directory that contains `SKILL.md`.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
               <div className="grid gap-2">
-                <label className="text-xs font-medium text-foreground" htmlFor="skill-repository">
-                  Repository
+                <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
+                  Repository URL
                 </label>
-                <Select
-                  items={props.githubRepositories.map((repository) => ({
-                    label: repository.archived ? `${repository.fullName} (archived)` : repository.fullName,
-                    value: repository.id,
-                  }))}
-                  onValueChange={(value) => {
-                    setGithubRepositoryId(typeof value === "string" ? value : "");
+                <Input
+                  autoComplete="off"
+                  id="skill-repository-url"
+                  onChange={(event) => {
+                    setGithubRepositoryUrl(event.target.value);
                     setGithubSkillDirectories([]);
                     setGithubSkillDirectoryPath("");
                     setLocalErrorMessage(null);
                   }}
-                  value={githubRepositoryId || undefined}
-                >
-                  <SelectTrigger id="skill-repository">
-                    <SelectValue
-                      placeholder={props.githubRepositories.length > 0
-                        ? "Select a linked repository"
-                        : "No linked repositories"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {props.githubRepositories.map((repository) => (
-                      <SelectItem key={repository.id} value={repository.id}>
-                        {repository.archived ? `${repository.fullName} (archived)` : repository.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void discoverGithubSkillDirectories();
+                    }
+                  }}
+                  placeholder="https://github.com/openai/skills"
+                  value={githubRepositoryUrl}
+                />
               </div>
+              <div className="flex items-end">
+                <Button
+                  disabled={isLoadingGithubSkillDirectories || !githubRepositoryUrl.trim()}
+                  onClick={() => {
+                    void discoverGithubSkillDirectories();
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  {isLoadingGithubSkillDirectories ? "Discovering..." : "Discover"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="grid gap-2">
                 <label className="text-xs font-medium text-foreground" htmlFor="skill-directory">
                   Skill directory
@@ -319,8 +296,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                     id="skill-directory"
                   >
                     <SelectValue
-                      placeholder={!githubRepositoryId
-                        ? "Select a repository first"
+                      placeholder={!githubRepositoryUrl.trim()
+                        ? "Paste a repository URL first"
                         : isLoadingGithubSkillDirectories
                         ? "Loading discovered skills..."
                         : githubSkillDirectories.length > 0
@@ -401,17 +378,10 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               </div>
             ) : null}
 
-            {props.githubRepositories.length === 0 ? (
+            {!isLoadingGithubSkillDirectories && githubRepositoryUrl.trim() && githubSkillDirectories.length === 0 ? (
               <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
-                Link a GitHub installation first, then come back to import one of its skill
-                directories.
-              </div>
-            ) : null}
-
-            {!isLoadingGithubSkillDirectories && githubRepositoryId && githubSkillDirectories.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
-                No skill packages were discovered in this repository. A directory must contain
-                `SKILL.md` to be importable.
+                No importable skill packages were discovered in this repository. A directory must
+                contain `SKILL.md` with instructions to be importable.
               </div>
             ) : null}
 
@@ -564,13 +534,13 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           ) : null}
           {mode === "github" ? (
             <Button
-              disabled={props.isSaving || isLoadingGithubSkillDirectories || !githubRepositoryId || !githubSkillDirectoryPath}
+              disabled={props.isSaving || isLoadingGithubSkillDirectories || !githubRepositoryUrl.trim() || !githubSkillDirectoryPath}
               onClick={async () => {
                 setLocalErrorMessage(null);
 
                 try {
                   await props.onImportGithub({
-                    repositoryId: githubRepositoryId,
+                    repositoryUrl: githubRepositoryUrl.trim(),
                     skillDirectory: githubSkillDirectoryPath,
                     skillGroupId: skillGroupId === UNGROUPED_SKILL_GROUP_VALUE ? null : skillGroupId,
                   });

@@ -1,19 +1,19 @@
 import { inject, injectable } from "inversify";
 import { GraphqlSkillPresenter, type GraphqlSkillRecord } from "../skill_presenter.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { GithubSkillService } from "../../services/skills/github_service.ts";
+import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
 import { Mutation } from "./mutation.ts";
 
 type ImportGithubSkillMutationArguments = {
   input: {
-    repositoryId: string;
+    repositoryUrl: string;
     skillDirectory: string;
     skillGroupId?: string | null;
   };
 };
 
 /**
- * Imports a skill from a linked GitHub repository by reading the selected `SKILL.md` package and
+ * Imports a skill from a public GitHub repository by reading the selected `SKILL.md` package and
  * persisting the resulting skill metadata into the company catalog.
  */
 @injectable()
@@ -21,11 +21,11 @@ export class ImportGithubSkillMutation extends Mutation<
   ImportGithubSkillMutationArguments,
   GraphqlSkillRecord
 > {
-  private readonly githubSkillService: GithubSkillService;
+  private readonly skillGithubCatalog: SkillGithubCatalog;
 
-  constructor(@inject(GithubSkillService) githubSkillService: GithubSkillService) {
+  constructor(@inject(SkillGithubCatalog) skillGithubCatalog: SkillGithubCatalog) {
     super();
-    this.githubSkillService = githubSkillService;
+    this.skillGithubCatalog = skillGithubCatalog;
   }
 
   protected resolve = async (
@@ -36,11 +36,11 @@ export class ImportGithubSkillMutation extends Mutation<
       throw new Error("Authentication required.");
     }
 
-    const skill = await this.githubSkillService.importSkill(
+    const skill = await this.skillGithubCatalog.importSkill(
       context.app_runtime_transaction_provider,
       {
         companyId: context.authSession.company.id,
-        repositoryId: arguments_.input.repositoryId,
+        repository: arguments_.input.repositoryUrl,
         skillDirectory: arguments_.input.skillDirectory,
         skillGroupId: arguments_.input.skillGroupId,
       },

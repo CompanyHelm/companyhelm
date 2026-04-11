@@ -7,6 +7,8 @@ export type SkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
+  githubBranchName: string | null;
+  githubTrackedCommitSha: string | null;
   id: string;
   instructions: string;
   name: string;
@@ -118,6 +120,8 @@ export class SkillService {
           companyId: input.companyId,
           description,
           fileList: [],
+          githubBranchName: null,
+          githubTrackedCommitSha: null,
           instructions,
           name,
           skillGroupId,
@@ -139,6 +143,7 @@ export class SkillService {
       description: string;
       fileList: string[];
       githubBranchName?: string | null;
+      githubTrackedCommitSha?: string | null;
       instructions: string;
       name: string;
       repository: string;
@@ -154,6 +159,9 @@ export class SkillService {
     const githubBranchName = input.githubBranchName === undefined || input.githubBranchName === null
       ? null
       : this.requireNonEmptyValue(input.githubBranchName, "GitHub branch name");
+    const githubTrackedCommitSha = input.githubTrackedCommitSha === undefined || input.githubTrackedCommitSha === null
+      ? null
+      : this.requireNonEmptyValue(input.githubTrackedCommitSha, "GitHub tracked commit sha");
 
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
@@ -168,6 +176,7 @@ export class SkillService {
           description,
           fileList: [...input.fileList],
           githubBranchName,
+          githubTrackedCommitSha,
           instructions,
           name,
           repository,
@@ -652,6 +661,8 @@ export class SkillService {
       companyId: skills.companyId,
       description: skills.description,
       fileList: skills.fileList,
+      githubBranchName: skills.githubBranchName,
+      githubTrackedCommitSha: skills.githubTrackedCommitSha,
       id: skills.id,
       instructions: skills.instructions,
       name: skills.name,

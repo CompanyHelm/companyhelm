@@ -7,6 +7,8 @@ type MockSkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
+  githubBranchName: string | null;
+  githubTrackedCommitSha: string | null;
   id: string;
   instructions: string;
   name: string;
@@ -38,6 +40,8 @@ class SkillServiceTestHarness {
                 companyId: String(value.companyId),
                 description: String(value.description),
                 fileList: [...(value.fileList as string[])],
+                githubBranchName: value.githubBranchName ? String(value.githubBranchName) : null,
+                githubTrackedCommitSha: value.githubTrackedCommitSha ? String(value.githubTrackedCommitSha) : null,
                 id: `skill-${skillRecords.length + 1}`,
                 instructions: String(value.instructions),
                 name: String(value.name),
@@ -204,6 +208,8 @@ test("SkillService deletes a skill group and clears existing assignments", async
       companyId: "company-123",
       description: "Initial description",
       fileList: [],
+      githubBranchName: null,
+      githubTrackedCommitSha: null,
       id: "skill-1",
       instructions: "Initial instructions",
       name: "Browser skill",
@@ -231,6 +237,8 @@ test("SkillService deletes one skill from the catalog", async () => {
       companyId: "company-123",
       description: "Initial description",
       fileList: [],
+      githubBranchName: null,
+      githubTrackedCommitSha: null,
       id: "skill-1",
       instructions: "Initial instructions",
       name: "Browser skill",
@@ -261,6 +269,8 @@ test("SkillService updates the editable fields and clears the group assignment",
       companyId: "company-123",
       description: "Initial description",
       fileList: [],
+      githubBranchName: null,
+      githubTrackedCommitSha: null,
       id: "skill-1",
       instructions: "Initial instructions",
       name: "Browser skill",
@@ -321,6 +331,7 @@ test("SkillService creates a GitHub-backed skill with source metadata", async ()
     description: "Use the browser helpers first.",
     fileList: ["scripts/open.sh", "templates/prompt.md"],
     githubBranchName: "main",
+    githubTrackedCommitSha: "commit-sha-1",
     instructions: "# Browser automation\n\nUse the browser helpers first.",
     name: "Browser automation",
     repository: "companyhelm/skills",
@@ -331,7 +342,10 @@ test("SkillService creates a GitHub-backed skill with source metadata", async ()
   assert.equal(createdSkill.name, "Browser automation");
   assert.equal(createdSkill.repository, "companyhelm/skills");
   assert.equal(createdSkill.skillDirectory, "skills/browser");
+  assert.equal(createdSkill.githubBranchName, "main");
+  assert.equal(createdSkill.githubTrackedCommitSha, "commit-sha-1");
   assert.deepEqual(createdSkill.fileList, ["scripts/open.sh", "templates/prompt.md"]);
   assert.equal(transactionProvider.skillRecords[0]?.repository, "companyhelm/skills");
   assert.equal(transactionProvider.skillRecords[0]?.skillDirectory, "skills/browser");
+  assert.equal(transactionProvider.skillRecords[0]?.githubTrackedCommitSha, "commit-sha-1");
 });

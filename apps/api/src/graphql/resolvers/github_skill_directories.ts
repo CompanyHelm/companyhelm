@@ -1,9 +1,9 @@
 import { inject, injectable } from "inversify";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { GithubSkillService } from "../../services/skills/github_service.ts";
+import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
 
 type GithubSkillDirectoriesQueryArguments = {
-  repositoryId: string;
+  repositoryUrl: string;
 };
 
 type GraphqlGithubSkillDirectoryRecord = {
@@ -13,15 +13,15 @@ type GraphqlGithubSkillDirectoryRecord = {
 };
 
 /**
- * Lists the skill directories discovered from a linked GitHub repository by scanning for
- * `SKILL.md` roots in the selected repository tree.
+ * Lists the importable skill directories discovered from a public GitHub repository URL by
+ * scanning for `SKILL.md` roots in the selected repository tree.
  */
 @injectable()
 export class GithubSkillDirectoriesQueryResolver {
-  private readonly githubSkillService: GithubSkillService;
+  private readonly skillGithubCatalog: SkillGithubCatalog;
 
-  constructor(@inject(GithubSkillService) githubSkillService: GithubSkillService) {
-    this.githubSkillService = githubSkillService;
+  constructor(@inject(SkillGithubCatalog) skillGithubCatalog: SkillGithubCatalog) {
+    this.skillGithubCatalog = skillGithubCatalog;
   }
 
   execute = async (
@@ -29,22 +29,18 @@ export class GithubSkillDirectoriesQueryResolver {
     arguments_: GithubSkillDirectoriesQueryArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlGithubSkillDirectoryRecord[]> => {
-    if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
+    if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
 
-    const directories = await this.githubSkillService.listSkillDirectories(
-      context.app_runtime_transaction_provider,
-      {
-        companyId: context.authSession.company.id,
-        repositoryId: arguments_.repositoryId,
-      },
-    );
+    const directories = await this.skillGithubCatalog.discoverSkills(arguments_.repositoryUrl);
 
-    return directories.map((directory) => ({
-      fileList: [...directory.fileList],
-      name: directory.name,
-      path: directory.path,
-    }));
+    return directories
+      .filter((directory) => directory.importable)
+      .map((directory) => ({
+        fileList: [...directory.fileList],
+        name: directory.name,
+        path: directory.skillDirectory,
+      }));
   };
 }

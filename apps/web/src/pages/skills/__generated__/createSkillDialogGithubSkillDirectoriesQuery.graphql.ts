@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<81508b985d6cf04dd26fa90fbd436b3c>>
+ * @generated SignedSource<<5d1f0ee6b61049e52bd1d13b7f91118a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type createSkillDialogGithubSkillDirectoriesQuery$variables = {
-  repositoryId: string;
+  repositoryUrl: string;
 };
 export type createSkillDialogGithubSkillDirectoriesQuery$data = {
   readonly GithubSkillDirectories: ReadonlyArray<{
@@ -29,7 +29,7 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
-    "name": "repositoryId"
+    "name": "repositoryUrl"
   }
 ],
 v1 = [
@@ -38,8 +38,8 @@ v1 = [
     "args": [
       {
         "kind": "Variable",
-        "name": "repositoryId",
-        "variableName": "repositoryId"
+        "name": "repositoryUrl",
+        "variableName": "repositoryUrl"
       }
     ],
     "concreteType": "GithubSkillDirectory",
@@ -90,16 +90,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "b37942f47f14af5802940e4237229dda",
+    "cacheID": "d39f2f8cf0ca389f08bd596f294cfddb",
     "id": null,
     "metadata": {},
     "name": "createSkillDialogGithubSkillDirectoriesQuery",
     "operationKind": "query",
-    "text": "query createSkillDialogGithubSkillDirectoriesQuery(\n  $repositoryId: ID!\n) {\n  GithubSkillDirectories(repositoryId: $repositoryId) {\n    name\n    path\n    fileList\n  }\n}\n"
+    "text": "query createSkillDialogGithubSkillDirectoriesQuery(\n  $repositoryUrl: String!\n) {\n  GithubSkillDirectories(repositoryUrl: $repositoryUrl) {\n    name\n    path\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "05ffc3a8fed486936ac41acba8b4ed80";
+(node as any).hash = "391c9740396de104306c8a32b3385b70";
 
 export default node;
