@@ -6,3 +6,5 @@ dist/
 # environment variables/secrets
 .env*
 !.env.example
+
+.DS_Store
