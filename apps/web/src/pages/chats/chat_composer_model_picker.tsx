@@ -34,6 +34,20 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
     return modelOption.id === props.selectedModelOptionId;
   }) ?? null;
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
+  const handleModelChange = (value: string | null) => {
+    if (typeof value !== "string") {
+      return;
+    }
+
+    props.onModelChange(value);
+  };
+  const handleReasoningLevelChange = (value: string | null) => {
+    if (typeof value !== "string") {
+      return;
+    }
+
+    props.onReasoningLevelChange(value);
+  };
 
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-muted-foreground">
@@ -42,7 +56,7 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
           label: `${modelOption.providerLabel} ${modelOption.name}`,
           value: modelOption.id,
         }))}
-        onValueChange={props.onModelChange}
+        onValueChange={handleModelChange}
         value={props.selectedModelOptionId}
       >
         <SelectTrigger
@@ -73,7 +87,7 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
             label: reasoningOption,
             value: reasoningOption,
           }))}
-          onValueChange={props.onReasoningLevelChange}
+          onValueChange={handleReasoningLevelChange}
           value={props.reasoningLevel}
         >
           <SelectTrigger

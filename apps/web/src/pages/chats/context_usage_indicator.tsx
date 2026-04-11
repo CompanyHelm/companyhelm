@@ -12,11 +12,17 @@ interface ChatsContextUsageIndicatorProps {
  * minimal, while the hover tooltip exposes the exact token usage and compacting state.
  */
 export function ChatsContextUsageIndicator(props: ChatsContextUsageIndicatorProps) {
-  if (!Number.isFinite(props.currentContextTokens) || !Number.isFinite(props.maxContextTokens) || props.maxContextTokens === null || props.maxContextTokens <= 0) {
+  if (props.currentContextTokens === null || props.maxContextTokens === null) {
     return null;
   }
 
-  const usageRatio = Math.min(Math.max(props.currentContextTokens / props.maxContextTokens, 0), 1);
+  if (!Number.isFinite(props.currentContextTokens) || !Number.isFinite(props.maxContextTokens) || props.maxContextTokens <= 0) {
+    return null;
+  }
+
+  const currentContextTokens = props.currentContextTokens;
+  const maxContextTokens = props.maxContextTokens;
+  const usageRatio = Math.min(Math.max(currentContextTokens / maxContextTokens, 0), 1);
   const usagePercent = Math.round(usageRatio * 100);
   const indicatorColor = ChatsContextUsageIndicatorPresenter.resolveIndicatorColor(usageRatio, props.isCompacting);
   const indicatorStyle = {
@@ -43,9 +49,9 @@ export function ChatsContextUsageIndicator(props: ChatsContextUsageIndicatorProp
           {props.isCompacting ? "Compacting context" : `Context ${usagePercent}% used`}
         </div>
         <div className="text-xs text-background/80">
-          {ChatsContextUsageIndicatorPresenter.formatTokenCount(props.currentContextTokens)}
+          {ChatsContextUsageIndicatorPresenter.formatTokenCount(currentContextTokens)}
           {" / "}
-          {ChatsContextUsageIndicatorPresenter.formatTokenCount(props.maxContextTokens)}
+          {ChatsContextUsageIndicatorPresenter.formatTokenCount(maxContextTokens)}
           {" tokens"}
         </div>
       </TooltipContent>
