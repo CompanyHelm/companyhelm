@@ -11,7 +11,7 @@ type Query {
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
-  GithubSkillDirectories(repositoryId: ID!): [GithubSkillDirectory!]!
+  GithubSkillDirectories(repositoryUrl: String!): [GithubSkillDirectory!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -493,6 +493,8 @@ type Skill {
   description: String!
   instructions: String!
   fileList: [String!]!
+  githubBranchName: String
+  githubTrackedCommitSha: String
   repository: String
   skillDirectory: String
 }
@@ -752,7 +754,7 @@ input CreateSecretInput {
 }
 
 input ImportGithubSkillInput {
-  repositoryId: ID!
+  repositoryUrl: String!
   skillDirectory: String!
   skillGroupId: ID
 }

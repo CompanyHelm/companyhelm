@@ -130,7 +130,7 @@ import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_tran
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
 import { AgentEnvironmentTemplateService } from "../services/environments/template_service.ts";
-import { GithubSkillService } from "../services/skills/github_service.ts";
+import { SkillGithubCatalog } from "../services/skills/github/catalog.ts";
 import { SkillService } from "../services/skills/service.ts";
 
 /**
@@ -590,7 +590,7 @@ export class GraphqlApplication {
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
-    const defaultGithubSkillService = new GithubSkillService(new GithubClient(config), defaultSkillService);
+    const defaultSkillGithubCatalog = new SkillGithubCatalog();
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
       ?? ({
         async getAgentTemplate() {
@@ -730,9 +730,9 @@ export class GraphqlApplication {
     this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
     this.githubSkillDirectoriesQueryResolver = githubSkillDirectoriesQueryResolver
-      ?? new GithubSkillDirectoriesQueryResolver(defaultGithubSkillService);
+      ?? new GithubSkillDirectoriesQueryResolver(defaultSkillGithubCatalog);
     this.importGithubSkillMutation = importGithubSkillMutation
-      ?? new ImportGithubSkillMutation(defaultGithubSkillService);
+      ?? new ImportGithubSkillMutation(defaultSkillGithubCatalog);
     this.meQueryResolver = meQueryResolver;
     this.markSessionReadMutation = markSessionReadMutation;
     this.updateSessionTitleMutation = updateSessionTitleMutation;

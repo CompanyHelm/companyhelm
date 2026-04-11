@@ -8,7 +8,6 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import {
   CreateSkillDialog,
-  type CreateSkillDialogGithubRepositoryOption,
   type CreateSkillDialogGroupOption,
 } from "./create_skill_dialog";
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
@@ -23,11 +22,6 @@ const skillsPageQueryNode = graphql`
     SkillGroups {
       id
       name
-    }
-    GithubRepositories {
-      id
-      fullName
-      archived
     }
     Skills {
       id
@@ -159,13 +153,6 @@ function SkillsPageContent() {
       name: group.name,
     }));
   }, [data.SkillGroups]);
-  const githubRepositories: CreateSkillDialogGithubRepositoryOption[] = useMemo(() => {
-    return data.GithubRepositories.map((repository) => ({
-      archived: repository.archived,
-      fullName: repository.fullName,
-      id: repository.id,
-    }));
-  }, [data.GithubRepositories]);
   const groupedSkills = useMemo<SkillsTreeGroupRecord[]>(() => {
     const skillsByGroupId = new Map<string | null, SkillsTreeSkillRecord[]>();
     const sortedSkills = [...data.Skills].sort((left, right) => left.name.localeCompare(right.name));
@@ -341,7 +328,6 @@ function SkillsPageContent() {
       <CreateSkillDialog
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         groups={groupOptions}
-        githubRepositories={githubRepositories}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateSkillInFlight || isImportGithubSkillInFlight}
         onCreate={async (input) => {

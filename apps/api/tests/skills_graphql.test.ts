@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
-import { githubRepositories, skill_groups, skills } from "../src/db/schema.ts";
+import { skill_groups, skills } from "../src/db/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
@@ -26,27 +26,14 @@ type MockSkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
+  githubBranchName: string | null;
+  githubTrackedCommitSha: string | null;
   id: string;
   instructions: string;
   name: string;
   repository: string | null;
   skillDirectory: string | null;
   skillGroupId: string | null;
-};
-
-type MockGithubRepositoryRecord = {
-  archived: boolean;
-  companyId: string;
-  createdAt: Date;
-  defaultBranch: string | null;
-  externalId: string;
-  fullName: string;
-  htmlUrl: string | null;
-  id: string;
-  installationId: number;
-  isPrivate: boolean;
-  name: string;
-  updatedAt: Date;
 };
 
 const TEST_PRIVATE_KEY_PEM = (() => {
@@ -117,6 +104,8 @@ class SkillsGraphqlTestHarness {
       companyId: "company-123",
       description: "Runs browser tasks.",
       fileList: ["scripts/open.sh"],
+      githubBranchName: null,
+      githubTrackedCommitSha: null,
       id: "skill-browser",
       instructions: "Read SKILL.md first.",
       name: "Browser automation",
@@ -124,24 +113,9 @@ class SkillsGraphqlTestHarness {
       skillDirectory: "skills/browser",
       skillGroupId: "group-automation",
     }];
-    const githubRepositoryRecords: MockGithubRepositoryRecord[] = [{
-      archived: false,
-      companyId: "company-123",
-      createdAt: new Date("2026-04-01T00:00:00Z"),
-      defaultBranch: "main",
-      externalId: "123456",
-      fullName: "companyhelm/skills",
-      htmlUrl: "https://github.com/companyhelm/skills",
-      id: "repo-skills",
-      installationId: 110600868,
-      isPrivate: true,
-      name: "skills",
-      updatedAt: new Date("2026-04-01T00:00:00Z"),
-    }];
     const insertedValues: Array<Record<string, unknown>> = [];
 
     return {
-      githubRepositoryRecords,
       insertedValues,
       groups,
       skillRecords,
@@ -156,6 +130,8 @@ class SkillsGraphqlTestHarness {
                     companyId: String(value.companyId),
                     description: String(value.description),
                     fileList: [...(value.fileList as string[])],
+                    githubBranchName: value.githubBranchName ? String(value.githubBranchName) : null,
+                    githubTrackedCommitSha: value.githubTrackedCommitSha ? String(value.githubTrackedCommitSha) : null,
                     id: "skill-new",
                     instructions: String(value.instructions),
                     name: String(value.name),
@@ -195,20 +171,21 @@ class SkillsGraphqlTestHarness {
 
             throw new Error("Unexpected insert table.");
           },
-          select() {
+          select(selection?: Record<string, unknown>) {
             return {
               from(table: unknown) {
                 return {
                   async where(_condition: unknown) {
                     void _condition;
                     if (table === skills) {
+                      if (selection && Object.keys(selection).length === 1 && "skillDirectory" in selection) {
+                        return [];
+                      }
+
                       return [...skillRecords];
                     }
                     if (table === skill_groups) {
                       return [...groups];
-                    }
-                    if (table === githubRepositories) {
-                      return [...githubRepositoryRecords];
                     }
 
                     throw new Error("Unexpected select table.");
@@ -421,7 +398,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
   await app.close();
 });
 
-test("GraphQL GitHub skill discovery and import use linked repositories", async () => {
+test("GraphQL GitHub skill discovery and import use public repository URLs", async () => {
   const app = Fastify();
   const config = SkillsGraphqlTestHarness.createConfigMock();
   const database = SkillsGraphqlTestHarness.createDatabaseMock();
@@ -452,13 +429,22 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
   const originalFetch = global.fetch;
   global.fetch = async (input) => {
     const url = String(input);
-    if (url.endsWith("/access_tokens")) {
+    if (url.endsWith("/repos/companyhelm/skills")) {
       return createJsonResponse({
-        expires_at: "2030-01-01T00:00:00Z",
-        token: "installation-token",
+        default_branch: "main",
+        full_name: "companyhelm/skills",
+        private: false,
       });
     }
-    if (url.includes("/git/trees/")) {
+    if (url.includes("/repos/companyhelm/skills/branches/main")) {
+      return createJsonResponse({
+        commit: {
+          sha: "commit-sha-main",
+        },
+        name: "main",
+      });
+    }
+    if (url.includes("/repos/companyhelm/skills/git/trees/commit-sha-main")) {
       return createJsonResponse({
         truncated: false,
         tree: [{
@@ -472,9 +458,16 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
         }],
       });
     }
-    if (url.includes("/git/blobs/sha-github-browser-skill")) {
+    if (url.includes("/repos/companyhelm/skills/git/blobs/sha-github-browser-skill")) {
       return createJsonResponse({
-        content: Buffer.from("# Imported browser\n\nUse the imported browser helpers.\n").toString("base64"),
+        content: Buffer.from([
+          "---",
+          "name: Imported browser",
+          "description: Use the imported browser helpers.",
+          "---",
+          "",
+          "Use the imported browser helpers.",
+        ].join("\n")).toString("base64"),
         encoding: "base64",
       });
     }
@@ -503,8 +496,8 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
       },
       payload: {
         query: `
-          query GithubSkillDirectories($repositoryId: ID!) {
-            GithubSkillDirectories(repositoryId: $repositoryId) {
+          query GithubSkillDirectories($repositoryUrl: String!) {
+            GithubSkillDirectories(repositoryUrl: $repositoryUrl) {
               name
               path
               fileList
@@ -512,7 +505,7 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
           }
         `,
         variables: {
-          repositoryId: "repo-skills",
+          repositoryUrl: "https://github.com/companyhelm/skills",
         },
       },
     });
@@ -520,8 +513,8 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
     assert.equal(directoriesResponse.statusCode, 200);
     const directoriesDocument = directoriesResponse.json();
     assert.deepEqual(directoriesDocument.data.GithubSkillDirectories, [{
-      fileList: ["scripts/import.sh"],
-      name: "Github Browser",
+      fileList: ["skills/github-browser/scripts/import.sh"],
+      name: "Imported browser",
       path: "skills/github-browser",
     }]);
 
@@ -541,6 +534,8 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
               description
               instructions
               skillGroupId
+              githubBranchName
+              githubTrackedCommitSha
               repository
               skillDirectory
               fileList
@@ -549,7 +544,7 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
         `,
         variables: {
           input: {
-            repositoryId: "repo-skills",
+            repositoryUrl: "https://github.com/companyhelm/skills",
             skillDirectory: "skills/github-browser",
             skillGroupId: "group-research",
           },
@@ -562,9 +557,11 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
     assert.deepEqual(importDocument.data.ImportGithubSkill, {
       companyId: "company-123",
       description: "Use the imported browser helpers.",
-      fileList: ["scripts/import.sh"],
+      fileList: ["skills/github-browser/scripts/import.sh"],
+      githubBranchName: "main",
+      githubTrackedCommitSha: "commit-sha-main",
       id: "skill-new",
-      instructions: "# Imported browser\n\nUse the imported browser helpers.",
+      instructions: "Use the imported browser helpers.",
       name: "Imported browser",
       repository: "companyhelm/skills",
       skillDirectory: "skills/github-browser",
@@ -572,9 +569,11 @@ test("GraphQL GitHub skill discovery and import use linked repositories", async 
     });
 
     const importedSkillInsert = database.insertedValues.at(-1);
+    assert.equal(importedSkillInsert?.githubBranchName, "main");
+    assert.equal(importedSkillInsert?.githubTrackedCommitSha, "commit-sha-main");
     assert.equal(importedSkillInsert?.repository, "companyhelm/skills");
     assert.equal(importedSkillInsert?.skillDirectory, "skills/github-browser");
-    assert.deepEqual(importedSkillInsert?.fileList, ["scripts/import.sh"]);
+    assert.deepEqual(importedSkillInsert?.fileList, ["skills/github-browser/scripts/import.sh"]);
   } finally {
     global.fetch = originalFetch;
     await app.close();
@@ -589,6 +588,8 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     companyId: "company-123",
     description: "Research notes",
     fileList: [],
+    githubBranchName: null,
+    githubTrackedCommitSha: null,
     id: "skill-research",
     instructions: "Open the research checklist.",
     name: "Research helper",

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9452363f8e7717248a2fa7f9f029eb2b>>
+ * @generated SignedSource<<88f9e75fd6c4670594241503b9878716>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type ImportGithubSkillInput = {
-  repositoryId: string;
+  repositoryUrl: string;
   skillDirectory: string;
   skillGroupId?: string | null | undefined;
 };

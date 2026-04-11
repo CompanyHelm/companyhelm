@@ -4,6 +4,8 @@ export type GraphqlSkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
+  githubBranchName: string | null;
+  githubTrackedCommitSha: string | null;
   id: string;
   instructions: string;
   name: string;
@@ -27,6 +29,8 @@ export class GraphqlSkillPresenter {
       companyId: record.companyId,
       description: record.description,
       fileList: [...record.fileList],
+      githubBranchName: record.githubBranchName,
+      githubTrackedCommitSha: record.githubTrackedCommitSha,
       id: record.id,
       instructions: record.instructions,
       name: record.name,
