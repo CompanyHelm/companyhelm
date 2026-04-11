@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -128,17 +127,10 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Import secrets from a .env file</DialogTitle>
-          <DialogDescription>
-            Paste the file contents below. Parsing stays in the browser, then matching environment
-            variables can be overwritten or skipped.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="secret-env-paste">
-              Paste the contents
-            </label>
             <textarea
               id="secret-env-paste"
               onChange={(event) => {
@@ -150,9 +142,6 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
                 "min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
               )}
             />
-            <p className="text-xs text-muted-foreground">
-              The preview updates automatically about 500ms after the last change.
-            </p>
           </div>
 
           {parsedEnvFile ? (
