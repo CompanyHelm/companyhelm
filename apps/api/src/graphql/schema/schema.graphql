@@ -679,6 +679,7 @@ input UpdateCompanySettingsInput {
 
 input DeleteModelProviderCredentialInput {
   id: ID!
+  replacementCredentialId: ID
 }
 
 input DeleteAgentInput {

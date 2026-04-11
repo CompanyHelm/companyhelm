@@ -1,9 +1,10 @@
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
-import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { CreateCredentialDialog } from "./create_credential_dialog";
+import { type DeleteCredentialDialogReplacementRecord } from "./delete_credential_dialog";
 import { CredentialsTable, type CredentialsTableRecord } from "./credentials_table";
 import { formatProviderLabel } from "./provider_label";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
@@ -12,8 +13,36 @@ import type { modelProviderCredentialsPageQuery } from "./__generated__/modelPro
 import type { modelProviderCredentialsPageRefreshCredentialTokenMutation } from "./__generated__/modelProviderCredentialsPageRefreshCredentialTokenMutation.graphql";
 import type { modelProviderCredentialsPageSetDefaultCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultCredentialMutation.graphql";
 
+type StoreCredentialRecord = {
+  getDataID(): string;
+  setValue(value: unknown, fieldName: string): void;
+};
+
+type StoreRootRecord = {
+  getLinkedRecords(name: string): ReadonlyArray<StoreCredentialRecord | null> | null;
+  setLinkedRecords(records: ReadonlyArray<StoreCredentialRecord>, name: string): void;
+};
+
+type CredentialStoreProxy = {
+  getRoot(): StoreRootRecord;
+  getRootField(name: string): StoreCredentialRecord | null;
+};
+
 const modelProviderCredentialsPageQueryNode = graphql`
   query modelProviderCredentialsPageQuery {
+    Agents {
+      id
+      name
+      modelProviderCredentialId
+    }
+    AgentCreateOptions {
+      id
+      isDefault
+      label
+      models {
+        id
+      }
+    }
     ModelProviders {
       id
       name
@@ -32,6 +61,10 @@ const modelProviderCredentialsPageQueryNode = graphql`
       refreshedAt
       createdAt
       updatedAt
+    }
+    Sessions {
+      id
+      modelProviderCredentialModelId
     }
   }
 `;
@@ -119,6 +152,7 @@ function ModelProviderCredentialsPageFallback() {
             onDelete={async () => undefined}
             onRefreshToken={async () => undefined}
             onSetDefault={async () => undefined}
+            replacementOptions={[]}
           />
         </CardContent>
       </Card>
@@ -139,7 +173,7 @@ function ModelProviderCredentialsPageContent() {
     {
       fetchKey,
       fetchPolicy: "store-and-network",
-    },
+    } as never,
   );
   const [commitCreateCredential, isCreateCredentialInFlight] =
     useMutation<modelProviderCredentialsPageCreateCredentialMutation>(
@@ -157,21 +191,73 @@ function ModelProviderCredentialsPageContent() {
     useMutation<modelProviderCredentialsPageSetDefaultCredentialMutation>(
       modelProviderCredentialsPageSetDefaultCredentialMutationNode,
     );
-  const credentials: CredentialsTableRecord[] = data.ModelProviderCredentials.map((credential) => ({
-    defaultModelId: credential.defaultModelId,
-    errorMessage: credential.errorMessage,
-    id: credential.id,
-    isDefault: credential.isDefault,
-    name: credential.name,
-    modelProvider: credential.modelProvider,
-    refreshedAt: credential.refreshedAt,
-    status: credential.status as "active" | "error",
-    type: credential.type as "api_key" | "oauth_token",
-    createdAt: credential.createdAt,
-    updatedAt: credential.updatedAt,
-  }));
+  const credentialNameById = useMemo(() => {
+    return new Map(
+      data.ModelProviderCredentials.map((credential) => [credential.id, credential.name]),
+    );
+  }, [data.ModelProviderCredentials]);
+  const replacementOptions = useMemo<DeleteCredentialDialogReplacementRecord[]>(() => {
+    return data.AgentCreateOptions.map((providerOption) => ({
+      id: providerOption.id,
+      isDefault: providerOption.isDefault,
+      label: credentialNameById.get(providerOption.id) ?? providerOption.label,
+    }));
+  }, [credentialNameById, data.AgentCreateOptions]);
+  const credentialIdByModelId = useMemo(() => {
+    const nextCredentialIdByModelId = new Map<string, string>();
+    for (const providerOption of data.AgentCreateOptions) {
+      for (const model of providerOption.models) {
+        nextCredentialIdByModelId.set(model.id, providerOption.id);
+      }
+    }
+
+    return nextCredentialIdByModelId;
+  }, [data.AgentCreateOptions]);
+  const sessionCountByCredentialId = useMemo(() => {
+    const nextSessionCountByCredentialId = new Map<string, number>();
+    for (const session of data.Sessions) {
+      const modelProviderCredentialModelId = String(session.modelProviderCredentialModelId || "").trim();
+      if (modelProviderCredentialModelId.length === 0) {
+        continue;
+      }
+
+      const credentialId = credentialIdByModelId.get(modelProviderCredentialModelId);
+      if (!credentialId) {
+        continue;
+      }
+
+      nextSessionCountByCredentialId.set(
+        credentialId,
+        (nextSessionCountByCredentialId.get(credentialId) ?? 0) + 1,
+      );
+    }
+
+    return nextSessionCountByCredentialId;
+  }, [credentialIdByModelId, data.Sessions]);
+  const credentials = useMemo<CredentialsTableRecord[]>(() => {
+    return data.ModelProviderCredentials.map((credential) => ({
+      createdAt: credential.createdAt,
+      defaultModelId: credential.defaultModelId ?? null,
+      errorMessage: credential.errorMessage ?? null,
+      id: credential.id,
+      isDefault: credential.isDefault,
+      modelProvider: credential.modelProvider,
+      name: credential.name,
+      refreshedAt: credential.refreshedAt ?? null,
+      sessionCount: sessionCountByCredentialId.get(credential.id) ?? 0,
+      status: credential.status as "active" | "error",
+      type: credential.type as "api_key" | "oauth_token",
+      updatedAt: credential.updatedAt,
+      usingAgents: data.Agents
+        .filter((agent) => agent.modelProviderCredentialId === credential.id)
+        .map((agent) => ({
+          id: agent.id,
+          name: agent.name,
+        })),
+    }));
+  }, [data.Agents, data.ModelProviderCredentials, sessionCountByCredentialId]);
   const providers = data.ModelProviders.map((provider) => ({
-    authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown,
+    authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown ?? null,
     id: provider.id,
     name: formatProviderLabel(provider.id),
     type: provider.type as "api_key" | "oauth",
@@ -211,32 +297,41 @@ function ModelProviderCredentialsPageContent() {
             refreshingCredentialId={refreshingCredentialId}
             isLoading={false}
             deletingCredentialId={deletingCredentialId}
-            onDelete={async (credentialId) => {
+            onDelete={async (input) => {
               if (isDeleteCredentialInFlight) {
                 return;
               }
 
-              setErrorMessage(null);
-              setDeletingCredentialId(credentialId);
-
+              setDeletingCredentialId(input.credentialId);
               await new Promise<void>((resolve, reject) => {
                 commitDeleteCredential({
                   variables: {
                     input: {
-                      id: credentialId,
+                      id: input.credentialId,
+                      replacementCredentialId: input.replacementCredentialId ?? null,
                     },
                   },
                   updater: (store) => {
-                    const deletedCredential = store.getRootField("DeleteModelProviderCredential");
+                    const relayStore = store as unknown as CredentialStoreProxy;
+                    const deletedCredential = relayStore.getRootField("DeleteModelProviderCredential");
                     if (!deletedCredential) {
                       return;
                     }
 
                     const deletedId = deletedCredential.getDataID();
-                    const rootRecord = store.getRoot();
+                    const rootRecord = relayStore.getRoot();
                     const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
+                    const nextCredentials: StoreCredentialRecord[] = [];
+                    for (const record of currentCredentials) {
+                      if (!record || record.getDataID() === deletedId) {
+                        continue;
+                      }
+
+                      nextCredentials.push(record);
+                    }
+
                     rootRecord.setLinkedRecords(
-                      currentCredentials.filter((record) => record && record.getDataID() !== deletedId),
+                      nextCredentials,
                       "ModelProviderCredentials",
                     );
                   },
@@ -253,11 +348,9 @@ function ModelProviderCredentialsPageContent() {
                 });
               }).then(() => {
                 setFetchKey((current) => current + 1);
-              }).catch((error: unknown) => {
-                setErrorMessage(error instanceof Error ? error.message : "Failed to delete credential.");
+              }).finally(() => {
+                setDeletingCredentialId(null);
               });
-
-              setDeletingCredentialId(null);
             }}
             onRefreshToken={async (credentialId) => {
               if (isRefreshCredentialTokenInFlight) {
@@ -309,16 +402,21 @@ function ModelProviderCredentialsPageContent() {
                     },
                   },
                   updater: (store) => {
-                    const updatedCredential = store.getRootField("SetDefaultModelProviderCredential");
+                    const relayStore = store as unknown as CredentialStoreProxy;
+                    const updatedCredential = relayStore.getRootField("SetDefaultModelProviderCredential");
                     if (!updatedCredential) {
                       return;
                     }
 
                     const updatedId = updatedCredential.getDataID();
-                    const rootRecord = store.getRoot();
+                    const rootRecord = relayStore.getRoot();
                     const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
                     currentCredentials.forEach((record) => {
-                      record?.setValue(record?.getDataID() === updatedId, "isDefault");
+                      if (!record) {
+                        return;
+                      }
+
+                      record.setValue(record.getDataID() === updatedId, "isDefault");
                     });
                   },
                   onCompleted: (_response, errors) => {
@@ -340,6 +438,7 @@ function ModelProviderCredentialsPageContent() {
 
               setDefaultingCredentialId(null);
             }}
+            replacementOptions={replacementOptions}
           />
         </CardContent>
       </Card>
@@ -359,15 +458,19 @@ function ModelProviderCredentialsPageContent() {
                 input,
               },
               updater: (store) => {
-                const newCredential = store.getRootField("AddModelProviderCredential");
+                const relayStore = store as unknown as CredentialStoreProxy;
+                const newCredential = relayStore.getRootField("AddModelProviderCredential");
                 if (!newCredential) {
                   return;
                 }
 
-                const rootRecord = store.getRoot();
+                const rootRecord = relayStore.getRoot();
                 const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
                 rootRecord.setLinkedRecords(
-                  [newCredential, ...currentCredentials],
+                  [
+                    newCredential,
+                    ...currentCredentials.filter((record): record is StoreCredentialRecord => Boolean(record)),
+                  ],
                   "ModelProviderCredentials",
                 );
               },

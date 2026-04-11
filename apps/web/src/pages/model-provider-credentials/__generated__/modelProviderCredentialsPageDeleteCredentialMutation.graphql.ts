@@ -11,6 +11,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type DeleteModelProviderCredentialInput = {
   id: string;
+  replacementCredentialId?: string | null | undefined;
 };
 export type modelProviderCredentialsPageDeleteCredentialMutation$variables = {
   input: DeleteModelProviderCredentialInput;

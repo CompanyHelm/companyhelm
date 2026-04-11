@@ -1,221 +1,458 @@
-import "reflect-metadata";
-import { generateKeyPairSync } from "node:crypto";
 import assert from "node:assert/strict";
-import Fastify from "fastify";
 import { test } from "vitest";
-import type { Config } from "../src/config/schema.ts";
-import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
-import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
-import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
+import {
+  agentSessions,
+  agents,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
+} from "../src/db/schema.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
-import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
-import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
-import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
-import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
-import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
-import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-const TEST_PRIVATE_KEY_PEM = (() => {
-  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
-})();
+type CredentialRow = {
+  companyId: string;
+  createdAt: Date;
+  errorMessage: string | null;
+  id: string;
+  isDefault: boolean;
+  modelProvider: "anthropic" | "openai" | "openai-codex" | "openrouter";
+  name: string;
+  refreshToken: string | null;
+  refreshedAt: Date | null;
+  status: "active" | "error";
+  type: "api_key" | "oauth_token";
+  updatedAt: Date;
+};
 
+type CredentialModelRow = {
+  id: string;
+  isDefault: boolean;
+  modelId: string;
+  modelProviderCredentialId: string;
+  reasoningLevels: string[] | null;
+};
+
+type AgentRow = {
+  defaultModelProviderCredentialModelId: string | null;
+  defaultReasoningLevel: string | null;
+  id: string;
+  name: string;
+};
+
+type SessionRow = {
+  currentModelProviderCredentialModelId: string;
+  currentReasoningLevel: string;
+  id: string;
+};
+
+/**
+ * Emulates the narrow transactional surface used by the delete mutation so tests can assert
+ * reference analysis, reassignment, and default promotion without the overhead of a live server.
+ */
 class DeleteModelProviderCredentialMutationTestHarness {
-  static createConfigMock(): Config {
-    return {
-      auth: {
-        provider: "clerk",
-        clerk: {
-          secret_key: "clerk-secret",
-          publishable_key: "clerk-publishable",
-          jwks_url: "https://example.com/.well-known/jwks.json",
-          authorized_parties: ["http://localhost:3000"],
-        },
-      },
-      companyhelm: {
-        e2b: {
-          api_key: "e2b-test-key",
-          desktop_resolution: {
-            height: 900,
-            width: 1440,
-          },
-          template_prefix: "companyhelm-test",
-        },
-      },
-      cors: {
-        origin: "http://localhost:3000",
-        credentials: true,
-        methods: ["GET", "POST"],
-        allowed_headers: ["authorization", "content-type"],
-      },
-      database: {
-        host: "127.0.0.1",
-        name: "companyhelm_test",
-        port: 5432,
-        roles: {
-          admin: {
-            password: "postgres",
-            username: "postgres",
-          },
-          app_runtime: {
-            password: "postgres",
-            username: "postgres",
-          },
-        },
-      },
-      graphql: {
-        endpoint: "/graphql",
-        graphiql: false,
-      },
-      github: {
-        app_client_id: "Iv-test-local",
-        app_link: "https://github.com/apps/companyhelm-test",
-        app_private_key_pem: TEST_PRIVATE_KEY_PEM,
-      },
-      host: "127.0.0.1",
-      log: {
-        json: false,
-        level: "info",
-      },
-      port: 4000,
-      publicUrl: "http://localhost:4000",
-      redis: {
-        host: "127.0.0.1",
-        password: "",
-        port: 6379,
-        username: "",
-      },
-      security: {
-        encryption: {
-          key: "companyhelm-test-encryption-key",
-          key_id: "companyhelm-test-key",
-        },
-      },
-      web_search: {
-        exa: {
-          api_key: "exa-test-key",
-        },
-      },
-      workers: {
-        session_process: {
-          concurrency: 1,
-        },
-      },
-    } as Config;
+  private readonly targetCredentialId: string;
+  private readonly replacementCredentialId: string | null;
+  private readonly companyId: string;
+  private readonly credentialRows: CredentialRow[];
+  private readonly targetCredentialModels: CredentialModelRow[];
+  private readonly replacementCredentialModels: CredentialModelRow[];
+  private readonly agentRows: AgentRow[];
+  private readonly sessionRows: SessionRow[];
+  private readonly deletedCredentialIds: string[];
+  private credentialSelectCount: number;
+  private credentialModelSelectCount: number;
+  private agentUpdateCount: number;
+  private sessionUpdateCount: number;
+
+  constructor(input: {
+    agentRows?: AgentRow[];
+    companyId?: string;
+    credentialRows: CredentialRow[];
+    replacementCredentialId?: string | null;
+    replacementCredentialModels?: CredentialModelRow[];
+    sessionRows?: SessionRow[];
+    targetCredentialId: string;
+    targetCredentialModels: CredentialModelRow[];
+  }) {
+    this.targetCredentialId = input.targetCredentialId;
+    this.replacementCredentialId = input.replacementCredentialId ?? null;
+    this.companyId = input.companyId ?? "company-123";
+    this.credentialRows = input.credentialRows.map((credentialRow) => ({ ...credentialRow }));
+    this.targetCredentialModels = input.targetCredentialModels.map((credentialModelRow) => ({
+      ...credentialModelRow,
+      reasoningLevels: credentialModelRow.reasoningLevels ? [...credentialModelRow.reasoningLevels] : null,
+    }));
+    this.replacementCredentialModels = (input.replacementCredentialModels ?? []).map((credentialModelRow) => ({
+      ...credentialModelRow,
+      reasoningLevels: credentialModelRow.reasoningLevels ? [...credentialModelRow.reasoningLevels] : null,
+    }));
+    this.agentRows = (input.agentRows ?? []).map((agentRow) => ({ ...agentRow }));
+    this.sessionRows = (input.sessionRows ?? []).map((sessionRow) => ({ ...sessionRow }));
+    this.deletedCredentialIds = [];
+    this.credentialSelectCount = 0;
+    this.credentialModelSelectCount = 0;
+    this.agentUpdateCount = 0;
+    this.sessionUpdateCount = 0;
   }
 
-  static createDatabaseMock() {
-    const deletedRows: Array<Record<string, unknown>> = [];
-
+  getContext() {
     return {
-      deletedRows,
-      getDatabase() {
-        return {
-          delete() {
-            return {
-              where() {
-                return {
-                  async returning() {
-                    const deleted = {
-                      id: "credential-1",
-                      companyId: "company-123",
-                      name: "OpenAI / Codex",
-                      modelProvider: "openai",
-                      type: "api_key",
-                      refreshToken: null,
-                      refreshedAt: null,
-                      createdAt: new Date("2026-03-20T10:00:00.000Z"),
-                      updatedAt: new Date("2026-03-20T10:00:00.000Z"),
-                    };
-                    deletedRows.push(deleted);
-                    return [deleted];
-                  },
-                };
-              },
-            };
+      authSession: {
+        company: {
+          id: this.companyId,
+          name: "Example Org",
+        },
+      },
+      app_runtime_transaction_provider: {
+        transaction: async <T>(callback: (tx: unknown) => Promise<T>): Promise<T> => {
+          return callback(this.createTransaction());
+        },
+      },
+    } as never;
+  }
+
+  getAgents(): AgentRow[] {
+    return this.agentRows;
+  }
+
+  getDeletedCredentialIds(): string[] {
+    return this.deletedCredentialIds;
+  }
+
+  getCredentials(): CredentialRow[] {
+    return this.credentialRows;
+  }
+
+  getSessions(): SessionRow[] {
+    return this.sessionRows;
+  }
+
+  private createTransaction() {
+    return {
+      delete: (table: unknown) => ({
+        where: () => ({
+          returning: async () => {
+            if (table !== modelProviderCredentials) {
+              return [];
+            }
+
+            const credentialIndex = this.credentialRows.findIndex((credentialRow) => credentialRow.id === this.targetCredentialId);
+            if (credentialIndex < 0) {
+              return [];
+            }
+
+            const [deletedCredential] = this.credentialRows.splice(credentialIndex, 1);
+            if (!deletedCredential) {
+              return [];
+            }
+
+            this.deletedCredentialIds.push(deletedCredential.id);
+            return [deletedCredential];
           },
-        } as never;
-      },
-      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
-        return callback(this.getDatabase());
-      },
+        }),
+      }),
+      select: () => ({
+        from: (table: unknown) => ({
+          where: async () => {
+            if (table === modelProviderCredentials) {
+              return this.selectCredentialRows();
+            }
+            if (table === modelProviderCredentialModels) {
+              return this.selectCredentialModelRows();
+            }
+            if (table === agents) {
+              return this.agentRows;
+            }
+            if (table === agentSessions) {
+              return this.sessionRows;
+            }
+
+            return [];
+          },
+        }),
+      }),
+      update: (table: unknown) => ({
+        set: (value: Record<string, unknown>) => ({
+          where: async () => {
+            if (table === agents) {
+              this.updateAgentRow(value);
+              return;
+            }
+            if (table === agentSessions) {
+              this.updateSessionRow(value);
+              return;
+            }
+            if (table !== modelProviderCredentials) {
+              return;
+            }
+
+            if (value.isDefault === false) {
+              this.credentialRows.forEach((credentialRow) => {
+                credentialRow.isDefault = false;
+              });
+              return;
+            }
+            if (value.isDefault === true) {
+              const [fallbackCredential] = [...this.credentialRows]
+                .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+              if (fallbackCredential) {
+                fallbackCredential.isDefault = true;
+              }
+            }
+          },
+        }),
+      }),
     };
+  }
+
+  private selectCredentialModelRows(): CredentialModelRow[] {
+    this.credentialModelSelectCount += 1;
+    if (this.credentialModelSelectCount === 1) {
+      return this.targetCredentialModels;
+    }
+    if (this.credentialModelSelectCount === 2 && this.replacementCredentialId) {
+      return this.replacementCredentialModels;
+    }
+
+    return [];
+  }
+
+  private selectCredentialRows(): CredentialRow[] {
+    this.credentialSelectCount += 1;
+    if (this.credentialSelectCount === 1) {
+      return this.credentialRows.filter((credentialRow) => credentialRow.id === this.targetCredentialId);
+    }
+    if (
+      this.credentialSelectCount === 2
+      && this.replacementCredentialId
+      && (this.agentRows.length > 0 || this.sessionRows.length > 0)
+    ) {
+      return this.credentialRows.filter((credentialRow) => credentialRow.id === this.replacementCredentialId);
+    }
+
+    return [...this.credentialRows];
+  }
+
+  private updateAgentRow(value: Record<string, unknown>): void {
+    const agentRow = this.agentRows[this.agentUpdateCount];
+    this.agentUpdateCount += 1;
+    if (!agentRow) {
+      return;
+    }
+
+    agentRow.defaultModelProviderCredentialModelId = String(
+      value.defaultModelProviderCredentialModelId ?? agentRow.defaultModelProviderCredentialModelId ?? "",
+    ) || null;
+    agentRow.defaultReasoningLevel = value.default_reasoning_level === null
+      ? null
+      : String(value.default_reasoning_level ?? agentRow.defaultReasoningLevel ?? "");
+  }
+
+  private updateSessionRow(value: Record<string, unknown>): void {
+    const sessionRow = this.sessionRows[this.sessionUpdateCount];
+    this.sessionUpdateCount += 1;
+    if (!sessionRow) {
+      return;
+    }
+
+    sessionRow.currentModelProviderCredentialModelId = String(
+      value.currentModelProviderCredentialModelId ?? sessionRow.currentModelProviderCredentialModelId,
+    );
+    sessionRow.currentReasoningLevel = String(
+      value.currentReasoningLevel ?? sessionRow.currentReasoningLevel,
+    );
   }
 }
 
-test("GraphQL DeleteModelProviderCredential mutation deletes a credential", async () => {
-  const app = Fastify();
-  const config = DeleteModelProviderCredentialMutationTestHarness.createConfigMock();
-  const database = DeleteModelProviderCredentialMutationTestHarness.createDatabaseMock();
-  const modelManager = {
-    async fetchModels(): Promise<ModelProviderModel[]> {
-      return [];
-    },
-  };
-  const authProvider = {
-    async authenticateBearerToken() {
-      return {
-        token: "jwt-token",
-        user: {
-          id: "user-123",
-          email: "user@example.com",
-          firstName: "User",
-          lastName: "Example",
-          provider: "clerk" as const,
-          providerSubject: "user_clerk_123",
-        },
-        company: {
-          id: "company-123",
-          name: "Example Org",
-        },
-      };
-    },
-  };
+test("DeleteModelProviderCredentialMutation deletes an unused default credential and promotes a fallback", async () => {
+  const harness = new DeleteModelProviderCredentialMutationTestHarness({
+    credentialRows: [{
+      companyId: "company-123",
+      createdAt: new Date("2026-04-04T10:00:00.000Z"),
+      errorMessage: null,
+      id: "credential-1",
+      isDefault: true,
+      modelProvider: "openai-codex",
+      name: "Codex Primary",
+      refreshToken: "refresh-token-1",
+      refreshedAt: new Date("2026-04-04T10:05:00.000Z"),
+      status: "active",
+      type: "oauth_token",
+      updatedAt: new Date("2026-04-04T10:06:00.000Z"),
+    }, {
+      companyId: "company-123",
+      createdAt: new Date("2026-04-03T10:00:00.000Z"),
+      errorMessage: null,
+      id: "credential-2",
+      isDefault: false,
+      modelProvider: "openai",
+      name: "OpenAI Backup",
+      refreshToken: null,
+      refreshedAt: null,
+      status: "active",
+      type: "api_key",
+      updatedAt: new Date("2026-04-05T09:00:00.000Z"),
+    }],
+    targetCredentialId: "credential-1",
+    targetCredentialModels: [{
+      id: "model-1",
+      isDefault: true,
+      modelId: "gpt-5-codex",
+      modelProviderCredentialId: "credential-1",
+      reasoningLevels: ["medium", "high"],
+    }],
+  });
 
-  await GraphqlApplication.fromResolvers(
-    config,
-    new AddModelProviderCredentialMutation(modelManager as never),
-    new DeleteModelProviderCredentialMutation(),
-    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
-    new GraphqlRequestContextResolver(authProvider as never, database),
-    new HealthQueryResolver(),
-    new MeQueryResolver(),
-    new ModelProviderCredentialModelsQueryResolver(),
-    new ModelProviderCredentialsQueryResolver(),
-  ).register(app);
-
-  const response = await app.inject({
-    method: "POST",
-    url: "/graphql",
-    headers: {
-      authorization: "Bearer jwt-token",
+  const mutation = new DeleteModelProviderCredentialMutation();
+  const deletedCredential = await mutation.execute(
+    null,
+    {
+      input: {
+        id: "credential-1",
+      },
     },
-    payload: {
-      query: `
-        mutation DeleteModelProviderCredential($input: DeleteModelProviderCredentialInput!) {
-          DeleteModelProviderCredential(input: $input) {
-            id
-            companyId
-            name
-          }
-        }
-      `,
-      variables: {
+    harness.getContext(),
+  );
+
+  assert.equal(deletedCredential.id, "credential-1");
+  assert.deepEqual(harness.getDeletedCredentialIds(), ["credential-1"]);
+  assert.equal(harness.getCredentials().length, 1);
+  assert.equal(harness.getCredentials()[0]?.id, "credential-2");
+  assert.equal(harness.getCredentials()[0]?.isDefault, true);
+});
+
+test("DeleteModelProviderCredentialMutation blocks deleting a credential that still has agents or sessions without replacement", async () => {
+  const harness = new DeleteModelProviderCredentialMutationTestHarness({
+    agentRows: [{
+      defaultModelProviderCredentialModelId: "model-1",
+      defaultReasoningLevel: "high",
+      id: "agent-1",
+      name: "Research Assistant",
+    }],
+    credentialRows: [{
+      companyId: "company-123",
+      createdAt: new Date("2026-04-04T10:00:00.000Z"),
+      errorMessage: null,
+      id: "credential-1",
+      isDefault: false,
+      modelProvider: "openai",
+      name: "OpenAI Primary",
+      refreshToken: null,
+      refreshedAt: null,
+      status: "active",
+      type: "api_key",
+      updatedAt: new Date("2026-04-04T10:06:00.000Z"),
+    }],
+    sessionRows: [{
+      currentModelProviderCredentialModelId: "model-1",
+      currentReasoningLevel: "high",
+      id: "session-1",
+    }],
+    targetCredentialId: "credential-1",
+    targetCredentialModels: [{
+      id: "model-1",
+      isDefault: true,
+      modelId: "gpt-5",
+      modelProviderCredentialId: "credential-1",
+      reasoningLevels: ["medium", "high"],
+    }],
+  });
+
+  const mutation = new DeleteModelProviderCredentialMutation();
+
+  await assert.rejects(
+    mutation.execute(
+      null,
+      {
         input: {
           id: "credential-1",
         },
       },
+      harness.getContext(),
+    ),
+    new Error(
+      "This credential is still used by agent Research Assistant and 1 existing session. Select a replacement credential before deleting it.",
+    ),
+  );
+  assert.deepEqual(harness.getDeletedCredentialIds(), []);
+  assert.equal(harness.getCredentials().length, 1);
+});
+
+test("DeleteModelProviderCredentialMutation reassigns affected agents and sessions before deleting", async () => {
+  const harness = new DeleteModelProviderCredentialMutationTestHarness({
+    agentRows: [{
+      defaultModelProviderCredentialModelId: "model-1",
+      defaultReasoningLevel: "high",
+      id: "agent-1",
+      name: "Research Assistant",
+    }],
+    credentialRows: [{
+      companyId: "company-123",
+      createdAt: new Date("2026-04-04T10:00:00.000Z"),
+      errorMessage: null,
+      id: "credential-1",
+      isDefault: false,
+      modelProvider: "openai",
+      name: "OpenAI Primary",
+      refreshToken: null,
+      refreshedAt: null,
+      status: "active",
+      type: "api_key",
+      updatedAt: new Date("2026-04-04T10:06:00.000Z"),
+    }, {
+      companyId: "company-123",
+      createdAt: new Date("2026-04-05T10:00:00.000Z"),
+      errorMessage: null,
+      id: "credential-2",
+      isDefault: true,
+      modelProvider: "anthropic",
+      name: "Anthropic Backup",
+      refreshToken: null,
+      refreshedAt: null,
+      status: "active",
+      type: "api_key",
+      updatedAt: new Date("2026-04-05T10:06:00.000Z"),
+    }],
+    replacementCredentialId: "credential-2",
+    replacementCredentialModels: [{
+      id: "model-2",
+      isDefault: true,
+      modelId: "claude-sonnet-4-20250514",
+      modelProviderCredentialId: "credential-2",
+      reasoningLevels: ["medium", "high"],
+    }],
+    sessionRows: [{
+      currentModelProviderCredentialModelId: "model-1",
+      currentReasoningLevel: "high",
+      id: "session-1",
+    }],
+    targetCredentialId: "credential-1",
+    targetCredentialModels: [{
+      id: "model-1",
+      isDefault: true,
+      modelId: "gpt-5",
+      modelProviderCredentialId: "credential-1",
+      reasoningLevels: ["medium", "high"],
+    }],
+  });
+
+  const mutation = new DeleteModelProviderCredentialMutation();
+  const deletedCredential = await mutation.execute(
+    null,
+    {
+      input: {
+        id: "credential-1",
+        replacementCredentialId: "credential-2",
+      },
     },
-  });
+    harness.getContext(),
+  );
 
-  assert.equal(response.statusCode, 200);
-  const document = response.json();
-  assert.deepEqual(document.data.DeleteModelProviderCredential, {
-    id: "credential-1",
-    companyId: "company-123",
-    name: "OpenAI / Codex",
-  });
-  assert.equal(database.deletedRows.length, 1);
-
-  await app.close();
+  assert.equal(deletedCredential.id, "credential-1");
+  assert.deepEqual(harness.getDeletedCredentialIds(), ["credential-1"]);
+  assert.equal(harness.getAgents()[0]?.defaultModelProviderCredentialModelId, "model-2");
+  assert.equal(harness.getAgents()[0]?.defaultReasoningLevel, "high");
+  assert.equal(harness.getSessions()[0]?.currentModelProviderCredentialModelId, "model-2");
+  assert.equal(harness.getSessions()[0]?.currentReasoningLevel, "high");
+  assert.equal(harness.getCredentials().length, 1);
+  assert.equal(harness.getCredentials()[0]?.id, "credential-2");
 });

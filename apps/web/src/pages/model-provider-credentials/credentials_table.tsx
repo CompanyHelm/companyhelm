@@ -1,20 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { RefreshCcwIcon, StarIcon, Trash2Icon } from "lucide-react";
+import { RefreshCcwIcon, StarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelButton,
-  AlertDialogCancelAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -25,6 +12,11 @@ import {
 } from "@/components/ui/table";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import {
+  DeleteCredentialDialog,
+  type DeleteCredentialDialogAgentRecord,
+  type DeleteCredentialDialogReplacementRecord,
+} from "./delete_credential_dialog";
 import {
   getCredentialRefreshFailureReason,
   getCredentialRefreshFailureRecoveryMessage,
@@ -41,20 +33,26 @@ export type CredentialsTableRecord = {
   modelProvider: string;
   name: string;
   refreshedAt: string | null;
+  sessionCount: number;
   status: "active" | "error";
   type: "api_key" | "oauth_token";
   updatedAt: string;
+  usingAgents: DeleteCredentialDialogAgentRecord[];
 };
 
 interface CredentialsTableProps {
   credentials: CredentialsTableRecord[];
   defaultingCredentialId: string | null;
-  refreshingCredentialId: string | null;
+  deletingCredentialId: string | null;
   isLoading: boolean;
-  onDelete: (credentialId: string) => Promise<void>;
+  onDelete: (input: {
+    credentialId: string;
+    replacementCredentialId?: string | null;
+  }) => Promise<void>;
   onRefreshToken: (credentialId: string) => Promise<void>;
   onSetDefault: (credentialId: string) => Promise<void>;
-  deletingCredentialId: string | null;
+  refreshingCredentialId: string | null;
+  replacementOptions: DeleteCredentialDialogReplacementRecord[];
 }
 
 function formatTimestamp(value: string): string {
@@ -116,7 +114,11 @@ export function CredentialsTable(props: CredentialsTableProps) {
             <TableRow
               key={credential.id}
               className="cursor-pointer transition hover:bg-muted/40"
-              onClick={() => {
+              onClick={(event) => {
+                if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) {
+                  return;
+                }
+
                 void navigate({
                   to: OrganizationPath.route("/model-provider-credentials/$credentialId"),
                   params: {
@@ -186,50 +188,12 @@ export function CredentialsTable(props: CredentialsTableProps) {
                   >
                     <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={props.deletingCredentialId === credential.id}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                      >
-                        <Trash2Icon className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent
-                      onClick={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete credential</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete the credential and its stored models. This action
-                          cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancelAction asChild>
-                          <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
-                        </AlertDialogCancelAction>
-                        <AlertDialogPrimaryAction asChild>
-                          <AlertDialogActionButton
-                            variant="destructive"
-                            disabled={props.deletingCredentialId === credential.id}
-                            onClick={async (event) => {
-                              event.stopPropagation();
-                              await props.onDelete(credential.id);
-                            }}
-                          >
-                            Delete
-                          </AlertDialogActionButton>
-                        </AlertDialogPrimaryAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <DeleteCredentialDialog
+                    credential={credential}
+                    deletingCredentialId={props.deletingCredentialId}
+                    onDelete={props.onDelete}
+                    replacementOptions={props.replacementOptions}
+                  />
                 </div>
               </TableCell>
             </TableRow>

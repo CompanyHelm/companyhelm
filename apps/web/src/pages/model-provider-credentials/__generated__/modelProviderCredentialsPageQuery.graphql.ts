@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9a8004679fdd529467a592176cf75132>>
+ * @generated SignedSource<<manual-update>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,19 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type modelProviderCredentialsPageQuery$variables = Record<PropertyKey, never>;
 export type modelProviderCredentialsPageQuery$data = {
+  readonly Agents: ReadonlyArray<{
+    readonly id: string;
+    readonly modelProviderCredentialId: string | null | undefined;
+    readonly name: string;
+  }>;
+  readonly AgentCreateOptions: ReadonlyArray<{
+    readonly id: string;
+    readonly isDefault: boolean;
+    readonly label: string;
+    readonly models: ReadonlyArray<{
+      readonly id: string;
+    }>;
+  }>;
   readonly ModelProviderCredentials: ReadonlyArray<{
     readonly createdAt: string;
     readonly defaultModelId: string | null | undefined;
@@ -29,6 +42,10 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly id: string;
     readonly name: string;
     readonly type: string;
+  }>;
+  readonly Sessions: ReadonlyArray<{
+    readonly id: string;
+    readonly modelProviderCredentialModelId: string | null | undefined;
   }>;
 };
 export type modelProviderCredentialsPageQuery = {
@@ -55,10 +72,134 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "modelProviderCredentialId",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "isDefault",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "label",
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "type",
   "storageKey": null
 },
-v3 = [
+v6 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "authorizationInstructionsMarkdown",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelProvider",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "defaultModelId",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "errorMessage",
+  "storageKey": null
+},
+v11 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "refreshedAt",
+  "storageKey": null
+},
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "createdAt",
+  "storageKey": null
+},
+v13 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "updatedAt",
+  "storageKey": null
+},
+v14 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "modelProviderCredentialModelId",
+  "storageKey": null
+},
+v15 = [
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Agent",
+    "kind": "LinkedField",
+    "name": "Agents",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      (v2/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "AgentCreateProviderOption",
+    "kind": "LinkedField",
+    "name": "AgentCreateOptions",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v3/*: any*/),
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "AgentCreateModelOption",
+        "kind": "LinkedField",
+        "name": "models",
+        "plural": true,
+        "selections": [
+          (v0/*: any*/)
+        ],
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
   {
     "alias": null,
     "args": null,
@@ -69,14 +210,8 @@ v3 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "authorizationInstructionsMarkdown",
-        "storageKey": null
-      }
+      (v5/*: any*/),
+      (v6/*: any*/)
     ],
     "storageKey": null
   },
@@ -89,64 +224,29 @@ v3 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isDefault",
-        "storageKey": null
-      },
+      (v3/*: any*/),
       (v1/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "modelProvider",
-        "storageKey": null
-      },
-      (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "defaultModelId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "errorMessage",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "refreshedAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "updatedAt",
-        "storageKey": null
-      }
+      (v7/*: any*/),
+      (v5/*: any*/),
+      (v8/*: any*/),
+      (v9/*: any*/),
+      (v10/*: any*/),
+      (v11/*: any*/),
+      (v12/*: any*/),
+      (v13/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "Session",
+    "kind": "LinkedField",
+    "name": "Sessions",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v14/*: any*/)
     ],
     "storageKey": null
   }
@@ -157,7 +257,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "modelProviderCredentialsPageQuery",
-    "selections": (v3/*: any*/),
+    "selections": (v15/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -166,19 +266,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "modelProviderCredentialsPageQuery",
-    "selections": (v3/*: any*/)
+    "selections": (v15/*: any*/)
   },
   "params": {
-    "cacheID": "8b859c5fcc9b27812bcf4e6e27758557",
+    "cacheID": "manual-model-provider-credentials-page-query",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    models {\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelProviderCredentialModelId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "07ac495a29edd31c4d2f540d0821ca67";
+(node as any).hash = "manual-model-provider-credentials-page-query";
 
 export default node;
