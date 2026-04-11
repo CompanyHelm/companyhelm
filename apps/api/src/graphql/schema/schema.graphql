@@ -15,7 +15,8 @@ type Query {
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
-  GithubSkillDirectories(repositoryUrl: String!): [GithubSkillDirectory!]!
+  GithubSkillBranches(repositoryUrl: String!): [GithubSkillBranch!]!
+  GithubDiscoveredSkills(repositoryUrl: String!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -68,7 +69,7 @@ type Mutation {
   CreateSecret(input: CreateSecretInput!): Secret!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
-  ImportGithubSkill(input: ImportGithubSkillInput!): Skill!
+  ImportGithubSkills(input: ImportGithubSkillsInput!): [Skill!]!
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
   CreateSkill(input: CreateSkillInput!): Skill!
@@ -173,10 +174,22 @@ type GithubRepository {
   updatedAt: String!
 }
 
-type GithubSkillDirectory {
+type GithubSkillBranch {
+  commitSha: String!
+  isDefault: Boolean!
   name: String!
-  path: String!
+  repository: String!
+}
+
+type GithubDiscoveredSkill {
+  branchName: String!
+  commitSha: String!
+  description: String
   fileList: [String!]!
+  instructions: String!
+  name: String!
+  repository: String!
+  skillDirectory: String!
 }
 
 type InboxHumanQuestion {
@@ -778,10 +791,20 @@ input CreateSecretInput {
   value: String!
 }
 
-input ImportGithubSkillInput {
-  repositoryUrl: String!
-  skillDirectory: String!
+input ImportGithubSkillsInput {
   skillGroupId: ID
+  skills: [ImportGithubSkillRecordInput!]!
+}
+
+input ImportGithubSkillRecordInput {
+  branchName: String!
+  commitSha: String!
+  description: String
+  fileList: [String!]!
+  instructions: String!
+  name: String!
+  repository: String!
+  skillDirectory: String!
 }
 
 input CreateSkillInput {

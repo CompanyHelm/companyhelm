@@ -91,6 +91,39 @@ class GithubSkillCatalogServiceTestHarness {
   }
 }
 
+test("SkillGithubCatalog discovers public repository branches", async () => {
+  const catalog = new SkillGithubCatalog({
+    async getRepositoryBranches() {
+      return {
+        branches: [{
+          commitSha: "commit-sha-main",
+          isDefault: true,
+          name: "main",
+        }, {
+          commitSha: "commit-sha-release",
+          isDefault: false,
+          name: "release",
+        }],
+        repository: "openai/skills",
+      };
+    },
+  } as never);
+
+  const discoveredBranches = await catalog.discoverBranches("https://github.com/openai/skills");
+
+  assert.deepEqual(discoveredBranches, [{
+    commitSha: "commit-sha-main",
+    isDefault: true,
+    name: "main",
+    repository: "openai/skills",
+  }, {
+    commitSha: "commit-sha-release",
+    isDefault: false,
+    name: "release",
+    repository: "openai/skills",
+  }]);
+});
+
 test("SkillGithubCatalog discovers SKILL.md files from a public repository tree", async () => {
   const catalog = new SkillGithubCatalog({
     async getRepositoryTree() {
@@ -120,7 +153,10 @@ test("SkillGithubCatalog discovers SKILL.md files from a public repository tree"
     },
   } as never);
 
-  const discoveredSkills = await catalog.discoverSkills("https://github.com/openai/skills");
+  const discoveredSkills = await catalog.discoverSkills({
+    branchName: "main",
+    repository: "https://github.com/openai/skills",
+  });
 
   assert.deepEqual(discoveredSkills, [{
     branchName: "main",
@@ -128,6 +164,7 @@ test("SkillGithubCatalog discovers SKILL.md files from a public repository tree"
     description: "Browser automation guidance",
     fileList: ["skills/browser/scripts/open.sh"],
     importable: true,
+    instructions: "Read SKILL.md first.",
     name: "browser",
     repository: "openai/skills",
     skillDirectory: "skills/browser",
@@ -135,7 +172,7 @@ test("SkillGithubCatalog discovers SKILL.md files from a public repository tree"
   }]);
 });
 
-test("SkillGithubCatalog imports one public GitHub skill with tracked branch metadata", async () => {
+test("SkillGithubCatalog imports discovered GitHub skills without refetching repository content", async () => {
   const transactionProvider = GithubSkillCatalogServiceTestHarness.createTransactionProvider({
     groups: [{
       id: "group-1",
@@ -144,38 +181,26 @@ test("SkillGithubCatalog imports one public GitHub skill with tracked branch met
   });
   const catalog = new SkillGithubCatalog({
     async getRepositoryTree() {
-      return {
-        branchName: "main",
-        commitSha: "commit-sha-2",
-        repository: "openai/skills",
-        treeEntries: [{
-          path: "skills/browser/SKILL.md",
-          sha: "blob-skill",
-          type: "blob" as const,
-        }, {
-          path: "skills/browser/scripts/open.sh",
-          sha: "blob-script",
-          type: "blob" as const,
-        }],
-      };
+      throw new Error("importSkills should not refetch the repository tree.");
     },
     async readBlob() {
-      return [
-        "---",
-        "description: Browser automation guidance",
-        "name: Browser automation",
-        "---",
-        "",
-        "Read SKILL.md first.",
-      ].join("\n");
+      throw new Error("importSkills should not read GitHub blobs during submit.");
     },
   } as never);
 
-  const createdSkill = await catalog.importSkill(transactionProvider as never, {
+  const [createdSkill] = await catalog.importSkills(transactionProvider as never, {
     companyId: "company-1",
-    repository: "https://github.com/openai/skills",
-    skillDirectory: "skills/browser",
     skillGroupId: "group-1",
+    skills: [{
+      branchName: "main",
+      commitSha: "commit-sha-2",
+      description: "Browser automation guidance",
+      fileList: ["skills/browser/scripts/open.sh"],
+      instructions: "Read SKILL.md first.",
+      name: "Browser automation",
+      repository: "openai/skills",
+      skillDirectory: "skills/browser",
+    }],
   });
 
   assert.equal(createdSkill.githubBranchName, "main");

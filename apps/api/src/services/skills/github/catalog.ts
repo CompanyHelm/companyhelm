@@ -6,12 +6,20 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 import type { SkillRecord } from "../service.ts";
 import { SkillGithubPublicClient } from "./public_client.ts";
 
+export type SkillGithubDiscoveredBranchRecord = {
+  commitSha: string;
+  isDefault: boolean;
+  name: string;
+  repository: string;
+};
+
 export type SkillGithubDiscoveredSkillRecord = {
   branchName: string;
   commitSha: string;
   description: string | null;
   fileList: string[];
   importable: boolean;
+  instructions: string | null;
   name: string;
   repository: string;
   skillDirectory: string;
@@ -38,9 +46,20 @@ type SkillGroupRecord = {
   id: string;
 };
 
+type CreateGithubSkillRecord = {
+  branchName: string;
+  commitSha: string;
+  description: string;
+  fileList: string[];
+  instructions: string;
+  name: string;
+  repository: string;
+  skillDirectory: string;
+};
+
 /**
- * Discovers GitHub-backed skills from public repositories and imports the selected directory into
- * the company skill catalog after revalidating the repository contents server-side.
+ * Discovers GitHub-backed skills from public repositories and imports selected discovery results
+ * into the company skill catalog without cloning repositories or refetching content during submit.
  */
 @injectable()
 export class SkillGithubCatalog {
@@ -53,8 +72,25 @@ export class SkillGithubCatalog {
     this.githubPublicClient = githubPublicClient;
   }
 
-  async discoverSkills(repository: string): Promise<SkillGithubDiscoveredSkillRecord[]> {
-    const repositoryTree = await this.githubPublicClient.getRepositoryTree(repository);
+  async discoverBranches(repository: string): Promise<SkillGithubDiscoveredBranchRecord[]> {
+    const repositoryBranches = await this.githubPublicClient.getRepositoryBranches(repository);
+
+    return repositoryBranches.branches.map((branch) => ({
+      commitSha: branch.commitSha,
+      isDefault: branch.isDefault,
+      name: branch.name,
+      repository: repositoryBranches.repository,
+    }));
+  }
+
+  async discoverSkills(input: {
+    branchName: string;
+    repository: string;
+  }): Promise<SkillGithubDiscoveredSkillRecord[]> {
+    const repositoryTree = await this.githubPublicClient.getRepositoryTree(
+      input.repository,
+      input.branchName,
+    );
     const skillFilePaths = repositoryTree.treeEntries
       .filter((treeEntry) => treeEntry.path === "SKILL.md" || treeEntry.path.endsWith("/SKILL.md"))
       .map((treeEntry) => treeEntry.path)
@@ -79,6 +115,7 @@ export class SkillGithubCatalog {
           description: null,
           fileList,
           importable: false,
+          instructions: null,
           name: this.getSkillName(skillDirectory, repositoryTree.repository),
           repository: repositoryTree.repository,
           skillDirectory,
@@ -100,6 +137,7 @@ export class SkillGithubCatalog {
             description: this.normalizeOptionalTextValue(skillDocument.data.description),
             fileList,
             importable: false,
+            instructions: null,
             name: skillName,
             repository: repositoryTree.repository,
             skillDirectory,
@@ -113,6 +151,7 @@ export class SkillGithubCatalog {
           description: this.normalizeOptionalTextValue(skillDocument.data.description),
           fileList,
           importable: true,
+          instructions,
           name: skillName,
           repository: repositoryTree.repository,
           skillDirectory,
@@ -125,6 +164,7 @@ export class SkillGithubCatalog {
           description: null,
           fileList,
           importable: false,
+          instructions: null,
           name: this.getSkillName(skillDirectory, repositoryTree.repository),
           repository: repositoryTree.repository,
           skillDirectory,
@@ -134,83 +174,63 @@ export class SkillGithubCatalog {
     }));
   }
 
-  async importSkill(
+  async importSkills(
     transactionProvider: TransactionProviderInterface,
     input: {
       companyId: string;
-      repository: string;
-      skillDirectory: string;
       skillGroupId?: string | null;
+      skills: Array<{
+        branchName: string;
+        commitSha: string;
+        description?: string | null;
+        fileList: string[];
+        instructions: string;
+        name: string;
+        repository: string;
+        skillDirectory: string;
+      }>;
     },
-  ): Promise<SkillRecord> {
-    const normalizedSkillDirectory = this.normalizeSkillDirectory(input.skillDirectory);
-    const discoveredSkills = await this.discoverSkills(input.repository);
-    const selectedSkill = discoveredSkills.find((skill) =>
-      this.normalizeSkillDirectory(skill.skillDirectory) === normalizedSkillDirectory
-    );
-    if (!selectedSkill) {
-      throw new Error("GitHub skill directory not found.");
-    }
-    if (!selectedSkill.importable) {
-      throw new Error(selectedSkill.validationError || `Skill ${selectedSkill.skillDirectory} cannot be imported.`);
-    }
-
-    const repositoryTree = await this.githubPublicClient.getRepositoryTree(input.repository);
-    const skillFilePath = selectedSkill.skillDirectory === "."
-      ? "SKILL.md"
-      : `${selectedSkill.skillDirectory}/SKILL.md`;
-    const skillTreeEntry = repositoryTree.treeEntries.find((treeEntry) => treeEntry.path === skillFilePath);
-    if (!skillTreeEntry) {
-      throw new Error("GitHub skill file could not be found.");
-    }
-
-    const skillDocument = matter(
-      await this.githubPublicClient.readBlob(repositoryTree.repository, skillTreeEntry.sha),
-    );
-    const instructions = String(skillDocument.content || "").trim();
-    if (!instructions) {
-      throw new Error("SKILL.md does not contain any instructions.");
-    }
+  ): Promise<SkillRecord[]> {
+    const githubSkillRecords = this.requireGithubSkillRecords(input.skills);
 
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
       const skillGroupId = await this.requireSkillGroupId(selectableDatabase, input.companyId, input.skillGroupId);
-      const [existingSkill] = await selectableDatabase
-        .select({
-          skillDirectory: skills.skillDirectory,
-        })
+      const existingSkills = await selectableDatabase
+        .select(this.skillSelection())
         .from(skills)
-        .where(and(
-          eq(skills.companyId, input.companyId),
-          eq(skills.repository, repositoryTree.repository),
-          eq(skills.skillDirectory, selectedSkill.skillDirectory),
-        )) as Array<{ skillDirectory: string | null }>;
-      if (existingSkill) {
-        throw new Error(`Skill ${existingSkill.skillDirectory} is already imported.`);
+        .where(eq(skills.companyId, input.companyId)) as SkillRecord[];
+
+      this.requireUniqueSkillSelections(existingSkills, githubSkillRecords);
+
+      const createdSkills: SkillRecord[] = [];
+
+      for (const githubSkillRecord of githubSkillRecords) {
+        const [createdSkill] = await insertableDatabase
+          .insert(skills)
+          .values({
+            companyId: input.companyId,
+            description: githubSkillRecord.description,
+            fileList: [...githubSkillRecord.fileList],
+            githubBranchName: githubSkillRecord.branchName,
+            githubTrackedCommitSha: githubSkillRecord.commitSha,
+            instructions: githubSkillRecord.instructions,
+            name: githubSkillRecord.name,
+            repository: githubSkillRecord.repository,
+            skillDirectory: githubSkillRecord.skillDirectory,
+            skillGroupId,
+          })
+          .returning?.(this.skillSelection()) as SkillRecord[];
+
+        if (!createdSkill) {
+          throw new Error(`Failed to import GitHub skill ${githubSkillRecord.skillDirectory}.`);
+        }
+
+        createdSkills.push(createdSkill);
       }
 
-      const [createdSkill] = await insertableDatabase
-        .insert(skills)
-        .values({
-          companyId: input.companyId,
-          description: this.normalizeOptionalTextValue(skillDocument.data.description) ?? "",
-          fileList: [...selectedSkill.fileList],
-          githubBranchName: repositoryTree.branchName,
-          githubTrackedCommitSha: repositoryTree.commitSha,
-          instructions,
-          name: selectedSkill.name,
-          repository: repositoryTree.repository,
-          skillDirectory: selectedSkill.skillDirectory,
-          skillGroupId,
-        })
-        .returning?.(this.skillSelection()) as SkillRecord[];
-
-      if (!createdSkill) {
-        throw new Error("Failed to import GitHub skill.");
-      }
-
-      return createdSkill;
+      return createdSkills;
     });
   }
 
@@ -264,6 +284,16 @@ export class SkillGithubCatalog {
     return normalizedValue.length > 0 ? normalizedValue : null;
   }
 
+  private normalizeFileList(value: string[]): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .map((path) => String(path || "").trim())
+      .filter((path) => path.length > 0);
+  }
+
   private normalizeSkillDirectory(value: string): string {
     const normalizedValue = String(value || "").trim().replace(/^\/+|\/+$/g, "");
     if (!normalizedValue) {
@@ -271,6 +301,78 @@ export class SkillGithubCatalog {
     }
 
     return normalizedValue;
+  }
+
+  private requireGithubSkillRecords(
+    value: Array<{
+      branchName: string;
+      commitSha: string;
+      description?: string | null;
+      fileList: string[];
+      instructions: string;
+      name: string;
+      repository: string;
+      skillDirectory: string;
+    }>,
+  ): CreateGithubSkillRecord[] {
+    if (!Array.isArray(value) || value.length === 0) {
+      throw new Error("At least one GitHub skill must be selected.");
+    }
+
+    return value.map((record) => ({
+      branchName: this.requireNonEmptyValue(record.branchName, "GitHub branch name"),
+      commitSha: this.requireNonEmptyValue(record.commitSha, "GitHub tracked commit sha"),
+      description: this.normalizeOptionalTextValue(record.description) ?? "",
+      fileList: this.normalizeFileList(record.fileList),
+      instructions: this.requireNonEmptyValue(record.instructions, "GitHub skill instructions"),
+      name: this.requireNonEmptyValue(record.name, "GitHub skill name"),
+      repository: this.requireNonEmptyValue(record.repository, "GitHub repository"),
+      skillDirectory: this.normalizeSkillDirectory(record.skillDirectory),
+    }));
+  }
+
+  private requireNonEmptyValue(value: string, label: string): string {
+    const normalizedValue = String(value || "").trim();
+    if (!normalizedValue) {
+      throw new Error(`${label} is required.`);
+    }
+
+    return normalizedValue;
+  }
+
+  private requireUniqueSkillSelections(
+    existingSkills: SkillRecord[],
+    githubSkillRecords: CreateGithubSkillRecord[],
+  ): void {
+    const selectedSkillNames = new Set<string>();
+    const selectedSkillRepositories = new Set<string>();
+
+    // Validate the whole selection up front so a partially imported batch can never happen.
+    for (const githubSkillRecord of githubSkillRecords) {
+      const selectedRepositoryKey = `${githubSkillRecord.repository}:${githubSkillRecord.skillDirectory}`;
+      if (selectedSkillRepositories.has(selectedRepositoryKey)) {
+        throw new Error(`Skill ${githubSkillRecord.skillDirectory} was selected more than once.`);
+      }
+      selectedSkillRepositories.add(selectedRepositoryKey);
+
+      if (selectedSkillNames.has(githubSkillRecord.name)) {
+        throw new Error(`Skill name ${githubSkillRecord.name} was selected more than once.`);
+      }
+      selectedSkillNames.add(githubSkillRecord.name);
+
+      const existingSkill = existingSkills.find((skill) =>
+        skill.repository === githubSkillRecord.repository
+        && skill.skillDirectory === githubSkillRecord.skillDirectory
+      );
+      if (existingSkill?.skillDirectory) {
+        throw new Error(`Skill ${existingSkill.skillDirectory} is already imported.`);
+      }
+
+      const existingSkillName = existingSkills.find((skill) => skill.name === githubSkillRecord.name);
+      if (existingSkillName) {
+        throw new Error(`Skill name ${existingSkillName.name} already exists.`);
+      }
+    }
   }
 
   private async requireSkillGroupId(

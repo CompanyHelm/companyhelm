@@ -243,7 +243,7 @@ class SkillsGraphqlTestHarness {
   }
 }
 
-function createJsonResponse(payload: Record<string, unknown>, status = 200): Response {
+function createJsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     headers: {
       "content-type": "application/json",
@@ -398,7 +398,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
   await app.close();
 });
 
-test("GraphQL GitHub skill discovery and import use public repository URLs", async () => {
+test("GraphQL GitHub skill discovery and batch import reuse the discovered payload", async () => {
   const app = Fastify();
   const config = SkillsGraphqlTestHarness.createConfigMock();
   const database = SkillsGraphqlTestHarness.createDatabaseMock();
@@ -427,14 +427,31 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
     },
   };
   const originalFetch = global.fetch;
+  let allowGithubFetchDuringMutation = true;
   global.fetch = async (input) => {
     const url = String(input);
+    if (!allowGithubFetchDuringMutation && url.includes("/repos/companyhelm/skills")) {
+      throw new Error(`Mutation should not refetch GitHub content: ${url}`);
+    }
     if (url.endsWith("/repos/companyhelm/skills")) {
       return createJsonResponse({
         default_branch: "main",
         full_name: "companyhelm/skills",
         private: false,
       });
+    }
+    if (url.includes("/repos/companyhelm/skills/branches?")) {
+      return createJsonResponse([{
+        commit: {
+          sha: "commit-sha-main",
+        },
+        name: "main",
+      }, {
+        commit: {
+          sha: "commit-sha-release",
+        },
+        name: "release",
+      }]);
     }
     if (url.includes("/repos/companyhelm/skills/branches/main")) {
       return createJsonResponse({
@@ -488,7 +505,7 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
       new ModelProviderCredentialsQueryResolver(),
     ).register(app);
 
-    const directoriesResponse = await app.inject({
+    const branchesResponse = await app.inject({
       method: "POST",
       url: "/graphql",
       headers: {
@@ -496,11 +513,12 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
       },
       payload: {
         query: `
-          query GithubSkillDirectories($repositoryUrl: String!) {
-            GithubSkillDirectories(repositoryUrl: $repositoryUrl) {
+          query GithubSkillBranches($repositoryUrl: String!) {
+            GithubSkillBranches(repositoryUrl: $repositoryUrl) {
+              commitSha
+              isDefault
               name
-              path
-              fileList
+              repository
             }
           }
         `,
@@ -510,14 +528,62 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
       },
     });
 
-    assert.equal(directoriesResponse.statusCode, 200);
-    const directoriesDocument = directoriesResponse.json();
-    assert.deepEqual(directoriesDocument.data.GithubSkillDirectories, [{
-      fileList: ["skills/github-browser/scripts/import.sh"],
-      name: "Imported browser",
-      path: "skills/github-browser",
+    assert.equal(branchesResponse.statusCode, 200);
+    const branchesDocument = branchesResponse.json();
+    assert.deepEqual(branchesDocument.data.GithubSkillBranches, [{
+      commitSha: "commit-sha-main",
+      isDefault: true,
+      name: "main",
+      repository: "companyhelm/skills",
+    }, {
+      commitSha: "commit-sha-release",
+      isDefault: false,
+      name: "release",
+      repository: "companyhelm/skills",
     }]);
 
+    const discoveredSkillsResponse = await app.inject({
+      method: "POST",
+      url: "/graphql",
+      headers: {
+        authorization: "Bearer jwt-token",
+      },
+      payload: {
+        query: `
+          query GithubDiscoveredSkills($repositoryUrl: String!, $branchName: String!) {
+            GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {
+              branchName
+              commitSha
+              description
+              fileList
+              instructions
+              name
+              repository
+              skillDirectory
+            }
+          }
+        `,
+        variables: {
+          branchName: "main",
+          repositoryUrl: "https://github.com/companyhelm/skills",
+        },
+      },
+    });
+
+    assert.equal(discoveredSkillsResponse.statusCode, 200);
+    const discoveredSkillsDocument = discoveredSkillsResponse.json();
+    assert.deepEqual(discoveredSkillsDocument.data.GithubDiscoveredSkills, [{
+      branchName: "main",
+      commitSha: "commit-sha-main",
+      description: "Use the imported browser helpers.",
+      fileList: ["skills/github-browser/scripts/import.sh"],
+      instructions: "Use the imported browser helpers.",
+      name: "Imported browser",
+      repository: "companyhelm/skills",
+      skillDirectory: "skills/github-browser",
+    }]);
+
+    allowGithubFetchDuringMutation = false;
     const importResponse = await app.inject({
       method: "POST",
       url: "/graphql",
@@ -526,8 +592,8 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
       },
       payload: {
         query: `
-          mutation ImportGithubSkill($input: ImportGithubSkillInput!) {
-            ImportGithubSkill(input: $input) {
+          mutation ImportGithubSkills($input: ImportGithubSkillsInput!) {
+            ImportGithubSkills(input: $input) {
               id
               companyId
               name
@@ -544,9 +610,8 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
         `,
         variables: {
           input: {
-            repositoryUrl: "https://github.com/companyhelm/skills",
-            skillDirectory: "skills/github-browser",
             skillGroupId: "group-research",
+            skills: discoveredSkillsDocument.data.GithubDiscoveredSkills,
           },
         },
       },
@@ -554,7 +619,7 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
 
     assert.equal(importResponse.statusCode, 200);
     const importDocument = importResponse.json();
-    assert.deepEqual(importDocument.data.ImportGithubSkill, {
+    assert.deepEqual(importDocument.data.ImportGithubSkills, [{
       companyId: "company-123",
       description: "Use the imported browser helpers.",
       fileList: ["skills/github-browser/scripts/import.sh"],
@@ -566,7 +631,7 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
       repository: "companyhelm/skills",
       skillDirectory: "skills/github-browser",
       skillGroupId: "group-research",
-    });
+    }]);
 
     const importedSkillInsert = database.insertedValues.at(-1);
     assert.equal(importedSkillInsert?.githubBranchName, "main");

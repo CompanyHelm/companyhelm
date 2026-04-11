@@ -48,7 +48,7 @@ import { DetachSkillGroupFromAgentMutation } from "./mutations/detach_skill_grou
 import { ExecuteTaskMutation } from "./mutations/execute_task.ts";
 import { ForkSessionMutation } from "./mutations/fork_session.ts";
 import { GetEnvironmentVncUrlMutation } from "./mutations/get_environment_vnc_url.ts";
-import { ImportGithubSkillMutation } from "./mutations/import_github_skill.ts";
+import { ImportGithubSkillsMutation } from "./mutations/import_github_skills.ts";
 import { InterruptSessionMutation } from "./mutations/interrupt_session.ts";
 import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
@@ -89,9 +89,10 @@ import { ComputeProviderDefinitionTemplatesResolver } from "./resolvers/compute_
 import { ComputeProviderDefinitionsQueryResolver } from "./resolvers/compute_provider_definitions.ts";
 import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
+import { GithubDiscoveredSkillsQueryResolver } from "./resolvers/github_discovered_skills.ts";
 import { GithubInstallationsQueryResolver } from "./resolvers/github_installations.ts";
 import { GithubRepositoriesQueryResolver } from "./resolvers/github_repositories.ts";
-import { GithubSkillDirectoriesQueryResolver } from "./resolvers/github_skill_directories.ts";
+import { GithubSkillBranchesQueryResolver } from "./resolvers/github_skill_branches.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 import { InboxHumanQuestionsQueryResolver } from "./resolvers/inbox_human_questions.ts";
 import { InboxHumanQuestionsUpdatedSubscriptionResolver } from "./resolvers/inbox_human_questions_updated.ts";
@@ -203,7 +204,6 @@ export class GraphqlApplication {
     githubAppConfigQueryResolver?: GithubAppConfigQueryResolver,
     githubInstallationsQueryResolver?: GithubInstallationsQueryResolver,
     githubRepositoriesQueryResolver?: GithubRepositoriesQueryResolver,
-    githubSkillDirectoriesQueryResolver?: GithubSkillDirectoriesQueryResolver,
     createGithubInstallationUrlMutation?: CreateGithubInstallationUrlMutation,
     addGithubInstallationMutation?: AddGithubInstallationMutation,
     deleteGithubInstallationMutation?: DeleteGithubInstallationMutation,
@@ -268,7 +268,6 @@ export class GraphqlApplication {
     getEnvironmentVncUrlMutation?: GetEnvironmentVncUrlMutation,
     forkSessionMutation?: ForkSessionMutation,
     createSkillMutation?: CreateSkillMutation,
-    importGithubSkillMutation?: ImportGithubSkillMutation,
     updateSkillMutation?: UpdateSkillMutation,
     skillGroupsQueryResolver?: SkillGroupsQueryResolver,
     skillQueryResolver?: SkillQueryResolver,
@@ -279,6 +278,9 @@ export class GraphqlApplication {
     sessionInboxHumanQuestionsUpdatedSubscriptionResolver?: SessionInboxHumanQuestionsUpdatedSubscriptionResolver,
     inboxHumanQuestionsUpdatedSubscriptionResolver?: InboxHumanQuestionsUpdatedSubscriptionResolver,
     deleteAgentConversationMutation?: DeleteAgentConversationMutation,
+    githubSkillBranchesQueryResolver?: GithubSkillBranchesQueryResolver,
+    githubDiscoveredSkillsQueryResolver?: GithubDiscoveredSkillsQueryResolver,
+    importGithubSkillsMutation?: ImportGithubSkillsMutation,
   ): GraphqlApplication {
     const resolvedRedisService = redisService ?? GraphqlApplication.createFallbackRedisService(config);
     const resolvedGraphqlErrorLogger = graphqlErrorLogger ?? new GraphqlErrorLogger();
@@ -376,7 +378,6 @@ export class GraphqlApplication {
       githubAppConfigQueryResolver,
       githubInstallationsQueryResolver,
       githubRepositoriesQueryResolver,
-      githubSkillDirectoriesQueryResolver,
       createGithubInstallationUrlMutation,
       addGithubInstallationMutation,
       deleteGithubInstallationMutation,
@@ -387,7 +388,6 @@ export class GraphqlApplication {
       secretsQueryResolver,
       updateCompanySettingsMutation,
       createSkillMutation,
-      importGithubSkillMutation,
       updateSkillMutation,
       skillGroupsQueryResolver,
       skillQueryResolver,
@@ -395,6 +395,9 @@ export class GraphqlApplication {
       createSkillGroupMutation,
       deleteSkillMutation,
       deleteSkillGroupMutation,
+      githubSkillBranchesQueryResolver,
+      githubDiscoveredSkillsQueryResolver,
+      importGithubSkillsMutation,
     );
     const taskGraphqlRegistry = new TaskGraphqlRegistry(
       createTaskMutation,

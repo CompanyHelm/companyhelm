@@ -4,22 +4,30 @@ import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
 import { Mutation } from "./mutation.ts";
 
-type ImportGithubSkillMutationArguments = {
+type ImportGithubSkillsMutationArguments = {
   input: {
-    repositoryUrl: string;
-    skillDirectory: string;
     skillGroupId?: string | null;
+    skills: Array<{
+      branchName: string;
+      commitSha: string;
+      description?: string | null;
+      fileList: string[];
+      instructions: string;
+      name: string;
+      repository: string;
+      skillDirectory: string;
+    }>;
   };
 };
 
 /**
- * Imports a skill from a public GitHub repository by reading the selected `SKILL.md` package and
- * persisting the resulting skill metadata into the company catalog.
+ * Persists the selected GitHub discovery results into the company skill catalog without issuing a
+ * second repository download during submit.
  */
 @injectable()
-export class ImportGithubSkillMutation extends Mutation<
-  ImportGithubSkillMutationArguments,
-  GraphqlSkillRecord
+export class ImportGithubSkillsMutation extends Mutation<
+  ImportGithubSkillsMutationArguments,
+  GraphqlSkillRecord[]
 > {
   private readonly skillGithubCatalog: SkillGithubCatalog;
 
@@ -29,23 +37,22 @@ export class ImportGithubSkillMutation extends Mutation<
   }
 
   protected resolve = async (
-    arguments_: ImportGithubSkillMutationArguments,
+    arguments_: ImportGithubSkillsMutationArguments,
     context: GraphqlRequestContext,
-  ): Promise<GraphqlSkillRecord> => {
+  ): Promise<GraphqlSkillRecord[]> => {
     if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
 
-    const skill = await this.skillGithubCatalog.importSkill(
+    const skills = await this.skillGithubCatalog.importSkills(
       context.app_runtime_transaction_provider,
       {
         companyId: context.authSession.company.id,
-        repository: arguments_.input.repositoryUrl,
-        skillDirectory: arguments_.input.skillDirectory,
         skillGroupId: arguments_.input.skillGroupId,
+        skills: arguments_.input.skills,
       },
     );
 
-    return GraphqlSkillPresenter.presentSkill(skill);
+    return skills.map((skill) => GraphqlSkillPresenter.presentSkill(skill));
   };
 }

@@ -15,16 +15,17 @@ import { DeleteGithubInstallationMutation } from "../mutations/delete_github_ins
 import { DeleteSecretMutation } from "../mutations/delete_secret.ts";
 import { DeleteSkillGroupMutation } from "../mutations/delete_skill_group.ts";
 import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
-import { ImportGithubSkillMutation } from "../mutations/import_github_skill.ts";
+import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
 import { UpdateSecretMutation } from "../mutations/update_secret.ts";
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
 import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
+import { GithubDiscoveredSkillsQueryResolver } from "../resolvers/github_discovered_skills.ts";
 import { GithubInstallationsQueryResolver } from "../resolvers/github_installations.ts";
 import { GithubRepositoriesQueryResolver } from "../resolvers/github_repositories.ts";
-import { GithubSkillDirectoriesQueryResolver } from "../resolvers/github_skill_directories.ts";
+import { GithubSkillBranchesQueryResolver } from "../resolvers/github_skill_branches.ts";
 import { HealthQueryResolver } from "../resolvers/health.ts";
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { SecretsQueryResolver } from "../resolvers/secrets.ts";
@@ -50,11 +51,12 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly deleteSkillMutation: DeleteSkillMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
   private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
+  private readonly githubDiscoveredSkillsQueryResolver: GithubDiscoveredSkillsQueryResolver;
   private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
   private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
-  private readonly githubSkillDirectoriesQueryResolver: GithubSkillDirectoriesQueryResolver;
+  private readonly githubSkillBranchesQueryResolver: GithubSkillBranchesQueryResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
-  private readonly importGithubSkillMutation: ImportGithubSkillMutation;
+  private readonly importGithubSkillsMutation: ImportGithubSkillsMutation;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
   private readonly secretsQueryResolver: SecretsQueryResolver;
@@ -78,8 +80,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     githubInstallationsQueryResolver: GithubInstallationsQueryResolver = new GithubInstallationsQueryResolver(),
     @inject(GithubRepositoriesQueryResolver)
     githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver = new GithubRepositoriesQueryResolver(),
-    @inject(GithubSkillDirectoriesQueryResolver)
-    githubSkillDirectoriesQueryResolver?: GithubSkillDirectoriesQueryResolver,
     @inject(CreateGithubInstallationUrlMutation)
     createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation =
       new CreateGithubInstallationUrlMutation(
@@ -110,8 +110,6 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     updateCompanySettingsMutation: UpdateCompanySettingsMutation = new UpdateCompanySettingsMutation(),
     @inject(CreateSkillMutation)
     createSkillMutation?: CreateSkillMutation,
-    @inject(ImportGithubSkillMutation)
-    importGithubSkillMutation?: ImportGithubSkillMutation,
     @inject(UpdateSkillMutation)
     updateSkillMutation?: UpdateSkillMutation,
     @inject(SkillGroupsQueryResolver)
@@ -126,6 +124,12 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     deleteSkillMutation?: DeleteSkillMutation,
     @inject(DeleteSkillGroupMutation)
     deleteSkillGroupMutation?: DeleteSkillGroupMutation,
+    @inject(GithubSkillBranchesQueryResolver)
+    githubSkillBranchesQueryResolver?: GithubSkillBranchesQueryResolver,
+    @inject(GithubDiscoveredSkillsQueryResolver)
+    githubDiscoveredSkillsQueryResolver?: GithubDiscoveredSkillsQueryResolver,
+    @inject(ImportGithubSkillsMutation)
+    importGithubSkillsMutation?: ImportGithubSkillsMutation,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -142,13 +146,15 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
+    this.githubDiscoveredSkillsQueryResolver = githubDiscoveredSkillsQueryResolver
+      ?? new GithubDiscoveredSkillsQueryResolver(defaultSkillGithubCatalog);
     this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
-    this.githubSkillDirectoriesQueryResolver = githubSkillDirectoriesQueryResolver
-      ?? new GithubSkillDirectoriesQueryResolver(defaultSkillGithubCatalog);
+    this.githubSkillBranchesQueryResolver = githubSkillBranchesQueryResolver
+      ?? new GithubSkillBranchesQueryResolver(defaultSkillGithubCatalog);
     this.healthQueryResolver = healthQueryResolver;
-    this.importGithubSkillMutation = importGithubSkillMutation
-      ?? new ImportGithubSkillMutation(defaultSkillGithubCatalog);
+    this.importGithubSkillsMutation = importGithubSkillsMutation
+      ?? new ImportGithubSkillsMutation(defaultSkillGithubCatalog);
     this.meQueryResolver = meQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
@@ -172,7 +178,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteSecret: this.deleteSecretMutation.execute,
         DeleteSkill: this.deleteSkillMutation.execute,
         DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
-        ImportGithubSkill: this.importGithubSkillMutation.execute,
+        ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
         UpdateSecret: this.updateSecretMutation.execute,
@@ -181,9 +187,10 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       Query: {
         CompanySettings: this.companySettingsQueryResolver.execute,
         GithubAppConfig: this.githubAppConfigQueryResolver.execute,
+        GithubDiscoveredSkills: this.githubDiscoveredSkillsQueryResolver.execute,
         GithubInstallations: this.githubInstallationsQueryResolver.execute,
         GithubRepositories: this.githubRepositoriesQueryResolver.execute,
-        GithubSkillDirectories: this.githubSkillDirectoriesQueryResolver.execute,
+        GithubSkillBranches: this.githubSkillBranchesQueryResolver.execute,
         health: this.healthQueryResolver.execute,
         Me: this.meQueryResolver.execute,
         Secrets: this.secretsQueryResolver.execute,

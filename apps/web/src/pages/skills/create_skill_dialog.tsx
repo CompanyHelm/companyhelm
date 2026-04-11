@@ -18,18 +18,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type { createSkillDialogGithubSkillDirectoriesQuery } from "./__generated__/createSkillDialogGithubSkillDirectoriesQuery.graphql";
+import type { createSkillDialogGithubDiscoveredSkillsQuery } from "./__generated__/createSkillDialogGithubDiscoveredSkillsQuery.graphql";
+import type { createSkillDialogGithubSkillBranchesQuery } from "./__generated__/createSkillDialogGithubSkillBranchesQuery.graphql";
 
 export type CreateSkillDialogGroupOption = {
   id: string;
   name: string;
 };
 
-type CreateSkillDialogGithubDirectoryOption = {
+export type CreateSkillDialogGithubImportRecord = {
+  branchName: string;
+  commitSha: string;
+  description: string | null;
   fileList: string[];
+  instructions: string;
   name: string;
-  path: string;
+  repository: string;
+  skillDirectory: string;
+};
+
+type CreateSkillDialogGithubBranchOption = {
+  commitSha: string;
+  isDefault: boolean;
+  name: string;
+  repository: string;
 };
 
 interface CreateSkillDialogProps {
@@ -44,9 +65,8 @@ interface CreateSkillDialogProps {
     skillGroupId?: string | null;
   }): Promise<void>;
   onImportGithub(input: {
-    repositoryUrl: string;
-    skillDirectory: string;
     skillGroupId?: string | null;
+    skills: CreateSkillDialogGithubImportRecord[];
   }): Promise<void>;
   onOpenChange(open: boolean): void;
 }
@@ -54,29 +74,50 @@ interface CreateSkillDialogProps {
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
 
 type CreateSkillDialogMode = "choose" | "github" | "manual";
+type CreateSkillDialogGithubStep = "repository" | "skills";
 
-const createSkillDialogGithubSkillDirectoriesQueryNode = graphql`
-  query createSkillDialogGithubSkillDirectoriesQuery($repositoryUrl: String!) {
-    GithubSkillDirectories(repositoryUrl: $repositoryUrl) {
+const createSkillDialogGithubSkillBranchesQueryNode = graphql`
+  query createSkillDialogGithubSkillBranchesQuery($repositoryUrl: String!) {
+    GithubSkillBranches(repositoryUrl: $repositoryUrl) {
+      commitSha
+      isDefault
       name
-      path
+      repository
+    }
+  }
+`;
+
+const createSkillDialogGithubDiscoveredSkillsQueryNode = graphql`
+  query createSkillDialogGithubDiscoveredSkillsQuery($repositoryUrl: String!, $branchName: String!) {
+    GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {
+      branchName
+      commitSha
+      description
       fileList
+      instructions
+      name
+      repository
+      skillDirectory
     }
   }
 `;
 
 /**
- * Hosts the new-skill flow, starting with a source chooser and then branching into either manual
- * authoring or GitHub-backed import from a pasted public repository URL.
+ * Hosts the new-skill flow, including a two-step GitHub import wizard that first resolves public
+ * branches and then lets the user choose which discovered skills to create in the catalog.
  */
 export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const environment = useRelayEnvironment();
   const [description, setDescription] = useState("");
+  const [githubBranchName, setGithubBranchName] = useState("");
+  const [githubBranches, setGithubBranches] = useState<CreateSkillDialogGithubBranchOption[]>([]);
+  const [githubDiscoveredSkills, setGithubDiscoveredSkills] = useState<CreateSkillDialogGithubImportRecord[]>([]);
   const [githubRepositoryUrl, setGithubRepositoryUrl] = useState("");
-  const [githubSkillDirectories, setGithubSkillDirectories] = useState<CreateSkillDialogGithubDirectoryOption[]>([]);
-  const [githubSkillDirectoryPath, setGithubSkillDirectoryPath] = useState("");
-  const [isLoadingGithubSkillDirectories, setIsLoadingGithubSkillDirectories] = useState(false);
+  const [githubSelectedSkillDirectories, setGithubSelectedSkillDirectories] = useState<string[]>([]);
+  const [githubStep, setGithubStep] = useState<CreateSkillDialogGithubStep>("repository");
   const [instructions, setInstructions] = useState("");
+  const [isLoadingGithubBranches, setIsLoadingGithubBranches] = useState(false);
+  const [isLoadingGithubDiscoveredSkills, setIsLoadingGithubDiscoveredSkills] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [mode, setMode] = useState<CreateSkillDialogMode>("choose");
   const [name, setName] = useState("");
@@ -85,11 +126,15 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   useEffect(() => {
     if (!props.isOpen) {
       setDescription("");
+      setGithubBranchName("");
+      setGithubBranches([]);
+      setGithubDiscoveredSkills([]);
       setGithubRepositoryUrl("");
-      setGithubSkillDirectories([]);
-      setGithubSkillDirectoryPath("");
-      setIsLoadingGithubSkillDirectories(false);
+      setGithubSelectedSkillDirectories([]);
+      setGithubStep("repository");
       setInstructions("");
+      setIsLoadingGithubBranches(false);
+      setIsLoadingGithubDiscoveredSkills(false);
       setLocalErrorMessage(null);
       setMode("choose");
       setName("");
@@ -97,52 +142,110 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     }
   }, [props.isOpen]);
 
-  async function discoverGithubSkillDirectories() {
+  const selectedGithubBranch = githubBranches.find((branch) => branch.name === githubBranchName) ?? null;
+  const selectedGithubSkills = githubDiscoveredSkills.filter((skill) =>
+    githubSelectedSkillDirectories.includes(skill.skillDirectory)
+  );
+  const allGithubSkillsSelected = githubDiscoveredSkills.length > 0
+    && githubSelectedSkillDirectories.length === githubDiscoveredSkills.length;
+
+  async function discoverGithubBranches() {
     const normalizedRepositoryUrl = githubRepositoryUrl.trim();
     if (!normalizedRepositoryUrl) {
       setLocalErrorMessage("Paste a public GitHub repository URL first.");
-      setGithubSkillDirectories([]);
-      setGithubSkillDirectoryPath("");
+      setGithubBranchName("");
+      setGithubBranches([]);
       return;
     }
 
-    setIsLoadingGithubSkillDirectories(true);
-    setGithubSkillDirectoryPath("");
+    setIsLoadingGithubBranches(true);
+    setGithubBranchName("");
+    setGithubBranches([]);
+    setGithubDiscoveredSkills([]);
+    setGithubSelectedSkillDirectories([]);
+    setGithubStep("repository");
     setLocalErrorMessage(null);
 
     try {
-      const response = await fetchQuery<createSkillDialogGithubSkillDirectoriesQuery>(
-      environment,
-      createSkillDialogGithubSkillDirectoriesQueryNode,
-      {
+      const response = await fetchQuery<createSkillDialogGithubSkillBranchesQuery>(
+        environment,
+        createSkillDialogGithubSkillBranchesQueryNode,
+        {
           repositoryUrl: normalizedRepositoryUrl,
-      },
-    )
-        .toPromise();
-      setGithubSkillDirectories(
-        (response?.GithubSkillDirectories ?? []).map((directory) => ({
-          fileList: [...directory.fileList],
-          name: directory.name,
-          path: directory.path,
-        })),
+        },
+      ).toPromise();
+      const nextBranches = (response?.GithubSkillBranches ?? []).map((branch) => ({
+        commitSha: branch.commitSha,
+        isDefault: branch.isDefault,
+        name: branch.name,
+        repository: branch.repository,
+      }));
+      setGithubBranches(nextBranches);
+      setGithubBranchName(
+        nextBranches.find((branch) => branch.isDefault)?.name
+          ?? nextBranches[0]?.name
+          ?? "",
       );
     } catch (error: unknown) {
-      setGithubSkillDirectories([]);
+      setGithubBranches([]);
       setLocalErrorMessage(
-        error instanceof Error ? error.message : "Failed to load GitHub skill directories.",
+        error instanceof Error ? error.message : "Failed to load GitHub branches.",
       );
     } finally {
-      setIsLoadingGithubSkillDirectories(false);
+      setIsLoadingGithubBranches(false);
     }
   }
 
-  const selectedGithubSkillDirectory = githubSkillDirectories.find((directory) =>
-    directory.path === githubSkillDirectoryPath
-  );
+  async function discoverGithubSkills() {
+    const normalizedRepositoryUrl = githubRepositoryUrl.trim();
+    if (!normalizedRepositoryUrl) {
+      setLocalErrorMessage("Paste a public GitHub repository URL first.");
+      return;
+    }
+    if (!githubBranchName) {
+      setLocalErrorMessage("Select a branch before continuing.");
+      return;
+    }
+
+    setIsLoadingGithubDiscoveredSkills(true);
+    setGithubDiscoveredSkills([]);
+    setGithubSelectedSkillDirectories([]);
+    setLocalErrorMessage(null);
+
+    try {
+      const response = await fetchQuery<createSkillDialogGithubDiscoveredSkillsQuery>(
+        environment,
+        createSkillDialogGithubDiscoveredSkillsQueryNode,
+        {
+          branchName: githubBranchName,
+          repositoryUrl: normalizedRepositoryUrl,
+        },
+      ).toPromise();
+      const nextSkills = (response?.GithubDiscoveredSkills ?? []).map((skill) => ({
+        branchName: skill.branchName,
+        commitSha: skill.commitSha,
+        description: skill.description ?? null,
+        fileList: [...skill.fileList],
+        instructions: skill.instructions,
+        name: skill.name,
+        repository: skill.repository,
+        skillDirectory: skill.skillDirectory,
+      }));
+      setGithubDiscoveredSkills(nextSkills);
+      setGithubSelectedSkillDirectories(nextSkills.map((skill) => skill.skillDirectory));
+      setGithubStep("skills");
+    } catch (error: unknown) {
+      setLocalErrorMessage(
+        error instanceof Error ? error.message : "Failed to discover GitHub skills.",
+      );
+    } finally {
+      setIsLoadingGithubDiscoveredSkills(false);
+    }
+  }
 
   return (
     <Dialog disablePointerDismissal onOpenChange={props.onOpenChange} open={props.isOpen}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
@@ -159,6 +262,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               )}
               onClick={() => {
                 setMode("github");
+                setGithubStep("repository");
               }}
               type="button"
             >
@@ -168,7 +272,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">Import from GitHub</p>
-                  <p className="text-xs text-muted-foreground">Paste a public repo URL and discover skills</p>
+                  <p className="text-xs text-muted-foreground">
+                    Paste a public repo URL, pick a branch, then choose skills
+                  </p>
                 </div>
               </div>
               <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
@@ -176,8 +282,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                   Public repositories
                 </p>
                 <p className="mt-3 text-sm text-foreground">
-                  Paste a public GitHub repository URL, discover importable `SKILL.md` directories,
-                  and import the selected skill package into the catalog.
+                  Resolve repository branches first, then review every discovered `SKILL.md`
+                  package before importing all of them or only a selected subset.
                 </p>
               </div>
               <p className="mt-auto pt-5 text-xs text-muted-foreground">
@@ -229,159 +335,262 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 <div>
                   <p className="text-sm font-semibold text-foreground">GitHub import</p>
                   <p className="text-xs text-muted-foreground">
-                    Import any public repository directory that contains `SKILL.md`.
+                    Step {githubStep === "repository" ? "1" : "2"} of 2
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="grid gap-2">
-                <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
-                  Repository URL
-                </label>
-                <Input
-                  autoComplete="off"
-                  id="skill-repository-url"
-                  onChange={(event) => {
-                    setGithubRepositoryUrl(event.target.value);
-                    setGithubSkillDirectories([]);
-                    setGithubSkillDirectoryPath("");
-                    setLocalErrorMessage(null);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void discoverGithubSkillDirectories();
-                    }
-                  }}
-                  placeholder="https://github.com/openai/skills"
-                  value={githubRepositoryUrl}
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  disabled={isLoadingGithubSkillDirectories || !githubRepositoryUrl.trim()}
-                  onClick={() => {
-                    void discoverGithubSkillDirectories();
-                  }}
-                  type="button"
-                  variant="outline"
-                >
-                  {isLoadingGithubSkillDirectories ? "Discovering..." : "Discover"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="grid gap-2">
-                <label className="text-xs font-medium text-foreground" htmlFor="skill-directory">
-                  Skill directory
-                </label>
-                <Select
-                  items={githubSkillDirectories.map((directory) => ({
-                    label: directory.path,
-                    value: directory.path,
-                  }))}
-                  onValueChange={(value) => {
-                    setGithubSkillDirectoryPath(typeof value === "string" ? value : "");
-                    setLocalErrorMessage(null);
-                  }}
-                  value={githubSkillDirectoryPath || undefined}
-                >
-                  <SelectTrigger
-                    className={cn(
-                      isLoadingGithubSkillDirectories ? "animate-pulse" : null,
-                    )}
-                    id="skill-directory"
-                  >
-                    <SelectValue
-                      placeholder={!githubRepositoryUrl.trim()
-                        ? "Paste a repository URL first"
-                        : isLoadingGithubSkillDirectories
-                        ? "Loading discovered skills..."
-                        : githubSkillDirectories.length > 0
-                        ? "Select a discovered skill"
-                        : "No SKILL.md directories found"}
+            {githubStep === "repository" ? (
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="grid gap-2">
+                    <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
+                      Repository URL
+                    </label>
+                    <Input
+                      autoComplete="off"
+                      id="skill-repository-url"
+                      onChange={(event) => {
+                        setGithubRepositoryUrl(event.target.value);
+                        setGithubBranchName("");
+                        setGithubBranches([]);
+                        setGithubDiscoveredSkills([]);
+                        setGithubSelectedSkillDirectories([]);
+                        setGithubStep("repository");
+                        setLocalErrorMessage(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void discoverGithubBranches();
+                        }
+                      }}
+                      placeholder="https://github.com/openai/skills"
+                      value={githubRepositoryUrl}
                     />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {githubSkillDirectories.map((directory) => (
-                      <SelectItem key={directory.path} value={directory.path}>
-                        {directory.path}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="github-skill-group">
-                Group
-              </label>
-              <Select
-                items={[
-                  {
-                    label: "Ungrouped",
-                    value: UNGROUPED_SKILL_GROUP_VALUE,
-                  },
-                  ...props.groups.map((group) => ({
-                    label: group.name,
-                    value: group.id,
-                  })),
-                ]}
-                onValueChange={(value) => {
-                  setSkillGroupId(value ?? UNGROUPED_SKILL_GROUP_VALUE);
-                }}
-                value={skillGroupId}
-              >
-                <SelectTrigger id="github-skill-group">
-                  <SelectValue placeholder="Select a group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNGROUPED_SKILL_GROUP_VALUE}>Ungrouped</SelectItem>
-                  {props.groups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedGithubSkillDirectory ? (
-              <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    Skill
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {selectedGithubSkillDirectory.name}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {selectedGithubSkillDirectory.path}
-                  </p>
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      disabled={isLoadingGithubBranches || !githubRepositoryUrl.trim()}
+                      onClick={() => {
+                        void discoverGithubBranches();
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {isLoadingGithubBranches ? "Loading branches..." : "Discover branches"}
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    Files
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {selectedGithubSkillDirectory.fileList.length} tracked file
-                    {selectedGithubSkillDirectory.fileList.length === 1 ? "" : "s"}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    `SKILL.md` will be imported as instructions.
-                  </p>
+
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="github-branch">
+                    Branch
+                  </label>
+                  <Select
+                    items={githubBranches.map((branch) => ({
+                      label: branch.name,
+                      value: branch.name,
+                    }))}
+                    onValueChange={(value) => {
+                      setGithubBranchName(typeof value === "string" ? value : "");
+                      setGithubDiscoveredSkills([]);
+                      setGithubSelectedSkillDirectories([]);
+                      setLocalErrorMessage(null);
+                    }}
+                    value={githubBranchName || undefined}
+                  >
+                    <SelectTrigger
+                      className={cn(isLoadingGithubBranches ? "animate-pulse" : null)}
+                      id="github-branch"
+                    >
+                      <SelectValue
+                        placeholder={!githubRepositoryUrl.trim()
+                          ? "Paste a repository URL first"
+                          : isLoadingGithubBranches
+                          ? "Loading branches..."
+                          : githubBranches.length > 0
+                          ? "Select a branch"
+                          : "No branches found"}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {githubBranches.map((branch) => (
+                        <SelectItem key={branch.name} value={branch.name}>
+                          {branch.name}
+                          {branch.isDefault ? " (default)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {selectedGithubBranch ? (
+                  <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        Repository
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {selectedGithubBranch.repository}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        Selected branch
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">
+                        {selectedGithubBranch.name}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Commit {selectedGithubBranch.commitSha.slice(0, 12)}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
-            {!isLoadingGithubSkillDirectories && githubRepositoryUrl.trim() && githubSkillDirectories.length === 0 ? (
-              <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
-                No importable skill packages were discovered in this repository. A directory must
-                contain `SKILL.md` with instructions to be importable.
+            {githubStep === "skills" ? (
+              <div className="grid gap-4">
+                <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Repository
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-foreground">
+                      {selectedGithubBranch?.repository ?? githubRepositoryUrl.trim()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Branch
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-foreground">{githubBranchName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      Selected skills
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-foreground">
+                      {selectedGithubSkills.length} of {githubDiscoveredSkills.length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="github-skill-group">
+                    Group
+                  </label>
+                  <Select
+                    items={[
+                      {
+                        label: "Ungrouped",
+                        value: UNGROUPED_SKILL_GROUP_VALUE,
+                      },
+                      ...props.groups.map((group) => ({
+                        label: group.name,
+                        value: group.id,
+                      })),
+                    ]}
+                    onValueChange={(value) => {
+                      setSkillGroupId(value ?? UNGROUPED_SKILL_GROUP_VALUE);
+                    }}
+                    value={skillGroupId}
+                  >
+                    <SelectTrigger id="github-skill-group">
+                      <SelectValue placeholder="Select a group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNGROUPED_SKILL_GROUP_VALUE}>Ungrouped</SelectItem>
+                      {props.groups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Discovered skills</p>
+                    <p className="text-xs text-muted-foreground">
+                      Choose every skill you want to create from this branch.
+                    </p>
+                  </div>
+                  <Button
+                    disabled={githubDiscoveredSkills.length === 0}
+                    onClick={() => {
+                      setGithubSelectedSkillDirectories(allGithubSkillsSelected
+                        ? []
+                        : githubDiscoveredSkills.map((skill) => skill.skillDirectory));
+                    }}
+                    type="button"
+                    variant="outline"
+                  >
+                    {allGithubSkillsSelected ? "Deselect all" : "Select all"}
+                  </Button>
+                </div>
+
+                {githubDiscoveredSkills.length > 0 ? (
+                  <div className="rounded-xl border border-border/60 bg-card/30">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-14">Pick</TableHead>
+                          <TableHead>Skill</TableHead>
+                          <TableHead>Directory</TableHead>
+                          <TableHead className="w-32">Files</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {githubDiscoveredSkills.map((skill) => {
+                          const isSelected = githubSelectedSkillDirectories.includes(skill.skillDirectory);
+
+                          return (
+                            <TableRow
+                              className={cn(isSelected ? "bg-muted/25" : null)}
+                              key={skill.skillDirectory}
+                            >
+                              <TableCell>
+                                <input
+                                  checked={isSelected}
+                                  className="size-4 rounded border border-input bg-background"
+                                  onChange={(event) => {
+                                    setGithubSelectedSkillDirectories((currentValue) => event.target.checked
+                                      ? [...currentValue, skill.skillDirectory]
+                                      : currentValue.filter((path) => path !== skill.skillDirectory));
+                                  }}
+                                  type="checkbox"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="grid gap-1">
+                                  <span className="text-sm font-semibold text-foreground">{skill.name}</span>
+                                  {skill.description ? (
+                                    <span className="text-xs text-muted-foreground">{skill.description}</span>
+                                  ) : null}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-mono text-[11px] text-muted-foreground">
+                                {skill.skillDirectory}
+                              </TableCell>
+                              <TableCell>
+                                {skill.fileList.length} tracked file{skill.fileList.length === 1 ? "" : "s"}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+                    No importable skills were found on this branch.
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -493,6 +702,11 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
             <Button
               onClick={() => {
                 setLocalErrorMessage(null);
+                if (mode === "github" && githubStep === "skills") {
+                  setGithubStep("repository");
+                  return;
+                }
+
                 setMode("choose");
               }}
               type="button"
@@ -532,27 +746,37 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               Create skill
             </Button>
           ) : null}
-          {mode === "github" ? (
+          {mode === "github" && githubStep === "repository" ? (
             <Button
-              disabled={props.isSaving || isLoadingGithubSkillDirectories || !githubRepositoryUrl.trim() || !githubSkillDirectoryPath}
+              disabled={props.isSaving || isLoadingGithubDiscoveredSkills || !githubRepositoryUrl.trim() || !githubBranchName}
+              onClick={() => {
+                void discoverGithubSkills();
+              }}
+              type="button"
+            >
+              {isLoadingGithubDiscoveredSkills ? "Loading skills..." : "Continue"}
+            </Button>
+          ) : null}
+          {mode === "github" && githubStep === "skills" ? (
+            <Button
+              disabled={props.isSaving || selectedGithubSkills.length === 0}
               onClick={async () => {
                 setLocalErrorMessage(null);
 
                 try {
                   await props.onImportGithub({
-                    repositoryUrl: githubRepositoryUrl.trim(),
-                    skillDirectory: githubSkillDirectoryPath,
                     skillGroupId: skillGroupId === UNGROUPED_SKILL_GROUP_VALUE ? null : skillGroupId,
+                    skills: selectedGithubSkills,
                   });
                 } catch (error) {
                   setLocalErrorMessage(
-                    error instanceof Error ? error.message : "Failed to import GitHub skill.",
+                    error instanceof Error ? error.message : "Failed to import GitHub skills.",
                   );
                 }
               }}
               type="button"
             >
-              Import skill
+              Import {selectedGithubSkills.length === 1 ? "skill" : `${selectedGithubSkills.length} skills`}
             </Button>
           ) : null}
         </DialogFooter>

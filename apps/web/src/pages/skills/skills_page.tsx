@@ -13,7 +13,7 @@ import {
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
 import type { skillsPageCreateSkillMutation } from "./__generated__/skillsPageCreateSkillMutation.graphql";
 import type { skillsPageDeleteSkillMutation } from "./__generated__/skillsPageDeleteSkillMutation.graphql";
-import type { skillsPageImportGithubSkillMutation } from "./__generated__/skillsPageImportGithubSkillMutation.graphql";
+import type { skillsPageImportGithubSkillsMutation } from "./__generated__/skillsPageImportGithubSkillsMutation.graphql";
 import type { skillsPageQuery } from "./__generated__/skillsPageQuery.graphql";
 import type { skillsPageUpdateSkillMutation } from "./__generated__/skillsPageUpdateSkillMutation.graphql";
 
@@ -56,9 +56,9 @@ const skillsPageDeleteSkillMutationNode = graphql`
   }
 `;
 
-const skillsPageImportGithubSkillMutationNode = graphql`
-  mutation skillsPageImportGithubSkillMutation($input: ImportGithubSkillInput!) {
-    ImportGithubSkill(input: $input) {
+const skillsPageImportGithubSkillsMutationNode = graphql`
+  mutation skillsPageImportGithubSkillsMutation($input: ImportGithubSkillsInput!) {
+    ImportGithubSkills(input: $input) {
       id
       name
       description
@@ -139,8 +139,8 @@ function SkillsPageContent() {
   const [commitCreateSkill, isCreateSkillInFlight] = useMutation<skillsPageCreateSkillMutation>(
     skillsPageCreateSkillMutationNode,
   );
-  const [commitImportGithubSkill, isImportGithubSkillInFlight] =
-    useMutation<skillsPageImportGithubSkillMutation>(skillsPageImportGithubSkillMutationNode);
+  const [commitImportGithubSkills, isImportGithubSkillsInFlight] =
+    useMutation<skillsPageImportGithubSkillsMutation>(skillsPageImportGithubSkillsMutationNode);
   const [commitDeleteSkill] = useMutation<skillsPageDeleteSkillMutation>(
     skillsPageDeleteSkillMutationNode,
   );
@@ -158,15 +158,16 @@ function SkillsPageContent() {
     const sortedSkills = [...data.Skills].sort((left, right) => left.name.localeCompare(right.name));
 
     for (const skill of sortedSkills) {
-      const currentSkills = skillsByGroupId.get(skill.skillGroupId) ?? [];
+      const nextSkillGroupId = skill.skillGroupId ?? null;
+      const currentSkills = skillsByGroupId.get(nextSkillGroupId) ?? [];
       currentSkills.push({
         fileCount: skill.fileList.length,
         id: skill.id,
         name: skill.name,
-        repository: skill.repository,
-        skillGroupId: skill.skillGroupId,
+        repository: skill.repository ?? null,
+        skillGroupId: nextSkillGroupId,
       });
-      skillsByGroupId.set(skill.skillGroupId, currentSkills);
+      skillsByGroupId.set(nextSkillGroupId, currentSkills);
     }
 
     if (sortedSkills.length === 0 && data.SkillGroups.length === 0) {
@@ -245,7 +246,8 @@ function SkillsPageContent() {
             }
 
             const rootRecord = store.getRoot();
-            const currentSkills = rootRecord.getLinkedRecords("Skills") || [];
+            const currentSkills = (rootRecord.getLinkedRecords("Skills") || [])
+              .filter((record): record is NonNullable<typeof record> => record !== null);
             rootRecord.setLinkedRecords(
               currentSkills.filter((record) => record.getDataID() !== deletedSkill.getDataID()),
               "Skills",
@@ -329,7 +331,7 @@ function SkillsPageContent() {
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         groups={groupOptions}
         isOpen={isCreateDialogOpen}
-        isSaving={isCreateSkillInFlight || isImportGithubSkillInFlight}
+        isSaving={isCreateSkillInFlight || isImportGithubSkillsInFlight}
         onCreate={async (input) => {
           setErrorMessage(null);
 
@@ -345,7 +347,8 @@ function SkillsPageContent() {
                 }
 
                 const rootRecord = store.getRoot();
-                const currentSkills = rootRecord.getLinkedRecords("Skills") || [];
+                const currentSkills = (rootRecord.getLinkedRecords("Skills") || [])
+                  .filter((record): record is NonNullable<typeof record> => record !== null);
                 rootRecord.setLinkedRecords([newSkill, ...currentSkills], "Skills");
               },
               onCompleted: (_response, errors) => {
@@ -369,19 +372,21 @@ function SkillsPageContent() {
           setErrorMessage(null);
 
           await new Promise<void>((resolve, reject) => {
-            commitImportGithubSkill({
+            commitImportGithubSkills({
               variables: {
                 input,
               },
               updater: (store) => {
-                const newSkill = store.getRootField("ImportGithubSkill");
-                if (!newSkill) {
+                const importedSkills = (store.getRoot().getLinkedRecords("ImportGithubSkills") || [])
+                  .filter((record): record is NonNullable<typeof record> => record !== null);
+                if (importedSkills.length === 0) {
                   return;
                 }
 
                 const rootRecord = store.getRoot();
-                const currentSkills = rootRecord.getLinkedRecords("Skills") || [];
-                rootRecord.setLinkedRecords([newSkill, ...currentSkills], "Skills");
+                const currentSkills = (rootRecord.getLinkedRecords("Skills") || [])
+                  .filter((record): record is NonNullable<typeof record> => record !== null);
+                rootRecord.setLinkedRecords([...importedSkills, ...currentSkills], "Skills");
               },
               onCompleted: (_response, errors) => {
                 const nextErrorMessage = errors?.[0]?.message;
@@ -396,7 +401,7 @@ function SkillsPageContent() {
               onError: reject,
             });
           }).catch((error: unknown) => {
-            setErrorMessage(error instanceof Error ? error.message : "Failed to import GitHub skill.");
+            setErrorMessage(error instanceof Error ? error.message : "Failed to import GitHub skills.");
             throw error;
           });
         }}
