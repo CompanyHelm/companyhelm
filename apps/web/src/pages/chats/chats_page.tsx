@@ -35,6 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -2307,6 +2308,7 @@ function ChatsPageContent() {
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>({});
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
+  const [newChatAgentSearch, setNewChatAgentSearch] = useState("");
   const queuedMessagesRequestIdRef = useRef(0);
   const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
   const data = useLazyLoadQuery<chatsPageQuery>(
@@ -2422,6 +2424,19 @@ function ChatsPageContent() {
       return (sessionsByAgentId.get(agent.id)?.length ?? 0) > 0;
     });
   }, [sessionsByAgentId, sortedAgents]);
+  const filteredNewChatAgents = useMemo(() => {
+    const normalizedSearch = newChatAgentSearch.trim().toLocaleLowerCase();
+    if (normalizedSearch.length === 0) {
+      return sortedAgents;
+    }
+
+    return sortedAgents.filter((agent) => {
+      return [agent.name, formatAgentMeta(agent)]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(normalizedSearch);
+    });
+  }, [newChatAgentSearch, sortedAgents]);
   const sessionById = useMemo(() => {
     return new Map(activeSessions.map((session) => [session.id, session]));
   }, [activeSessions]);
@@ -2610,6 +2625,12 @@ function ChatsPageContent() {
 
     markSessionRead(selectedSession.id);
   }, [markSessionRead, selectedSession?.hasUnread, selectedSession?.id]);
+
+  useEffect(() => {
+    if (!isNewChatDialogOpen && newChatAgentSearch.length > 0) {
+      setNewChatAgentSearch("");
+    }
+  }, [isNewChatDialogOpen, newChatAgentSearch]);
 
   const loadSessionEnvironmentInfo = useCallback(async (sessionId: string) => {
     setIsLoadingSessionEnvironment(true);
@@ -4694,27 +4715,49 @@ function ChatsPageContent() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           {sortedAgents.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
               Create an agent first from the Agents page.
             </div>
           ) : (
-            sortedAgents.map((agent) => (
-              <button
-                key={agent.id}
-                className="rounded-xl border border-border/60 bg-card/40 px-4 py-3 text-left transition hover:bg-accent/40"
-                onClick={() => {
-                  setIsNewChatDialogOpen(false);
-                  expandChatListAgent(agent.id);
-                  void openDraftForAgent(agent.id);
+            <>
+              <Input
+                autoFocus
+                onChange={(event) => {
+                  setNewChatAgentSearch(event.target.value);
                 }}
-                type="button"
-              >
-                <p className="text-sm font-medium text-foreground">{agent.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{formatAgentMeta(agent)}</p>
-              </button>
-            ))
+                placeholder="Search agents"
+                type="search"
+                value={newChatAgentSearch}
+              />
+
+              {filteredNewChatAgents.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+                  No agents match your search.
+                </div>
+              ) : (
+                <div className="max-h-[24rem] overflow-y-auto pr-1">
+                  <div className="grid gap-2">
+                    {filteredNewChatAgents.map((agent) => (
+                      <button
+                        key={agent.id}
+                        className="rounded-xl border border-border/60 bg-card/40 px-4 py-3 text-left transition hover:bg-accent/40"
+                        onClick={() => {
+                          setIsNewChatDialogOpen(false);
+                          expandChatListAgent(agent.id);
+                          void openDraftForAgent(agent.id);
+                        }}
+                        type="button"
+                      >
+                        <p className="text-sm font-medium text-foreground">{agent.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{formatAgentMeta(agent)}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </DialogContent>
