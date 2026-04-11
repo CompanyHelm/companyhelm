@@ -4368,6 +4368,7 @@ function ChatsPageContent() {
               onClick={() => {
                 setIsNewChatDialogOpen(true);
               }}
+              size="lg"
               type="button"
             >
               <PlusIcon className="size-4" />
@@ -4548,11 +4549,12 @@ function ChatsPageContent() {
             </div>
 
             <Button
-              className="mb-4 w-full justify-start gap-2 px-5"
+              className="mb-2 w-full justify-start gap-2 px-5"
               disabled={!hasAvailableAgents}
               onClick={() => {
                 setIsNewChatDialogOpen(true);
               }}
+              size="lg"
               type="button"
             >
               <PlusIcon className="size-4" />
