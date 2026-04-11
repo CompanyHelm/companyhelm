@@ -839,9 +839,7 @@ function ConversationsPageContent() {
           <div className="no-scrollbar flex-1 overflow-y-auto px-4 py-4">
             <ConversationList
               conversations={conversations}
-              deletingConversationId={deletingConversationId}
               emptyStateTone="mobile"
-              onDeleteConversation={deleteConversation}
               onSelect={(conversationId) => {
                 openConversation(conversationId);
                 setIsMobileConversationListOpen(false);
@@ -874,8 +872,6 @@ function ConversationsPageContent() {
 
             <ConversationList
               conversations={conversations}
-              deletingConversationId={deletingConversationId}
-              onDeleteConversation={deleteConversation}
               onSelect={openConversation}
               selectedConversationId={selectedConversationId}
             />

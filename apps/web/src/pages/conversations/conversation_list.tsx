@@ -1,6 +1,5 @@
 import { MessageSquareTextIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ConversationDeleteAction } from "./conversation_delete_action";
 
 export type ConversationListRecord = {
   createdAt: string;
@@ -19,9 +18,7 @@ export type ConversationListRecord = {
 
 type ConversationListProperties = {
   conversations: ConversationListRecord[];
-  deletingConversationId?: string | null;
   emptyStateTone?: "desktop" | "mobile";
-  onDeleteConversation?: (conversationId: string) => Promise<void> | void;
   onSelect: (conversationId: string) => void;
   selectedConversationId?: string;
   tone?: "desktop" | "mobile";
@@ -107,7 +104,6 @@ export function ConversationList(properties: ConversationListProperties) {
     <div className="grid gap-2">
       {properties.conversations.map((conversation) => {
         const isSelected = properties.selectedConversationId === conversation.id;
-        const isDeletingConversation = properties.deletingConversationId === conversation.id;
         const title = resolveConversationTitle(conversation);
         const timestampLabel = formatConversationListTimestamp(
           conversation.latestMessageAt ?? conversation.updatedAt ?? conversation.createdAt,
@@ -129,7 +125,6 @@ export function ConversationList(properties: ConversationListProperties) {
           >
             <button
               className="min-w-0 flex-1 text-left"
-              disabled={isDeletingConversation}
               onClick={() => {
                 properties.onSelect(conversation.id);
               }}
@@ -157,43 +152,7 @@ export function ConversationList(properties: ConversationListProperties) {
                   </div>
                 ) : null}
               </div>
-              <div className="mt-3 grid gap-2">
-                {conversation.participants.map((participant) => (
-                  <div className="grid gap-0.5" key={participant.id}>
-                    <div
-                      className={cn(
-                        "text-xs font-medium leading-5",
-                        tone === "mobile" ? "text-sidebar-foreground/85" : "text-foreground",
-                      )}
-                    >
-                      {participant.agentName}
-                    </div>
-                    <div
-                      className={cn(
-                        "text-xs leading-5",
-                        tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
-                      )}
-                    >
-                      {participant.sessionTitle}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </button>
-            {properties.onDeleteConversation ? (
-              <ConversationDeleteAction
-                buttonClassName={cn(
-                  "inline-flex size-8 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50",
-                  tone === "mobile"
-                    ? "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-                buttonTitle={isDeletingConversation ? "Deleting conversation..." : "Delete conversation"}
-                conversationLabel={title}
-                isDeleting={isDeletingConversation}
-                onDelete={() => properties.onDeleteConversation?.(conversation.id)}
-              />
-            ) : null}
           </div>
         );
       })}

@@ -34,10 +34,11 @@ export function PageContainer(props: PageContainerProps) {
 
   const normalizedPathname = OrganizationPath.stripPrefix(pathname);
   const isChatsPage = normalizedPathname.startsWith("/chats");
+  const isConversationsPage = normalizedPathname.startsWith("/conversations");
   const currentLocation = new URL(locationHref, "https://companyhelm.local");
   const tasksViewType = currentLocation.searchParams.get("viewType");
   const isTasksBoardPage = normalizedPathname === "/tasks" && tasksViewType !== "list";
-  const isFullHeightBoardPage = isChatsPage || isTasksBoardPage;
+  const isFullHeightPage = isChatsPage || isConversationsPage || isTasksBoardPage;
 
   return (
     <ApplicationBreadcrumbProvider>
@@ -46,14 +47,14 @@ export function PageContainer(props: PageContainerProps) {
         <SidebarInset
           className={cn(
             "min-h-svh",
-            isFullHeightBoardPage && "h-svh min-h-0 max-h-svh overflow-hidden md:peer-data-[variant=inset]:my-0",
+            isFullHeightPage && "h-svh min-h-0 max-h-svh overflow-hidden md:peer-data-[variant=inset]:my-0",
           )}
         >
           <ApplicationHeader />
           <div
             className={cn(
               "flex flex-1 flex-col",
-              isChatsPage
+              (isChatsPage || isConversationsPage)
                 ? "min-h-0 overflow-hidden px-0 pb-0 pt-0"
                 : isTasksBoardPage
                   ? "min-h-0 overflow-hidden px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-4 lg:px-5"
