@@ -31,6 +31,11 @@ export type AgentConversationSendMessageResult = {
   targetSessionId: string;
 };
 
+export type AgentConversationDeleteInput = {
+  companyId: string;
+  conversationId: string;
+};
+
 export type AgentConversationParticipantRecord = {
   agentId: string;
   agentName: string;
@@ -341,20 +346,7 @@ export class AgentConversationService {
     return transactionProvider.transaction(async (tx) => {
       const pageSize = normalizeConversationMessagePageSize(first);
       const cursor = decodeConversationMessageCursor(after);
-      const [conversationRow] = await tx
-        .select({
-          createdAt: agentConversations.createdAt,
-          id: agentConversations.id,
-          updatedAt: agentConversations.updatedAt,
-        })
-        .from(agentConversations)
-        .where(and(
-          eq(agentConversations.companyId, companyId),
-          eq(agentConversations.id, conversationId),
-        )) as AgentConversationRow[];
-      if (!conversationRow) {
-        throw new Error("Conversation not found.");
-      }
+      await this.loadConversation(tx, companyId, conversationId);
 
       const participantRows = await tx
         .select({
@@ -429,6 +421,31 @@ export class AgentConversationService {
           endCursor: edges.at(-1)?.cursor ?? null,
           hasNextPage,
         },
+      };
+    });
+  }
+
+  async deleteConversation(
+    transactionProvider: TransactionProviderInterface,
+    input: AgentConversationDeleteInput,
+  ): Promise<{ id: string }> {
+    return transactionProvider.transaction(async (tx) => {
+      const conversation = await this.loadConversation(tx, input.companyId, input.conversationId);
+
+      await tx
+        .delete(agentConversations)
+        .where(and(
+          eq(agentConversations.companyId, input.companyId),
+          eq(agentConversations.id, input.conversationId),
+        ));
+
+      this.logger.info({
+        companyId: input.companyId,
+        conversationId: input.conversationId,
+      }, "deleted agent conversation");
+
+      return {
+        id: conversation.id,
       };
     });
   }
@@ -829,6 +846,29 @@ export class AgentConversationService {
     }
 
     return agentRow;
+  }
+
+  private async loadConversation(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    conversationId: string,
+  ): Promise<AgentConversationRow> {
+    const [conversationRow] = await tx
+      .select({
+        createdAt: agentConversations.createdAt,
+        id: agentConversations.id,
+        updatedAt: agentConversations.updatedAt,
+      })
+      .from(agentConversations)
+      .where(and(
+        eq(agentConversations.companyId, companyId),
+        eq(agentConversations.id, conversationId),
+      )) as AgentConversationRow[];
+    if (!conversationRow) {
+      throw new Error("Conversation not found.");
+    }
+
+    return conversationRow;
   }
 
   private async loadSession(

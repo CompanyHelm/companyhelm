@@ -73,6 +73,7 @@ type Mutation {
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
   CreateSkill(input: CreateSkillInput!): Skill!
   CreateSkillGroup(input: CreateSkillGroupInput!): SkillGroup!
+  DeleteAgentConversation(input: DeleteAgentConversationInput!): DeleteAgentConversationPayload!
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteArtifact(input: DeleteArtifactInput!): Artifact!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
@@ -265,6 +266,10 @@ type CreateGithubInstallationUrlPayload {
 
 type DeleteGithubInstallationPayload {
   deletedInstallationId: ID!
+}
+
+type DeleteAgentConversationPayload {
+  deletedConversationId: ID!
 }
 
 type RefreshGithubInstallationRepositoriesPayload {
@@ -898,6 +903,10 @@ input CreateTaskCategoryInput {
 
 input DeleteTaskCategoryInput {
   id: ID!
+}
+
+input DeleteAgentConversationInput {
+  conversationId: ID!
 }
 
 input CreateMarkdownArtifactInput {

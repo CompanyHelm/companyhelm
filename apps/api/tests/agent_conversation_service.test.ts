@@ -6,6 +6,7 @@ import { AgentConversationService } from "../src/services/conversations/service.
 class AgentConversationServiceTestTransaction {
   readonly insertCalls: Array<{ table: unknown; values: unknown }> = [];
   readonly updateCalls: Array<{ table: unknown; values: unknown }> = [];
+  readonly deleteCalls: Array<{ table: unknown }> = [];
   private readonly selectResponses: Array<Array<Record<string, unknown>>>;
 
   constructor(selectResponses: Array<Array<Record<string, unknown>>>) {
@@ -17,9 +18,31 @@ class AgentConversationServiceTestTransaction {
       from: (table: unknown) => {
         void table;
         return {
-          where: async (condition: unknown) => {
-            void condition;
-            return this.selectResponses.shift() ?? [];
+          where: (condition: unknown) => {
+            const execute = async () => {
+              void condition;
+              return this.selectResponses.shift() ?? [];
+            };
+            const resultPromise = execute();
+
+            return {
+              limit: async (limit: number) => {
+                void limit;
+                return resultPromise;
+              },
+              orderBy: (..._arguments: unknown[]) => {
+                void _arguments;
+                return {
+                  limit: async (limit: number) => {
+                    void limit;
+                    return resultPromise;
+                  },
+                };
+              },
+              then: resultPromise.then.bind(resultPromise),
+              catch: resultPromise.catch.bind(resultPromise),
+              finally: resultPromise.finally.bind(resultPromise),
+            };
           },
         };
       },
@@ -51,6 +74,18 @@ class AgentConversationServiceTestTransaction {
             return undefined;
           },
         };
+      },
+    };
+  }
+
+  delete(table: unknown) {
+    return {
+      where: async (condition: unknown) => {
+        void condition;
+        this.deleteCalls.push({
+          table,
+        });
+        return undefined;
       },
     };
   }
@@ -413,13 +448,49 @@ test("AgentConversationService lists canonical messages for one conversation in 
   } as never, "company-1", "conversation-1");
 
   assert.deepEqual(
-    messages.map((message) => ({
-      authorAgentName: message.authorAgentName,
-      text: message.text,
+    messages.edges.map((edge) => ({
+      authorAgentName: edge.node.authorAgentName,
+      text: edge.node.text,
     })),
     [
-      { authorAgentName: "Manager", text: "Can you review the migration?" },
       { authorAgentName: "Reviewer", text: "Yes, I am on it." },
+      { authorAgentName: "Manager", text: "Can you review the migration?" },
     ],
   );
+});
+
+test("AgentConversationService deletes the canonical conversation record", async () => {
+  const transaction = new AgentConversationServiceTestTransaction([
+    [{
+      createdAt: new Date("2026-04-07T22:00:00.000Z"),
+      id: "conversation-1",
+      updatedAt: new Date("2026-04-07T22:15:00.000Z"),
+    }],
+  ]);
+  const service = new AgentConversationService(
+    {
+      child() {
+        return {
+          info() {
+            return undefined;
+          },
+        };
+      },
+    } as never,
+    {} as never,
+  );
+
+  const result = await service.deleteConversation({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(transaction as never),
+  } as never, {
+    companyId: "company-1",
+    conversationId: "conversation-1",
+  });
+
+  assert.deepEqual(result, {
+    id: "conversation-1",
+  });
+  assert.deepEqual(transaction.deleteCalls, [{
+    table: agentConversations,
+  }]);
 });

@@ -1,4 +1,4 @@
-import type { MutableRefObject, UIEvent } from "react";
+import type { MutableRefObject, ReactNode, UIEvent } from "react";
 import { Loader2Icon, MessageSquareTextIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ export type ConversationMessageRecord = {
 type ConversationTranscriptProperties = {
   conversation: ConversationListRecord | null;
   errorMessage?: string | null;
+  headerAction?: ReactNode;
   isLoadingOlderMessages: boolean;
   isLoadingTranscript: boolean;
   messages: ConversationMessageRecord[];
@@ -118,12 +119,15 @@ export function ConversationTranscript(properties: ConversationTranscriptPropert
               {properties.conversation.participants.map((participant) => participant.sessionTitle).join(" · ")}
             </CardDescription>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-start gap-2">
             {properties.conversation.participants.map((participant) => (
               <Badge key={participant.id} variant="secondary">
                 {participant.agentName}
               </Badge>
             ))}
+            {properties.headerAction ? (
+              <div className="shrink-0">{properties.headerAction}</div>
+            ) : null}
           </div>
         </div>
       </CardHeader>

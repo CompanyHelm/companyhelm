@@ -1,5 +1,6 @@
 import { MessageSquareTextIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { ConversationDeleteAction } from "./conversation_delete_action";
 
 export type ConversationListRecord = {
   createdAt: string;
@@ -18,7 +19,9 @@ export type ConversationListRecord = {
 
 type ConversationListProperties = {
   conversations: ConversationListRecord[];
+  deletingConversationId?: string | null;
   emptyStateTone?: "desktop" | "mobile";
+  onDeleteConversation?: (conversationId: string) => Promise<void> | void;
   onSelect: (conversationId: string) => void;
   selectedConversationId?: string;
   tone?: "desktop" | "mobile";
@@ -121,6 +124,7 @@ export function ConversationList(properties: ConversationListProperties) {
     <div className="grid gap-2">
       {properties.conversations.map((conversation) => {
         const isSelected = properties.selectedConversationId === conversation.id;
+        const isDeletingConversation = properties.deletingConversationId === conversation.id;
         const title = resolveConversationTitle(conversation);
         const subtitle = resolveConversationSubtitle(conversation);
         const preview = resolveConversationPreview(conversation);
@@ -129,10 +133,10 @@ export function ConversationList(properties: ConversationListProperties) {
         );
 
         return (
-          <button
+          <div
             key={conversation.id}
             className={cn(
-              "grid w-full gap-3 rounded-2xl border px-3 py-3 text-left transition",
+              "flex items-start gap-2 rounded-2xl border px-3 py-3 transition",
               tone === "mobile"
                 ? isSelected
                   ? "border-sidebar-border bg-sidebar-accent"
@@ -141,50 +145,69 @@ export function ConversationList(properties: ConversationListProperties) {
                   ? "border-border/80 bg-card shadow-sm"
                   : "border-border/60 bg-background/70 hover:border-border/80 hover:bg-muted/20",
             )}
-            onClick={() => {
-              properties.onSelect(conversation.id);
-            }}
-            type="button"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div
-                  className={cn(
-                    "truncate text-sm font-semibold",
-                    tone === "mobile" ? "text-sidebar-foreground" : "text-foreground",
-                  )}
-                >
-                  {title}
-                </div>
-                <div
-                  className={cn(
-                    "mt-1 truncate text-xs",
-                    tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
-                  )}
-                >
-                  {subtitle}
-                </div>
-              </div>
-              {timestampLabel ? (
-                <div
-                  className={cn(
-                    "shrink-0 text-[11px] font-medium uppercase tracking-[0.14em]",
-                    tone === "mobile" ? "text-sidebar-foreground/55" : "text-muted-foreground",
-                  )}
-                >
-                  {timestampLabel}
-                </div>
-              ) : null}
-            </div>
-            <div
-              className={cn(
-                "line-clamp-2 text-xs leading-5",
-                tone === "mobile" ? "text-sidebar-foreground/75" : "text-muted-foreground",
-              )}
+            <button
+              className="min-w-0 flex-1 text-left"
+              disabled={isDeletingConversation}
+              onClick={() => {
+                properties.onSelect(conversation.id);
+              }}
+              type="button"
             >
-              {preview}
-            </div>
-          </button>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div
+                    className={cn(
+                      "truncate text-sm font-semibold",
+                      tone === "mobile" ? "text-sidebar-foreground" : "text-foreground",
+                    )}
+                  >
+                    {title}
+                  </div>
+                  <div
+                    className={cn(
+                      "mt-1 truncate text-xs",
+                      tone === "mobile" ? "text-sidebar-foreground/65" : "text-muted-foreground",
+                    )}
+                  >
+                    {subtitle}
+                  </div>
+                </div>
+                {timestampLabel ? (
+                  <div
+                    className={cn(
+                      "shrink-0 text-[11px] font-medium uppercase tracking-[0.14em]",
+                      tone === "mobile" ? "text-sidebar-foreground/55" : "text-muted-foreground",
+                    )}
+                  >
+                    {timestampLabel}
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className={cn(
+                  "mt-3 line-clamp-2 text-xs leading-5",
+                  tone === "mobile" ? "text-sidebar-foreground/75" : "text-muted-foreground",
+                )}
+              >
+                {preview}
+              </div>
+            </button>
+            {properties.onDeleteConversation ? (
+              <ConversationDeleteAction
+                buttonClassName={cn(
+                  "inline-flex size-8 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-50",
+                  tone === "mobile"
+                    ? "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
+                buttonTitle={isDeletingConversation ? "Deleting conversation..." : "Delete conversation"}
+                conversationLabel={title}
+                isDeleting={isDeletingConversation}
+                onDelete={() => properties.onDeleteConversation?.(conversation.id)}
+              />
+            ) : null}
+          </div>
         );
       })}
     </div>

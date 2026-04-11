@@ -2,7 +2,7 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import type { CSSProperties, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { MessageSquareTextIcon, XIcon } from "lucide-react";
-import { fetchQuery, graphql, useLazyLoadQuery, useRelayEnvironment } from "react-relay";
+import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,11 +10,13 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { ConversationDeleteAction } from "./conversation_delete_action";
 import { ConversationList, type ConversationListRecord } from "./conversation_list";
 import {
   ConversationTranscript,
   type ConversationMessageRecord,
 } from "./conversation_transcript";
+import type { conversationsPageDeleteAgentConversationMutation } from "./__generated__/conversationsPageDeleteAgentConversationMutation.graphql";
 import type { conversationsPageListQuery } from "./__generated__/conversationsPageListQuery.graphql";
 import type { conversationsPageMessagesQuery } from "./__generated__/conversationsPageMessagesQuery.graphql";
 
@@ -31,6 +33,11 @@ type ConversationTranscriptScrollRestoreRecord = {
   anchorOffsetTop: number;
   previousScrollHeight: number;
   previousScrollTop: number;
+};
+
+type ConversationStoreRecord = {
+  getDataID(): string;
+  getValue(name: string): unknown;
 };
 
 const CONVERSATION_LIST_MIN_WIDTH = 280;
@@ -82,6 +89,14 @@ const conversationsPageMessagesQueryNode = graphql`
         endCursor
         hasNextPage
       }
+    }
+  }
+`;
+
+const conversationsPageDeleteAgentConversationMutationNode = graphql`
+  mutation conversationsPageDeleteAgentConversationMutation($input: DeleteAgentConversationInput!) {
+    DeleteAgentConversation(input: $input) {
+      deletedConversationId
     }
   }
 `;
@@ -165,6 +180,17 @@ function mergeConversationMessages(
   return [...nextMessagesById.values()].sort(compareConversationMessagesByTimestamp);
 }
 
+function filterStoreRecords(records: ReadonlyArray<unknown>): ConversationStoreRecord[] {
+  return records.filter((record): record is ConversationStoreRecord => {
+    return typeof record === "object"
+      && record !== null
+      && "getDataID" in record
+      && typeof record.getDataID === "function"
+      && "getValue" in record
+      && typeof record.getValue === "function";
+  });
+}
+
 function captureTranscriptScrollRestoreRecord(
   transcriptNode: HTMLDivElement,
 ): ConversationTranscriptScrollRestoreRecord {
@@ -241,6 +267,7 @@ function ConversationsPageContent() {
   const [isConversationListHidden, setIsConversationListHidden] = useState(false);
   const [isMobileConversationListOpen, setIsMobileConversationListOpen] = useState(false);
   const [isResizingConversationList, setIsResizingConversationList] = useState(false);
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([]);
   const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
   const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
@@ -255,6 +282,9 @@ function ConversationsPageContent() {
     {
       fetchPolicy: "store-and-network",
     },
+  );
+  const [commitDeleteConversation] = useMutation<conversationsPageDeleteAgentConversationMutation>(
+    conversationsPageDeleteAgentConversationMutationNode,
   );
 
   const cancelTranscriptScrollRestoreAnimationFrame = useCallback(() => {
@@ -288,6 +318,9 @@ function ConversationsPageContent() {
     ?? selectedConversation?.updatedAt
     ?? selectedConversation?.createdAt
     ?? null;
+  const selectedConversationLabel = selectedConversation
+    ? selectedConversation.participants.map((participant) => participant.agentName).join(" / ")
+    : null;
 
   const clearTranscriptState = useCallback(() => {
     messagesRef.current = [];
@@ -435,7 +468,23 @@ function ConversationsPageContent() {
   }, [navigate, organizationSlug]);
 
   useEffect(() => {
-    if (!selectedConversationId || selectedConversationId === search.conversationId) {
+    if (!selectedConversationId) {
+      if (!search.conversationId) {
+        return;
+      }
+
+      void navigate({
+        params: {
+          organizationSlug,
+        },
+        replace: true,
+        search: {},
+        to: OrganizationPath.route("/conversations"),
+      });
+      return;
+    }
+
+    if (selectedConversationId === search.conversationId) {
       return;
     }
 
@@ -450,6 +499,71 @@ function ConversationsPageContent() {
       to: OrganizationPath.route("/conversations"),
     });
   }, [navigate, organizationSlug, search.conversationId, selectedConversationId]);
+
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    setDeletingConversationId(conversationId);
+    setErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitDeleteConversation({
+          variables: {
+            input: {
+              conversationId,
+            },
+          },
+          updater: (store: {
+            delete?(dataId: string): void;
+            getRoot(): {
+              getLinkedRecords(name: string): ReadonlyArray<unknown> | null | undefined;
+              setLinkedRecords(records: ConversationStoreRecord[], name: string): void;
+            };
+            getRootField(name: string): { getValue(name: string): unknown } | null | undefined;
+          }) => {
+            const payload = store.getRootField("DeleteAgentConversation");
+            const deletedConversationId = String(payload?.getValue("deletedConversationId") || "");
+            if (!deletedConversationId) {
+              return;
+            }
+
+            const rootRecord = store.getRoot();
+            const currentConversations = filterStoreRecords(
+              rootRecord.getLinkedRecords("AgentConversations") || [],
+            );
+            const deletedConversationRecord = currentConversations.find((conversationRecord) => {
+              return String(conversationRecord.getValue("id") || "") === deletedConversationId;
+            });
+            rootRecord.setLinkedRecords(
+              currentConversations.filter((conversationRecord) => {
+                return String(conversationRecord.getValue("id") || "") !== deletedConversationId;
+              }),
+              "AgentConversations",
+            );
+            if (deletedConversationRecord) {
+              store.delete?.(deletedConversationRecord.getDataID());
+            }
+          },
+          onCompleted: (
+            _response: conversationsPageDeleteAgentConversationMutation["response"],
+            errors: ReadonlyArray<{ message: string }> | null | undefined,
+          ) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to delete conversation.");
+    } finally {
+      setDeletingConversationId(null);
+    }
+  }, [commitDeleteConversation]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -725,7 +839,9 @@ function ConversationsPageContent() {
           <div className="no-scrollbar flex-1 overflow-y-auto px-4 py-4">
             <ConversationList
               conversations={conversations}
+              deletingConversationId={deletingConversationId}
               emptyStateTone="mobile"
+              onDeleteConversation={deleteConversation}
               onSelect={(conversationId) => {
                 openConversation(conversationId);
                 setIsMobileConversationListOpen(false);
@@ -758,6 +874,8 @@ function ConversationsPageContent() {
 
             <ConversationList
               conversations={conversations}
+              deletingConversationId={deletingConversationId}
+              onDeleteConversation={deleteConversation}
               onSelect={openConversation}
               selectedConversationId={selectedConversationId}
             />
@@ -790,6 +908,21 @@ function ConversationsPageContent() {
           <ConversationTranscript
             conversation={selectedConversation}
             errorMessage={errorMessage}
+            headerAction={selectedConversation && selectedConversationLabel
+              ? (
+                <ConversationDeleteAction
+                  buttonClassName="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  buttonTitle={
+                    deletingConversationId === selectedConversation.id
+                      ? "Deleting conversation..."
+                      : "Delete conversation"
+                  }
+                  conversationLabel={selectedConversationLabel}
+                  isDeleting={deletingConversationId === selectedConversation.id}
+                  onDelete={() => deleteConversation(selectedConversation.id)}
+                />
+              )
+              : null}
             isLoadingOlderMessages={isLoadingOlderTranscript}
             isLoadingTranscript={isLoadingTranscript}
             messages={messages}

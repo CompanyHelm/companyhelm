@@ -35,6 +35,7 @@ import { CreateSecretMutation } from "./mutations/create_secret.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { DeleteArtifactMutation } from "./mutations/delete_artifact.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
+import { DeleteAgentConversationMutation } from "./mutations/delete_agent_conversation.ts";
 import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_compute_provider_definition.ts";
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
@@ -178,6 +179,7 @@ export class GraphqlApplication {
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly deleteArtifactMutation: DeleteArtifactMutation;
   private readonly deleteAgentMutation: DeleteAgentMutation;
+  private readonly deleteAgentConversationMutation: DeleteAgentConversationMutation;
   private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
   private readonly deleteEnvironmentMutation: DeleteEnvironmentMutation;
   private readonly getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation;
@@ -595,6 +597,8 @@ export class GraphqlApplication {
         throw new Error("InboxHumanQuestionsUpdated subscription is not configured.");
       },
     } as never),
+    @inject(DeleteAgentConversationMutation)
+    deleteAgentConversationMutation: DeleteAgentConversationMutation = new DeleteAgentConversationMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -699,6 +703,7 @@ export class GraphqlApplication {
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.deleteArtifactMutation = deleteArtifactMutation;
     this.deleteAgentMutation = deleteAgentMutation;
+    this.deleteAgentConversationMutation = deleteAgentConversationMutation;
     this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
     this.getEnvironmentVncUrlMutation = getEnvironmentVncUrlMutation;
@@ -910,6 +915,7 @@ export class GraphqlApplication {
           CreateSession: this.createSessionMutation.execute,
           DeleteArtifact: this.deleteArtifactMutation.execute,
           DeleteAgent: this.deleteAgentMutation.execute,
+          DeleteAgentConversation: this.deleteAgentConversationMutation.execute,
           DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
           DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
           DeleteSkill: this.deleteSkillMutation.execute,
