@@ -54,6 +54,7 @@ export class UpdateSessionTitleMutation extends Mutation<
       context.authSession.company.id,
       arguments_.input.sessionId,
       arguments_.input.title ?? null,
+      context.authSession.user.id,
     );
 
     const sessionRecord = await this.sessionReadService.getSession(

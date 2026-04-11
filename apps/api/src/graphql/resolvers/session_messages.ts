@@ -21,7 +21,7 @@ export class SessionMessagesQueryResolver extends Resolver<SessionMessageGraphql
   }
 
   protected resolve = async (context: GraphqlRequestContext): Promise<SessionMessageGraphqlRecord[]> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -31,6 +31,7 @@ export class SessionMessagesQueryResolver extends Resolver<SessionMessageGraphql
     return this.sessionReadService.listMessages(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
+      context.authSession.user.id,
     );
   };
 }

@@ -5,24 +5,40 @@ import { SessionSecretsQueryResolver } from "../src/graphql/resolvers/session_se
 
 test("SessionSecretsQueryResolver lists attached secrets for the authenticated company session", async () => {
   const calls: Array<{ companyId: string; sessionId: string }> = [];
-  const resolver = new SessionSecretsQueryResolver({
-    async listSessionSecrets(_transactionProvider, companyId: string, sessionId: string) {
-      calls.push({
-        companyId,
-        sessionId,
-      });
+  const getSessionCalls: Array<{ companyId: string; sessionId: string; userId: string }> = [];
+  const resolver = new SessionSecretsQueryResolver(
+    {
+      async listSessionSecrets(_transactionProvider, companyId: string, sessionId: string) {
+        calls.push({
+          companyId,
+          sessionId,
+        });
 
-      return [{
-        companyId,
-        createdAt: new Date("2026-03-30T18:00:00.000Z"),
-        description: "GitHub installation token",
-        envVarName: "GITHUB_TOKEN",
-        id: "secret-1",
-        name: "GitHub Token",
-        updatedAt: new Date("2026-03-30T18:05:00.000Z"),
-      }];
-    },
-  } as never);
+        return [{
+          companyId,
+          createdAt: new Date("2026-03-30T18:00:00.000Z"),
+          description: "GitHub installation token",
+          envVarName: "GITHUB_TOKEN",
+          id: "secret-1",
+          name: "GitHub Token",
+          updatedAt: new Date("2026-03-30T18:05:00.000Z"),
+        }];
+      },
+    } as never,
+    {
+      async getSession(_transactionProvider, companyId: string, sessionId: string, userId: string) {
+        getSessionCalls.push({
+          companyId,
+          sessionId,
+          userId,
+        });
+
+        return {
+          id: sessionId,
+        };
+      },
+    } as never,
+  );
 
   const result = await resolver.execute(
     null,
@@ -52,6 +68,11 @@ test("SessionSecretsQueryResolver lists attached secrets for the authenticated c
   assert.deepEqual(calls, [{
     companyId: "company-123",
     sessionId: "session-1",
+  }]);
+  assert.deepEqual(getSessionCalls, [{
+    companyId: "company-123",
+    sessionId: "session-1",
+    userId: "user-123",
   }]);
   assert.deepEqual(result, [{
     companyId: "company-123",

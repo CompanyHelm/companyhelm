@@ -2,6 +2,7 @@ import { inject, injectable } from "inversify";
 import { SessionQueuedMessageGraphqlPresenter, type SessionQueuedMessageGraphqlRecord } from "../../services/agent/session/process/queued_message_graphql_presenter.ts";
 import { SessionProcessPubSubNames } from "../../services/agent/session/process/pub_sub_names.ts";
 import { SessionQueuedMessageService } from "../../services/agent/session/process/queued_messages.ts";
+import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { RedisPatternAsyncIterator } from "../subscriptions/redis_pattern_async_iterator.ts";
 
@@ -19,6 +20,7 @@ export class SessionQueuedMessagesUpdatedSubscriptionResolver {
   private readonly presenter: SessionQueuedMessageGraphqlPresenter;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionQueuedMessageService: SessionQueuedMessageService;
+  private readonly sessionReadService: SessionReadService;
 
   constructor(
     @inject(SessionQueuedMessageGraphqlPresenter)
@@ -27,10 +29,12 @@ export class SessionQueuedMessagesUpdatedSubscriptionResolver {
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(SessionQueuedMessageService)
     sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
   ) {
     this.presenter = presenter;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
     this.sessionQueuedMessageService = sessionQueuedMessageService;
+    this.sessionReadService = sessionReadService;
   }
 
   subscribe = (
@@ -50,7 +54,7 @@ export class SessionQueuedMessagesUpdatedSubscriptionResolver {
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionQueuedMessagesUpdated: SessionQueuedMessageGraphqlRecord[] }> {
     const requestContext = await this.resolveRequestContext(context);
-    if (!requestContext.authSession?.company) {
+    if (!requestContext.authSession?.company || !requestContext.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!requestContext.app_runtime_transaction_provider) {
@@ -63,6 +67,15 @@ export class SessionQueuedMessagesUpdatedSubscriptionResolver {
     const sessionId = String(arguments_.sessionId || "").trim();
     if (sessionId.length === 0) {
       throw new Error("sessionId is required.");
+    }
+    const sessionRecord = await this.sessionReadService.getSession(
+      requestContext.app_runtime_transaction_provider,
+      requestContext.authSession.company.id,
+      sessionId,
+      requestContext.authSession.user.id,
+    );
+    if (!sessionRecord) {
+      throw new Error("Session not found.");
     }
 
     const iterator = new RedisPatternAsyncIterator(

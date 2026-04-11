@@ -125,8 +125,9 @@ export const agentSessions = pgTable("agent_sessions", {
     .notNull(),
   // inferred from first message or based on LLM generated title
   inferredTitle: text("inferred_title"),
+  // owner of a user-initiated chat, optional when the session was created by the system
   ownerUserId: uuid("owner_user_id")
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "set null" }),
   // user explicitly set title, it should take precedence over the inferred title
   userSetTitle: text("user_set_title"),
   currentReasoningLevel: text("current_reasoning_level").notNull(),

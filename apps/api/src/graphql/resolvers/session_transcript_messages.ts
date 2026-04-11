@@ -28,7 +28,7 @@ export class SessionTranscriptMessagesQueryResolver {
     arguments_: SessionTranscriptMessagesArguments,
     context: GraphqlRequestContext,
   ): Promise<SessionTranscriptMessageConnectionGraphqlRecord> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -44,6 +44,7 @@ export class SessionTranscriptMessagesQueryResolver {
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       sessionId,
+      context.authSession.user.id,
       arguments_.first,
       arguments_.after,
     );

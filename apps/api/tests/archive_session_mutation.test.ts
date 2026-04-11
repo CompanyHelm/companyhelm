@@ -26,6 +26,21 @@ class ArchiveSessionMutationTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
+      database: {
+        host: "localhost",
+        name: "companyhelm",
+        port: 5432,
+        roles: {
+          app_runtime: {
+            username: "app-runtime",
+            password: "secret",
+          },
+        },
+      },
       auth: {
         provider: "clerk",
       },
@@ -73,10 +88,11 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     },
   };
   const sessionManagerService = {
-    async archiveSession(transactionProvider: unknown, companyId: string, sessionId: string) {
+    async archiveSession(transactionProvider: unknown, companyId: string, sessionId: string, userId: string) {
       assert.ok(transactionProvider);
       assert.equal(companyId, "company-123");
       assert.equal(sessionId, "session-1");
+      assert.equal(userId, "user-123");
 
       return {
         id: sessionId,

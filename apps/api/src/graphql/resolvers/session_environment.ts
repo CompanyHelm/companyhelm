@@ -10,6 +10,7 @@ import { AgentEnvironmentCatalogService } from "../../services/environments/cata
 import { AgentEnvironmentLeaseService } from "../../services/environments/lease_service.ts";
 import { AgentEnvironmentSelectionService } from "../../services/environments/selection_service.ts";
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
+import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type SessionEnvironmentArguments = {
@@ -78,6 +79,7 @@ export class SessionEnvironmentQueryResolver {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly leaseService: AgentEnvironmentLeaseService;
   private readonly providerRegistry: AgentComputeProviderRegistry;
+  private readonly sessionReadService: SessionReadService;
   private readonly selectionService: AgentEnvironmentSelectionService;
 
   constructor(
@@ -86,12 +88,14 @@ export class SessionEnvironmentQueryResolver {
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
     @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
     @inject(AgentEnvironmentSelectionService) selectionService: AgentEnvironmentSelectionService,
   ) {
     this.catalogService = catalogService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.leaseService = leaseService;
     this.providerRegistry = providerRegistry;
+    this.sessionReadService = sessionReadService;
     this.selectionService = selectionService;
   }
 
@@ -100,7 +104,7 @@ export class SessionEnvironmentQueryResolver {
     arguments_: SessionEnvironmentArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlSessionEnvironmentInfo> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -108,6 +112,16 @@ export class SessionEnvironmentQueryResolver {
     }
     if (arguments_.sessionId.length === 0) {
       throw new Error("sessionId is required.");
+    }
+
+    const sessionRecord = await this.sessionReadService.getSession(
+      context.app_runtime_transaction_provider,
+      context.authSession.company.id,
+      arguments_.sessionId,
+      context.authSession.user.id,
+    );
+    if (!sessionRecord) {
+      throw new Error("Session not found.");
     }
 
     const session = await this.catalogService.loadSession(

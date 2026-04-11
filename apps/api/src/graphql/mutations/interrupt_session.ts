@@ -49,6 +49,7 @@ export class InterruptSessionMutation extends Mutation<InterruptSessionMutationA
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       arguments_.input.sessionId,
+      context.authSession.user.id,
     );
 
     const sessionRecord = await this.sessionReadService.getSession(

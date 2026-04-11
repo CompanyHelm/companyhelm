@@ -382,6 +382,8 @@ export class AgentInboxService {
         undefined,
         undefined,
         true,
+        undefined,
+        input.userId,
       );
     } catch (error) {
       await this.reopenQuestion(transactionProvider, input.companyId, input.inboxItemId);

@@ -5,10 +5,11 @@ import { InterruptSessionMutation } from "../src/graphql/mutations/interrupt_ses
 test("InterruptSessionMutation interrupts the session and returns the current session record", async () => {
   const mutation = new InterruptSessionMutation(
     {
-      async interruptSession(transactionProvider: unknown, companyId: string, sessionId: string) {
+      async interruptSession(transactionProvider: unknown, companyId: string, sessionId: string, userId: string) {
         assert.ok(transactionProvider);
         assert.equal(companyId, "company-123");
         assert.equal(sessionId, "session-1");
+        assert.equal(userId, "user-123");
       },
     } as never,
     {

@@ -165,6 +165,7 @@ test("SessionManagerService createSession persists a queued session, stores the 
   assert.equal(insertedValues[0]?.currentModelProviderCredentialModelId, "model-row-1");
   assert.equal(insertedValues[0]?.currentReasoningLevel, "high");
   assert.equal(insertedValues[0]?.inferredTitle, userMessage.slice(0, 50));
+  assert.equal(insertedValues[0]?.ownerUserId, null);
   assert.equal(insertedValues[0]?.status, "queued");
   assert.deepEqual(queuedMessages, [{
     companyId: "company-1",
@@ -575,6 +576,7 @@ test("SessionManagerService createSession copies agent default secrets into the 
   );
 
   assert.equal(insertedValues.length, 2);
+  assert.equal(insertedValues[0]?.ownerUserId, "user-session-creator");
   const copiedSecretValues = insertedValues[1];
   assert.ok(Array.isArray(copiedSecretValues));
   assert.deepEqual(copiedSecretValues, [{
@@ -1688,6 +1690,7 @@ test("SessionManagerService forkSession creates a stopped branch from the select
   assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-child-1");
   assert.equal(insertedSessionValues[0]?.status, "stopped");
   assert.equal(insertedSessionValues[0]?.inferredTitle, "Fork of Review the release plan");
+  assert.equal(insertedSessionValues[0]?.ownerUserId, "user-123");
   assert.deepEqual(insertedSessionValues[0]?.contextMessagesSnapshot, [{
     content: "Child branch context",
     role: "assistant",
@@ -1723,4 +1726,62 @@ test("SessionManagerService forkSession creates a stopped branch from the select
       sourceSessionId: "session-child",
     },
   }]);
+});
+
+test("SessionManagerService prompt rejects sessions owned by another user", async () => {
+  const transaction = {
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              return [{
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                id: "session-1",
+                ownerUserId: "user-999",
+                status: "stopped",
+              }];
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = new SessionManagerService(
+    SessionManagerServiceTestHarness.createLoggerMock([]) as never,
+    {
+      async getClient() {
+        throw new Error("Redis should not be touched when access is denied.");
+      },
+    } as never,
+    new SessionProcessPubSubNames(),
+    {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not run when access is denied.");
+      },
+    } as SessionProcessQueueService,
+    new SessionProcessQueuedNames(),
+    {
+      async enqueueInTransaction() {
+        throw new Error("Queued messages should not be created when access is denied.");
+      },
+    } as SessionQueuedMessageService,
+  );
+
+  await assert.rejects(
+    service.prompt(
+      SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+      "company-1",
+      "session-1",
+      "Do not accept this.",
+      undefined,
+      undefined,
+      false,
+      undefined,
+      "user-123",
+    ),
+    /Session not found\./,
+  );
 });

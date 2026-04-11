@@ -21,6 +21,21 @@ class SessionMessagesQueryTestHarness {
         endpoint: "/graphql",
         graphiql: false,
       },
+      log: {
+        json: false,
+        level: "info",
+      },
+      database: {
+        host: "localhost",
+        name: "companyhelm",
+        port: 5432,
+        roles: {
+          app_runtime: {
+            username: "app-runtime",
+            password: "secret",
+          },
+        },
+      },
       auth: {
         provider: "clerk",
       },
@@ -36,6 +51,24 @@ class SessionMessagesQueryTestHarness {
           select() {
             selectCallCount += 1;
             if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "session-1",
+                        ownerUserId: "user-123",
+                      }, {
+                        id: "session-2",
+                        ownerUserId: "user-999",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
               return {
                 from() {
                   return {
@@ -72,7 +105,7 @@ class SessionMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 2) {
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -126,7 +159,7 @@ class SessionMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {

@@ -33,6 +33,7 @@ type ExistingSessionRow = {
   currentReasoningLevel: string;
   id: string;
   inferredTitle?: string | null;
+  ownerUserId?: string | null;
   status: string;
   userSetTitle?: string | null;
 };
@@ -91,6 +92,7 @@ export type SessionManagerQueuePromptOptions = {
   modelProviderCredentialModelId?: string | null;
   reasoningLevel?: string | null;
   shouldSteer?: boolean;
+  userId?: string | null;
 };
 
 type SelectableDatabase = {
@@ -258,6 +260,7 @@ export class SessionManagerService {
         isCompacting: false,
         isThinking: false,
         maxContextTokens: null,
+        ownerUserId: options.userId ?? null,
         status: "queued",
         thinkingText: null,
         created_at: now,
@@ -366,6 +369,7 @@ export class SessionManagerService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    userId?: string | null,
   ): Promise<SessionRecord> {
     const { shouldInterrupt, sessionRecord } = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -377,6 +381,7 @@ export class SessionManagerService {
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
         })
         .from(agentSessions)
@@ -387,6 +392,7 @@ export class SessionManagerService {
       if (!existingSession) {
         throw new Error("Session not found.");
       }
+      this.assertUserCanMutateSession(existingSession.ownerUserId, userId);
 
       const now = new Date();
       const [updatedSessionRecord] = await updatableDatabase
@@ -458,6 +464,7 @@ export class SessionManagerService {
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
           inferredTitle: agentSessions.inferredTitle,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
           userSetTitle: agentSessions.userSetTitle,
         })
@@ -469,6 +476,7 @@ export class SessionManagerService {
       if (!sourceSession) {
         throw new Error("Source session not found.");
       }
+      this.assertUserCanMutateSession(sourceSession.ownerUserId, userId);
 
       const checkpoint = await this.sessionContextCheckpointService.getCheckpointForTurn(
         selectableDatabase,
@@ -501,6 +509,7 @@ export class SessionManagerService {
           isCompacting: false,
           isThinking: false,
           maxContextTokens: checkpoint.maxContextTokens,
+          ownerUserId: userId ?? null,
           status: "stopped",
           thinkingText: null,
           created_at: now,
@@ -544,6 +553,7 @@ export class SessionManagerService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
+    userId?: string | null,
   ): Promise<void> {
     const shouldInterrupt = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -553,6 +563,7 @@ export class SessionManagerService {
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
         })
         .from(agentSessions)
@@ -563,6 +574,7 @@ export class SessionManagerService {
       if (!existingSession) {
         throw new Error("Session not found.");
       }
+      this.assertUserCanMutateSession(existingSession.ownerUserId, userId);
       if (existingSession.status === "archived") {
         throw new Error("Archived sessions cannot be interrupted.");
       }
@@ -590,6 +602,7 @@ export class SessionManagerService {
     reasoningLevel?: string | null,
     shouldSteer = false,
     images?: SessionPromptImageInput[],
+    userId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       return this.queuePromptInTransaction(
@@ -604,6 +617,7 @@ export class SessionManagerService {
           modelProviderCredentialModelId,
           reasoningLevel,
           shouldSteer,
+          userId,
         },
       );
     });
@@ -626,6 +640,7 @@ export class SessionManagerService {
     companyId: string,
     sessionId: string,
     title: string | null | undefined,
+    userId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -636,6 +651,7 @@ export class SessionManagerService {
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
           userSetTitle: agentSessions.userSetTitle,
         })
@@ -647,6 +663,7 @@ export class SessionManagerService {
       if (!existingSession) {
         throw new Error("Session not found.");
       }
+      this.assertUserCanMutateSession(existingSession.ownerUserId, userId);
 
       const [updatedSessionRecord] = await updatableDatabase
         .update(agentSessions)
@@ -707,6 +724,7 @@ export class SessionManagerService {
         currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         currentReasoningLevel: agentSessions.currentReasoningLevel,
         id: agentSessions.id,
+        ownerUserId: agentSessions.ownerUserId,
         status: agentSessions.status,
       })
       .from(agentSessions)
@@ -717,6 +735,7 @@ export class SessionManagerService {
     if (!existingSession) {
       throw new Error("Session not found.");
     }
+    this.assertUserCanMutateSession(existingSession.ownerUserId, options.userId);
     if (existingSession.status === "archived") {
       throw new Error("Archived sessions cannot receive new messages.");
     }
@@ -932,6 +951,15 @@ export class SessionManagerService {
     }
 
     return availableLevels[0] ?? "";
+  }
+
+  private assertUserCanMutateSession(ownerUserId?: string | null, userId?: string | null): void {
+    if (!userId || !ownerUserId) {
+      return;
+    }
+    if (ownerUserId !== userId) {
+      throw new Error("Session not found.");
+    }
   }
 
   private inferTitle(userMessage: string, imageCount = 0): string | null {

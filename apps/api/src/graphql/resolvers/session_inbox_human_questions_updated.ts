@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
 import { SessionProcessPubSubNames } from "../../services/agent/session/process/pub_sub_names.ts";
+import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import { AgentInboxService } from "../../services/inbox/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import {
@@ -22,17 +23,20 @@ type SessionInboxHumanQuestionsUpdatedArguments = {
 export class SessionInboxHumanQuestionsUpdatedSubscriptionResolver {
   private readonly inboxService: AgentInboxService;
   private readonly presenter: InboxHumanQuestionPresenter;
+  private readonly sessionReadService: SessionReadService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
 
   constructor(
     @inject(AgentInboxService) inboxService: AgentInboxService,
     @inject(InboxHumanQuestionPresenter)
     presenter: InboxHumanQuestionPresenter = new InboxHumanQuestionPresenter(),
+    @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
     @inject(SessionProcessPubSubNames)
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
   ) {
     this.inboxService = inboxService;
     this.presenter = presenter;
+    this.sessionReadService = sessionReadService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
   }
 
@@ -55,7 +59,7 @@ export class SessionInboxHumanQuestionsUpdatedSubscriptionResolver {
     context: GraphqlRequestContext,
   ): AsyncIterableIterator<{ SessionInboxHumanQuestionsUpdated: GraphqlInboxHumanQuestionRecord[] }> {
     const requestContext = await this.resolveRequestContext(context);
-    if (!requestContext.authSession?.company) {
+    if (!requestContext.authSession?.company || !requestContext.authSession.user) {
       throw new Error("Authentication required.");
     }
     if (!requestContext.app_runtime_transaction_provider) {
@@ -68,6 +72,15 @@ export class SessionInboxHumanQuestionsUpdatedSubscriptionResolver {
     const sessionId = String(arguments_.sessionId || "").trim();
     if (sessionId.length === 0) {
       throw new Error("sessionId is required.");
+    }
+    const sessionRecord = await this.sessionReadService.getSession(
+      requestContext.app_runtime_transaction_provider,
+      requestContext.authSession.company.id,
+      sessionId,
+      requestContext.authSession.user.id,
+    );
+    if (!sessionRecord) {
+      throw new Error("Session not found.");
     }
 
     const iterator = new RedisPatternAsyncIterator(
