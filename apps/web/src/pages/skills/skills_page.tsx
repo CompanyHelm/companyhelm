@@ -12,10 +12,17 @@ import {
 } from "./create_skill_dialog";
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
 import type { skillsPageCreateSkillMutation } from "./__generated__/skillsPageCreateSkillMutation.graphql";
+import type { skillsPageCreateSkillGroupMutation } from "./__generated__/skillsPageCreateSkillGroupMutation.graphql";
 import type { skillsPageDeleteSkillMutation } from "./__generated__/skillsPageDeleteSkillMutation.graphql";
 import type { skillsPageImportGithubSkillsMutation } from "./__generated__/skillsPageImportGithubSkillsMutation.graphql";
 import type { skillsPageQuery } from "./__generated__/skillsPageQuery.graphql";
 import type { skillsPageUpdateSkillMutation } from "./__generated__/skillsPageUpdateSkillMutation.graphql";
+
+type RelayLinkedRecord = {
+  getDataID(): string;
+  getValue(key: string): unknown;
+  setValue(value: unknown, key: string): void;
+};
 
 const skillsPageQueryNode = graphql`
   query skillsPageQuery {
@@ -48,6 +55,15 @@ const skillsPageCreateSkillMutationNode = graphql`
   }
 `;
 
+const skillsPageCreateSkillGroupMutationNode = graphql`
+  mutation skillsPageCreateSkillGroupMutation($input: CreateSkillGroupInput!) {
+    CreateSkillGroup(input: $input) {
+      id
+      name
+    }
+  }
+`;
+
 const skillsPageDeleteSkillMutationNode = graphql`
   mutation skillsPageDeleteSkillMutation($input: DeleteSkillInput!) {
     DeleteSkill(input: $input) {
@@ -55,6 +71,27 @@ const skillsPageDeleteSkillMutationNode = graphql`
     }
   }
 `;
+
+function filterRelayRecords(records: ReadonlyArray<unknown>): RelayLinkedRecord[] {
+  return records.filter((record): record is RelayLinkedRecord => {
+    return typeof record === "object"
+      && record !== null
+      && "getDataID" in record
+      && typeof record.getDataID === "function"
+      && "getValue" in record
+      && typeof record.getValue === "function"
+      && "setValue" in record
+      && typeof record.setValue === "function";
+  });
+}
+
+function sortGroupRecords(records: RelayLinkedRecord[]): RelayLinkedRecord[] {
+  return [...records].sort((left, right) => {
+    const leftName = String(left.getValue("name") ?? "");
+    const rightName = String(right.getValue("name") ?? "");
+    return leftName.localeCompare(rightName);
+  });
+}
 
 const skillsPageImportGithubSkillsMutationNode = graphql`
   mutation skillsPageImportGithubSkillsMutation($input: ImportGithubSkillsInput!) {
@@ -139,6 +176,8 @@ function SkillsPageContent() {
   const [commitCreateSkill, isCreateSkillInFlight] = useMutation<skillsPageCreateSkillMutation>(
     skillsPageCreateSkillMutationNode,
   );
+  const [commitCreateSkillGroup, isCreateSkillGroupInFlight] =
+    useMutation<skillsPageCreateSkillGroupMutation>(skillsPageCreateSkillGroupMutationNode);
   const [commitImportGithubSkills, isImportGithubSkillsInFlight] =
     useMutation<skillsPageImportGithubSkillsMutation>(skillsPageImportGithubSkillsMutationNode);
   const [commitDeleteSkill] = useMutation<skillsPageDeleteSkillMutation>(
@@ -148,10 +187,12 @@ function SkillsPageContent() {
     skillsPageUpdateSkillMutationNode,
   );
   const groupOptions: CreateSkillDialogGroupOption[] = useMemo(() => {
-    return data.SkillGroups.map((group) => ({
-      id: group.id,
-      name: group.name,
-    }));
+    return [...data.SkillGroups]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((group) => ({
+        id: group.id,
+        name: group.name,
+      }));
   }, [data.SkillGroups]);
   const groupedSkills = useMemo<SkillsTreeGroupRecord[]>(() => {
     const skillsByGroupId = new Map<string | null, SkillsTreeSkillRecord[]>();
@@ -331,7 +372,7 @@ function SkillsPageContent() {
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         groups={groupOptions}
         isOpen={isCreateDialogOpen}
-        isSaving={isCreateSkillInFlight || isImportGithubSkillsInFlight}
+        isSaving={isCreateSkillInFlight || isCreateSkillGroupInFlight || isImportGithubSkillsInFlight}
         onCreate={async (input) => {
           setErrorMessage(null);
 
@@ -365,6 +406,54 @@ function SkillsPageContent() {
             });
           }).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to create skill.");
+            throw error;
+          });
+        }}
+        onCreateGroup={async (name) => {
+          setErrorMessage(null);
+
+          return await new Promise<CreateSkillDialogGroupOption>((resolve, reject) => {
+            commitCreateSkillGroup({
+              variables: {
+                input: {
+                  name,
+                },
+              },
+              updater: (store) => {
+                const createdGroup = store.getRootField("CreateSkillGroup");
+                if (!createdGroup) {
+                  return;
+                }
+
+                const rootRecord = store.getRoot();
+                const currentGroups = filterRelayRecords(rootRecord.getLinkedRecords("SkillGroups") || []);
+                rootRecord.setLinkedRecords(
+                  sortGroupRecords([...currentGroups, createdGroup as RelayLinkedRecord]),
+                  "SkillGroups",
+                );
+              },
+              onCompleted: (response, errors) => {
+                const nextErrorMessage = errors?.[0]?.message;
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                const createdGroup = response?.CreateSkillGroup;
+                if (!createdGroup) {
+                  reject(new Error("Failed to create skill group."));
+                  return;
+                }
+
+                resolve({
+                  id: createdGroup.id,
+                  name: createdGroup.name,
+                });
+              },
+              onError: reject,
+            });
+          }).catch((error: unknown) => {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to create skill group.");
             throw error;
           });
         }}

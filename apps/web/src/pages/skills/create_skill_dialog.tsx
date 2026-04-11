@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { GithubIcon, PencilRulerIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { FolderPlusIcon, GithubIcon, PencilRulerIcon } from "lucide-react";
 import { fetchQuery, graphql, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +64,7 @@ interface CreateSkillDialogProps {
     name: string;
     skillGroupId?: string | null;
   }): Promise<void>;
+  onCreateGroup(name: string): Promise<CreateSkillDialogGroupOption>;
   onImportGithub(input: {
     skillGroupId?: string | null;
     skills: CreateSkillDialogGithubImportRecord[];
@@ -109,6 +110,8 @@ const createSkillDialogGithubDiscoveredSkillsQueryNode = graphql`
 export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const environment = useRelayEnvironment();
   const [description, setDescription] = useState("");
+  const [draftSkillGroupName, setDraftSkillGroupName] = useState("");
+  const [ephemeralSkillGroup, setEphemeralSkillGroup] = useState<CreateSkillDialogGroupOption | null>(null);
   const [githubBranchName, setGithubBranchName] = useState("");
   const [githubBranches, setGithubBranches] = useState<CreateSkillDialogGithubBranchOption[]>([]);
   const [githubDiscoveredSkills, setGithubDiscoveredSkills] = useState<CreateSkillDialogGithubImportRecord[]>([]);
@@ -116,6 +119,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const [githubSelectedSkillDirectories, setGithubSelectedSkillDirectories] = useState<string[]>([]);
   const [githubStep, setGithubStep] = useState<CreateSkillDialogGithubStep>("repository");
   const [instructions, setInstructions] = useState("");
+  const [isCreateGroupFormOpen, setCreateGroupFormOpen] = useState(false);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [isLoadingGithubBranches, setIsLoadingGithubBranches] = useState(false);
   const [isLoadingGithubDiscoveredSkills, setIsLoadingGithubDiscoveredSkills] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
@@ -126,6 +131,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   useEffect(() => {
     if (!props.isOpen) {
       setDescription("");
+      setDraftSkillGroupName("");
+      setEphemeralSkillGroup(null);
       setGithubBranchName("");
       setGithubBranches([]);
       setGithubDiscoveredSkills([]);
@@ -133,6 +140,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       setGithubSelectedSkillDirectories([]);
       setGithubStep("repository");
       setInstructions("");
+      setCreateGroupFormOpen(false);
+      setIsCreatingGroup(false);
       setIsLoadingGithubBranches(false);
       setIsLoadingGithubDiscoveredSkills(false);
       setLocalErrorMessage(null);
@@ -148,6 +157,122 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   );
   const allGithubSkillsSelected = githubDiscoveredSkills.length > 0
     && githubSelectedSkillDirectories.length === githubDiscoveredSkills.length;
+  const groupOptions = useMemo(() => {
+    const nextGroups = ephemeralSkillGroup && !props.groups.some((group) => group.id === ephemeralSkillGroup.id)
+      ? [...props.groups, ephemeralSkillGroup]
+      : props.groups;
+    return [...nextGroups].sort((left, right) => left.name.localeCompare(right.name));
+  }, [ephemeralSkillGroup, props.groups]);
+  const isMutating = props.isSaving || isCreatingGroup;
+
+  async function createSkillGroup() {
+    setLocalErrorMessage(null);
+    setIsCreatingGroup(true);
+
+    try {
+      const createdGroup = await props.onCreateGroup(draftSkillGroupName);
+      setDraftSkillGroupName("");
+      setEphemeralSkillGroup(createdGroup);
+      setSkillGroupId(createdGroup.id);
+      setCreateGroupFormOpen(false);
+    } catch (error: unknown) {
+      setLocalErrorMessage(
+        error instanceof Error ? error.message : "Failed to create skill group.",
+      );
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  }
+
+  function renderSkillGroupField(selectId: string) {
+    return (
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <label className="text-xs font-medium text-foreground" htmlFor={selectId}>
+            Group
+          </label>
+          <Button
+            onClick={() => {
+              setCreateGroupFormOpen((currentValue) => !currentValue);
+              setLocalErrorMessage(null);
+            }}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            <FolderPlusIcon className="size-4" />
+            New group
+          </Button>
+        </div>
+        <Select
+          items={[
+            {
+              label: "Ungrouped",
+              value: UNGROUPED_SKILL_GROUP_VALUE,
+            },
+            ...groupOptions.map((group) => ({
+              label: group.name,
+              value: group.id,
+            })),
+          ]}
+          onValueChange={(value) => {
+            setSkillGroupId(value ?? UNGROUPED_SKILL_GROUP_VALUE);
+          }}
+          value={skillGroupId}
+        >
+          <SelectTrigger id={selectId}>
+            <SelectValue placeholder="Select a group" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={UNGROUPED_SKILL_GROUP_VALUE}>Ungrouped</SelectItem>
+            {groupOptions.map((group) => (
+              <SelectItem key={group.id} value={group.id}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {isCreateGroupFormOpen ? (
+          <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-3 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
+            <div className="grid gap-2">
+              <label className="text-xs font-medium text-foreground" htmlFor={`${selectId}-new-group`}>
+                New group name
+              </label>
+              <Input
+                id={`${selectId}-new-group`}
+                onChange={(event) => {
+                  setDraftSkillGroupName(event.target.value);
+                }}
+                placeholder="Automation"
+                value={draftSkillGroupName}
+              />
+            </div>
+            <Button
+              onClick={() => {
+                setCreateGroupFormOpen(false);
+                setDraftSkillGroupName("");
+                setLocalErrorMessage(null);
+              }}
+              type="button"
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={draftSkillGroupName.length === 0 || isCreatingGroup}
+              onClick={() => {
+                void createSkillGroup();
+              }}
+              type="button"
+            >
+              {isCreatingGroup ? "Creating..." : "Create group"}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   async function discoverGithubBranches() {
     const normalizedRepositoryUrl = githubRepositoryUrl.trim();
@@ -479,39 +604,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                   </div>
                 </div>
 
-                <div className="grid gap-2">
-                  <label className="text-xs font-medium text-foreground" htmlFor="github-skill-group">
-                    Group
-                  </label>
-                  <Select
-                    items={[
-                      {
-                        label: "Ungrouped",
-                        value: UNGROUPED_SKILL_GROUP_VALUE,
-                      },
-                      ...props.groups.map((group) => ({
-                        label: group.name,
-                        value: group.id,
-                      })),
-                    ]}
-                    onValueChange={(value) => {
-                      setSkillGroupId(value ?? UNGROUPED_SKILL_GROUP_VALUE);
-                    }}
-                    value={skillGroupId}
-                  >
-                    <SelectTrigger id="github-skill-group">
-                      <SelectValue placeholder="Select a group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={UNGROUPED_SKILL_GROUP_VALUE}>Ungrouped</SelectItem>
-                      {props.groups.map((group) => (
-                        <SelectItem key={group.id} value={group.id}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {renderSkillGroupField("github-skill-group")}
 
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -616,39 +709,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               />
             </div>
 
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="skill-group">
-                Group
-              </label>
-              <Select
-                items={[
-                  {
-                    label: "Ungrouped",
-                    value: UNGROUPED_SKILL_GROUP_VALUE,
-                  },
-                  ...props.groups.map((group) => ({
-                    label: group.name,
-                    value: group.id,
-                  })),
-                ]}
-                onValueChange={(value) => {
-                  setSkillGroupId(value ?? UNGROUPED_SKILL_GROUP_VALUE);
-                }}
-                value={skillGroupId}
-              >
-                <SelectTrigger id="skill-group">
-                  <SelectValue placeholder="Select a group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNGROUPED_SKILL_GROUP_VALUE}>Ungrouped</SelectItem>
-                  {props.groups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {renderSkillGroupField("skill-group")}
 
             <div className="grid gap-2">
               <label className="text-xs font-medium text-foreground" htmlFor="skill-description">
@@ -723,7 +784,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           </Button>
           {mode === "manual" ? (
             <Button
-              disabled={props.isSaving || !name.trim() || !description.trim() || !instructions.trim()}
+              disabled={isMutating || !name.trim() || !description.trim() || !instructions.trim()}
               onClick={async () => {
                 setLocalErrorMessage(null);
 
@@ -745,7 +806,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           ) : null}
           {mode === "github" && githubStep === "repository" ? (
             <Button
-              disabled={props.isSaving || isLoadingGithubDiscoveredSkills || !githubRepositoryUrl.trim() || !githubBranchName}
+              disabled={isMutating || isLoadingGithubDiscoveredSkills || !githubRepositoryUrl.trim() || !githubBranchName}
               onClick={() => {
                 void discoverGithubSkills();
               }}
@@ -756,7 +817,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           ) : null}
           {mode === "github" && githubStep === "skills" ? (
             <Button
-              disabled={props.isSaving || selectedGithubSkills.length === 0}
+              disabled={isMutating || selectedGithubSkills.length === 0}
               onClick={async () => {
                 setLocalErrorMessage(null);
 
