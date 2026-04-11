@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { UploadIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,16 +32,40 @@ interface ImportSecretsDialogProps {
 
 const envFileParser = new EnvFileParser();
 
+function resolveParsedEnvFileState(fileContents: string): {
+  errorMessage: string | null;
+  parsedEnvFile: ParsedEnvFile | null;
+} {
+  const nextParsedEnvFile = envFileParser.parseFileContents(fileContents);
+
+  if (nextParsedEnvFile.secretDrafts.length === 0 && nextParsedEnvFile.rejectedEntries.length === 0) {
+    return {
+      errorMessage: "No environment variables were found in this file.",
+      parsedEnvFile: nextParsedEnvFile,
+    };
+  }
+
+  if (nextParsedEnvFile.secretDrafts.length === 0) {
+    return {
+      errorMessage: "No importable environment variables were found in this file.",
+      parsedEnvFile: nextParsedEnvFile,
+    };
+  }
+
+  return {
+    errorMessage: null,
+    parsedEnvFile: nextParsedEnvFile,
+  };
+}
+
 /**
- * Handles browser-side `.env` imports so users can drag/drop or pick a file, preview the parsed
- * keys, and decide whether matching environment variables should overwrite existing secrets.
+ * Handles browser-side `.env` imports by parsing pasted file contents, previewing the resolved
+ * keys, and letting users decide whether matching environment variables should overwrite secrets.
  */
 export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
-  const [isDragActive, setDragActive] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [parsedEnvFile, setParsedEnvFile] = useState<ParsedEnvFile | null>(null);
   const [pastedFileContents, setPastedFileContents] = useState("");
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [shouldOverwriteExistingSecrets, setShouldOverwriteExistingSecrets] = useState(true);
   const existingSecretsByEnvVarName = new Map(
     props.existingSecrets.map((secret) => [secret.envVarName.toLowerCase(), secret]),
@@ -62,41 +85,39 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
 
   useEffect(() => {
     if (!props.isOpen) {
-      setDragActive(false);
       setLocalErrorMessage(null);
       setParsedEnvFile(null);
       setPastedFileContents("");
-      setSelectedFileName(null);
       setShouldOverwriteExistingSecrets(true);
     }
   }, [props.isOpen]);
 
-  const loadFileContents = (fileContents: string, sourceLabel: string) => {
-    setLocalErrorMessage(null);
-    setSelectedFileName(sourceLabel);
-
-    try {
-      const nextParsedEnvFile = envFileParser.parseFileContents(fileContents);
-      setParsedEnvFile(nextParsedEnvFile);
-
-      if (nextParsedEnvFile.secretDrafts.length === 0 && nextParsedEnvFile.rejectedEntries.length === 0) {
-        setLocalErrorMessage("No environment variables were found in this file.");
-        return;
-      }
-
-      if (nextParsedEnvFile.secretDrafts.length === 0) {
-        setLocalErrorMessage("No importable environment variables were found in this file.");
-      }
-    } catch (error) {
-      setParsedEnvFile(null);
-      setLocalErrorMessage(error instanceof Error ? error.message : "Failed to read the selected file.");
+  useEffect(() => {
+    if (!props.isOpen) {
+      return;
     }
-  };
 
-  const loadSelectedFile = async (file: File) => {
-    const fileContents = await file.text();
-    loadFileContents(fileContents, file.name);
-  };
+    if (pastedFileContents.trim().length === 0) {
+      setLocalErrorMessage(null);
+      setParsedEnvFile(null);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      try {
+        const nextState = resolveParsedEnvFileState(pastedFileContents);
+        setLocalErrorMessage(nextState.errorMessage);
+        setParsedEnvFile(nextState.parsedEnvFile);
+      } catch (error) {
+        setLocalErrorMessage(error instanceof Error ? error.message : "Failed to parse the pasted contents.");
+        setParsedEnvFile(null);
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [pastedFileContents, props.isOpen]);
 
   return (
     <Dialog
@@ -108,87 +129,16 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
         <DialogHeader>
           <DialogTitle>Import secrets from a .env file</DialogTitle>
           <DialogDescription>
-            Choose a file from disk or drop one into this modal. Parsing stays in the browser, then
-            matching environment variables can be overwritten or skipped.
+            Paste the file contents below. Parsing stays in the browser, then matching environment
+            variables can be overwritten or skipped.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
-          <div
-            className={cn(
-              "grid gap-3 rounded-xl border border-dashed px-4 py-5 transition-colors",
-              isDragActive ? "border-primary bg-primary/5" : "border-border/60 bg-muted/15",
-            )}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={(event) => {
-              const relatedTarget = event.relatedTarget;
-              if (relatedTarget instanceof Node && event.currentTarget.contains(relatedTarget)) {
-                return;
-              }
-
-              setDragActive(false);
-            }}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragActive(true);
-            }}
-            onDrop={async (event) => {
-              event.preventDefault();
-              setDragActive(false);
-
-              const droppedFile = event.dataTransfer.files?.[0];
-              if (!droppedFile) {
-                return;
-              }
-
-              await loadSelectedFile(droppedFile);
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/80">
-                <UploadIcon className="size-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  Drop a .env file here
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Drag and drop the file into this panel, or paste the contents below.
-                </p>
-              </div>
-            </div>
-            {selectedFileName ? (
-              <span className="text-xs text-muted-foreground">Loaded {selectedFileName}</span>
-            ) : null}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border/60" />
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              or
-            </span>
-            <div className="h-px flex-1 bg-border/60" />
-          </div>
-
           <div className="grid gap-2">
-            <div className="flex items-center justify-between gap-3">
-              <label className="text-xs font-medium text-foreground" htmlFor="secret-env-paste">
-                Paste the contents
-              </label>
-              <Button
-                disabled={!pastedFileContents.trim()}
-                onClick={() => {
-                  loadFileContents(pastedFileContents, "Pasted contents");
-                }}
-                type="button"
-                variant="outline"
-              >
-                Parse pasted text
-              </Button>
-            </div>
+            <label className="text-xs font-medium text-foreground" htmlFor="secret-env-paste">
+              Paste the contents
+            </label>
             <textarea
               id="secret-env-paste"
               onChange={(event) => {
@@ -200,6 +150,9 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
                 "min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
               )}
             />
+            <p className="text-xs text-muted-foreground">
+              The preview updates automatically about 500ms after the last change.
+            </p>
           </div>
 
           {parsedEnvFile ? (
