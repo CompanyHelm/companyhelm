@@ -503,22 +503,26 @@ function TasksPageContent() {
             const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
 
             return (
-              <button
+              <Button
                 key={filterOption.key}
                 className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs/relaxed font-medium transition",
+                  "h-8 shrink-0 gap-1.5 rounded-full px-3",
                   isSelected
-                    ? "border-border/70 bg-muted text-foreground"
+                    ? "border-border/70 bg-muted text-foreground hover:bg-muted/90"
                     : "border-border/40 bg-background/40 text-muted-foreground hover:bg-muted/30 hover:text-foreground",
                 )}
                 onClick={() => {
                   toggleCategory(filterOption.key);
                 }}
+                size="default"
                 type="button"
+                variant="outline"
               >
                 {filterOption.label}
-                <span className="text-[11px] text-muted-foreground/80">{filterOption.count}</span>
-              </button>
+                <span className="text-xs/relaxed tabular-nums text-muted-foreground/80">
+                  {filterOption.count}
+                </span>
+              </Button>
             );
           })}
         </div>
