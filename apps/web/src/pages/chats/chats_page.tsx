@@ -4363,7 +4363,7 @@ function ChatsPageContent() {
 
           <div className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
             <Button
-              className="mb-4 w-full justify-start px-4"
+              className="mb-4 w-full justify-start gap-2 px-5"
               disabled={!hasAvailableAgents}
               onClick={() => {
                 setIsNewChatDialogOpen(true);
@@ -4548,7 +4548,7 @@ function ChatsPageContent() {
             </div>
 
             <Button
-              className="mb-4 w-full justify-start px-4"
+              className="mb-4 w-full justify-start gap-2 px-5"
               disabled={!hasAvailableAgents}
               onClick={() => {
                 setIsNewChatDialogOpen(true);
