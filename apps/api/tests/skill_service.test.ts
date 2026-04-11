@@ -41,8 +41,8 @@ class SkillServiceTestHarness {
                 id: `skill-${skillRecords.length + 1}`,
                 instructions: String(value.instructions),
                 name: String(value.name),
-                repository: null,
-                skillDirectory: null,
+                repository: value.repository ? String(value.repository) : null,
+                skillDirectory: value.skillDirectory ? String(value.skillDirectory) : null,
                 skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
               };
               skillRecords.push(createdSkill);
@@ -303,4 +303,35 @@ test("SkillService rejects unknown skill groups during creation", async () => {
       skillGroupId: "missing-group",
     });
   }, /Skill group not found/);
+});
+
+test("SkillService creates a GitHub-backed skill with source metadata", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [{
+      companyId: "company-123",
+      id: "group-automation",
+      name: "Automation",
+    }],
+    skills: [],
+  });
+  const service = new SkillService();
+
+  const createdSkill = await service.createGithubSkill(transactionProvider as never, {
+    companyId: "company-123",
+    description: "Use the browser helpers first.",
+    fileList: ["scripts/open.sh", "templates/prompt.md"],
+    githubBranchName: "main",
+    instructions: "# Browser automation\n\nUse the browser helpers first.",
+    name: "Browser automation",
+    repository: "companyhelm/skills",
+    skillDirectory: "skills/browser",
+    skillGroupId: "group-automation",
+  });
+
+  assert.equal(createdSkill.name, "Browser automation");
+  assert.equal(createdSkill.repository, "companyhelm/skills");
+  assert.equal(createdSkill.skillDirectory, "skills/browser");
+  assert.deepEqual(createdSkill.fileList, ["scripts/open.sh", "templates/prompt.md"]);
+  assert.equal(transactionProvider.skillRecords[0]?.repository, "companyhelm/skills");
+  assert.equal(transactionProvider.skillRecords[0]?.skillDirectory, "skills/browser");
 });

@@ -6,10 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
-import { CreateSkillDialog, type CreateSkillDialogGroupOption } from "./create_skill_dialog";
+import {
+  CreateSkillDialog,
+  type CreateSkillDialogGithubRepositoryOption,
+  type CreateSkillDialogGroupOption,
+} from "./create_skill_dialog";
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
 import type { skillsPageCreateSkillMutation } from "./__generated__/skillsPageCreateSkillMutation.graphql";
 import type { skillsPageDeleteSkillMutation } from "./__generated__/skillsPageDeleteSkillMutation.graphql";
+import type { skillsPageImportGithubSkillMutation } from "./__generated__/skillsPageImportGithubSkillMutation.graphql";
 import type { skillsPageQuery } from "./__generated__/skillsPageQuery.graphql";
 import type { skillsPageUpdateSkillMutation } from "./__generated__/skillsPageUpdateSkillMutation.graphql";
 
@@ -18,6 +23,11 @@ const skillsPageQueryNode = graphql`
     SkillGroups {
       id
       name
+    }
+    GithubRepositories {
+      id
+      fullName
+      archived
     }
     Skills {
       id
@@ -48,6 +58,21 @@ const skillsPageDeleteSkillMutationNode = graphql`
   mutation skillsPageDeleteSkillMutation($input: DeleteSkillInput!) {
     DeleteSkill(input: $input) {
       id
+    }
+  }
+`;
+
+const skillsPageImportGithubSkillMutationNode = graphql`
+  mutation skillsPageImportGithubSkillMutation($input: ImportGithubSkillInput!) {
+    ImportGithubSkill(input: $input) {
+      id
+      name
+      description
+      instructions
+      skillGroupId
+      repository
+      skillDirectory
+      fileList
     }
   }
 `;
@@ -120,6 +145,8 @@ function SkillsPageContent() {
   const [commitCreateSkill, isCreateSkillInFlight] = useMutation<skillsPageCreateSkillMutation>(
     skillsPageCreateSkillMutationNode,
   );
+  const [commitImportGithubSkill, isImportGithubSkillInFlight] =
+    useMutation<skillsPageImportGithubSkillMutation>(skillsPageImportGithubSkillMutationNode);
   const [commitDeleteSkill] = useMutation<skillsPageDeleteSkillMutation>(
     skillsPageDeleteSkillMutationNode,
   );
@@ -132,6 +159,13 @@ function SkillsPageContent() {
       name: group.name,
     }));
   }, [data.SkillGroups]);
+  const githubRepositories: CreateSkillDialogGithubRepositoryOption[] = useMemo(() => {
+    return data.GithubRepositories.map((repository) => ({
+      archived: repository.archived,
+      fullName: repository.fullName,
+      id: repository.id,
+    }));
+  }, [data.GithubRepositories]);
   const groupedSkills = useMemo<SkillsTreeGroupRecord[]>(() => {
     const skillsByGroupId = new Map<string | null, SkillsTreeSkillRecord[]>();
     const sortedSkills = [...data.Skills].sort((left, right) => left.name.localeCompare(right.name));
@@ -307,8 +341,9 @@ function SkillsPageContent() {
       <CreateSkillDialog
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         groups={groupOptions}
+        githubRepositories={githubRepositories}
         isOpen={isCreateDialogOpen}
-        isSaving={isCreateSkillInFlight}
+        isSaving={isCreateSkillInFlight || isImportGithubSkillInFlight}
         onCreate={async (input) => {
           setErrorMessage(null);
 
@@ -341,6 +376,41 @@ function SkillsPageContent() {
             });
           }).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to create skill.");
+            throw error;
+          });
+        }}
+        onImportGithub={async (input) => {
+          setErrorMessage(null);
+
+          await new Promise<void>((resolve, reject) => {
+            commitImportGithubSkill({
+              variables: {
+                input,
+              },
+              updater: (store) => {
+                const newSkill = store.getRootField("ImportGithubSkill");
+                if (!newSkill) {
+                  return;
+                }
+
+                const rootRecord = store.getRoot();
+                const currentSkills = rootRecord.getLinkedRecords("Skills") || [];
+                rootRecord.setLinkedRecords([newSkill, ...currentSkills], "Skills");
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = errors?.[0]?.message;
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                setCreateDialogOpen(false);
+                resolve();
+              },
+              onError: reject,
+            });
+          }).catch((error: unknown) => {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to import GitHub skill.");
             throw error;
           });
         }}

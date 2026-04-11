@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0af2cd3c8d2bf05224d8319a26f73a61>>
+ * @generated SignedSource<<4c6be589572ee00da209827f9b8ab2fd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,11 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type skillsPageQuery$variables = Record<PropertyKey, never>;
 export type skillsPageQuery$data = {
+  readonly GithubRepositories: ReadonlyArray<{
+    readonly archived: boolean;
+    readonly fullName: string;
+    readonly id: string;
+  }>;
   readonly SkillGroups: ReadonlyArray<{
     readonly id: string;
     readonly name: string;
@@ -54,6 +59,32 @@ v2 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "GithubRepository",
+    "kind": "LinkedField",
+    "name": "GithubRepositories",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "fullName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "archived",
+        "storageKey": null
+      }
     ],
     "storageKey": null
   },
@@ -110,16 +141,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "2ec025c412e6452e357b738a113a3367",
+    "cacheID": "9dfbc9e2375ebfc2d02d02722ac7a8f4",
     "id": null,
     "metadata": {},
     "name": "skillsPageQuery",
     "operationKind": "query",
-    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    repository\n    fileList\n  }\n}\n"
+    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  GithubRepositories {\n    id\n    fullName\n    archived\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    repository\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "04bbef063ad2ff847a60ab3158bd9772";
+(node as any).hash = "e329d0c4eebb46f1af06e6da20f845e5";
 
 export default node;

@@ -31,6 +31,22 @@ export type GithubInstallationRepository = {
   archived: boolean;
 };
 
+export type GithubDiscoveredSkillDirectory = {
+  fileList: string[];
+  name: string;
+  path: string;
+};
+
+export type GithubSkillPackage = {
+  branchName: string;
+  description: string;
+  fileList: string[];
+  instructions: string;
+  name: string;
+  path: string;
+  repositoryFullName: string;
+};
+
 type CachedGithubAppJwt = {
   token: string;
   cacheExpiresAtMs: number;
@@ -40,6 +56,16 @@ type CachedInstallationAccessToken = {
   token: string;
   tokenExpiresAt: Date;
   cacheExpiresAtMs: number;
+};
+
+type GithubRepositoryTreeEntry = {
+  path: string;
+  sha: string | null;
+  type: string;
+};
+
+type IndexedGithubSkillDirectory = GithubDiscoveredSkillDirectory & {
+  skillMarkdownSha: string | null;
 };
 
 class GithubApiError extends Error {
@@ -122,6 +148,83 @@ export class GithubClient {
     );
 
     return this.buildInstallationRepositories(githubRepositories);
+  }
+
+  async listSkillDirectories(input: {
+    defaultBranch: string;
+    installationId: string | number | bigint;
+    repositoryFullName: string;
+  }): Promise<GithubDiscoveredSkillDirectory[]> {
+    const branchName = this.requireRepositoryBranch(input.defaultBranch);
+    const installationId = GithubClient.validateInstallationId(input.installationId);
+    const repository = GithubClient.parseRepositoryFullName(input.repositoryFullName);
+    const repositoryTree = await this.fetchRepositoryTree({
+      branchName,
+      installationId,
+      repository,
+    });
+    const indexedDirectories = GithubClient.indexSkillDirectories({
+      repositoryName: repository.name,
+      treeEntries: repositoryTree,
+    });
+
+    return indexedDirectories.map((directory) => ({
+      fileList: [...directory.fileList],
+      name: directory.name,
+      path: directory.path,
+    }));
+  }
+
+  async getSkillPackage(input: {
+    defaultBranch: string;
+    installationId: string | number | bigint;
+    repositoryFullName: string;
+    skillDirectory: string;
+  }): Promise<GithubSkillPackage> {
+    const branchName = this.requireRepositoryBranch(input.defaultBranch);
+    const installationId = GithubClient.validateInstallationId(input.installationId);
+    const repository = GithubClient.parseRepositoryFullName(input.repositoryFullName);
+    const repositoryTree = await this.fetchRepositoryTree({
+      branchName,
+      installationId,
+      repository,
+    });
+    const indexedDirectories = GithubClient.indexSkillDirectories({
+      repositoryName: repository.name,
+      treeEntries: repositoryTree,
+    });
+    const normalizedSkillDirectory = GithubClient.normalizeSkillDirectoryPath(input.skillDirectory);
+    const skillDirectoryRecord = indexedDirectories.find((directory) =>
+      GithubClient.normalizeSkillDirectoryPath(directory.path) === normalizedSkillDirectory
+    );
+
+    if (!skillDirectoryRecord) {
+      throw new Error("GitHub skill directory not found.");
+    }
+    if (!skillDirectoryRecord.skillMarkdownSha) {
+      throw new Error("GitHub skill is missing SKILL.md content.");
+    }
+
+    const instructions = await this.fetchRepositoryBlobText({
+      blobSha: skillDirectoryRecord.skillMarkdownSha,
+      installationId,
+      repository,
+    });
+    const parsedSkill = GithubClient.parseSkillMarkdown({
+      fallbackDescription: `Imported from ${repository.fullName}:${skillDirectoryRecord.path}`,
+      fallbackName: skillDirectoryRecord.name,
+      markdown: instructions,
+    });
+
+    return {
+      branchName,
+      description: parsedSkill.description,
+      fileList: [...skillDirectoryRecord.fileList],
+      instructions,
+      name: parsedSkill.name,
+      path: skillDirectoryRecord.path,
+      repositoryFullName: repository.fullName,
+    };
   }
 
   async getInstallationAccessToken(
@@ -412,6 +515,112 @@ export class GithubClient {
     return repositories;
   }
 
+  private requireRepositoryBranch(value: string): string {
+    const normalizedValue = GithubClient.normalizeTextValue(value);
+    if (!normalizedValue) {
+      throw new Error("GitHub repository default branch is required.");
+    }
+
+    return normalizedValue;
+  }
+
+  private async fetchRepositoryTree(input: {
+    branchName: string;
+    installationId: number;
+    repository: {
+      owner: string;
+      name: string;
+      fullName: string;
+    };
+  }): Promise<GithubRepositoryTreeEntry[]> {
+    const payload = await this.fetchInstallationJson<Record<string, unknown>>({
+      errorLabel: `Failed to read repository tree for ${input.repository.fullName}@${input.branchName}`,
+      installationId: input.installationId,
+      url: `${GITHUB_API_URL}/repos/${encodeURIComponent(input.repository.owner)}/${
+        encodeURIComponent(input.repository.name)
+      }/git/trees/${encodeURIComponent(input.branchName)}?recursive=1`,
+    });
+    if (payload.truncated === true) {
+      throw new Error("GitHub repository tree is too large to scan for skills.");
+    }
+
+    return Array.isArray(payload.tree)
+      ? payload.tree
+        .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object")
+        .map((entry) => ({
+          path: GithubClient.normalizeTextValue(entry.path),
+          sha: GithubClient.normalizeTextValue(entry.sha) || null,
+          type: GithubClient.normalizeTextValue(entry.type),
+        }))
+        .filter((entry) => entry.path.length > 0 && entry.type.length > 0)
+      : [];
+  }
+
+  private async fetchRepositoryBlobText(input: {
+    blobSha: string;
+    installationId: number;
+    repository: {
+      owner: string;
+      name: string;
+      fullName: string;
+    };
+  }): Promise<string> {
+    const payload = await this.fetchInstallationJson<Record<string, unknown>>({
+      errorLabel: `Failed to read ${input.repository.fullName} blob ${input.blobSha}`,
+      installationId: input.installationId,
+      url: `${GITHUB_API_URL}/repos/${encodeURIComponent(input.repository.owner)}/${
+        encodeURIComponent(input.repository.name)
+      }/git/blobs/${encodeURIComponent(input.blobSha)}`,
+    });
+    const encoding = GithubClient.normalizeTextValue(payload.encoding);
+    const content = GithubClient.normalizeTextValue(payload.content).replace(/\s+/g, "");
+    if (encoding !== "base64" || !content) {
+      throw new Error("GitHub blob response is missing base64 content.");
+    }
+
+    return Buffer.from(content, "base64").toString("utf8");
+  }
+
+  private async fetchInstallationJson<T>(input: {
+    errorLabel: string;
+    installationId: number;
+    url: string;
+  }): Promise<T> {
+    const executeRequest = async (token: string) => {
+      const response = await this.fetchImpl(input.url, {
+        method: "GET",
+        headers: {
+          Accept: GITHUB_ACCEPT_HEADER,
+          "X-GitHub-Api-Version": GITHUB_API_VERSION,
+          Authorization: `token ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new GithubApiError(
+          `${input.errorLabel}: ${
+            GithubClient.githubApiErrorMessage(await GithubClient.readResponseBody(response), response.status)
+          }`,
+          response.status,
+        );
+      }
+
+      return response.json() as Promise<T>;
+    };
+
+    try {
+      return await executeRequest(await this.getInstallationAccessToken(input.installationId));
+    } catch (error) {
+      if (!(error instanceof GithubApiError) || error.statusCode !== 401) {
+        throw error;
+      }
+
+      return executeRequest(await this.getInstallationAccessToken(input.installationId, {
+        forceRefresh: true,
+      }));
+    }
+  }
+
   private static parseCallbackSearchParams(
     value: URL | URLSearchParams | string | Record<string, string | null | undefined>,
   ): URLSearchParams {
@@ -552,5 +761,191 @@ export class GithubClient {
     }
 
     return normalizedValue;
+  }
+
+  private static parseRepositoryFullName(value: string): {
+    owner: string;
+    name: string;
+    fullName: string;
+  } {
+    const normalizedValue = GithubClient.normalizeTextValue(value);
+    const [owner, name, ...rest] = normalizedValue.split("/");
+    if (!owner || !name || rest.length > 0) {
+      throw new Error("GitHub repository full name must be in owner/name format.");
+    }
+
+    return {
+      owner,
+      name,
+      fullName: `${owner}/${name}`,
+    };
+  }
+
+  private static indexSkillDirectories(input: {
+    repositoryName: string;
+    treeEntries: GithubRepositoryTreeEntry[];
+  }): IndexedGithubSkillDirectory[] {
+    const skillDirectoryRecords = new Map<string, IndexedGithubSkillDirectory>();
+
+    for (const entry of input.treeEntries) {
+      if (entry.type !== "blob") {
+        continue;
+      }
+
+      const normalizedPath = GithubClient.normalizeRepositoryTreePath(entry.path);
+      if (!normalizedPath.endsWith("SKILL.md")) {
+        continue;
+      }
+
+      const normalizedDirectory = GithubClient.normalizeSkillDirectoryPath(
+        normalizedPath === "SKILL.md" ? "." : normalizedPath.slice(0, -"/SKILL.md".length),
+      );
+      skillDirectoryRecords.set(normalizedDirectory, {
+        fileList: [],
+        name: GithubClient.buildSkillDirectoryName(normalizedDirectory, input.repositoryName),
+        path: GithubClient.displaySkillDirectoryPath(normalizedDirectory),
+        skillMarkdownSha: entry.sha,
+      });
+    }
+
+    const sortedDirectories = [...skillDirectoryRecords.keys()].sort((left, right) => right.length - left.length);
+    for (const entry of input.treeEntries) {
+      if (entry.type !== "blob") {
+        continue;
+      }
+
+      const normalizedPath = GithubClient.normalizeRepositoryTreePath(entry.path);
+      const nearestDirectory = sortedDirectories.find((directory) =>
+        GithubClient.pathBelongsToDirectory(normalizedPath, directory)
+      );
+      if (!nearestDirectory) {
+        continue;
+      }
+
+      const directoryRecord = skillDirectoryRecords.get(nearestDirectory);
+      if (!directoryRecord) {
+        continue;
+      }
+
+      const relativePath = GithubClient.relativePathWithinDirectory(normalizedPath, nearestDirectory);
+      if (relativePath === "SKILL.md") {
+        directoryRecord.skillMarkdownSha = entry.sha;
+        continue;
+      }
+
+      directoryRecord.fileList.push(relativePath);
+    }
+
+    return [...skillDirectoryRecords.values()]
+      .map((directory) => ({
+        ...directory,
+        fileList: [...new Set(directory.fileList)].sort((left, right) => left.localeCompare(right)),
+      }))
+      .sort((left, right) => left.path.localeCompare(right.path));
+  }
+
+  private static parseSkillMarkdown(input: {
+    fallbackDescription: string;
+    fallbackName: string;
+    markdown: string;
+  }): {
+    description: string;
+    name: string;
+  } {
+    const lines = input.markdown.split(/\r?\n/);
+    const headingLine = lines.find((line) => /^#\s+/.test(line.trim()));
+    const headingName = headingLine
+      ? GithubClient.normalizeTextValue(headingLine.replace(/^#\s+/, ""))
+      : "";
+    const descriptionParagraph = GithubClient.extractMarkdownParagraph(lines);
+
+    return {
+      description: descriptionParagraph || input.fallbackDescription,
+      name: headingName || input.fallbackName,
+    };
+  }
+
+  private static extractMarkdownParagraph(lines: string[]): string {
+    const paragraphLines: string[] = [];
+    let inCodeFence = false;
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line.startsWith("```")) {
+        inCodeFence = !inCodeFence;
+        continue;
+      }
+      if (inCodeFence) {
+        continue;
+      }
+      if (line.length === 0) {
+        if (paragraphLines.length > 0) {
+          break;
+        }
+        continue;
+      }
+      if (line.startsWith("#")) {
+        continue;
+      }
+      if (/^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+        if (paragraphLines.length === 0) {
+          continue;
+        }
+        break;
+      }
+
+      paragraphLines.push(line);
+    }
+
+    return paragraphLines.join(" ").trim();
+  }
+
+  private static buildSkillDirectoryName(directoryPath: string, repositoryName: string): string {
+    const normalizedDirectory = GithubClient.normalizeSkillDirectoryPath(directoryPath);
+    const basename = normalizedDirectory
+      ? normalizedDirectory.split("/").filter(Boolean).at(-1) ?? repositoryName
+      : repositoryName;
+
+    return basename
+      .split(/[-_]+/)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" ");
+  }
+
+  private static normalizeRepositoryTreePath(value: string): string {
+    return GithubClient.normalizeTextValue(value).replace(/^\/+/, "").replace(/\/+$/, "");
+  }
+
+  private static normalizeSkillDirectoryPath(value: string): string {
+    const normalizedValue = GithubClient.normalizeRepositoryTreePath(value);
+    if (normalizedValue === "." || normalizedValue.length === 0) {
+      return "";
+    }
+
+    return normalizedValue;
+  }
+
+  private static displaySkillDirectoryPath(value: string): string {
+    const normalizedValue = GithubClient.normalizeSkillDirectoryPath(value);
+    return normalizedValue || ".";
+  }
+
+  private static pathBelongsToDirectory(path: string, directoryPath: string): boolean {
+    const normalizedDirectory = GithubClient.normalizeSkillDirectoryPath(directoryPath);
+    if (!normalizedDirectory) {
+      return true;
+    }
+
+    return path === normalizedDirectory || path.startsWith(`${normalizedDirectory}/`);
+  }
+
+  private static relativePathWithinDirectory(path: string, directoryPath: string): string {
+    const normalizedDirectory = GithubClient.normalizeSkillDirectoryPath(directoryPath);
+    if (!normalizedDirectory) {
+      return path;
+    }
+
+    return path.slice(normalizedDirectory.length + 1);
   }
 }

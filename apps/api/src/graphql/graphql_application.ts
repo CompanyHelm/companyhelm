@@ -27,6 +27,7 @@ import { CreateGithubInstallationUrlMutation } from "./mutations/create_github_i
 import { CreateMarkdownArtifactMutation } from "./mutations/create_markdown_artifact.ts";
 import { CreatePullRequestArtifactMutation } from "./mutations/create_pull_request_artifact.ts";
 import { CreateSkillMutation } from "./mutations/create_skill.ts";
+import { ImportGithubSkillMutation } from "./mutations/import_github_skill.ts";
 import { CreateSkillGroupMutation } from "./mutations/create_skill_group.ts";
 import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
@@ -101,6 +102,7 @@ import { EnvironmentsQueryResolver } from "./resolvers/environments.ts";
 import { GithubAppConfigQueryResolver } from "./resolvers/github_app_config.ts";
 import { GithubInstallationsQueryResolver } from "./resolvers/github_installations.ts";
 import { GithubRepositoriesQueryResolver } from "./resolvers/github_repositories.ts";
+import { GithubSkillDirectoriesQueryResolver } from "./resolvers/github_skill_directories.ts";
 import { HealthQueryResolver } from "./resolvers/health.ts";
 import { InboxHumanQuestionsQueryResolver } from "./resolvers/inbox_human_questions.ts";
 import { InboxHumanQuestionsUpdatedSubscriptionResolver } from "./resolvers/inbox_human_questions_updated.ts";
@@ -128,6 +130,7 @@ import { SessionTranscriptMessagesQueryResolver } from "./resolvers/session_tran
 import { SessionsQueryResolver } from "./resolvers/sessions.ts";
 import { SessionUpdatedSubscriptionResolver } from "./resolvers/session_updated.ts";
 import { AgentEnvironmentTemplateService } from "../services/environments/template_service.ts";
+import { GithubSkillService } from "../services/skills/github_service.ts";
 import { SkillService } from "../services/skills/service.ts";
 
 /**
@@ -204,6 +207,8 @@ export class GraphqlApplication {
   private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
   private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
   private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
+  private readonly githubSkillDirectoriesQueryResolver: GithubSkillDirectoriesQueryResolver;
+  private readonly importGithubSkillMutation: ImportGithubSkillMutation;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly markSessionReadMutation: MarkSessionReadMutation;
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
@@ -345,6 +350,8 @@ export class GraphqlApplication {
     githubInstallationsQueryResolver: GithubInstallationsQueryResolver = new GithubInstallationsQueryResolver(),
     @inject(GithubRepositoriesQueryResolver)
     githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver = new GithubRepositoriesQueryResolver(),
+    @inject(GithubSkillDirectoriesQueryResolver)
+    githubSkillDirectoriesQueryResolver?: GithubSkillDirectoriesQueryResolver,
     @inject(CreateGithubInstallationUrlMutation)
     createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation =
       new CreateGithubInstallationUrlMutation(
@@ -552,6 +559,8 @@ export class GraphqlApplication {
     } as never),
     @inject(CreateSkillMutation)
     createSkillMutation?: CreateSkillMutation,
+    @inject(ImportGithubSkillMutation)
+    importGithubSkillMutation?: ImportGithubSkillMutation,
     @inject(UpdateSkillMutation)
     updateSkillMutation?: UpdateSkillMutation,
     @inject(SkillGroupsQueryResolver)
@@ -581,6 +590,7 @@ export class GraphqlApplication {
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
+    const defaultGithubSkillService = new GithubSkillService(new GithubClient(config), defaultSkillService);
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
       ?? ({
         async getAgentTemplate() {
@@ -719,6 +729,10 @@ export class GraphqlApplication {
     this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
     this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
     this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
+    this.githubSkillDirectoriesQueryResolver = githubSkillDirectoriesQueryResolver
+      ?? new GithubSkillDirectoriesQueryResolver(defaultGithubSkillService);
+    this.importGithubSkillMutation = importGithubSkillMutation
+      ?? new ImportGithubSkillMutation(defaultGithubSkillService);
     this.meQueryResolver = meQueryResolver;
     this.markSessionReadMutation = markSessionReadMutation;
     this.updateSessionTitleMutation = updateSessionTitleMutation;
@@ -833,6 +847,7 @@ export class GraphqlApplication {
           GithubAppConfig: this.githubAppConfigQueryResolver.execute,
           GithubInstallations: this.githubInstallationsQueryResolver.execute,
           GithubRepositories: this.githubRepositoriesQueryResolver.execute,
+          GithubSkillDirectories: this.githubSkillDirectoriesQueryResolver.execute,
           health: this.healthQueryResolver.execute,
           InboxHumanQuestions: this.inboxHumanQuestionsQueryResolver.execute,
           Me: this.meQueryResolver.execute,
@@ -875,6 +890,7 @@ export class GraphqlApplication {
           ArchiveSession: this.archiveSessionMutation.execute,
           CreateExternalLinkArtifact: this.createExternalLinkArtifactMutation.execute,
           CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
+          ImportGithubSkill: this.importGithubSkillMutation.execute,
           CreateMarkdownArtifact: this.createMarkdownArtifactMutation.execute,
           CreatePullRequestArtifact: this.createPullRequestArtifactMutation.execute,
           CreateSecret: this.createSecretMutation.execute,

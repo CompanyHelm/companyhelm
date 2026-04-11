@@ -1,9 +1,10 @@
 import "reflect-metadata";
+import { generateKeyPairSync } from "node:crypto";
 import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
-import { skill_groups, skills } from "../src/db/schema.ts";
+import { githubRepositories, skill_groups, skills } from "../src/db/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
@@ -33,15 +34,55 @@ type MockSkillRecord = {
   skillGroupId: string | null;
 };
 
+type MockGithubRepositoryRecord = {
+  archived: boolean;
+  companyId: string;
+  createdAt: Date;
+  defaultBranch: string | null;
+  externalId: string;
+  fullName: string;
+  htmlUrl: string | null;
+  id: string;
+  installationId: number;
+  isPrivate: boolean;
+  name: string;
+  updatedAt: Date;
+};
+
+const TEST_PRIVATE_KEY_PEM = (() => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
+})();
+
 class SkillsGraphqlTestHarness {
   static createConfigMock(): Config {
     return {
       auth: {
         provider: "clerk",
       },
+      database: {
+        host: "127.0.0.1",
+        name: "companyhelm_test",
+        port: 5432,
+        roles: {
+          admin: {
+            password: "postgres",
+            username: "postgres",
+          },
+          app_runtime: {
+            password: "postgres",
+            username: "postgres",
+          },
+        },
+      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
+      },
+      github: {
+        app_client_id: "Iv-test-local",
+        app_link: "https://github.com/apps/companyhelm-test",
+        app_private_key_pem: TEST_PRIVATE_KEY_PEM,
       },
       log: {
         json: false,
@@ -83,9 +124,24 @@ class SkillsGraphqlTestHarness {
       skillDirectory: "skills/browser",
       skillGroupId: "group-automation",
     }];
+    const githubRepositoryRecords: MockGithubRepositoryRecord[] = [{
+      archived: false,
+      companyId: "company-123",
+      createdAt: new Date("2026-04-01T00:00:00Z"),
+      defaultBranch: "main",
+      externalId: "123456",
+      fullName: "companyhelm/skills",
+      htmlUrl: "https://github.com/companyhelm/skills",
+      id: "repo-skills",
+      installationId: 110600868,
+      isPrivate: true,
+      name: "skills",
+      updatedAt: new Date("2026-04-01T00:00:00Z"),
+    }];
     const insertedValues: Array<Record<string, unknown>> = [];
 
     return {
+      githubRepositoryRecords,
       insertedValues,
       groups,
       skillRecords,
@@ -103,8 +159,8 @@ class SkillsGraphqlTestHarness {
                     id: "skill-new",
                     instructions: String(value.instructions),
                     name: String(value.name),
-                    repository: null,
-                    skillDirectory: null,
+                    repository: value.repository ? String(value.repository) : null,
+                    skillDirectory: value.skillDirectory ? String(value.skillDirectory) : null,
                     skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
                   };
                   skillRecords.push(createdSkill);
@@ -150,6 +206,9 @@ class SkillsGraphqlTestHarness {
                     }
                     if (table === skill_groups) {
                       return [...groups];
+                    }
+                    if (table === githubRepositories) {
+                      return [...githubRepositoryRecords];
                     }
 
                     throw new Error("Unexpected select table.");
@@ -205,6 +264,15 @@ class SkillsGraphqlTestHarness {
       },
     };
   }
+}
+
+function createJsonResponse(payload: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    headers: {
+      "content-type": "application/json",
+    },
+    status,
+  });
 }
 
 test("GraphQL skills query and create mutation expose the skill catalog and group assignment", async () => {
@@ -351,6 +419,166 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
   assert.deepEqual(insertedSkill?.fileList, []);
 
   await app.close();
+});
+
+test("GraphQL GitHub skill discovery and import use linked repositories", async () => {
+  const app = Fastify();
+  const config = SkillsGraphqlTestHarness.createConfigMock();
+  const database = SkillsGraphqlTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+        token: "jwt-token",
+        user: {
+          email: "user@example.com",
+          firstName: "User",
+          id: "user-123",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+      };
+    },
+  };
+  const originalFetch = global.fetch;
+  global.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/access_tokens")) {
+      return createJsonResponse({
+        expires_at: "2030-01-01T00:00:00Z",
+        token: "installation-token",
+      });
+    }
+    if (url.includes("/git/trees/")) {
+      return createJsonResponse({
+        truncated: false,
+        tree: [{
+          path: "skills/github-browser/SKILL.md",
+          sha: "sha-github-browser-skill",
+          type: "blob",
+        }, {
+          path: "skills/github-browser/scripts/import.sh",
+          sha: "sha-github-browser-script",
+          type: "blob",
+        }],
+      });
+    }
+    if (url.includes("/git/blobs/sha-github-browser-skill")) {
+      return createJsonResponse({
+        content: Buffer.from("# Imported browser\n\nUse the imported browser helpers.\n").toString("base64"),
+        encoding: "base64",
+      });
+    }
+
+    throw new Error(`Unexpected GitHub request: ${url}`);
+  };
+
+  try {
+    await new GraphqlApplication(
+      config,
+      new AddModelProviderCredentialMutation(modelManager as never),
+      new DeleteModelProviderCredentialMutation(),
+      new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+      new GraphqlRequestContextResolver(authProvider as never, database as never),
+      new HealthQueryResolver(),
+      new MeQueryResolver(),
+      new ModelProviderCredentialModelsQueryResolver(),
+      new ModelProviderCredentialsQueryResolver(),
+    ).register(app);
+
+    const directoriesResponse = await app.inject({
+      method: "POST",
+      url: "/graphql",
+      headers: {
+        authorization: "Bearer jwt-token",
+      },
+      payload: {
+        query: `
+          query GithubSkillDirectories($repositoryId: ID!) {
+            GithubSkillDirectories(repositoryId: $repositoryId) {
+              name
+              path
+              fileList
+            }
+          }
+        `,
+        variables: {
+          repositoryId: "repo-skills",
+        },
+      },
+    });
+
+    assert.equal(directoriesResponse.statusCode, 200);
+    const directoriesDocument = directoriesResponse.json();
+    assert.deepEqual(directoriesDocument.data.GithubSkillDirectories, [{
+      fileList: ["scripts/import.sh"],
+      name: "Github Browser",
+      path: "skills/github-browser",
+    }]);
+
+    const importResponse = await app.inject({
+      method: "POST",
+      url: "/graphql",
+      headers: {
+        authorization: "Bearer jwt-token",
+      },
+      payload: {
+        query: `
+          mutation ImportGithubSkill($input: ImportGithubSkillInput!) {
+            ImportGithubSkill(input: $input) {
+              id
+              companyId
+              name
+              description
+              instructions
+              skillGroupId
+              repository
+              skillDirectory
+              fileList
+            }
+          }
+        `,
+        variables: {
+          input: {
+            repositoryId: "repo-skills",
+            skillDirectory: "skills/github-browser",
+            skillGroupId: "group-research",
+          },
+        },
+      },
+    });
+
+    assert.equal(importResponse.statusCode, 200);
+    const importDocument = importResponse.json();
+    assert.deepEqual(importDocument.data.ImportGithubSkill, {
+      companyId: "company-123",
+      description: "Use the imported browser helpers.",
+      fileList: ["scripts/import.sh"],
+      id: "skill-new",
+      instructions: "# Imported browser\n\nUse the imported browser helpers.",
+      name: "Imported browser",
+      repository: "companyhelm/skills",
+      skillDirectory: "skills/github-browser",
+      skillGroupId: "group-research",
+    });
+
+    const importedSkillInsert = database.insertedValues.at(-1);
+    assert.equal(importedSkillInsert?.repository, "companyhelm/skills");
+    assert.equal(importedSkillInsert?.skillDirectory, "skills/github-browser");
+    assert.deepEqual(importedSkillInsert?.fileList, ["scripts/import.sh"]);
+  } finally {
+    global.fetch = originalFetch;
+    await app.close();
+  }
 });
 
 test("GraphQL skill group mutations create groups and ungroup skills on delete", async () => {

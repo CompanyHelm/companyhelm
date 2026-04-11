@@ -132,6 +132,58 @@ export class SkillService {
     });
   }
 
+  async createGithubSkill(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      description: string;
+      fileList: string[];
+      githubBranchName?: string | null;
+      instructions: string;
+      name: string;
+      repository: string;
+      skillDirectory: string;
+      skillGroupId?: string | null;
+    },
+  ): Promise<SkillRecord> {
+    const name = this.requireNonEmptyValue(input.name, "Skill name");
+    const description = this.requireNonEmptyValue(input.description, "Skill description");
+    const instructions = this.requireNonEmptyValue(input.instructions, "Skill instructions");
+    const repository = this.requireNonEmptyValue(input.repository, "GitHub repository");
+    const skillDirectory = this.requireNonEmptyValue(input.skillDirectory, "GitHub skill directory");
+    const githubBranchName = input.githubBranchName === undefined || input.githubBranchName === null
+      ? null
+      : this.requireNonEmptyValue(input.githubBranchName, "GitHub branch name");
+
+    return transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const selectableDatabase = tx as SelectableDatabase;
+      const skillGroupId = input.skillGroupId === undefined
+        ? null
+        : await this.requireSkillGroupId(selectableDatabase, input.companyId, input.skillGroupId);
+      const [createdSkill] = await insertableDatabase
+        .insert(skills)
+        .values({
+          companyId: input.companyId,
+          description,
+          fileList: [...input.fileList],
+          githubBranchName,
+          instructions,
+          name,
+          repository,
+          skillDirectory,
+          skillGroupId,
+        })
+        .returning?.(this.skillSelection()) as SkillRecord[];
+
+      if (!createdSkill) {
+        throw new Error("Failed to import GitHub skill.");
+      }
+
+      return createdSkill;
+    });
+  }
+
   async getSkill(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

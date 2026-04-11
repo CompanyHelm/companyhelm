@@ -11,6 +11,7 @@ type Query {
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
+  GithubSkillDirectories(repositoryId: ID!): [GithubSkillDirectory!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -63,6 +64,7 @@ type Mutation {
   CreateSecret(input: CreateSecretInput!): Secret!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
+  ImportGithubSkill(input: ImportGithubSkillInput!): Skill!
   CreateMarkdownArtifact(input: CreateMarkdownArtifactInput!): Artifact!
   CreatePullRequestArtifact(input: CreatePullRequestArtifactInput!): Artifact!
   CreateSkill(input: CreateSkillInput!): Skill!
@@ -161,6 +163,12 @@ type GithubRepository {
   archived: Boolean!
   createdAt: String!
   updatedAt: String!
+}
+
+type GithubSkillDirectory {
+  name: String!
+  path: String!
+  fileList: [String!]!
 }
 
 type InboxHumanQuestion {
@@ -741,6 +749,12 @@ input CreateSecretInput {
   description: String
   envVarName: String
   value: String!
+}
+
+input ImportGithubSkillInput {
+  repositoryId: ID!
+  skillDirectory: String!
+  skillGroupId: ID
 }
 
 input CreateSkillInput {
