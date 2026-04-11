@@ -103,7 +103,7 @@ test("GraphQL DeleteTaskCategory mutation deletes one persisted task category", 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

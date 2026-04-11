@@ -151,7 +151,7 @@ test("GraphQL Agents query lists agents for the authenticated company", async ()
     },
   };
 
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

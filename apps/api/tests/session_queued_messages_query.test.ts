@@ -45,6 +45,62 @@ class SessionQueuedMessagesQueryTestHarness {
                   return {
                     async where() {
                       return [{
+                        agentId: "agent-1",
+                        createdAt: new Date("2026-03-31T07:50:00.000Z"),
+                        currentContextTokens: null,
+                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentReasoningLevel: "medium",
+                        forkedFromTurnId: null,
+                        id: "session-1",
+                        inferredTitle: "Queued session",
+                        isCompacting: false,
+                        isThinking: false,
+                        maxContextTokens: null,
+                        ownerUserId: "user-123",
+                        status: "running",
+                        thinkingText: null,
+                        updatedAt: new Date("2026-03-31T08:01:00.000Z"),
+                        userSetTitle: null,
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "model-row-1",
+                        modelId: "gpt-5.4",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
                         claimedAt: new Date("2026-03-31T08:00:30.000Z"),
                         companyId: "company-123",
                         createdAt: new Date("2026-03-31T08:00:00.000Z"),
@@ -61,7 +117,7 @@ class SessionQueuedMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 2) {
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -144,7 +200,7 @@ test("GraphQL SessionQueuedMessages query returns queued rows for one session", 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -247,7 +247,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -361,7 +361,7 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -440,7 +440,7 @@ test("GraphQL AddModelProviderCredential mutation supports anthropic credentials
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -525,7 +525,7 @@ test("GraphQL AddModelProviderCredential mutation supports openai-codex oauth cr
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -92,7 +92,7 @@ test("GraphQL DeleteAgent mutation deletes an agent", async () => {
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

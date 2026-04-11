@@ -229,7 +229,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

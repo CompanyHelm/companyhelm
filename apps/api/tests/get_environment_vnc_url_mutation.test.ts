@@ -60,7 +60,7 @@ class GetEnvironmentVncUrlMutationTestHarness {
       },
     };
 
-    return new GraphqlApplication(
+    return GraphqlApplication.fromResolvers(
       GetEnvironmentVncUrlMutationTestHarness.createConfigMock(),
       new AddModelProviderCredentialMutation(modelManager as never),
       new DeleteModelProviderCredentialMutation(),

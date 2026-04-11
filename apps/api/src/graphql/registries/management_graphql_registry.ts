@@ -1,0 +1,196 @@
+import { inject, injectable } from "inversify";
+import { Config } from "../../config/schema.ts";
+import { GithubClient } from "../../github/client.ts";
+import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
+import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
+import { SecretService } from "../../services/secrets/service.ts";
+import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
+import { SkillService } from "../../services/skills/service.ts";
+import { AddGithubInstallationMutation } from "../mutations/add_github_installation.ts";
+import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
+import { CreateSecretMutation } from "../mutations/create_secret.ts";
+import { CreateSkillGroupMutation } from "../mutations/create_skill_group.ts";
+import { CreateSkillMutation } from "../mutations/create_skill.ts";
+import { DeleteGithubInstallationMutation } from "../mutations/delete_github_installation.ts";
+import { DeleteSecretMutation } from "../mutations/delete_secret.ts";
+import { DeleteSkillGroupMutation } from "../mutations/delete_skill_group.ts";
+import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
+import { ImportGithubSkillMutation } from "../mutations/import_github_skill.ts";
+import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
+import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
+import { UpdateSecretMutation } from "../mutations/update_secret.ts";
+import { UpdateSkillMutation } from "../mutations/update_skill.ts";
+import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
+import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
+import { GithubInstallationsQueryResolver } from "../resolvers/github_installations.ts";
+import { GithubRepositoriesQueryResolver } from "../resolvers/github_repositories.ts";
+import { GithubSkillDirectoriesQueryResolver } from "../resolvers/github_skill_directories.ts";
+import { HealthQueryResolver } from "../resolvers/health.ts";
+import { MeQueryResolver } from "../resolvers/me.ts";
+import { SecretsQueryResolver } from "../resolvers/secrets.ts";
+import { SkillGroupsQueryResolver } from "../resolvers/skill_groups.ts";
+import { SkillQueryResolver } from "../resolvers/skill.ts";
+import { SkillsQueryResolver } from "../resolvers/skills.ts";
+import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
+
+/**
+ * Collects management-oriented GraphQL entry points such as company settings, GitHub integration,
+ * shared secrets, and skill catalog administration.
+ */
+@injectable()
+export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
+  private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
+  private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
+  private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
+  private readonly createSecretMutation: CreateSecretMutation;
+  private readonly createSkillMutation: CreateSkillMutation;
+  private readonly createSkillGroupMutation: CreateSkillGroupMutation;
+  private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
+  private readonly deleteSecretMutation: DeleteSecretMutation;
+  private readonly deleteSkillMutation: DeleteSkillMutation;
+  private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
+  private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
+  private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
+  private readonly githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver;
+  private readonly githubSkillDirectoriesQueryResolver: GithubSkillDirectoriesQueryResolver;
+  private readonly healthQueryResolver: HealthQueryResolver;
+  private readonly importGithubSkillMutation: ImportGithubSkillMutation;
+  private readonly meQueryResolver: MeQueryResolver;
+  private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
+  private readonly secretsQueryResolver: SecretsQueryResolver;
+  private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
+  private readonly skillQueryResolver: SkillQueryResolver;
+  private readonly skillsQueryResolver: SkillsQueryResolver;
+  private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
+  private readonly updateSecretMutation: UpdateSecretMutation;
+  private readonly updateSkillMutation: UpdateSkillMutation;
+
+  constructor(
+    @inject(Config) config: Config,
+    @inject(HealthQueryResolver) healthQueryResolver: HealthQueryResolver = new HealthQueryResolver(),
+    @inject(MeQueryResolver) meQueryResolver: MeQueryResolver = new MeQueryResolver(),
+    @inject(CompanySettingsQueryResolver)
+    companySettingsQueryResolver: CompanySettingsQueryResolver = new CompanySettingsQueryResolver(),
+    @inject(GithubAppConfigQueryResolver)
+    githubAppConfigQueryResolver: GithubAppConfigQueryResolver =
+      new GithubAppConfigQueryResolver(new GithubClient(config)),
+    @inject(GithubInstallationsQueryResolver)
+    githubInstallationsQueryResolver: GithubInstallationsQueryResolver = new GithubInstallationsQueryResolver(),
+    @inject(GithubRepositoriesQueryResolver)
+    githubRepositoriesQueryResolver: GithubRepositoriesQueryResolver = new GithubRepositoriesQueryResolver(),
+    @inject(GithubSkillDirectoriesQueryResolver)
+    githubSkillDirectoriesQueryResolver?: GithubSkillDirectoriesQueryResolver,
+    @inject(CreateGithubInstallationUrlMutation)
+    createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation =
+      new CreateGithubInstallationUrlMutation(
+        new GithubClient({} as Config),
+        new GithubInstallationStateService({} as Config),
+      ),
+    @inject(AddGithubInstallationMutation)
+    addGithubInstallationMutation: AddGithubInstallationMutation =
+      new AddGithubInstallationMutation(
+        new GithubClient({} as Config),
+        new GithubInstallationStateService({} as Config),
+        {} as never,
+      ),
+    @inject(DeleteGithubInstallationMutation)
+    deleteGithubInstallationMutation: DeleteGithubInstallationMutation = new DeleteGithubInstallationMutation(),
+    @inject(RefreshGithubInstallationRepositoriesMutation)
+    refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation =
+      new RefreshGithubInstallationRepositoriesMutation(new GithubClient({} as Config)),
+    @inject(CreateSecretMutation)
+    createSecretMutation?: CreateSecretMutation,
+    @inject(DeleteSecretMutation)
+    deleteSecretMutation?: DeleteSecretMutation,
+    @inject(UpdateSecretMutation)
+    updateSecretMutation?: UpdateSecretMutation,
+    @inject(SecretsQueryResolver)
+    secretsQueryResolver?: SecretsQueryResolver,
+    @inject(UpdateCompanySettingsMutation)
+    updateCompanySettingsMutation: UpdateCompanySettingsMutation = new UpdateCompanySettingsMutation(),
+    @inject(CreateSkillMutation)
+    createSkillMutation?: CreateSkillMutation,
+    @inject(ImportGithubSkillMutation)
+    importGithubSkillMutation?: ImportGithubSkillMutation,
+    @inject(UpdateSkillMutation)
+    updateSkillMutation?: UpdateSkillMutation,
+    @inject(SkillGroupsQueryResolver)
+    skillGroupsQueryResolver?: SkillGroupsQueryResolver,
+    @inject(SkillQueryResolver)
+    skillQueryResolver?: SkillQueryResolver,
+    @inject(SkillsQueryResolver)
+    skillsQueryResolver?: SkillsQueryResolver,
+    @inject(CreateSkillGroupMutation)
+    createSkillGroupMutation?: CreateSkillGroupMutation,
+    @inject(DeleteSkillMutation)
+    deleteSkillMutation?: DeleteSkillMutation,
+    @inject(DeleteSkillGroupMutation)
+    deleteSkillGroupMutation?: DeleteSkillGroupMutation,
+  ) {
+    const defaultSecretService = new SecretService(new SecretEncryptionService(config));
+    const defaultSkillService = new SkillService();
+    const defaultSkillGithubCatalog = new SkillGithubCatalog();
+
+    this.addGithubInstallationMutation = addGithubInstallationMutation;
+    this.companySettingsQueryResolver = companySettingsQueryResolver;
+    this.createGithubInstallationUrlMutation = createGithubInstallationUrlMutation;
+    this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
+    this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
+    this.createSkillGroupMutation = createSkillGroupMutation ?? new CreateSkillGroupMutation(defaultSkillService);
+    this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
+    this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
+    this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
+    this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
+    this.githubInstallationsQueryResolver = githubInstallationsQueryResolver;
+    this.githubRepositoriesQueryResolver = githubRepositoriesQueryResolver;
+    this.githubSkillDirectoriesQueryResolver = githubSkillDirectoriesQueryResolver
+      ?? new GithubSkillDirectoriesQueryResolver(defaultSkillGithubCatalog);
+    this.healthQueryResolver = healthQueryResolver;
+    this.importGithubSkillMutation = importGithubSkillMutation
+      ?? new ImportGithubSkillMutation(defaultSkillGithubCatalog);
+    this.meQueryResolver = meQueryResolver;
+    this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
+    this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
+    this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
+    this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
+    this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
+    this.updateCompanySettingsMutation = updateCompanySettingsMutation;
+    this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
+    this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
+  }
+
+  createResolvers(): GraphqlResolverFragment {
+    return {
+      Mutation: {
+        AddGithubInstallation: this.addGithubInstallationMutation.execute,
+        CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
+        CreateSecret: this.createSecretMutation.execute,
+        CreateSkill: this.createSkillMutation.execute,
+        CreateSkillGroup: this.createSkillGroupMutation.execute,
+        DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
+        DeleteSecret: this.deleteSecretMutation.execute,
+        DeleteSkill: this.deleteSkillMutation.execute,
+        DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
+        ImportGithubSkill: this.importGithubSkillMutation.execute,
+        RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
+        UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
+        UpdateSecret: this.updateSecretMutation.execute,
+        UpdateSkill: this.updateSkillMutation.execute,
+      },
+      Query: {
+        CompanySettings: this.companySettingsQueryResolver.execute,
+        GithubAppConfig: this.githubAppConfigQueryResolver.execute,
+        GithubInstallations: this.githubInstallationsQueryResolver.execute,
+        GithubRepositories: this.githubRepositoriesQueryResolver.execute,
+        GithubSkillDirectories: this.githubSkillDirectoriesQueryResolver.execute,
+        health: this.healthQueryResolver.execute,
+        Me: this.meQueryResolver.execute,
+        Secrets: this.secretsQueryResolver.execute,
+        Skill: this.skillQueryResolver.execute,
+        SkillGroups: this.skillGroupsQueryResolver.execute,
+        Skills: this.skillsQueryResolver.execute,
+      },
+    };
+  }
+}

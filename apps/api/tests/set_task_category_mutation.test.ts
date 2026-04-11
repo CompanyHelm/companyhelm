@@ -116,7 +116,7 @@ test("GraphQL SetTaskCategory mutation moves one task into a persisted lane", as
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

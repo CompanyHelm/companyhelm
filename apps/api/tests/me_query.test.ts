@@ -68,7 +68,7 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -141,7 +141,7 @@ test("GraphQL Me query rejects unauthenticated requests", async () => {
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

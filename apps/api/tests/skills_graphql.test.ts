@@ -281,7 +281,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -476,7 +476,7 @@ test("GraphQL GitHub skill discovery and import use public repository URLs", asy
   };
 
   try {
-    await new GraphqlApplication(
+    await GraphqlApplication.fromResolvers(
       config,
       new AddModelProviderCredentialMutation(modelManager as never),
       new DeleteModelProviderCredentialMutation(),
@@ -622,7 +622,7 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -769,7 +769,7 @@ test("GraphQL skill deletion removes the catalog entry", async () => {
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -60,7 +60,7 @@ class StartStopEnvironmentMutationTestHarness {
       },
     };
 
-    return new GraphqlApplication(
+    return GraphqlApplication.fromResolvers(
       StartStopEnvironmentMutationTestHarness.createConfigMock(),
       new AddModelProviderCredentialMutation(modelManager as never),
       new DeleteModelProviderCredentialMutation(),

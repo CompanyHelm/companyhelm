@@ -116,7 +116,7 @@ test("GraphQL Tasks query lists company-scoped tasks with category labels", asyn
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

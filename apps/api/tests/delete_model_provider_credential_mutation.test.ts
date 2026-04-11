@@ -172,7 +172,7 @@ test("GraphQL DeleteModelProviderCredential mutation deletes a credential", asyn
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

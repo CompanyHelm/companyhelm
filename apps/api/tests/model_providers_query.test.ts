@@ -65,7 +65,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -156,7 +156,7 @@ test("GraphQL ModelProviders query rejects unauthenticated requests", async () =
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

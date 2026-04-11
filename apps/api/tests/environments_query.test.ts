@@ -129,7 +129,7 @@ test("GraphQL Environments query lists company-scoped agent environments", async
     },
   };
 
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     EnvironmentsQueryTestHarness.createConfigMock(),
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -136,7 +136,7 @@ test("GraphQL PromptSession mutation queues a new session message and returns th
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -263,7 +263,7 @@ test("GraphQL PromptSession mutation rejects archived sessions", async () => {
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

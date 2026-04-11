@@ -219,7 +219,7 @@ test("GraphQL UpdateAgent mutation rewrites the persisted agent configuration", 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

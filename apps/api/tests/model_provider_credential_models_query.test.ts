@@ -98,7 +98,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -169,7 +169,7 @@ test("GraphQL ModelProviderCredentialModels query rejects unauthenticated reques
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

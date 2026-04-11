@@ -43,6 +43,21 @@ class SessionTranscriptMessagesQueryTestHarness {
               return {
                 from() {
                   return {
+                    async where() {
+                      return [{
+                        id: "session-1",
+                        ownerUserId: "user-123",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
                     where() {
                       return {
                         orderBy() {
@@ -96,7 +111,7 @@ class SessionTranscriptMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 2) {
+            if (selectCallCount === 3) {
               return {
                 from() {
                   return {
@@ -161,7 +176,7 @@ class SessionTranscriptMessagesQueryTestHarness {
               };
             }
 
-            if (selectCallCount === 3) {
+            if (selectCallCount === 4) {
               return {
                 from() {
                   return {
@@ -226,7 +241,7 @@ test("GraphQL SessionTranscriptMessages query returns a newest-first connection 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -400,12 +415,27 @@ test("GraphQL SessionTranscriptMessages query only returns the selected forked s
   const database = {
     getDatabase() {
       return {
-        select() {
-          selectCallCount += 1;
-          if (selectCallCount === 1) {
-            return {
-              from() {
-                return {
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "session-2",
+                        ownerUserId: "user-123",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
                   where() {
                     return {
                       orderBy() {
@@ -429,14 +459,14 @@ test("GraphQL SessionTranscriptMessages query only returns the selected forked s
                     };
                   },
                 };
-              },
-            };
-          }
+                },
+              };
+            }
 
-          if (selectCallCount === 2) {
-            return {
-              from() {
-                return {
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
                   async where() {
                     return [{
                       arguments: null,
@@ -452,14 +482,14 @@ test("GraphQL SessionTranscriptMessages query only returns the selected forked s
                     }];
                   },
                 };
-              },
-            };
-          }
+                },
+              };
+            }
 
-          if (selectCallCount === 3) {
-            return {
-              from() {
-                return {
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
                   async where() {
                     return [{
                       id: "turn-child-1",
@@ -506,7 +536,7 @@ test("GraphQL SessionTranscriptMessages query only returns the selected forked s
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

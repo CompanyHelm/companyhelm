@@ -83,7 +83,7 @@ test("GraphQL CompanySettings query returns the persisted company prompt layer",
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

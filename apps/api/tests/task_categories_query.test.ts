@@ -111,7 +111,7 @@ test("GraphQL TaskCategories query lists persisted categories with task counts",
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

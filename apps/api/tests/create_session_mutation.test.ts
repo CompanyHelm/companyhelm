@@ -117,7 +117,7 @@ test("GraphQL CreateSession mutation creates a session and returns the persisted
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

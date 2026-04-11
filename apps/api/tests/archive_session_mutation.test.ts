@@ -109,7 +109,7 @@ test("GraphQL ArchiveSession mutation archives a session and returns the updated
     },
   };
 
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -216,7 +216,7 @@ test("GraphQL SessionMessages query returns transcript messages with aggregated 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -130,7 +130,7 @@ test("GraphQL Task query loads one task with category and assignee metadata", as
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

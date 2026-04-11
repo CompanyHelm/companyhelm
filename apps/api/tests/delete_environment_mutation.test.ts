@@ -103,7 +103,7 @@ test("GraphQL DeleteEnvironment mutation deletes a company environment after pro
     },
   };
 
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
@@ -253,7 +253,7 @@ test("GraphQL DeleteEnvironment mutation force deletes a company environment whe
     },
   };
 
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

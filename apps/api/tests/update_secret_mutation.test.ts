@@ -128,7 +128,7 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

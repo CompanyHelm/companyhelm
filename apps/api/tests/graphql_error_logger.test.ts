@@ -95,7 +95,7 @@ test("GraphQL logs backend failures before returning errors to the web", async (
     },
   };
   const apiLogger = GraphqlErrorLoggerTestHarness.createApiLoggerMock();
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

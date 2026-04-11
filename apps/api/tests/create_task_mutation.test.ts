@@ -112,7 +112,7 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

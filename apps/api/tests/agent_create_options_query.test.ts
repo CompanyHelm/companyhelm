@@ -117,7 +117,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

@@ -104,7 +104,7 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

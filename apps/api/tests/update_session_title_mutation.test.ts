@@ -138,7 +138,7 @@ test("GraphQL UpdateSessionTitle mutation updates the custom session title", asy
     },
   };
 
-  const graphqlApplication = new GraphqlApplication(
+  const graphqlApplication = GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

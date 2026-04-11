@@ -105,7 +105,7 @@ test("GraphQL TaskAssignableUsers query lists company members as task assignee o
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),

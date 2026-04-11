@@ -257,7 +257,7 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
     },
   };
 
-  await new GraphqlApplication(
+  await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
