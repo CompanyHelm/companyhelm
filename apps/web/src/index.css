@@ -688,6 +688,7 @@ button {
 
 .auth-shell__hero,
 .auth-shell__panel {
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background: color-mix(in oklch, var(--card) 90%, transparent);
@@ -705,6 +706,26 @@ button {
     );
 }
 
+.auth-shell__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.auth-shell__brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.auth-shell__brand-name {
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
 .auth-shell__hero h1 {
   margin: 0;
   font-size: clamp(2.4rem, 5vw, 4.4rem);
@@ -719,19 +740,28 @@ button {
   line-height: 1.7;
 }
 
-.auth-shell__eyebrow {
-  margin: 0 0 14px;
-  color: var(--foreground-subtle);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.76rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .auth-shell__panel {
   padding: 24px;
   display: grid;
   place-items: center;
+  width: 100%;
+}
+
+.auth-shell__panel > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-shell__panel :where(.cl-rootBox, .cl-cardBox, .cl-main, .cl-card) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.auth-shell__panel :where(.cl-card) {
+  box-shadow: none;
+  border: 0;
+  background: transparent;
 }
 
 @media (max-width: 1100px) {
