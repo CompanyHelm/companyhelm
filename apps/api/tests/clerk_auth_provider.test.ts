@@ -163,7 +163,11 @@ class ClerkAuthProviderTestHarness {
                   return {
                     limit: async () => [{
                       companyId: "local-company-9",
-                      userId: "local-user-9",
+                      description: "Managed by CompanyHelm",
+                      id: "companyhelm-definition-9",
+                      isDefault: true,
+                      name: "CompanyHelm",
+                      provider: "e2b",
                     }],
                   };
                 },
@@ -272,7 +276,14 @@ class ClerkAuthProviderTestHarness {
               return {
                 where() {
                   return {
-                    limit: async () => [],
+                    limit: async () => [{
+                      companyId: "local-company-9",
+                      description: "Managed by CompanyHelm",
+                      id: "companyhelm-definition-9",
+                      isDefault: true,
+                      name: "CompanyHelm",
+                      provider: "e2b",
+                    }],
                   };
                 },
               };
@@ -392,6 +403,27 @@ class ClerkAuthProviderTestHarness {
           };
         }
 
+        if (selectCallCount === 6) {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit: async () => [{
+                      companyId: "local-company-race",
+                      description: "Managed by CompanyHelm",
+                      id: "companyhelm-definition-race",
+                      isDefault: true,
+                      name: "CompanyHelm",
+                      provider: "e2b",
+                    }],
+                  };
+                },
+              };
+            },
+          };
+        }
+
         throw new Error("Unexpected select call.");
       },
       insert() {
@@ -409,7 +441,7 @@ class ClerkAuthProviderTestHarness {
               };
             }
 
-            if (insertCallCount <= 4) {
+            if (insertCallCount <= 6) {
               return {
                 onConflictDoNothing() {
                   return undefined;
@@ -503,14 +535,18 @@ test("clerk auth provider provisions missing local user, company, and membership
       name: "Example Org",
     },
   });
-  assert.equal(db.insertedValues.length, 4);
+  assert.equal(db.insertedValues.length, 7);
   assert.equal(db.insertedValues[0]?.clerkUserId, "user_clerk_1");
   assert.equal(db.insertedValues[1]?.clerkOrganizationId, "org_clerk_1");
   assert.equal(db.insertedValues[2]?.companyId, "local-company-1");
-  assert.equal(db.insertedValues[2]?.name, "CompanyHelm");
-  assert.equal(db.insertedValues[2]?.provider, "e2b");
+  assert.equal(db.insertedValues[2]?.userId, "local-user-1");
   assert.equal(db.insertedValues[3]?.companyId, "local-company-1");
-  assert.equal(db.insertedValues[3]?.userId, "local-user-1");
+  assert.equal(db.insertedValues[3]?.name, "CompanyHelm");
+  assert.equal(db.insertedValues[3]?.provider, "e2b");
+  assert.deepEqual(
+    db.insertedValues.slice(4).map((value) => value.name),
+    ["Backlog", "TODO", "Archive"],
+  );
   assert.deepEqual(db.scopedCompanyIds, ["local-company-1"]);
 });
 

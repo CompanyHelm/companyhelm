@@ -6,7 +6,9 @@ import {
   computeProviderDefinitions,
   e2bComputeProviderDefinitions,
 } from "../../db/schema.ts";
+import type { DatabaseTransactionInterface } from "../../db/database_interface.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import { CompanyBootstrapService } from "../bootstrap/company.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { SecretEncryptionService } from "../secrets/encryption.ts";
 import { CompanyHelmComputeProviderService } from "./companyhelm_service.ts";
@@ -118,14 +120,18 @@ type UpdateComputeProviderDefinitionInput = {
  */
 @injectable()
 export class ComputeProviderDefinitionService {
+  private readonly companyBootstrapService: CompanyBootstrapService;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly secretEncryptionService: SecretEncryptionService;
 
   constructor(
+    @inject(CompanyBootstrapService)
+    companyBootstrapService: CompanyBootstrapService,
     @inject(CompanyHelmComputeProviderService)
     companyHelmComputeProviderService: CompanyHelmComputeProviderService,
     @inject(SecretEncryptionService) secretEncryptionService: SecretEncryptionService,
   ) {
+    this.companyBootstrapService = companyBootstrapService;
     this.companyHelmComputeProviderService = companyHelmComputeProviderService;
     this.secretEncryptionService = secretEncryptionService;
   }
@@ -135,9 +141,11 @@ export class ComputeProviderDefinitionService {
     companyId: string,
   ): Promise<ComputeProviderDefinitionRecord[]> {
     return transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
       const selectableDatabase = tx as SelectableDatabase;
-      await this.ensureCompanyHelmDefinition(selectableDatabase, insertableDatabase, companyId);
+      await this.companyBootstrapService.ensureCompanyDefaults(
+        tx as DatabaseTransactionInterface,
+        companyId,
+      );
       const baseDefinitions = await selectableDatabase
         .select(this.baseSelection())
         .from(computeProviderDefinitions)
@@ -548,47 +556,6 @@ export class ComputeProviderDefinitionService {
       provider: computeProviderDefinitions.provider,
       updatedAt: computeProviderDefinitions.updatedAt,
     };
-  }
-
-  private async ensureCompanyHelmDefinition(
-    selectableDatabase: SelectableDatabase,
-    insertableDatabase: InsertableDatabase,
-    companyId: string,
-  ): Promise<void> {
-    const existingDefinitions = await selectableDatabase
-      .select(this.baseSelection())
-      .from(computeProviderDefinitions)
-      .where(and(
-        eq(computeProviderDefinitions.companyId, companyId),
-        eq(computeProviderDefinitions.name, this.companyHelmComputeProviderService.getDefinitionName()),
-      )) as BaseDefinitionRecord[];
-    const existingDefinition = existingDefinitions[0];
-    if (existingDefinition) {
-      if (!this.companyHelmComputeProviderService.matchesDefinition(existingDefinition)) {
-        throw new Error("Reserved CompanyHelm compute provider name is assigned to another provider.");
-      }
-
-      return;
-    }
-
-    const companyDefinitions = await selectableDatabase
-      .select(this.baseSelection())
-      .from(computeProviderDefinitions)
-      .where(eq(computeProviderDefinitions.companyId, companyId)) as BaseDefinitionRecord[];
-    const now = new Date();
-    await insertableDatabase
-      .insert(computeProviderDefinitions)
-      .values({
-        companyId,
-        createdAt: now,
-        createdByUserId: null,
-        description: this.companyHelmComputeProviderService.getDefinitionDescription(),
-        isDefault: !companyDefinitions.some((definition) => definition.isDefault),
-        name: this.companyHelmComputeProviderService.getDefinitionName(),
-        provider: this.companyHelmComputeProviderService.getProvider(),
-        updatedAt: now,
-        updatedByUserId: null,
-      });
   }
 
   private async ensureFallbackDefaultDefinition(

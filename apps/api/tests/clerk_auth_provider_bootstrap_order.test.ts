@@ -8,35 +8,45 @@ test("Clerk bootstrap applies company context before company-scoped inserts", ()
     "utf8",
   );
 
-  const transactionBlockMatch = source.match(
-    /return db\.transaction\(async \(transaction\) => \{([\s\S]*?)return \{/,
+  const transactionStartIndex = source.indexOf("return db.transaction(async (transaction) => {");
+  assert.notEqual(transactionStartIndex, -1, "expected auth transaction block");
+
+  const applyContextIndex = source.indexOf("await database.applyCompanyContext(");
+  const ensureCompanyDefaultsIndex = source.indexOf(
+    "await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id);",
   );
-
-  assert.ok(transactionBlockMatch, "expected auth transaction block");
-
-  const transactionBlock = transactionBlockMatch[1] ?? "";
-  const applyContextIndex = transactionBlock.indexOf("await database.applyCompanyContext(");
-  const ensureComputeProviderIndex = transactionBlock.indexOf("await this.ensureCompanyHelmComputeProviderDefinition(transaction, company.id);");
-  const ensureMembershipIndex = transactionBlock.indexOf("await this.ensureMembership(transaction, {");
+  const ensureMembershipIndex = source.indexOf("await this.companyBootstrapService.ensureMembership(transaction, {");
 
   assert.notEqual(applyContextIndex, -1, "expected company context application in auth transaction");
-  assert.notEqual(ensureComputeProviderIndex, -1, "expected compute provider bootstrap in auth transaction");
+  assert.notEqual(ensureCompanyDefaultsIndex, -1, "expected company defaults bootstrap in auth transaction");
   assert.notEqual(ensureMembershipIndex, -1, "expected membership bootstrap in auth transaction");
   assert.ok(
-    applyContextIndex < ensureComputeProviderIndex,
-    "expected company context to be applied before company-scoped compute provider bootstrap",
+    transactionStartIndex < applyContextIndex,
+    "expected company context application inside the auth transaction",
   );
   assert.ok(
-    ensureMembershipIndex < ensureComputeProviderIndex,
-    "expected membership bootstrap to happen before company-scoped compute provider bootstrap",
+    transactionStartIndex < ensureMembershipIndex,
+    "expected membership bootstrap inside the auth transaction",
+  );
+  assert.ok(
+    transactionStartIndex < ensureCompanyDefaultsIndex,
+    "expected company defaults bootstrap inside the auth transaction",
+  );
+  assert.ok(
+    applyContextIndex < ensureCompanyDefaultsIndex,
+    "expected company context to be applied before company-scoped default bootstrap",
+  );
+  assert.ok(
+    ensureMembershipIndex < ensureCompanyDefaultsIndex,
+    "expected membership bootstrap to happen before company-scoped default bootstrap",
   );
 
-  const findOrCreateCompanyMatch = source.match(
-    /private async findOrCreateCompany\([\s\S]*?\n {2}\}\n\n {2}private async findCompanyByClerkOrganizationId/,
-  );
-  assert.ok(findOrCreateCompanyMatch, "expected findOrCreateCompany implementation");
   assert.doesNotMatch(
-    findOrCreateCompanyMatch[0],
-    /ensureCompanyHelmComputeProviderDefinition/,
+    source,
+    /private async ensureCompanyHelmComputeProviderDefinition/,
+  );
+  assert.doesNotMatch(
+    source,
+    /private async findOrCreateCompany/,
   );
 });

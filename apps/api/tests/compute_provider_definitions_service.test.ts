@@ -27,6 +27,7 @@ type BaseDefinitionRow = {
  */
 class ComputeProviderDefinitionServiceTestHarness {
   private readonly baseDefinitions: BaseDefinitionRow[];
+  private readonly companyBootstrapCalls: string[];
   private readonly e2bDefinitions: Array<Record<string, unknown>>;
 
   constructor(params?: {
@@ -34,11 +35,34 @@ class ComputeProviderDefinitionServiceTestHarness {
     e2bDefinitions?: Array<Record<string, unknown>>;
   }) {
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
+    this.companyBootstrapCalls = [];
     this.e2bDefinitions = [...(params?.e2bDefinitions ?? [])];
   }
 
   buildService(): ComputeProviderDefinitionService {
+    const baseDefinitions = this.baseDefinitions;
+    const companyBootstrapCalls = this.companyBootstrapCalls;
     return new ComputeProviderDefinitionService(
+      {
+        async ensureCompanyDefaults(_transaction: unknown, companyId: string) {
+          companyBootstrapCalls.push(companyId);
+          if (baseDefinitions.some((definition) => definition.name === "CompanyHelm")) {
+            return;
+          }
+
+          const now = new Date("2026-04-03T18:00:00.000Z");
+          baseDefinitions.push({
+            companyId,
+            createdAt: now,
+            description: "Managed by CompanyHelm",
+            id: "companyhelm-definition-1",
+            isDefault: !baseDefinitions.some((definition) => definition.isDefault),
+            name: "CompanyHelm",
+            provider: "e2b",
+            updatedAt: now,
+          });
+        },
+      } as never,
       new CompanyHelmComputeProviderService({
         companyhelm: {
           e2b: {
@@ -58,6 +82,10 @@ class ComputeProviderDefinitionServiceTestHarness {
         },
       } as never,
     );
+  }
+
+  listCompanyBootstrapCalls(): string[] {
+    return [...this.companyBootstrapCalls];
   }
 
   buildTransactionProvider(): TransactionProviderInterface {
@@ -165,6 +193,7 @@ test("ComputeProviderDefinitionService seeds the CompanyHelm definition when a c
   assert.equal(definitions[0]?.description, "Managed by CompanyHelm");
   assert.equal(definitions[0]?.e2b?.hasApiKey, true);
   assert.equal(definitions[0]?.isDefault, true);
+  assert.deepEqual(harness.listCompanyBootstrapCalls(), ["company-1"]);
 });
 
 test("ComputeProviderDefinitionService resolves CompanyHelm runtime credentials from config", async () => {

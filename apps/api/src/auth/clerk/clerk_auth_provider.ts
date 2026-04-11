@@ -1,13 +1,10 @@
-import { eq } from "drizzle-orm";
 import { createClerkClient } from "@clerk/backend";
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
-import type {
-  DatabaseClientInterface,
-  DatabaseTransactionInterface,
-} from "../../db/database_interface.ts";
-import { companies, companyMembers, computeProviderDefinitions, users } from "../../db/schema.ts";
+import type { DatabaseClientInterface } from "../../db/database_interface.ts";
+import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
+import { UserBootstrapService } from "../../services/bootstrap/user.ts";
 import { CompanyHelmComputeProviderService } from "../../services/compute_provider_definitions/companyhelm_service.ts";
 import {
   AuthProvider,
@@ -15,20 +12,6 @@ import {
   type AuthSession,
 } from "../auth_provider.ts";
 import { ClerkJwtKeyLoader } from "./clerk_jwt_key_loader.ts";
-
-type UserRecord = {
-  id: string;
-  clerk_user_id: string | null;
-  email: string;
-  first_name: string;
-  last_name: string | null;
-};
-
-type CompanyRecord = {
-  id: string;
-  clerk_organization_id: string | null;
-  name: string;
-};
 
 type ClerkBackendUser = {
   firstName: string | null;
@@ -40,34 +23,72 @@ type ClerkBackendUser = {
   }>;
 };
 
+type ClerkAuthenticateRequestResult = {
+  isAuthenticated: boolean;
+  toAuth?(): {
+    isAuthenticated: boolean;
+    orgId?: string | null;
+    sessionClaims?: Record<string, unknown>;
+    userId?: string | null;
+  };
+};
+
+type ClerkClientDependency = {
+  authenticateRequest(...arguments_: unknown[]): Promise<ClerkAuthenticateRequestResult>;
+  users: {
+    getUser(userId: string): Promise<ClerkBackendUser>;
+  };
+};
+
+type JwtKeyLoaderDependency = {
+  load(token: string): Promise<unknown>;
+};
+
 /**
- * Verifies Clerk session tokens and lazily provisions local user, company, and membership records.
+ * Verifies Clerk session tokens, resolves Clerk profile fields, and then hands local provisioning to
+ * the dedicated bootstrap services so auth transport code stays focused on Clerk-specific concerns.
  */
 @injectable()
 export class ClerkAuthProvider extends AuthProvider {
   readonly name = "clerk" as const;
-  private clerkClient: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
-  private jwtKeyLoader: Pick<ClerkJwtKeyLoader, "load">;
+  private clerkClient: ClerkClientDependency;
+  private jwtKeyLoader: JwtKeyLoaderDependency;
+  private readonly companyBootstrapService: CompanyBootstrapService;
   private readonly config: NonNullable<Config["auth"]["clerk"]>;
+  private readonly userBootstrapService: UserBootstrapService;
 
-  constructor(@inject(Config) config: Config) {
+  constructor(
+    @inject(Config) config: Config,
+    @inject(UserBootstrapService) userBootstrapService: UserBootstrapService,
+    @inject(CompanyBootstrapService) companyBootstrapService: CompanyBootstrapService,
+  ) {
     super();
     this.config = config.auth.clerk;
+    this.userBootstrapService = userBootstrapService;
+    this.companyBootstrapService = companyBootstrapService;
     this.clerkClient = createClerkClient({
       secretKey: this.config.secret_key,
       publishableKey: this.config.publishable_key,
-    });
+    }) as unknown as ClerkClientDependency;
     this.jwtKeyLoader = new ClerkJwtKeyLoader(config);
   }
 
   static createForTest(
     config: Config,
     dependencies: {
-      clerkClient?: Pick<ReturnType<typeof createClerkClient>, "authenticateRequest" | "users">;
-      jwtKeyLoader?: Pick<ClerkJwtKeyLoader, "load">;
+      clerkClient?: ClerkClientDependency;
+      companyBootstrapService?: CompanyBootstrapService;
+      jwtKeyLoader?: JwtKeyLoaderDependency;
+      userBootstrapService?: UserBootstrapService;
     } = {},
   ): ClerkAuthProvider {
-    const provider = new ClerkAuthProvider(config);
+    const provider = new ClerkAuthProvider(
+      config,
+      dependencies.userBootstrapService ?? new UserBootstrapService(),
+      dependencies.companyBootstrapService ?? new CompanyBootstrapService(
+        new CompanyHelmComputeProviderService(config),
+      ),
+    );
     provider.clerkClient = dependencies.clerkClient ?? provider.clerkClient;
     provider.jwtKeyLoader = dependencies.jwtKeyLoader ?? provider.jwtKeyLoader;
     return provider;
@@ -96,8 +117,8 @@ export class ClerkAuthProvider extends AuthProvider {
       throw new Error("Clerk bearer token is invalid.");
     }
 
-    const authenticatedRequest = requestState.toAuth();
-    if (!authenticatedRequest.isAuthenticated || !authenticatedRequest.sessionClaims) {
+    const authenticatedRequest = requestState.toAuth?.();
+    if (!authenticatedRequest || !authenticatedRequest.isAuthenticated || !authenticatedRequest.sessionClaims) {
       throw new Error("Clerk bearer token did not resolve an authenticated session.");
     }
 
@@ -112,8 +133,21 @@ export class ClerkAuthProvider extends AuthProvider {
     const organizationName = this.resolveOrganizationName(claims, organizationSubject);
 
     return db.transaction(async (transaction) => {
-      const user = await this.findOrCreateUser(transaction, providerSubject);
-      const company = await this.findOrCreateCompany(transaction, {
+      const user = await this.userBootstrapService.findOrCreateUser(transaction, {
+        loadUser: async () => {
+          const clerkUser = await this.clerkClient.users.getUser(providerSubject) as ClerkBackendUser;
+          const email = this.resolveClerkUserEmail(clerkUser);
+          const { firstName, lastName } = this.resolveClerkUserName(clerkUser, email);
+
+          return {
+            email,
+            firstName,
+            lastName,
+          };
+        },
+        providerSubject,
+      });
+      const company = await this.companyBootstrapService.findOrCreateCompany(transaction, {
         providerSubject: organizationSubject,
         name: organizationName,
       });
@@ -121,11 +155,11 @@ export class ClerkAuthProvider extends AuthProvider {
         transaction as DatabaseClientInterface,
         company.id,
       );
-      await this.ensureMembership(transaction, {
+      await this.companyBootstrapService.ensureMembership(transaction, {
         companyId: company.id,
         userId: user.id,
       });
-      await this.ensureCompanyHelmComputeProviderDefinition(transaction, company.id);
+      await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id);
 
       return {
         token,
@@ -143,185 +177,6 @@ export class ClerkAuthProvider extends AuthProvider {
         },
       };
     });
-  }
-
-  private async findOrCreateUser(
-    transaction: DatabaseTransactionInterface,
-    providerSubject: string,
-  ): Promise<UserRecord> {
-    const existingUser = await this.findUserByColumn(
-      transaction,
-      users.clerkUserId,
-      providerSubject,
-    );
-    if (existingUser) {
-      return existingUser;
-    }
-
-    const clerkUser = await this.clerkClient.users.getUser(providerSubject) as ClerkBackendUser;
-    const email = this.resolveClerkUserEmail(clerkUser);
-    const { firstName, lastName } = this.resolveClerkUserName(clerkUser, email);
-    const existingUserByEmail = await this.findUserByColumn(
-      transaction,
-      users.email,
-      email,
-    );
-    if (existingUserByEmail) {
-      return existingUserByEmail;
-    }
-
-    const now = new Date();
-    const [createdUser] = await transaction
-      .insert(users)
-      .values({
-        clerkUserId: providerSubject,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        created_at: now,
-        updated_at: now,
-      })
-      .onConflictDoNothing()
-      .returning?.({
-        id: users.id,
-        clerk_user_id: users.clerkUserId,
-        email: users.email,
-        first_name: users.first_name,
-        last_name: users.last_name,
-      }) as Promise<UserRecord[]>;
-    if (createdUser) {
-      return createdUser;
-    }
-
-    const concurrentUser = await this.findUserByColumn(
-      transaction,
-      users.clerkUserId,
-      providerSubject,
-    ) ?? await this.findUserByColumn(
-      transaction,
-      users.email,
-      email,
-    );
-    if (!concurrentUser) {
-      throw new Error("Failed to provision Clerk user after duplicate insert.");
-    }
-
-    return concurrentUser;
-  }
-
-  private async findUserByColumn(
-    transaction: DatabaseTransactionInterface,
-    column: unknown,
-    value: string,
-  ): Promise<UserRecord | null> {
-    const [existingUser] = await transaction
-      .select({
-        id: users.id,
-        clerk_user_id: users.clerkUserId,
-        email: users.email,
-        first_name: users.first_name,
-        last_name: users.last_name,
-      })
-      .from(users)
-      .where(eq(column as never, value))
-      .limit(1) as UserRecord[];
-
-    return existingUser ?? null;
-  }
-
-  private async findOrCreateCompany(
-    transaction: DatabaseTransactionInterface,
-    params: {
-      providerSubject: string;
-      name: string;
-    },
-  ): Promise<CompanyRecord> {
-    const existingCompany = await this.findCompanyByClerkOrganizationId(
-      transaction,
-      params.providerSubject,
-    );
-    if (existingCompany) {
-      return existingCompany;
-    }
-
-    const [createdCompany] = await transaction
-      .insert(companies)
-      .values({
-        clerkOrganizationId: params.providerSubject,
-        name: params.name,
-      })
-      .onConflictDoNothing()
-      .returning?.({
-        id: companies.id,
-        clerk_organization_id: companies.clerkOrganizationId,
-        name: companies.name,
-      }) as Promise<CompanyRecord[]>;
-    if (!createdCompany) {
-      const concurrentCompany = await this.findCompanyByClerkOrganizationId(
-        transaction,
-        params.providerSubject,
-      );
-      if (!concurrentCompany) {
-        throw new Error("Failed to provision Clerk company.");
-      }
-
-      return concurrentCompany;
-    }
-
-    return createdCompany;
-  }
-
-  private async findCompanyByClerkOrganizationId(
-    transaction: DatabaseTransactionInterface,
-    providerSubject: string,
-  ): Promise<CompanyRecord | null> {
-    const [existingCompany] = await transaction
-      .select({
-        id: companies.id,
-        clerk_organization_id: companies.clerkOrganizationId,
-        name: companies.name,
-      })
-      .from(companies)
-      .where(eq(companies.clerkOrganizationId, providerSubject))
-      .limit(1) as CompanyRecord[];
-
-    return existingCompany ?? null;
-  }
-
-  private async ensureMembership(
-    transaction: DatabaseTransactionInterface,
-    params: {
-      companyId: string;
-      userId: string;
-    },
-  ): Promise<void> {
-    await transaction
-      .insert(companyMembers)
-      .values({
-        companyId: params.companyId,
-        userId: params.userId,
-      })
-      .onConflictDoNothing();
-  }
-
-  private async ensureCompanyHelmComputeProviderDefinition(
-    transaction: DatabaseTransactionInterface,
-    companyId: string,
-  ): Promise<void> {
-    const now = new Date();
-    await transaction
-      .insert(computeProviderDefinitions)
-      .values({
-        companyId,
-        createdAt: now,
-        createdByUserId: null,
-        description: CompanyHelmComputeProviderService.DEFINITION_DESCRIPTION,
-        name: CompanyHelmComputeProviderService.DEFINITION_NAME,
-        provider: "e2b",
-        updatedAt: now,
-        updatedByUserId: null,
-      })
-      .onConflictDoNothing();
   }
 
   private resolveClerkUserEmail(clerkUser: ClerkBackendUser): string {
@@ -367,7 +222,10 @@ export class ClerkAuthProvider extends AuthProvider {
     };
   }
 
-  private resolveOrganizationSubject(claims: Record<string, unknown>, orgId: string | null): string | null {
+  private resolveOrganizationSubject(
+    claims: Record<string, unknown>,
+    orgId: string | null | undefined,
+  ): string | null {
     const organizationClaims = this.resolveOrganizationClaims(claims);
     return this.firstNonEmptyString([
       orgId,
