@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<aa53fff06aa3cfdc8cbd84d1235e2f88>>
+ * @generated SignedSource<<9a8004679fdd529467a592176cf75132>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly isDefault: boolean;
     readonly modelProvider: string;
     readonly name: string;
+    readonly refreshedAt: string | null | undefined;
     readonly status: string;
     readonly type: string;
     readonly updatedAt: string;
@@ -129,6 +130,13 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "refreshedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -161,16 +169,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "50c6969b719ed7b7e6b707c68ab747fe",
+    "cacheID": "8b859c5fcc9b27812bcf4e6e27758557",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bf26299b624dcb717d94e36ad6aedcde";
+(node as any).hash = "07ac495a29edd31c4d2f540d0821ca67";
 
 export default node;

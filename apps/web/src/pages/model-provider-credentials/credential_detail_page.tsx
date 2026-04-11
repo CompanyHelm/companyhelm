@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
+import type { credentialDetailPageRefreshCredentialTokenMutation } from "./__generated__/credentialDetailPageRefreshCredentialTokenMutation.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
 import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
 import {
@@ -15,7 +16,7 @@ import {
   getCredentialRefreshFailureRecoveryMessage,
   hasCredentialRefreshFailure,
 } from "./credential_health";
-import { formatProviderLabel } from "./provider_label";
+import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 const modelProviderCredentialDetailPageQueryNode = graphql`
   query credentialDetailPageQuery($credentialId: ID!) {
@@ -26,6 +27,8 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       type
       status
       errorMessage
+      refreshedAt
+      updatedAt
     }
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
@@ -45,6 +48,21 @@ const modelProviderCredentialDetailPageSetDefaultModelMutationNode = graphql`
     SetDefaultModelProviderCredentialModel(input: $input) {
       id
       isDefault
+    }
+  }
+`;
+
+const modelProviderCredentialDetailPageRefreshCredentialTokenMutationNode = graphql`
+  mutation credentialDetailPageRefreshCredentialTokenMutation(
+    $input: RefreshModelProviderCredentialTokenInput!
+  ) {
+    RefreshModelProviderCredentialToken(input: $input) {
+      id
+      status
+      errorMessage
+      refreshToken
+      refreshedAt
+      updatedAt
     }
   }
 `;
@@ -80,6 +98,21 @@ function ModelProviderCredentialDetailPageFallback() {
       </Card>
     </main>
   );
+}
+
+function formatTimestamp(value: string | null | undefined): string {
+  const timestamp = new Date(String(value || ""));
+  if (Number.isNaN(timestamp.getTime())) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(timestamp);
 }
 
 function formatReasoning(model: {
@@ -120,6 +153,10 @@ function ModelProviderCredentialDetailPageContent() {
     useMutation<credentialDetailPageRefreshModelsMutation>(
       modelProviderCredentialDetailPageRefreshModelsMutationNode,
     );
+  const [commitRefreshCredentialToken, isRefreshTokenInFlight] =
+    useMutation<credentialDetailPageRefreshCredentialTokenMutation>(
+      modelProviderCredentialDetailPageRefreshCredentialTokenMutationNode,
+    );
   const [commitSetDefaultModel, isSetDefaultModelInFlight] =
     useMutation<credentialDetailPageSetDefaultModelMutation>(
       modelProviderCredentialDetailPageSetDefaultModelMutationNode,
@@ -127,7 +164,13 @@ function ModelProviderCredentialDetailPageContent() {
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
   const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim())
     || "Credential";
+  const isOauthCredential = currentCredential?.type === "oauth_token";
   const showRefreshFailure = currentCredential ? hasCredentialRefreshFailure(currentCredential) : false;
+  const credentialStatus = isOauthCredential
+    ? (currentCredential?.refreshedAt
+      ? `Token refreshed ${formatTimestamp(currentCredential.refreshedAt)}`
+      : "Token has not been refreshed yet.")
+    : `Credential updated ${formatTimestamp(currentCredential?.updatedAt)}`;
 
   useEffect(() => {
     setDetailLabel(providerLabel);
@@ -141,45 +184,92 @@ function ModelProviderCredentialDetailPageContent() {
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
-          <CardDescription>Models available for this credential.</CardDescription>
+          <CardDescription className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{providerLabel}</Badge>
+            <Badge variant="secondary">
+              {formatProviderCredentialType(String(currentCredential?.type || "api_key"))}
+            </Badge>
+            <span className="text-xs text-muted-foreground">{credentialStatus}</span>
+          </CardDescription>
           <CardAction>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isRefreshInFlight}
-              onClick={async () => {
-                if (isRefreshInFlight) {
-                  return;
-                }
+            <div className="flex items-center gap-2">
+              {isOauthCredential ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isRefreshTokenInFlight}
+                  onClick={async () => {
+                    if (isRefreshTokenInFlight) {
+                      return;
+                    }
 
-                setErrorMessage(null);
-                await new Promise<void>((resolve, reject) => {
-                  commitRefreshModels({
-                    variables: {
-                      input: {
-                        modelProviderCredentialId: normalizedCredentialId,
+                    setErrorMessage(null);
+                    await new Promise<void>((resolve, reject) => {
+                      commitRefreshCredentialToken({
+                        variables: {
+                          input: {
+                            modelProviderCredentialId: normalizedCredentialId,
+                          },
+                        },
+                        onCompleted: (_response, errors) => {
+                          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                          if (nextErrorMessage) {
+                            reject(new Error(nextErrorMessage));
+                            return;
+                          }
+
+                          setFetchKey((current) => current + 1);
+                          resolve();
+                        },
+                        onError: reject,
+                      });
+                    }).catch((error: unknown) => {
+                      setErrorMessage(error instanceof Error ? error.message : "Failed to refresh credential token.");
+                    });
+                  }}
+                >
+                  <RefreshCcwIcon className={isRefreshTokenInFlight ? "animate-spin" : ""} />
+                  Refresh token
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isRefreshInFlight}
+                onClick={async () => {
+                  if (isRefreshInFlight) {
+                    return;
+                  }
+
+                  setErrorMessage(null);
+                  await new Promise<void>((resolve, reject) => {
+                    commitRefreshModels({
+                      variables: {
+                        input: {
+                          modelProviderCredentialId: normalizedCredentialId,
+                        },
                       },
-                    },
-                    onCompleted: (_response, errors) => {
-                      const errorMessage = String(errors?.[0]?.message || "").trim();
-                      if (errorMessage) {
-                        reject(new Error(errorMessage));
-                        return;
-                      }
+                      onCompleted: (_response, errors) => {
+                        const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                        if (nextErrorMessage) {
+                          reject(new Error(nextErrorMessage));
+                          return;
+                        }
 
-                      setFetchKey((current) => current + 1);
-                      resolve();
-                    },
-                    onError: reject,
+                        setFetchKey((current) => current + 1);
+                        resolve();
+                      },
+                      onError: reject,
+                    });
+                  }).catch((error: unknown) => {
+                    setErrorMessage(error instanceof Error ? error.message : "Failed to refresh models.");
                   });
-                }).catch((error: unknown) => {
-                  setErrorMessage(error instanceof Error ? error.message : "Failed to refresh models.");
-                });
-              }}
-            >
-              <RefreshCcwIcon />
-              Refresh models
-            </Button>
+                }}
+              >
+                <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
+                Refresh models
+              </Button>
+            </div>
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { StarIcon, Trash2Icon } from "lucide-react";
+import { RefreshCcwIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,7 @@ export type CredentialsTableRecord = {
   isDefault: boolean;
   modelProvider: string;
   name: string;
+  refreshedAt: string | null;
   status: "active" | "error";
   type: "api_key" | "oauth_token";
   updatedAt: string;
@@ -48,8 +49,10 @@ export type CredentialsTableRecord = {
 interface CredentialsTableProps {
   credentials: CredentialsTableRecord[];
   defaultingCredentialId: string | null;
+  refreshingCredentialId: string | null;
   isLoading: boolean;
   onDelete: (credentialId: string) => Promise<void>;
+  onRefreshToken: (credentialId: string) => Promise<void>;
   onSetDefault: (credentialId: string) => Promise<void>;
   deletingCredentialId: string | null;
 }
@@ -99,9 +102,10 @@ export function CredentialsTable(props: CredentialsTableProps) {
           <TableHead>Name</TableHead>
           <TableHead>Provider</TableHead>
           <TableHead>Type</TableHead>
+          <TableHead>Token refreshed</TableHead>
           <TableHead>Created</TableHead>
           <TableHead>Updated</TableHead>
-          <TableHead className="w-28 text-right">Actions</TableHead>
+          <TableHead className="w-36 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -147,10 +151,30 @@ export function CredentialsTable(props: CredentialsTableProps) {
                 <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
               </TableCell>
               <TableCell>{formatProviderCredentialType(credential.type)}</TableCell>
+              <TableCell>
+                {credential.type === "oauth_token"
+                  ? (credential.refreshedAt ? formatTimestamp(credential.refreshedAt) : "Never")
+                  : "—"}
+              </TableCell>
               <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
               <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
+                  {credential.type === "oauth_token" ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={props.refreshingCredentialId === credential.id}
+                      onClick={async (event) => {
+                        event.stopPropagation();
+                        await props.onRefreshToken(credential.id);
+                      }}
+                    >
+                      <RefreshCcwIcon
+                        className={`h-4 w-4 ${props.refreshingCredentialId === credential.id ? "animate-spin" : ""}`}
+                      />
+                    </Button>
+                  ) : null}
                   <Button
                     variant="ghost"
                     size="icon"

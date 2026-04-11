@@ -99,6 +99,9 @@ type Mutation {
   DeleteTaskCategory(input: DeleteTaskCategoryInput!): TaskCategory!
   DeleteTask(input: DeleteTaskInput!): Task!
   ExecuteTask(input: ExecuteTaskInput!): TaskRun!
+  RefreshModelProviderCredentialToken(
+    input: RefreshModelProviderCredentialTokenInput!
+  ): ModelProviderCredential!
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
@@ -849,6 +852,10 @@ input DetachSecretFromSessionInput {
 }
 
 input RefreshModelProviderCredentialModelsInput {
+  modelProviderCredentialId: ID!
+}
+
+input RefreshModelProviderCredentialTokenInput {
   modelProviderCredentialId: ID!
 }
 

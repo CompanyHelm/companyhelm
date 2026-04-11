@@ -9,6 +9,7 @@ import { formatProviderLabel } from "./provider_label";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
 import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
 import type { modelProviderCredentialsPageQuery } from "./__generated__/modelProviderCredentialsPageQuery.graphql";
+import type { modelProviderCredentialsPageRefreshCredentialTokenMutation } from "./__generated__/modelProviderCredentialsPageRefreshCredentialTokenMutation.graphql";
 import type { modelProviderCredentialsPageSetDefaultCredentialMutation } from "./__generated__/modelProviderCredentialsPageSetDefaultCredentialMutation.graphql";
 
 const modelProviderCredentialsPageQueryNode = graphql`
@@ -28,6 +29,7 @@ const modelProviderCredentialsPageQueryNode = graphql`
       defaultModelId
       status
       errorMessage
+      refreshedAt
       createdAt
       updatedAt
     }
@@ -47,6 +49,7 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
       defaultModelId
       status
       errorMessage
+      refreshedAt
       createdAt
       updatedAt
     }
@@ -59,6 +62,21 @@ const modelProviderCredentialsPageDeleteCredentialMutationNode = graphql`
   ) {
     DeleteModelProviderCredential(input: $input) {
       id
+    }
+  }
+`;
+
+const modelProviderCredentialsPageRefreshCredentialTokenMutationNode = graphql`
+  mutation modelProviderCredentialsPageRefreshCredentialTokenMutation(
+    $input: RefreshModelProviderCredentialTokenInput!
+  ) {
+    RefreshModelProviderCredentialToken(input: $input) {
+      id
+      status
+      errorMessage
+      refreshToken
+      refreshedAt
+      updatedAt
     }
   }
 `;
@@ -95,9 +113,11 @@ function ModelProviderCredentialsPageFallback() {
           <CredentialsTable
             credentials={[]}
             defaultingCredentialId={null}
+            refreshingCredentialId={null}
             isLoading
             deletingCredentialId={null}
             onDelete={async () => undefined}
+            onRefreshToken={async () => undefined}
             onSetDefault={async () => undefined}
           />
         </CardContent>
@@ -112,6 +132,7 @@ function ModelProviderCredentialsPageContent() {
   const [deletingCredentialId, setDeletingCredentialId] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
   const [defaultingCredentialId, setDefaultingCredentialId] = useState<string | null>(null);
+  const [refreshingCredentialId, setRefreshingCredentialId] = useState<string | null>(null);
   const data = useLazyLoadQuery<modelProviderCredentialsPageQuery>(
     modelProviderCredentialsPageQueryNode,
     {},
@@ -128,6 +149,10 @@ function ModelProviderCredentialsPageContent() {
     useMutation<modelProviderCredentialsPageDeleteCredentialMutation>(
       modelProviderCredentialsPageDeleteCredentialMutationNode,
     );
+  const [commitRefreshCredentialToken, isRefreshCredentialTokenInFlight] =
+    useMutation<modelProviderCredentialsPageRefreshCredentialTokenMutation>(
+      modelProviderCredentialsPageRefreshCredentialTokenMutationNode,
+    );
   const [commitSetDefaultCredential, isSetDefaultCredentialInFlight] =
     useMutation<modelProviderCredentialsPageSetDefaultCredentialMutation>(
       modelProviderCredentialsPageSetDefaultCredentialMutationNode,
@@ -139,6 +164,7 @@ function ModelProviderCredentialsPageContent() {
     isDefault: credential.isDefault,
     name: credential.name,
     modelProvider: credential.modelProvider,
+    refreshedAt: credential.refreshedAt,
     status: credential.status as "active" | "error",
     type: credential.type as "api_key" | "oauth_token",
     createdAt: credential.createdAt,
@@ -182,6 +208,7 @@ function ModelProviderCredentialsPageContent() {
           <CredentialsTable
             credentials={credentials}
             defaultingCredentialId={defaultingCredentialId}
+            refreshingCredentialId={refreshingCredentialId}
             isLoading={false}
             deletingCredentialId={deletingCredentialId}
             onDelete={async (credentialId) => {
@@ -214,9 +241,9 @@ function ModelProviderCredentialsPageContent() {
                     );
                   },
                   onCompleted: (_response, errors) => {
-                    const errorMessage = String(errors?.[0]?.message || "").trim();
-                    if (errorMessage) {
-                      reject(new Error(errorMessage));
+                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
                       return;
                     }
 
@@ -231,6 +258,40 @@ function ModelProviderCredentialsPageContent() {
               });
 
               setDeletingCredentialId(null);
+            }}
+            onRefreshToken={async (credentialId) => {
+              if (isRefreshCredentialTokenInFlight) {
+                return;
+              }
+
+              setErrorMessage(null);
+              setRefreshingCredentialId(credentialId);
+
+              await new Promise<void>((resolve, reject) => {
+                commitRefreshCredentialToken({
+                  variables: {
+                    input: {
+                      modelProviderCredentialId: credentialId,
+                    },
+                  },
+                  onCompleted: (_response, errors) => {
+                    const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                    if (nextErrorMessage) {
+                      reject(new Error(nextErrorMessage));
+                      return;
+                    }
+
+                    resolve();
+                  },
+                  onError: reject,
+                });
+              }).then(() => {
+                setFetchKey((current) => current + 1);
+              }).catch((error: unknown) => {
+                setErrorMessage(error instanceof Error ? error.message : "Failed to refresh credential token.");
+              });
+
+              setRefreshingCredentialId(null);
             }}
             onSetDefault={async (credentialId) => {
               if (isSetDefaultCredentialInFlight) {
@@ -311,9 +372,9 @@ function ModelProviderCredentialsPageContent() {
                 );
               },
               onCompleted: (_response, errors) => {
-                const errorMessage = String(errors?.[0]?.message || "").trim();
-                if (errorMessage) {
-                  reject(new Error(errorMessage));
+                const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
                   return;
                 }
 

@@ -2,49 +2,14 @@ import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
-import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
+import type {
+  GraphqlModelProviderCredentialRecord,
+  ModelProviderCredentialModelRecord as ModelRecord,
+  ModelProviderCredentialRecord,
+} from "../model_provider_credential_record.ts";
+import { serializeModelProviderCredentialRecord } from "../model_provider_credential_record.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Resolver } from "./resolver.ts";
-
-type ModelProviderCredentialRecord = {
-  id: string;
-  isDefault: boolean;
-  companyId: string;
-  name: string;
-  modelProvider: ModelProviderId;
-  type: "api_key" | "oauth_token";
-  status: "active" | "error";
-  errorMessage: string | null;
-  refreshToken: string | null;
-  refreshedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type GraphqlModelProviderCredentialRecord = {
-  id: string;
-  companyId: string;
-  name: string;
-  modelProvider: ModelProviderId;
-  defaultModelId: string | null;
-  defaultReasoningLevel: string | null;
-  isDefault: boolean;
-  type: "api_key" | "oauth_token";
-  status: "active" | "error";
-  errorMessage: string | null;
-  refreshToken: string | null;
-  refreshedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type ModelRecord = {
-  isDefault: boolean;
-  modelId: string;
-  modelProviderCredentialId: string;
-  reasoningLevels: string[] | null;
-};
-
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -103,31 +68,8 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
         .where(eq(modelProviderCredentialModels.companyId, context.authSession.company.id)) as ModelRecord[];
 
       return credentials.map((credential) =>
-        ModelProviderCredentialsQueryResolver.serializeRecord(this.modelRegistry, credential, modelRecords)
+        serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords)
       );
     });
   };
-
-  private static serializeRecord(
-    modelRegistry: ModelRegistry,
-    credential: ModelProviderCredentialRecord,
-    models: ModelRecord[],
-  ): GraphqlModelProviderCredentialRecord {
-    const defaultModel = models.find((model) =>
-      model.modelProviderCredentialId === credential.id && model.isDefault
-    ) ?? null;
-    const supportedReasoningLevels = defaultModel?.reasoningLevels ?? [];
-    const providerDefaultReasoningLevel = modelRegistry.getDefaultReasoningLevelForProvider(credential.modelProvider);
-
-    return {
-      ...credential,
-      defaultModelId: defaultModel?.modelId ?? null,
-      defaultReasoningLevel: providerDefaultReasoningLevel && supportedReasoningLevels.includes(providerDefaultReasoningLevel)
-        ? providerDefaultReasoningLevel
-        : (supportedReasoningLevels[0] ?? null),
-      refreshedAt: credential.refreshedAt?.toISOString() ?? null,
-      createdAt: credential.createdAt.toISOString(),
-      updatedAt: credential.updatedAt.toISOString(),
-    };
-  }
 }

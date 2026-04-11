@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b1b985c17cd6321ceebc9761fca6440d>>
+ * @generated SignedSource<<4916b03e48b5b1214cbb6e2eae8690b5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,8 +26,10 @@ export type credentialDetailPageQuery$data = {
     readonly id: string;
     readonly modelProvider: string;
     readonly name: string;
+    readonly refreshedAt: string | null | undefined;
     readonly status: string;
     readonly type: string;
+    readonly updatedAt: string;
   }>;
 };
 export type credentialDetailPageQuery = {
@@ -94,6 +96,20 @@ v3 = [
         "args": null,
         "kind": "ScalarField",
         "name": "errorMessage",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "refreshedAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "updatedAt",
         "storageKey": null
       }
     ],
@@ -165,16 +181,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "a532b5facf7d6fab6fb60c5113315a21",
+    "cacheID": "af9025be5204201e3f18cc5399af7968",
     "id": null,
     "metadata": {},
     "name": "credentialDetailPageQuery",
     "operationKind": "query",
-    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    type\n    status\n    errorMessage\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
+    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    type\n    status\n    errorMessage\n    refreshedAt\n    updatedAt\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fd1a73d8fcc3ac2f0a60f9b2e3815dc6";
+(node as any).hash = "53bfe68c0fabc7d2e6f75971914fc594";
 
 export default node;

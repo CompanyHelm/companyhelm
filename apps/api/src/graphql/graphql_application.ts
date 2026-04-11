@@ -58,6 +58,7 @@ import { MarkSessionReadMutation } from "./mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "./mutations/prompt_session.ts";
 import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_human_question.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "./mutations/refresh_github_installation_repositories.ts";
+import { RefreshModelProviderCredentialTokenMutation } from "./mutations/refresh_model_provider_credential_token.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "./mutations/refresh_model_provider_credential_models.ts";
 import { SetDefaultComputeProviderDefinitionMutation } from "./mutations/set_default_compute_provider_definition.ts";
 import { SetDefaultModelProviderCredentialMutation } from "./mutations/set_default_model_provider_credential.ts";
@@ -200,6 +201,7 @@ export class GraphqlApplication {
   private readonly interruptSessionMutation: InterruptSessionMutation;
   private readonly promptSessionMutation: PromptSessionMutation;
   private readonly resolveInboxHumanQuestionMutation: ResolveInboxHumanQuestionMutation;
+  private readonly refreshModelProviderCredentialTokenMutation: RefreshModelProviderCredentialTokenMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
   private readonly graphqlRequestContextResolver: GraphqlRequestContextResolver;
@@ -539,6 +541,12 @@ export class GraphqlApplication {
         throw new Error("SetDefaultModelProviderCredential mutation is not configured.");
       },
     } as never,
+    @inject(RefreshModelProviderCredentialTokenMutation)
+    refreshModelProviderCredentialTokenMutation: RefreshModelProviderCredentialTokenMutation = {
+      async execute() {
+        throw new Error("RefreshModelProviderCredentialToken mutation is not configured.");
+      },
+    } as never,
     @inject(SetDefaultModelProviderCredentialModelMutation)
     setDefaultModelProviderCredentialModelMutation: SetDefaultModelProviderCredentialModelMutation = {
       async execute() {
@@ -722,6 +730,7 @@ export class GraphqlApplication {
     this.interruptSessionMutation = interruptSessionMutation;
     this.promptSessionMutation = promptSessionMutation;
     this.resolveInboxHumanQuestionMutation = resolveInboxHumanQuestionMutation;
+    this.refreshModelProviderCredentialTokenMutation = refreshModelProviderCredentialTokenMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.graphqlRequestContextResolver = graphqlRequestContextResolver;
@@ -922,6 +931,7 @@ export class GraphqlApplication {
           PromptSession: this.promptSessionMutation.execute,
           UpdateSessionTitle: this.updateSessionTitleMutation.execute,
           ResolveInboxHumanQuestion: this.resolveInboxHumanQuestionMutation.execute,
+          RefreshModelProviderCredentialToken: this.refreshModelProviderCredentialTokenMutation.execute,
           RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
           SetDefaultComputeProviderDefinition: this.setDefaultComputeProviderDefinitionMutation.execute,
           SetDefaultModelProviderCredential: this.setDefaultModelProviderCredentialMutation.execute,

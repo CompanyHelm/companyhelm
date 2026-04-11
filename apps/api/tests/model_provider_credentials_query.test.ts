@@ -215,6 +215,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
             type
             status
             errorMessage
+            refreshedAt
             createdAt
             updatedAt
           }
@@ -236,6 +237,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     type: "api_key",
     status: "active",
     errorMessage: null,
+    refreshedAt: null,
     createdAt: "2026-03-20T10:00:00.000Z",
     updatedAt: "2026-03-20T10:00:00.000Z",
   }]);

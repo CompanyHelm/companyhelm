@@ -1,16 +1,13 @@
-import { getOAuthProvider, type OAuthCredentials, type OAuthProviderId } from "@mariozechner/pi-ai/oauth";
 import { inject, injectable } from "inversify";
 import { AdminDatabase } from "../db/admin_database.ts";
 import { ApiLogger } from "../log/api_logger.ts";
+import {
+  LlmOauthCredentialRefreshService,
+  type LlmOauthCredentialRecord,
+} from "../services/ai_providers/llm_oauth_credential_refresh_service.ts";
 import { WorkerBase } from "./worker_base.ts";
 
-export type LlmOauthCredentialRow = {
-  id: string;
-  modelProvider: "openai-codex";
-  encryptedApiKey: string;
-  refreshToken: string | null;
-  accessTokenExpiresAtMilliseconds: number | string;
-};
+export type LlmOauthCredentialRow = LlmOauthCredentialRecord;
 
 /**
  * Refreshes expiring OAuth-backed LLM credentials in small locked batches so multiple worker
@@ -22,13 +19,17 @@ export class LlmOauthRefreshWorker extends WorkerBase {
   private static readonly INTERVAL_SECONDS = 60;
   private static readonly LOCK_BATCH_SIZE = 20;
   private readonly adminDatabase: AdminDatabase;
+  private readonly refreshService: LlmOauthCredentialRefreshService;
 
   constructor(
     @inject(AdminDatabase) adminDatabase: AdminDatabase,
     @inject(ApiLogger) logger: ApiLogger,
+    @inject(LlmOauthCredentialRefreshService)
+    refreshService: LlmOauthCredentialRefreshService = new LlmOauthCredentialRefreshService(),
   ) {
     super("llm_oauth_refresh", LlmOauthRefreshWorker.INTERVAL_SECONDS, logger);
     this.adminDatabase = adminDatabase;
+    this.refreshService = refreshService;
   }
 
   protected async run(): Promise<void> {
@@ -91,35 +92,8 @@ export class LlmOauthRefreshWorker extends WorkerBase {
     });
   }
 
-  protected async refreshCredential(credential: LlmOauthCredentialRow): Promise<OAuthCredentials> {
-    const refreshToken = credential.refreshToken?.trim();
-    if (!refreshToken) {
-      throw new Error("OAuth credential is missing a refresh token.");
-    }
-
-    const expires = Number(credential.accessTokenExpiresAtMilliseconds);
-    if (!Number.isFinite(expires) || expires <= 0) {
-      throw new Error("OAuth credential is missing a valid access token expiry.");
-    }
-
-    const oauthProvider = getOAuthProvider(this.resolveOAuthProviderId(credential.modelProvider));
-    if (!oauthProvider) {
-      throw new Error(`OAuth provider is not registered for model provider ${credential.modelProvider}.`);
-    }
-
-    return oauthProvider.refreshToken({
-      access: credential.encryptedApiKey,
-      refresh: refreshToken,
-      expires,
-    });
-  }
-
-  private resolveOAuthProviderId(modelProvider: LlmOauthCredentialRow["modelProvider"]): OAuthProviderId {
-    if (modelProvider === "openai-codex") {
-      return "openai-codex";
-    }
-
-    throw new Error(`Unsupported OAuth model provider: ${modelProvider}`);
+  protected async refreshCredential(credential: LlmOauthCredentialRow) {
+    return this.refreshService.refreshCredential(credential);
   }
 
   private static serializeTimestamp(value: Date): string {
