@@ -19,6 +19,8 @@ type ModelProviderCredentialRecord = {
   isDefault: boolean;
   modelProvider: ModelProviderId;
   name: string;
+  status: "active" | "error";
+  errorMessage: string | null;
   refreshedAt: Date | null;
   refreshToken: string | null;
   type: "api_key" | "oauth_token";
@@ -41,6 +43,8 @@ type GraphqlModelProviderCredentialRecord = {
   isDefault: boolean;
   modelProvider: ModelProviderId;
   name: string;
+  status: "active" | "error";
+  errorMessage: string | null;
   refreshedAt: string | null;
   refreshToken: string | null;
   type: "api_key" | "oauth_token";
@@ -98,6 +102,8 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
+          status: modelProviderCredentials.status,
+          errorMessage: modelProviderCredentials.errorMessage,
           refreshedAt: modelProviderCredentials.refreshedAt,
           refreshToken: modelProviderCredentials.refreshToken,
           type: modelProviderCredentials.type,
@@ -133,6 +139,8 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           isDefault: modelProviderCredentials.isDefault,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
+          status: modelProviderCredentials.status,
+          errorMessage: modelProviderCredentials.errorMessage,
           refreshedAt: modelProviderCredentials.refreshedAt,
           refreshToken: modelProviderCredentials.refreshToken,
           type: modelProviderCredentials.type,

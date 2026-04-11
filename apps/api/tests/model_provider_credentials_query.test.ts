@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { generateKeyPairSync } from "node:crypto";
 import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
@@ -14,19 +15,91 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
+const TEST_PRIVATE_KEY_PEM = (() => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
+})();
+
 class ModelProviderCredentialsQueryTestHarness {
   static createConfigMock(): Config {
     return {
+      auth: {
+        provider: "clerk",
+        clerk: {
+          secret_key: "clerk-secret",
+          publishable_key: "clerk-publishable",
+          jwks_url: "https://example.com/.well-known/jwks.json",
+          authorized_parties: ["http://localhost:3000"],
+        },
+      },
+      companyhelm: {
+        e2b: {
+          api_key: "e2b-test-key",
+          desktop_resolution: {
+            height: 900,
+            width: 1440,
+          },
+          template_prefix: "companyhelm-test",
+        },
+      },
+      cors: {
+        origin: "http://localhost:3000",
+        credentials: true,
+        methods: ["GET", "POST"],
+        allowed_headers: ["authorization", "content-type"],
+      },
+      database: {
+        host: "127.0.0.1",
+        name: "companyhelm_test",
+        port: 5432,
+        roles: {
+          admin: {
+            password: "postgres",
+            username: "postgres",
+          },
+          app_runtime: {
+            password: "postgres",
+            username: "postgres",
+          },
+        },
+      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
       },
+      github: {
+        app_client_id: "Iv-test-local",
+        app_link: "https://github.com/apps/companyhelm-test",
+        app_private_key_pem: TEST_PRIVATE_KEY_PEM,
+      },
+      host: "127.0.0.1",
       log: {
         json: false,
         level: "info",
       },
-      auth: {
-        provider: "clerk",
+      port: 4000,
+      publicUrl: "http://localhost:4000",
+      redis: {
+        host: "127.0.0.1",
+        password: "",
+        port: 6379,
+        username: "",
+      },
+      security: {
+        encryption: {
+          key: "companyhelm-test-encryption-key",
+          key_id: "companyhelm-test-key",
+        },
+      },
+      web_search: {
+        exa: {
+          api_key: "exa-test-key",
+        },
+      },
+      workers: {
+        session_process: {
+          concurrency: 1,
+        },
       },
     } as Config;
   }
@@ -39,6 +112,8 @@ class ModelProviderCredentialsQueryTestHarness {
       name: "OpenAI / Codex",
       modelProvider: "openai",
       type: "api_key",
+      status: "active",
+      errorMessage: null,
       refreshToken: null,
       refreshedAt: null,
       createdAt: new Date("2026-03-20T10:00:00.000Z"),
@@ -138,6 +213,8 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
             defaultModelId
             defaultReasoningLevel
             type
+            status
+            errorMessage
             createdAt
             updatedAt
           }
@@ -157,6 +234,8 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
     defaultModelId: "gpt-5.4",
     defaultReasoningLevel: "high",
     type: "api_key",
+    status: "active",
+    errorMessage: null,
     createdAt: "2026-03-20T10:00:00.000Z",
     updatedAt: "2026-03-20T10:00:00.000Z",
   }]);

@@ -469,6 +469,8 @@ type ModelProviderCredential {
   defaultModelId: String
   defaultReasoningLevel: String
   type: String!
+  status: String!
+  errorMessage: String
   refreshToken: String
   refreshedAt: String
   createdAt: String!

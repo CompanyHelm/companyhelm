@@ -66,11 +66,22 @@ export class LlmOauthRefreshWorker extends WorkerBase {
                 new Date(refreshedCredential.expires),
               )},
               "refreshed_at" = ${refreshedAt},
+              "status" = 'active',
+              "error_message" = null,
               "updated_at" = ${refreshedAt}
             WHERE "id" = ${credential.id}
           `;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown OAuth refresh failure.";
+          const failedAt = LlmOauthRefreshWorker.serializeTimestamp(new Date());
+          await transactionSql`
+            UPDATE "model_provider_credentials"
+            SET
+              "status" = 'error',
+              "error_message" = ${message},
+              "updated_at" = ${failedAt}
+            WHERE "id" = ${credential.id}
+          `;
           this.getLogger().error({
             credentialId: credential.id,
             error: message,

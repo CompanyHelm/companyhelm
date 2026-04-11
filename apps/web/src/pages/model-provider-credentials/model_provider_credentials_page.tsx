@@ -24,7 +24,10 @@ const modelProviderCredentialsPageQueryNode = graphql`
       isDefault
       name
       modelProvider
+      type
       defaultModelId
+      status
+      errorMessage
       createdAt
       updatedAt
     }
@@ -40,7 +43,10 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
       isDefault
       name
       modelProvider
+      type
       defaultModelId
+      status
+      errorMessage
       createdAt
       updatedAt
     }
@@ -128,10 +134,13 @@ function ModelProviderCredentialsPageContent() {
     );
   const credentials: CredentialsTableRecord[] = data.ModelProviderCredentials.map((credential) => ({
     defaultModelId: credential.defaultModelId,
+    errorMessage: credential.errorMessage,
     id: credential.id,
     isDefault: credential.isDefault,
     name: credential.name,
     modelProvider: credential.modelProvider,
+    status: credential.status as "active" | "error",
+    type: credential.type as "api_key" | "oauth_token",
     createdAt: credential.createdAt,
     updatedAt: credential.updatedAt,
   }));

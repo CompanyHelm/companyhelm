@@ -16,7 +16,7 @@ type QueryCall = {
 class LlmOauthRefreshWorkerTestHarness {
   static createAdminDatabaseMock(rows: unknown[]) {
     const queryCalls: QueryCall[] = [];
-    const updateCalls: unknown[][] = [];
+    const updateCalls: QueryCall[] = [];
 
     const transactionSql = async (
       strings: TemplateStringsArray,
@@ -33,7 +33,10 @@ class LlmOauthRefreshWorkerTestHarness {
       }
 
       if (query.includes("UPDATE \"model_provider_credentials\"")) {
-        updateCalls.push(values);
+        updateCalls.push({
+          query,
+          values,
+        });
         return [];
       }
 
@@ -142,12 +145,14 @@ test("LlmOauthRefreshWorker locks expiring oauth credentials and stores refreshe
   assert.equal(typeof adminDatabase.queryCalls[0]?.values[0], "string");
   assert.equal(adminDatabase.queryCalls[0]?.values[1], 20);
   assert.equal(adminDatabase.updateCalls.length, 1);
-  assert.equal(adminDatabase.updateCalls[0]?.[0], "new-access-token");
-  assert.equal(adminDatabase.updateCalls[0]?.[1], "new-refresh-token");
-  assert.equal(typeof adminDatabase.updateCalls[0]?.[2], "string");
-  assert.equal(typeof adminDatabase.updateCalls[0]?.[3], "string");
-  assert.equal(typeof adminDatabase.updateCalls[0]?.[4], "string");
-  assert.equal(adminDatabase.updateCalls[0]?.[5], "credential-1");
+  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"status" = 'active'/);
+  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"error_message" = null/);
+  assert.equal(adminDatabase.updateCalls[0]?.values[0], "new-access-token");
+  assert.equal(adminDatabase.updateCalls[0]?.values[1], "new-refresh-token");
+  assert.equal(typeof adminDatabase.updateCalls[0]?.values[2], "string");
+  assert.equal(typeof adminDatabase.updateCalls[0]?.values[3], "string");
+  assert.equal(typeof adminDatabase.updateCalls[0]?.values[4], "string");
+  assert.equal(adminDatabase.updateCalls[0]?.values[5], "credential-1");
   assert.equal(loggedErrors.length, 0);
 });
 
@@ -194,8 +199,13 @@ test("LlmOauthRefreshWorker continues refreshing later rows when one refresh fai
       modelProvider: "openai-codex",
     },
   ]);
-  assert.equal(adminDatabase.updateCalls.length, 1);
-  assert.equal(adminDatabase.updateCalls[0]?.[5], "credential-2");
+  assert.equal(adminDatabase.updateCalls.length, 2);
+  assert.match(adminDatabase.updateCalls[0]?.query ?? "", /"status" = 'error'/);
+  assert.equal(adminDatabase.updateCalls[0]?.values[0], "refresh failed for credential-1");
+  assert.equal(typeof adminDatabase.updateCalls[0]?.values[1], "string");
+  assert.equal(adminDatabase.updateCalls[0]?.values[2], "credential-1");
+  assert.match(adminDatabase.updateCalls[1]?.query ?? "", /"status" = 'active'/);
+  assert.equal(adminDatabase.updateCalls[1]?.values[5], "credential-2");
   assert.equal(loggedErrors.length, 1);
   assert.deepEqual(loggedErrors[0]?.bindings, {
     worker: "llm_oauth_refresh",

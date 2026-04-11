@@ -28,6 +28,8 @@ type ModelProviderCredentialRecord = {
   name: string;
   modelProvider: string;
   type: "api_key" | "oauth_token";
+  status: "active" | "error";
+  errorMessage: string | null;
   refreshToken: string | null;
   refreshedAt: Date | null;
   createdAt: Date;
@@ -44,6 +46,8 @@ type GraphqlModelProviderCredentialRecord = {
   defaultReasoningLevel: string | null;
   isDefault: boolean;
   type: "api_key" | "oauth_token";
+  status: "active" | "error";
+  errorMessage: string | null;
   refreshToken: string | null;
   refreshedAt: string | null;
   createdAt: string;
@@ -136,6 +140,8 @@ export class AddModelProviderCredentialMutation extends Mutation<
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
+          status: modelProviderCredentials.status,
+          errorMessage: modelProviderCredentials.errorMessage,
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
@@ -158,6 +164,8 @@ export class AddModelProviderCredentialMutation extends Mutation<
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
           isDefault: false,
+          status: "active",
+          errorMessage: null,
           createdAt: now,
           updatedAt: now,
         })
@@ -167,6 +175,8 @@ export class AddModelProviderCredentialMutation extends Mutation<
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
+          status: modelProviderCredentials.status,
+          errorMessage: modelProviderCredentials.errorMessage,
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
@@ -212,6 +222,8 @@ export class AddModelProviderCredentialMutation extends Mutation<
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
+          status: modelProviderCredentials.status,
+          errorMessage: modelProviderCredentials.errorMessage,
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
