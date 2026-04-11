@@ -20,6 +20,17 @@ export function PageContainer(props: PageContainerProps) {
   const locationKey = useRouterState({
     select: (state) => state.location.href,
   });
+  const isOrganizationScopedPage = pathname.startsWith("/orgs/");
+
+  if (!isOrganizationScopedPage) {
+    // Routes outside the org slug prefix cannot rely on org-aware chrome like the sidebar/header.
+    return (
+      <div className="flex min-h-svh flex-col px-4 pb-6 pt-4 md:px-6 md:pb-8 md:pt-5 lg:px-8">
+        {props.children}
+      </div>
+    );
+  }
+
   const normalizedPathname = OrganizationPath.stripPrefix(pathname);
   const isChatsPage = normalizedPathname.startsWith("/chats");
   const isTasksBoardPage = normalizedPathname === "/tasks";
