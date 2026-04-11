@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { LayoutGridIcon, ListIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, SlidersHorizontalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -173,27 +173,18 @@ function TasksPageFallback() {
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 items-center justify-between gap-4">
         <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
-          <Button className="h-9 rounded-full border border-border/60 bg-muted px-4 text-sm" disabled variant="ghost">
-            All tasks
-          </Button>
-          <Button className="h-9 rounded-full border border-border/40 px-4 text-sm" disabled variant="ghost">
-            Loading
-          </Button>
+          <div className="h-8 w-24 shrink-0 rounded-full border border-border/60 bg-muted/50" />
+          <div className="h-8 w-20 shrink-0 rounded-full border border-border/40 bg-background/40" />
+          <div className="h-8 w-28 shrink-0 rounded-full border border-border/40 bg-background/40" />
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button disabled size="sm">
-            <PlusIcon />
-            Create task
-          </Button>
-          <Button className="rounded-full" disabled size="icon-sm" variant="outline">
-            <SlidersHorizontalIcon className="size-3.5" />
-          </Button>
-        </div>
+        <Button className="rounded-full" disabled size="icon-sm" variant="outline">
+          <SlidersHorizontalIcon className="size-3.5" />
+        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 text-xs text-muted-foreground">
-          Loading tasks...
+            Loading
         </div>
       </div>
     </main>
@@ -206,6 +197,7 @@ function TasksPageContent() {
   const search = useSearch({ strict: false }) as TasksPageSearch;
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [createTaskCategoryId, setCreateTaskCategoryId] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [executingTaskId, setExecutingTaskId] = useState<string | null>(null);
   const [isViewMenuOpen, setViewMenuOpen] = useState(false);
@@ -236,36 +228,35 @@ function TasksPageContent() {
   }));
   const uncategorizedTaskCount = data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === null).length;
   const categoryFilterOptions = [
-    {
-      key: undefined,
-      label: "All tasks",
-      count: data.Tasks.length,
-    },
     ...allCategories.map((category: TaskCategoryRecord) => ({
       key: category.id,
       label: category.name,
       count: data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === category.id).length,
     })),
-    ...(uncategorizedTaskCount > 0
-      ? [{
-        key: "uncategorized",
-        label: "Uncategorized",
-        count: uncategorizedTaskCount,
-      }]
-      : []),
+    {
+      key: "uncategorized",
+      label: "Uncategorized",
+      count: uncategorizedTaskCount,
+    },
   ];
-  const validCategoryKeys = new Set(
-    categoryFilterOptions.flatMap((filterOption) => filterOption.key ? [filterOption.key] : []),
-  );
-  const selectedCategoryKeys = parseSelectedTaskCategoryKeys(search.category, validCategoryKeys);
+  const allCategoryKeys = categoryFilterOptions.map((filterOption) => filterOption.key);
+  const validCategoryKeys = new Set(allCategoryKeys);
+  const parsedSelectedCategoryKeys = parseSelectedTaskCategoryKeys(search.category, validCategoryKeys);
+  const selectedCategoryKeys = parsedSelectedCategoryKeys.length === allCategoryKeys.length
+    ? []
+    : parsedSelectedCategoryKeys;
+  const effectiveSelectedCategoryKeys = selectedCategoryKeys.length > 0
+    ? selectedCategoryKeys
+    : allCategoryKeys;
   const hasSelectedCategoryFilters = selectedCategoryKeys.length > 0;
-  const visibleCategories = !hasSelectedCategoryFilters
-    ? allCategories
-    : allCategories.filter((category: TaskCategoryRecord) => selectedCategoryKeys.includes(category.id));
+  const includeUncategorizedGroup = effectiveSelectedCategoryKeys.includes("uncategorized");
+  const visibleCategories = allCategories.filter((category: TaskCategoryRecord) => {
+    return effectiveSelectedCategoryKeys.includes(category.id);
+  });
   const visibleTasks: TaskRecord[] = (!hasSelectedCategoryFilters
     ? data.Tasks
     : data.Tasks.filter((task: TasksPageTask) => {
-      return selectedCategoryKeys.includes(task.taskCategoryId ?? "uncategorized");
+      return effectiveSelectedCategoryKeys.includes(task.taskCategoryId ?? "uncategorized");
     }))
     .map((task: TasksPageTask) => ({
       assignedAt: task.assignedAt,
@@ -328,6 +319,36 @@ function TasksPageContent() {
       search: buildTasksPageSearch({
         category: currentCategorySearchValue,
         viewType,
+      }),
+      to: OrganizationPath.route("/tasks"),
+    });
+  }
+
+  function openCreateTaskDialog(taskCategoryId: string | null) {
+    setCreateTaskCategoryId(taskCategoryId);
+    setCreateDialogOpen(true);
+  }
+
+  function toggleCategory(categoryKey: string) {
+    const currentSelectedKeys = selectedCategoryKeys.length > 0
+      ? selectedCategoryKeys
+      : allCategoryKeys;
+    const isSelected = currentSelectedKeys.includes(categoryKey);
+    const nextSelectedKeySet = isSelected
+      ? currentSelectedKeys.filter((key) => key !== categoryKey)
+      : [...currentSelectedKeys, categoryKey];
+    const nextSelectedKeys = allCategoryKeys.filter((key) => nextSelectedKeySet.includes(key));
+    const nextCategorySearchValue = nextSelectedKeys.length === 0 || nextSelectedKeys.length === allCategoryKeys.length
+      ? undefined
+      : nextSelectedKeys.join(",");
+
+    void navigate({
+      params: {
+        organizationSlug,
+      },
+      search: buildTasksPageSearch({
+        category: nextCategorySearchValue,
+        viewType: selectedViewType,
       }),
       to: OrganizationPath.route("/tasks"),
     });
@@ -479,74 +500,30 @@ function TasksPageContent() {
       <div className="flex shrink-0 items-start justify-between gap-4">
         <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
           {categoryFilterOptions.map((filterOption) => {
-            const isSelected = filterOption.key === undefined
-              ? !hasSelectedCategoryFilters
-              : selectedCategoryKeys.includes(filterOption.key);
+            const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
 
             return (
-              <Button
-                key={filterOption.key ?? "all"}
+              <button
+                key={filterOption.key}
                 className={cn(
-                  "h-9 shrink-0 rounded-full border px-4 text-sm",
+                  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs/relaxed font-medium transition",
                   isSelected
-                    ? "border-border/70 bg-muted text-foreground hover:bg-muted"
-                    : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                    ? "border-border/70 bg-muted text-foreground"
+                    : "border-border/40 bg-background/40 text-muted-foreground hover:bg-muted/30 hover:text-foreground",
                 )}
                 onClick={() => {
-                  if (filterOption.key === undefined) {
-                    void navigate({
-                      params: {
-                        organizationSlug,
-                      },
-                      search: buildTasksPageSearch({
-                        viewType: selectedViewType,
-                      }),
-                      to: OrganizationPath.route("/tasks"),
-                    });
-                    return;
-                  }
-
-                  const nextSelectedCategoryKeys = isSelected
-                    ? selectedCategoryKeys.filter((categoryKey) => categoryKey !== filterOption.key)
-                    : categoryFilterOptions
-                      .flatMap((option) => option.key ? [option.key] : [])
-                      .filter((categoryKey) => {
-                        return categoryKey === filterOption.key || selectedCategoryKeys.includes(categoryKey);
-                      });
-
-                  void navigate({
-                    params: {
-                      organizationSlug,
-                    },
-                    search: buildTasksPageSearch({
-                      category: nextSelectedCategoryKeys.length > 0
-                        ? nextSelectedCategoryKeys.join(",")
-                        : undefined,
-                      viewType: selectedViewType,
-                    }),
-                    to: OrganizationPath.route("/tasks"),
-                  });
+                  toggleCategory(filterOption.key);
                 }}
-                size="sm"
-                variant="ghost"
+                type="button"
               >
                 {filterOption.label}
-                <span className="ml-1.5 text-xs text-muted-foreground/80">{filterOption.count}</span>
-              </Button>
+                <span className="text-[11px] text-muted-foreground/80">{filterOption.count}</span>
+              </button>
             );
           })}
         </div>
 
-        <div className="relative flex shrink-0 items-center gap-2" ref={viewMenuRef}>
-          <Button
-            onClick={() => {
-              setCreateDialogOpen(true);
-            }}
-            size="sm"
-          >
-            <PlusIcon />
-            Create task
-          </Button>
+        <div className="relative flex shrink-0 items-center" ref={viewMenuRef}>
           <Button
             aria-expanded={isViewMenuOpen}
             aria-haspopup="dialog"
@@ -562,57 +539,45 @@ function TasksPageContent() {
           </Button>
 
           {isViewMenuOpen ? (
-            <div className="absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-border/70 bg-background/95 p-3 shadow-2xl backdrop-blur">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                    View type
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/30 p-1">
-                    {([
-                      {
-                        icon: ListIcon,
-                        label: "List",
-                        value: "list" as const,
-                      },
-                      {
-                        icon: LayoutGridIcon,
-                        label: "Board",
-                        value: "board" as const,
-                      },
-                    ]).map((option) => {
-                      const isSelected = selectedViewType === option.value;
-                      const Icon = option.icon;
+            <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-2xl border border-border/70 bg-background/95 p-3 shadow-2xl backdrop-blur">
+              <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                View type
+              </p>
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/30 p-1">
+                {([
+                  {
+                    icon: ListIcon,
+                    label: "List",
+                    value: "list" as const,
+                  },
+                  {
+                    icon: LayoutGridIcon,
+                    label: "Board",
+                    value: "board" as const,
+                  },
+                ]).map((option) => {
+                  const isSelected = selectedViewType === option.value;
+                  const Icon = option.icon;
 
-                      return (
-                        <Button
-                          key={option.value}
-                          className={cn(
-                            "h-10 justify-center rounded-lg text-sm",
-                            isSelected && "bg-background shadow-sm hover:bg-background",
-                          )}
-                          onClick={() => {
-                            selectViewType(option.value);
-                          }}
-                          size="sm"
-                          type="button"
-                          variant="ghost"
-                        >
-                          <Icon className="size-3.5" />
-                          {option.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
-                  <p className="text-sm font-medium text-foreground">Category groups</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    List view groups tasks by category and lets you collapse each section to focus on
-                    one lane at a time.
-                  </p>
-                </div>
+                  return (
+                    <Button
+                      key={option.value}
+                      className={cn(
+                        "h-10 justify-center rounded-lg text-sm",
+                        isSelected && "bg-background shadow-sm hover:bg-background",
+                      )}
+                      onClick={() => {
+                        selectViewType(option.value);
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Icon className="size-3.5" />
+                      {option.label}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
           ) : null}
@@ -631,7 +596,8 @@ function TasksPageContent() {
             categories={visibleCategories}
             deletingTaskId={deletingTaskId}
             executingTaskId={executingTaskId}
-            includeUncategorizedColumn={!hasSelectedCategoryFilters || selectedCategoryKeys.includes("uncategorized")}
+            includeUncategorizedColumn={includeUncategorizedGroup}
+            onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
             onMoveTask={moveTask}
@@ -644,6 +610,8 @@ function TasksPageContent() {
             deletingTaskId={deletingTaskId}
             executingTaskId={executingTaskId}
             hasActiveFilters={hasSelectedCategoryFilters}
+            includeUncategorizedGroup={includeUncategorizedGroup}
+            onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
             onOpenTask={openTaskDetail}
@@ -668,6 +636,7 @@ function TasksPageContent() {
           name: category.name,
         }))}
         errorMessage={isCreateDialogOpen ? errorMessage : null}
+        initialCategoryId={createTaskCategoryId}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateTaskInFlight}
         onCreate={async (input) => {
@@ -705,6 +674,7 @@ function TasksPageContent() {
                 }
 
                 setCreateDialogOpen(false);
+                setCreateTaskCategoryId(null);
                 resolve();
               },
               onError: reject,
@@ -713,7 +683,12 @@ function TasksPageContent() {
             setErrorMessage(error instanceof Error ? error.message : "Failed to create task.");
           });
         }}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) {
+            setCreateTaskCategoryId(null);
+          }
+        }}
       />
     </main>
   );

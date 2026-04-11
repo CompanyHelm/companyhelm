@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDownIcon, ChevronRightIcon, Loader2Icon, PlayIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, ChevronRightIcon, Loader2Icon, PlayIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogActionButton,
@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   formatTaskAssigneeMeta,
-  formatTaskDateTime,
   type TaskCategoryRecord,
   type TaskRecord,
   resolveTaskStatusDotClass,
@@ -35,25 +34,31 @@ interface TaskListProps {
   deletingTaskId?: string | null;
   executingTaskId?: string | null;
   hasActiveFilters: boolean;
+  includeUncategorizedGroup?: boolean;
+  onCreateTask(taskCategoryId: string | null): void;
   onDeleteTask(taskId: string): Promise<void>;
   onExecuteTask(taskId: string): Promise<void>;
   onOpenTask(taskId: string): void;
   tasks: TaskRecord[];
 }
 
-function buildTaskListGroups(categories: TaskCategoryRecord[], tasks: TaskRecord[]): TaskListGroup[] {
+function buildTaskListGroups(
+  categories: TaskCategoryRecord[],
+  tasks: TaskRecord[],
+  includeUncategorizedGroup: boolean,
+): TaskListGroup[] {
   const categoryGroups = categories.map((category) => ({
     key: category.id,
     label: category.name,
     taskCategoryId: category.id,
     tasks: tasks.filter((task) => task.taskCategoryId === category.id),
-  })).filter((group) => group.tasks.length > 0);
+  }));
 
-  const uncategorizedTasks = tasks.filter((task) => task.taskCategoryId === null);
-  if (uncategorizedTasks.length === 0) {
+  if (!includeUncategorizedGroup) {
     return categoryGroups;
   }
 
+  const uncategorizedTasks = tasks.filter((task) => task.taskCategoryId === null);
   return [...categoryGroups, {
     key: "uncategorized",
     label: "Uncategorized",
@@ -69,7 +74,13 @@ function stopRowNavigation(event: {
 }
 
 export function TaskList(props: TaskListProps) {
-  const groups = useMemo(() => buildTaskListGroups(props.categories, props.tasks), [props.categories, props.tasks]);
+  const groups = useMemo(() => {
+    return buildTaskListGroups(
+      props.categories,
+      props.tasks,
+      props.includeUncategorizedGroup ?? true,
+    );
+  }, [props.categories, props.includeUncategorizedGroup, props.tasks]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -91,7 +102,7 @@ export function TaskList(props: TaskListProps) {
     });
   }, [groups]);
 
-  if (props.tasks.length === 0) {
+  if (groups.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-5 py-12 text-center">
         <p className="text-sm font-medium text-foreground">
@@ -116,33 +127,52 @@ export function TaskList(props: TaskListProps) {
             key={group.key}
             className={cn(groupIndex > 0 && "border-t border-border/60")}
           >
-            <button
-              className="flex w-full items-center justify-between gap-3 bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/30"
-              onClick={() => {
-                setCollapsedGroups((currentState) => ({
-                  ...currentState,
-                  [group.key]: !isCollapsed,
-                }));
-              }}
-              type="button"
-            >
-              <div className="flex min-w-0 items-center gap-2">
+            <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-3">
+              <button
+                className="flex min-w-0 flex-1 items-center gap-2 text-left transition hover:text-foreground"
+                onClick={() => {
+                  setCollapsedGroups((currentState) => ({
+                    ...currentState,
+                    [group.key]: !isCollapsed,
+                  }));
+                }}
+                type="button"
+              >
                 {isCollapsed ? (
                   <ChevronRightIcon className="size-4 text-muted-foreground" />
                 ) : (
                   <ChevronDownIcon className="size-4 text-muted-foreground" />
                 )}
                 <span className="truncate text-sm font-medium text-foreground">{group.label}</span>
+              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs text-muted-foreground">{group.tasks.length}</span>
+                <Button
+                  aria-label={`Create task in ${group.label}`}
+                  className="rounded-full"
+                  onClick={() => {
+                    props.onCreateTask(group.taskCategoryId);
+                  }}
+                  size="icon-xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  <PlusIcon className="size-3" />
+                </Button>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground">{group.tasks.length}</span>
-            </button>
+            </div>
 
             {isCollapsed ? null : (
               <div>
+                {group.tasks.length === 0 ? (
+                  <div className="border-t border-border/40 px-4 py-4 text-xs text-muted-foreground">
+                    No tasks in this category yet.
+                  </div>
+                ) : null}
                 {group.tasks.map((task) => (
                   <button
                     key={task.id}
-                    className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-border/40 px-4 py-3 text-left transition hover:bg-muted/15"
+                    className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-border/40 px-4 py-2.5 text-left transition hover:bg-muted/15"
                     onClick={() => {
                       props.onOpenTask(task.id);
                     }}
@@ -153,10 +183,13 @@ export function TaskList(props: TaskListProps) {
                       className={cn("size-2 shrink-0 rounded-full", resolveTaskStatusDotClass(task.status))}
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm text-foreground">{task.name}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>{formatTaskAssigneeMeta(task.assignee)}</span>
-                        <span>Updated {formatTaskDateTime(task.updatedAt, "Unknown")}</span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate text-xs/relaxed text-foreground">{task.name}</p>
+                        {task.assignee ? (
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {formatTaskAssigneeMeta(task.assignee)}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <div
