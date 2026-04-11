@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import { agentSessions, agents } from "../../../db/schema.ts";
+import { agentInboxItems, agentSessions, agents } from "../../../db/schema.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
+import { AgentInboxPubSubNames } from "../../inbox/pub_sub_names.ts";
 import { SessionContextCheckpointService } from "./context_checkpoint_service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueuedNames } from "./process/queued_names.ts";
@@ -38,6 +39,7 @@ export class SessionLifecycleService {
   private readonly sessionContextCheckpointService: SessionContextCheckpointService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
+  private readonly inboxPubSubNames: AgentInboxPubSubNames;
 
   constructor(
     @inject(RedisService) redisService: RedisService,
@@ -51,6 +53,8 @@ export class SessionLifecycleService {
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(SessionProcessQueuedNames)
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
+    @inject(AgentInboxPubSubNames)
+    inboxPubSubNames: AgentInboxPubSubNames = new AgentInboxPubSubNames(),
   ) {
     this.redisService = redisService;
     this.sessionModelSelectionService = sessionModelSelectionService;
@@ -59,6 +63,7 @@ export class SessionLifecycleService {
     this.sessionContextCheckpointService = sessionContextCheckpointService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
+    this.inboxPubSubNames = inboxPubSubNames;
   }
 
   async createSession(
@@ -190,7 +195,7 @@ export class SessionLifecycleService {
     sessionId: string,
     userId?: string | null,
   ): Promise<SessionRecord> {
-    const { shouldInterrupt, sessionRecord } = await transactionProvider.transaction(async (tx) => {
+    const { didResolveOpenHumanQuestions, shouldInterrupt, sessionRecord } = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const deletableDatabase = tx as DeletableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
@@ -235,6 +240,13 @@ export class SessionLifecycleService {
         companyId,
         sessionId,
       );
+      const didResolveOpenHumanQuestions = await this.resolveOpenHumanQuestionsForArchivedSessionInTransaction(
+        updatableDatabase,
+        companyId,
+        sessionId,
+        now,
+        userId,
+      );
 
       const currentModelRecord = await this.sessionModelSelectionService.resolveModelRecordById(
         selectableDatabase,
@@ -247,6 +259,7 @@ export class SessionLifecycleService {
           ...updatedSessionRecord,
           currentModelId: currentModelRecord.modelId,
         },
+        didResolveOpenHumanQuestions,
         shouldInterrupt: existingSession.status === "running",
       };
     });
@@ -256,6 +269,10 @@ export class SessionLifecycleService {
     }
     await this.publishQueuedMessagesUpdate(companyId, sessionRecord.id);
     await this.publishSessionUpdate(companyId, sessionRecord.id);
+    if (didResolveOpenHumanQuestions) {
+      await this.publishSessionHumanQuestionsUpdated(companyId, sessionRecord.id);
+      await this.publishHumanQuestionsUpdate(companyId);
+    }
 
     return sessionRecord;
   }
@@ -505,5 +522,43 @@ export class SessionLifecycleService {
   private async publishQueuedMessagesUpdate(companyId: string, sessionId: string): Promise<void> {
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdateChannel(sessionId));
+  }
+
+  private async resolveOpenHumanQuestionsForArchivedSessionInTransaction(
+    updatableDatabase: UpdatableDatabase,
+    companyId: string,
+    sessionId: string,
+    resolvedAt: Date,
+    userId?: string | null,
+  ): Promise<boolean> {
+    const updatedInboxItems = await updatableDatabase
+      .update(agentInboxItems)
+      .set({
+        resolvedAt,
+        resolvedByUserId: userId ?? null,
+        status: "resolved",
+        updatedAt: resolvedAt,
+      })
+      .where(and(
+        eq(agentInboxItems.companyId, companyId),
+        eq(agentInboxItems.kind, "human_question"),
+        eq(agentInboxItems.sessionId, sessionId),
+        eq(agentInboxItems.status, "open"),
+      ))
+      .returning?.({
+        id: agentInboxItems.id,
+      }) as Array<{ id: string }> | undefined;
+
+    return Array.isArray(updatedInboxItems) && updatedInboxItems.length > 0;
+  }
+
+  private async publishSessionHumanQuestionsUpdated(companyId: string, sessionId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionInboxHumanQuestionsUpdateChannel(sessionId));
+  }
+
+  private async publishHumanQuestionsUpdate(companyId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(this.inboxPubSubNames.getHumanQuestionsUpdateChannel());
   }
 }

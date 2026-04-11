@@ -608,7 +608,8 @@ test("SessionManagerService createSession copies agent default secrets into the 
   );
 
   assert.equal(insertedValues.length, 2);
-  assert.equal(insertedValues[0]?.ownerUserId, "user-session-creator");
+  const createdSessionValues = Array.isArray(insertedValues[0]) ? null : insertedValues[0];
+  assert.equal(createdSessionValues?.ownerUserId, "user-session-creator");
   const copiedSecretValues = insertedValues[1];
   assert.ok(Array.isArray(copiedSecretValues));
   assert.deepEqual(copiedSecretValues, [{
@@ -632,6 +633,7 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
+  let updateCallCount = 0;
   const transaction = {
     select() {
       selectCallCount += 1;
@@ -675,26 +677,43 @@ test("SessionManagerService archiveSession interrupts running sessions before pu
     update() {
       return {
         set(value: Record<string, unknown>) {
-          updatedValues.push(value);
-          return {
-            where() {
-              return {
-                async returning() {
-                  return [{
-                    id: "session-1",
-                    agentId: "agent-1",
-                    currentModelProviderCredentialModelId: "model-row-1",
-                    currentReasoningLevel: "high",
-                    inferredTitle: "Existing title",
-                    status: "archived",
-                    createdAt: new Date("2026-03-25T01:00:00.000Z"),
-                    updatedAt: new Date("2026-03-25T02:00:00.000Z"),
-                    userSetTitle: null,
-                  }];
-                },
-              };
-            },
-          };
+          updateCallCount += 1;
+          if (updateCallCount === 1) {
+            updatedValues.push(value);
+            return {
+              where() {
+                return {
+                  async returning() {
+                    return [{
+                      id: "session-1",
+                      agentId: "agent-1",
+                      currentModelProviderCredentialModelId: "model-row-1",
+                      currentReasoningLevel: "high",
+                      inferredTitle: "Existing title",
+                      status: "archived",
+                      createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                      updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                      userSetTitle: null,
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (updateCallCount === 2) {
+            return {
+              where() {
+                return {
+                  async returning() {
+                    return [];
+                  },
+                };
+              },
+            };
+          }
+
+          throw new Error("Unexpected update call.");
         },
       };
     },
@@ -773,6 +792,7 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
   const updatedValues: Array<Record<string, unknown>> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   let selectCallCount = 0;
+  let updateCallCount = 0;
   const transaction = {
     select() {
       selectCallCount += 1;
@@ -816,26 +836,43 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
     update() {
       return {
         set(value: Record<string, unknown>) {
-          updatedValues.push(value);
-          return {
-            where() {
-              return {
-                async returning() {
-                  return [{
-                    id: "session-1",
-                    agentId: "agent-1",
-                    currentModelProviderCredentialModelId: "model-row-1",
-                    currentReasoningLevel: "high",
-                    inferredTitle: "Existing title",
-                    status: "archived",
-                    createdAt: new Date("2026-03-25T01:00:00.000Z"),
-                    updatedAt: new Date("2026-03-25T02:00:00.000Z"),
-                    userSetTitle: null,
-                  }];
-                },
-              };
-            },
-          };
+          updateCallCount += 1;
+          if (updateCallCount === 1) {
+            updatedValues.push(value);
+            return {
+              where() {
+                return {
+                  async returning() {
+                    return [{
+                      id: "session-1",
+                      agentId: "agent-1",
+                      currentModelProviderCredentialModelId: "model-row-1",
+                      currentReasoningLevel: "high",
+                      inferredTitle: "Existing title",
+                      status: "archived",
+                      createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                      updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                      userSetTitle: null,
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (updateCallCount === 2) {
+            return {
+              where() {
+                return {
+                  async returning() {
+                    return [];
+                  },
+                };
+              },
+            };
+          }
+
+          throw new Error("Unexpected update call.");
         },
       };
     },
@@ -888,6 +925,165 @@ test("SessionManagerService archiveSession does not interrupt stopped sessions",
     },
     {
       channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+  ]);
+});
+
+test("SessionManagerService archiveSession dismisses open human questions for the archived session", async () => {
+  const deleteQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const dismissedQuestionUpdateValues: Array<Record<string, unknown>> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  let selectCallCount = 0;
+  let updateCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  id: "session-1",
+                  ownerUserId: "user-1",
+                  status: "stopped",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updateCallCount += 1;
+          if (updateCallCount === 1) {
+            updatedValues.push(value);
+            return {
+              where() {
+                return {
+                  async returning() {
+                    return [{
+                      id: "session-1",
+                      agentId: "agent-1",
+                      currentModelProviderCredentialModelId: "model-row-1",
+                      currentReasoningLevel: "high",
+                      inferredTitle: "Existing title",
+                      status: "archived",
+                      createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                      updatedAt: new Date("2026-03-25T02:00:00.000Z"),
+                      userSetTitle: null,
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (updateCallCount === 2) {
+            dismissedQuestionUpdateValues.push(value);
+            return {
+              where() {
+                return {
+                  async returning() {
+                    return [{ id: "inbox-1" }];
+                  },
+                };
+              },
+            };
+          }
+
+          throw new Error("Unexpected update call.");
+        },
+      };
+    },
+  };
+  const service = SessionManagerServiceTestHarness.createService({
+    redisService: {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    },
+    sessionProcessQueueService: {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while archiving.");
+      },
+    },
+    sessionQueuedMessageService: {
+      async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
+        deleteQueuedCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+    },
+  });
+
+  const sessionRecord = await service.archiveSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+    "user-1",
+  );
+
+  assert.equal(sessionRecord.status, "archived");
+  assert.equal(updatedValues[0]?.status, "archived");
+  assert.equal(dismissedQuestionUpdateValues[0]?.status, "resolved");
+  assert.equal(dismissedQuestionUpdateValues[0]?.resolvedByUserId, "user-1");
+  assert.ok(dismissedQuestionUpdateValues[0]?.resolvedAt instanceof Date);
+  assert.ok(dismissedQuestionUpdateValues[0]?.updatedAt instanceof Date);
+  assert.deepEqual(deleteQueuedCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:queued:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:session:session-1:inbox:update",
+      message: "",
+    },
+    {
+      channel: "company:company-1:inbox:human_questions:update",
       message: "",
     },
   ]);
