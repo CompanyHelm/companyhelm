@@ -17,10 +17,9 @@ export function PageContainer(props: PageContainerProps) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const locationHref = useRouterState({
+  const locationKey = useRouterState({
     select: (state) => state.location.href,
   });
-  const locationKey = locationHref;
   const isOrganizationScopedPage = pathname.startsWith("/orgs/");
 
   if (!isOrganizationScopedPage) {
@@ -34,9 +33,7 @@ export function PageContainer(props: PageContainerProps) {
 
   const normalizedPathname = OrganizationPath.stripPrefix(pathname);
   const isChatsPage = normalizedPathname.startsWith("/chats");
-  const currentLocation = new URL(locationHref, "https://companyhelm.local");
-  const tasksViewType = currentLocation.searchParams.get("viewType");
-  const isTasksBoardPage = normalizedPathname === "/tasks" && tasksViewType !== "list";
+  const isTasksBoardPage = normalizedPathname === "/tasks";
   const isFullHeightBoardPage = isChatsPage || isTasksBoardPage;
 
   return (
