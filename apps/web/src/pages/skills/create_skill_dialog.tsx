@@ -245,7 +245,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
 
   return (
     <Dialog disablePointerDismissal onOpenChange={props.onOpenChange} open={props.isOpen}>
-      <DialogContent className="sm:max-w-4xl">
+      <DialogContent className="max-h-[90vh] w-[80vw] max-w-[80vw] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
@@ -535,56 +535,53 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 </div>
 
                 {githubDiscoveredSkills.length > 0 ? (
-                  <div className="rounded-xl border border-border/60 bg-card/30">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-14">Pick</TableHead>
-                          <TableHead>Skill</TableHead>
-                          <TableHead>Directory</TableHead>
-                          <TableHead className="w-32">Files</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {githubDiscoveredSkills.map((skill) => {
-                          const isSelected = githubSelectedSkillDirectories.includes(skill.skillDirectory);
+                  <div className="overflow-hidden rounded-xl border border-border/60 bg-card/30">
+                    <div className="max-h-[calc(90vh-24rem)] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-14">Pick</TableHead>
+                            <TableHead>Skill</TableHead>
+                            <TableHead>Directory</TableHead>
+                            <TableHead className="w-32">Files</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {githubDiscoveredSkills.map((skill) => {
+                            const isSelected = githubSelectedSkillDirectories.includes(skill.skillDirectory);
 
-                          return (
-                            <TableRow
-                              className={cn(isSelected ? "bg-muted/25" : null)}
-                              key={skill.skillDirectory}
-                            >
-                              <TableCell>
-                                <input
-                                  checked={isSelected}
-                                  className="size-4 rounded border border-input bg-background"
-                                  onChange={(event) => {
-                                    setGithubSelectedSkillDirectories((currentValue) => event.target.checked
-                                      ? [...currentValue, skill.skillDirectory]
-                                      : currentValue.filter((path) => path !== skill.skillDirectory));
-                                  }}
-                                  type="checkbox"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <div className="grid gap-1">
-                                  <span className="text-sm font-semibold text-foreground">{skill.name}</span>
-                                  {skill.description ? (
-                                    <span className="text-xs text-muted-foreground">{skill.description}</span>
-                                  ) : null}
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-mono text-[11px] text-muted-foreground">
-                                {skill.skillDirectory}
-                              </TableCell>
-                              <TableCell>
-                                {skill.fileList.length} tracked file{skill.fileList.length === 1 ? "" : "s"}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                            return (
+                              <TableRow
+                                className={cn(isSelected ? "bg-muted/25" : null)}
+                                key={skill.skillDirectory}
+                              >
+                                <TableCell>
+                                  <input
+                                    checked={isSelected}
+                                    className="size-4 rounded border border-input bg-background"
+                                    onChange={(event) => {
+                                      setGithubSelectedSkillDirectories((currentValue) => event.target.checked
+                                        ? [...currentValue, skill.skillDirectory]
+                                        : currentValue.filter((path) => path !== skill.skillDirectory));
+                                    }}
+                                    type="checkbox"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-sm font-semibold text-foreground">
+                                  {skill.name}
+                                </TableCell>
+                                <TableCell className="font-mono text-[11px] text-muted-foreground">
+                                  {skill.skillDirectory}
+                                </TableCell>
+                                <TableCell>
+                                  {skill.fileList.length} tracked file{skill.fileList.length === 1 ? "" : "s"}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 ) : (
                   <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
