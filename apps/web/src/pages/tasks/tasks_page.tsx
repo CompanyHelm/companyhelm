@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { LayoutGridIcon, ListIcon, SlidersHorizontalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -506,7 +507,7 @@ function TasksPageContent() {
               <button
                 key={filterOption.key}
                 className={cn(
-                  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border-0 px-2.5 text-xs whitespace-nowrap shadow-none outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
+                  "inline-flex h-8 shrink-0 items-center gap-2 rounded-full px-3 whitespace-nowrap outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
                   isSelected
                     ? "bg-muted/80 text-foreground"
                     : "bg-background/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
@@ -516,10 +517,15 @@ function TasksPageContent() {
                 }}
                 type="button"
               >
-                <span className="leading-none">{filterOption.label}</span>
-                <span className="text-[10px] leading-none tabular-nums opacity-60">
-                  {filterOption.count}
+                <span className="font-heading text-sm font-medium leading-none tracking-tight">
+                  {filterOption.label}
                 </span>
+                <Badge
+                  className="h-5 px-1.5 text-[0.625rem]"
+                  variant="outline"
+                >
+                  {filterOption.count}
+                </Badge>
               </button>
             );
           })}
