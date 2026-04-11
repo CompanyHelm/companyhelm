@@ -8,9 +8,9 @@ interface ClerkPageProps {
 
 const clerkAppearance = {
   elements: {
-    rootBox: "w-full min-w-0",
-    cardBox: "w-full min-w-0",
-    card: "w-full min-w-0 shadow-none border-0 bg-transparent",
+    rootBox: "flex w-full min-w-0 justify-center",
+    cardBox: "w-full max-w-[30rem] min-w-0",
+    card: "w-full min-w-0",
     main: "w-full min-w-0",
   },
 } as const;
