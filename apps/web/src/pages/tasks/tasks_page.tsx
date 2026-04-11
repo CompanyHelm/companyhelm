@@ -173,9 +173,9 @@ function TasksPageFallback() {
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 items-center justify-between gap-4">
         <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
-          <div className="h-6 w-20 shrink-0 rounded-full border border-border/60 bg-muted/50" />
-          <div className="h-6 w-16 shrink-0 rounded-full border border-border/40 bg-background/40" />
-          <div className="h-6 w-24 shrink-0 rounded-full border border-border/40 bg-background/40" />
+          <div className="h-5 w-16 shrink-0 rounded-full border border-border/60 bg-muted/50" />
+          <div className="h-5 w-14 shrink-0 rounded-full border border-border/40 bg-background/40" />
+          <div className="h-5 w-20 shrink-0 rounded-full border border-border/40 bg-background/40" />
         </div>
         <Button className="rounded-full" disabled size="icon-sm" variant="outline">
           <SlidersHorizontalIcon className="size-3.5" />
@@ -506,7 +506,7 @@ function TasksPageContent() {
               <button
                 key={filterOption.key}
                 className={cn(
-                  "inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] leading-none font-medium whitespace-nowrap outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
+                  "inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-1.5 text-[10px] leading-none font-normal whitespace-nowrap outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
                   isSelected
                     ? "bg-muted/80 text-foreground"
                     : "bg-background/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
@@ -519,7 +519,7 @@ function TasksPageContent() {
                 <span className="leading-none">
                   {filterOption.label}
                 </span>
-                <span className="text-[9px] leading-none tabular-nums opacity-60">
+                <span className="text-[8px] leading-none tabular-nums opacity-60">
                   {filterOption.count}
                 </span>
               </button>
