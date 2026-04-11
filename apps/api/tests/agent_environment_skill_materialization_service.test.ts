@@ -34,6 +34,7 @@ test("AgentEnvironmentSkillCheckoutCacheService fetches one tracked commit and c
   const command = String(executeCommand.mock.calls[0]?.[0] ?? "");
   assert.match(command, /git -C "\$checkout_dir" fetch --depth 1 --filter=blob:none origin "\$commit_sha"/);
   assert.match(command, /git -C "\$checkout_dir" checkout --force "\$commit_sha" --/);
+  assert.match(command, /\/home\/user\/\.companyhelm\/skill-cache\/companyhelm\/skills\/commit-sha-1\/checkout/);
   assert.match(command, /skills\/browser\/SKILL\.md/);
   assert.match(command, /skills\/browser\/scripts\/open\.sh/);
   assert.match(command, /https:\/\/github\.com\/companyhelm\/skills\.git/);
@@ -58,7 +59,7 @@ test("AgentEnvironmentSkillMaterializationService copies SKILL.md and each decla
   } as never, fileBackedSkillRecord);
 
   const command = String(executeCommand.mock.calls[0]?.[0] ?? "");
-  assert.match(command, /'~\/skills\/Browser skill\/SKILL\.md'/);
-  assert.match(command, /'~\/skills\/Browser skill\/scripts\/open\.sh'/);
-  assert.match(command, /'~\/\.companyhelm\/skill-cache\/companyhelm\/skills\/commit-sha-1\/checkout\/skills\/browser\/SKILL\.md'/);
+  assert.match(command, /'\/home\/user\/skills\/Browser skill\/SKILL\.md'/);
+  assert.match(command, /'\/home\/user\/skills\/Browser skill\/scripts\/open\.sh'/);
+  assert.match(command, /'\/home\/user\/\.companyhelm\/skill-cache\/companyhelm\/skills\/commit-sha-1\/checkout\/skills\/browser\/SKILL\.md'/);
 });

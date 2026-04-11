@@ -6,9 +6,9 @@ import { AgentEnvironmentSkillPathService } from "./path_service.ts";
 import type { SkillRecord } from "../../skills/service.ts";
 
 /**
- * Copies one file-backed skill from the shared cache into the environment-facing `~/skills`
- * directory. It materializes only the declared files plus `SKILL.md`, keeping unrelated repository
- * content out of the runtime.
+ * Copies one file-backed skill from the shared cache into the environment-facing skill directory
+ * under the remote user's home. It materializes only the declared files plus `SKILL.md`, keeping
+ * unrelated repository content out of the runtime.
  */
 @injectable()
 export class AgentEnvironmentSkillMaterializationService {

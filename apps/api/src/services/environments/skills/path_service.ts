@@ -12,8 +12,9 @@ export type FileBackedSkillRecord = {
  * services can reason about one consistent directory layout instead of rebuilding path math ad hoc.
  */
 export class AgentEnvironmentSkillPathService {
-  private static readonly skillCacheRootDirectory = "~/.companyhelm/skill-cache";
-  private static readonly skillRootDirectory = "~/skills";
+  private static readonly homeDirectory = "/home/user";
+  private static readonly skillCacheRootDirectory = `${AgentEnvironmentSkillPathService.homeDirectory}/.companyhelm/skill-cache`;
+  private static readonly skillRootDirectory = `${AgentEnvironmentSkillPathService.homeDirectory}/skills`;
 
   getSkillCacheRootDirectory(): string {
     return AgentEnvironmentSkillPathService.skillCacheRootDirectory;
