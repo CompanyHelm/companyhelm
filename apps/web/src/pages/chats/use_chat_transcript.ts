@@ -65,6 +65,8 @@ export function useChatTranscript({
   const transcriptMessagesRef = useRef<SessionMessageRecord[]>([]);
   const transcriptHasNextPageRef = useRef(false);
   const transcriptEndCursorRef = useRef<string | null>(null);
+  const bufferedTranscriptMessagesRef = useRef<SessionMessageRecord[]>([]);
+  const deferredTranscriptRefreshUpdatedAtRef = useRef<string | null>(null);
   const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
   const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
   const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
@@ -77,6 +79,8 @@ export function useChatTranscript({
   }, [selectedSession?.id, selectedSession?.updatedAt]);
 
   const clearTranscriptState = useCallback(() => {
+    bufferedTranscriptMessagesRef.current = [];
+    deferredTranscriptRefreshUpdatedAtRef.current = null;
     transcriptMessagesRef.current = [];
     transcriptHasNextPageRef.current = false;
     transcriptEndCursorRef.current = null;
@@ -120,20 +124,24 @@ export function useChatTranscript({
     pendingTranscriptScrollRestoreRef.current = captureTranscriptScrollRestoreRecord(transcriptNode);
   }, []);
 
-  const jumpToLatestMessage = useCallback(() => {
-    const transcriptNode = transcriptScrollRef.current;
-    if (!transcriptNode) {
+  const flushBufferedTranscriptMessages = useCallback((sessionId: string) => {
+    if (bufferedTranscriptMessagesRef.current.length === 0) {
       return;
     }
 
-    pendingTranscriptScrollRestoreRef.current = null;
-    shouldStickTranscriptToBottomRef.current = true;
-    setIsTranscriptStuckToBottom(true);
-    transcriptNode.scrollTo({
-      top: transcriptNode.scrollHeight,
-      behavior: "smooth",
+    // Defer live tail updates while the operator is reading older content so streaming tokens do
+    // not keep reflowing the visible transcript under the cursor.
+    const nextMessages = mergeTranscriptMessages(
+      transcriptMessagesRef.current,
+      bufferedTranscriptMessagesRef.current,
+    );
+    bufferedTranscriptMessagesRef.current = [];
+    applyTranscriptState(sessionId, {
+      endCursor: transcriptEndCursorRef.current,
+      hasNextPage: transcriptHasNextPageRef.current,
+      messages: nextMessages,
     });
-  }, []);
+  }, [applyTranscriptState]);
 
   const loadTranscriptPage = useCallback(async ({
     after = null,
@@ -283,6 +291,36 @@ export function useChatTranscript({
     setErrorMessage,
   ]);
 
+  const reconcileLiveTailState = useCallback((sessionId: string) => {
+    flushBufferedTranscriptMessages(sessionId);
+    const deferredTranscriptRefreshUpdatedAt = deferredTranscriptRefreshUpdatedAtRef.current;
+    if (!deferredTranscriptRefreshUpdatedAt) {
+      return;
+    }
+
+    deferredTranscriptRefreshUpdatedAtRef.current = null;
+    void loadTranscriptPage({
+      mode: "refresh",
+      sessionId,
+      sessionUpdatedAt: deferredTranscriptRefreshUpdatedAt,
+    });
+  }, [flushBufferedTranscriptMessages, loadTranscriptPage]);
+
+  const jumpToLatestMessage = useCallback(() => {
+    const transcriptNode = transcriptScrollRef.current;
+    if (!transcriptNode) {
+      return;
+    }
+
+    pendingTranscriptScrollRestoreRef.current = null;
+    shouldStickTranscriptToBottomRef.current = true;
+    setIsTranscriptStuckToBottom(true);
+    if (selectedSession) {
+      reconcileLiveTailState(selectedSession.id);
+    }
+    transcriptNode.scrollTop = transcriptNode.scrollHeight;
+  }, [reconcileLiveTailState, selectedSession]);
+
   useEffect(() => {
     if (!selectedSession) {
       if (transcriptScrollRestoreAnimationFrameRef.current !== null) {
@@ -304,6 +342,8 @@ export function useChatTranscript({
     const isSessionSelectionChanged = activeTranscriptSessionIdRef.current !== selectedSession.id;
     activeTranscriptSessionIdRef.current = selectedSession.id;
     if (isSessionSelectionChanged) {
+      bufferedTranscriptMessagesRef.current = [];
+      deferredTranscriptRefreshUpdatedAtRef.current = null;
       pendingTranscriptScrollRestoreRef.current = null;
       shouldStickTranscriptToBottomRef.current = true;
       setIsTranscriptStuckToBottom(true);
@@ -314,7 +354,7 @@ export function useChatTranscript({
     }
 
     const retainedTranscript = sessionTranscriptRetentionStore.read<ChatsPageTranscriptQuery["response"]>(selectedSession.id);
-    if (retainedTranscript) {
+    if (retainedTranscript && isSessionSelectionChanged) {
       const retainedMessages = retainedTranscript.pageResponses.reduce<SessionMessageRecord[]>((currentMessages, pageResponse) => {
         return mergeTranscriptMessages(
           currentMessages,
@@ -330,15 +370,23 @@ export function useChatTranscript({
       setIsLoadingTranscript(false);
       isLoadingOlderTranscriptRef.current = false;
       setIsLoadingOlderTranscript(false);
+    }
+
+    if (retainedTranscript) {
       if (retainedTranscript.sessionUpdatedAt === selectedSession.updatedAt) {
         return;
       }
 
-      void loadTranscriptPage({
-        mode: "refresh",
-        sessionId: selectedSession.id,
-        sessionUpdatedAt: selectedSession.updatedAt,
-      });
+      if (shouldStickTranscriptToBottomRef.current) {
+        void loadTranscriptPage({
+          mode: "refresh",
+          sessionId: selectedSession.id,
+          sessionUpdatedAt: selectedSession.updatedAt,
+        });
+        return;
+      }
+
+      deferredTranscriptRefreshUpdatedAtRef.current = selectedSession.updatedAt;
       return;
     }
 
@@ -431,6 +479,14 @@ export function useChatTranscript({
           return;
         }
 
+        if (!shouldStickTranscriptToBottomRef.current) {
+          bufferedTranscriptMessagesRef.current = mergeTranscriptMessages(
+            bufferedTranscriptMessagesRef.current,
+            [nextMessage],
+          );
+          return;
+        }
+
         captureViewportAnchorForTranscriptUpdate();
         const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, [nextMessage]);
         applyTranscriptState(selectedSession.id, {
@@ -451,7 +507,10 @@ export function useChatTranscript({
 
   const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const transcriptNode = event.currentTarget;
-    syncTranscriptBottomStickiness(transcriptNode);
+    const isStickyToBottom = syncTranscriptBottomStickiness(transcriptNode);
+    if (selectedSession && isStickyToBottom) {
+      reconcileLiveTailState(selectedSession.id);
+    }
 
     const isTranscriptNearTop = transcriptNode.scrollTop <= CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX;
     if (!selectedSession || !isTranscriptNearTop || !transcriptHasNextPage || isLoadingOlderTranscript) {
@@ -467,6 +526,7 @@ export function useChatTranscript({
   }, [
     isLoadingOlderTranscript,
     loadTranscriptPage,
+    reconcileLiveTailState,
     selectedSession,
     syncTranscriptBottomStickiness,
     transcriptEndCursor,
