@@ -10,6 +10,6 @@ test("session messages migration adds the error_message column", () => {
 
   assert.match(
     migrationSql,
-    /ALTER TABLE "session_messages" ADD COLUMN "error_message" text;/,
+    /ALTER TABLE "session_messages" ADD COLUMN IF NOT EXISTS "error_message" text;/,
   );
 });
