@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 type TaskStatus = "draft" | "in_progress" | "completed";
 
@@ -148,9 +148,9 @@ export function TaskBoard(props: TaskBoardProps) {
             <CardHeader className="shrink-0 border-b border-border/60 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <CardTitle className="truncate text-sm font-medium text-foreground">
+                  <div className="truncate text-xs/relaxed font-medium text-foreground">
                     {column.label}
-                  </CardTitle>
+                  </div>
                   <Badge className="h-5 px-1.5 text-[0.625rem]" variant="outline">
                     {column.tasks.length}
                   </Badge>

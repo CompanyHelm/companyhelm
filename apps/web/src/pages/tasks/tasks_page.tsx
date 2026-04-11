@@ -507,7 +507,7 @@ function TasksPageContent() {
               <button
                 key={filterOption.key}
                 className={cn(
-                  "inline-flex h-8 shrink-0 items-center gap-2 rounded-full px-3 whitespace-nowrap outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
+                  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs/relaxed font-medium whitespace-nowrap outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
                   isSelected
                     ? "bg-muted/80 text-foreground"
                     : "bg-background/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
@@ -517,7 +517,7 @@ function TasksPageContent() {
                 }}
                 type="button"
               >
-                <span className="font-heading text-sm font-medium leading-none tracking-tight">
+                <span className="leading-none">
                   {filterOption.label}
                 </span>
                 <Badge
