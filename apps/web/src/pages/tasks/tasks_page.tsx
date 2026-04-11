@@ -503,33 +503,24 @@ function TasksPageContent() {
             const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
 
             return (
-              <Button
+              <button
                 key={filterOption.key}
                 className={cn(
-                  "h-6 shrink-0 gap-1 rounded-full px-2.5 text-[11px]/none font-medium whitespace-nowrap",
+                  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border-0 px-2.5 text-xs whitespace-nowrap shadow-none outline-none transition focus-visible:ring-1 focus-visible:ring-ring/30",
                   isSelected
-                    ? "border-border/70 bg-muted/70 text-foreground hover:bg-muted/85"
-                    : "border-border/40 bg-background/25 text-muted-foreground hover:border-border/60 hover:bg-muted/25 hover:text-foreground",
+                    ? "bg-muted/80 text-foreground"
+                    : "bg-background/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                 )}
                 onClick={() => {
                   toggleCategory(filterOption.key);
                 }}
-                size="xs"
                 type="button"
-                variant={isSelected ? "secondary" : "outline"}
               >
                 <span className="leading-none">{filterOption.label}</span>
-                <span
-                  className={cn(
-                    "text-[10px]/none tabular-nums opacity-70",
-                    isSelected
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground/90",
-                  )}
-                >
+                <span className="text-[10px] leading-none tabular-nums opacity-60">
                   {filterOption.count}
                 </span>
-              </Button>
+              </button>
             );
           })}
         </div>
