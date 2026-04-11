@@ -1,8 +1,8 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { MessageSquareTextIcon, XIcon } from "lucide-react";
-import { graphql, useLazyLoadQuery } from "react-relay";
+import { fetchQuery, graphql, useLazyLoadQuery, useRelayEnvironment } from "react-relay";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,10 +22,25 @@ type ConversationsPageSearch = {
   conversationId?: string;
 };
 
+type ConversationMessageConnection = conversationsPageMessagesQuery["response"]["AgentConversationMessages"];
+type ConversationListResponseRecord = conversationsPageListQuery["response"]["AgentConversations"][number];
+type ConversationParticipantResponseRecord = ConversationListResponseRecord["participants"][number];
+
+type ConversationTranscriptScrollRestoreRecord = {
+  anchorMessageId: string | null;
+  anchorOffsetTop: number;
+  previousScrollHeight: number;
+  previousScrollTop: number;
+};
+
 const CONVERSATION_LIST_MIN_WIDTH = 280;
 const CONVERSATION_LIST_MAX_WIDTH = 520;
 const CONVERSATION_LIST_DEFAULT_WIDTH = 352;
 const CONVERSATION_LIST_WIDTH_STORAGE_KEY = "companyhelm.conversations.listWidth";
+const CONVERSATION_TRANSCRIPT_PAGE_SIZE = 50;
+const CONVERSATION_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 120;
+const CONVERSATION_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
+const CONVERSATION_TRANSCRIPT_MESSAGE_SELECTOR = "[data-conversation-message-id]";
 
 const conversationsPageListQueryNode = graphql`
   query conversationsPageListQuery {
@@ -47,17 +62,26 @@ const conversationsPageListQueryNode = graphql`
 `;
 
 const conversationsPageMessagesQueryNode = graphql`
-  query conversationsPageMessagesQuery($conversationId: ID) {
-    AgentConversationMessages(conversationId: $conversationId) {
-      id
-      conversationId
-      authorParticipantId
-      authorAgentId
-      authorAgentName
-      authorSessionId
-      authorSessionTitle
-      text
-      createdAt
+  query conversationsPageMessagesQuery($conversationId: ID, $first: Int!, $after: String) {
+    AgentConversationMessages(conversationId: $conversationId, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          conversationId
+          authorParticipantId
+          authorAgentId
+          authorAgentName
+          authorSessionId
+          authorSessionTitle
+          text
+          createdAt
+        }
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
     }
   }
 `;
@@ -95,23 +119,134 @@ function formatConversationTimestamp(value: string): string {
   }
 
   return new Intl.DateTimeFormat("en-US", {
-    month: "short",
     day: "numeric",
-    year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    month: "short",
+    year: "numeric",
   }).format(timestamp);
+}
+
+function compareConversationMessagesByTimestamp(
+  leftMessage: Pick<ConversationMessageRecord, "createdAt" | "id">,
+  rightMessage: Pick<ConversationMessageRecord, "createdAt" | "id">,
+): number {
+  const timestampDelta =
+    new Date(leftMessage.createdAt).getTime() - new Date(rightMessage.createdAt).getTime();
+  if (timestampDelta !== 0) {
+    return timestampDelta;
+  }
+
+  return leftMessage.id.localeCompare(rightMessage.id);
+}
+
+function toConversationMessagesFromConnection(
+  connection: ConversationMessageConnection | null | undefined,
+): ConversationMessageRecord[] {
+  return [...(connection?.edges ?? [])]
+    .map((edge) => edge?.node)
+    .filter((message): message is ConversationMessageRecord => Boolean(message))
+    .sort(compareConversationMessagesByTimestamp);
+}
+
+function mergeConversationMessages(
+  existingMessages: ReadonlyArray<ConversationMessageRecord>,
+  incomingMessages: ReadonlyArray<ConversationMessageRecord>,
+): ConversationMessageRecord[] {
+  const nextMessagesById = new Map<string, ConversationMessageRecord>();
+
+  for (const message of existingMessages) {
+    nextMessagesById.set(message.id, message);
+  }
+  for (const message of incomingMessages) {
+    nextMessagesById.set(message.id, message);
+  }
+
+  return [...nextMessagesById.values()].sort(compareConversationMessagesByTimestamp);
+}
+
+function captureTranscriptScrollRestoreRecord(
+  transcriptNode: HTMLDivElement,
+): ConversationTranscriptScrollRestoreRecord {
+  const transcriptRect = transcriptNode.getBoundingClientRect();
+  const transcriptMessageElements = transcriptNode.querySelectorAll<HTMLElement>(
+    CONVERSATION_TRANSCRIPT_MESSAGE_SELECTOR,
+  );
+
+  for (const transcriptMessageElement of transcriptMessageElements) {
+    const messageRect = transcriptMessageElement.getBoundingClientRect();
+    if (messageRect.bottom <= transcriptRect.top) {
+      continue;
+    }
+
+    return {
+      anchorMessageId: transcriptMessageElement.dataset.conversationMessageId ?? null,
+      anchorOffsetTop: messageRect.top - transcriptRect.top,
+      previousScrollHeight: transcriptNode.scrollHeight,
+      previousScrollTop: transcriptNode.scrollTop,
+    };
+  }
+
+  return {
+    anchorMessageId: null,
+    anchorOffsetTop: 0,
+    previousScrollHeight: transcriptNode.scrollHeight,
+    previousScrollTop: transcriptNode.scrollTop,
+  };
+}
+
+function restoreTranscriptScrollPosition(
+  transcriptNode: HTMLDivElement,
+  restoreRecord: ConversationTranscriptScrollRestoreRecord,
+) {
+  const {
+    anchorMessageId,
+    anchorOffsetTop,
+    previousScrollHeight,
+    previousScrollTop,
+  } = restoreRecord;
+  const anchorElement = anchorMessageId
+    ? [...transcriptNode.querySelectorAll<HTMLElement>(CONVERSATION_TRANSCRIPT_MESSAGE_SELECTOR)]
+      .find((transcriptMessageElement) => transcriptMessageElement.dataset.conversationMessageId === anchorMessageId)
+    : null;
+
+  if (anchorElement) {
+    const transcriptRect = transcriptNode.getBoundingClientRect();
+    const anchorRect = anchorElement.getBoundingClientRect();
+    transcriptNode.scrollTop += (anchorRect.top - transcriptRect.top) - anchorOffsetTop;
+    return;
+  }
+
+  const scrollHeightDelta = transcriptNode.scrollHeight - previousScrollHeight;
+  transcriptNode.scrollTop = previousScrollTop + scrollHeightDelta;
 }
 
 function ConversationsPageContent() {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
+  const environment = useRelayEnvironment();
   const search = useSearch({ strict: false }) as ConversationsPageSearch;
   const isMobile = useIsMobile();
+  const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<ConversationMessageRecord[]>([]);
+  const transcriptHasNextPageRef = useRef(false);
+  const transcriptEndCursorRef = useRef<string | null>(null);
+  const activeConversationIdRef = useRef<string | null>(null);
+  const transcriptRequestIdRef = useRef(0);
+  const isLoadingOlderTranscriptRef = useRef(false);
+  const pendingTranscriptScrollRestoreRef = useRef<ConversationTranscriptScrollRestoreRecord | null>(null);
+  const transcriptScrollRestoreAnimationFrameRef = useRef<number | null>(null);
+  const shouldStickTranscriptToBottomRef = useRef(true);
   const [conversationListWidth, setConversationListWidth] = useState(loadConversationListWidth);
   const [isConversationListHidden, setIsConversationListHidden] = useState(false);
   const [isMobileConversationListOpen, setIsMobileConversationListOpen] = useState(false);
   const [isResizingConversationList, setIsResizingConversationList] = useState(false);
+  const [messages, setMessages] = useState<ConversationMessageRecord[]>([]);
+  const [transcriptHasNextPage, setTranscriptHasNextPage] = useState(false);
+  const [transcriptEndCursor, setTranscriptEndCursor] = useState<string | null>(null);
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
+  const [isLoadingOlderTranscript, setIsLoadingOlderTranscript] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CONVERSATION_LIST_DEFAULT_WIDTH);
   const listData = useLazyLoadQuery<conversationsPageListQuery>(
@@ -122,12 +257,21 @@ function ConversationsPageContent() {
     },
   );
 
-  const conversations: ConversationListRecord[] = listData.AgentConversations.map((conversation) => ({
+  const cancelTranscriptScrollRestoreAnimationFrame = useCallback(() => {
+    if (transcriptScrollRestoreAnimationFrameRef.current === null) {
+      return;
+    }
+
+    cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
+    transcriptScrollRestoreAnimationFrameRef.current = null;
+  }, []);
+
+  const conversations: ConversationListRecord[] = listData.AgentConversations.map((conversation: ConversationListResponseRecord) => ({
     createdAt: conversation.createdAt,
     id: conversation.id,
     latestMessageAt: conversation.latestMessageAt,
     latestMessagePreview: conversation.latestMessagePreview,
-    participants: conversation.participants.map((participant) => ({
+    participants: conversation.participants.map((participant: ConversationParticipantResponseRecord) => ({
       agentId: participant.agentId,
       agentName: participant.agentName,
       id: participant.id,
@@ -144,28 +288,139 @@ function ConversationsPageContent() {
     ?? selectedConversation?.updatedAt
     ?? selectedConversation?.createdAt
     ?? null;
-  const messagesData = useLazyLoadQuery<conversationsPageMessagesQuery>(
-    conversationsPageMessagesQueryNode,
-    {
-      conversationId: selectedConversationId ?? null,
-    },
-    {
-      fetchPolicy: "store-and-network",
-    },
-  );
-  const messages: ConversationMessageRecord[] = selectedConversationId
-    ? messagesData.AgentConversationMessages.map((message) => ({
-      authorAgentId: message.authorAgentId,
-      authorAgentName: message.authorAgentName,
-      authorParticipantId: message.authorParticipantId,
-      authorSessionId: message.authorSessionId,
-      authorSessionTitle: message.authorSessionTitle,
-      conversationId: message.conversationId,
-      createdAt: message.createdAt,
-      id: message.id,
-      text: message.text,
-    }))
-    : [];
+
+  const clearTranscriptState = useCallback(() => {
+    messagesRef.current = [];
+    transcriptHasNextPageRef.current = false;
+    transcriptEndCursorRef.current = null;
+    setMessages([]);
+    setTranscriptHasNextPage(false);
+    setTranscriptEndCursor(null);
+  }, []);
+
+  const applyTranscriptState = useCallback((nextState: {
+    endCursor: string | null;
+    hasNextPage: boolean;
+    messages: ConversationMessageRecord[];
+  }) => {
+    messagesRef.current = nextState.messages;
+    transcriptHasNextPageRef.current = nextState.hasNextPage;
+    transcriptEndCursorRef.current = nextState.endCursor;
+    setMessages(nextState.messages);
+    setTranscriptHasNextPage(nextState.hasNextPage);
+    setTranscriptEndCursor(nextState.endCursor);
+  }, []);
+
+  const loadTranscriptPage = useCallback(async ({
+    after = null,
+    conversationId,
+    mode,
+  }: {
+    after?: string | null;
+    conversationId: string;
+    mode: "prepend" | "replace";
+  }) => {
+    if (mode === "replace") {
+      const requestId = transcriptRequestIdRef.current + 1;
+      transcriptRequestIdRef.current = requestId;
+      activeConversationIdRef.current = conversationId;
+      cancelTranscriptScrollRestoreAnimationFrame();
+      pendingTranscriptScrollRestoreRef.current = null;
+      shouldStickTranscriptToBottomRef.current = true;
+      isLoadingOlderTranscriptRef.current = false;
+      setIsLoadingOlderTranscript(false);
+      setErrorMessage(null);
+      clearTranscriptState();
+      setIsLoadingTranscript(true);
+
+      try {
+        const response = await fetchQuery<conversationsPageMessagesQuery>(
+          environment,
+          conversationsPageMessagesQueryNode,
+          {
+            after: null,
+            conversationId,
+            first: CONVERSATION_TRANSCRIPT_PAGE_SIZE,
+          },
+        ).toPromise();
+
+        if (
+          transcriptRequestIdRef.current !== requestId
+          || activeConversationIdRef.current !== conversationId
+        ) {
+          return;
+        }
+
+        const connection = response?.AgentConversationMessages;
+        applyTranscriptState({
+          endCursor: connection?.pageInfo.endCursor ?? null,
+          hasNextPage: Boolean(connection?.pageInfo.hasNextPage),
+          messages: toConversationMessagesFromConnection(connection),
+        });
+      } catch (error) {
+        if (transcriptRequestIdRef.current === requestId) {
+          setErrorMessage(error instanceof Error ? error.message : "Failed to load conversation transcript.");
+        }
+      } finally {
+        if (
+          transcriptRequestIdRef.current === requestId
+          && activeConversationIdRef.current === conversationId
+        ) {
+          setIsLoadingTranscript(false);
+        }
+      }
+      return;
+    }
+
+    if (isLoadingOlderTranscriptRef.current) {
+      return;
+    }
+
+    setErrorMessage(null);
+    shouldStickTranscriptToBottomRef.current = false;
+    const transcriptNode = transcriptScrollRef.current;
+    if (transcriptNode) {
+      pendingTranscriptScrollRestoreRef.current = captureTranscriptScrollRestoreRecord(transcriptNode);
+    }
+
+    isLoadingOlderTranscriptRef.current = true;
+    setIsLoadingOlderTranscript(true);
+
+    try {
+      const response = await fetchQuery<conversationsPageMessagesQuery>(
+        environment,
+        conversationsPageMessagesQueryNode,
+        {
+          after,
+          conversationId,
+          first: CONVERSATION_TRANSCRIPT_PAGE_SIZE,
+        },
+      ).toPromise();
+
+      if (activeConversationIdRef.current !== conversationId) {
+        return;
+      }
+
+      const connection = response?.AgentConversationMessages;
+      const nextMessages = toConversationMessagesFromConnection(connection);
+      applyTranscriptState({
+        endCursor: connection?.pageInfo.endCursor ?? null,
+        hasNextPage: Boolean(connection?.pageInfo.hasNextPage),
+        messages: mergeConversationMessages(messagesRef.current, nextMessages),
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to load older messages.");
+      pendingTranscriptScrollRestoreRef.current = null;
+    } finally {
+      isLoadingOlderTranscriptRef.current = false;
+      setIsLoadingOlderTranscript(false);
+    }
+  }, [
+    applyTranscriptState,
+    cancelTranscriptScrollRestoreAnimationFrame,
+    clearTranscriptState,
+    environment,
+  ]);
 
   const openConversation = useCallback((conversationId: string) => {
     void navigate({
@@ -242,6 +497,128 @@ function ConversationsPageContent() {
       document.body.style.userSelect = "";
     };
   }, [isMobile, isResizingConversationList]);
+
+  useEffect(() => {
+    cancelTranscriptScrollRestoreAnimationFrame();
+    pendingTranscriptScrollRestoreRef.current = null;
+    setErrorMessage(null);
+
+    if (!selectedConversationId) {
+      transcriptRequestIdRef.current += 1;
+      activeConversationIdRef.current = null;
+      isLoadingOlderTranscriptRef.current = false;
+      setIsLoadingTranscript(false);
+      setIsLoadingOlderTranscript(false);
+      clearTranscriptState();
+      return;
+    }
+
+    void loadTranscriptPage({
+      conversationId: selectedConversationId,
+      mode: "replace",
+    });
+  }, [
+    cancelTranscriptScrollRestoreAnimationFrame,
+    clearTranscriptState,
+    loadTranscriptPage,
+    selectedConversationId,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      cancelTranscriptScrollRestoreAnimationFrame();
+    };
+  }, [cancelTranscriptScrollRestoreAnimationFrame]);
+
+  useLayoutEffect(() => {
+    const transcriptNode = transcriptScrollRef.current;
+    if (!transcriptNode) {
+      return;
+    }
+
+    const restoreRecord = pendingTranscriptScrollRestoreRef.current;
+    if (restoreRecord) {
+      cancelTranscriptScrollRestoreAnimationFrame();
+      pendingTranscriptScrollRestoreRef.current = null;
+      restoreTranscriptScrollPosition(transcriptNode, restoreRecord);
+      transcriptScrollRestoreAnimationFrameRef.current = requestAnimationFrame(() => {
+        const currentTranscriptNode = transcriptScrollRef.current;
+        if (!currentTranscriptNode) {
+          transcriptScrollRestoreAnimationFrameRef.current = null;
+          return;
+        }
+
+        restoreTranscriptScrollPosition(currentTranscriptNode, restoreRecord);
+        transcriptScrollRestoreAnimationFrameRef.current = null;
+      });
+      return;
+    }
+
+    if (!shouldStickTranscriptToBottomRef.current) {
+      return;
+    }
+
+    transcriptNode.scrollTop = transcriptNode.scrollHeight;
+  }, [cancelTranscriptScrollRestoreAnimationFrame, messages]);
+
+  useLayoutEffect(() => {
+    const transcriptNode = transcriptScrollRef.current;
+    if (
+      !selectedConversationId
+      || !transcriptNode
+      || isLoadingTranscript
+      || isLoadingOlderTranscript
+      || !transcriptHasNextPage
+      || !transcriptEndCursor
+    ) {
+      return;
+    }
+
+    const transcriptHasScrollableOverflow = transcriptNode.scrollHeight > transcriptNode.clientHeight + 1;
+    if (transcriptHasScrollableOverflow) {
+      return;
+    }
+
+    shouldStickTranscriptToBottomRef.current = false;
+    void loadTranscriptPage({
+      after: transcriptEndCursor,
+      conversationId: selectedConversationId,
+      mode: "prepend",
+    });
+  }, [
+    isLoadingOlderTranscript,
+    isLoadingTranscript,
+    loadTranscriptPage,
+    messages,
+    selectedConversationId,
+    transcriptEndCursor,
+    transcriptHasNextPage,
+  ]);
+
+  const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    const transcriptNode = event.currentTarget;
+    const distanceFromBottom =
+      transcriptNode.scrollHeight - transcriptNode.scrollTop - transcriptNode.clientHeight;
+    shouldStickTranscriptToBottomRef.current =
+      distanceFromBottom <= CONVERSATION_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX;
+
+    const isTranscriptNearTop = transcriptNode.scrollTop <= CONVERSATION_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX;
+    if (!selectedConversationId || !isTranscriptNearTop || !transcriptHasNextPage || isLoadingOlderTranscript || !transcriptEndCursor) {
+      return;
+    }
+
+    void loadTranscriptPage({
+      after: transcriptEndCursor,
+      conversationId: selectedConversationId,
+      mode: "prepend",
+    });
+  }, [
+    isLoadingOlderTranscript,
+    loadTranscriptPage,
+    selectedConversationId,
+    transcriptEndCursor,
+    transcriptHasNextPage,
+  ]);
 
   const hideConversationList = useCallback(() => {
     if (isMobile) {
@@ -364,8 +741,8 @@ function ConversationsPageContent() {
     return (
       <div className="h-full">
         <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-          <CardContent className="no-scrollbar min-h-0 flex-1 overflow-y-auto pl-3 pr-3">
-            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <CardContent className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-3">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
               <p className="truncate text-sm font-semibold tracking-tight text-foreground">Agent Conversations</p>
               <Button
                 aria-label={hideButtonLabel}
@@ -412,7 +789,12 @@ function ConversationsPageContent() {
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <ConversationTranscript
             conversation={selectedConversation}
+            errorMessage={errorMessage}
+            isLoadingOlderMessages={isLoadingOlderTranscript}
+            isLoadingTranscript={isLoadingTranscript}
             messages={messages}
+            onScroll={handleTranscriptScroll}
+            transcriptScrollRef={transcriptScrollRef}
           />
         </div>
         {isDesktopConversationListVisible ? (

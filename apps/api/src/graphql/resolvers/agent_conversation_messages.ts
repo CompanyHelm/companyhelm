@@ -1,12 +1,15 @@
 import { inject, injectable } from "inversify";
 import {
   AgentConversationService,
+  type AgentConversationMessageConnectionRecord,
   type AgentConversationMessageRecord,
 } from "../../services/conversations/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 
 type AgentConversationMessagesArguments = {
+  after?: string | null;
   conversationId?: string | null;
+  first: number;
 };
 
 type GraphqlAgentConversationMessage = {
@@ -19,6 +22,21 @@ type GraphqlAgentConversationMessage = {
   createdAt: string;
   id: string;
   text: string;
+};
+
+type GraphqlPageInfo = {
+  endCursor: string | null;
+  hasNextPage: boolean;
+};
+
+type GraphqlAgentConversationMessageEdge = {
+  cursor: string;
+  node: GraphqlAgentConversationMessage;
+};
+
+type GraphqlAgentConversationMessageConnection = {
+  edges: GraphqlAgentConversationMessageEdge[];
+  pageInfo: GraphqlPageInfo;
 };
 
 /**
@@ -39,7 +57,7 @@ export class AgentConversationMessagesQueryResolver {
     _root: unknown,
     arguments_: AgentConversationMessagesArguments,
     context: GraphqlRequestContext,
-  ): Promise<GraphqlAgentConversationMessage[]> => {
+  ): Promise<GraphqlAgentConversationMessageConnection> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -51,10 +69,24 @@ export class AgentConversationMessagesQueryResolver {
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       arguments_.conversationId ?? null,
+      arguments_.first,
+      arguments_.after,
     );
 
-    return messages.map(AgentConversationMessagesQueryResolver.serializeMessage);
+    return AgentConversationMessagesQueryResolver.serializeConnection(messages);
   };
+
+  private static serializeConnection(
+    connection: AgentConversationMessageConnectionRecord,
+  ): GraphqlAgentConversationMessageConnection {
+    return {
+      edges: connection.edges.map((edge) => ({
+        cursor: edge.cursor,
+        node: AgentConversationMessagesQueryResolver.serializeMessage(edge.node),
+      })),
+      pageInfo: connection.pageInfo,
+    };
+  }
 
   private static serializeMessage(message: AgentConversationMessageRecord): GraphqlAgentConversationMessage {
     return {

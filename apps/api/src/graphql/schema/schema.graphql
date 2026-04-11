@@ -4,7 +4,11 @@ type Query {
   Agent(id: ID!): Agent!
   Agents: [Agent!]!
   AgentConversations: [AgentConversation!]!
-  AgentConversationMessages(conversationId: ID): [AgentConversationMessage!]!
+  AgentConversationMessages(
+    conversationId: ID
+    first: Int!
+    after: String
+  ): AgentConversationMessageConnection!
   CompanySettings: CompanySettings!
   ComputeProviderDefinitions: [ComputeProviderDefinition!]!
   Environments: [Environment!]!
@@ -220,6 +224,16 @@ type AgentConversationMessage {
   authorSessionTitle: String!
   text: String!
   createdAt: String!
+}
+
+type AgentConversationMessageEdge {
+  cursor: String!
+  node: AgentConversationMessage!
+}
+
+type AgentConversationMessageConnection {
+  edges: [AgentConversationMessageEdge!]!
+  pageInfo: PageInfo!
 }
 
 type InboxHumanQuestionProposal {

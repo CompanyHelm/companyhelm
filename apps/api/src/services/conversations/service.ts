@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, ne, or } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { type AppRuntimeTransaction, type TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
@@ -60,6 +60,21 @@ export type AgentConversationMessageRecord = {
   text: string;
 };
 
+type PageInfoRecord = {
+  endCursor: string | null;
+  hasNextPage: boolean;
+};
+
+type AgentConversationMessageEdgeRecord = {
+  cursor: string;
+  node: AgentConversationMessageRecord;
+};
+
+export type AgentConversationMessageConnectionRecord = {
+  edges: AgentConversationMessageEdgeRecord[];
+  pageInfo: PageInfoRecord;
+};
+
 type AgentRow = {
   id: string;
   name: string;
@@ -100,6 +115,43 @@ type PlannedDelivery = {
   targetAgentId: string;
   targetSessionId: string;
 };
+
+const DEFAULT_AGENT_CONVERSATION_PAGE_SIZE = 50;
+const MAX_AGENT_CONVERSATION_PAGE_SIZE = 200;
+const AGENT_CONVERSATION_MESSAGE_CURSOR_PREFIX = "agent-conversation-message:";
+
+function normalizeConversationMessagePageSize(first?: number | null): number {
+  if (!Number.isInteger(first) || Number(first) <= 0) {
+    return DEFAULT_AGENT_CONVERSATION_PAGE_SIZE;
+  }
+
+  return Math.min(Number(first), MAX_AGENT_CONVERSATION_PAGE_SIZE);
+}
+
+function encodeConversationMessageCursor(createdAt: string, messageId: string): string {
+  return Buffer.from(
+    `${AGENT_CONVERSATION_MESSAGE_CURSOR_PREFIX}${createdAt}|${messageId}`,
+    "utf8",
+  ).toString("base64url");
+}
+
+function decodeConversationMessageCursor(cursor?: string | null): { createdAt: string; messageId: string } | null {
+  if (!cursor) {
+    return null;
+  }
+
+  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+  if (!decoded.startsWith(AGENT_CONVERSATION_MESSAGE_CURSOR_PREFIX)) {
+    throw new Error("Invalid cursor.");
+  }
+
+  const [createdAt = "", messageId = ""] = decoded.slice(AGENT_CONVERSATION_MESSAGE_CURSOR_PREFIX.length).split("|");
+  if (!createdAt || !messageId) {
+    throw new Error("Invalid cursor.");
+  }
+
+  return { createdAt, messageId };
+}
 
 /**
  * Coordinates agent-to-agent messaging by binding one canonical conversation record to two agent
@@ -273,12 +325,22 @@ export class AgentConversationService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     conversationId?: string | null,
-  ): Promise<AgentConversationMessageRecord[]> {
+    first?: number | null,
+    after?: string | null,
+  ): Promise<AgentConversationMessageConnectionRecord> {
     if (!conversationId) {
-      return [];
+      return {
+        edges: [],
+        pageInfo: {
+          endCursor: null,
+          hasNextPage: false,
+        },
+      };
     }
 
     return transactionProvider.transaction(async (tx) => {
+      const pageSize = normalizeConversationMessagePageSize(first);
+      const cursor = decodeConversationMessageCursor(after);
       const [conversationRow] = await tx
         .select({
           createdAt: agentConversations.createdAt,
@@ -316,19 +378,34 @@ export class AgentConversationService {
           text: agentConversationMessages.text,
         })
         .from(agentConversationMessages)
-        .where(and(
-          eq(agentConversationMessages.companyId, companyId),
-          eq(agentConversationMessages.conversationId, conversationId),
-        )) as AgentConversationMessageRow[];
-      messageRows.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+        .where(cursor
+          ? and(
+            eq(agentConversationMessages.companyId, companyId),
+            eq(agentConversationMessages.conversationId, conversationId),
+            or(
+              lt(agentConversationMessages.createdAt, new Date(cursor.createdAt)),
+              and(
+                eq(agentConversationMessages.createdAt, new Date(cursor.createdAt)),
+                lt(agentConversationMessages.id, cursor.messageId),
+              ),
+            )!,
+          )
+          : and(
+            eq(agentConversationMessages.companyId, companyId),
+            eq(agentConversationMessages.conversationId, conversationId),
+          ))
+        .orderBy(desc(agentConversationMessages.createdAt), desc(agentConversationMessages.id))
+        .limit(pageSize + 1) as AgentConversationMessageRow[];
 
-      return messageRows.map((messageRow) => {
+      const hasNextPage = messageRows.length > pageSize;
+      const pageRows = hasNextPage ? messageRows.slice(0, pageSize) : messageRows;
+      const edges = pageRows.map((messageRow) => {
         const authorParticipant = participantDetails.get(messageRow.authorParticipantId);
         if (!authorParticipant) {
           throw new Error("Conversation participant not found.");
         }
 
-        return {
+        const node = {
           authorAgentId: authorParticipant.agentId,
           authorAgentName: authorParticipant.agentName,
           authorParticipantId: messageRow.authorParticipantId,
@@ -339,7 +416,20 @@ export class AgentConversationService {
           id: messageRow.id,
           text: messageRow.text,
         };
+
+        return {
+          cursor: encodeConversationMessageCursor(node.createdAt.toISOString(), node.id),
+          node,
+        };
       });
+
+      return {
+        edges,
+        pageInfo: {
+          endCursor: edges.at(-1)?.cursor ?? null,
+          hasNextPage,
+        },
+      };
     });
   }
 
