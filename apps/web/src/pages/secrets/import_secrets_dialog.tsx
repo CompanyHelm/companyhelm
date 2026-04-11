@@ -41,6 +41,7 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
   const [isDragActive, setDragActive] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [parsedEnvFile, setParsedEnvFile] = useState<ParsedEnvFile | null>(null);
+  const [pastedFileContents, setPastedFileContents] = useState("");
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [shouldOverwriteExistingSecrets, setShouldOverwriteExistingSecrets] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -65,17 +66,17 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
       setDragActive(false);
       setLocalErrorMessage(null);
       setParsedEnvFile(null);
+      setPastedFileContents("");
       setSelectedFileName(null);
       setShouldOverwriteExistingSecrets(true);
     }
   }, [props.isOpen]);
 
-  const loadSelectedFile = async (file: File) => {
+  const loadFileContents = (fileContents: string, sourceLabel: string) => {
     setLocalErrorMessage(null);
-    setSelectedFileName(file.name);
+    setSelectedFileName(sourceLabel);
 
     try {
-      const fileContents = await file.text();
       const nextParsedEnvFile = envFileParser.parseFileContents(fileContents);
       setParsedEnvFile(nextParsedEnvFile);
 
@@ -91,6 +92,11 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
       setParsedEnvFile(null);
       setLocalErrorMessage(error instanceof Error ? error.message : "Failed to read the selected file.");
     }
+  };
+
+  const loadSelectedFile = async (file: File) => {
+    const fileContents = await file.text();
+    loadFileContents(fileContents, file.name);
   };
 
   return (
@@ -170,6 +176,10 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
                 <p className="text-xs text-muted-foreground">
                   Drag and drop a file into this panel, or pick one directly from disk.
                 </p>
+                <p className="text-xs text-muted-foreground">
+                  macOS hides dotfiles in the picker by default. Use drag and drop, press Cmd+Shift+. in
+                  the picker, or paste the file contents below.
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -186,6 +196,35 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
                 <span className="text-xs text-muted-foreground">Loaded {selectedFileName}</span>
               ) : null}
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-xs font-medium text-foreground" htmlFor="secret-env-paste">
+                Paste .env contents
+              </label>
+              <Button
+                disabled={!pastedFileContents.trim()}
+                onClick={() => {
+                  loadFileContents(pastedFileContents, "Pasted contents");
+                }}
+                type="button"
+                variant="outline"
+              >
+                Parse pasted text
+              </Button>
+            </div>
+            <textarea
+              id="secret-env-paste"
+              onChange={(event) => {
+                setPastedFileContents(event.target.value);
+              }}
+              placeholder={`OPENAI_API_KEY=sk-...\nPRIVATE_KEY="-----BEGIN KEY-----\n...\n-----END KEY-----"`}
+              value={pastedFileContents}
+              className={cn(
+                "min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+              )}
+            />
           </div>
 
           {parsedEnvFile ? (
