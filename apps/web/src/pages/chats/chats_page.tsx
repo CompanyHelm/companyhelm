@@ -2306,6 +2306,7 @@ function ChatsPageContent() {
   const [isLoadingOlderTranscript, setIsLoadingOlderTranscript] = useState(false);
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>({});
+  const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   const queuedMessagesRequestIdRef = useRef(0);
   const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
   const data = useLazyLoadQuery<chatsPageQuery>(
@@ -2416,6 +2417,11 @@ function ChatsPageContent() {
 
     return nextMap;
   }, [activeSessions]);
+  const chatListAgents = useMemo(() => {
+    return sortedAgents.filter((agent) => {
+      return (sessionsByAgentId.get(agent.id)?.length ?? 0) > 0;
+    });
+  }, [sessionsByAgentId, sortedAgents]);
   const sessionById = useMemo(() => {
     return new Map(activeSessions.map((session) => [session.id, session]));
   }, [activeSessions]);
@@ -4289,6 +4295,31 @@ function ChatsPageContent() {
   const renderChatListPanel = (panelMode: "desktop" | "mobile") => {
     const isMobilePanel = panelMode === "mobile";
     const hideButtonLabel = isMobilePanel ? "Close chats panel" : "Hide chats list";
+    const hasAvailableAgents = sortedAgents.length > 0;
+    const hasExistingChats = chatListAgents.length > 0;
+    const emptyState = !hasAvailableAgents ? (
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+        <p className="text-sm font-medium text-foreground">No agents yet</p>
+        <p className="mt-2 text-xs/relaxed text-muted-foreground">
+          Create an agent first from the{" "}
+          <Link
+            className="text-primary hover:underline"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/agents")}
+          >
+            Agents
+          </Link>{" "}
+          page.
+        </p>
+      </div>
+    ) : !hasExistingChats ? (
+      <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+        <p className="text-sm font-medium text-foreground">No chats yet</p>
+        <p className="mt-2 text-xs/relaxed text-muted-foreground">
+          Start a new chat to begin a conversation with any agent.
+        </p>
+      </div>
+    ) : null;
 
     if (isMobilePanel) {
       return (
@@ -4310,25 +4341,48 @@ function ChatsPageContent() {
           </div>
 
           <div className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
-            {sortedAgents.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-4 py-10 text-center">
-                <p className="text-sm font-medium text-sidebar-foreground">No agents yet</p>
-                <p className="mt-2 text-xs/relaxed text-sidebar-foreground/65">
-                  Create an agent first from the{" "}
-                  <Link
-                    className="text-sidebar-primary hover:underline"
-                    params={{ organizationSlug }}
-                    to={OrganizationPath.route("/agents")}
-                  >
-                    Agents
-                  </Link>{" "}
-                  page.
-                </p>
+            <Button
+              className="mb-4 w-full justify-start"
+              disabled={!hasAvailableAgents}
+              onClick={() => {
+                setIsNewChatDialogOpen(true);
+              }}
+              type="button"
+            >
+              <PlusIcon className="size-4" />
+              New chat
+            </Button>
+
+            {!hasExistingChats ? (
+              <div className="mb-4 rounded-xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-4 py-10 text-center">
+                {!hasAvailableAgents ? (
+                  <>
+                    <p className="text-sm font-medium text-sidebar-foreground">No agents yet</p>
+                    <p className="mt-2 text-xs/relaxed text-sidebar-foreground/65">
+                      Create an agent first from the{" "}
+                      <Link
+                        className="text-sidebar-primary hover:underline"
+                        params={{ organizationSlug }}
+                        to={OrganizationPath.route("/agents")}
+                      >
+                        Agents
+                      </Link>{" "}
+                      page.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-medium text-sidebar-foreground">No chats yet</p>
+                    <p className="mt-2 text-xs/relaxed text-sidebar-foreground/65">
+                      Start a new chat to begin a conversation with any agent.
+                    </p>
+                  </>
+                )}
               </div>
             ) : null}
 
             <ul className="grid min-w-0 gap-[3px]" role="list" aria-label="Agents">
-              {sortedAgents.map((agent) => {
+              {chatListAgents.map((agent) => {
                 const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
                 const isAgentSelected = selectedAgent?.id === agent.id;
                 const isAgentExpanded = collapsedChatListAgentIds[agent.id] !== true;
@@ -4472,25 +4526,24 @@ function ChatsPageContent() {
               </Button>
             </div>
 
-            {sortedAgents.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
-                <p className="text-sm font-medium text-foreground">No agents yet</p>
-                <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                  Create an agent first from the{" "}
-                  <Link
-                    className="text-primary hover:underline"
-                    params={{ organizationSlug }}
-                    to={OrganizationPath.route("/agents")}
-                  >
-                    Agents
-                  </Link>{" "}
-                  page.
-                </p>
-              </div>
+            <Button
+              className="mb-4 w-full justify-start"
+              disabled={!hasAvailableAgents}
+              onClick={() => {
+                setIsNewChatDialogOpen(true);
+              }}
+              type="button"
+            >
+              <PlusIcon className="size-4" />
+              New chat
+            </Button>
+
+            {emptyState ? (
+              <div className="mb-4">{emptyState}</div>
             ) : null}
 
             <ul className="grid min-w-0 gap-[3px]" role="list" aria-label="Agents">
-              {sortedAgents.map((agent) => {
+              {chatListAgents.map((agent) => {
                 const agentSessions = sessionsByAgentId.get(agent.id) ?? [];
                 const isAgentSelected = selectedAgent?.id === agent.id;
                 const isAgentExpanded = collapsedChatListAgentIds[agent.id] !== true;
@@ -4631,6 +4684,42 @@ function ChatsPageContent() {
       </SheetContent>
     </Sheet>
   ) : null;
+  const newChatDialog = (
+    <Dialog open={isNewChatDialogOpen} onOpenChange={setIsNewChatDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Start a new chat</DialogTitle>
+          <DialogDescription>
+            Pick an agent to open a fresh draft chat.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-2">
+          {sortedAgents.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+              Create an agent first from the Agents page.
+            </div>
+          ) : (
+            sortedAgents.map((agent) => (
+              <button
+                key={agent.id}
+                className="rounded-xl border border-border/60 bg-card/40 px-4 py-3 text-left transition hover:bg-accent/40"
+                onClick={() => {
+                  setIsNewChatDialogOpen(false);
+                  expandChatListAgent(agent.id);
+                  void openDraftForAgent(agent.id);
+                }}
+                type="button"
+              >
+                <p className="text-sm font-medium text-foreground">{agent.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{formatAgentMeta(agent)}</p>
+              </button>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
   const currentSessionEnvironment = sessionEnvironmentInfo?.currentEnvironment ?? null;
   const agentDefaultComputeProviderDefinition = sessionEnvironmentInfo?.agentDefaultComputeProviderDefinition ?? null;
   const selectedSessionTitle = selectedSession
@@ -4844,6 +4933,7 @@ function ChatsPageContent() {
   return (
     <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {mobileChatListOverlay}
+      {newChatDialog}
       {environmentDetailsPanel}
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
