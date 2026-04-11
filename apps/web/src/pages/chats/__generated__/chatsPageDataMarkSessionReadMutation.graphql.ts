@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<66fac058fd3babd95582e37aaa18e55c>>
+ * @generated SignedSource<<542fbc21693ebaa9f6f446dfaf3a3a0e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,17 +9,21 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type InterruptSessionInput = {
+export type MarkSessionReadInput = {
   sessionId: string;
 };
-export type chatsPageInterruptSessionMutation$variables = {
-  input: InterruptSessionInput;
+export type chatsPageDataMarkSessionReadMutation$variables = {
+  input: MarkSessionReadInput;
 };
-export type chatsPageInterruptSessionMutation$data = {
-  readonly InterruptSession: {
+export type chatsPageDataMarkSessionReadMutation$data = {
+  readonly MarkSessionRead: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
@@ -35,9 +39,9 @@ export type chatsPageInterruptSessionMutation$data = {
     readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageInterruptSessionMutation = {
-  response: chatsPageInterruptSessionMutation$data;
-  variables: chatsPageInterruptSessionMutation$variables;
+export type chatsPageDataMarkSessionReadMutation = {
+  response: chatsPageDataMarkSessionReadMutation$data;
+  variables: chatsPageDataMarkSessionReadMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -60,7 +64,7 @@ v1 = [
     ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "InterruptSession",
+    "name": "MarkSessionRead",
     "plural": false,
     "selections": [
       {
@@ -89,6 +93,34 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
         "storageKey": null
       },
       {
@@ -184,7 +216,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageInterruptSessionMutation",
+    "name": "chatsPageDataMarkSessionReadMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -193,20 +225,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageInterruptSessionMutation",
+    "name": "chatsPageDataMarkSessionReadMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1b98a8cc0b52aa66e0b6124b7fffd964",
+    "cacheID": "deb46e8c67675f503ffead9e9cb5fecd",
     "id": null,
     "metadata": {},
-    "name": "chatsPageInterruptSessionMutation",
+    "name": "chatsPageDataMarkSessionReadMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageInterruptSessionMutation(\n  $input: InterruptSessionInput!\n) {\n  InterruptSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageDataMarkSessionReadMutation(\n  $input: MarkSessionReadInput!\n) {\n  MarkSessionRead(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1ef9aec7105543844fc25d7a14e058ba";
+(node as any).hash = "d69e6c2c639fa148e4f52b5d44fe27c3";
 
 export default node;

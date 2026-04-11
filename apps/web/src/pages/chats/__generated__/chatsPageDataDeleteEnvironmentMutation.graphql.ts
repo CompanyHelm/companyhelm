@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<43eda963069c8c35e3518a7f17522160>>
+ * @generated SignedSource<<d2d0bd2ffb1a343eb9bdd778bb91c402>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,17 +13,17 @@ export type DeleteEnvironmentInput = {
   force?: boolean | null | undefined;
   id: string;
 };
-export type chatsPageDeleteEnvironmentMutation$variables = {
+export type chatsPageDataDeleteEnvironmentMutation$variables = {
   input: DeleteEnvironmentInput;
 };
-export type chatsPageDeleteEnvironmentMutation$data = {
+export type chatsPageDataDeleteEnvironmentMutation$data = {
   readonly DeleteEnvironment: {
     readonly id: string;
   };
 };
-export type chatsPageDeleteEnvironmentMutation = {
-  response: chatsPageDeleteEnvironmentMutation$data;
-  variables: chatsPageDeleteEnvironmentMutation$variables;
+export type chatsPageDataDeleteEnvironmentMutation = {
+  response: chatsPageDataDeleteEnvironmentMutation$data;
+  variables: chatsPageDataDeleteEnvironmentMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -65,7 +65,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageDeleteEnvironmentMutation",
+    "name": "chatsPageDataDeleteEnvironmentMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -74,20 +74,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageDeleteEnvironmentMutation",
+    "name": "chatsPageDataDeleteEnvironmentMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "49bd5da6299f9e262a25537e37a9c2ae",
+    "cacheID": "8899c51bf2e18ecf72097282014848c6",
     "id": null,
     "metadata": {},
-    "name": "chatsPageDeleteEnvironmentMutation",
+    "name": "chatsPageDataDeleteEnvironmentMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageDeleteEnvironmentMutation(\n  $input: DeleteEnvironmentInput!\n) {\n  DeleteEnvironment(input: $input) {\n    id\n  }\n}\n"
+    "text": "mutation chatsPageDataDeleteEnvironmentMutation(\n  $input: DeleteEnvironmentInput!\n) {\n  DeleteEnvironment(input: $input) {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "496951d78d7e023ee1f8baa7c8febdf4";
+(node as any).hash = "a9c92cc2d9fe050e6ab06054714d2251";
 
 export default node;

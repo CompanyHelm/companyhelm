@@ -1,32 +1,32 @@
 import { graphql } from "react-relay";
 import type { ChatComposerImageDraft } from "./chat_composer_image";
-import type { chatsPageArchiveSessionMutation } from "./__generated__/chatsPageArchiveSessionMutation.graphql";
-import type { chatsPageCreateSessionMutation } from "./__generated__/chatsPageCreateSessionMutation.graphql";
-import type { chatsPageDeleteEnvironmentMutation } from "./__generated__/chatsPageDeleteEnvironmentMutation.graphql";
-import type { chatsPageDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDeleteSessionQueuedMessageMutation.graphql";
-import type { chatsPageDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDismissInboxHumanQuestionMutation.graphql";
-import type { chatsPageForkSessionMutation } from "./__generated__/chatsPageForkSessionMutation.graphql";
-import type { chatsPageGetEnvironmentVncUrlMutation } from "./__generated__/chatsPageGetEnvironmentVncUrlMutation.graphql";
-import type { chatsPageInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageInboxHumanQuestionsUpdatedSubscription.graphql";
-import type { chatsPageInterruptSessionMutation } from "./__generated__/chatsPageInterruptSessionMutation.graphql";
-import type { chatsPageMarkSessionReadMutation } from "./__generated__/chatsPageMarkSessionReadMutation.graphql";
-import type { chatsPagePromptSessionMutation } from "./__generated__/chatsPagePromptSessionMutation.graphql";
-import type { chatsPageQueuedMessagesQuery } from "./__generated__/chatsPageQueuedMessagesQuery.graphql";
-import type { chatsPageQuery } from "./__generated__/chatsPageQuery.graphql";
-import type { chatsPageResolveInboxHumanQuestionMutation } from "./__generated__/chatsPageResolveInboxHumanQuestionMutation.graphql";
-import type { chatsPageSessionEnvironmentQuery } from "./__generated__/chatsPageSessionEnvironmentQuery.graphql";
-import type { chatsPageSessionInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageSessionInboxHumanQuestionsUpdatedSubscription.graphql";
-import type { chatsPageSessionMessageUpdatedSubscription } from "./__generated__/chatsPageSessionMessageUpdatedSubscription.graphql";
-import type { chatsPageSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageSessionQueuedMessagesUpdatedSubscription.graphql";
-import type { chatsPageSessionUpdatedSubscription } from "./__generated__/chatsPageSessionUpdatedSubscription.graphql";
-import type { chatsPageStartEnvironmentMutation } from "./__generated__/chatsPageStartEnvironmentMutation.graphql";
-import type { chatsPageSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageSteerSessionQueuedMessageMutation.graphql";
-import type { chatsPageStopEnvironmentMutation } from "./__generated__/chatsPageStopEnvironmentMutation.graphql";
-import type { chatsPageTranscriptQuery } from "./__generated__/chatsPageTranscriptQuery.graphql";
-import type { chatsPageUpdateSessionTitleMutation } from "./__generated__/chatsPageUpdateSessionTitleMutation.graphql";
+import type { chatsPageDataArchiveSessionMutation } from "./__generated__/chatsPageDataArchiveSessionMutation.graphql";
+import type { chatsPageDataCreateSessionMutation } from "./__generated__/chatsPageDataCreateSessionMutation.graphql";
+import type { chatsPageDataDeleteEnvironmentMutation } from "./__generated__/chatsPageDataDeleteEnvironmentMutation.graphql";
+import type { chatsPageDataDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDataDeleteSessionQueuedMessageMutation.graphql";
+import type { chatsPageDataDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDataDismissInboxHumanQuestionMutation.graphql";
+import type { chatsPageDataForkSessionMutation } from "./__generated__/chatsPageDataForkSessionMutation.graphql";
+import type { chatsPageDataGetEnvironmentVncUrlMutation } from "./__generated__/chatsPageDataGetEnvironmentVncUrlMutation.graphql";
+import type { chatsPageDataInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageDataInboxHumanQuestionsUpdatedSubscription.graphql";
+import type { chatsPageDataInterruptSessionMutation } from "./__generated__/chatsPageDataInterruptSessionMutation.graphql";
+import type { chatsPageDataMarkSessionReadMutation } from "./__generated__/chatsPageDataMarkSessionReadMutation.graphql";
+import type { chatsPageDataPromptSessionMutation } from "./__generated__/chatsPageDataPromptSessionMutation.graphql";
+import type { chatsPageDataQuery } from "./__generated__/chatsPageDataQuery.graphql";
+import type { chatsPageDataQueuedMessagesQuery } from "./__generated__/chatsPageDataQueuedMessagesQuery.graphql";
+import type { chatsPageDataResolveInboxHumanQuestionMutation } from "./__generated__/chatsPageDataResolveInboxHumanQuestionMutation.graphql";
+import type { chatsPageDataSessionEnvironmentQuery } from "./__generated__/chatsPageDataSessionEnvironmentQuery.graphql";
+import type { chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription } from "./__generated__/chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription.graphql";
+import type { chatsPageDataSessionMessageUpdatedSubscription } from "./__generated__/chatsPageDataSessionMessageUpdatedSubscription.graphql";
+import type { chatsPageDataSessionQueuedMessagesUpdatedSubscription } from "./__generated__/chatsPageDataSessionQueuedMessagesUpdatedSubscription.graphql";
+import type { chatsPageDataSessionUpdatedSubscription } from "./__generated__/chatsPageDataSessionUpdatedSubscription.graphql";
+import type { chatsPageDataStartEnvironmentMutation } from "./__generated__/chatsPageDataStartEnvironmentMutation.graphql";
+import type { chatsPageDataSteerSessionQueuedMessageMutation } from "./__generated__/chatsPageDataSteerSessionQueuedMessageMutation.graphql";
+import type { chatsPageDataStopEnvironmentMutation } from "./__generated__/chatsPageDataStopEnvironmentMutation.graphql";
+import type { chatsPageDataTranscriptQuery } from "./__generated__/chatsPageDataTranscriptQuery.graphql";
+import type { chatsPageDataUpdateSessionTitleMutation } from "./__generated__/chatsPageDataUpdateSessionTitleMutation.graphql";
 
 export const chatsPageQueryNode = graphql`
-  query chatsPageQuery {
+  query chatsPageDataQuery {
     Agents {
       id
       name
@@ -90,7 +90,7 @@ export const chatsPageQueryNode = graphql`
 `;
 
 export const chatsPageTranscriptQueryNode = graphql`
-  query chatsPageTranscriptQuery($sessionId: ID!, $first: Int!, $after: String) {
+  query chatsPageDataTranscriptQuery($sessionId: ID!, $first: Int!, $after: String) {
     SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {
       edges {
         cursor
@@ -134,7 +134,7 @@ export const chatsPageTranscriptQueryNode = graphql`
 `;
 
 export const chatsPageQueuedMessagesQueryNode = graphql`
-  query chatsPageQueuedMessagesQuery($sessionId: ID!) {
+  query chatsPageDataQueuedMessagesQuery($sessionId: ID!) {
     SessionQueuedMessages(sessionId: $sessionId) {
       id
       sessionId
@@ -153,7 +153,7 @@ export const chatsPageQueuedMessagesQueryNode = graphql`
 `;
 
 export const chatsPageSessionEnvironmentQueryNode = graphql`
-  query chatsPageSessionEnvironmentQuery($sessionId: ID!) {
+  query chatsPageDataSessionEnvironmentQuery($sessionId: ID!) {
     SessionEnvironment(sessionId: $sessionId) {
       currentEnvironment {
         id
@@ -177,7 +177,7 @@ export const chatsPageSessionEnvironmentQueryNode = graphql`
 `;
 
 export const chatsPageDeleteEnvironmentMutationNode = graphql`
-  mutation chatsPageDeleteEnvironmentMutation($input: DeleteEnvironmentInput!) {
+  mutation chatsPageDataDeleteEnvironmentMutation($input: DeleteEnvironmentInput!) {
     DeleteEnvironment(input: $input) {
       id
     }
@@ -185,7 +185,7 @@ export const chatsPageDeleteEnvironmentMutationNode = graphql`
 `;
 
 export const chatsPageStartEnvironmentMutationNode = graphql`
-  mutation chatsPageStartEnvironmentMutation($input: StartEnvironmentInput!) {
+  mutation chatsPageDataStartEnvironmentMutation($input: StartEnvironmentInput!) {
     StartEnvironment(input: $input) {
       id
     }
@@ -193,7 +193,7 @@ export const chatsPageStartEnvironmentMutationNode = graphql`
 `;
 
 export const chatsPageGetEnvironmentVncUrlMutationNode = graphql`
-  mutation chatsPageGetEnvironmentVncUrlMutation($input: GetEnvironmentVncUrlInput!) {
+  mutation chatsPageDataGetEnvironmentVncUrlMutation($input: GetEnvironmentVncUrlInput!) {
     GetEnvironmentVncUrl(input: $input) {
       url
     }
@@ -201,7 +201,7 @@ export const chatsPageGetEnvironmentVncUrlMutationNode = graphql`
 `;
 
 export const chatsPageStopEnvironmentMutationNode = graphql`
-  mutation chatsPageStopEnvironmentMutation($input: StopEnvironmentInput!) {
+  mutation chatsPageDataStopEnvironmentMutation($input: StopEnvironmentInput!) {
     StopEnvironment(input: $input) {
       id
     }
@@ -209,7 +209,7 @@ export const chatsPageStopEnvironmentMutationNode = graphql`
 `;
 
 export const chatsPageDeleteSessionQueuedMessageMutationNode = graphql`
-  mutation chatsPageDeleteSessionQueuedMessageMutation($input: DeleteSessionQueuedMessageInput!) {
+  mutation chatsPageDataDeleteSessionQueuedMessageMutation($input: DeleteSessionQueuedMessageInput!) {
     DeleteSessionQueuedMessage(input: $input) {
       id
       sessionId
@@ -221,7 +221,7 @@ export const chatsPageDeleteSessionQueuedMessageMutationNode = graphql`
 `;
 
 export const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
-  mutation chatsPageSteerSessionQueuedMessageMutation($input: SteerSessionQueuedMessageInput!) {
+  mutation chatsPageDataSteerSessionQueuedMessageMutation($input: SteerSessionQueuedMessageInput!) {
     SteerSessionQueuedMessage(input: $input) {
       id
       sessionId
@@ -233,7 +233,7 @@ export const chatsPageSteerSessionQueuedMessageMutationNode = graphql`
 `;
 
 export const chatsPageCreateSessionMutationNode = graphql`
-  mutation chatsPageCreateSessionMutation($input: CreateSessionInput!) {
+  mutation chatsPageDataCreateSessionMutation($input: CreateSessionInput!) {
     CreateSession(input: $input) {
       id
       agentId
@@ -260,7 +260,7 @@ export const chatsPageCreateSessionMutationNode = graphql`
 `;
 
 export const chatsPageForkSessionMutationNode = graphql`
-  mutation chatsPageForkSessionMutation($input: ForkSessionInput!) {
+  mutation chatsPageDataForkSessionMutation($input: ForkSessionInput!) {
     ForkSession(input: $input) {
       id
       agentId
@@ -287,7 +287,7 @@ export const chatsPageForkSessionMutationNode = graphql`
 `;
 
 export const chatsPageArchiveSessionMutationNode = graphql`
-  mutation chatsPageArchiveSessionMutation($input: ArchiveSessionInput!) {
+  mutation chatsPageDataArchiveSessionMutation($input: ArchiveSessionInput!) {
     ArchiveSession(input: $input) {
       id
       agentId
@@ -314,7 +314,7 @@ export const chatsPageArchiveSessionMutationNode = graphql`
 `;
 
 export const chatsPagePromptSessionMutationNode = graphql`
-  mutation chatsPagePromptSessionMutation($input: PromptSessionInput!) {
+  mutation chatsPageDataPromptSessionMutation($input: PromptSessionInput!) {
     PromptSession(input: $input) {
       id
       agentId
@@ -341,7 +341,7 @@ export const chatsPagePromptSessionMutationNode = graphql`
 `;
 
 export const chatsPageInterruptSessionMutationNode = graphql`
-  mutation chatsPageInterruptSessionMutation($input: InterruptSessionInput!) {
+  mutation chatsPageDataInterruptSessionMutation($input: InterruptSessionInput!) {
     InterruptSession(input: $input) {
       id
       agentId
@@ -368,7 +368,7 @@ export const chatsPageInterruptSessionMutationNode = graphql`
 `;
 
 export const chatsPageResolveInboxHumanQuestionMutationNode = graphql`
-  mutation chatsPageResolveInboxHumanQuestionMutation($input: ResolveInboxHumanQuestionInput!) {
+  mutation chatsPageDataResolveInboxHumanQuestionMutation($input: ResolveInboxHumanQuestionInput!) {
     ResolveInboxHumanQuestion(input: $input) {
       id
     }
@@ -376,7 +376,7 @@ export const chatsPageResolveInboxHumanQuestionMutationNode = graphql`
 `;
 
 export const chatsPageDismissInboxHumanQuestionMutationNode = graphql`
-  mutation chatsPageDismissInboxHumanQuestionMutation($input: DismissInboxHumanQuestionInput!) {
+  mutation chatsPageDataDismissInboxHumanQuestionMutation($input: DismissInboxHumanQuestionInput!) {
     DismissInboxHumanQuestion(input: $input) {
       id
     }
@@ -384,7 +384,7 @@ export const chatsPageDismissInboxHumanQuestionMutationNode = graphql`
 `;
 
 export const chatsPageMarkSessionReadMutationNode = graphql`
-  mutation chatsPageMarkSessionReadMutation($input: MarkSessionReadInput!) {
+  mutation chatsPageDataMarkSessionReadMutation($input: MarkSessionReadInput!) {
     MarkSessionRead(input: $input) {
       id
       agentId
@@ -411,7 +411,7 @@ export const chatsPageMarkSessionReadMutationNode = graphql`
 `;
 
 export const chatsPageUpdateSessionTitleMutationNode = graphql`
-  mutation chatsPageUpdateSessionTitleMutation($input: UpdateSessionTitleInput!) {
+  mutation chatsPageDataUpdateSessionTitleMutation($input: UpdateSessionTitleInput!) {
     UpdateSessionTitle(input: $input) {
       id
       agentId
@@ -438,7 +438,7 @@ export const chatsPageUpdateSessionTitleMutationNode = graphql`
 `;
 
 export const chatsPageSessionUpdatedSubscriptionNode = graphql`
-  subscription chatsPageSessionUpdatedSubscription {
+  subscription chatsPageDataSessionUpdatedSubscription {
     SessionUpdated {
       id
       agentId
@@ -465,7 +465,7 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
 `;
 
 export const chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
-  subscription chatsPageSessionInboxHumanQuestionsUpdatedSubscription($sessionId: ID!) {
+  subscription chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription($sessionId: ID!) {
     SessionInboxHumanQuestionsUpdated(sessionId: $sessionId) {
       id
       sessionId
@@ -483,7 +483,7 @@ export const chatsPageSessionInboxHumanQuestionsUpdatedSubscriptionNode = graphq
 `;
 
 export const chatsPageInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
-  subscription chatsPageInboxHumanQuestionsUpdatedSubscription {
+  subscription chatsPageDataInboxHumanQuestionsUpdatedSubscription {
     InboxHumanQuestionsUpdated {
       id
       sessionId
@@ -501,7 +501,7 @@ export const chatsPageInboxHumanQuestionsUpdatedSubscriptionNode = graphql`
 `;
 
 export const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
-  subscription chatsPageSessionQueuedMessagesUpdatedSubscription($sessionId: ID!) {
+  subscription chatsPageDataSessionQueuedMessagesUpdatedSubscription($sessionId: ID!) {
     SessionQueuedMessagesUpdated(sessionId: $sessionId) {
       id
       sessionId
@@ -520,7 +520,7 @@ export const chatsPageSessionQueuedMessagesUpdatedSubscriptionNode = graphql`
 `;
 
 export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
-  subscription chatsPageSessionMessageUpdatedSubscription($sessionId: ID!) {
+  subscription chatsPageDataSessionMessageUpdatedSubscription($sessionId: ID!) {
     SessionMessageUpdated(sessionId: $sessionId) {
       id
       sessionId
@@ -554,41 +554,41 @@ export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
   }
 `;
 
-export type ChatsPageArchiveSessionMutation = chatsPageArchiveSessionMutation;
-export type ChatsPageCreateSessionMutation = chatsPageCreateSessionMutation;
-export type ChatsPageDeleteEnvironmentMutation = chatsPageDeleteEnvironmentMutation;
-export type ChatsPageDeleteSessionQueuedMessageMutation = chatsPageDeleteSessionQueuedMessageMutation;
-export type ChatsPageDismissInboxHumanQuestionMutation = chatsPageDismissInboxHumanQuestionMutation;
-export type ChatsPageForkSessionMutation = chatsPageForkSessionMutation;
-export type ChatsPageGetEnvironmentVncUrlMutation = chatsPageGetEnvironmentVncUrlMutation;
-export type ChatsPageInboxHumanQuestionsUpdatedSubscription = chatsPageInboxHumanQuestionsUpdatedSubscription;
-export type ChatsPageInterruptSessionMutation = chatsPageInterruptSessionMutation;
-export type ChatsPageMarkSessionReadMutation = chatsPageMarkSessionReadMutation;
-export type ChatsPagePromptSessionMutation = chatsPagePromptSessionMutation;
-export type ChatsPageQueuedMessagesQuery = chatsPageQueuedMessagesQuery;
-export type ChatsPageQuery = chatsPageQuery;
-export type ChatsPageResolveInboxHumanQuestionMutation = chatsPageResolveInboxHumanQuestionMutation;
-export type ChatsPageSessionEnvironmentQuery = chatsPageSessionEnvironmentQuery;
-export type ChatsPageSessionInboxHumanQuestionsUpdatedSubscription = chatsPageSessionInboxHumanQuestionsUpdatedSubscription;
-export type ChatsPageSessionMessageUpdatedSubscription = chatsPageSessionMessageUpdatedSubscription;
-export type ChatsPageSessionQueuedMessagesUpdatedSubscription = chatsPageSessionQueuedMessagesUpdatedSubscription;
-export type ChatsPageSessionUpdatedSubscription = chatsPageSessionUpdatedSubscription;
-export type ChatsPageStartEnvironmentMutation = chatsPageStartEnvironmentMutation;
-export type ChatsPageSteerSessionQueuedMessageMutation = chatsPageSteerSessionQueuedMessageMutation;
-export type ChatsPageStopEnvironmentMutation = chatsPageStopEnvironmentMutation;
-export type ChatsPageTranscriptQuery = chatsPageTranscriptQuery;
-export type ChatsPageUpdateSessionTitleMutation = chatsPageUpdateSessionTitleMutation;
+export type ChatsPageArchiveSessionMutation = chatsPageDataArchiveSessionMutation;
+export type ChatsPageCreateSessionMutation = chatsPageDataCreateSessionMutation;
+export type ChatsPageDeleteEnvironmentMutation = chatsPageDataDeleteEnvironmentMutation;
+export type ChatsPageDeleteSessionQueuedMessageMutation = chatsPageDataDeleteSessionQueuedMessageMutation;
+export type ChatsPageDismissInboxHumanQuestionMutation = chatsPageDataDismissInboxHumanQuestionMutation;
+export type ChatsPageForkSessionMutation = chatsPageDataForkSessionMutation;
+export type ChatsPageGetEnvironmentVncUrlMutation = chatsPageDataGetEnvironmentVncUrlMutation;
+export type ChatsPageInboxHumanQuestionsUpdatedSubscription = chatsPageDataInboxHumanQuestionsUpdatedSubscription;
+export type ChatsPageInterruptSessionMutation = chatsPageDataInterruptSessionMutation;
+export type ChatsPageMarkSessionReadMutation = chatsPageDataMarkSessionReadMutation;
+export type ChatsPagePromptSessionMutation = chatsPageDataPromptSessionMutation;
+export type ChatsPageQueuedMessagesQuery = chatsPageDataQueuedMessagesQuery;
+export type ChatsPageQuery = chatsPageDataQuery;
+export type ChatsPageResolveInboxHumanQuestionMutation = chatsPageDataResolveInboxHumanQuestionMutation;
+export type ChatsPageSessionEnvironmentQuery = chatsPageDataSessionEnvironmentQuery;
+export type ChatsPageSessionInboxHumanQuestionsUpdatedSubscription = chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription;
+export type ChatsPageSessionMessageUpdatedSubscription = chatsPageDataSessionMessageUpdatedSubscription;
+export type ChatsPageSessionQueuedMessagesUpdatedSubscription = chatsPageDataSessionQueuedMessagesUpdatedSubscription;
+export type ChatsPageSessionUpdatedSubscription = chatsPageDataSessionUpdatedSubscription;
+export type ChatsPageStartEnvironmentMutation = chatsPageDataStartEnvironmentMutation;
+export type ChatsPageSteerSessionQueuedMessageMutation = chatsPageDataSteerSessionQueuedMessageMutation;
+export type ChatsPageStopEnvironmentMutation = chatsPageDataStopEnvironmentMutation;
+export type ChatsPageTranscriptQuery = chatsPageDataTranscriptQuery;
+export type ChatsPageUpdateSessionTitleMutation = chatsPageDataUpdateSessionTitleMutation;
 
-export type ProviderOptionRecord = chatsPageQuery["response"]["AgentCreateOptions"][number];
-export type AgentRecord = chatsPageQuery["response"]["Agents"][number];
-export type InboxHumanQuestionRecord = chatsPageQuery["response"]["InboxHumanQuestions"][number];
-export type QueuedMessageRecord = chatsPageQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
-export type SessionRecord = chatsPageQuery["response"]["Sessions"][number];
-export type SessionTranscriptConnection = chatsPageTranscriptQuery["response"]["SessionTranscriptMessages"];
+export type ProviderOptionRecord = chatsPageDataQuery["response"]["AgentCreateOptions"][number];
+export type AgentRecord = chatsPageDataQuery["response"]["Agents"][number];
+export type InboxHumanQuestionRecord = chatsPageDataQuery["response"]["InboxHumanQuestions"][number];
+export type QueuedMessageRecord = chatsPageDataQueuedMessagesQuery["response"]["SessionQueuedMessages"][number];
+export type SessionRecord = chatsPageDataQuery["response"]["Sessions"][number];
+export type SessionTranscriptConnection = chatsPageDataTranscriptQuery["response"]["SessionTranscriptMessages"];
 export type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][number];
 export type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
 export type SessionMessageContentRecord = SessionMessageRecord["contents"][number];
-export type SessionEnvironmentInfoRecord = chatsPageSessionEnvironmentQuery["response"]["SessionEnvironment"];
+export type SessionEnvironmentInfoRecord = chatsPageDataSessionEnvironmentQuery["response"]["SessionEnvironment"];
 export type DraftComposerImageRecord = ChatComposerImageDraft;
 export type ChatsPageSearch = {
   agentId?: string;

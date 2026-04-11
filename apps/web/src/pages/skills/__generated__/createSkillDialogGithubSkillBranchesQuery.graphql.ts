@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<manual-fallback>>
+ * @generated SignedSource<<c5e77c017fd99e01eb03e796b6e1f6b8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,15 +35,14 @@ var v0 = [
 ],
 v1 = [
   {
-    "kind": "Variable",
-    "name": "repositoryUrl",
-    "variableName": "repositoryUrl"
-  }
-],
-v2 = [
-  {
     "alias": null,
-    "args": (v1/*: any*/),
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "repositoryUrl",
+        "variableName": "repositoryUrl"
+      }
+    ],
     "concreteType": "GithubSkillBranch",
     "kind": "LinkedField",
     "name": "GithubSkillBranches",
@@ -87,7 +86,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "createSkillDialogGithubSkillBranchesQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v1/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -96,10 +95,10 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "createSkillDialogGithubSkillBranchesQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "manual-createSkillDialogGithubSkillBranchesQuery",
+    "cacheID": "30d060482477112d316209fce87120b8",
     "id": null,
     "metadata": {},
     "name": "createSkillDialogGithubSkillBranchesQuery",
@@ -109,6 +108,6 @@ return {
 };
 })();
 
-(node as any).hash = "manual-createSkillDialogGithubSkillBranchesQuery";
+(node as any).hash = "2d9a8d92efa279d78b4f3aa4f228284f";
 
 export default node;

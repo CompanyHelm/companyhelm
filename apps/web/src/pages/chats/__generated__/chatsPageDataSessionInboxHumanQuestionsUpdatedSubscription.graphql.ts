@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3b29437d2a0fd860adca10023d63ab86>>
+ * @generated SignedSource<<9d416ff271469a980f81e8b45dba8c6d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,9 +9,11 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageInboxHumanQuestionsUpdatedSubscription$variables = Record<PropertyKey, never>;
-export type chatsPageInboxHumanQuestionsUpdatedSubscription$data = {
-  readonly InboxHumanQuestionsUpdated: ReadonlyArray<{
+export type chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription$variables = {
+  sessionId: string;
+};
+export type chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription$data = {
+  readonly SessionInboxHumanQuestionsUpdated: ReadonlyArray<{
     readonly allowCustomAnswer: boolean;
     readonly createdAt: string;
     readonly id: string;
@@ -25,29 +27,42 @@ export type chatsPageInboxHumanQuestionsUpdatedSubscription$data = {
     readonly title: string;
   }>;
 };
-export type chatsPageInboxHumanQuestionsUpdatedSubscription = {
-  response: chatsPageInboxHumanQuestionsUpdatedSubscription$data;
-  variables: chatsPageInboxHumanQuestionsUpdatedSubscription$variables;
+export type chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription = {
+  response: chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription$data;
+  variables: chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription$variables;
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = {
+var v0 = [
+  {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "sessionId"
+  }
+],
+v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v1 = [
+v2 = [
   {
     "alias": null,
-    "args": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "sessionId",
+        "variableName": "sessionId"
+      }
+    ],
     "concreteType": "InboxHumanQuestion",
     "kind": "LinkedField",
-    "name": "InboxHumanQuestionsUpdated",
+    "name": "SessionInboxHumanQuestionsUpdated",
     "plural": true,
     "selections": [
-      (v0/*: any*/),
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -91,7 +106,7 @@ v1 = [
         "name": "proposals",
         "plural": true,
         "selections": [
-          (v0/*: any*/),
+          (v1/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -115,32 +130,32 @@ v1 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": [],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageInboxHumanQuestionsUpdatedSubscription",
-    "selections": (v1/*: any*/),
+    "name": "chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription",
+    "selections": (v2/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": [],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageInboxHumanQuestionsUpdatedSubscription",
-    "selections": (v1/*: any*/)
+    "name": "chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription",
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "4f44b70ce56473a661bfc30d055339a8",
+    "cacheID": "21523a4f49af688a550716c2784defda",
     "id": null,
     "metadata": {},
-    "name": "chatsPageInboxHumanQuestionsUpdatedSubscription",
+    "name": "chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageInboxHumanQuestionsUpdatedSubscription {\n  InboxHumanQuestionsUpdated {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionInboxHumanQuestionsUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionInboxHumanQuestionsUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "24562322a77a5d6aeaa90b5df7bac037";
+(node as any).hash = "ffc2179999d11a623279313a9f57862a";
 
 export default node;

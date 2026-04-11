@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<213c9db17336180e45bd60efa4fa2376>>
+ * @generated SignedSource<<4237f7e207ef018121ba75d961a057e4>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,8 +9,8 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageQuery$variables = Record<PropertyKey, never>;
-export type chatsPageQuery$data = {
+export type chatsPageDataQuery$variables = Record<PropertyKey, never>;
+export type chatsPageDataQuery$data = {
   readonly AgentCreateOptions: ReadonlyArray<{
     readonly defaultModelId: string | null | undefined;
     readonly defaultReasoningLevel: string | null | undefined;
@@ -71,9 +71,9 @@ export type chatsPageQuery$data = {
     readonly userSetTitle: string | null | undefined;
   }>;
 };
-export type chatsPageQuery = {
-  response: chatsPageQuery$data;
-  variables: chatsPageQuery$variables;
+export type chatsPageDataQuery = {
+  response: chatsPageDataQuery$data;
+  variables: chatsPageDataQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -420,7 +420,7 @@ return {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageQuery",
+    "name": "chatsPageDataQuery",
     "selections": (v7/*: any*/),
     "type": "Query",
     "abstractKey": null
@@ -429,20 +429,20 @@ return {
   "operation": {
     "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "chatsPageQuery",
+    "name": "chatsPageDataQuery",
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "e71de39ddb88a453bf6c7be657161d57",
+    "cacheID": "9379e85a27b7187d60638ea35cbd83ce",
     "id": null,
     "metadata": {},
-    "name": "chatsPageQuery",
+    "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "856133741736645d613868c7795347aa";
+(node as any).hash = "4887e7d01780ff52d9827eda3f30deba";
 
 export default node;

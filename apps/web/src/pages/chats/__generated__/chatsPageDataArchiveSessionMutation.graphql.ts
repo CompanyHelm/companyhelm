@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d2f86e7b0f38a5734bf91e8402db312f>>
+ * @generated SignedSource<<63b3b045cc707fdc1e33a177d598a170>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,9 +9,14 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageSessionUpdatedSubscription$variables = Record<PropertyKey, never>;
-export type chatsPageSessionUpdatedSubscription$data = {
-  readonly SessionUpdated: {
+export type ArchiveSessionInput = {
+  id: string;
+};
+export type chatsPageDataArchiveSessionMutation$variables = {
+  input: ArchiveSessionInput;
+};
+export type chatsPageDataArchiveSessionMutation$data = {
+  readonly ArchiveSession: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
@@ -34,19 +39,32 @@ export type chatsPageSessionUpdatedSubscription$data = {
     readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageSessionUpdatedSubscription = {
-  response: chatsPageSessionUpdatedSubscription$data;
-  variables: chatsPageSessionUpdatedSubscription$variables;
+export type chatsPageDataArchiveSessionMutation = {
+  response: chatsPageDataArchiveSessionMutation$data;
+  variables: chatsPageDataArchiveSessionMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = [
   {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "input"
+  }
+],
+v1 = [
+  {
     "alias": null,
-    "args": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "input",
+        "variableName": "input"
+      }
+    ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "SessionUpdated",
+    "name": "ArchiveSession",
     "plural": false,
     "selections": [
       {
@@ -195,32 +213,32 @@ var v0 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": [],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageSessionUpdatedSubscription",
-    "selections": (v0/*: any*/),
-    "type": "Subscription",
+    "name": "chatsPageDataArchiveSessionMutation",
+    "selections": (v1/*: any*/),
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": [],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageSessionUpdatedSubscription",
-    "selections": (v0/*: any*/)
+    "name": "chatsPageDataArchiveSessionMutation",
+    "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "9f2e0b59124f3d623fbb6bb2789a8cec",
+    "cacheID": "e20f1be9f1452d0343dba1a8da3fe577",
     "id": null,
     "metadata": {},
-    "name": "chatsPageSessionUpdatedSubscription",
-    "operationKind": "subscription",
-    "text": "subscription chatsPageSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "name": "chatsPageDataArchiveSessionMutation",
+    "operationKind": "mutation",
+    "text": "mutation chatsPageDataArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "40877fdd11122141412273c35626c605";
+(node as any).hash = "55f4fb722d1f2b98e71f59f1c81cf072";
 
 export default node;

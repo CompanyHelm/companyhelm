@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cd2ff4997194613023dd7582d4a2ba55>>
+ * @generated SignedSource<<3870686e809aca24e8f36c853db4dfba>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,21 +9,22 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type DismissInboxHumanQuestionInput = {
+export type ResolveInboxHumanQuestionInput = {
+  customAnswerText?: string | null | undefined;
   inboxItemId: string;
+  proposalId?: string | null | undefined;
 };
-export type chatsPageDismissInboxHumanQuestionMutation$variables = {
-  input: DismissInboxHumanQuestionInput;
+export type chatsPageDataResolveInboxHumanQuestionMutation$variables = {
+  input: ResolveInboxHumanQuestionInput;
 };
-export type chatsPageDismissInboxHumanQuestionMutation$data = {
-  readonly DismissInboxHumanQuestion: {
+export type chatsPageDataResolveInboxHumanQuestionMutation$data = {
+  readonly ResolveInboxHumanQuestion: {
     readonly id: string;
-    readonly status: string;
   };
 };
-export type chatsPageDismissInboxHumanQuestionMutation = {
-  response: chatsPageDismissInboxHumanQuestionMutation$data;
-  variables: chatsPageDismissInboxHumanQuestionMutation$variables;
+export type chatsPageDataResolveInboxHumanQuestionMutation = {
+  response: chatsPageDataResolveInboxHumanQuestionMutation$data;
+  variables: chatsPageDataResolveInboxHumanQuestionMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -46,7 +47,7 @@ v1 = [
     ],
     "concreteType": "InboxHumanQuestion",
     "kind": "LinkedField",
-    "name": "DismissInboxHumanQuestion",
+    "name": "ResolveInboxHumanQuestion",
     "plural": false,
     "selections": [
       {
@@ -54,13 +55,6 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
         "storageKey": null
       }
     ],
@@ -72,7 +66,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageDismissInboxHumanQuestionMutation",
+    "name": "chatsPageDataResolveInboxHumanQuestionMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -81,20 +75,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageDismissInboxHumanQuestionMutation",
+    "name": "chatsPageDataResolveInboxHumanQuestionMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "7696fc9bb6408add3acdc86b90b29ee1",
+    "cacheID": "d1f7c7198365eea673c5def15e6a712c",
     "id": null,
     "metadata": {},
-    "name": "chatsPageDismissInboxHumanQuestionMutation",
+    "name": "chatsPageDataResolveInboxHumanQuestionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageDismissInboxHumanQuestionMutation(\n  $input: DismissInboxHumanQuestionInput!\n) {\n  DismissInboxHumanQuestion(input: $input) {\n    id\n    status\n  }\n}\n"
+    "text": "mutation chatsPageDataResolveInboxHumanQuestionMutation(\n  $input: ResolveInboxHumanQuestionInput!\n) {\n  ResolveInboxHumanQuestion(input: $input) {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2cd1336add66d0935f5aeb312a908dc6";
+(node as any).hash = "1eee321cb835ea525f567a72eaa78063";
 
 export default node;

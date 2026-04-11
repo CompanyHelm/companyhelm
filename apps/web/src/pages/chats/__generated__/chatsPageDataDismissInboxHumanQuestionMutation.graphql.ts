@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1695be5e3ce1eabbb60b14afce04fbb1>>
+ * @generated SignedSource<<a9b2e775da2a28849e291ea3b826448a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,21 +9,20 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type StartEnvironmentInput = {
-  id: string;
+export type DismissInboxHumanQuestionInput = {
+  inboxItemId: string;
 };
-export type chatsPageStartEnvironmentMutation$variables = {
-  input: StartEnvironmentInput;
+export type chatsPageDataDismissInboxHumanQuestionMutation$variables = {
+  input: DismissInboxHumanQuestionInput;
 };
-export type chatsPageStartEnvironmentMutation$data = {
-  readonly StartEnvironment: {
+export type chatsPageDataDismissInboxHumanQuestionMutation$data = {
+  readonly DismissInboxHumanQuestion: {
     readonly id: string;
-    readonly status: string;
   };
 };
-export type chatsPageStartEnvironmentMutation = {
-  response: chatsPageStartEnvironmentMutation$data;
-  variables: chatsPageStartEnvironmentMutation$variables;
+export type chatsPageDataDismissInboxHumanQuestionMutation = {
+  response: chatsPageDataDismissInboxHumanQuestionMutation$data;
+  variables: chatsPageDataDismissInboxHumanQuestionMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -44,9 +43,9 @@ v1 = [
         "variableName": "input"
       }
     ],
-    "concreteType": "Environment",
+    "concreteType": "InboxHumanQuestion",
     "kind": "LinkedField",
-    "name": "StartEnvironment",
+    "name": "DismissInboxHumanQuestion",
     "plural": false,
     "selections": [
       {
@@ -54,13 +53,6 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
         "storageKey": null
       }
     ],
@@ -72,7 +64,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageStartEnvironmentMutation",
+    "name": "chatsPageDataDismissInboxHumanQuestionMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -81,20 +73,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageStartEnvironmentMutation",
+    "name": "chatsPageDataDismissInboxHumanQuestionMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "bcfd3272d457dc7529ee3f2cedac9a49",
+    "cacheID": "5f541fdfb70b48ad5c32bebfb64a4eaf",
     "id": null,
     "metadata": {},
-    "name": "chatsPageStartEnvironmentMutation",
+    "name": "chatsPageDataDismissInboxHumanQuestionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageStartEnvironmentMutation(\n  $input: StartEnvironmentInput!\n) {\n  StartEnvironment(input: $input) {\n    id\n    status\n  }\n}\n"
+    "text": "mutation chatsPageDataDismissInboxHumanQuestionMutation(\n  $input: DismissInboxHumanQuestionInput!\n) {\n  DismissInboxHumanQuestion(input: $input) {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9a003e46275407db62f018dea89b8358";
+(node as any).hash = "95baea8871dc96f9497acbc1849673dd";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<80ef290b42048c31b534dfa8c502e216>>
+ * @generated SignedSource<<a8cf739875ebe0f439080e4834ebee2a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,26 +9,21 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CreateSessionInput = {
-  agentId: string;
-  images?: ReadonlyArray<SessionPromptImageInput> | null | undefined;
-  modelProviderCredentialModelId?: string | null | undefined;
-  reasoningLevel?: string | null | undefined;
-  sessionId?: string | null | undefined;
-  userMessage: string;
+export type InterruptSessionInput = {
+  sessionId: string;
 };
-export type SessionPromptImageInput = {
-  base64EncodedImage: string;
-  mimeType: string;
+export type chatsPageDataInterruptSessionMutation$variables = {
+  input: InterruptSessionInput;
 };
-export type chatsPageCreateSessionMutation$variables = {
-  input: CreateSessionInput;
-};
-export type chatsPageCreateSessionMutation$data = {
-  readonly CreateSession: {
+export type chatsPageDataInterruptSessionMutation$data = {
+  readonly InterruptSession: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
@@ -44,9 +39,9 @@ export type chatsPageCreateSessionMutation$data = {
     readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageCreateSessionMutation = {
-  response: chatsPageCreateSessionMutation$data;
-  variables: chatsPageCreateSessionMutation$variables;
+export type chatsPageDataInterruptSessionMutation = {
+  response: chatsPageDataInterruptSessionMutation$data;
+  variables: chatsPageDataInterruptSessionMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -69,7 +64,7 @@ v1 = [
     ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "CreateSession",
+    "name": "InterruptSession",
     "plural": false,
     "selections": [
       {
@@ -98,6 +93,34 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
         "storageKey": null
       },
       {
@@ -193,7 +216,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageCreateSessionMutation",
+    "name": "chatsPageDataInterruptSessionMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -202,20 +225,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageCreateSessionMutation",
+    "name": "chatsPageDataInterruptSessionMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "d3204d29797643077b62043e1325edab",
+    "cacheID": "7d84d03e1ca5daec5761ca6f310d0a01",
     "id": null,
     "metadata": {},
-    "name": "chatsPageCreateSessionMutation",
+    "name": "chatsPageDataInterruptSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageCreateSessionMutation(\n  $input: CreateSessionInput!\n) {\n  CreateSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageDataInterruptSessionMutation(\n  $input: InterruptSessionInput!\n) {\n  InterruptSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6331172a96ce658d070360f3b7153f81";
+(node as any).hash = "33df0cbe465d0fe8e0bc45c91c96e8f6";
 
 export default node;

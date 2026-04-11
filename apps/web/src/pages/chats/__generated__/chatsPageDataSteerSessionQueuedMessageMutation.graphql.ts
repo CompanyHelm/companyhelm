@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<285f3fcb4b12edafb4b43b25b133f036>>
+ * @generated SignedSource<<787b32bf99906a1073c5b448ab533679>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,26 +9,24 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type DeleteSessionQueuedMessageInput = {
+export type SteerSessionQueuedMessageInput = {
   id: string;
 };
-export type chatsPageDeleteSessionQueuedMessageMutation$variables = {
-  input: DeleteSessionQueuedMessageInput;
+export type chatsPageDataSteerSessionQueuedMessageMutation$variables = {
+  input: SteerSessionQueuedMessageInput;
 };
-export type chatsPageDeleteSessionQueuedMessageMutation$data = {
-  readonly DeleteSessionQueuedMessage: {
-    readonly createdAt: string;
+export type chatsPageDataSteerSessionQueuedMessageMutation$data = {
+  readonly SteerSessionQueuedMessage: {
     readonly id: string;
     readonly sessionId: string;
     readonly shouldSteer: boolean;
     readonly status: string;
-    readonly text: string;
     readonly updatedAt: string;
   };
 };
-export type chatsPageDeleteSessionQueuedMessageMutation = {
-  response: chatsPageDeleteSessionQueuedMessageMutation$data;
-  variables: chatsPageDeleteSessionQueuedMessageMutation$variables;
+export type chatsPageDataSteerSessionQueuedMessageMutation = {
+  response: chatsPageDataSteerSessionQueuedMessageMutation$data;
+  variables: chatsPageDataSteerSessionQueuedMessageMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -51,7 +49,7 @@ v1 = [
     ],
     "concreteType": "SessionQueuedMessage",
     "kind": "LinkedField",
-    "name": "DeleteSessionQueuedMessage",
+    "name": "SteerSessionQueuedMessage",
     "plural": false,
     "selections": [
       {
@@ -72,13 +70,6 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "text",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "shouldSteer",
         "storageKey": null
       },
@@ -87,13 +78,6 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "status",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
         "storageKey": null
       },
       {
@@ -112,7 +96,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageDeleteSessionQueuedMessageMutation",
+    "name": "chatsPageDataSteerSessionQueuedMessageMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -121,20 +105,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageDeleteSessionQueuedMessageMutation",
+    "name": "chatsPageDataSteerSessionQueuedMessageMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "cbf1a541812a48f47f2de86a11501ec0",
+    "cacheID": "ffce659dbc2683482223ed85ffed97bf",
     "id": null,
     "metadata": {},
-    "name": "chatsPageDeleteSessionQueuedMessageMutation",
+    "name": "chatsPageDataSteerSessionQueuedMessageMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageDeleteSessionQueuedMessageMutation(\n  $input: DeleteSessionQueuedMessageInput!\n) {\n  DeleteSessionQueuedMessage(input: $input) {\n    id\n    sessionId\n    text\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageDataSteerSessionQueuedMessageMutation(\n  $input: SteerSessionQueuedMessageInput!\n) {\n  SteerSessionQueuedMessage(input: $input) {\n    id\n    sessionId\n    shouldSteer\n    status\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "34c0099f161ce61ca1dce353e84d05b1";
+(node as any).hash = "b88ba521b39740c9447eeaf1b4e0866e";
 
 export default node;

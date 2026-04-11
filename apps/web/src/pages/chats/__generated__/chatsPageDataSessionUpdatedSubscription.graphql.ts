@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2c91c72a6b1cee2945a04bc614204e55>>
+ * @generated SignedSource<<b4cfc62d0785687f44612e08d215747f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,18 +9,16 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type UpdateSessionTitleInput = {
-  sessionId: string;
-  title?: string | null | undefined;
-};
-export type chatsPageUpdateSessionTitleMutation$variables = {
-  input: UpdateSessionTitleInput;
-};
-export type chatsPageUpdateSessionTitleMutation$data = {
-  readonly UpdateSessionTitle: {
+export type chatsPageDataSessionUpdatedSubscription$variables = Record<PropertyKey, never>;
+export type chatsPageDataSessionUpdatedSubscription$data = {
+  readonly SessionUpdated: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
     readonly inferredTitle: string | null | undefined;
@@ -36,32 +34,19 @@ export type chatsPageUpdateSessionTitleMutation$data = {
     readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageUpdateSessionTitleMutation = {
-  response: chatsPageUpdateSessionTitleMutation$data;
-  variables: chatsPageUpdateSessionTitleMutation$variables;
+export type chatsPageDataSessionUpdatedSubscription = {
+  response: chatsPageDataSessionUpdatedSubscription$data;
+  variables: chatsPageDataSessionUpdatedSubscription$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = [
   {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "input"
-  }
-],
-v1 = [
-  {
     "alias": null,
-    "args": [
-      {
-        "kind": "Variable",
-        "name": "input",
-        "variableName": "input"
-      }
-    ],
+    "args": null,
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "UpdateSessionTitle",
+    "name": "SessionUpdated",
     "plural": false,
     "selections": [
       {
@@ -90,6 +75,34 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
         "storageKey": null
       },
       {
@@ -182,32 +195,32 @@ v1 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageUpdateSessionTitleMutation",
-    "selections": (v1/*: any*/),
-    "type": "Mutation",
+    "name": "chatsPageDataSessionUpdatedSubscription",
+    "selections": (v0/*: any*/),
+    "type": "Subscription",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "chatsPageUpdateSessionTitleMutation",
-    "selections": (v1/*: any*/)
+    "name": "chatsPageDataSessionUpdatedSubscription",
+    "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "0b9393f1988bff1628107644873dce5d",
+    "cacheID": "549f13df1882074c67a7133c81646640",
     "id": null,
     "metadata": {},
-    "name": "chatsPageUpdateSessionTitleMutation",
-    "operationKind": "mutation",
-    "text": "mutation chatsPageUpdateSessionTitleMutation(\n  $input: UpdateSessionTitleInput!\n) {\n  UpdateSessionTitle(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "name": "chatsPageDataSessionUpdatedSubscription",
+    "operationKind": "subscription",
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9f609f1d54553016d53a3434aa225d86";
+(node as any).hash = "12c8f176da6cdc2aad304b4162237a69";
 
 export default node;

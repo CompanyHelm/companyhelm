@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7b743710f4706ad930ae92311864e7ea>>
+ * @generated SignedSource<<d1ca298f21fddad6b7ee6849fff4561e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,19 +9,25 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type ArchiveSessionInput = {
-  id: string;
+export type UpdateSessionTitleInput = {
+  sessionId: string;
+  title?: string | null | undefined;
 };
-export type chatsPageArchiveSessionMutation$variables = {
-  input: ArchiveSessionInput;
+export type chatsPageDataUpdateSessionTitleMutation$variables = {
+  input: UpdateSessionTitleInput;
 };
-export type chatsPageArchiveSessionMutation$data = {
-  readonly ArchiveSession: {
+export type chatsPageDataUpdateSessionTitleMutation$data = {
+  readonly UpdateSessionTitle: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
+    readonly forkedFromSessionAgentId: string | null | undefined;
+    readonly forkedFromSessionId: string | null | undefined;
+    readonly forkedFromSessionTitle: string | null | undefined;
+    readonly forkedFromTurnId: string | null | undefined;
     readonly hasUnread: boolean;
     readonly id: string;
+    readonly inferredTitle: string | null | undefined;
     readonly isCompacting: boolean;
     readonly isThinking: boolean;
     readonly maxContextTokens: number | null | undefined;
@@ -31,11 +37,12 @@ export type chatsPageArchiveSessionMutation$data = {
     readonly status: string;
     readonly thinkingText: string | null | undefined;
     readonly updatedAt: string;
+    readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageArchiveSessionMutation = {
-  response: chatsPageArchiveSessionMutation$data;
-  variables: chatsPageArchiveSessionMutation$variables;
+export type chatsPageDataUpdateSessionTitleMutation = {
+  response: chatsPageDataUpdateSessionTitleMutation$data;
+  variables: chatsPageDataUpdateSessionTitleMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -58,7 +65,7 @@ v1 = [
     ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "ArchiveSession",
+    "name": "UpdateSessionTitle",
     "plural": false,
     "selections": [
       {
@@ -87,6 +94,34 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "currentContextTokens",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromSessionTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "forkedFromTurnId",
         "storageKey": null
       },
       {
@@ -128,6 +163,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "inferredTitle",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "isThinking",
         "storageKey": null
       },
@@ -158,6 +200,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "updatedAt",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "userSetTitle",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -168,7 +217,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageArchiveSessionMutation",
+    "name": "chatsPageDataUpdateSessionTitleMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -177,20 +226,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageArchiveSessionMutation",
+    "name": "chatsPageDataUpdateSessionTitleMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "9d3822127b5735c6b66dbb9ccc06b344",
+    "cacheID": "a7a2370620cfc4ff0855a39333365320",
     "id": null,
     "metadata": {},
-    "name": "chatsPageArchiveSessionMutation",
+    "name": "chatsPageDataUpdateSessionTitleMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation chatsPageDataUpdateSessionTitleMutation(\n  $input: UpdateSessionTitleInput!\n) {\n  UpdateSessionTitle(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6711dc687b1df707ef39ec360c212bd4";
+(node as any).hash = "cf2cb9e7d0d8d81d2e6730fe6b1e6dc3";
 
 export default node;

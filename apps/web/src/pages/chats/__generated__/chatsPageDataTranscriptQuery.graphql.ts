@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cec2d214320a0e78d27282f21f019e85>>
+ * @generated SignedSource<<5b17b3ff9273dd0c6d440f02013f3a2a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,12 +9,12 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageTranscriptQuery$variables = {
+export type chatsPageDataTranscriptQuery$variables = {
   after?: string | null | undefined;
   first: number;
   sessionId: string;
 };
-export type chatsPageTranscriptQuery$data = {
+export type chatsPageDataTranscriptQuery$data = {
   readonly SessionTranscriptMessages: {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
@@ -55,9 +55,9 @@ export type chatsPageTranscriptQuery$data = {
     };
   };
 };
-export type chatsPageTranscriptQuery = {
-  response: chatsPageTranscriptQuery$data;
-  variables: chatsPageTranscriptQuery$variables;
+export type chatsPageDataTranscriptQuery = {
+  response: chatsPageDataTranscriptQuery$data;
+  variables: chatsPageDataTranscriptQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -111,14 +111,7 @@ v7 = {
   "name": "text",
   "storageKey": null
 },
-v8 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "errorMessage",
-  "storageKey": null
-},
-v9 = [
+v8 = [
   {
     "alias": null,
     "args": [
@@ -275,7 +268,13 @@ v9 = [
                 "name": "isError",
                 "storageKey": null
               },
-              (v8/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "errorMessage",
+                "storageKey": null
+              },
               {
                 "alias": null,
                 "args": null,
@@ -334,8 +333,8 @@ return {
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageTranscriptQuery",
-    "selections": (v9/*: any*/),
+    "name": "chatsPageDataTranscriptQuery",
+    "selections": (v8/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -347,20 +346,20 @@ return {
       (v0/*: any*/)
     ],
     "kind": "Operation",
-    "name": "chatsPageTranscriptQuery",
-    "selections": (v9/*: any*/)
+    "name": "chatsPageDataTranscriptQuery",
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "45704b4e467ab2520cad13be6892cb21",
+    "cacheID": "bdaf7d518b3e61ba5f0e6d7eeb784c03",
     "id": null,
     "metadata": {},
-    "name": "chatsPageTranscriptQuery",
+    "name": "chatsPageDataTranscriptQuery",
     "operationKind": "query",
-    "text": "query chatsPageTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
+    "text": "query chatsPageDataTranscriptQuery(\n  $sessionId: ID!\n  $first: Int!\n  $after: String\n) {\n  SessionTranscriptMessages(sessionId: $sessionId, first: $first, after: $after) {\n    edges {\n      cursor\n      node {\n        id\n        sessionId\n        turnId\n        turn {\n          id\n          sessionId\n          startedAt\n          endedAt\n        }\n        role\n        status\n        toolCallId\n        toolName\n        contents {\n          type\n          text\n          data\n          mimeType\n          structuredContent\n          arguments\n          toolCallId\n          toolName\n        }\n        text\n        isError\n        errorMessage\n        createdAt\n        updatedAt\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "ce4baa267a672e0dbe718a37557c618c";
+(node as any).hash = "798bf96a4827494a92ab726cf7354f9d";
 
 export default node;

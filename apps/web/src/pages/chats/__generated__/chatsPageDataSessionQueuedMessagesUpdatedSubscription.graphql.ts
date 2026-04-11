@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<141ac5781c859cef4f6b03a19cc001ab>>
+ * @generated SignedSource<<75049f13ac607cc64f77d5a1c540650a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,11 +9,11 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageQueuedMessagesQuery$variables = {
+export type chatsPageDataSessionQueuedMessagesUpdatedSubscription$variables = {
   sessionId: string;
 };
-export type chatsPageQueuedMessagesQuery$data = {
-  readonly SessionQueuedMessages: ReadonlyArray<{
+export type chatsPageDataSessionQueuedMessagesUpdatedSubscription$data = {
+  readonly SessionQueuedMessagesUpdated: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
     readonly images: ReadonlyArray<{
@@ -28,9 +28,9 @@ export type chatsPageQueuedMessagesQuery$data = {
     readonly updatedAt: string;
   }>;
 };
-export type chatsPageQueuedMessagesQuery = {
-  response: chatsPageQueuedMessagesQuery$data;
-  variables: chatsPageQueuedMessagesQuery$variables;
+export type chatsPageDataSessionQueuedMessagesUpdatedSubscription = {
+  response: chatsPageDataSessionQueuedMessagesUpdatedSubscription$data;
+  variables: chatsPageDataSessionQueuedMessagesUpdatedSubscription$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -60,7 +60,7 @@ v2 = [
     ],
     "concreteType": "SessionQueuedMessage",
     "kind": "LinkedField",
-    "name": "SessionQueuedMessages",
+    "name": "SessionQueuedMessagesUpdated",
     "plural": true,
     "selections": [
       (v1/*: any*/),
@@ -141,29 +141,29 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageQueuedMessagesQuery",
+    "name": "chatsPageDataSessionQueuedMessagesUpdatedSubscription",
     "selections": (v2/*: any*/),
-    "type": "Query",
+    "type": "Subscription",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageQueuedMessagesQuery",
+    "name": "chatsPageDataSessionQueuedMessagesUpdatedSubscription",
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "c5b7bf63917b5117bce76c2a90542615",
+    "cacheID": "751c86b4f92df736e3d82e9fcf61a8c4",
     "id": null,
     "metadata": {},
-    "name": "chatsPageQueuedMessagesQuery",
-    "operationKind": "query",
-    "text": "query chatsPageQueuedMessagesQuery(\n  $sessionId: ID!\n) {\n  SessionQueuedMessages(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
+    "name": "chatsPageDataSessionQueuedMessagesUpdatedSubscription",
+    "operationKind": "subscription",
+    "text": "subscription chatsPageDataSessionQueuedMessagesUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionQueuedMessagesUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    text\n    images {\n      id\n      base64EncodedImage\n      mimeType\n    }\n    shouldSteer\n    status\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "fb30288731bf018683f1ec88488e9566";
+(node as any).hash = "b17c03a2459405b51f1483215d52f8f6";
 
 export default node;

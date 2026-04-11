@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c94e943a4da136cc44bb29c5bc7275e8>>
+ * @generated SignedSource<<6051c5abe7a19bb742c85fe9f5f6af82>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,15 +9,23 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type ForkSessionInput = {
-  sessionId: string;
-  turnId: string;
+export type PromptSessionInput = {
+  id: string;
+  images?: ReadonlyArray<SessionPromptImageInput> | null | undefined;
+  modelProviderCredentialModelId?: string | null | undefined;
+  reasoningLevel?: string | null | undefined;
+  shouldSteer?: boolean | null | undefined;
+  userMessage: string;
 };
-export type chatsPageForkSessionMutation$variables = {
-  input: ForkSessionInput;
+export type SessionPromptImageInput = {
+  base64EncodedImage: string;
+  mimeType: string;
 };
-export type chatsPageForkSessionMutation$data = {
-  readonly ForkSession: {
+export type chatsPageDataPromptSessionMutation$variables = {
+  input: PromptSessionInput;
+};
+export type chatsPageDataPromptSessionMutation$data = {
+  readonly PromptSession: {
     readonly agentId: string;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
@@ -40,9 +48,9 @@ export type chatsPageForkSessionMutation$data = {
     readonly userSetTitle: string | null | undefined;
   };
 };
-export type chatsPageForkSessionMutation = {
-  response: chatsPageForkSessionMutation$data;
-  variables: chatsPageForkSessionMutation$variables;
+export type chatsPageDataPromptSessionMutation = {
+  response: chatsPageDataPromptSessionMutation$data;
+  variables: chatsPageDataPromptSessionMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -65,7 +73,7 @@ v1 = [
     ],
     "concreteType": "Session",
     "kind": "LinkedField",
-    "name": "ForkSession",
+    "name": "PromptSession",
     "plural": false,
     "selections": [
       {
@@ -217,7 +225,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageForkSessionMutation",
+    "name": "chatsPageDataPromptSessionMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -226,20 +234,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageForkSessionMutation",
+    "name": "chatsPageDataPromptSessionMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "e93047acb75df5f00b92bd3ad90aaa4e",
+    "cacheID": "181b50eb01f13a386a8e6f181e5ca5b2",
     "id": null,
     "metadata": {},
-    "name": "chatsPageForkSessionMutation",
+    "name": "chatsPageDataPromptSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageForkSessionMutation(\n  $input: ForkSessionInput!\n) {\n  ForkSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageDataPromptSessionMutation(\n  $input: PromptSessionInput!\n) {\n  PromptSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1ebfc49422d719aac033ff61ff7e9d53";
+(node as any).hash = "c5cd05547835722d28250718dc405000";
 
 export default node;

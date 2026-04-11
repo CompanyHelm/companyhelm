@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<manual-fallback>>
+ * @generated SignedSource<<324c81037d71e90a662ce679c3e6e96d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -31,34 +31,31 @@ export type createSkillDialogGithubDiscoveredSkillsQuery = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "repositoryUrl"
-  },
-  {
-    "defaultValue": null,
-    "kind": "LocalArgument",
-    "name": "branchName"
-  }
-],
-v1 = [
-  {
-    "kind": "Variable",
-    "name": "repositoryUrl",
-    "variableName": "repositoryUrl"
-  },
-  {
-    "kind": "Variable",
-    "name": "branchName",
-    "variableName": "branchName"
-  }
-],
+var v0 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "branchName"
+},
+v1 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "repositoryUrl"
+},
 v2 = [
   {
     "alias": null,
-    "args": (v1/*: any*/),
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "branchName",
+        "variableName": "branchName"
+      },
+      {
+        "kind": "Variable",
+        "name": "repositoryUrl",
+        "variableName": "repositoryUrl"
+      }
+    ],
     "concreteType": "GithubDiscoveredSkill",
     "kind": "LinkedField",
     "name": "GithubDiscoveredSkills",
@@ -126,7 +123,10 @@ v2 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [
+      (v0/*: any*/),
+      (v1/*: any*/)
+    ],
     "kind": "Fragment",
     "metadata": null,
     "name": "createSkillDialogGithubDiscoveredSkillsQuery",
@@ -136,13 +136,16 @@ return {
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": (v0/*: any*/),
+    "argumentDefinitions": [
+      (v1/*: any*/),
+      (v0/*: any*/)
+    ],
     "kind": "Operation",
     "name": "createSkillDialogGithubDiscoveredSkillsQuery",
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "manual-createSkillDialogGithubDiscoveredSkillsQuery",
+    "cacheID": "5278a2a4cfdf26267339513542614cf1",
     "id": null,
     "metadata": {},
     "name": "createSkillDialogGithubDiscoveredSkillsQuery",
@@ -152,6 +155,6 @@ return {
 };
 })();
 
-(node as any).hash = "manual-createSkillDialogGithubDiscoveredSkillsQuery";
+(node as any).hash = "a2ef417e80e045ac6725f147e130f6ff";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f7c743292f9a3dfa359747943558e43c>>
+ * @generated SignedSource<<f2befd8f59b2da510426b3ebb4f36ba1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,10 +9,10 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageSessionEnvironmentQuery$variables = {
+export type chatsPageDataSessionEnvironmentQuery$variables = {
   sessionId: string;
 };
-export type chatsPageSessionEnvironmentQuery$data = {
+export type chatsPageDataSessionEnvironmentQuery$data = {
   readonly SessionEnvironment: {
     readonly agentDefaultComputeProviderDefinition: {
       readonly id: string;
@@ -33,9 +33,9 @@ export type chatsPageSessionEnvironmentQuery$data = {
     } | null | undefined;
   };
 };
-export type chatsPageSessionEnvironmentQuery = {
-  response: chatsPageSessionEnvironmentQuery$data;
-  variables: chatsPageSessionEnvironmentQuery$variables;
+export type chatsPageDataSessionEnvironmentQuery = {
+  response: chatsPageDataSessionEnvironmentQuery$data;
+  variables: chatsPageDataSessionEnvironmentQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -173,7 +173,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageSessionEnvironmentQuery",
+    "name": "chatsPageDataSessionEnvironmentQuery",
     "selections": (v3/*: any*/),
     "type": "Query",
     "abstractKey": null
@@ -182,20 +182,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageSessionEnvironmentQuery",
+    "name": "chatsPageDataSessionEnvironmentQuery",
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "8865f88e70655b5e4b6b4d6b5c395f62",
+    "cacheID": "e539071e7d4ff43593b65916ff4ccbe7",
     "id": null,
     "metadata": {},
-    "name": "chatsPageSessionEnvironmentQuery",
+    "name": "chatsPageDataSessionEnvironmentQuery",
     "operationKind": "query",
-    "text": "query chatsPageSessionEnvironmentQuery(\n  $sessionId: ID!\n) {\n  SessionEnvironment(sessionId: $sessionId) {\n    currentEnvironment {\n      id\n      displayName\n      provider\n      providerDefinitionName\n      providerEnvironmentId\n      status\n      platform\n      cpuCount\n      memoryGb\n      diskSpaceGb\n    }\n    agentDefaultComputeProviderDefinition {\n      id\n      name\n      provider\n    }\n  }\n}\n"
+    "text": "query chatsPageDataSessionEnvironmentQuery(\n  $sessionId: ID!\n) {\n  SessionEnvironment(sessionId: $sessionId) {\n    currentEnvironment {\n      id\n      displayName\n      provider\n      providerDefinitionName\n      providerEnvironmentId\n      status\n      platform\n      cpuCount\n      memoryGb\n      diskSpaceGb\n    }\n    agentDefaultComputeProviderDefinition {\n      id\n      name\n      provider\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "447d48cd22dfd2a1bf617a7268687931";
+(node as any).hash = "9cf636c84e4fe7121f8d99ede9f80c5a";
 
 export default node;

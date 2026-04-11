@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f79c54677b93a115c5597d68e374b5f3>>
+ * @generated SignedSource<<c8440126a5749bc1b109e111f55d8a44>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,21 +9,20 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type StopEnvironmentInput = {
+export type StartEnvironmentInput = {
   id: string;
 };
-export type chatsPageStopEnvironmentMutation$variables = {
-  input: StopEnvironmentInput;
+export type chatsPageDataStartEnvironmentMutation$variables = {
+  input: StartEnvironmentInput;
 };
-export type chatsPageStopEnvironmentMutation$data = {
-  readonly StopEnvironment: {
+export type chatsPageDataStartEnvironmentMutation$data = {
+  readonly StartEnvironment: {
     readonly id: string;
-    readonly status: string;
   };
 };
-export type chatsPageStopEnvironmentMutation = {
-  response: chatsPageStopEnvironmentMutation$data;
-  variables: chatsPageStopEnvironmentMutation$variables;
+export type chatsPageDataStartEnvironmentMutation = {
+  response: chatsPageDataStartEnvironmentMutation$data;
+  variables: chatsPageDataStartEnvironmentMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -46,7 +45,7 @@ v1 = [
     ],
     "concreteType": "Environment",
     "kind": "LinkedField",
-    "name": "StopEnvironment",
+    "name": "StartEnvironment",
     "plural": false,
     "selections": [
       {
@@ -54,13 +53,6 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
         "storageKey": null
       }
     ],
@@ -72,7 +64,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageStopEnvironmentMutation",
+    "name": "chatsPageDataStartEnvironmentMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -81,20 +73,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageStopEnvironmentMutation",
+    "name": "chatsPageDataStartEnvironmentMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "fe4d8d01349845413c8b99334c121ed9",
+    "cacheID": "53ed1a192fba9f050e62e09c0c1a377e",
     "id": null,
     "metadata": {},
-    "name": "chatsPageStopEnvironmentMutation",
+    "name": "chatsPageDataStartEnvironmentMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageStopEnvironmentMutation(\n  $input: StopEnvironmentInput!\n) {\n  StopEnvironment(input: $input) {\n    id\n    status\n  }\n}\n"
+    "text": "mutation chatsPageDataStartEnvironmentMutation(\n  $input: StartEnvironmentInput!\n) {\n  StartEnvironment(input: $input) {\n    id\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c8f07ffadb12ed02886b5dc9db080b7d";
+(node as any).hash = "8f7b57a71ffe5c6394f08953c6d72636";
 
 export default node;

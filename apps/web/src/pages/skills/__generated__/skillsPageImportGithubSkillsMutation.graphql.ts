@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<manual-fallback>>
+ * @generated SignedSource<<fc94191ca3123b1e58fb30a24e0529eb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,10 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type ImportGithubSkillsInput = {
+  skillGroupId?: string | null | undefined;
+  skills: ReadonlyArray<ImportGithubSkillRecordInput>;
+};
 export type ImportGithubSkillRecordInput = {
   branchName: string;
   commitSha: string;
@@ -18,10 +22,6 @@ export type ImportGithubSkillRecordInput = {
   name: string;
   repository: string;
   skillDirectory: string;
-};
-export type ImportGithubSkillsInput = {
-  skillGroupId?: string | null | undefined;
-  skills: ReadonlyArray<ImportGithubSkillRecordInput>;
 };
 export type skillsPageImportGithubSkillsMutation$variables = {
   input: ImportGithubSkillsInput;
@@ -144,7 +144,7 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "manual-skillsPageImportGithubSkillsMutation",
+    "cacheID": "697a8718663e3db1d1b9761d98bdf918",
     "id": null,
     "metadata": {},
     "name": "skillsPageImportGithubSkillsMutation",
@@ -154,6 +154,6 @@ return {
 };
 })();
 
-(node as any).hash = "manual-skillsPageImportGithubSkillsMutation";
+(node as any).hash = "9a519d939ed0e3b388762d4620176d94";
 
 export default node;

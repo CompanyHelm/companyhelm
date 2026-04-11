@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e7e2e35330d436c664937096e6aadf89>>
+ * @generated SignedSource<<39a674eb26dd0152383e76b8a99ade5f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,10 +9,10 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type chatsPageSessionMessageUpdatedSubscription$variables = {
+export type chatsPageDataSessionMessageUpdatedSubscription$variables = {
   sessionId: string;
 };
-export type chatsPageSessionMessageUpdatedSubscription$data = {
+export type chatsPageDataSessionMessageUpdatedSubscription$data = {
   readonly SessionMessageUpdated: {
     readonly contents: ReadonlyArray<{
       readonly arguments: any | null | undefined;
@@ -44,9 +44,9 @@ export type chatsPageSessionMessageUpdatedSubscription$data = {
     readonly updatedAt: string;
   };
 };
-export type chatsPageSessionMessageUpdatedSubscription = {
-  response: chatsPageSessionMessageUpdatedSubscription$data;
-  variables: chatsPageSessionMessageUpdatedSubscription$variables;
+export type chatsPageDataSessionMessageUpdatedSubscription = {
+  response: chatsPageDataSessionMessageUpdatedSubscription$data;
+  variables: chatsPageDataSessionMessageUpdatedSubscription$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -92,14 +92,7 @@ v5 = {
   "name": "text",
   "storageKey": null
 },
-v6 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "errorMessage",
-  "storageKey": null
-},
-v7 = [
+v6 = [
   {
     "alias": null,
     "args": [
@@ -223,7 +216,13 @@ v7 = [
         "name": "isError",
         "storageKey": null
       },
-      (v6/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "errorMessage",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -247,8 +246,8 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "chatsPageSessionMessageUpdatedSubscription",
-    "selections": (v7/*: any*/),
+    "name": "chatsPageDataSessionMessageUpdatedSubscription",
+    "selections": (v6/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -256,20 +255,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "chatsPageSessionMessageUpdatedSubscription",
-    "selections": (v7/*: any*/)
+    "name": "chatsPageDataSessionMessageUpdatedSubscription",
+    "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "7f969d5f8906a6739c2b6b5981d48ed2",
+    "cacheID": "92fb7229290e821c45f561022b9b61d0",
     "id": null,
     "metadata": {},
-    "name": "chatsPageSessionMessageUpdatedSubscription",
+    "name": "chatsPageDataSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "dc130d49312a80896ffab466f361a1e9";
+(node as any).hash = "5f0ff09469a70d3fe3a88d91022d9569";
 
 export default node;
