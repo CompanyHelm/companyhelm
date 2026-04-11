@@ -344,12 +344,17 @@ export function loadChatListWidth(): number {
 
 export function resolveComposerModelOptionId(
   modelOptions: ReadonlyArray<ChatComposerModelOption>,
-  preferredModelOptionId: string | null | undefined,
+  preferredModelProviderCredentialModelId: string | null | undefined,
   preferredModelId: string | null | undefined,
-  fallbackModelOptionId: string | null | undefined,
+  fallbackModelProviderCredentialModelId: string | null | undefined,
 ): string {
-  if (preferredModelOptionId && modelOptions.some((modelOption) => modelOption.id === preferredModelOptionId)) {
-    return preferredModelOptionId;
+  if (preferredModelProviderCredentialModelId) {
+    const matchedPreferredOption = modelOptions.find((modelOption) => {
+      return modelOption.modelProviderCredentialModelId === preferredModelProviderCredentialModelId;
+    });
+    if (matchedPreferredOption) {
+      return matchedPreferredOption.id;
+    }
   }
   if (preferredModelId) {
     const matchedModelOption = modelOptions.find((modelOption) => modelOption.modelId === preferredModelId);
@@ -357,8 +362,13 @@ export function resolveComposerModelOptionId(
       return matchedModelOption.id;
     }
   }
-  if (fallbackModelOptionId && modelOptions.some((modelOption) => modelOption.id === fallbackModelOptionId)) {
-    return fallbackModelOptionId;
+  if (fallbackModelProviderCredentialModelId) {
+    const matchedFallbackOption = modelOptions.find((modelOption) => {
+      return modelOption.modelProviderCredentialModelId === fallbackModelProviderCredentialModelId;
+    });
+    if (matchedFallbackOption) {
+      return matchedFallbackOption.id;
+    }
   }
 
   return modelOptions[0]?.id ?? "";

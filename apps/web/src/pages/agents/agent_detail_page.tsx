@@ -64,6 +64,7 @@ const agentDetailPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
+      modelProviderCredentialId
       isDefault
       label
       modelProvider
@@ -71,6 +72,7 @@ const agentDetailPageQueryNode = graphql`
       defaultReasoningLevel
       models {
         id
+        modelProviderCredentialModelId
         modelId
         name
         description
@@ -176,7 +178,7 @@ function resolveProviderOption(
   providerOptions: AgentCreateProviderOption[],
   providerCredentialId: string,
 ): AgentCreateProviderOption {
-  const providerOption = providerOptions.find((option) => option.id === providerCredentialId);
+  const providerOption = providerOptions.find((option) => option.modelProviderCredentialId === providerCredentialId);
   if (!providerOption) {
     throw new Error("Provider option not found.");
   }
@@ -189,7 +191,7 @@ function resolveModelOption(
   modelId: string | null | undefined,
 ) {
   if (modelId) {
-    const exactMatch = providerOption.models.find((option) => option.id === modelId);
+    const exactMatch = providerOption.models.find((option) => option.modelProviderCredentialModelId === modelId);
     if (exactMatch) {
       return exactMatch;
     }
@@ -226,8 +228,8 @@ function resolveReasoningLevel(
 }
 
 function AgentDetailPageContent() {
-  const { agentId } = useParams({ strict: false });
-  const normalizedAgentId = String(agentId || "").trim();
+  const params = useParams({ strict: false }) as { agentId?: string };
+  const normalizedAgentId = String(params.agentId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   if (!normalizedAgentId) {
     throw new Error("Agent ID is required.");
@@ -248,13 +250,13 @@ function AgentDetailPageContent() {
 
   const agent = data.Agent;
   const agentSecrets = data.AgentSecrets.map((secret) => ({
-    description: secret.description,
+    description: secret.description ?? null,
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
   }));
   const companySecrets = data.Secrets.map((secret) => ({
-    description: secret.description,
+    description: secret.description ?? null,
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
@@ -267,7 +269,7 @@ function AgentDetailPageContent() {
     description: skill.description,
     id: skill.id,
     name: skill.name,
-    skillGroupId: skill.skillGroupId,
+    skillGroupId: skill.skillGroupId ?? null,
   }));
   const companySkillGroups: AgentCreateSkillGroupOption[] = data.SkillGroups.map((skillGroup) => ({
     id: skillGroup.id,
@@ -277,18 +279,20 @@ function AgentDetailPageContent() {
     description: skill.description,
     id: skill.id,
     name: skill.name,
-    skillGroupId: skill.skillGroupId,
+    skillGroupId: skill.skillGroupId ?? null,
   }));
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
       id: providerOption.id,
+      modelProviderCredentialId: providerOption.modelProviderCredentialId,
       isDefault: providerOption.isDefault,
       label: providerOption.label,
       modelProvider: providerOption.modelProvider,
-      defaultModelId: providerOption.defaultModelId,
-      defaultReasoningLevel: providerOption.defaultReasoningLevel,
+      defaultModelId: providerOption.defaultModelId ?? null,
+      defaultReasoningLevel: providerOption.defaultReasoningLevel ?? null,
       models: providerOption.models.map((modelOption) => ({
         id: modelOption.id,
+        modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
         modelId: modelOption.modelId,
         name: modelOption.name,
         reasoningSupported: modelOption.reasoningSupported,
@@ -322,7 +326,7 @@ function AgentDetailPageContent() {
   }, [agent.name, setDetailLabel]);
 
   const selectedProviderOption = agent.modelProviderCredentialId
-    ? providerOptions.find((option) => option.id === agent.modelProviderCredentialId) ?? null
+    ? providerOptions.find((option) => option.modelProviderCredentialId === agent.modelProviderCredentialId) ?? null
     : null;
   const selectedComputeProviderDefinitionOption = agent.defaultComputeProviderDefinitionId
     ? computeProviderDefinitionOptions.find((option) => option.id === agent.defaultComputeProviderDefinitionId) ?? null
@@ -331,7 +335,9 @@ function AgentDetailPageContent() {
     return template.templateId === agent.defaultEnvironmentTemplateId;
   }) ?? null;
   const selectedModelOption = selectedProviderOption && agent.modelProviderCredentialModelId
-    ? selectedProviderOption.models.find((option) => option.id === agent.modelProviderCredentialModelId) ?? null
+    ? selectedProviderOption.models.find(
+      (option) => option.modelProviderCredentialModelId === agent.modelProviderCredentialModelId,
+    ) ?? null
     : null;
   const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
 
@@ -392,8 +398,8 @@ function AgentDetailPageContent() {
             defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
             defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
             name: patch.name ?? agent.name,
-            modelProviderCredentialId: nextProviderOption.id,
-            modelProviderCredentialModelId: nextModelOption.id,
+            modelProviderCredentialId: nextProviderOption.modelProviderCredentialId,
+            modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
             reasoningLevel: nextReasoningLevel,
             systemPrompt: patch.systemPrompt === undefined
               ? agent.systemPrompt
@@ -451,7 +457,7 @@ function AgentDetailPageContent() {
               label: option.label,
               value: option.id,
             }))}
-            value={agent.defaultComputeProviderDefinitionId}
+            value={agent.defaultComputeProviderDefinitionId ?? null}
           />
 
           <EditableField
@@ -468,7 +474,7 @@ function AgentDetailPageContent() {
               label: option.name,
               value: option.templateId,
             }))}
-            value={agent.defaultEnvironmentTemplateId}
+            value={agent.defaultEnvironmentTemplateId ?? null}
           />
 
           <EditableField
@@ -480,8 +486,8 @@ function AgentDetailPageContent() {
               const nextProviderOption = resolveProviderOption(providerOptions, value);
               const nextModelOption = resolveModelOption(nextProviderOption, null);
               await saveAgent({
-                modelProviderCredentialId: value,
-                modelProviderCredentialModelId: nextModelOption?.id,
+                modelProviderCredentialId: nextProviderOption.modelProviderCredentialId,
+                modelProviderCredentialModelId: nextModelOption?.modelProviderCredentialModelId,
                 reasoningLevel: resolveReasoningLevel(nextProviderOption, nextModelOption, null),
               });
             }}
@@ -489,7 +495,7 @@ function AgentDetailPageContent() {
               label: option.label,
               value: option.id,
             }))}
-            value={agent.modelProviderCredentialId}
+            value={selectedProviderOption?.id ?? ""}
           />
 
           <EditableField
@@ -498,15 +504,20 @@ function AgentDetailPageContent() {
             fieldType="select"
             label="Model"
             onSave={async (value) => {
+              const nextModelOption = selectedProviderOption?.models.find((option) => option.id === value) ?? null;
+              if (!nextModelOption) {
+                throw new Error("Selected model is not available.");
+              }
+
               await saveAgent({
-                modelProviderCredentialModelId: value,
+                modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
               });
             }}
             options={(selectedProviderOption?.models ?? []).map((option) => ({
               label: option.name,
               value: option.id,
             }))}
-            value={agent.modelProviderCredentialModelId}
+            value={selectedModelOption?.id ?? null}
           />
 
           <EditableField
@@ -523,7 +534,7 @@ function AgentDetailPageContent() {
               label: level,
               value: level,
             }))}
-            value={agent.reasoningLevel}
+            value={agent.reasoningLevel ?? null}
           />
 
           <div className="rounded-xl border border-border/60 bg-card/50 p-4">
@@ -551,7 +562,7 @@ function AgentDetailPageContent() {
               });
             }}
             readOnlyFormat="markdown"
-            value={agent.systemPrompt}
+            value={agent.systemPrompt ?? null}
           />
         </CardContent>
       </Card>

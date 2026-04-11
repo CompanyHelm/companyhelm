@@ -21,6 +21,7 @@ import { DefaultAttachmentSection } from "./default_attachment_section";
 
 export type AgentCreateProviderOption = {
   id: string;
+  modelProviderCredentialId: string;
   isDefault: boolean;
   label: string;
   modelProvider: string;
@@ -28,6 +29,7 @@ export type AgentCreateProviderOption = {
   defaultReasoningLevel: string | null;
   models: Array<{
     id: string;
+    modelProviderCredentialModelId: string;
     modelId: string;
     name: string;
     reasoningSupported: boolean;
@@ -655,11 +657,15 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
           <Button
             disabled={props.isSaving || isCreateDisabled}
             onClick={async () => {
+              if (!selectedProviderOption || !selectedModelOption) {
+                return;
+              }
+
               await props.onCreate({
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 defaultEnvironmentTemplateId: environmentTemplateId,
-                modelProviderCredentialId: providerOptionId,
-                modelProviderCredentialModelId: modelOptionId,
+                modelProviderCredentialId: selectedProviderOption.modelProviderCredentialId,
+                modelProviderCredentialModelId: selectedModelOption.modelProviderCredentialModelId,
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
                 secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,

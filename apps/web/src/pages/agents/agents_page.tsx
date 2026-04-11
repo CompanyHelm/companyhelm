@@ -31,6 +31,7 @@ const agentsPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
+      modelProviderCredentialId
       isDefault
       label
       modelProvider
@@ -38,6 +39,7 @@ const agentsPageQueryNode = graphql`
       defaultReasoningLevel
       models {
         id
+        modelProviderCredentialModelId
         modelId
         name
         reasoningSupported
@@ -158,6 +160,7 @@ function AgentsPageContent() {
   }));
   const providerOptions: AgentCreateProviderOption[] = data.AgentCreateOptions.map((providerOption) => ({
     id: providerOption.id,
+    modelProviderCredentialId: providerOption.modelProviderCredentialId,
     isDefault: providerOption.isDefault,
     label: providerOption.label,
     modelProvider: providerOption.modelProvider,
@@ -165,6 +168,7 @@ function AgentsPageContent() {
     defaultReasoningLevel: providerOption.defaultReasoningLevel,
     models: providerOption.models.map((modelOption) => ({
       id: modelOption.id,
+      modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
       modelId: modelOption.modelId,
       name: modelOption.name,
       reasoningSupported: modelOption.reasoningSupported,

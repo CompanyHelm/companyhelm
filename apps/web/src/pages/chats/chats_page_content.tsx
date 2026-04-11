@@ -262,6 +262,7 @@ export function ChatsPageContent() {
         return providerOption.models.map((modelOption) => ({
           description: modelOption.description,
           id: modelOption.id,
+          modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
           modelId: modelOption.modelId,
           name: modelOption.name,
           providerLabel: providerOption.label,
@@ -1277,7 +1278,7 @@ export function ChatsPageContent() {
           input: {
             agentId: selectedAgent.id,
             images: promptImages.length > 0 ? promptImages : undefined,
-            modelProviderCredentialModelId: selectedComposerModelOption.id,
+            modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             sessionId: nextSessionId,
             userMessage,
@@ -1477,7 +1478,7 @@ export function ChatsPageContent() {
           input: {
             id: selectedSession.id,
             images: promptImages.length > 0 ? promptImages : undefined,
-            modelProviderCredentialModelId: selectedComposerModelOption.id,
+            modelProviderCredentialModelId: selectedComposerModelOption.modelProviderCredentialModelId,
             reasoningLevel: composerReasoningLevel.length > 0 ? composerReasoningLevel : undefined,
             shouldSteer,
             userMessage,

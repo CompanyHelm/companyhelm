@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f475b50dcd3d2e64714243bf6e098692>>
+ * @generated SignedSource<<845af86f3342520b10fe724eb4d6e17f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,9 +18,11 @@ export type agentsPageQuery$data = {
     readonly isDefault: boolean;
     readonly label: string;
     readonly modelProvider: string;
+    readonly modelProviderCredentialId: string;
     readonly models: ReadonlyArray<{
       readonly id: string;
       readonly modelId: string;
+      readonly modelProviderCredentialModelId: string;
       readonly name: string;
       readonly reasoningLevels: ReadonlyArray<string>;
       readonly reasoningSupported: boolean;
@@ -167,6 +169,13 @@ v5 = [
     "plural": true,
     "selections": [
       (v0/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "modelProviderCredentialId",
+        "storageKey": null
+      },
       (v3/*: any*/),
       {
         "alias": null,
@@ -199,6 +208,13 @@ v5 = [
         "plural": true,
         "selections": [
           (v0/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "modelProviderCredentialModelId",
+            "storageKey": null
+          },
           {
             "alias": null,
             "args": null,
@@ -369,16 +385,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "c74f7a7d32f1715fc6d7af79a3cf7ceb",
+    "cacheID": "ce4c8705da67ea2d817fc013ce2df788",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6070228952130f540061588fc218b3a4";
+(node as any).hash = "9c75cbf625734674f7dcc6ea4e11757b";
 
 export default node;

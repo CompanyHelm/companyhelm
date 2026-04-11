@@ -26,6 +26,7 @@ type ModelRecord = {
 
 type GraphqlAgentCreateModelOption = {
   id: string;
+  modelProviderCredentialModelId: string;
   modelId: string;
   name: string;
   description: string;
@@ -35,6 +36,7 @@ type GraphqlAgentCreateModelOption = {
 
 type GraphqlAgentCreateProviderOption = {
   id: string;
+  modelProviderCredentialId: string;
   isDefault: boolean;
   label: string;
   modelProvider: string;
@@ -109,7 +111,8 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
             .filter((modelRecord) => modelRecord.modelProviderCredentialId === credentialRecord.id);
           const credentialModels = credentialModelRecords
             .map((modelRecord) => ({
-              id: modelRecord.id,
+              id: this.createModelOptionId(modelRecord.id),
+              modelProviderCredentialModelId: modelRecord.id,
               modelId: modelRecord.modelId,
               name: modelRecord.name,
               description: modelRecord.description,
@@ -132,7 +135,8 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
             : (supportedReasoningLevels[0] ?? null);
 
           return {
-            id: credentialRecord.id,
+            id: this.createProviderOptionId(credentialRecord.id),
+            modelProviderCredentialId: credentialRecord.id,
             isDefault: credentialRecord.isDefault,
             label: this.resolveProviderLabel(credentialRecord),
             modelProvider: credentialRecord.modelProvider,
@@ -145,6 +149,22 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         .filter((providerOption) => providerOption.models.length > 0);
     });
   };
+
+  /**
+   * Namespaces option ids so Relay does not merge these projection records with the credential
+   * entities they are derived from.
+   */
+  private createProviderOptionId(credentialId: string): string {
+    return `agent-create-provider-option:${credentialId}`;
+  }
+
+  /**
+   * Uses a dedicated id namespace for model options for the same reason as provider options:
+   * Relay record ids must be globally unique across GraphQL types.
+   */
+  private createModelOptionId(modelProviderCredentialModelId: string): string {
+    return `agent-create-model-option:${modelProviderCredentialModelId}`;
+  }
 
   private resolveProviderLabel(credentialRecord: CredentialRecord): string {
     const providerDefinition = this.modelProviderService.get(credentialRecord.modelProvider);

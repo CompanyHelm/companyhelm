@@ -382,6 +382,7 @@ type E2bComputeProviderDefinition {
 
 type AgentCreateProviderOption {
   id: ID!
+  modelProviderCredentialId: ID!
   isDefault: Boolean!
   label: String!
   modelProvider: String!
@@ -392,6 +393,7 @@ type AgentCreateProviderOption {
 
 type AgentCreateModelOption {
   id: ID!
+  modelProviderCredentialModelId: ID!
   modelId: String!
   name: String!
   description: String!

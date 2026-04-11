@@ -10,6 +10,7 @@ import {
 export type ChatComposerModelOption = {
   description: string;
   id: string;
+  modelProviderCredentialModelId: string;
   modelId: string;
   name: string;
   providerLabel: string;

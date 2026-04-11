@@ -140,6 +140,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
         query AgentCreateOptions {
           AgentCreateOptions {
             id
+            modelProviderCredentialId
             isDefault
             label
             modelProvider
@@ -147,6 +148,7 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
             defaultReasoningLevel
             models {
               id
+              modelProviderCredentialModelId
               modelId
               name
               description
@@ -162,14 +164,16 @@ test("GraphQL AgentCreateOptions query groups provider credentials with their mo
   assert.equal(response.statusCode, 200);
   const document = response.json();
   assert.deepEqual(document.data.AgentCreateOptions, [{
-    id: "credential-1",
+    id: "agent-create-provider-option:credential-1",
+    modelProviderCredentialId: "credential-1",
     isDefault: true,
     label: "OpenAI / Codex",
     modelProvider: "openai",
     defaultModelId: "gpt-5.4",
     defaultReasoningLevel: "high",
     models: [{
-      id: "model-row-1",
+      id: "agent-create-model-option:model-row-1",
+      modelProviderCredentialModelId: "model-row-1",
       modelId: "gpt-5.4",
       name: "GPT-5.4",
       description: "Latest frontier agentic coding model.",

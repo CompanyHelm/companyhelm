@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4237f7e207ef018121ba75d961a057e4>>
+ * @generated SignedSource<<b8d2215d5cad755731b093fc4e71e79b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type chatsPageDataQuery$data = {
       readonly description: string;
       readonly id: string;
       readonly modelId: string;
+      readonly modelProviderCredentialModelId: string;
       readonly name: string;
       readonly reasoningLevels: ReadonlyArray<string>;
       readonly reasoningSupported: boolean;
@@ -197,6 +198,7 @@ v7 = [
         "plural": true,
         "selections": [
           (v0/*: any*/),
+          (v2/*: any*/),
           (v5/*: any*/),
           (v1/*: any*/),
           {
@@ -433,16 +435,16 @@ return {
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "9379e85a27b7187d60638ea35cbd83ce",
+    "cacheID": "479d06ec44fac5b6c76290fea9dd07b6",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4887e7d01780ff52d9827eda3f30deba";
+(node as any).hash = "ce33ea1b177cc0f525e5a1b387b97541";
 
 export default node;

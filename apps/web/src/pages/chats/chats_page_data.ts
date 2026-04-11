@@ -44,6 +44,7 @@ export const chatsPageQueryNode = graphql`
       defaultReasoningLevel
       models {
         id
+        modelProviderCredentialModelId
         modelId
         name
         description
