@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { OrganizationList, useOrganization, useOrganizationList } from "@clerk/react";
 import { Outlet, useParams } from "@tanstack/react-router";
+import { Loader2Icon } from "lucide-react";
 
 /**
  * Keeps Clerk's active organization aligned with the slug embedded in the current URL so separate
@@ -21,6 +22,7 @@ export function OrganizationRoute() {
   const [activationErrorMessage, setActivationErrorMessage] = useState<string | null>(null);
   const [pendingOrganizationId, setPendingOrganizationId] = useState<string | null>(null);
   const activeOrganizationSlug = organizationState.organization?.slug ?? null;
+  const canActivateOrganization = Boolean(organizationListState.setActive);
   const matchingMembership = useMemo(() => {
     return organizationListState.userMemberships.data?.find((membership) =>
       membership.organization.slug === organizationSlug
@@ -71,9 +73,23 @@ export function OrganizationRoute() {
     return <Outlet />;
   }
 
-  if (matchingMembership) {
-    return null;
+  if (matchingMembership && !activationErrorMessage && canActivateOrganization) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-10">
+        <div className="flex w-full max-w-lg items-center gap-3 rounded-2xl border border-border/60 bg-card/80 px-5 py-4 text-sm text-muted-foreground shadow-sm">
+          <Loader2Icon className="size-4 animate-spin text-foreground" />
+          <span>
+            Switching to <span className="font-medium text-foreground">{organizationSlug}</span>…
+          </span>
+        </div>
+      </div>
+    );
   }
+
+  const unavailableMessage = activationErrorMessage
+    ?? (matchingMembership
+      ? "Your Clerk session found this company, but could not activate it."
+      : null);
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10">
@@ -84,8 +100,8 @@ export function OrganizationRoute() {
             The URL points to <span className="font-medium text-foreground">{organizationSlug}</span>, but your current
             Clerk session cannot activate that company.
           </p>
-          {activationErrorMessage ? (
-            <p className="text-sm text-destructive">{activationErrorMessage}</p>
+          {unavailableMessage ? (
+            <p className="text-sm text-destructive">{unavailableMessage}</p>
           ) : null}
         </div>
         <OrganizationList
