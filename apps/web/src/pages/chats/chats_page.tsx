@@ -4362,17 +4362,19 @@ function ChatsPageContent() {
           </div>
 
           <div className="no-scrollbar flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
-            <Button
-              className="mb-4 w-full justify-start"
-              disabled={!hasAvailableAgents}
-              onClick={() => {
-                setIsNewChatDialogOpen(true);
-              }}
-              type="button"
-            >
-              <PlusIcon className="size-4" />
-              New chat
-            </Button>
+            <div className="mb-4 px-1">
+              <Button
+                className="w-full justify-start"
+                disabled={!hasAvailableAgents}
+                onClick={() => {
+                  setIsNewChatDialogOpen(true);
+                }}
+                type="button"
+              >
+                <PlusIcon className="size-4" />
+                New chat
+              </Button>
+            </div>
 
             {!hasExistingChats ? (
               <div className="mb-4 rounded-xl border border-dashed border-sidebar-border bg-sidebar-accent/25 px-4 py-10 text-center">
