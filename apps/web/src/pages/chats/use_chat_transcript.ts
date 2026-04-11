@@ -16,8 +16,8 @@ import {
   captureTranscriptScrollRestoreRecord,
   CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX,
   CHAT_TRANSCRIPT_PAGE_SIZE,
-  CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX,
   mergeTranscriptMessages,
+  resolveTranscriptTopLoadThresholdPx,
   restoreTranscriptScrollPosition,
   toTranscriptMessagesFromConnection,
   type TranscriptScrollRestoreRecord,
@@ -512,7 +512,8 @@ export function useChatTranscript({
       reconcileLiveTailState(selectedSession.id);
     }
 
-    const isTranscriptNearTop = transcriptNode.scrollTop <= CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX;
+    const transcriptTopLoadThreshold = resolveTranscriptTopLoadThresholdPx(transcriptNode.clientHeight);
+    const isTranscriptNearTop = transcriptNode.scrollTop <= transcriptTopLoadThreshold;
     if (!selectedSession || !isTranscriptNearTop || !transcriptHasNextPage || isLoadingOlderTranscript) {
       return;
     }

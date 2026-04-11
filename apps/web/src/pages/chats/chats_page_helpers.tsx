@@ -21,7 +21,8 @@ export const CHAT_DRAFT_MIN_LINES = 1;
 export const CHAT_DRAFT_MAX_LINES = 10;
 export const CHAT_IMAGE_INPUT_ACCEPT = "image/jpeg,image/png";
 export const CHAT_TRANSCRIPT_PAGE_SIZE = 50;
-export const CHAT_TRANSCRIPT_TOP_LOAD_THRESHOLD_PX = 96;
+export const CHAT_TRANSCRIPT_TOP_LOAD_MIN_THRESHOLD_PX = 240;
+export const CHAT_TRANSCRIPT_TOP_LOAD_MAX_THRESHOLD_PX = 480;
 export const CHAT_TRANSCRIPT_BOTTOM_STICKY_THRESHOLD_PX = 96;
 export const CHAT_LIST_LEFT_GUTTER_CLASS = "pl-3 md:pl-4";
 export const CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS = "pl-5 md:pl-6";
@@ -79,6 +80,14 @@ export type TranscriptTurnRecord = {
   isRunning: boolean;
   turnId: string;
 };
+
+export function resolveTranscriptTopLoadThresholdPx(transcriptViewportHeight: number): number {
+  const proportionalThreshold = Math.round(transcriptViewportHeight * 0.35);
+  return Math.max(
+    CHAT_TRANSCRIPT_TOP_LOAD_MIN_THRESHOLD_PX,
+    Math.min(CHAT_TRANSCRIPT_TOP_LOAD_MAX_THRESHOLD_PX, proportionalThreshold),
+  );
+}
 
 const CHAT_TRANSCRIPT_MESSAGE_SELECTOR = "[data-transcript-message-id]";
 
