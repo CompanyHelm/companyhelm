@@ -12,6 +12,7 @@ import {
   type AgentCreateSkillGroupOption,
   type AgentCreateSkillOption,
   type AgentCreateProviderOption,
+  type AgentCreateMcpServerOption,
 } from "./create_agent_dialog";
 import type { agentsPageAddAgentMutation } from "./__generated__/agentsPageAddAgentMutation.graphql";
 import type { agentsPageDeleteAgentMutation } from "./__generated__/agentsPageDeleteAgentMutation.graphql";
@@ -61,6 +62,13 @@ const agentsPageQueryNode = graphql`
       name
       description
       skillGroupId
+    }
+    McpServers {
+      id
+      name
+      description
+      url
+      enabled
     }
     ComputeProviderDefinitions {
       id
@@ -191,6 +199,14 @@ function AgentsPageContent() {
     name: skill.name,
     skillGroupId: skill.skillGroupId,
   }));
+  const mcpServerOptions: AgentCreateMcpServerOption[] = data.McpServers
+    .filter((server) => server.enabled)
+    .map((server) => ({
+      description: server.description,
+      id: server.id,
+      name: server.name,
+      url: server.url,
+    }));
   const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] =
     data.ComputeProviderDefinitions.map((definition) => ({
       id: definition.id,
@@ -327,6 +343,7 @@ function AgentsPageContent() {
         secretOptions={secretOptions}
         skillGroupOptions={skillGroupOptions}
         skillOptions={skillOptions}
+        mcpServerOptions={mcpServerOptions}
         onCreate={async (input) => {
           setErrorMessage(null);
 

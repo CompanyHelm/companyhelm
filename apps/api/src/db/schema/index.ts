@@ -5,3 +5,4 @@ export * from "./tasks.ts";
 export * from "./artifacts.ts";
 export * from "./environments.ts";
 export * from "./skills.ts";
+export * from "./mcp.ts";

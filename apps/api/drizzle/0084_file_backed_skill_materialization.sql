@@ -1,3 +1,6 @@
+ALTER TABLE "skills"
+  ADD COLUMN IF NOT EXISTS "github_tracked_commit_sha" text;--> statement-breakpoint
+
 DO $$
 BEGIN
   IF NOT EXISTS (

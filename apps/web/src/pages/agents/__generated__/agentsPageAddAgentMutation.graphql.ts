@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dc0c19addb561f02f720baffb38e3683>>
+ * @generated SignedSource<<1c0279389682141d97745dd2234aae4e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,7 @@ import { ConcreteRequest } from 'relay-runtime';
 export type AddAgentInput = {
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
+  mcpServerIds?: ReadonlyArray<string> | null | undefined;
   modelProviderCredentialId: string;
   modelProviderCredentialModelId: string;
   name: string;

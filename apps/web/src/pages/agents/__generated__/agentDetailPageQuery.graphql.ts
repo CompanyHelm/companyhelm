@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d298de8de34f84c17f7f7c018764901f>>
+ * @generated SignedSource<<29472d70834759ddb64792d272cfac59>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -55,6 +55,12 @@ export type agentDetailPageQuery$data = {
       readonly reasoningSupported: boolean;
     }>;
   }>;
+  readonly AgentMcpServers: ReadonlyArray<{
+    readonly description: string | null | undefined;
+    readonly id: string;
+    readonly name: string;
+    readonly url: string;
+  }>;
   readonly AgentSecrets: ReadonlyArray<{
     readonly description: string | null | undefined;
     readonly envVarName: string;
@@ -88,6 +94,13 @@ export type agentDetailPageQuery$data = {
       readonly name: string;
       readonly templateId: string;
     }>;
+  }>;
+  readonly McpServers: ReadonlyArray<{
+    readonly description: string | null | undefined;
+    readonly enabled: boolean;
+    readonly id: string;
+    readonly name: string;
+    readonly url: string;
   }>;
   readonly Secrets: ReadonlyArray<{
     readonly description: string | null | undefined;
@@ -218,11 +231,18 @@ v9 = [
     "storageKey": null
   }
 ],
-v10 = [
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "url",
+  "storageKey": null
+},
+v11 = [
   (v1/*: any*/),
   (v2/*: any*/)
 ],
-v11 = [
+v12 = [
   (v1/*: any*/),
   (v2/*: any*/),
   (v8/*: any*/),
@@ -234,14 +254,14 @@ v11 = [
     "storageKey": null
   }
 ],
-v12 = {
+v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "isDefault",
   "storageKey": null
 },
-v13 = [
+v14 = [
   {
     "alias": null,
     "args": [
@@ -375,11 +395,26 @@ v13 = [
   {
     "alias": null,
     "args": (v7/*: any*/),
+    "concreteType": "McpServer",
+    "kind": "LinkedField",
+    "name": "AgentMcpServers",
+    "plural": true,
+    "selections": [
+      (v1/*: any*/),
+      (v2/*: any*/),
+      (v8/*: any*/),
+      (v10/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": (v7/*: any*/),
     "concreteType": "SkillGroup",
     "kind": "LinkedField",
     "name": "AgentSkillGroups",
     "plural": true,
-    "selections": (v10/*: any*/),
+    "selections": (v11/*: any*/),
     "storageKey": null
   },
   {
@@ -389,7 +424,7 @@ v13 = [
     "kind": "LinkedField",
     "name": "AgentSkills",
     "plural": true,
-    "selections": (v11/*: any*/),
+    "selections": (v12/*: any*/),
     "storageKey": null
   },
   {
@@ -402,7 +437,7 @@ v13 = [
     "selections": [
       (v1/*: any*/),
       (v3/*: any*/),
-      (v12/*: any*/),
+      (v13/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -477,11 +512,33 @@ v13 = [
   {
     "alias": null,
     "args": null,
+    "concreteType": "McpServer",
+    "kind": "LinkedField",
+    "name": "McpServers",
+    "plural": true,
+    "selections": [
+      (v1/*: any*/),
+      (v2/*: any*/),
+      (v8/*: any*/),
+      (v10/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "enabled",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
     "concreteType": "SkillGroup",
     "kind": "LinkedField",
     "name": "SkillGroups",
     "plural": true,
-    "selections": (v10/*: any*/),
+    "selections": (v11/*: any*/),
     "storageKey": null
   },
   {
@@ -491,7 +548,7 @@ v13 = [
     "kind": "LinkedField",
     "name": "Skills",
     "plural": true,
-    "selections": (v11/*: any*/),
+    "selections": (v12/*: any*/),
     "storageKey": null
   },
   {
@@ -503,7 +560,7 @@ v13 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
-      (v12/*: any*/),
+      (v13/*: any*/),
       (v2/*: any*/),
       {
         "alias": null,
@@ -532,7 +589,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "agentDetailPageQuery",
-    "selections": (v13/*: any*/),
+    "selections": (v14/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -541,19 +598,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "agentDetailPageQuery",
-    "selections": (v13/*: any*/)
+    "selections": (v14/*: any*/)
   },
   "params": {
-    "cacheID": "2c89657b9610c28fb3203bedba3485ea",
+    "cacheID": "a115d6954c53136104eb8540b143253a",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageQuery",
     "operationKind": "query",
-    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    reasoningLevel\n    systemPrompt\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentSkillGroups(agentId: $agentId) {\n    id\n    name\n  }\n  AgentSkills(agentId: $agentId) {\n    id\n    name\n    description\n    skillGroupId\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentDetailPageQuery(\n  $agentId: ID!\n) {\n  Agent(id: $agentId) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    reasoningLevel\n    systemPrompt\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    createdAt\n    updatedAt\n  }\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  AgentSecrets(agentId: $agentId) {\n    id\n    name\n    description\n    envVarName\n  }\n  AgentMcpServers(agentId: $agentId) {\n    id\n    name\n    description\n    url\n  }\n  AgentSkillGroups(agentId: $agentId) {\n    id\n    name\n  }\n  AgentSkills(agentId: $agentId) {\n    id\n    name\n    description\n    skillGroupId\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "87881f7b5443de63d3e888fdcc4102d7";
+(node as any).hash = "6289c5839513ff76d817789c49d227d9";
 
 export default node;

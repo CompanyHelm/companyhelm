@@ -6,19 +6,23 @@ import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
 import { SecretService } from "../../services/secrets/service.ts";
 import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
 import { SkillService } from "../../services/skills/service.ts";
+import { McpService } from "../../services/mcp/service.ts";
 import { AddGithubInstallationMutation } from "../mutations/add_github_installation.ts";
 import { CreateGithubInstallationUrlMutation } from "../mutations/create_github_installation_url.ts";
 import { CreateSecretMutation } from "../mutations/create_secret.ts";
+import { CreateMcpServerMutation } from "../mutations/create_mcp_server.ts";
 import { CreateSkillGroupMutation } from "../mutations/create_skill_group.ts";
 import { CreateSkillMutation } from "../mutations/create_skill.ts";
 import { DeleteGithubInstallationMutation } from "../mutations/delete_github_installation.ts";
 import { DeleteSecretMutation } from "../mutations/delete_secret.ts";
+import { DeleteMcpServerMutation } from "../mutations/delete_mcp_server.ts";
 import { DeleteSkillGroupMutation } from "../mutations/delete_skill_group.ts";
 import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
 import { UpdateSecretMutation } from "../mutations/update_secret.ts";
+import { UpdateMcpServerMutation } from "../mutations/update_mcp_server.ts";
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
@@ -30,6 +34,7 @@ import { GithubSkillBranchesQueryResolver } from "../resolvers/github_skill_bran
 import { HealthQueryResolver } from "../resolvers/health.ts";
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { SecretsQueryResolver } from "../resolvers/secrets.ts";
+import { McpServersQueryResolver } from "../resolvers/mcp_servers.ts";
 import { SkillGroupsQueryResolver } from "../resolvers/skill_groups.ts";
 import { SkillQueryResolver } from "../resolvers/skill.ts";
 import { SkillsQueryResolver } from "../resolvers/skills.ts";
@@ -45,10 +50,12 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
   private readonly createSecretMutation: CreateSecretMutation;
+  private readonly createMcpServerMutation: CreateMcpServerMutation;
   private readonly createSkillMutation: CreateSkillMutation;
   private readonly createSkillGroupMutation: CreateSkillGroupMutation;
   private readonly deleteGithubInstallationMutation: DeleteGithubInstallationMutation;
   private readonly deleteSecretMutation: DeleteSecretMutation;
+  private readonly deleteMcpServerMutation: DeleteMcpServerMutation;
   private readonly deleteSkillMutation: DeleteSkillMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
   private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
@@ -61,11 +68,13 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
   private readonly secretsQueryResolver: SecretsQueryResolver;
+  private readonly mcpServersQueryResolver: McpServersQueryResolver;
   private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
   private readonly skillQueryResolver: SkillQueryResolver;
   private readonly skillsQueryResolver: SkillsQueryResolver;
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
+  private readonly updateMcpServerMutation: UpdateMcpServerMutation;
   private readonly updateSkillMutation: UpdateSkillMutation;
   private readonly updateSkillGroupMutation: UpdateSkillGroupMutation;
 
@@ -102,12 +111,20 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new RefreshGithubInstallationRepositoriesMutation(new GithubClient({} as Config)),
     @inject(CreateSecretMutation)
     createSecretMutation?: CreateSecretMutation,
+    @inject(CreateMcpServerMutation)
+    createMcpServerMutation?: CreateMcpServerMutation,
     @inject(DeleteSecretMutation)
     deleteSecretMutation?: DeleteSecretMutation,
+    @inject(DeleteMcpServerMutation)
+    deleteMcpServerMutation?: DeleteMcpServerMutation,
     @inject(UpdateSecretMutation)
     updateSecretMutation?: UpdateSecretMutation,
+    @inject(UpdateMcpServerMutation)
+    updateMcpServerMutation?: UpdateMcpServerMutation,
     @inject(SecretsQueryResolver)
     secretsQueryResolver?: SecretsQueryResolver,
+    @inject(McpServersQueryResolver)
+    mcpServersQueryResolver?: McpServersQueryResolver,
     @inject(UpdateCompanySettingsMutation)
     updateCompanySettingsMutation: UpdateCompanySettingsMutation = new UpdateCompanySettingsMutation(),
     @inject(CreateSkillMutation)
@@ -137,16 +154,19 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
+    const defaultMcpService = new McpService();
     const defaultSkillGithubCatalog = new SkillGithubCatalog();
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.createGithubInstallationUrlMutation = createGithubInstallationUrlMutation;
     this.createSecretMutation = createSecretMutation ?? new CreateSecretMutation(defaultSecretService);
+    this.createMcpServerMutation = createMcpServerMutation ?? new CreateMcpServerMutation(defaultMcpService);
     this.createSkillMutation = createSkillMutation ?? new CreateSkillMutation(defaultSkillService);
     this.createSkillGroupMutation = createSkillGroupMutation ?? new CreateSkillGroupMutation(defaultSkillService);
     this.deleteGithubInstallationMutation = deleteGithubInstallationMutation;
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
+    this.deleteMcpServerMutation = deleteMcpServerMutation ?? new DeleteMcpServerMutation(defaultMcpService);
     this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
@@ -162,11 +182,13 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.meQueryResolver = meQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
+    this.mcpServersQueryResolver = mcpServersQueryResolver ?? new McpServersQueryResolver(defaultMcpService);
     this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
     this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);
     this.skillsQueryResolver = skillsQueryResolver ?? new SkillsQueryResolver(defaultSkillService);
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
+    this.updateMcpServerMutation = updateMcpServerMutation ?? new UpdateMcpServerMutation(defaultMcpService);
     this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
     this.updateSkillGroupMutation = updateSkillGroupMutation ?? new UpdateSkillGroupMutation(defaultSkillService);
   }
@@ -177,16 +199,19 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         AddGithubInstallation: this.addGithubInstallationMutation.execute,
         CreateGithubInstallationUrl: this.createGithubInstallationUrlMutation.execute,
         CreateSecret: this.createSecretMutation.execute,
+        CreateMcpServer: this.createMcpServerMutation.execute,
         CreateSkill: this.createSkillMutation.execute,
         CreateSkillGroup: this.createSkillGroupMutation.execute,
         DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
         DeleteSecret: this.deleteSecretMutation.execute,
+        DeleteMcpServer: this.deleteMcpServerMutation.execute,
         DeleteSkill: this.deleteSkillMutation.execute,
         DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
         UpdateSecret: this.updateSecretMutation.execute,
+        UpdateMcpServer: this.updateMcpServerMutation.execute,
         UpdateSkill: this.updateSkillMutation.execute,
         UpdateSkillGroup: this.updateSkillGroupMutation.execute,
       },
@@ -200,6 +225,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         health: this.healthQueryResolver.execute,
         Me: this.meQueryResolver.execute,
         Secrets: this.secretsQueryResolver.execute,
+        McpServers: this.mcpServersQueryResolver.execute,
         Skill: this.skillQueryResolver.execute,
         SkillGroups: this.skillGroupsQueryResolver.execute,
         Skills: this.skillsQueryResolver.execute,

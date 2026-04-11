@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<845af86f3342520b10fe724eb4d6e17f>>
+ * @generated SignedSource<<5604d27782c3797013e712f83f064217>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -51,6 +51,13 @@ export type agentsPageQuery$data = {
       readonly name: string;
       readonly templateId: string;
     }>;
+  }>;
+  readonly McpServers: ReadonlyArray<{
+    readonly description: string | null | undefined;
+    readonly enabled: boolean;
+    readonly id: string;
+    readonly name: string;
+    readonly url: string;
   }>;
   readonly Secrets: ReadonlyArray<{
     readonly description: string | null | undefined;
@@ -301,6 +308,34 @@ v5 = [
   {
     "alias": null,
     "args": null,
+    "concreteType": "McpServer",
+    "kind": "LinkedField",
+    "name": "McpServers",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      (v4/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "url",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "enabled",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
     "concreteType": "ComputeProviderDefinition",
     "kind": "LinkedField",
     "name": "ComputeProviderDefinitions",
@@ -385,16 +420,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "ce4c8705da67ea2d817fc013ce2df788",
+    "cacheID": "08cc36115098c21654bc0e42a31da783",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9c75cbf625734674f7dcc6ea4e11757b";
+(node as any).hash = "1b87f9fcec5e6bdfb89b7c087ad4efaf";
 
 export default node;

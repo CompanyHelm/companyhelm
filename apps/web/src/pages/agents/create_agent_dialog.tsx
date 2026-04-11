@@ -56,6 +56,13 @@ export type AgentCreateSkillOption = {
   skillGroupId: string | null;
 };
 
+export type AgentCreateMcpServerOption = {
+  description: string | null;
+  id: string;
+  name: string;
+  url: string;
+};
+
 export type AgentCreateComputeProviderDefinitionOption = {
   id: string;
   isDefault: boolean;
@@ -82,6 +89,7 @@ interface CreateAgentDialogProps {
   secretOptions: AgentCreateSecretOption[];
   skillGroupOptions: AgentCreateSkillGroupOption[];
   skillOptions: AgentCreateSkillOption[];
+  mcpServerOptions: AgentCreateMcpServerOption[];
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
@@ -92,6 +100,7 @@ interface CreateAgentDialogProps {
     secretIds?: string[];
     skillGroupIds?: string[];
     skillIds?: string[];
+    mcpServerIds?: string[];
     systemPrompt?: string;
   }): Promise<void>;
   onOpenChange(open: boolean): void;
@@ -114,6 +123,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
   const [selectedSkillGroupIds, setSelectedSkillGroupIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+  const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([]);
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
   }, [props.providerOptions, providerOptionId]);
@@ -214,6 +224,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setSelectedSecretIds([]);
       setSelectedSkillGroupIds([]);
       setSelectedSkillIds([]);
+      setSelectedMcpServerIds([]);
     }
   }, [props.isOpen]);
 
@@ -301,6 +312,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       ? `${selectedSkillGroupIds.length} group${selectedSkillGroupIds.length === 1 ? "" : "s"}`
       : null,
     selectedSkillIds.length > 0 ? `${selectedSkillIds.length} skill${selectedSkillIds.length === 1 ? "" : "s"}` : null,
+    selectedMcpServerIds.length > 0 ? `${selectedMcpServerIds.length} MCP${selectedMcpServerIds.length === 1 ? "" : "s"}` : null,
   ].filter((value): value is string => Boolean(value)).join(" • ");
   const selectedSecretOptions = useMemo(() => {
     return props.secretOptions
@@ -359,6 +371,39 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         label: skillOption.name,
       }));
   }, [props.skillOptions, selectedSkillIds]);
+  const selectedMcpServerOptions = useMemo(() => {
+    return props.mcpServerOptions
+      .filter((mcpServerOption) => selectedMcpServerIds.includes(mcpServerOption.id))
+      .map((mcpServerOption) => ({
+        description: mcpServerOption.description,
+        id: mcpServerOption.id,
+        label: mcpServerOption.name,
+        metaLabel: (() => {
+          try {
+            return new URL(mcpServerOption.url).host;
+          } catch {
+            return mcpServerOption.url;
+          }
+        })(),
+      }));
+  }, [props.mcpServerOptions, selectedMcpServerIds]);
+  const availableMcpServerOptions = useMemo(() => {
+    const attachedMcpServerIds = new Set(selectedMcpServerIds);
+    return props.mcpServerOptions
+      .filter((mcpServerOption) => !attachedMcpServerIds.has(mcpServerOption.id))
+      .map((mcpServerOption) => ({
+        description: mcpServerOption.description,
+        id: mcpServerOption.id,
+        label: mcpServerOption.name,
+        metaLabel: (() => {
+          try {
+            return new URL(mcpServerOption.url).host;
+          } catch {
+            return mcpServerOption.url;
+          }
+        })(),
+      }));
+  }, [props.mcpServerOptions, selectedMcpServerIds]);
   const isCreateDisabled = agentName.length === 0
     || computeProviderDefinitionId.length === 0
     || environmentTemplateId.length === 0
@@ -567,7 +612,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Advanced</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Add default secrets, skill groups, and skills that should be stored on the agent.
+                  Add default secrets, skill groups, skills, and MCP servers that should be stored on the agent.
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -633,6 +678,22 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                   placeholder="Select a skill"
                   selectedOptions={selectedSkillOptions}
                 />
+
+                <DefaultAttachmentSection
+                  addLabel="Add MCP server"
+                  availableEmptyLabel="All company MCP servers already added"
+                  availableOptions={availableMcpServerOptions}
+                  currentLabel="Current MCP servers"
+                  emptyStateLabel="No MCP servers selected yet."
+                  onAdd={(mcpServerId) => {
+                    setSelectedMcpServerIds((currentValue) => [...currentValue, mcpServerId]);
+                  }}
+                  onRemove={(mcpServerId) => {
+                    setSelectedMcpServerIds((currentValue) => currentValue.filter((value) => value !== mcpServerId));
+                  }}
+                  placeholder="Select an MCP server"
+                  selectedOptions={selectedMcpServerOptions}
+                />
               </div>
             ) : null}
           </div>
@@ -671,6 +732,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,
                 skillGroupIds: selectedSkillGroupIds.length > 0 ? selectedSkillGroupIds : undefined,
                 skillIds: selectedSkillIds.length > 0 ? selectedSkillIds : undefined,
+                mcpServerIds: selectedMcpServerIds.length > 0 ? selectedMcpServerIds : undefined,
                 systemPrompt: systemPrompt.length === 0 ? undefined : systemPrompt,
               });
             }}

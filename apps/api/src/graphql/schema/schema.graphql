@@ -22,7 +22,9 @@ type Query {
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
   Secrets: [Secret!]!
+  McpServers: [McpServer!]!
   AgentSecrets(agentId: ID!): [Secret!]!
+  AgentMcpServers(agentId: ID!): [McpServer!]!
   AgentSkillGroups(agentId: ID!): [SkillGroup!]!
   AgentSkills(agentId: ID!): [Skill!]!
   Sessions: [Session!]!
@@ -67,6 +69,7 @@ type Mutation {
   ArchiveSession(input: ArchiveSessionInput!): Session!
   ArchiveArtifact(input: ArchiveArtifactInput!): Artifact!
   CreateSecret(input: CreateSecretInput!): Secret!
+  CreateMcpServer(input: CreateMcpServerInput!): McpServer!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
   ImportGithubSkills(input: ImportGithubSkillsInput!): [Skill!]!
@@ -81,9 +84,12 @@ type Mutation {
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
+  DeleteMcpServer(input: DeleteMcpServerInput!): McpServer!
   DeleteSkill(input: DeleteSkillInput!): Skill!
   DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
+  AttachMcpServerToAgent(input: AttachMcpServerToAgentInput!): McpServer!
+  DetachMcpServerFromAgent(input: DetachMcpServerFromAgentInput!): McpServer!
   DetachSkillGroupFromAgent(input: DetachSkillGroupFromAgentInput!): SkillGroup!
   DetachSkillFromAgent(input: DetachSkillFromAgentInput!): Skill!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
@@ -126,6 +132,7 @@ type Mutation {
   UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
   UpdateMarkdownArtifact(input: UpdateMarkdownArtifactInput!): Artifact!
   UpdateSecret(input: UpdateSecretInput!): Secret!
+  UpdateMcpServer(input: UpdateMcpServerInput!): McpServer!
   UpdateSkill(input: UpdateSkillInput!): Skill!
   UpdateSkillGroup(input: UpdateSkillGroupInput!): SkillGroup!
 }
@@ -526,6 +533,19 @@ type Secret {
   updatedAt: String!
 }
 
+type McpServer {
+  id: ID!
+  companyId: ID!
+  name: String!
+  description: String
+  url: String!
+  headersText: String!
+  callTimeoutMs: Int!
+  enabled: Boolean!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type Skill {
   id: ID!
   companyId: ID!
@@ -663,6 +683,7 @@ input AddAgentInput {
   secretIds: [ID!]
   skillGroupIds: [ID!]
   skillIds: [ID!]
+  mcpServerIds: [ID!]
 }
 
 input UpdateAgentInput {
@@ -835,6 +856,39 @@ input UpdateE2bComputeProviderDefinitionInput {
 
 input DeleteSecretInput {
   id: ID!
+}
+
+input CreateMcpServerInput {
+  name: String!
+  description: String
+  url: String!
+  headersText: String
+  callTimeoutMs: Int
+  enabled: Boolean
+}
+
+input UpdateMcpServerInput {
+  id: ID!
+  name: String
+  description: String
+  url: String
+  headersText: String
+  callTimeoutMs: Int
+  enabled: Boolean
+}
+
+input DeleteMcpServerInput {
+  id: ID!
+}
+
+input AttachMcpServerToAgentInput {
+  agentId: ID!
+  mcpServerId: ID!
+}
+
+input DetachMcpServerFromAgentInput {
+  agentId: ID!
+  mcpServerId: ID!
 }
 
 input DeleteSkillInput {

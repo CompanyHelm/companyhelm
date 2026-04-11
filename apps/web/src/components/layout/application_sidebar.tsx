@@ -19,6 +19,7 @@ import {
   SparklesIcon,
   SunIcon,
   WorkflowIcon,
+  PlugIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { config } from "@/config";
@@ -162,6 +163,11 @@ export function ApplicationSidebar() {
       icon: LockKeyholeIcon,
       label: "Secrets",
       to: "/secrets",
+    },
+    {
+      icon: PlugIcon,
+      label: "MCP Servers",
+      to: "/mcp-servers",
     },
     {
       icon: SparklesIcon,

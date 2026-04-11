@@ -11,6 +11,7 @@ import type { AgentEnvironmentTemplate } from "../../services/environments/provi
 import { AgentEnvironmentTemplateService } from "../../services/environments/template_service.ts";
 import { SecretService } from "../../services/secrets/service.ts";
 import { SkillService } from "../../services/skills/service.ts";
+import { McpService } from "../../services/mcp/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
@@ -25,6 +26,7 @@ type AddAgentMutationArguments = {
     secretIds?: string[] | null;
     skillGroupIds?: string[] | null;
     skillIds?: string[] | null;
+    mcpServerIds?: string[] | null;
     systemPrompt?: string | null;
   };
 };
@@ -99,6 +101,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   private readonly secretService: SecretService;
   private readonly skillService: SkillService;
   private readonly templateService: AgentEnvironmentTemplateService;
+  private readonly mcpService: McpService;
 
   constructor(
     @inject(SecretService)
@@ -136,11 +139,18 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         };
       },
     } as never,
+    @inject(McpService)
+    mcpService: McpService = {
+      async attachMcpServerToAgent() {
+        throw new Error("MCP service is not configured.");
+      },
+    } as never,
   ) {
     super();
     this.secretService = secretService;
     this.skillService = skillService;
     this.templateService = templateService;
+    this.mcpService = mcpService;
   }
 
   protected resolve = async (
@@ -289,6 +299,14 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
           agentId: agentRecord.id,
           companyId: authSession.company.id,
           skillId,
+          userId: authSession.user.id,
+        });
+      }
+      for (const mcpServerId of AddAgentMutation.resolveDistinctIds(arguments_.input.mcpServerIds)) {
+        await this.mcpService.attachMcpServerToAgent(transactionProvider, {
+          agentId: agentRecord.id,
+          companyId: authSession.company.id,
+          mcpServerId,
           userId: authSession.user.id,
         });
       }

@@ -6,12 +6,14 @@ import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
+import { AgentMcpServerDefaultsCard } from "./agent_mcp_server_defaults_card";
 import { AgentSkillDefaultsCard } from "./agent_skill_defaults_card";
 import type {
   AgentCreateComputeProviderDefinitionOption,
   AgentCreateProviderOption,
   AgentCreateSkillGroupOption,
   AgentCreateSkillOption,
+  AgentCreateMcpServerOption,
 } from "./create_agent_dialog";
 import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.graphql";
 import type { agentDetailPageUpdateAgentMutation } from "./__generated__/agentDetailPageUpdateAgentMutation.graphql";
@@ -52,6 +54,12 @@ const agentDetailPageQueryNode = graphql`
       description
       envVarName
     }
+    AgentMcpServers(agentId: $agentId) {
+      id
+      name
+      description
+      url
+    }
     AgentSkillGroups(agentId: $agentId) {
       id
       name
@@ -85,6 +93,13 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       envVarName
+    }
+    McpServers {
+      id
+      name
+      description
+      url
+      enabled
     }
     SkillGroups {
       id
@@ -261,6 +276,20 @@ function AgentDetailPageContent() {
     id: secret.id,
     name: secret.name,
   }));
+  const agentMcpServers = data.AgentMcpServers.map((server) => ({
+    description: server.description ?? null,
+    id: server.id,
+    name: server.name,
+    url: server.url,
+  }));
+  const companyMcpServers: AgentCreateMcpServerOption[] = data.McpServers
+    .filter((server) => server.enabled)
+    .map((server) => ({
+      description: server.description ?? null,
+      id: server.id,
+      name: server.name,
+      url: server.url,
+    }));
   const agentSkillGroups = data.AgentSkillGroups.map((skillGroup) => ({
     id: skillGroup.id,
     name: skillGroup.name,
@@ -579,6 +608,12 @@ function AgentDetailPageContent() {
         agentSkills={agentSkills}
         companySkillGroups={companySkillGroups}
         companySkills={companySkills}
+      />
+
+      <AgentMcpServerDefaultsCard
+        agentId={agent.id}
+        agentMcpServers={agentMcpServers}
+        companyMcpServers={companyMcpServers}
       />
 
       <Card className="rounded-2xl border border-border/60 shadow-sm">
