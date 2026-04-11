@@ -25,7 +25,8 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
   const activateLease = vi.fn(async () => ({
     id: "lease-1",
   }));
-  const createShell = vi.fn(async () => new FakeEnvironmentShell());
+  const createShell = vi.fn(async (_transactionProvider: unknown, _environment: unknown) => new FakeEnvironmentShell());
+  const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const service = new AgentEnvironmentAccessService(
     {
       async loadEnvironmentById() {
@@ -89,12 +90,21 @@ test("AgentEnvironmentAccessService reactivates the current session lease before
         throw new Error("history lookup should not run when a session lease exists");
       },
     } as never,
+    undefined,
+    undefined,
+    {
+      syncActiveSkillsForEnvironment,
+      async syncSkillIntoOpenEnvironmentForSession() {
+        return false;
+      },
+    } as never,
   );
 
   const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
 
   assert.equal(activateLease.mock.calls.length, 1);
   assert.equal(createShell.mock.calls.length, 1);
+  assert.equal(syncActiveSkillsForEnvironment.mock.calls.length, 1);
   assert.deepEqual(await environment.listPtys(), []);
 });
 
@@ -102,7 +112,11 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
   const acquireLease = vi.fn(async () => ({
     id: "lease-2",
   }));
-  const createShell = vi.fn(async () => new FakeEnvironmentShell());
+  const createShell = vi.fn(async (
+    _transactionProvider: unknown,
+    _environment: typeof historicalEnvironment,
+  ) => new FakeEnvironmentShell());
+  const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const historicalEnvironment = {
     agentId: "agent-1",
     companyId: "company-1",
@@ -164,12 +178,21 @@ test("AgentEnvironmentAccessService prefers historical reuse before provisioning
         return historicalEnvironment;
       },
     } as never,
+    undefined,
+    undefined,
+    {
+      syncActiveSkillsForEnvironment,
+      async syncSkillIntoOpenEnvironmentForSession() {
+        return false;
+      },
+    } as never,
   );
 
   const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
 
   assert.equal(acquireLease.mock.calls.length, 1);
   assert.equal(createShell.mock.calls.length, 1);
+  assert.equal(syncActiveSkillsForEnvironment.mock.calls.length, 1);
   assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-2");
   await environment.dispose();
 });
@@ -199,8 +222,12 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
   const acquireLease = vi.fn(async () => ({
     id: "lease-4",
   }));
-  const createShell = vi.fn(async () => new FakeEnvironmentShell());
+  const createShell = vi.fn(async (
+    _transactionProvider: unknown,
+    _environment: typeof provisionedEnvironment,
+  ) => new FakeEnvironmentShell());
   const provisionEnvironmentForSession = vi.fn(async () => provisionedEnvironment);
+  const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const service = new AgentEnvironmentAccessService(
     {
       async loadEnvironmentById() {
@@ -264,6 +291,14 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
         return null;
       },
     } as never,
+    undefined,
+    undefined,
+    {
+      syncActiveSkillsForEnvironment,
+      async syncSkillIntoOpenEnvironmentForSession() {
+        return false;
+      },
+    } as never,
   );
 
   const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
@@ -271,6 +306,7 @@ test("AgentEnvironmentAccessService provisions a new environment instead of reus
   assert.equal(activateLease.mock.calls.length, 0);
   assert.equal(releaseLease.mock.calls.length, 1);
   assert.equal(provisionEnvironmentForSession.mock.calls.length, 1);
+  assert.equal(syncActiveSkillsForEnvironment.mock.calls.length, 1);
   assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-4");
   await environment.dispose();
 });
@@ -279,7 +315,11 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
   const acquireLease = vi.fn(async () => ({
     id: "lease-3",
   }));
-  const createShell = vi.fn(async () => new FakeEnvironmentShell());
+  const createShell = vi.fn(async (
+    _transactionProvider: unknown,
+    _environment: typeof provisionedEnvironment,
+  ) => new FakeEnvironmentShell());
+  const syncActiveSkillsForEnvironment = vi.fn(async () => undefined);
   const provisionedEnvironment = {
     agentId: "agent-1",
     companyId: "company-1",
@@ -340,12 +380,21 @@ test("AgentEnvironmentAccessService provisions a new environment when no reusabl
         return null;
       },
     } as never,
+    undefined,
+    undefined,
+    {
+      syncActiveSkillsForEnvironment,
+      async syncSkillIntoOpenEnvironmentForSession() {
+        return false;
+      },
+    } as never,
   );
 
   const environment = await service.getEnvironmentForSession({} as never, "agent-1", "session-1");
 
   assert.equal(provisionEnvironmentForSession.mock.calls.length, 1);
   assert.equal(acquireLease.mock.calls.length, 1);
+  assert.equal(syncActiveSkillsForEnvironment.mock.calls.length, 1);
   assert.equal(createShell.mock.calls[0]?.[1]?.id, "environment-3");
   await environment.dispose();
 });
@@ -424,6 +473,14 @@ test("AgentEnvironmentAccessService logs and wraps provider shell connection fai
         return {
           warn,
         } as never;
+      },
+    } as never,
+    {
+      async syncActiveSkillsForEnvironment() {
+        return undefined;
+      },
+      async syncSkillIntoOpenEnvironmentForSession() {
+        return false;
       },
     } as never,
   );

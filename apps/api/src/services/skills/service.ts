@@ -159,9 +159,7 @@ export class SkillService {
     const githubBranchName = input.githubBranchName === undefined || input.githubBranchName === null
       ? null
       : this.requireNonEmptyValue(input.githubBranchName, "GitHub branch name");
-    const githubTrackedCommitSha = input.githubTrackedCommitSha === undefined || input.githubTrackedCommitSha === null
-      ? null
-      : this.requireNonEmptyValue(input.githubTrackedCommitSha, "GitHub tracked commit sha");
+    const githubTrackedCommitSha = this.resolveTrackedCommitSha(input.fileList, input.githubTrackedCommitSha);
 
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
@@ -531,6 +529,21 @@ export class SkillService {
     }
 
     return normalizedValue;
+  }
+
+  private resolveTrackedCommitSha(
+    fileList: string[],
+    githubTrackedCommitSha?: string | null,
+  ): string | null {
+    if (fileList.length === 0) {
+      if (githubTrackedCommitSha === undefined || githubTrackedCommitSha === null) {
+        return null;
+      }
+
+      return this.requireNonEmptyValue(githubTrackedCommitSha, "GitHub tracked commit sha");
+    }
+
+    return this.requireNonEmptyValue(githubTrackedCommitSha ?? null, "GitHub tracked commit sha");
   }
 
   private async requireAgent(

@@ -26,6 +26,7 @@ import { GithubSessionModule } from "./github.ts";
 import { InboxSessionModule } from "./inbox.ts";
 import { RuntimeSessionModule } from "./runtime.ts";
 import { SecretsSessionModule } from "./secrets.ts";
+import { SkillsSessionModule } from "./skills.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
@@ -59,6 +60,7 @@ export class DefaultAgentSessionModuleRegistry {
       new TerminalSessionModule(input.logger),
       new ComputerUseSessionModule(input.config, input.computeProviderDefinitionService),
       new SecretsSessionModule(input.secretService),
+      new SkillsSessionModule(),
       new CompanyDirectorySessionModule(),
       new AgentManagementSessionModule({
         computeProviderDefinitionService: input.computeProviderDefinitionService,

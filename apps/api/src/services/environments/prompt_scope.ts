@@ -1,4 +1,5 @@
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import type { SkillRecord } from "../skills/service.ts";
 import type { AgentEnvironmentInterface } from "./providers/environment_interface.ts";
 import { AgentEnvironmentAccessService } from "./access_service.ts";
 
@@ -43,5 +44,14 @@ export class AgentEnvironmentPromptScope {
     }
 
     return this.environmentPromise;
+  }
+
+  async syncSkillIfEnvironmentLeased(skill: SkillRecord): Promise<boolean> {
+    return this.accessService.syncSkillIntoOpenEnvironmentForSession(
+      this.transactionProvider,
+      this.agentId,
+      this.sessionId,
+      skill,
+    );
   }
 }

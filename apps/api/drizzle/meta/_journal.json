@@ -589,6 +589,13 @@
       "when": 1775850000000,
       "tag": "0083_session_owner_user",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1775880000000,
+      "tag": "0084_file_backed_skill_materialization",
+      "breakpoints": true
     }
   ]
 }

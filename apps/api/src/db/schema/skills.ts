@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  check,
   index,
   pgTable,
   primaryKey,
@@ -8,6 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
@@ -52,6 +54,14 @@ export const skills = pgTable("skills", {
   skillGroupIdIndex: index("skills_skill_group_id_idx").on(table.skillGroupId),
   companyIdIndex: index("skills_company_id_idx").on(table.companyId),
   companyIdNameUnique: uniqueIndex("skills_company_id_name_uidx").on(table.companyId, table.name),
+  fileBackedSourceCheck: check(
+    "skills_file_backed_source_check",
+    sql`coalesce(cardinality(${table.fileList}), 0) = 0 OR (
+      nullif(trim(${table.repository}), '') IS NOT NULL
+      AND nullif(trim(${table.skillDirectory}), '') IS NOT NULL
+      AND nullif(trim(${table.githubTrackedCommitSha}), '') IS NOT NULL
+    )`,
+  ),
 }));
 
 export const agentSessionActiveSkills = pgTable("agent_session_active_skills", {

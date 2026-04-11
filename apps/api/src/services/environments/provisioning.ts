@@ -5,7 +5,7 @@ import type {
   AgentEnvironmentRecord,
 } from "./providers/provider_interface.ts";
 import { AgentComputeProviderRegistry } from "./providers/provider_registry.ts";
-import { AgentEnvironmentWorkspacePath } from "./workspace_path.ts";
+import { AgentEnvironmentBootstrapService } from "./bootstrap_service.ts";
 
 /**
  * Applies the shared post-create bootstrap steps for newly provisioned environments. The provider
@@ -14,34 +14,29 @@ import { AgentEnvironmentWorkspacePath } from "./workspace_path.ts";
  */
 @injectable()
 export class AgentEnvironmentProvisioning {
-  private readonly providerRegistry: AgentComputeProviderRegistry;
+  private readonly bootstrapService: AgentEnvironmentBootstrapService;
 
   constructor(
     @inject(AgentComputeProviderRegistry)
     providerRegistryOrProvider: AgentComputeProviderRegistry | AgentComputeProviderInterface,
+    @inject(AgentEnvironmentBootstrapService)
+    bootstrapService?: AgentEnvironmentBootstrapService,
   ) {
-    this.providerRegistry = AgentEnvironmentProvisioning.isProvider(providerRegistryOrProvider)
+    const providerRegistry = AgentEnvironmentProvisioning.isProvider(providerRegistryOrProvider)
       ? {
           get() {
             return providerRegistryOrProvider;
           },
         } as never
       : providerRegistryOrProvider;
+    this.bootstrapService = bootstrapService ?? new AgentEnvironmentBootstrapService(providerRegistry);
   }
 
   async provision(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,
   ): Promise<void> {
-    const environmentShell = await this.providerRegistry
-      .get(environment.provider)
-      .createShell(transactionProvider, environment);
-    const result = await environmentShell.executeCommand(
-      `sh -lc 'mkdir -p ${AgentEnvironmentWorkspacePath.get()}'`,
-    );
-    if (result.exitCode !== 0) {
-      throw new Error(`Failed to provision environment workspace: ${result.stdout}`);
-    }
+    await this.bootstrapService.bootstrap(transactionProvider, environment);
   }
 
   private static isProvider(value: unknown): value is AgentComputeProviderInterface {

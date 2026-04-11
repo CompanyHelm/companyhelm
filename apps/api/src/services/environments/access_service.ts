@@ -16,6 +16,8 @@ import { AgentEnvironmentProvisioningService } from "./provisioning_service.ts";
 import { AgentSessionEnvironment } from "./session_environment.ts";
 import { AgentEnvironmentSelectionService } from "./selection_service.ts";
 import { SecretService } from "../secrets/service.ts";
+import { AgentEnvironmentSkillSyncService } from "./skills/sync_service.ts";
+import type { SkillRecord } from "../skills/service.ts";
 
 /**
  * Resolves a leased environment for one agent session. It centralizes the reuse policy, on-demand
@@ -31,6 +33,7 @@ export class AgentEnvironmentAccessService {
   private readonly provisioningService: AgentEnvironmentProvisioningService;
   private readonly selectionService: AgentEnvironmentSelectionService;
   private readonly secretService: SecretService;
+  private readonly skillSyncService: AgentEnvironmentSkillSyncService;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
@@ -53,6 +56,8 @@ export class AgentEnvironmentAccessService {
         } as never;
       },
     } as never,
+    @inject(AgentEnvironmentSkillSyncService)
+    skillSyncService?: AgentEnvironmentSkillSyncService,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
@@ -69,6 +74,11 @@ export class AgentEnvironmentAccessService {
     this.provisioningService = provisioningService;
     this.selectionService = selectionService;
     this.secretService = secretService;
+    this.skillSyncService = skillSyncService ?? new AgentEnvironmentSkillSyncService(
+      catalogService,
+      leaseService,
+      this.providerRegistry,
+    );
   }
 
   async getEnvironmentForSession(
@@ -99,6 +109,12 @@ export class AgentEnvironmentAccessService {
           sessionId,
           environment,
           true,
+        );
+        await this.skillSyncService.syncActiveSkillsForEnvironment(
+          transactionProvider,
+          sessionId,
+          environment,
+          environmentShell,
         );
         const pty = new AgentEnvironmentTmuxPty(environmentShell);
         return new AgentSessionEnvironment(
@@ -142,6 +158,12 @@ export class AgentEnvironmentAccessService {
       selectedEnvironment,
       false,
     );
+    await this.skillSyncService.syncActiveSkillsForEnvironment(
+      transactionProvider,
+      sessionId,
+      selectedEnvironment,
+      environmentShell,
+    );
     const pty = new AgentEnvironmentTmuxPty(environmentShell);
 
     return new AgentSessionEnvironment(
@@ -155,6 +177,20 @@ export class AgentEnvironmentAccessService {
       pty,
       lease.id,
       ownerToken,
+    );
+  }
+
+  async syncSkillIntoOpenEnvironmentForSession(
+    transactionProvider: TransactionProviderInterface,
+    agentId: string,
+    sessionId: string,
+    skill: SkillRecord,
+  ): Promise<boolean> {
+    return this.skillSyncService.syncSkillIntoOpenEnvironmentForSession(
+      transactionProvider,
+      agentId,
+      sessionId,
+      skill,
     );
   }
 

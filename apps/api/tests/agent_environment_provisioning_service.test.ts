@@ -53,17 +53,17 @@ class AgentEnvironmentProvisioningServiceTestTransactions {
 }
 
 test("AgentEnvironmentProvisioning provisions the workspace directory through the provider shell", async () => {
-  const executeCommand = vi.fn(async () => ({
+  const executeCommand = vi.fn(async (_command: string) => ({
     exitCode: 0,
     stdout: "",
   }));
-  const createShell = vi.fn(async () => ({
+  const createShell = vi.fn(async (_transactionProvider: unknown, _environment: typeof createdEnvironment) => ({
     executeCommand,
   }));
   const provisioning = new AgentEnvironmentProvisioning({
     get() {
       return {
-        async createShell(_transactionProvider, environment) {
+        async createShell(_transactionProvider: unknown, environment: typeof createdEnvironment) {
           return createShell(_transactionProvider, environment);
         },
       };
@@ -74,11 +74,16 @@ test("AgentEnvironmentProvisioning provisions the workspace directory through th
 
   assert.equal(createShell.mock.calls.length, 1);
   assert.deepEqual(createShell.mock.calls[0]?.[1], createdEnvironment);
-  assert.deepEqual(executeCommand.mock.calls, [[`sh -lc 'mkdir -p ~/workspace'`]]);
+  assert.equal(executeCommand.mock.calls.length, 2);
+  assert.match(String(executeCommand.mock.calls[0]?.[0] ?? ""), /mkdir -p/);
+  assert.match(String(executeCommand.mock.calls[0]?.[0] ?? ""), /~\/workspace/);
+  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /mkdir -p/);
+  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /~\/\.companyhelm\/skill-cache/);
+  assert.match(String(executeCommand.mock.calls[1]?.[0] ?? ""), /~\/skills/);
 });
 
 test("AgentEnvironmentProvisioningService bootstraps the created environment before returning it", async () => {
-  const providerProvisionEnvironment = vi.fn(async () => ({
+  const providerProvisionEnvironment = vi.fn(async (_transactionProvider: unknown, _input: unknown) => ({
     cleanup: vi.fn(async () => undefined),
     cpuCount: 2,
     diskSpaceGb: 20,
@@ -88,8 +93,14 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
     platform: "linux" as const,
     providerEnvironmentId: "e2b-environment-1",
   }));
-  const createEnvironment = vi.fn(async () => createdEnvironment);
-  const bootstrapProvision = vi.fn(async () => undefined);
+  const createEnvironment = vi.fn(async (
+    _transactionProvider: unknown,
+    _input: { templateId: string },
+  ) => createdEnvironment);
+  const bootstrapProvision = vi.fn(async (
+    _transactionProvider: unknown,
+    _environment: typeof createdEnvironment,
+  ) => undefined);
   const transactions = new AgentEnvironmentProvisioningServiceTestTransactions(
     "compute-provider-definition-1",
   );
@@ -108,7 +119,7 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
       },
     } as never,
     {
-      get(provider) {
+      get(provider: string) {
         assert.equal(provider, "e2b");
         return {
           getProvider() {
@@ -167,7 +178,11 @@ test("AgentEnvironmentProvisioningService bootstraps the created environment bef
 
 test("AgentEnvironmentProvisioningService deletes the catalog row and remote environment when bootstrap fails", async () => {
   const cleanup = vi.fn(async () => undefined);
-  const deleteEnvironment = vi.fn(async () => createdEnvironment);
+  const deleteEnvironment = vi.fn(async (
+    _transactionProvider: unknown,
+    _environmentId: string,
+    _companyId: string,
+  ) => createdEnvironment);
   const transactions = new AgentEnvironmentProvisioningServiceTestTransactions(
     "compute-provider-definition-1",
   );
@@ -189,7 +204,7 @@ test("AgentEnvironmentProvisioningService deletes the catalog row and remote env
       },
     } as never,
     {
-      get(provider) {
+      get(provider: string) {
         assert.equal(provider, "e2b");
         return {
           getProvider() {
