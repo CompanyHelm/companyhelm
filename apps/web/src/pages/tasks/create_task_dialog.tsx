@@ -76,13 +76,13 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
         <DialogHeader>
           <DialogTitle>Create task</DialogTitle>
           <DialogDescription>
-            Add a new task and optionally place it into one of the configured kanban lanes.
+            Add a new task and optionally place it into one of the configured lanes.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <div className="grid gap-5">
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="task-name">
+            <label className="text-sm font-medium text-foreground" htmlFor="task-name">
               Name
             </label>
             <Input
@@ -96,7 +96,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="task-category">
+            <label className="text-sm font-medium text-foreground" htmlFor="task-category">
               Category (optional)
             </label>
             <Select
@@ -127,7 +127,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="task-assignee">
+            <label className="text-sm font-medium text-foreground" htmlFor="task-assignee">
               Assignee (optional)
             </label>
             <Select
@@ -158,7 +158,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="task-status">
+            <label className="text-sm font-medium text-foreground" htmlFor="task-status">
               Status
             </label>
             <Select
@@ -184,7 +184,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="task-description">
+            <label className="text-sm font-medium text-foreground" htmlFor="task-description">
               Description (optional)
             </label>
             <textarea
@@ -195,12 +195,12 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
               placeholder="Optional delivery notes or acceptance detail."
               rows={5}
               value={taskDescription}
-              className="min-h-28 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              className="min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm leading-6 outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
             />
           </div>
 
           {props.errorMessage ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {props.errorMessage}
             </div>
           ) : null}

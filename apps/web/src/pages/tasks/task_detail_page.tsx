@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import type { TaskViewType } from "./task_ui";
 import type { taskDetailPageExecuteTaskMutation } from "./__generated__/taskDetailPageExecuteTaskMutation.graphql";
 import type { taskDetailPageQuery } from "./__generated__/taskDetailPageQuery.graphql";
 import type { taskDetailPageUpdateTaskMutation } from "./__generated__/taskDetailPageUpdateTaskMutation.graphql";
@@ -19,6 +20,7 @@ type TaskRunStatus = "queued" | "running" | "completed" | "failed" | "canceled";
 type TaskArtifactType = "markdown_document" | "external_link" | "pull_request";
 type TaskDetailPageSearch = {
   tab?: "artifacts" | "runs";
+  viewType?: TaskViewType;
 };
 type TaskDetailPageTaskAssignee = NonNullable<taskDetailPageQuery["response"]["Task"]["assignee"]>;
 type TaskDetailPageTaskCategory = taskDetailPageQuery["response"]["TaskCategories"][number];
@@ -267,7 +269,7 @@ function resolveArtifactTypeIcon(type: TaskArtifactType) {
 function TaskDetailPageContent() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as TaskDetailPageSearch;
-  const { taskId } = useParams({ strict: false });
+  const { taskId } = useParams({ strict: false }) as { taskId?: string };
   const organizationSlug = useCurrentOrganizationSlug();
   const normalizedTaskId = String(taskId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
@@ -297,6 +299,7 @@ function TaskDetailPageContent() {
       ? "artifacts"
       : "details";
   const currentTaskStatus = task.status as TaskStatus;
+  const currentViewType = search.viewType === "list" ? "list" : search.viewType === "board" ? "board" : undefined;
   const currentAssignedAgentId = task.assignee?.kind === "agent" ? task.assignee.id : null;
   const currentAssignedUserId = task.assignee?.kind === "user" ? task.assignee.id : null;
   const currentAssigneeValue = task.assignee
@@ -482,7 +485,10 @@ function TaskDetailPageContent() {
                         organizationSlug,
                         taskId: task.id,
                       },
-                      search: tab.key === "details" ? {} : { tab: tab.key },
+                      search: {
+                        ...(tab.key === "details" ? {} : { tab: tab.key }),
+                        ...(currentViewType ? { viewType: currentViewType } : {}),
+                      },
                       to: OrganizationPath.route("/tasks/$taskId"),
                     });
                   }}
@@ -772,6 +778,7 @@ function TaskDetailPageContent() {
                         organizationSlug,
                         taskId: task.id,
                       },
+                      search: currentViewType ? { viewType: currentViewType } : {},
                       to: OrganizationPath.route("/tasks/$taskId/artifacts/$artifactId"),
                     });
                   }}
