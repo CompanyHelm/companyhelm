@@ -94,6 +94,39 @@ export class SkillService {
     });
   }
 
+  async updateSkillGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      name?: string | null;
+      skillGroupId: string;
+    },
+  ): Promise<SkillGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingGroup = await this.requireSkillGroup(selectableDatabase, input.companyId, input.skillGroupId);
+      const [updatedGroup] = await updatableDatabase
+        .update(skill_groups)
+        .set({
+          name: input.name === undefined
+            ? existingGroup.name
+            : this.requireNonEmptyValue(input.name, "Skill group name"),
+        })
+        .where(and(
+          eq(skill_groups.companyId, input.companyId),
+          eq(skill_groups.id, input.skillGroupId),
+        ))
+        .returning?.(this.skillGroupSelection()) as SkillGroupRecord[];
+
+      if (!updatedGroup) {
+        throw new Error("Failed to update skill group.");
+      }
+
+      return updatedGroup;
+    });
+  }
+
   async createSkill(
     transactionProvider: TransactionProviderInterface,
     input: {

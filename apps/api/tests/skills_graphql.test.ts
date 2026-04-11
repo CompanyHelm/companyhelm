@@ -234,6 +234,33 @@ class SkillsGraphqlTestHarness {
 
             throw new Error("Unexpected delete table.");
           },
+          update(table: unknown) {
+            if (table === skill_groups) {
+              return {
+                set(value: Record<string, unknown>) {
+                  return {
+                    where(_condition: unknown) {
+                      void _condition;
+                      return {
+                        async returning() {
+                          const [targetGroup] = groups;
+                          if (!targetGroup) {
+                            return [];
+                          }
+
+                          targetGroup.name = String(value.name);
+
+                          return [targetGroup];
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected update table.");
+          },
         } as never;
       },
       async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
@@ -731,6 +758,39 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     name: "Docs",
   });
 
+  const updateGroupResponse = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation UpdateSkillGroup($input: UpdateSkillGroupInput!) {
+          UpdateSkillGroup(input: $input) {
+            id
+            companyId
+            name
+          }
+        }
+      `,
+      variables: {
+        input: {
+          id: "group-research",
+          name: "Deep research",
+        },
+      },
+    },
+  });
+
+  assert.equal(updateGroupResponse.statusCode, 200);
+  const updateGroupDocument = updateGroupResponse.json();
+  assert.deepEqual(updateGroupDocument.data.UpdateSkillGroup, {
+    id: "group-research",
+    companyId: "company-123",
+    name: "Deep research",
+  });
+
   const deleteGroupResponse = await app.inject({
     method: "POST",
     url: "/graphql",
@@ -760,7 +820,7 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
   assert.deepEqual(deleteGroupDocument.data.DeleteSkillGroup, {
     id: "group-research",
     companyId: "company-123",
-    name: "Research",
+    name: "Deep research",
   });
 
   const listResponse = await app.inject({

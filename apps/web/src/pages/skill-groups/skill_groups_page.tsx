@@ -1,15 +1,16 @@
 import { Suspense, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { FolderPlusIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { FolderPlusIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
-import { CreateGroupDialog } from "./create_group_dialog";
+import { GroupDialog } from "./create_group_dialog";
 import type { skillGroupsPageCreateSkillGroupMutation } from "./__generated__/skillGroupsPageCreateSkillGroupMutation.graphql";
 import type { skillGroupsPageDeleteSkillGroupMutation } from "./__generated__/skillGroupsPageDeleteSkillGroupMutation.graphql";
 import type { skillGroupsPageQuery } from "./__generated__/skillGroupsPageQuery.graphql";
+import type { skillGroupsPageUpdateSkillGroupMutation } from "./__generated__/skillGroupsPageUpdateSkillGroupMutation.graphql";
 
 type RelayLinkedRecord = {
   getDataID(): string;
@@ -48,6 +49,23 @@ const skillGroupsPageDeleteSkillGroupMutationNode = graphql`
     }
   }
 `;
+
+const skillGroupsPageUpdateSkillGroupMutationNode = graphql`
+  mutation skillGroupsPageUpdateSkillGroupMutation($input: UpdateSkillGroupInput!) {
+    UpdateSkillGroup(input: $input) {
+      id
+      name
+    }
+  }
+`;
+
+type SkillGroupDialogState = {
+  mode: "create";
+} | {
+  groupId: string;
+  mode: "edit";
+  name: string;
+};
 
 function filterRelayRecords(records: ReadonlyArray<unknown>): RelayLinkedRecord[] {
   return records.filter((record): record is RelayLinkedRecord => {
@@ -110,7 +128,8 @@ function SkillGroupsPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [groupDialogState, setGroupDialogState] = useState<SkillGroupDialogState | null>(null);
+  const [updatingGroupId, setUpdatingGroupId] = useState<string | null>(null);
   const data = useLazyLoadQuery<skillGroupsPageQuery>(
     skillGroupsPageQueryNode,
     {},
@@ -120,6 +139,9 @@ function SkillGroupsPageContent() {
   );
   const [commitCreateSkillGroup, isCreateSkillGroupInFlight] = useMutation<skillGroupsPageCreateSkillGroupMutation>(
     skillGroupsPageCreateSkillGroupMutationNode,
+  );
+  const [commitUpdateSkillGroup, isUpdateSkillGroupInFlight] = useMutation<skillGroupsPageUpdateSkillGroupMutation>(
+    skillGroupsPageUpdateSkillGroupMutationNode,
   );
   const [commitDeleteSkillGroup] = useMutation<skillGroupsPageDeleteSkillGroupMutation>(
     skillGroupsPageDeleteSkillGroupMutationNode,
@@ -159,7 +181,9 @@ function SkillGroupsPageContent() {
             <Button
               onClick={() => {
                 setErrorMessage(null);
-                setCreateDialogOpen(true);
+                setGroupDialogState({
+                  mode: "create",
+                });
               }}
               size="sm"
             >
@@ -199,76 +223,156 @@ function SkillGroupsPageContent() {
                     {skillCount} {skillCount === 1 ? "skill" : "skills"} currently assigned
                   </p>
                 </div>
-                <Button
-                  aria-label={`Delete ${group.name}`}
-                  className="text-muted-foreground hover:text-destructive"
-                  disabled={deletingGroupId === group.id}
-                  onClick={() => {
-                    setErrorMessage(null);
-                    setDeletingGroupId(group.id);
-
-                    void new Promise<void>((resolve, reject) => {
-                      commitDeleteSkillGroup({
-                        variables: {
-                          input: {
-                            id: group.id,
-                          },
-                        },
-                        updater: (store) => {
-                          const deletedGroup = store.getRootField("DeleteSkillGroup");
-                          if (!deletedGroup) {
-                            return;
-                          }
-
-                          const rootRecord = store.getRoot();
-                          const currentGroups = filterRelayRecords(rootRecord.getLinkedRecords("SkillGroups") || []);
-                          rootRecord.setLinkedRecords(
-                            currentGroups.filter((record) => record.getDataID() !== deletedGroup.getDataID()),
-                            "SkillGroups",
-                          );
-
-                          const currentSkills = filterRelayRecords(rootRecord.getLinkedRecords("Skills") || []);
-                          for (const skillRecord of currentSkills) {
-                            if (skillRecord.getValue("skillGroupId") === deletedGroup.getDataID()) {
-                              skillRecord.setValue(null, "skillGroupId");
-                            }
-                          }
-                        },
-                        onCompleted: (_response, errors) => {
-                          const nextErrorMessage = errors?.[0]?.message;
-                          if (nextErrorMessage) {
-                            reject(new Error(nextErrorMessage));
-                            return;
-                          }
-
-                          resolve();
-                        },
-                        onError: reject,
+                <div className="flex items-center gap-1">
+                  <Button
+                    aria-label={`Rename ${group.name}`}
+                    className="text-muted-foreground hover:text-foreground"
+                    disabled={deletingGroupId === group.id || updatingGroupId === group.id}
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setGroupDialogState({
+                        groupId: group.id,
+                        mode: "edit",
+                        name: group.name,
                       });
-                    }).catch((error: unknown) => {
-                      setErrorMessage(error instanceof Error ? error.message : "Failed to delete skill group.");
-                    }).finally(() => {
-                      setDeletingGroupId(null);
-                    });
-                  }}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2Icon className="size-4" />
-                </Button>
+                    }}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <PencilIcon className="size-4" />
+                  </Button>
+                  <Button
+                    aria-label={`Delete ${group.name}`}
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={deletingGroupId === group.id || updatingGroupId === group.id}
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setDeletingGroupId(group.id);
+
+                      void new Promise<void>((resolve, reject) => {
+                        commitDeleteSkillGroup({
+                          variables: {
+                            input: {
+                              id: group.id,
+                            },
+                          },
+                          updater: (store) => {
+                            const deletedGroup = store.getRootField("DeleteSkillGroup");
+                            if (!deletedGroup) {
+                              return;
+                            }
+
+                            const rootRecord = store.getRoot();
+                            const currentGroups = filterRelayRecords(rootRecord.getLinkedRecords("SkillGroups") || []);
+                            rootRecord.setLinkedRecords(
+                              currentGroups.filter((record) => record.getDataID() !== deletedGroup.getDataID()),
+                              "SkillGroups",
+                            );
+
+                            const currentSkills = filterRelayRecords(rootRecord.getLinkedRecords("Skills") || []);
+                            for (const skillRecord of currentSkills) {
+                              if (skillRecord.getValue("skillGroupId") === deletedGroup.getDataID()) {
+                                skillRecord.setValue(null, "skillGroupId");
+                              }
+                            }
+                          },
+                          onCompleted: (_response, errors) => {
+                            const nextErrorMessage = errors?.[0]?.message;
+                            if (nextErrorMessage) {
+                              reject(new Error(nextErrorMessage));
+                              return;
+                            }
+
+                            resolve();
+                          },
+                          onError: reject,
+                        });
+                      }).catch((error: unknown) => {
+                        setErrorMessage(error instanceof Error ? error.message : "Failed to delete skill group.");
+                      }).finally(() => {
+                        setDeletingGroupId(null);
+                      });
+                    }}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2Icon className="size-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
         </CardContent>
       </Card>
 
-      <CreateGroupDialog
-        errorMessage={isCreateDialogOpen ? errorMessage : null}
-        isOpen={isCreateDialogOpen}
-        isSaving={isCreateSkillGroupInFlight}
-        onCreate={async (name) => {
+      <GroupDialog
+        errorMessage={groupDialogState ? errorMessage : null}
+        initialName={groupDialogState?.mode === "edit" ? groupDialogState.name : ""}
+        isOpen={groupDialogState !== null}
+        isSaving={isCreateSkillGroupInFlight || isUpdateSkillGroupInFlight}
+        mode={groupDialogState?.mode ?? "create"}
+        onOpenChange={(open) => {
+          if (open) {
+            return;
+          }
+
+          setGroupDialogState(null);
           setErrorMessage(null);
+        }}
+        onSubmit={async (name) => {
+          setErrorMessage(null);
+
+          if (groupDialogState?.mode === "edit") {
+            setUpdatingGroupId(groupDialogState.groupId);
+
+            await new Promise<void>((resolve, reject) => {
+              commitUpdateSkillGroup({
+                variables: {
+                  input: {
+                    id: groupDialogState.groupId,
+                    name,
+                  },
+                },
+                updater: (store) => {
+                  const updatedGroup = store.getRootField("UpdateSkillGroup");
+                  if (!updatedGroup) {
+                    return;
+                  }
+
+                  const rootRecord = store.getRoot();
+                  const currentGroups = filterRelayRecords(rootRecord.getLinkedRecords("SkillGroups") || []);
+                  rootRecord.setLinkedRecords(
+                    sortGroupRecords(currentGroups.map((record) => {
+                      return record.getDataID() === updatedGroup.getDataID()
+                        ? updatedGroup as RelayLinkedRecord
+                        : record;
+                    })),
+                    "SkillGroups",
+                  );
+                },
+                onCompleted: (_response, errors) => {
+                  const nextErrorMessage = errors?.[0]?.message;
+                  if (nextErrorMessage) {
+                    reject(new Error(nextErrorMessage));
+                    return;
+                  }
+
+                  setGroupDialogState(null);
+                  resolve();
+                },
+                onError: reject,
+              });
+            }).catch((error: unknown) => {
+              setErrorMessage(error instanceof Error ? error.message : "Failed to rename skill group.");
+              throw error;
+            }).finally(() => {
+              setUpdatingGroupId(null);
+            });
+
+            return;
+          }
 
           await new Promise<void>((resolve, reject) => {
             commitCreateSkillGroup({
@@ -297,7 +401,7 @@ function SkillGroupsPageContent() {
                   return;
                 }
 
-                setCreateDialogOpen(false);
+                setGroupDialogState(null);
                 resolve();
               },
               onError: reject,
@@ -306,12 +410,6 @@ function SkillGroupsPageContent() {
             setErrorMessage(error instanceof Error ? error.message : "Failed to create skill group.");
             throw error;
           });
-        }}
-        onOpenChange={(open) => {
-          setCreateDialogOpen(open);
-          if (!open) {
-            setErrorMessage(null);
-          }
         }}
       />
     </main>

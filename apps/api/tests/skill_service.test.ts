@@ -140,34 +140,57 @@ class SkillServiceTestHarness {
         throw new Error("Unexpected delete table.");
       },
       update(table: unknown) {
-        if (table !== skills) {
-          throw new Error("Unexpected update table.");
+        if (table === skills) {
+          return {
+            set(value: Record<string, unknown>) {
+              return {
+                where(_condition: unknown) {
+                  void _condition;
+                  return {
+                    async returning() {
+                      const [targetSkill] = skillRecords;
+                      if (!targetSkill) {
+                        return [];
+                      }
+
+                      targetSkill.description = String(value.description);
+                      targetSkill.instructions = String(value.instructions);
+                      targetSkill.name = String(value.name);
+                      targetSkill.skillGroupId = value.skillGroupId ? String(value.skillGroupId) : null;
+
+                      return [targetSkill];
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === skill_groups) {
+          return {
+            set(value: Record<string, unknown>) {
+              return {
+                where(_condition: unknown) {
+                  void _condition;
+                  return {
+                    async returning() {
+                      const [targetGroup] = groups;
+                      if (!targetGroup) {
+                        return [];
+                      }
+
+                      targetGroup.name = String(value.name);
+
+                      return [targetGroup];
+                    },
+                  };
+                },
+              };
+            },
+          };
         }
 
-        return {
-          set(value: Record<string, unknown>) {
-            return {
-              where(_condition: unknown) {
-                void _condition;
-                return {
-                  async returning() {
-                    const [targetSkill] = skillRecords;
-                    if (!targetSkill) {
-                      return [];
-                    }
-
-                    targetSkill.description = String(value.description);
-                    targetSkill.instructions = String(value.instructions);
-                    targetSkill.name = String(value.name);
-                    targetSkill.skillGroupId = value.skillGroupId ? String(value.skillGroupId) : null;
-
-                    return [targetSkill];
-                  },
-                };
-              },
-            };
-          },
-        };
+        throw new Error("Unexpected update table.");
       },
     };
 
@@ -228,6 +251,27 @@ test("SkillService deletes a skill group and clears existing assignments", async
   assert.equal(deletedGroup.id, "group-automation");
   assert.equal(transactionProvider.groups.length, 0);
   assert.equal(transactionProvider.skillRecords[0]?.skillGroupId, null);
+});
+
+test("SkillService renames a skill group for the authenticated company", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [{
+      companyId: "company-123",
+      id: "group-automation",
+      name: "Automation",
+    }],
+    skills: [],
+  });
+  const service = new SkillService();
+
+  const updatedGroup = await service.updateSkillGroup(transactionProvider as never, {
+    companyId: "company-123",
+    name: "Workflows",
+    skillGroupId: "group-automation",
+  });
+
+  assert.equal(updatedGroup.name, "Workflows");
+  assert.equal(transactionProvider.groups[0]?.name, "Workflows");
 });
 
 test("SkillService deletes one skill from the catalog", async () => {

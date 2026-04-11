@@ -72,6 +72,7 @@ import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_arti
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import { UpdateSessionTitleMutation } from "./mutations/update_session_title.ts";
 import { UpdateSkillMutation } from "./mutations/update_skill.ts";
+import { UpdateSkillGroupMutation } from "./mutations/update_skill_group.ts";
 import { UpdateTaskMutation } from "./mutations/update_task.ts";
 import { AgentQueryResolver } from "./resolvers/agent.ts";
 import { AgentConversationMessagesQueryResolver } from "./resolvers/agent_conversation_messages.ts";
@@ -281,6 +282,7 @@ export class GraphqlApplication {
     githubSkillBranchesQueryResolver?: GithubSkillBranchesQueryResolver,
     githubDiscoveredSkillsQueryResolver?: GithubDiscoveredSkillsQueryResolver,
     importGithubSkillsMutation?: ImportGithubSkillsMutation,
+    updateSkillGroupMutation?: UpdateSkillGroupMutation,
   ): GraphqlApplication {
     const resolvedRedisService = redisService ?? GraphqlApplication.createFallbackRedisService(config);
     const resolvedGraphqlErrorLogger = graphqlErrorLogger ?? new GraphqlErrorLogger();
@@ -398,6 +400,7 @@ export class GraphqlApplication {
       githubSkillBranchesQueryResolver,
       githubDiscoveredSkillsQueryResolver,
       importGithubSkillsMutation,
+      updateSkillGroupMutation,
     );
     const taskGraphqlRegistry = new TaskGraphqlRegistry(
       createTaskMutation,

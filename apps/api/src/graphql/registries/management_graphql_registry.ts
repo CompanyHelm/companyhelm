@@ -20,6 +20,7 @@ import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refr
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
 import { UpdateSecretMutation } from "../mutations/update_secret.ts";
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
+import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
 import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
 import { GithubDiscoveredSkillsQueryResolver } from "../resolvers/github_discovered_skills.ts";
@@ -66,6 +67,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly updateCompanySettingsMutation: UpdateCompanySettingsMutation;
   private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly updateSkillMutation: UpdateSkillMutation;
+  private readonly updateSkillGroupMutation: UpdateSkillGroupMutation;
 
   constructor(
     @inject(Config) config: Config,
@@ -130,6 +132,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     githubDiscoveredSkillsQueryResolver?: GithubDiscoveredSkillsQueryResolver,
     @inject(ImportGithubSkillsMutation)
     importGithubSkillsMutation?: ImportGithubSkillsMutation,
+    @inject(UpdateSkillGroupMutation)
+    updateSkillGroupMutation?: UpdateSkillGroupMutation,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -164,6 +168,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.updateCompanySettingsMutation = updateCompanySettingsMutation;
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
+    this.updateSkillGroupMutation = updateSkillGroupMutation ?? new UpdateSkillGroupMutation(defaultSkillService);
   }
 
   createResolvers(): GraphqlResolverFragment {
@@ -183,6 +188,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
         UpdateSecret: this.updateSecretMutation.execute,
         UpdateSkill: this.updateSkillMutation.execute,
+        UpdateSkillGroup: this.updateSkillGroupMutation.execute,
       },
       Query: {
         CompanySettings: this.companySettingsQueryResolver.execute,

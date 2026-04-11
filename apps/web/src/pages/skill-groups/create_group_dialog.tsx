@@ -10,36 +10,47 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-interface CreateGroupDialogProps {
+type GroupDialogMode = "create" | "edit";
+
+interface GroupDialogProps {
   errorMessage: string | null;
+  initialName: string;
   isOpen: boolean;
   isSaving: boolean;
-  onCreate(name: string): Promise<void>;
+  mode: GroupDialogMode;
   onOpenChange(open: boolean): void;
+  onSubmit(name: string): Promise<void>;
 }
 
 /**
- * Collects the single field required to create a new skill group without adding form noise to the
- * group management list itself.
+ * Collects the single editable field for both creating and renaming skill groups so the management
+ * page can keep list actions compact while still validating through one shared flow.
  */
-export function CreateGroupDialog(props: CreateGroupDialogProps) {
+export function GroupDialog(props: GroupDialogProps) {
   const [groupName, setGroupName] = useState("");
 
   useEffect(() => {
-    if (!props.isOpen) {
-      setGroupName("");
+    if (props.isOpen) {
+      setGroupName(props.initialName);
+      return;
     }
-  }, [props.isOpen]);
+
+    setGroupName("");
+  }, [props.initialName, props.isOpen]);
+
+  const isEditing = props.mode === "edit";
+  const title = isEditing ? "Rename skill group" : "Create skill group";
+  const description = isEditing
+    ? "Update the group name without changing which skills are already assigned to it."
+    : "Add a folder-like group that skills can be moved into from the catalog or from a skill detail page.";
+  const submitLabel = isEditing ? "Save changes" : "Create group";
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create skill group</DialogTitle>
-          <DialogDescription>
-            Add a folder-like group that skills can be moved into from the catalog or from a skill
-            detail page.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-2">
@@ -75,11 +86,11 @@ export function CreateGroupDialog(props: CreateGroupDialogProps) {
           <Button
             disabled={props.isSaving || groupName.length === 0}
             onClick={async () => {
-              await props.onCreate(groupName);
+              await props.onSubmit(groupName);
             }}
             type="button"
           >
-            Create group
+            {submitLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

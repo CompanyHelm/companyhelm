@@ -127,6 +127,7 @@ type Mutation {
   UpdateMarkdownArtifact(input: UpdateMarkdownArtifactInput!): Artifact!
   UpdateSecret(input: UpdateSecretInput!): Secret!
   UpdateSkill(input: UpdateSkillInput!): Skill!
+  UpdateSkillGroup(input: UpdateSkillGroupInput!): SkillGroup!
 }
 
 type Subscription {
@@ -857,6 +858,11 @@ input UpdateSkillInput {
   description: String
   instructions: String
   skillGroupId: ID
+}
+
+input UpdateSkillGroupInput {
+  id: ID!
+  name: String
 }
 
 input AttachSecretToSessionInput {
