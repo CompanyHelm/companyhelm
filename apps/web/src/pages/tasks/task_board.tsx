@@ -223,102 +223,102 @@ export function TaskBoard(props: TaskBoardProps) {
                 >
                   <div className="flex h-full flex-col">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="overflow-hidden text-xs font-medium leading-5 text-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                          {task.name}
-                        </h3>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <Badge className="h-5 px-1.5 text-[0.625rem]" variant={resolveTaskStatusVariant(task.status)}>
-                            {formatTaskStatus(task.status)}
-                          </Badge>
-                          <span className="ml-auto shrink-0 text-[0.625rem] tabular-nums text-muted-foreground/80">
-                            {formatTaskTimestamp(task.createdAt)}
-                          </span>
+                      <h3 className="min-w-0 flex-1 overflow-hidden text-xs font-medium leading-5 text-foreground [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                        {task.name}
+                      </h3>
+                      <div className="shrink-0">
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                        >
+                          <Button
+                            aria-label={`Execute ${task.name}`}
+                            disabled={
+                              props.executingTaskId === task.id
+                              || !task.assignee
+                              || task.assignee.kind !== "agent"
+                            }
+                            onClick={(event) => {
+                              stopTaskCardPropagation(event);
+                              void props.onExecuteTask(task.id);
+                            }}
+                            size="icon-xs"
+                            type="button"
+                            variant="ghost"
+                          >
+                            {props.executingTaskId === task.id
+                              ? <Loader2Icon className="size-2.5 animate-spin" />
+                              : <PlayIcon className="size-2.5" />}
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                aria-label={`Delete ${task.name}`}
+                                disabled={props.deletingTaskId === task.id}
+                                onClick={(event) => {
+                                  stopTaskCardPropagation(event);
+                                }}
+                                size="icon-xs"
+                                type="button"
+                                variant="ghost"
+                              >
+                                <Trash2Icon className="size-2.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent
+                              onClick={(event) => {
+                                event.stopPropagation();
+                              }}
+                            >
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete task</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete the task and any nested child tasks.
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancelAction asChild>
+                                  <AlertDialogCancelButton
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                    }}
+                                    variant="outline"
+                                  >
+                                    Cancel
+                                  </AlertDialogCancelButton>
+                                </AlertDialogCancelAction>
+                                <AlertDialogPrimaryAction asChild>
+                                  <AlertDialogActionButton
+                                    autoFocus
+                                    disabled={props.deletingTaskId === task.id}
+                                    onClick={async (event) => {
+                                      event.stopPropagation();
+                                      await props.onDeleteTask(task.id);
+                                    }}
+                                    variant="destructive"
+                                  >
+                                    Delete
+                                  </AlertDialogActionButton>
+                                </AlertDialogPrimaryAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
-                      <div
-                        className="flex shrink-0 items-center gap-1"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                        onPointerDown={(event) => {
-                          event.stopPropagation();
-                        }}
-                      >
-                        <Button
-                          aria-label={`Execute ${task.name}`}
-                          disabled={
-                            props.executingTaskId === task.id
-                            || !task.assignee
-                            || task.assignee.kind !== "agent"
-                          }
-                          onClick={(event) => {
-                            stopTaskCardPropagation(event);
-                            void props.onExecuteTask(task.id);
-                          }}
-                          size="icon-xs"
-                          type="button"
-                          variant="ghost"
-                        >
-                          {props.executingTaskId === task.id
-                            ? <Loader2Icon className="size-2.5 animate-spin" />
-                            : <PlayIcon className="size-2.5" />}
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              aria-label={`Delete ${task.name}`}
-                              disabled={props.deletingTaskId === task.id}
-                              onClick={(event) => {
-                                stopTaskCardPropagation(event);
-                              }}
-                              size="icon-xs"
-                              type="button"
-                              variant="ghost"
-                            >
-                              <Trash2Icon className="size-2.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent
-                            onClick={(event) => {
-                              event.stopPropagation();
-                            }}
-                          >
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete task</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete the task and any nested child tasks.
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancelAction asChild>
-                                <AlertDialogCancelButton
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                  }}
-                                  variant="outline"
-                                >
-                                  Cancel
-                                </AlertDialogCancelButton>
-                              </AlertDialogCancelAction>
-                              <AlertDialogPrimaryAction asChild>
-                                <AlertDialogActionButton
-                                  autoFocus
-                                  disabled={props.deletingTaskId === task.id}
-                                  onClick={async (event) => {
-                                    event.stopPropagation();
-                                    await props.onDeleteTask(task.id);
-                                  }}
-                                  variant="destructive"
-                                >
-                                  Delete
-                                </AlertDialogActionButton>
-                              </AlertDialogPrimaryAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <Badge className="h-5 px-1.5 text-[0.625rem]" variant={resolveTaskStatusVariant(task.status)}>
+                        {formatTaskStatus(task.status)}
+                      </Badge>
+                      <span className="ml-auto shrink-0 text-[0.625rem] tabular-nums text-muted-foreground/80">
+                        {formatTaskTimestamp(task.createdAt)}
+                      </span>
                     </div>
                   </div>
                 </article>
