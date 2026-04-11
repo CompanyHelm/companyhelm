@@ -148,7 +148,7 @@ export function TaskBoard(props: TaskBoardProps) {
             <CardHeader className="shrink-0 border-b border-border/60 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <CardTitle className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <CardTitle className="truncate text-sm font-medium text-foreground">
                     {column.label}
                   </CardTitle>
                   <Badge className="h-5 px-1.5 text-[0.625rem]" variant="outline">
