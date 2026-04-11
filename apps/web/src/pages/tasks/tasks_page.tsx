@@ -1,12 +1,19 @@
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PlusIcon } from "lucide-react";
+import { LayoutGridIcon, ListIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { cn } from "@/lib/utils";
 import { CreateTaskDialog } from "./create_task_dialog";
 import { TaskBoard } from "./task_board";
+import { TaskList } from "./task_list";
+import type {
+  TaskCategoryRecord,
+  TaskRecord,
+  TaskViewType,
+} from "./task_ui";
 import type { tasksPageCreateTaskMutation } from "./__generated__/tasksPageCreateTaskMutation.graphql";
 import type { tasksPageDeleteTaskMutation } from "./__generated__/tasksPageDeleteTaskMutation.graphql";
 import type { tasksPageExecuteTaskMutation } from "./__generated__/tasksPageExecuteTaskMutation.graphql";
@@ -114,6 +121,7 @@ const tasksPageExecuteTaskMutationNode = graphql`
 
 type TasksPageSearch = {
   category?: string;
+  viewType?: TaskViewType;
 };
 
 function parseSelectedTaskCategoryKeys(
@@ -150,6 +158,16 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
   });
 }
 
+function buildTasksPageSearch(input: {
+  category?: string;
+  viewType: TaskViewType;
+}): TasksPageSearch {
+  return {
+    category: input.category,
+    viewType: input.viewType,
+  };
+}
+
 function TasksPageFallback() {
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
@@ -162,10 +180,15 @@ function TasksPageFallback() {
             Loading
           </Button>
         </div>
-        <Button disabled size="sm">
-          <PlusIcon />
-          Create task
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button disabled size="sm">
+            <PlusIcon />
+            Create task
+          </Button>
+          <Button className="rounded-full" disabled size="icon-sm" variant="outline">
+            <SlidersHorizontalIcon className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -185,6 +208,8 @@ function TasksPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [executingTaskId, setExecutingTaskId] = useState<string | null>(null);
+  const [isViewMenuOpen, setViewMenuOpen] = useState(false);
+  const viewMenuRef = useRef<HTMLDivElement | null>(null);
   const data = useLazyLoadQuery<tasksPageQuery>(
     tasksPageQueryNode,
     {},
@@ -204,7 +229,8 @@ function TasksPageContent() {
   const [commitExecuteTask] = useMutation<tasksPageExecuteTaskMutation>(
     tasksPageExecuteTaskMutationNode,
   );
-  const allCategories = data.TaskCategories.map((category: TasksPageCategory) => ({
+  const selectedViewType: TaskViewType = search.viewType === "list" ? "list" : "board";
+  const allCategories: TaskCategoryRecord[] = data.TaskCategories.map((category: TasksPageCategory) => ({
     id: category.id,
     name: category.name,
   }));
@@ -215,7 +241,7 @@ function TasksPageContent() {
       label: "All tasks",
       count: data.Tasks.length,
     },
-    ...allCategories.map((category: { id: string; name: string }) => ({
+    ...allCategories.map((category: TaskCategoryRecord) => ({
       key: category.id,
       label: category.name,
       count: data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === category.id).length,
@@ -235,16 +261,222 @@ function TasksPageContent() {
   const hasSelectedCategoryFilters = selectedCategoryKeys.length > 0;
   const visibleCategories = !hasSelectedCategoryFilters
     ? allCategories
-    : allCategories.filter((category: { id: string; name: string }) => selectedCategoryKeys.includes(category.id));
-  const visibleTasks = !hasSelectedCategoryFilters
+    : allCategories.filter((category: TaskCategoryRecord) => selectedCategoryKeys.includes(category.id));
+  const visibleTasks: TaskRecord[] = (!hasSelectedCategoryFilters
     ? data.Tasks
     : data.Tasks.filter((task: TasksPageTask) => {
       return selectedCategoryKeys.includes(task.taskCategoryId ?? "uncategorized");
+    }))
+    .map((task: TasksPageTask) => ({
+      assignedAt: task.assignedAt,
+      assignee: task.assignee
+        ? {
+          email: task.assignee.email,
+          id: task.assignee.id,
+          kind: task.assignee.kind as "agent" | "user",
+          name: task.assignee.name,
+        }
+        : null,
+      createdAt: task.createdAt,
+      description: task.description,
+      id: task.id,
+      name: task.name,
+      status: task.status as "draft" | "in_progress" | "completed",
+      taskCategoryId: task.taskCategoryId,
+      taskCategoryName: task.taskCategoryName,
+      updatedAt: task.updatedAt,
+    }));
+  const currentCategorySearchValue = selectedCategoryKeys.length > 0
+    ? selectedCategoryKeys.join(",")
+    : undefined;
+
+  useEffect(() => {
+    if (!isViewMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!(event.target instanceof Node)) {
+        return;
+      }
+
+      if (!viewMenuRef.current?.contains(event.target)) {
+        setViewMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setViewMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isViewMenuOpen]);
+
+  function selectViewType(viewType: TaskViewType) {
+    setViewMenuOpen(false);
+    void navigate({
+      params: {
+        organizationSlug,
+      },
+      search: buildTasksPageSearch({
+        category: currentCategorySearchValue,
+        viewType,
+      }),
+      to: OrganizationPath.route("/tasks"),
     });
+  }
+
+  async function deleteTask(taskId: string) {
+    setDeletingTaskId(taskId);
+    setErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitDeleteTask({
+          variables: {
+            input: {
+              taskId,
+            },
+          },
+          updater: (store: {
+            delete?(dataId: string): void;
+            getRoot(): {
+              getLinkedRecords(name: string): ReadonlyArray<unknown> | null | undefined;
+              setLinkedRecords(records: Array<{ getDataID(): string }>, name: string): void;
+            };
+            getRootField(name: string): { getDataID(): string } | null | undefined;
+          }) => {
+            const deletedTask = store.getRootField("DeleteTask");
+            if (!deletedTask) {
+              return;
+            }
+
+            const deletedTaskId = deletedTask.getDataID();
+            const rootRecord = store.getRoot();
+            const currentTasks = filterStoreRecords(rootRecord.getLinkedRecords("Tasks") || []);
+            rootRecord.setLinkedRecords(
+              currentTasks.filter((taskRecord) => taskRecord.getDataID() !== deletedTaskId),
+              "Tasks",
+            );
+            store.delete?.(deletedTaskId);
+          },
+          onCompleted: (
+            _response: tasksPageDeleteTaskMutation["response"],
+            errors: ReadonlyArray<{ message: string }> | null | undefined,
+          ) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to delete task.");
+    } finally {
+      setDeletingTaskId(null);
+    }
+  }
+
+  async function executeTask(taskId: string) {
+    setExecutingTaskId(taskId);
+    setErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitExecuteTask({
+          variables: {
+            input: {
+              taskId,
+            },
+          },
+          updater: (store: {
+            get(taskRecordId: string): { setValue(value: unknown, fieldName: string): void } | null | undefined;
+          }) => {
+            store.get(taskId)?.setValue("in_progress", "status");
+          },
+          onCompleted: (
+            _response: tasksPageExecuteTaskMutation["response"],
+            errors: ReadonlyArray<{ message: string }> | null | undefined,
+          ) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to execute task.");
+    } finally {
+      setExecutingTaskId(null);
+    }
+  }
+
+  async function moveTask(taskId: string, taskCategoryId: string | null) {
+    setErrorMessage(null);
+
+    await new Promise<void>((resolve, reject) => {
+      commitSetTaskCategory({
+        variables: {
+          input: {
+            taskId,
+            taskCategoryId,
+          },
+        },
+        onCompleted: (
+          _response: tasksPageSetTaskCategoryMutation["response"],
+          errors: ReadonlyArray<{ message: string }> | null | undefined,
+        ) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to move task.");
+    });
+  }
+
+  function openTaskDetail(taskId: string) {
+    void navigate({
+      params: {
+        organizationSlug,
+        taskId,
+      },
+      search: {
+        viewType: selectedViewType,
+      },
+      to: OrganizationPath.route("/tasks/$taskId"),
+    });
+  }
 
   return (
-    <main className="flex h-full min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 items-center justify-between gap-4">
+    <main className={cn(
+      "flex h-full min-h-0 flex-1 flex-col gap-4",
+      selectedViewType === "board" && "overflow-hidden",
+    )}>
+      <div className="flex shrink-0 items-start justify-between gap-4">
         <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
           {categoryFilterOptions.map((filterOption) => {
             const isSelected = filterOption.key === undefined
@@ -254,19 +486,22 @@ function TasksPageContent() {
             return (
               <Button
                 key={filterOption.key ?? "all"}
-                className={`h-9 shrink-0 rounded-full border px-4 text-sm ${
+                className={cn(
+                  "h-9 shrink-0 rounded-full border px-4 text-sm",
                   isSelected
                     ? "border-border/70 bg-muted text-foreground hover:bg-muted"
-                    : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                }`}
+                    : "border-border/40 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                )}
                 onClick={() => {
                   if (filterOption.key === undefined) {
                     void navigate({
                       params: {
                         organizationSlug,
                       },
+                      search: buildTasksPageSearch({
+                        viewType: selectedViewType,
+                      }),
                       to: OrganizationPath.route("/tasks"),
-                      search: {},
                     });
                     return;
                   }
@@ -283,10 +518,13 @@ function TasksPageContent() {
                     params: {
                       organizationSlug,
                     },
+                    search: buildTasksPageSearch({
+                      category: nextSelectedCategoryKeys.length > 0
+                        ? nextSelectedCategoryKeys.join(",")
+                        : undefined,
+                      viewType: selectedViewType,
+                    }),
                     to: OrganizationPath.route("/tasks"),
-                    search: nextSelectedCategoryKeys.length > 0
-                      ? { category: nextSelectedCategoryKeys.join(",") }
-                      : {},
                   });
                 }}
                 size="sm"
@@ -298,15 +536,87 @@ function TasksPageContent() {
             );
           })}
         </div>
-        <Button
-          onClick={() => {
-            setCreateDialogOpen(true);
-          }}
-          size="sm"
-        >
-          <PlusIcon />
-          Create task
-        </Button>
+
+        <div className="relative flex shrink-0 items-center gap-2" ref={viewMenuRef}>
+          <Button
+            onClick={() => {
+              setCreateDialogOpen(true);
+            }}
+            size="sm"
+          >
+            <PlusIcon />
+            Create task
+          </Button>
+          <Button
+            aria-expanded={isViewMenuOpen}
+            aria-haspopup="dialog"
+            className="rounded-full"
+            onClick={() => {
+              setViewMenuOpen((currentValue) => !currentValue);
+            }}
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <SlidersHorizontalIcon className="size-3.5" />
+          </Button>
+
+          {isViewMenuOpen ? (
+            <div className="absolute right-0 top-full z-30 mt-2 w-80 rounded-2xl border border-border/70 bg-background/95 p-3 shadow-2xl backdrop-blur">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    View type
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/30 p-1">
+                    {([
+                      {
+                        icon: ListIcon,
+                        label: "List",
+                        value: "list" as const,
+                      },
+                      {
+                        icon: LayoutGridIcon,
+                        label: "Board",
+                        value: "board" as const,
+                      },
+                    ]).map((option) => {
+                      const isSelected = selectedViewType === option.value;
+                      const Icon = option.icon;
+
+                      return (
+                        <Button
+                          key={option.value}
+                          className={cn(
+                            "h-10 justify-center rounded-lg text-sm",
+                            isSelected && "bg-background shadow-sm hover:bg-background",
+                          )}
+                          onClick={() => {
+                            selectViewType(option.value);
+                          }}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Icon className="size-3.5" />
+                          {option.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+                  <p className="text-sm font-medium text-foreground">Category groups</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    List view groups tasks by category and lets you collapse each section to focus on
+                    one lane at a time.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {errorMessage ? (
@@ -315,163 +625,31 @@ function TasksPageContent() {
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1">
-        <TaskBoard
-          categories={visibleCategories}
-          deletingTaskId={deletingTaskId}
-          executingTaskId={executingTaskId}
-          includeUncategorizedColumn={!hasSelectedCategoryFilters || selectedCategoryKeys.includes("uncategorized")}
-          onDeleteTask={async (taskId) => {
-            setDeletingTaskId(taskId);
-            setErrorMessage(null);
-
-            try {
-              await new Promise<void>((resolve, reject) => {
-                commitDeleteTask({
-                  variables: {
-                    input: {
-                      taskId,
-                    },
-                  },
-                  updater: (store: {
-                    delete?(dataId: string): void;
-                    getRoot(): {
-                      getLinkedRecords(name: string): ReadonlyArray<unknown> | null | undefined;
-                      setLinkedRecords(records: Array<{ getDataID(): string }>, name: string): void;
-                    };
-                    getRootField(name: string): { getDataID(): string } | null | undefined;
-                  }) => {
-                    const deletedTask = store.getRootField("DeleteTask");
-                    if (!deletedTask) {
-                      return;
-                    }
-
-                    const deletedTaskId = deletedTask.getDataID();
-                    const rootRecord = store.getRoot();
-                    const currentTasks = filterStoreRecords(rootRecord.getLinkedRecords("Tasks") || []);
-                    rootRecord.setLinkedRecords(
-                      currentTasks.filter((taskRecord) => taskRecord.getDataID() !== deletedTaskId),
-                      "Tasks",
-                    );
-                    store.delete?.(deletedTaskId);
-                  },
-                  onCompleted: (
-                    _response: tasksPageDeleteTaskMutation["response"],
-                    errors: ReadonlyArray<{ message: string }> | null | undefined,
-                  ) => {
-                    const nextErrorMessage = errors?.[0]?.message;
-                    if (nextErrorMessage) {
-                      reject(new Error(nextErrorMessage));
-                      return;
-                    }
-
-                    resolve();
-                  },
-                  onError: reject,
-                });
-              });
-            } catch (error: unknown) {
-              setErrorMessage(error instanceof Error ? error.message : "Failed to delete task.");
-            } finally {
-              setDeletingTaskId(null);
-            }
-          }}
-          onExecuteTask={async (taskId) => {
-            setExecutingTaskId(taskId);
-            setErrorMessage(null);
-
-            try {
-              await new Promise<void>((resolve, reject) => {
-                commitExecuteTask({
-                  variables: {
-                    input: {
-                      taskId,
-                    },
-                  },
-                  updater: (store: {
-                    get(taskRecordId: string): { setValue(value: unknown, fieldName: string): void } | null | undefined;
-                  }) => {
-                    store.get(taskId)?.setValue("in_progress", "status");
-                  },
-                  onCompleted: (
-                    _response: tasksPageExecuteTaskMutation["response"],
-                    errors: ReadonlyArray<{ message: string }> | null | undefined,
-                  ) => {
-                    const nextErrorMessage = errors?.[0]?.message;
-                    if (nextErrorMessage) {
-                      reject(new Error(nextErrorMessage));
-                      return;
-                    }
-
-                    resolve();
-                  },
-                  onError: reject,
-                });
-              });
-            } catch (error: unknown) {
-              setErrorMessage(error instanceof Error ? error.message : "Failed to execute task.");
-            } finally {
-              setExecutingTaskId(null);
-            }
-          }}
-          onOpenTask={(taskId) => {
-            void navigate({
-              params: {
-                organizationSlug,
-                taskId,
-              },
-              to: OrganizationPath.route("/tasks/$taskId"),
-            });
-          }}
-          tasks={visibleTasks.map((task: TasksPageTask) => ({
-            assignedAt: task.assignedAt,
-            assignee: task.assignee
-              ? {
-                email: task.assignee.email,
-                id: task.assignee.id,
-                kind: task.assignee.kind as "agent" | "user",
-                name: task.assignee.name,
-              }
-              : null,
-            id: task.id,
-            name: task.name,
-            description: task.description,
-            status: task.status as "draft" | "in_progress" | "completed",
-            taskCategoryId: task.taskCategoryId,
-            taskCategoryName: task.taskCategoryName,
-            createdAt: task.createdAt,
-            updatedAt: task.updatedAt,
-          }))}
-          onMoveTask={async (taskId, taskCategoryId) => {
-            setErrorMessage(null);
-
-            await new Promise<void>((resolve, reject) => {
-              commitSetTaskCategory({
-                variables: {
-                  input: {
-                    taskId,
-                    taskCategoryId,
-                  },
-                },
-                onCompleted: (
-                  _response: tasksPageSetTaskCategoryMutation["response"],
-                  errors: ReadonlyArray<{ message: string }> | null | undefined,
-                ) => {
-                  const nextErrorMessage = errors?.[0]?.message;
-                  if (nextErrorMessage) {
-                    reject(new Error(nextErrorMessage));
-                    return;
-                  }
-
-                  resolve();
-                },
-                onError: reject,
-              });
-            }).catch((error: unknown) => {
-              setErrorMessage(error instanceof Error ? error.message : "Failed to move task.");
-            });
-          }}
-        />
+      <div className={cn("min-h-0 flex-1", selectedViewType === "board" && "overflow-hidden")}>
+        {selectedViewType === "board" ? (
+          <TaskBoard
+            categories={visibleCategories}
+            deletingTaskId={deletingTaskId}
+            executingTaskId={executingTaskId}
+            includeUncategorizedColumn={!hasSelectedCategoryFilters || selectedCategoryKeys.includes("uncategorized")}
+            onDeleteTask={deleteTask}
+            onExecuteTask={executeTask}
+            onMoveTask={moveTask}
+            onOpenTask={openTaskDetail}
+            tasks={visibleTasks}
+          />
+        ) : (
+          <TaskList
+            categories={visibleCategories}
+            deletingTaskId={deletingTaskId}
+            executingTaskId={executingTaskId}
+            hasActiveFilters={hasSelectedCategoryFilters}
+            onDeleteTask={deleteTask}
+            onExecuteTask={executeTask}
+            onOpenTask={openTaskDetail}
+            tasks={visibleTasks}
+          />
+        )}
       </div>
 
       <CreateTaskDialog
@@ -541,10 +719,6 @@ function TasksPageContent() {
   );
 }
 
-/**
- * Hosts the Relay-backed task-management slice so the route can stay small while still handling
- * task creation and board moves directly against the GraphQL API.
- */
 export function TasksPage() {
   return (
     <Suspense fallback={<TasksPageFallback />}>

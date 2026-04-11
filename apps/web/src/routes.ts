@@ -43,10 +43,16 @@ type ChatsRouteSearch = {
 
 type TasksRouteSearch = {
   category?: string;
+  viewType?: "board" | "list";
 };
 
 type TaskDetailRouteSearch = {
   tab?: "artifacts" | "runs";
+  viewType?: "board" | "list";
+};
+
+type TaskArtifactDetailRouteSearch = {
+  viewType?: "board" | "list";
 };
 
 type ConversationsRouteSearch = {
@@ -73,6 +79,9 @@ function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSe
     category: typeof search.category === "string" && search.category.trim().length > 0
       ? search.category.trim()
       : undefined,
+    viewType: search.viewType === "board" || search.viewType === "list"
+      ? search.viewType
+      : undefined,
   };
 }
 
@@ -80,6 +89,17 @@ function validateTaskDetailRouteSearch(search: Record<string, unknown>): TaskDet
   return {
     tab: search.tab === "runs" || search.tab === "artifacts"
       ? search.tab
+      : undefined,
+    viewType: search.viewType === "board" || search.viewType === "list"
+      ? search.viewType
+      : undefined,
+  };
+}
+
+function validateTaskArtifactDetailRouteSearch(search: Record<string, unknown>): TaskArtifactDetailRouteSearch {
+  return {
+    viewType: search.viewType === "board" || search.viewType === "list"
+      ? search.viewType
       : undefined,
   };
 }
@@ -256,6 +276,7 @@ const taskDetailRoute = createRoute({
 const taskArtifactDetailRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/tasks/$taskId/artifacts/$artifactId"),
+  validateSearch: validateTaskArtifactDetailRouteSearch,
   component: ArtifactDetailPage,
 });
 

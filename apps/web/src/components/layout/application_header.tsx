@@ -16,8 +16,12 @@ export function ApplicationHeader() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const locationHref = useRouterState({
+    select: (state) => state.location.href,
+  });
   const organizationSlug = useCurrentOrganizationSlug();
   const normalizedPathname = OrganizationPath.stripPrefix(pathname);
+  const currentLocation = new URL(locationHref, "https://companyhelm.local");
   const { detailLabel, headerActions, headerClassName, headerContent } = useApplicationBreadcrumb();
   const isCredentialDetailPage = /^\/model-provider-credentials\/[^/]+$/.test(normalizedPathname);
   const isAgentDetailPage = /^\/agents\/[^/]+$/.test(normalizedPathname);
@@ -81,6 +85,10 @@ export function ApplicationHeader() {
     || isKnowledgeBaseDetailPage
     || isSkillDetailPage
     || isTaskDetailPage;
+  const taskViewType = currentLocation.searchParams.get("viewType");
+  const detailPageSearch = isTaskDetailPage && (taskViewType === "board" || taskViewType === "list")
+    ? { viewType: taskViewType as "board" | "list" }
+    : undefined;
 
   return (
     <header className={cn(
@@ -98,6 +106,7 @@ export function ApplicationHeader() {
                     <Link
                       className="font-medium text-muted-foreground transition hover:text-foreground"
                       params={{ organizationSlug }}
+                      search={detailPageSearch}
                       to={detailPageHref}
                     >
                       {pageTitle}

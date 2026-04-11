@@ -1,14 +1,16 @@
 import { Suspense, useEffect } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { ExternalLinkIcon, FileTextIcon, GitPullRequestIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { MarkdownContent } from "@/components/markdown_content";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { cn } from "@/lib/utils";
+import type { TaskViewType } from "./task_ui";
 import type { artifactDetailPageQuery } from "./__generated__/artifactDetailPageQuery.graphql";
 
 type TaskArtifactType = "markdown_document" | "external_link" | "pull_request";
@@ -92,11 +94,16 @@ function ArtifactDetailPageFallback() {
 }
 
 function ArtifactDetailPageContent() {
-  const { artifactId, taskId } = useParams({ strict: false });
+  const { artifactId, taskId } = useParams({ strict: false }) as {
+    artifactId?: string;
+    taskId?: string;
+  };
+  const search = useSearch({ strict: false }) as { viewType?: TaskViewType };
   const organizationSlug = useCurrentOrganizationSlug();
   const normalizedArtifactId = String(artifactId || "").trim();
   const normalizedTaskId = String(taskId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
+  const currentViewType = search.viewType === "list" ? "list" : search.viewType === "board" ? "board" : undefined;
   if (!normalizedArtifactId || !normalizedTaskId) {
     throw new Error("Task artifact route requires both task ID and artifact ID.");
   }
@@ -135,15 +142,17 @@ function ArtifactDetailPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild type="button">
-              <Link
-                params={{ organizationSlug, taskId: normalizedTaskId }}
-                search={{ tab: "artifacts" }}
-                to={OrganizationPath.route("/tasks/$taskId")}
-              >
-                Back to Task Artifacts
-              </Link>
-            </Button>
+            <Link
+              className={buttonVariants({ variant: "default" })}
+              params={{ organizationSlug, taskId: normalizedTaskId }}
+              search={{
+                tab: "artifacts",
+                ...(currentViewType ? { viewType: currentViewType } : {}),
+              }}
+              to={OrganizationPath.route("/tasks/$taskId")}
+            >
+              Back to Task Artifacts
+            </Link>
           </CardContent>
         </Card>
       </main>
@@ -233,12 +242,15 @@ function ArtifactDetailPageContent() {
             </div>
             {artifact.url ? (
               <div>
-                <Button asChild type="button">
-                  <a href={artifact.url} rel="noreferrer" target="_blank">
-                    <ExternalLinkIcon />
-                    Open Link
-                  </a>
-                </Button>
+                <a
+                  className={cn(buttonVariants({ variant: "default" }), "inline-flex")}
+                  href={artifact.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <ExternalLinkIcon />
+                  Open Link
+                </a>
               </div>
             ) : null}
           </CardContent>
@@ -268,12 +280,15 @@ function ArtifactDetailPageContent() {
             </div>
             {artifact.url ? (
               <div className="md:col-span-3">
-                <Button asChild type="button">
-                  <a href={artifact.url} rel="noreferrer" target="_blank">
-                    <GitPullRequestIcon />
-                    Open Pull Request
-                  </a>
-                </Button>
+                <a
+                  className={cn(buttonVariants({ variant: "default" }), "inline-flex")}
+                  href={artifact.url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <GitPullRequestIcon />
+                  Open Pull Request
+                </a>
               </div>
             ) : null}
           </CardContent>
