@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app";
 import { AppRelayEnvironmentProvider } from "./components/relay_environment_provider";
+import { RuntimeConfigurationError } from "./components/runtime_configuration_error";
 import { config } from "./config";
 import "./index.css";
 
@@ -14,10 +15,14 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ClerkProvider publishableKey={config.clerkPublishableKey}>
-      <AppRelayEnvironmentProvider>
-        <App />
-      </AppRelayEnvironmentProvider>
-    </ClerkProvider>
+    {config.clerkPublishableKey.length === 0 ? (
+      <RuntimeConfigurationError />
+    ) : (
+      <ClerkProvider publishableKey={config.clerkPublishableKey}>
+        <AppRelayEnvironmentProvider>
+          <App />
+        </AppRelayEnvironmentProvider>
+      </ClerkProvider>
+    )}
   </StrictMode>,
 );
