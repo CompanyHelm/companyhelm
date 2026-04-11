@@ -610,6 +610,13 @@
       "when": 1775937600000,
       "tag": "0086_mcp_servers",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1775944934230,
+      "tag": "0087_session_messages_error_message",
+      "breakpoints": true
     }
   ]
 }
