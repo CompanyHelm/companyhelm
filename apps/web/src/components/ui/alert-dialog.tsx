@@ -1,4 +1,4 @@
-import type React from "react";
+import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cva } from "class-variance-authority";
 import { XIcon } from "lucide-react";
@@ -24,20 +24,34 @@ const alertDialogContentStyles = cva(
 const alertDialogHeaderStyles = cva("flex flex-col gap-2 text-left");
 const alertDialogFooterStyles = cva("mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end");
 
-function AlertDialogOverlay(props: AlertDialogPrimitive.AlertDialogOverlayProps) {
+const AlertDialogOverlay = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
+>(function AlertDialogOverlay({ className, ...props }, ref) {
   return (
-    <AlertDialogPrimitive.Overlay className={alertDialogOverlayStyles()} {...props} />
+    <AlertDialogPrimitive.Overlay
+      ref={ref}
+      className={cn(alertDialogOverlayStyles(), className)}
+      {...props}
+    />
   );
-}
+});
 
-function AlertDialogContent(props: AlertDialogPrimitive.AlertDialogContentProps) {
+const AlertDialogContent = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
+>(function AlertDialogContent({ className, ...props }, ref) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content className={alertDialogContentStyles()} {...props} />
+      <AlertDialogPrimitive.Content
+        ref={ref}
+        className={cn(alertDialogContentStyles(), className)}
+        {...props}
+      />
     </AlertDialogPortal>
   );
-}
+});
 
 function AlertDialogHeader(props: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={alertDialogHeaderStyles()} {...props} />;
@@ -47,9 +61,13 @@ function AlertDialogFooter(props: React.HTMLAttributes<HTMLDivElement>) {
   return <div className={alertDialogFooterStyles()} {...props} />;
 }
 
-function AlertDialogCloseButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+const AlertDialogCloseButton = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(function AlertDialogCloseButton(props, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-border hover:text-foreground"
       {...props}
@@ -57,7 +75,7 @@ function AlertDialogCloseButton(props: React.ButtonHTMLAttributes<HTMLButtonElem
       <XIcon className="h-4 w-4" />
     </button>
   );
-}
+});
 
 function AlertDialogPrimaryAction(props: React.ComponentPropsWithoutRef<typeof AlertDialogAction>) {
   return <AlertDialogAction asChild {...props} />;
@@ -70,13 +88,31 @@ function AlertDialogCancelAction(props: React.ComponentPropsWithoutRef<typeof Al
 const alertDialogPrimaryButtonStyles = cva("");
 const alertDialogCancelButtonStyles = cva("");
 
-function AlertDialogActionButton(props: React.ComponentPropsWithoutRef<typeof Button>) {
-  return <Button className={cn(alertDialogPrimaryButtonStyles(), props.className)} {...props} />;
-}
+const AlertDialogActionButton = React.forwardRef<
+  React.ElementRef<typeof Button>,
+  React.ComponentPropsWithoutRef<typeof Button>
+>(function AlertDialogActionButton({ className, ...props }, ref) {
+  return (
+    <Button
+      ref={ref}
+      className={cn(alertDialogPrimaryButtonStyles(), className)}
+      {...props}
+    />
+  );
+});
 
-function AlertDialogCancelButton(props: React.ComponentPropsWithoutRef<typeof Button>) {
-  return <Button className={cn(alertDialogCancelButtonStyles(), props.className)} {...props} />;
-}
+const AlertDialogCancelButton = React.forwardRef<
+  React.ElementRef<typeof Button>,
+  React.ComponentPropsWithoutRef<typeof Button>
+>(function AlertDialogCancelButton({ className, ...props }, ref) {
+  return (
+    <Button
+      ref={ref}
+      className={cn(alertDialogCancelButtonStyles(), className)}
+      {...props}
+    />
+  );
+});
 
 export {
   AlertDialog,
