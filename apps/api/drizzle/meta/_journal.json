@@ -617,6 +617,13 @@
       "when": 1775944934230,
       "tag": "0087_session_messages_error_message",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1775952000000,
+      "tag": "0088_skills_github_branch_name",
+      "breakpoints": true
     }
   ]
 }
