@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { ChevronDownIcon, ChevronRightIcon, Loader2Icon, PlayIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import {
   AlertDialog,
@@ -38,6 +38,7 @@ interface TaskListProps {
   onCreateTask(taskCategoryId: string | null): void;
   onDeleteTask(taskId: string): Promise<void>;
   onExecuteTask(taskId: string): Promise<void>;
+  onMoveTask(taskId: string, taskCategoryId: string | null): Promise<void>;
   onOpenTask(taskId: string): void;
   tasks: TaskRecord[];
 }
@@ -82,6 +83,8 @@ export function TaskList(props: TaskListProps) {
     );
   }, [props.categories, props.includeUncategorizedGroup, props.tasks]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [dropTargetKey, setDropTargetKey] = useState("");
+  const suppressOpenTaskIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCollapsedGroups((currentState) => {
@@ -101,6 +104,23 @@ export function TaskList(props: TaskListProps) {
       return nextState;
     });
   }, [groups]);
+
+  async function handleDrop(event: DragEvent<HTMLElement>, taskCategoryId: string | null, groupKey: string) {
+    event.preventDefault();
+    setDropTargetKey("");
+    const taskId = event.dataTransfer.getData("text/task-id");
+    if (!taskId) {
+      return;
+    }
+
+    const draggedTask = props.tasks.find((task) => task.id === taskId);
+    if (draggedTask?.taskCategoryId === taskCategoryId) {
+      return;
+    }
+
+    await props.onMoveTask(taskId, taskCategoryId);
+    setDropTargetKey((currentKey) => currentKey === groupKey ? "" : currentKey);
+  }
 
   if (groups.length === 0) {
     return (
@@ -125,9 +145,28 @@ export function TaskList(props: TaskListProps) {
         return (
           <section
             key={group.key}
-            className={cn(groupIndex > 0 && "border-t border-border/60")}
+            className={cn(
+              "transition-colors",
+              groupIndex > 0 && "border-t border-border/60",
+              dropTargetKey === group.key && "bg-accent/15",
+            )}
+            onDragLeave={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                return;
+              }
+
+              setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDropTargetKey(group.key);
+            }}
+            onDrop={(event) => void handleDrop(event, group.taskCategoryId, group.key)}
           >
-            <div className="flex items-center justify-between gap-3 bg-muted/20 px-4 py-3">
+            <div className={cn(
+              "flex items-center justify-between gap-3 bg-muted/20 px-4 py-3 transition-colors",
+              dropTargetKey === group.key && "bg-accent/25",
+            )}>
               <button
                 className="flex min-w-0 flex-1 items-center gap-2 text-left transition hover:text-foreground"
                 onClick={() => {
@@ -165,16 +204,39 @@ export function TaskList(props: TaskListProps) {
             {isCollapsed ? null : (
               <div>
                 {group.tasks.length === 0 ? (
-                  <div className="border-t border-border/40 px-4 py-4 text-xs text-muted-foreground">
-                    No tasks in this category yet.
+                  <div
+                    className={cn(
+                      "border-t border-border/40 px-4 py-4 text-xs text-muted-foreground transition-colors",
+                      dropTargetKey === group.key && "bg-accent/20 text-foreground",
+                    )}
+                  >
+                    No tasks in this category yet. Drag a task here to change its category.
                   </div>
                 ) : null}
                 {group.tasks.map((task) => (
                   <button
                     key={task.id}
-                    className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-border/40 px-4 py-2.5 text-left transition hover:bg-muted/15"
+                    className="group grid w-full cursor-grab grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-border/40 px-4 py-2.5 text-left transition hover:bg-muted/15 active:cursor-grabbing"
                     onClick={() => {
+                      if (suppressOpenTaskIdRef.current === task.id) {
+                        return;
+                      }
+
                       props.onOpenTask(task.id);
+                    }}
+                    draggable
+                    onDragEnd={() => {
+                      setDropTargetKey("");
+                      window.setTimeout(() => {
+                        if (suppressOpenTaskIdRef.current === task.id) {
+                          suppressOpenTaskIdRef.current = null;
+                        }
+                      }, 0);
+                    }}
+                    onDragStart={(event) => {
+                      suppressOpenTaskIdRef.current = task.id;
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/task-id", task.id);
                     }}
                     type="button"
                   >

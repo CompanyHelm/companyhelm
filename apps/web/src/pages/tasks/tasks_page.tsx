@@ -618,6 +618,7 @@ function TasksPageContent() {
             onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
+            onMoveTask={moveTask}
             onOpenTask={openTaskDetail}
             tasks={visibleTasks}
           />
