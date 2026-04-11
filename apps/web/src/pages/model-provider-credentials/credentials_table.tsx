@@ -25,15 +25,23 @@ import {
 } from "@/components/ui/table";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import {
+  getCredentialRefreshFailureReason,
+  getCredentialRefreshFailureRecoveryMessage,
+  hasCredentialRefreshFailure,
+} from "./credential_health";
 import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 export type CredentialsTableRecord = {
   createdAt: string;
   defaultModelId: string | null;
+  errorMessage: string | null;
   id: string;
   isDefault: boolean;
   modelProvider: string;
   name: string;
+  status: "active" | "error";
+  type: "api_key" | "oauth_token";
   updatedAt: string;
 };
 
@@ -97,95 +105,112 @@ export function CredentialsTable(props: CredentialsTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {props.credentials.map((credential) => (
-          <TableRow
-            key={credential.id}
-            className="cursor-pointer transition hover:bg-muted/40"
-            onClick={() => {
-              void navigate({
-                to: OrganizationPath.route("/model-provider-credentials/$credentialId"),
-                params: {
-                  credentialId: credential.id,
-                  organizationSlug,
-                },
-              });
-            }}
-          >
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground">{credential.name}</span>
-                {credential.isDefault ? (
-                  <Badge variant="secondary">Default</Badge>
-                ) : null}
-              </div>
-            </TableCell>
-            <TableCell>
-              <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
-            </TableCell>
-            <TableCell>{formatProviderCredentialType(credential.modelProvider)}</TableCell>
-            <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
-            <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
-            <TableCell className="text-right">
-              <div className="flex items-center justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
-                  onClick={async (event) => {
-                    event.stopPropagation();
-                    await props.onSetDefault(credential.id);
-                  }}
-                >
-                  <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={props.deletingCredentialId === credential.id}
+        {props.credentials.map((credential) => {
+          const showRefreshFailure = hasCredentialRefreshFailure(credential);
+
+          return (
+            <TableRow
+              key={credential.id}
+              className="cursor-pointer transition hover:bg-muted/40"
+              onClick={() => {
+                void navigate({
+                  to: OrganizationPath.route("/model-provider-credentials/$credentialId"),
+                  params: {
+                    credentialId: credential.id,
+                    organizationSlug,
+                  },
+                });
+              }}
+            >
+              <TableCell>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">{credential.name}</span>
+                    {credential.isDefault ? (
+                      <Badge variant="secondary">Default</Badge>
+                    ) : null}
+                    {showRefreshFailure ? (
+                      <Badge variant="destructive">Reconnect required</Badge>
+                    ) : null}
+                  </div>
+                  {showRefreshFailure ? (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+                      <p>{getCredentialRefreshFailureRecoveryMessage()}</p>
+                      <p className="mt-1 text-destructive/90">
+                        Last error: {getCredentialRefreshFailureReason(credential.errorMessage)}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
+              </TableCell>
+              <TableCell>{formatProviderCredentialType(credential.type)}</TableCell>
+              <TableCell>{formatTimestamp(credential.createdAt)}</TableCell>
+              <TableCell>{formatTimestamp(credential.updatedAt)}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={credential.isDefault || props.defaultingCredentialId === credential.id}
+                    onClick={async (event) => {
+                      event.stopPropagation();
+                      await props.onSetDefault(credential.id);
+                    }}
+                  >
+                    <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={props.deletingCredentialId === credential.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        <Trash2Icon className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent
                       onClick={(event) => {
                         event.stopPropagation();
                       }}
                     >
-                      <Trash2Icon className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent
-                    onClick={(event) => {
-                      event.stopPropagation();
-                    }}
-                  >
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete credential</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete the credential and its stored models. This action
-                        cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancelAction asChild>
-                        <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
-                      </AlertDialogCancelAction>
-                      <AlertDialogPrimaryAction asChild>
-                        <AlertDialogActionButton
-                          variant="destructive"
-                          disabled={props.deletingCredentialId === credential.id}
-                          onClick={async (event) => {
-                            event.stopPropagation();
-                            await props.onDelete(credential.id);
-                          }}
-                        >
-                          Delete
-                        </AlertDialogActionButton>
-                      </AlertDialogPrimaryAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete credential</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete the credential and its stored models. This action
+                          cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancelAction asChild>
+                          <AlertDialogCancelButton variant="outline">Cancel</AlertDialogCancelButton>
+                        </AlertDialogCancelAction>
+                        <AlertDialogPrimaryAction asChild>
+                          <AlertDialogActionButton
+                            variant="destructive"
+                            disabled={props.deletingCredentialId === credential.id}
+                            onClick={async (event) => {
+                              event.stopPropagation();
+                              await props.onDelete(credential.id);
+                            }}
+                          >
+                            Delete
+                          </AlertDialogActionButton>
+                        </AlertDialogPrimaryAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );

@@ -10,13 +10,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
 import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
+import {
+  getCredentialRefreshFailureReason,
+  getCredentialRefreshFailureRecoveryMessage,
+  hasCredentialRefreshFailure,
+} from "./credential_health";
 import { formatProviderLabel } from "./provider_label";
 
 const modelProviderCredentialDetailPageQueryNode = graphql`
   query credentialDetailPageQuery($credentialId: ID!) {
     ModelProviderCredentials {
       id
+      name
       modelProvider
+      type
+      status
+      errorMessage
     }
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
@@ -118,6 +127,7 @@ function ModelProviderCredentialDetailPageContent() {
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
   const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim())
     || "Credential";
+  const showRefreshFailure = currentCredential ? hasCredentialRefreshFailure(currentCredential) : false;
 
   useEffect(() => {
     setDetailLabel(providerLabel);
@@ -173,6 +183,20 @@ function ModelProviderCredentialDetailPageContent() {
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
+          {showRefreshFailure ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-xs text-destructive">
+              <div className="flex items-center gap-2">
+                <Badge variant="destructive">Reconnect required</Badge>
+                <span className="font-medium">
+                  Automatic refresh failed for {currentCredential?.name || providerLabel}.
+                </span>
+              </div>
+              <p className="mt-2">{getCredentialRefreshFailureRecoveryMessage()}</p>
+              <p className="mt-2 text-destructive/90">
+                Last error: {getCredentialRefreshFailureReason(currentCredential?.errorMessage)}
+              </p>
+            </div>
+          ) : null}
           {errorMessage ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}

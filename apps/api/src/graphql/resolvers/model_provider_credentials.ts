@@ -13,6 +13,8 @@ type ModelProviderCredentialRecord = {
   name: string;
   modelProvider: ModelProviderId;
   type: "api_key" | "oauth_token";
+  status: "active" | "error";
+  errorMessage: string | null;
   refreshToken: string | null;
   refreshedAt: Date | null;
   createdAt: Date;
@@ -28,6 +30,8 @@ type GraphqlModelProviderCredentialRecord = {
   defaultReasoningLevel: string | null;
   isDefault: boolean;
   type: "api_key" | "oauth_token";
+  status: "active" | "error";
+  errorMessage: string | null;
   refreshToken: string | null;
   refreshedAt: string | null;
   createdAt: string;
@@ -79,6 +83,8 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
+          status: modelProviderCredentials.status,
+          errorMessage: modelProviderCredentials.errorMessage,
           refreshToken: modelProviderCredentials.refreshToken,
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,

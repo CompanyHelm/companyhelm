@@ -6,12 +6,14 @@ import { SetDefaultModelProviderCredentialMutation } from "../src/graphql/mutati
 type CredentialRow = {
   companyId: string;
   createdAt: Date;
+  errorMessage: string | null;
   id: string;
   isDefault: boolean;
   modelProvider: "anthropic" | "openai" | "openai-codex";
   name: string;
   refreshedAt: Date | null;
   refreshToken: string | null;
+  status: "active" | "error";
   type: "api_key" | "oauth_token";
   updatedAt: Date;
 };
@@ -35,23 +37,27 @@ class SetDefaultModelProviderCredentialMutationTestHarness {
     this.credentialRows = [{
       companyId: "company-123",
       createdAt: new Date("2026-04-05T00:00:00.000Z"),
+      errorMessage: null,
       id: "credential-2",
       isDefault: false,
       modelProvider: "openai",
       name: "OpenAI Prod",
       refreshedAt: null,
       refreshToken: null,
+      status: "active",
       type: "api_key",
       updatedAt: new Date("2026-04-05T00:05:00.000Z"),
     }, {
       companyId: "company-123",
       createdAt: new Date("2026-04-04T00:00:00.000Z"),
+      errorMessage: null,
       id: "credential-1",
       isDefault: true,
       modelProvider: "anthropic",
       name: "Anthropic Prod",
       refreshedAt: null,
       refreshToken: null,
+      status: "active",
       type: "api_key",
       updatedAt: new Date("2026-04-04T00:05:00.000Z"),
     }];
@@ -143,12 +149,14 @@ test("SetDefaultModelProviderCredentialMutation promotes one credential and pres
     createdAt: "2026-04-05T00:00:00.000Z",
     defaultModelId: "gpt-5.4",
     defaultReasoningLevel: "high",
+    errorMessage: null,
     id: "credential-2",
     isDefault: true,
     modelProvider: "openai",
     name: "OpenAI Prod",
     refreshedAt: null,
     refreshToken: null,
+    status: "active",
     type: "api_key",
     updatedAt: "2026-04-05T00:05:00.000Z",
   });

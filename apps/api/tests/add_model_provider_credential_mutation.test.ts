@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { generateKeyPairSync } from "node:crypto";
 import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
@@ -15,19 +16,91 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
+const TEST_PRIVATE_KEY_PEM = (() => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
+})();
+
 class AddModelProviderCredentialMutationTestHarness {
   static createConfigMock(): Config {
     return {
+      auth: {
+        provider: "clerk",
+        clerk: {
+          secret_key: "clerk-secret",
+          publishable_key: "clerk-publishable",
+          jwks_url: "https://example.com/.well-known/jwks.json",
+          authorized_parties: ["http://localhost:3000"],
+        },
+      },
+      companyhelm: {
+        e2b: {
+          api_key: "e2b-test-key",
+          desktop_resolution: {
+            height: 900,
+            width: 1440,
+          },
+          template_prefix: "companyhelm-test",
+        },
+      },
+      cors: {
+        origin: "http://localhost:3000",
+        credentials: true,
+        methods: ["GET", "POST"],
+        allowed_headers: ["authorization", "content-type"],
+      },
+      database: {
+        host: "127.0.0.1",
+        name: "companyhelm_test",
+        port: 5432,
+        roles: {
+          admin: {
+            password: "postgres",
+            username: "postgres",
+          },
+          app_runtime: {
+            password: "postgres",
+            username: "postgres",
+          },
+        },
+      },
       graphql: {
         endpoint: "/graphql",
         graphiql: false,
       },
+      github: {
+        app_client_id: "Iv-test-local",
+        app_link: "https://github.com/apps/companyhelm-test",
+        app_private_key_pem: TEST_PRIVATE_KEY_PEM,
+      },
+      host: "127.0.0.1",
       log: {
         json: false,
         level: "info",
       },
-      auth: {
-        provider: "clerk",
+      port: 4000,
+      publicUrl: "http://localhost:4000",
+      redis: {
+        host: "127.0.0.1",
+        password: "",
+        port: 6379,
+        username: "",
+      },
+      security: {
+        encryption: {
+          key: "companyhelm-test-encryption-key",
+          key_id: "companyhelm-test-key",
+        },
+      },
+      web_search: {
+        exa: {
+          api_key: "exa-test-key",
+        },
+      },
+      workers: {
+        session_process: {
+          concurrency: 1,
+        },
       },
     } as Config;
   }
@@ -89,6 +162,8 @@ class AddModelProviderCredentialMutationTestHarness {
                       name: String(credentialValue.name),
                       modelProvider: credentialValue.modelProvider,
                       type: credentialValue.type,
+                      status: credentialValue.status ?? "active",
+                      errorMessage: credentialValue.errorMessage ?? null,
                       isDefault: Boolean(credentialValue.isDefault),
                       refreshToken: credentialValue.refreshToken ?? null,
                       refreshedAt: credentialValue.refreshedAt ?? null,
@@ -199,6 +274,8 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
             name
             modelProvider
             type
+            status
+            errorMessage
             refreshToken
             createdAt
             updatedAt
@@ -222,6 +299,8 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
     name: "OpenAI",
     modelProvider: "openai",
     type: "api_key",
+    status: "active",
+    errorMessage: null,
     refreshToken: null,
     createdAt: document.data.AddModelProviderCredential.createdAt,
     updatedAt: document.data.AddModelProviderCredential.updatedAt,
@@ -237,6 +316,8 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
   assert.equal(database.insertedValues.length, 2);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "secret-value");
+  assert.equal(database.insertedValues[0]?.status, "active");
+  assert.equal(database.insertedValues[0]?.errorMessage, null);
   assert.equal(database.insertedValues[1]?.modelProviderCredentialId, "credential-1");
   assert.equal(database.insertedValues[1]?.modelId, "gpt-5.4");
   assert.equal(database.insertedValues[1]?.name, "GPT-5.4");
@@ -470,6 +551,8 @@ test("GraphQL AddModelProviderCredential mutation supports openai-codex oauth cr
             name
             modelProvider
             type
+            status
+            errorMessage
             refreshToken
           }
         }
@@ -492,10 +575,14 @@ test("GraphQL AddModelProviderCredential mutation supports openai-codex oauth cr
     name: "OpenAI Codex",
     modelProvider: "openai-codex",
     type: "oauth_token",
+    status: "active",
+    errorMessage: null,
     refreshToken: "oauth-refresh-token",
   });
   assert.equal(database.insertedValues[0]?.modelProvider, "openai-codex");
   assert.equal(database.insertedValues[0]?.type, "oauth_token");
+  assert.equal(database.insertedValues[0]?.status, "active");
+  assert.equal(database.insertedValues[0]?.errorMessage, null);
   assert.equal(database.insertedValues[0]?.encryptedApiKey, "oauth-access-token");
   assert.equal(database.insertedValues[0]?.refreshToken, "oauth-refresh-token");
   assert.ok(database.insertedValues[0]?.accessTokenExpiresAt instanceof Date);

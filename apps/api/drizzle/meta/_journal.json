@@ -575,6 +575,13 @@
       "when": 1775767761735,
       "tag": "0081_cooing_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1775846400000,
+      "tag": "0082_credential_refresh_failure_state",
+      "breakpoints": true
     }
   ]
 }

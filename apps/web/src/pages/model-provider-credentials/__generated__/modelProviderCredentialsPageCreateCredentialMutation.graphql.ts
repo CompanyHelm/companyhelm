@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b0418d15e6d9b2d29540c198152fba30>>
+ * @generated SignedSource<<9922c856c12dae99e2adaf08cb38277c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,10 +25,13 @@ export type modelProviderCredentialsPageCreateCredentialMutation$data = {
   readonly AddModelProviderCredential: {
     readonly createdAt: string;
     readonly defaultModelId: string | null | undefined;
+    readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isDefault: boolean;
     readonly modelProvider: string;
     readonly name: string;
+    readonly status: string;
+    readonly type: string;
     readonly updatedAt: string;
   };
 };
@@ -92,7 +95,28 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "type",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "defaultModelId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "errorMessage",
         "storageKey": null
       },
       {
@@ -131,16 +155,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "cfbee4d48084bc0112a66e43fa33f247",
+    "cacheID": "87da3f6a4f78b56044186017aa0baa34",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageCreateCredentialMutation",
     "operationKind": "mutation",
-    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    isDefault\n    name\n    modelProvider\n    defaultModelId\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "3dcb34d0e0419126b2fa273587f2197b";
+(node as any).hash = "d16f5466d5ed1882dc4d3df36b6fd32b";
 
 export default node;

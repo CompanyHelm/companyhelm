@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5ee1504cb76a34035228544315881e04>>
+ * @generated SignedSource<<b1b985c17cd6321ceebc9761fca6440d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,8 +22,12 @@ export type credentialDetailPageQuery$data = {
     readonly reasoningSupported: boolean;
   }>;
   readonly ModelProviderCredentials: ReadonlyArray<{
+    readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly modelProvider: string;
+    readonly name: string;
+    readonly status: string;
+    readonly type: string;
   }>;
 };
 export type credentialDetailPageQuery = {
@@ -46,7 +50,14 @@ v1 = {
   "name": "id",
   "storageKey": null
 },
-v2 = [
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v3 = [
   {
     "alias": null,
     "args": null,
@@ -56,11 +67,33 @@ v2 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "modelProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "type",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "errorMessage",
         "storageKey": null
       }
     ],
@@ -88,13 +121,7 @@ v2 = [
         "name": "isDefault",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "name",
-        "storageKey": null
-      },
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -126,7 +153,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "credentialDetailPageQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v3/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -135,19 +162,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "credentialDetailPageQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "0db8c8df9d54f38335340e36a1e1fb5b",
+    "cacheID": "a532b5facf7d6fab6fb60c5113315a21",
     "id": null,
     "metadata": {},
     "name": "credentialDetailPageQuery",
     "operationKind": "query",
-    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    modelProvider\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
+    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    name\n    modelProvider\n    type\n    status\n    errorMessage\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d25c0c2ce5e8baa236f4ec5301246bf7";
+(node as any).hash = "fd1a73d8fcc3ac2f0a60f9b2e3815dc6";
 
 export default node;

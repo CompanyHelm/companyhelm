@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b02065abffad4831eb9f38d39388034e>>
+ * @generated SignedSource<<aa53fff06aa3cfdc8cbd84d1235e2f88>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,10 +14,13 @@ export type modelProviderCredentialsPageQuery$data = {
   readonly ModelProviderCredentials: ReadonlyArray<{
     readonly createdAt: string;
     readonly defaultModelId: string | null | undefined;
+    readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isDefault: boolean;
     readonly modelProvider: string;
     readonly name: string;
+    readonly status: string;
+    readonly type: string;
     readonly updatedAt: string;
   }>;
   readonly ModelProviders: ReadonlyArray<{
@@ -47,7 +50,14 @@ v1 = {
   "name": "name",
   "storageKey": null
 },
-v2 = [
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "type",
+  "storageKey": null
+},
+v3 = [
   {
     "alias": null,
     "args": null,
@@ -58,13 +68,7 @@ v2 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "type",
-        "storageKey": null
-      },
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -99,11 +103,26 @@ v2 = [
         "name": "modelProvider",
         "storageKey": null
       },
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "defaultModelId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "status",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "errorMessage",
         "storageKey": null
       },
       {
@@ -130,7 +149,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "modelProviderCredentialsPageQuery",
-    "selections": (v2/*: any*/),
+    "selections": (v3/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -139,19 +158,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "modelProviderCredentialsPageQuery",
-    "selections": (v2/*: any*/)
+    "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "5b91777a8d62c76d911e802ef1e9e93d",
+    "cacheID": "50c6969b719ed7b7e6b707c68ab747fe",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    defaultModelId\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5d17fef1e3bb8af05f403b4ec2618e99";
+(node as any).hash = "bf26299b624dcb717d94e36ad6aedcde";
 
 export default node;

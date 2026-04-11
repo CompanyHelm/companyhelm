@@ -19,7 +19,7 @@ export function formatProviderLabel(value: string): string {
 }
 
 export function formatProviderCredentialType(value: string): string {
-  if (value === "openai-codex") {
+  if (value === "oauth" || value === "oauth_token" || value === "openai-codex") {
     return "Subscription";
   }
 
