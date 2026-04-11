@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface TaskCategoryFilterPillProps {
@@ -10,22 +9,20 @@ interface TaskCategoryFilterPillProps {
 
 export function TaskCategoryFilterPill(props: TaskCategoryFilterPillProps) {
   return (
-    <Button
+    <button
       className={cn(
-        "shrink-0 gap-1.5 rounded-full px-3 text-sm",
+        "inline-flex h-7 shrink-0 items-center gap-1 rounded-full border px-3 text-xs/relaxed font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
         props.isSelected
           ? "border-border/70 bg-muted text-foreground hover:bg-muted/90"
           : "border-border/40 bg-background/40 text-muted-foreground hover:bg-muted/30 hover:text-foreground",
       )}
       onClick={props.onClick}
-      size="lg"
       type="button"
-      variant="outline"
     >
       <span>{props.label}</span>
       <span className="tabular-nums text-inherit opacity-80">
         {props.count}
       </span>
-    </Button>
+    </button>
   );
 }
