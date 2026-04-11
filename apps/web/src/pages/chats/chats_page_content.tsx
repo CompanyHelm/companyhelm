@@ -400,8 +400,10 @@ export function ChatsPageContent() {
 
   const {
     handleTranscriptScroll,
+    isTranscriptStuckToBottom,
     isLoadingOlderTranscript,
     isLoadingTranscript,
+    jumpToLatestMessage,
     loadTranscriptPage,
     transcriptMessages,
     transcriptScrollRef,
@@ -2092,11 +2094,13 @@ export function ChatsPageContent() {
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pt-0 pb-0 md:pt-0 md:pb-0">
             <ChatTranscriptPane
               forkingTurnId={forkingTurnId}
+              isTranscriptStuckToBottom={isTranscriptStuckToBottom}
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
               onForkTurn={(turnId) => {
                 void forkSessionFromTurn(turnId);
               }}
+              onJumpToLatest={jumpToLatestMessage}
               onScroll={handleTranscriptScroll}
               organizationSlug={organizationSlug}
               session={selectedSession}
