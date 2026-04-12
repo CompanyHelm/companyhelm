@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
 type MarkdownContentProps = {
@@ -44,10 +45,13 @@ export function MarkdownContent({
   const bodyTextClassName = tone === "muted" ? "text-muted-foreground" : "text-foreground";
   const codeSurfaceClassName = isCompact ? "bg-background/80 text-[11px]" : "bg-muted text-[13px]";
   const preSurfaceClassName = isCompact ? "bg-background/80 text-[11px]" : "bg-muted/30 text-[13px]";
+  const tableTextClassName = isCompact ? "text-xs leading-5" : "text-sm leading-6";
+  const tableCellClassName = isCompact ? "px-2 py-1.5" : "px-3 py-2";
 
   return (
     <div className={cn("min-w-0 w-full [&>*:first-child]:mt-0", className)}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           a: ({ children, ...anchorProps }) => (
             <a
@@ -150,6 +154,31 @@ export function MarkdownContent({
               {children}
             </pre>
           ),
+          table: ({ children }) => (
+            <div className={cn(isCompact ? "mt-3" : "mt-4", "w-full overflow-x-auto rounded-xl border border-border/60")}>
+              <table className={cn("w-full min-w-max border-collapse bg-background/40 text-left", tableTextClassName)}>
+                {children}
+              </table>
+            </div>
+          ),
+          tbody: ({ children }) => <tbody className="divide-y divide-border/60">{children}</tbody>,
+          td: ({ children }) => (
+            <td className={cn(tableCellClassName, "align-top [overflow-wrap:anywhere] [&>p]:my-0", bodyTextClassName)}>
+              {children}
+            </td>
+          ),
+          th: ({ children }) => (
+            <th
+              className={cn(
+                tableCellClassName,
+                "border-b border-border/60 bg-muted/40 text-left font-semibold text-foreground [&>p]:my-0",
+              )}
+            >
+              {children}
+            </th>
+          ),
+          thead: ({ children }) => <thead>{children}</thead>,
+          tr: ({ children }) => <tr className="align-top">{children}</tr>,
           ul: ({ children }) => (
             <ul className={cn(isCompact ? "mt-3 gap-1" : "mt-4 gap-1.5", "ml-5 grid min-w-0 list-disc")}>
               {children}
