@@ -10,8 +10,6 @@ import { Loader2Icon, MessageSquareIcon, Settings2Icon } from "lucide-react";
 import { fetchQuery, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import {
@@ -24,6 +22,7 @@ import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug"
 import { ChatComposerImage } from "./chat_composer_image";
 import type { ChatComposerModelOption } from "./chat_composer_model_picker";
 import { ChatComposerPane } from "./chat_composer_pane";
+import { ChatSelectionDialog } from "./chat_selection_dialog";
 import {
   type ChatsPageArchiveSessionMutation,
   type ChatsPageCreateSessionMutation,
@@ -183,7 +182,6 @@ export function ChatsPageContent() {
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>({});
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
-  const [newChatAgentSearch, setNewChatAgentSearch] = useState("");
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
   const draftImageFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -308,19 +306,18 @@ export function ChatsPageContent() {
       return (sessionsByAgentId.get(agent.id)?.length ?? 0) > 0;
     });
   }, [sessionsByAgentId, sortedAgents]);
-  const filteredNewChatAgents = useMemo(() => {
-    const normalizedSearch = newChatAgentSearch.trim().toLocaleLowerCase();
-    if (normalizedSearch.length === 0) {
-      return sortedAgents;
-    }
+  const newChatAgentItems = useMemo(() => {
+    return sortedAgents.map((agent) => {
+      const agentMeta = formatAgentMeta(agent);
 
-    return sortedAgents.filter((agent) => {
-      return [agent.name, formatAgentMeta(agent)]
-        .join(" ")
-        .toLocaleLowerCase()
-        .includes(normalizedSearch);
+      return {
+        description: agentMeta,
+        id: agent.id,
+        searchText: [agent.name, agentMeta].join(" "),
+        title: agent.name,
+      };
     });
-  }, [newChatAgentSearch, sortedAgents]);
+  }, [sortedAgents]);
   const sessionById = useMemo(() => {
     return new Map(activeSessions.map((session) => [session.id, session]));
   }, [activeSessions]);
@@ -538,12 +535,6 @@ export function ChatsPageContent() {
 
     markSessionRead(selectedSession.id);
   }, [markSessionRead, selectedSession?.hasUnread, selectedSession?.id]);
-
-  useEffect(() => {
-    if (!isNewChatDialogOpen && newChatAgentSearch.length > 0) {
-      setNewChatAgentSearch("");
-    }
-  }, [isNewChatDialogOpen, newChatAgentSearch]);
 
   const loadSessionEnvironmentInfo = useCallback(async (sessionId: string) => {
     setIsLoadingSessionEnvironment(true);
@@ -1941,62 +1932,22 @@ export function ChatsPageContent() {
   ) : null;
 
   const newChatDialog = (
-    <Dialog open={isNewChatDialogOpen} onOpenChange={setIsNewChatDialogOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Start a new chat</DialogTitle>
-          <DialogDescription>
-            Pick an agent to open a fresh draft chat.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-3">
-          {sortedAgents.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
-              Create an agent first from the Agents page.
-            </div>
-          ) : (
-            <>
-              <Input
-                autoFocus
-                onChange={(event) => {
-                  setNewChatAgentSearch(event.target.value);
-                }}
-                placeholder="Search agents"
-                type="search"
-                value={newChatAgentSearch}
-              />
-
-              {filteredNewChatAgents.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
-                  No agents match your search.
-                </div>
-              ) : (
-                <div className="max-h-[24rem] overflow-y-auto pr-1">
-                  <div className="grid gap-2">
-                    {filteredNewChatAgents.map((agent) => (
-                      <button
-                        key={agent.id}
-                        className="rounded-xl border border-border/60 bg-card/40 px-4 py-3 text-left transition hover:bg-accent/40"
-                        onClick={() => {
-                          setIsNewChatDialogOpen(false);
-                          expandChatListAgent(agent.id);
-                          void openDraftForAgent(agent.id);
-                        }}
-                        type="button"
-                      >
-                        <p className="text-sm font-medium text-foreground">{agent.name}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{formatAgentMeta(agent)}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ChatSelectionDialog
+      description="Pick an agent to open a fresh draft chat."
+      items={newChatAgentItems}
+      noItemsMessage="Create an agent first from the Agents page."
+      noResultsMessage="No agents match your search."
+      onOpenChange={setIsNewChatDialogOpen}
+      onSelect={(agentId) => {
+        setIsNewChatDialogOpen(false);
+        expandChatListAgent(agentId);
+        void openDraftForAgent(agentId);
+      }}
+      open={isNewChatDialogOpen}
+      searchPlaceholder="Search agents"
+      selectedItemId={selectedAgent?.id ?? null}
+      title="Start a new chat"
+    />
   );
 
   return (
