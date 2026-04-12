@@ -11,6 +11,7 @@ import { ExaWebClient } from "../../../../web_search/exa_client.ts";
 import { AgentConversationService } from "../../../../conversations/service.ts";
 import { AgentEnvironmentTemplateService } from "../../../../environments/template_service.ts";
 import { AgentInboxService } from "../../../../inbox/service.ts";
+import { McpService } from "../../../../mcp/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import {
   AgentSessionModuleRegistry,
@@ -24,6 +25,7 @@ import { ConversationSessionModule } from "./conversation.ts";
 import { CorePromptSessionModule } from "./core_prompt.ts";
 import { GithubSessionModule } from "./github.ts";
 import { InboxSessionModule } from "./inbox.ts";
+import { McpSessionModule } from "./mcp.ts";
 import { RuntimeSessionModule } from "./runtime.ts";
 import { SecretsSessionModule } from "./secrets.ts";
 import { SkillsSessionModule } from "./skills.ts";
@@ -39,6 +41,7 @@ type DefaultAgentSessionModuleRegistryInput = {
   githubClient: GithubClient;
   inboxService: AgentInboxService;
   logger: PinoLogger;
+  mcpService: McpService;
   modelProviderService: ModelProviderService;
   modelRegistry: ModelRegistry;
   secretService: SecretService;
@@ -71,6 +74,7 @@ export class DefaultAgentSessionModuleRegistry {
       }),
       new GithubSessionModule(input.githubClient),
       new WebSessionModule(input.exaWebClient),
+      new McpSessionModule(input.logger, input.mcpService),
       new InboxSessionModule(input.inboxService),
       new ConversationSessionModule(input.agentConversationService),
       new TasksSessionModule(new TaskService()),

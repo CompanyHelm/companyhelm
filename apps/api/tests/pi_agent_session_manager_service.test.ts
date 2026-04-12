@@ -23,6 +23,13 @@ const piAgentMocks = vi.hoisted(() => {
   };
 });
 
+const mcpRuntimeClientMocks = vi.hoisted(() => {
+  return {
+    callToolMock: vi.fn(),
+    listToolsMock: vi.fn(),
+  };
+});
+
 vi.mock("@mariozechner/pi-coding-agent", () => {
   class MockAuthStorage {
     setRuntimeApiKey = piAgentMocks.setRuntimeApiKeyMock;
@@ -63,6 +70,17 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
   };
 });
 
+vi.mock("../src/services/mcp/runtime/client.ts", () => {
+  class MockMcpRuntimeClient {
+    callTool = mcpRuntimeClientMocks.callToolMock;
+    listTools = mcpRuntimeClientMocks.listToolsMock;
+  }
+
+  return {
+    McpRuntimeClient: MockMcpRuntimeClient,
+  };
+});
+
 beforeEach(() => {
   piAgentMocks.abortMock.mockReset();
   piAgentMocks.continueMock.mockReset();
@@ -80,11 +98,20 @@ beforeEach(() => {
   piAgentMocks.authStorageInstances.length = 0;
   piAgentMocks.modelRegistryInstances.length = 0;
   piAgentMocks.sessionManagerInstances.length = 0;
+  mcpRuntimeClientMocks.callToolMock.mockReset();
+  mcpRuntimeClientMocks.listToolsMock.mockReset();
+  mcpRuntimeClientMocks.listToolsMock.mockResolvedValue([]);
 });
 
 const logger = {
   child() {
     return logger;
+  },
+} as never;
+
+const emptyMcpService = {
+  async listAgentMcpServers() {
+    return [];
   },
 } as never;
 
@@ -101,6 +128,8 @@ const baseToolNames = [
   "list_assigned_secrets",
   "read_secret",
   "list_available_secrets",
+  "list_available_skills",
+  "activate_skill",
   "list_company_members",
   "list_company_agents",
   "list_agents",
@@ -298,6 +327,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("model provider services should not be loaded during ensureSession");
       },
     } as never,
+    undefined,
     {
       getDefaultModelForProvider() {
         throw new Error("app model registry should not be loaded during ensureSession");
@@ -306,6 +336,8 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("app model registry should not be loaded during ensureSession");
       },
     } as never,
+    undefined,
+    emptyMcpService,
   );
 
   const session = await service.ensureSession(
@@ -635,6 +667,7 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
         throw new Error("model provider services should not be loaded during ensureSession");
       },
     } as never,
+    undefined,
     {
       getDefaultModelForProvider() {
         throw new Error("app model registry should not be loaded during ensureSession");
@@ -643,6 +676,8 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
         throw new Error("app model registry should not be loaded during ensureSession");
       },
     } as never,
+    undefined,
+    emptyMcpService,
   );
 
   await service.ensureSession(
@@ -846,6 +881,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
         throw new Error("model provider services should not be loaded during ensureSession");
       },
     } as never,
+    undefined,
     {
       getDefaultModelForProvider() {
         throw new Error("app model registry should not be loaded during ensureSession");
@@ -854,6 +890,8 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
         throw new Error("app model registry should not be loaded during ensureSession");
       },
     } as never,
+    undefined,
+    emptyMcpService,
   );
 
   const first = await service.ensureSession(
@@ -944,5 +982,223 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
     [[baseToolNames]],
+  );
+});
+
+test("PiMonoSessionManagerService adds discovered MCP tools to newly created sessions", async () => {
+  const createdSession = {
+    abort: piAgentMocks.abortMock,
+    agent: {
+      continue: piAgentMocks.continueMock,
+      replaceMessages: piAgentMocks.replaceMessagesMock,
+      state: {
+        messages: [],
+      },
+    },
+    dispose: piAgentMocks.disposeMock,
+    getContextUsage() {
+      return null;
+    },
+    isCompacting: false,
+    model: null,
+    prompt: piAgentMocks.promptMock,
+    setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
+    steer: piAgentMocks.steerMock,
+    subscribe: piAgentMocks.subscribeMock,
+  };
+  mcpRuntimeClientMocks.listToolsMock.mockResolvedValue([{
+    description: "Search GitHub issues",
+    inputSchema: {
+      properties: {
+        query: {
+          type: "string",
+        },
+      },
+      required: ["query"],
+      type: "object",
+    },
+    name: "search_issues",
+  }]);
+  piAgentMocks.findModelMock.mockReturnValue({
+    id: "gpt-5.4",
+    provider: "openai",
+  });
+  piAgentMocks.createAgentSessionMock.mockResolvedValue({
+    session: createdSession,
+  });
+  const service = new PiMonoSessionManagerService(
+    {
+      companyhelm: {
+        e2b: {
+          desktop_resolution: {
+            height: 1080,
+            width: 1920,
+          },
+        },
+      },
+    } as never,
+    logger,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    {
+      async getEnvironmentForSession() {
+        throw new Error("tools should not acquire an environment during ensureSession");
+      },
+    } as never,
+    {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during ensureSession");
+      },
+    } as never,
+    {
+      async listSecrets() {
+        throw new Error("company secrets should not be loaded during ensureSession");
+      },
+      async listSessionSecrets() {
+        throw new Error("session secrets should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async sendMessage() {
+        throw new Error("agent conversations should not be sent during ensureSession");
+      },
+    } as never,
+    {
+      async fetchHtmlContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async fetchMarkdownContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async search() {
+        throw new Error("web searches should not run during ensureSession");
+      },
+    } as never,
+    {
+      async getAgentTemplateSelection() {
+        return smallTemplateSelection;
+      },
+    } as never,
+    {
+      async listDefinitions() {
+        throw new Error("compute provider definitions should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      get() {
+        throw new Error("model provider services should not be loaded during ensureSession");
+      },
+    } as never,
+    undefined,
+    {
+      getDefaultModelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+      getDefaultReasoningLevelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+    } as never,
+    undefined,
+    {
+      async listAgentMcpServers() {
+        return [{
+          authType: "none",
+          callTimeoutMs: 5_000,
+          companyId: "company-1",
+          createdAt: new Date("2026-04-11T08:00:00.000Z"),
+          description: null,
+          enabled: true,
+          headers: {},
+          id: "server-1",
+          name: "GitHub Tools",
+          oauthClientId: null,
+          oauthConnectionStatus: null,
+          oauthGrantedScopes: [],
+          oauthLastError: null,
+          oauthRequestedScopes: [],
+          updatedAt: new Date("2026-04-11T08:00:00.000Z"),
+          url: "https://github.example.com/mcp",
+        }];
+      },
+      async resolveMcpServerRequestHeaders() {
+        return {
+          Authorization: "Bearer test-token",
+        };
+      },
+    } as never,
+  );
+
+  await service.ensureSession(
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      contextMessagesSnapshot: [],
+                      contextMessagesSnapshotAt: null,
+                    }];
+                  },
+                };
+              },
+            };
+          },
+        });
+      },
+    } as never,
+    "session-1",
+    {
+      agentId: "agent-1",
+      agentName: "Support Agent",
+      apiKey: "sk-test",
+      companyId: "company-1",
+      companyName: "My Organization",
+      modelId: "gpt-5.4",
+      providerId: "openai",
+      reasoningLevel: "medium",
+    },
+  );
+
+  const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
+    customTools?: Array<{ name: string }>;
+    resourceLoader?: {
+      getAppendSystemPrompt(): string[];
+    };
+  };
+  const inboxToolIndex = baseToolNames.indexOf("ask_human_question");
+  assert.deepEqual(
+    createAgentSessionOptions.customTools?.map((tool) => tool.name),
+    [
+      ...baseToolNames.slice(0, inboxToolIndex),
+      "github_tools__search_issues",
+      ...baseToolNames.slice(inboxToolIndex),
+    ],
+  );
+  assert.match(
+    createAgentSessionOptions.resourceLoader?.getAppendSystemPrompt().join("\n\n") ?? "",
+    /## MCP Tools/u,
+  );
+  assert.deepEqual(
+    piAgentMocks.setActiveToolsByNameMock.mock.calls,
+    [[[
+      ...baseToolNames.slice(0, inboxToolIndex),
+      "github_tools__search_issues",
+      ...baseToolNames.slice(inboxToolIndex),
+    ]]],
   );
 });

@@ -26,6 +26,7 @@
     "@mariozechner/pi-agent-core": "^0.62.0",
     "@mariozechner/pi-ai": "^0.62.0",
     "@mariozechner/pi-coding-agent": "^0.62.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@redis/client": "^5.11.0",
     "bullmq": "^5.71.1",
     "commander": "^14.0.3",

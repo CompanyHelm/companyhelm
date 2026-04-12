@@ -35,6 +35,7 @@ import { AgentSessionBootstrapContext } from "./bootstrap_context.ts";
 import { DefaultAgentSessionModuleRegistry } from "./modules/default_registry.ts";
 import { AgentSessionRuntimeContext } from "./runtime_context.ts";
 import { Config } from "../../../../config/schema.ts";
+import { McpService } from "../../../mcp/service.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -94,6 +95,7 @@ export class PiMonoSessionManagerService {
   private readonly modelProviderService: ModelProviderService;
   private readonly openRouterCatalogService: OpenRouterCatalogService;
   private readonly appModelRegistry: ModelRegistry;
+  private readonly mcpService: McpService;
   private readonly sessionModuleRegistry: DefaultAgentSessionModuleRegistry;
 
   constructor(
@@ -116,6 +118,8 @@ export class PiMonoSessionManagerService {
     @inject(ModelRegistry) appModelRegistry: ModelRegistry,
     @inject(SessionContextCheckpointService)
     sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
+    @inject(McpService)
+    mcpService: McpService = new McpService(),
   ) {
     this.logger = logger.child({
       component: "pi_mono_session_manager_service",
@@ -132,6 +136,7 @@ export class PiMonoSessionManagerService {
     this.modelProviderService = modelProviderService;
     this.openRouterCatalogService = openRouterCatalogService;
     this.appModelRegistry = appModelRegistry;
+    this.mcpService = mcpService;
     this.sessionContextCheckpointService = sessionContextCheckpointService;
     this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
       agentConversationService: this.agentConversationService,
@@ -141,6 +146,7 @@ export class PiMonoSessionManagerService {
       githubClient: this.githubClient,
       inboxService: this.inboxService,
       logger: this.logger,
+      mcpService: this.mcpService,
       modelProviderService: this.modelProviderService,
       modelRegistry: this.appModelRegistry,
       secretService: this.secretService,

@@ -1,0 +1,5 @@
+## MCP Tools
+
+Use MCP tools when the current task matches a capability exposed by one of the agent's attached shared MCP servers.
+MCP tool names are namespaced as `<server>__<tool>` so you can tell which server owns each capability before calling it.
+Prefer the narrowest MCP tool that directly fits the task, and fall back to web or terminal work only when no attached MCP tool matches.
