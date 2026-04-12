@@ -18,16 +18,18 @@ declare global {
 
 export class Config {
   static getDocument(): ConfigDocument {
+    const importMetaEnv = import.meta.env;
+
     return {
       appVersion: Config.resolveAppVersion(),
       clerkPublishableKey: Config.resolveRuntimeStringValue(
         "clerkPublishableKey",
-        Config.getImportMetaEnvValue("VITE_CLERK_PUBLISHABLE_KEY"),
+        importMetaEnv?.VITE_CLERK_PUBLISHABLE_KEY,
         "",
       ),
       graphqlUrl: Config.resolveRuntimeStringValue(
         "graphqlUrl",
-        Config.getImportMetaEnvValue("VITE_GRAPHQL_URL"),
+        importMetaEnv?.VITE_GRAPHQL_URL,
         "http://localhost:4000/graphql",
       ),
     };
@@ -63,15 +65,6 @@ export class Config {
 
     return window.__COMPANYHELM_CONFIG__ ?? {};
   }
-
-  private static getImportMetaEnvValue(key: string): unknown {
-    const importMetaDocument = import.meta as ImportMeta & {
-      env?: Record<string, unknown>;
-    };
-
-    return importMetaDocument.env?.[key];
-  }
-
   private static resolveStringValue(value: unknown, fallbackValue: string): string {
     const normalizedValue = String(value || "").trim();
     return normalizedValue || fallbackValue;
