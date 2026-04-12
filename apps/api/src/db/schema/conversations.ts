@@ -62,11 +62,13 @@ export const agentSessions = pgTable("agent_sessions", {
   thinkingText: text("thinking_text"),
   currentContextTokens: integer("current_context_tokens"),
   maxContextTokens: integer("max_context_tokens"),
+  lastUserMessageAt: timestamp("last_user_message_at", { withTimezone: true }),
   isCompacting: boolean("is_compacting").notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   companyIdIndex: index("agent_sessions_company_id_idx").on(table.companyId),
+  companyLastUserMessageAtIndex: index("agent_sessions_company_last_user_message_at_idx").on(table.companyId, table.lastUserMessageAt),
 }));
 
 export const sessionTurns = pgTable("session_turns", {

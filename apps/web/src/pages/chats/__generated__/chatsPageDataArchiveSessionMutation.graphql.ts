@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<63b3b045cc707fdc1e33a177d598a170>>
+ * @generated SignedSource<<66f5a84bce0b48bddf0e19b7a69aef02>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -29,6 +29,7 @@ export type chatsPageDataArchiveSessionMutation$data = {
     readonly inferredTitle: string | null | undefined;
     readonly isCompacting: boolean;
     readonly isThinking: boolean;
+    readonly lastUserMessageAt: string | null | undefined;
     readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
@@ -204,6 +205,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "lastUserMessageAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "userSetTitle",
         "storageKey": null
       }
@@ -229,16 +237,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "e20f1be9f1452d0343dba1a8da3fe577",
+    "cacheID": "a8a22a237f5fd4685ad4e7dd555c6749",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataArchiveSessionMutation",
     "operationKind": "mutation",
-    "text": "mutation chatsPageDataArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "mutation chatsPageDataArchiveSessionMutation(\n  $input: ArchiveSessionInput!\n) {\n  ArchiveSession(input: $input) {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "55f4fb722d1f2b98e71f59f1c81cf072";
+(node as any).hash = "80a9143e8915d3140adf3ea95a87035c";
 
 export default node;

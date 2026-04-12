@@ -85,6 +85,7 @@ export const chatsPageQueryNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -255,6 +256,7 @@ export const chatsPageCreateSessionMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -282,6 +284,7 @@ export const chatsPageForkSessionMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -309,6 +312,7 @@ export const chatsPageArchiveSessionMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -336,6 +340,7 @@ export const chatsPagePromptSessionMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -363,6 +368,7 @@ export const chatsPageInterruptSessionMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -406,6 +412,7 @@ export const chatsPageMarkSessionReadMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -433,6 +440,7 @@ export const chatsPageUpdateSessionTitleMutationNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }
@@ -460,6 +468,7 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
       thinkingText
       createdAt
       updatedAt
+      lastUserMessageAt
       userSetTitle
     }
   }

@@ -45,6 +45,7 @@ export type SessionRecord = {
   inferredTitle: string | null;
   isCompacting: boolean;
   isThinking: boolean;
+  lastUserMessageAt: Date | null;
   maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
@@ -115,6 +116,7 @@ export const agentSessionSelection = {
   inferredTitle: agentSessions.inferredTitle,
   isCompacting: agentSessions.isCompacting,
   isThinking: agentSessions.isThinking,
+  lastUserMessageAt: agentSessions.lastUserMessageAt,
   maxContextTokens: agentSessions.maxContextTokens,
   status: agentSessions.status,
   thinkingText: agentSessions.thinkingText,

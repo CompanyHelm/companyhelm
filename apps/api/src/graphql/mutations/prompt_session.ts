@@ -23,6 +23,7 @@ type GraphqlSessionRecord = {
   inferredTitle: string | null;
   isCompacting: boolean;
   isThinking: boolean;
+  lastUserMessageAt: string | null;
   maxContextTokens: number | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
@@ -44,6 +45,7 @@ type ServiceSessionRecord = {
   inferredTitle: string | null;
   isCompacting: boolean;
   isThinking: boolean;
+  lastUserMessageAt: Date | null;
   maxContextTokens: number | null;
   status: string;
   thinkingText: string | null;
@@ -104,6 +106,7 @@ export class PromptSessionMutation extends Mutation<PromptSessionMutationArgumen
       agentId: sessionRecord.agentId,
       currentContextTokens: sessionRecord.currentContextTokens,
       hasUnread: false,
+      lastUserMessageAt: sessionRecord.lastUserMessageAt?.toISOString() ?? null,
       modelProviderCredentialModelId: sessionRecord.currentModelProviderCredentialModelId,
       modelId: sessionRecord.currentModelId,
       reasoningLevel: sessionRecord.currentReasoningLevel,

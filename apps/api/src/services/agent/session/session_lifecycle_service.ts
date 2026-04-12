@@ -153,6 +153,7 @@ export class SessionLifecycleService {
         inferredTitle: preparedPrompt.inferredTitle,
         isCompacting: false,
         isThinking: false,
+        lastUserMessageAt: now,
         maxContextTokens: null,
         ownerUserId: options.userId ?? null,
         status: "queued",

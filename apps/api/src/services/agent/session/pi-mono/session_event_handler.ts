@@ -442,6 +442,15 @@ export class PiMonoSessionEventHandler {
         await insertableDatabase.insert(sessionMessages).values(messageRecord);
         this.persistedMessageIds.add(messageId);
       }
+
+      if (eventMessage.role === "user") {
+        await updatableDatabase
+          .update(agentSessions)
+          .set({
+            lastUserMessageAt: timestamp,
+          })
+          .where(eq(agentSessions.id, this.sessionId));
+      }
     });
 
     await this.upsertMessageContents(companyId, messageId, eventMessage, timestamp);
