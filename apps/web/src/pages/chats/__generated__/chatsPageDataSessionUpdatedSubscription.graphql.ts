@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b4cfc62d0785687f44612e08d215747f>>
+ * @generated SignedSource<<67f2c0c970b6fa6372f1ee7d5ee9c4d1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type chatsPageDataSessionUpdatedSubscription$data = {
     readonly inferredTitle: string | null | undefined;
     readonly isCompacting: boolean;
     readonly isThinking: boolean;
+    readonly lastUserMessageAt: string | null | undefined;
     readonly maxContextTokens: number | null | undefined;
     readonly modelId: string;
     readonly modelProviderCredentialModelId: string | null | undefined;
@@ -186,6 +187,13 @@ var v0 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "lastUserMessageAt",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "userSetTitle",
         "storageKey": null
       }
@@ -211,16 +219,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "549f13df1882074c67a7133c81646640",
+    "cacheID": "21cd194c69a8518d1e5bed16ac7391fd",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "12c8f176da6cdc2aad304b4162237a69";
+(node as any).hash = "160cbe3381e5135c9af5ad6fe9d1dea2";
 
 export default node;

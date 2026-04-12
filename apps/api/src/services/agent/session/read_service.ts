@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
   agentSessions,
@@ -20,6 +20,7 @@ type SessionRow = {
   inferredTitle: string | null;
   isCompacting: boolean;
   isThinking: boolean;
+  lastUserMessageAt: Date | null;
   maxContextTokens: number | null;
   ownerUserId: string | null;
   status: string;
@@ -91,7 +92,7 @@ type SelectableDatabase = {
       where(condition: unknown): {
         orderBy(...values: unknown[]): {
           limit(limit: number): Promise<Array<Record<string, unknown>>>;
-        };
+        } & Promise<Array<Record<string, unknown>>>;
       } & Promise<Array<Record<string, unknown>>>;
     };
   };
@@ -106,6 +107,7 @@ export type SessionGraphqlRecord = {
   forkedFromSessionTitle: string | null;
   forkedFromTurnId: string | null;
   hasUnread: boolean;
+  lastUserMessageAt: string | null;
   modelProviderCredentialModelId: string | null;
   modelId: string;
   reasoningLevel: string;
@@ -230,6 +232,7 @@ export class SessionReadService {
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
+          lastUserMessageAt: agentSessions.lastUserMessageAt,
           maxContextTokens: agentSessions.maxContextTokens,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
@@ -239,8 +242,19 @@ export class SessionReadService {
           userSetTitle: agentSessions.userSetTitle,
         })
         .from(agentSessions)
-        .where(eq(agentSessions.companyId, companyId)) as SessionRow[];
-      const accessibleSessionRows = sessionRows.filter((sessionRow) => this.canUserAccessSession(sessionRow.ownerUserId, userId));
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          or(
+            isNull(agentSessions.ownerUserId),
+            eq(agentSessions.ownerUserId, userId),
+          )!,
+        ))
+        .orderBy(
+          desc(sql`coalesce(${agentSessions.lastUserMessageAt}, ${agentSessions.created_at})`),
+          desc(agentSessions.created_at),
+          desc(agentSessions.id),
+        ) as SessionRow[];
+      const accessibleSessionRows = sessionRows;
       const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, accessibleSessionRows);
       const modelOptionIdBySessionKey = await this.loadSessionModelOptionIds(
         selectableDatabase,
@@ -254,8 +268,7 @@ export class SessionReadService {
         accessibleSessionRows.map((sessionRow) => sessionRow.id),
       );
 
-      return [...accessibleSessionRows]
-        .sort((leftSession, rightSession) => rightSession.updatedAt.getTime() - leftSession.updatedAt.getTime())
+      return accessibleSessionRows
         .map((sessionRow) => this.serializeSession(
           sessionRow,
           forkSourceBySessionId,
@@ -284,6 +297,7 @@ export class SessionReadService {
           inferredTitle: agentSessions.inferredTitle,
           isCompacting: agentSessions.isCompacting,
           isThinking: agentSessions.isThinking,
+          lastUserMessageAt: agentSessions.lastUserMessageAt,
           maxContextTokens: agentSessions.maxContextTokens,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
@@ -296,10 +310,14 @@ export class SessionReadService {
         .where(and(
           eq(agentSessions.companyId, companyId),
           eq(agentSessions.id, sessionId),
+          or(
+            isNull(agentSessions.ownerUserId),
+            eq(agentSessions.ownerUserId, userId),
+          )!,
         )) as SessionRow[];
 
       const sessionRow = sessionRows[0];
-      if (!sessionRow || !this.canUserAccessSession(sessionRow.ownerUserId, userId)) {
+      if (!sessionRow) {
         return null;
       }
 
@@ -678,12 +696,20 @@ export class SessionReadService {
         ? and(
           eq(agentSessions.companyId, companyId),
           inArray(agentSessions.id, uniqueSessionIds),
+          or(
+            isNull(agentSessions.ownerUserId),
+            eq(agentSessions.ownerUserId, userId),
+          )!,
         )
-        : eq(agentSessions.companyId, companyId)) as Array<{ id: string; ownerUserId: string | null }>;
+        : and(
+          eq(agentSessions.companyId, companyId),
+          or(
+            isNull(agentSessions.ownerUserId),
+            eq(agentSessions.ownerUserId, userId),
+          )!,
+        )) as Array<{ id: string; ownerUserId: string | null }>;
 
-    return sessionRows
-      .filter((sessionRow) => this.canUserAccessSession(sessionRow.ownerUserId, userId))
-      .map((sessionRow) => sessionRow.id);
+    return sessionRows.map((sessionRow) => sessionRow.id);
   }
 
   /**
@@ -788,6 +814,7 @@ export class SessionReadService {
       forkedFromSessionTitle: forkSource?.title ?? null,
       forkedFromTurnId: sessionRow.forkedFromTurnId,
       hasUnread: !isRead,
+      lastUserMessageAt: sessionRow.lastUserMessageAt?.toISOString() ?? null,
       modelProviderCredentialModelId: sessionRow.currentModelProviderCredentialModelId,
       modelId,
       reasoningLevel: sessionRow.currentReasoningLevel,
@@ -835,9 +862,5 @@ export class SessionReadService {
       createdAt: messageRow.createdAt.toISOString(),
       updatedAt: messageRow.updatedAt.toISOString(),
     };
-  }
-
-  private canUserAccessSession(ownerUserId: string | null, userId: string): boolean {
-    return ownerUserId === null || ownerUserId === userId;
   }
 }

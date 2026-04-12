@@ -467,10 +467,16 @@ export function resolveQueuedMessagePreview(text: string): string {
 }
 
 export function compareSessionsByLatestActivity(leftSession: SessionRecord, rightSession: SessionRecord): number {
-  const leftTimestamp = new Date(leftSession.updatedAt).getTime();
-  const rightTimestamp = new Date(rightSession.updatedAt).getTime();
+  const leftTimestamp = new Date(leftSession.lastUserMessageAt ?? leftSession.createdAt).getTime();
+  const rightTimestamp = new Date(rightSession.lastUserMessageAt ?? rightSession.createdAt).getTime();
   if (leftTimestamp !== rightTimestamp) {
     return rightTimestamp - leftTimestamp;
+  }
+
+  const leftCreatedAt = new Date(leftSession.createdAt).getTime();
+  const rightCreatedAt = new Date(rightSession.createdAt).getTime();
+  if (leftCreatedAt !== rightCreatedAt) {
+    return rightCreatedAt - leftCreatedAt;
   }
 
   return leftSession.id.localeCompare(rightSession.id);

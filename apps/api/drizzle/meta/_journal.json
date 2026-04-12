@@ -624,6 +624,13 @@
       "when": 1775952000000,
       "tag": "0088_skills_github_branch_name",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1775969924982,
+      "tag": "0089_session_last_user_message_at",
+      "breakpoints": true
     }
   ]
 }

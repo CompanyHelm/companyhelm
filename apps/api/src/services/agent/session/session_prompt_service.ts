@@ -151,6 +151,7 @@ export class SessionPromptService {
       .set({
         currentModelProviderCredentialModelId: selectedModelRecord.id,
         currentReasoningLevel: resolvedReasoningLevel,
+        lastUserMessageAt: now,
         status: existingSession.status === "running" ? "running" : "queued",
         updated_at: now,
       })
