@@ -116,13 +116,13 @@ export function ChatSelectionDialog(props: ChatSelectionDialogProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className={cn("sm:max-w-md", props.contentClassName)}>
+      <DialogContent className={cn("flex w-[min(96vw,41rem)] max-h-[80vh] flex-col", props.contentClassName)}>
         <DialogHeader>
           <DialogTitle>{props.title}</DialogTitle>
           <DialogDescription>{props.description}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           {hasItems ? (
             <Input
               aria-activedescendant={highlightedItemId ? `${listboxId}-${highlightedItemId}` : undefined}
@@ -147,7 +147,7 @@ export function ChatSelectionDialog(props: ChatSelectionDialogProps) {
               {props.noResultsMessage}
             </div>
           ) : (
-            <div className="max-h-[24rem] overflow-y-auto pr-1">
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
               <div aria-label={props.title} className="grid gap-2" id={listboxId} role="listbox">
                 {filteredItems.map((item, index) => {
                   const isHighlighted = index === highlightedIndex;
