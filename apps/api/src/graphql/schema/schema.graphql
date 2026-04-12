@@ -70,6 +70,8 @@ type Mutation {
   ArchiveArtifact(input: ArchiveArtifactInput!): Artifact!
   CreateSecret(input: CreateSecretInput!): Secret!
   CreateMcpServer(input: CreateMcpServerInput!): McpServer!
+  StartMcpServerOAuth(input: StartMcpServerOAuthInput!): StartMcpServerOAuthPayload!
+  CompleteMcpServerOAuth(input: CompleteMcpServerOAuthInput!): CompleteMcpServerOAuthPayload!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
   ImportGithubSkills(input: ImportGithubSkillsInput!): [Skill!]!
@@ -85,6 +87,7 @@ type Mutation {
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
   DeleteMcpServer(input: DeleteMcpServerInput!): McpServer!
+  DisconnectMcpServerOAuth(input: DisconnectMcpServerOAuthInput!): McpServer!
   DeleteSkill(input: DeleteSkillInput!): Skill!
   DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
@@ -146,6 +149,18 @@ type Subscription {
 }
 
 scalar JSON
+
+enum McpServerAuthType {
+  none
+  custom_headers
+  oauth
+}
+
+enum McpOauthConnectionStatus {
+  connected
+  degraded
+  not_connected
+}
 
 type AuthenticatedCompany {
   id: ID!
@@ -295,6 +310,15 @@ type DeleteAgentConversationPayload {
 
 type RefreshGithubInstallationRepositoriesPayload {
   repositories: [GithubRepository!]!
+}
+
+type StartMcpServerOAuthPayload {
+  authorizationUrl: String!
+}
+
+type CompleteMcpServerOAuthPayload {
+  mcpServer: McpServer!
+  organizationSlug: String!
 }
 
 type AuthenticatedUser {
@@ -540,9 +564,15 @@ type McpServer {
   name: String!
   description: String
   url: String!
+  authType: McpServerAuthType!
   headersText: String!
   callTimeoutMs: Int!
   enabled: Boolean!
+  oauthClientId: String
+  oauthConnectionStatus: McpOauthConnectionStatus
+  oauthGrantedScopes: [String!]!
+  oauthLastError: String
+  oauthRequestedScopes: [String!]!
   createdAt: String!
   updatedAt: String!
 }
@@ -863,6 +893,7 @@ input CreateMcpServerInput {
   name: String!
   description: String
   url: String!
+  authType: McpServerAuthType
   headersText: String
   callTimeoutMs: Int
   enabled: Boolean
@@ -873,6 +904,7 @@ input UpdateMcpServerInput {
   name: String
   description: String
   url: String
+  authType: McpServerAuthType
   headersText: String
   callTimeoutMs: Int
   enabled: Boolean
@@ -880,6 +912,23 @@ input UpdateMcpServerInput {
 
 input DeleteMcpServerInput {
   id: ID!
+}
+
+input StartMcpServerOAuthInput {
+  mcpServerId: ID!
+  oauthClientId: String
+  oauthClientSecret: String
+  organizationSlug: String!
+  requestedScopes: [String!]
+}
+
+input CompleteMcpServerOAuthInput {
+  code: String!
+  state: String!
+}
+
+input DisconnectMcpServerOAuthInput {
+  mcpServerId: ID!
 }
 
 input AttachMcpServerToAgentInput {
