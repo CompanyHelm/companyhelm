@@ -628,6 +628,13 @@
     {
       "idx": 89,
       "version": "7",
+      "when": 1775967720000,
+      "tag": "0089_mcp_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
       "when": 1775969924982,
       "tag": "0089_session_last_user_message_at",
       "breakpoints": true
