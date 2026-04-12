@@ -22,12 +22,12 @@ export class Config {
       appVersion: Config.resolveAppVersion(),
       clerkPublishableKey: Config.resolveRuntimeStringValue(
         "clerkPublishableKey",
-        import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+        Config.getImportMetaEnvValue("VITE_CLERK_PUBLISHABLE_KEY"),
         "",
       ),
       graphqlUrl: Config.resolveRuntimeStringValue(
         "graphqlUrl",
-        import.meta.env.VITE_GRAPHQL_URL,
+        Config.getImportMetaEnvValue("VITE_GRAPHQL_URL"),
         "http://localhost:4000/graphql",
       ),
     };
@@ -62,6 +62,14 @@ export class Config {
     }
 
     return window.__COMPANYHELM_CONFIG__ ?? {};
+  }
+
+  private static getImportMetaEnvValue(key: string): unknown {
+    const importMetaDocument = import.meta as ImportMeta & {
+      env?: Record<string, unknown>;
+    };
+
+    return importMetaDocument.env?.[key];
   }
 
   private static resolveStringValue(value: unknown, fallbackValue: string): string {
