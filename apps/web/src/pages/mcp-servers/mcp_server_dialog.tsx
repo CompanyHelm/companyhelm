@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,24 +21,34 @@ import {
 } from "./mcp_server_headers";
 
 export type EditableMcpServerRecord = {
+  authType: "none" | "custom_headers" | "oauth";
   callTimeoutMs: number;
   description: string | null;
   enabled: boolean;
   headersText: string;
   id: string;
   name: string;
+  oauthClientId: string | null;
+  oauthConnectionStatus: "connected" | "degraded" | "not_connected" | null;
+  oauthGrantedScopes: string[];
+  oauthLastError: string | null;
+  oauthRequestedScopes: string[];
   url: string;
 };
 
 interface McpServerDialogProps {
   deletingServerId: string | null;
   errorMessage: string | null;
+  isOauthDisconnecting: boolean;
+  isOauthStarting: boolean;
   isOpen: boolean;
   isSaving: boolean;
   onDelete(serverId: string): Promise<void>;
+  onDisconnectOauth(serverId: string): Promise<void>;
   onOpenChange(open: boolean): void;
   onSave(input:
     | {
+        authType: "none" | "custom_headers" | "oauth";
         callTimeoutMs: number;
         description?: string;
         enabled: boolean;
@@ -46,6 +57,7 @@ interface McpServerDialogProps {
         url: string;
       }
     | {
+        authType: "none" | "custom_headers" | "oauth";
         callTimeoutMs: number;
         description?: string;
         enabled: boolean;
@@ -55,6 +67,12 @@ interface McpServerDialogProps {
         url: string;
       }
   ): Promise<void>;
+  onStartOauth(input: {
+    mcpServerId: string;
+    oauthClientId?: string;
+    oauthClientSecret?: string;
+    requestedScopes: string[];
+  }): Promise<void>;
   server: EditableMcpServerRecord | null;
 }
 
@@ -62,7 +80,26 @@ type HeaderDraftRow = McpServerHeaderDraft & {
   id: string;
 };
 
+function parseRequestedScopesText(value: string): string[] {
+  return [...new Set(value
+    .split(/\s+/u)
+    .map((scope) => scope.trim())
+    .filter(Boolean))];
+}
+
+function getOauthStatusBadgeVariant(status: EditableMcpServerRecord["oauthConnectionStatus"] | undefined) {
+  if (status === "connected") {
+    return "positive";
+  }
+  if (status === "degraded") {
+    return "warning";
+  }
+
+  return "outline";
+}
+
 export function McpServerDialog(props: McpServerDialogProps) {
+  const [authType, setAuthType] = useState<EditableMcpServerRecord["authType"]>("none");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
@@ -70,6 +107,9 @@ export function McpServerDialog(props: McpServerDialogProps) {
   const [callTimeoutMs, setCallTimeoutMs] = useState(String(DEFAULT_MCP_SERVER_CALL_TIMEOUT_MS));
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [enabled, setEnabled] = useState(true);
+  const [requestedScopesText, setRequestedScopesText] = useState("");
+  const [oauthClientId, setOauthClientId] = useState("");
+  const [oauthClientSecret, setOauthClientSecret] = useState("");
   const nextHeaderDraftIdRef = useRef(0);
   const isEditing = props.server !== null;
 
@@ -81,7 +121,8 @@ export function McpServerDialog(props: McpServerDialogProps) {
       value: draft?.value ?? "",
     });
 
-    if (!props.isOpen) {
+    if (!props.isOpen || !props.server) {
+      setAuthType("none");
       setName("");
       setDescription("");
       setUrl("");
@@ -89,20 +130,13 @@ export function McpServerDialog(props: McpServerDialogProps) {
       setCallTimeoutMs(String(DEFAULT_MCP_SERVER_CALL_TIMEOUT_MS));
       setIsAdvancedOpen(false);
       setEnabled(true);
+      setRequestedScopesText("");
+      setOauthClientId("");
+      setOauthClientSecret("");
       return;
     }
 
-    if (!props.server) {
-      setName("");
-      setDescription("");
-      setUrl("");
-      setHeaderDrafts([createHeaderDraft()]);
-      setCallTimeoutMs(String(DEFAULT_MCP_SERVER_CALL_TIMEOUT_MS));
-      setIsAdvancedOpen(false);
-      setEnabled(true);
-      return;
-    }
-
+    setAuthType(props.server.authType);
     setName(props.server.name);
     setDescription(props.server.description ?? "");
     setUrl(props.server.url);
@@ -115,11 +149,14 @@ export function McpServerDialog(props: McpServerDialogProps) {
     setCallTimeoutMs(String(props.server.callTimeoutMs));
     setIsAdvancedOpen(false);
     setEnabled(props.server.enabled);
+    setRequestedScopesText(props.server.oauthRequestedScopes.join(" "));
+    setOauthClientId(props.server.oauthClientId ?? "");
+    setOauthClientSecret("");
   }, [props.isOpen, props.server]);
 
   const title = isEditing ? "Edit MCP server" : "Create MCP server";
   const descriptionText = isEditing
-    ? "Update the shared HTTP MCP server definition that agents can attach as a default."
+    ? "Update the shared remote HTTP MCP server definition and its auth mode."
     : "Add a shared remote HTTP MCP server definition that agents can attach as a default.";
   const normalizedCallTimeoutMs = Number(callTimeoutMs);
   const hasIncompleteHeaders = hasIncompleteMcpServerHeaders(headerDrafts);
@@ -132,6 +169,28 @@ export function McpServerDialog(props: McpServerDialogProps) {
     || hasIncompleteHeaders
     || !Number.isFinite(normalizedCallTimeoutMs)
     || normalizedCallTimeoutMs < 1;
+  const hasUnsavedServerChanges = Boolean(
+    isEditing
+      && props.server
+      && (
+        props.server.authType !== authType
+        || props.server.name !== name.trim()
+        || (props.server.description ?? "") !== description.trim()
+        || props.server.url !== url.trim()
+        || props.server.headersText !== headersText
+        || props.server.callTimeoutMs !== Math.floor(normalizedCallTimeoutMs || 0)
+        || props.server.enabled !== enabled
+      ),
+  );
+  const canManageOauthConnection = isEditing
+    && props.server?.authType === "oauth"
+    && authType === "oauth"
+    && !hasUnsavedServerChanges;
+  const requestedScopes = parseRequestedScopesText(requestedScopesText);
+  const headerLabel = authType === "oauth" ? "Additional headers (optional)" : "Headers (optional)";
+  const headerDescription = authType === "oauth"
+    ? "These headers are sent alongside the OAuth bearer token on every MCP request."
+    : "Add request headers that should be sent with MCP calls. Empty rows are ignored.";
 
   return (
     <Dialog disablePointerDismissal onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -142,6 +201,169 @@ export function McpServerDialog(props: McpServerDialogProps) {
         </DialogHeader>
 
         <div className="grid gap-4">
+          <div className="grid gap-2">
+            <span className="text-xs font-medium text-foreground">Auth mode</span>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {[
+                {
+                  description: "Use no built-in auth and rely only on the server URL plus optional headers.",
+                  label: "No auth",
+                  value: "none",
+                },
+                {
+                  description: "Use static request headers managed with the MCP server definition.",
+                  label: "Custom headers",
+                  value: "custom_headers",
+                },
+                {
+                  description: "Use OAuth 2.1 authorization code with PKCE and lazy token refresh.",
+                  label: "OAuth",
+                  value: "oauth",
+                },
+              ].map((option) => {
+                const isSelected = authType === option.value;
+                return (
+                  <button
+                    className={[
+                      "rounded-xl border px-3 py-3 text-left transition",
+                      isSelected
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border/60 bg-muted/10 hover:bg-muted/30",
+                    ].join(" ")}
+                    key={option.value}
+                    onClick={() => {
+                      setAuthType(option.value as EditableMcpServerRecord["authType"]);
+                    }}
+                    type="button"
+                  >
+                    <div className="grid gap-1">
+                      <span className="text-sm font-medium text-foreground">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {authType === "oauth" ? (
+            <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="grid gap-1">
+                  <span className="text-sm font-medium text-foreground">OAuth connection</span>
+                  <span className="text-xs text-muted-foreground">
+                    OAuth credentials are stored per company and refreshed only when MCP authorization is needed.
+                  </span>
+                </div>
+                <Badge variant={getOauthStatusBadgeVariant(props.server?.oauthConnectionStatus)}>
+                  {props.server?.oauthConnectionStatus ?? "not_connected"}
+                </Badge>
+              </div>
+
+              {props.server?.oauthLastError ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                  {props.server.oauthLastError}
+                </div>
+              ) : null}
+
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-scopes">
+                  Requested scopes
+                </label>
+                <Input
+                  id="mcp-server-oauth-scopes"
+                  onChange={(event) => {
+                    setRequestedScopesText(event.target.value);
+                  }}
+                  placeholder="read:repo mcp:tools"
+                  value={requestedScopesText}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Space-delimited scopes. Leave blank if the server does not require explicit scopes.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-client-id">
+                    Manual client ID (optional)
+                  </label>
+                  <Input
+                    id="mcp-server-oauth-client-id"
+                    onChange={(event) => {
+                      setOauthClientId(event.target.value);
+                    }}
+                    placeholder="client-id"
+                    value={oauthClientId}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-client-secret">
+                    Manual client secret (optional)
+                  </label>
+                  <Input
+                    id="mcp-server-oauth-client-secret"
+                    onChange={(event) => {
+                      setOauthClientSecret(event.target.value);
+                    }}
+                    placeholder="client-secret"
+                    type="password"
+                    value={oauthClientSecret}
+                  />
+                </div>
+              </div>
+
+              {props.server?.oauthGrantedScopes.length ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Granted scopes: {props.server.oauthGrantedScopes.join(" ")}
+                </p>
+              ) : null}
+
+              {canManageOauthConnection ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={props.isOauthStarting || props.isSaving}
+                    onClick={async () => {
+                      await props.onStartOauth({
+                        mcpServerId: props.server!.id,
+                        oauthClientId: oauthClientId.trim() || undefined,
+                        oauthClientSecret: oauthClientSecret.trim() || undefined,
+                        requestedScopes,
+                      });
+                    }}
+                    size="sm"
+                    type="button"
+                  >
+                    {props.isOauthStarting
+                      ? "Redirecting…"
+                      : props.server?.oauthConnectionStatus === "connected"
+                        ? "Reconnect OAuth"
+                        : "Connect OAuth"}
+                  </Button>
+                  <Button
+                    disabled={props.isOauthDisconnecting || props.isSaving}
+                    onClick={async () => {
+                      await props.onDisconnectOauth(props.server!.id);
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {props.isOauthDisconnecting ? "Disconnecting…" : "Disconnect OAuth"}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  {isEditing
+                    ? hasUnsavedServerChanges
+                      ? "Save your MCP server changes before starting or disconnecting OAuth."
+                      : "Save the MCP server with OAuth enabled before starting the authorization flow."
+                    : "Create the MCP server first, then reconnect here to start OAuth."}
+                </p>
+              )}
+            </div>
+          ) : null}
+
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-name">
               Name
@@ -190,7 +412,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-3">
               <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-header-name-0">
-                Headers (optional)
+                {headerLabel}
               </label>
               <Button
                 onClick={() => {
@@ -277,7 +499,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Add any request headers that should be sent with MCP calls. Empty rows are ignored.
+              {headerDescription}
             </p>
             {hasIncompleteHeaders ? (
               <p className="text-[11px] text-destructive">Each header needs both a name and a value.</p>
@@ -374,6 +596,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
               disabled={isSaveDisabled || props.isSaving}
               onClick={async () => {
                 const payload = {
+                  authType,
                   callTimeoutMs: Math.floor(normalizedCallTimeoutMs),
                   description: description.trim() ? description : undefined,
                   enabled,

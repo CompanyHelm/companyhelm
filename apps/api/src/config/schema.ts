@@ -37,6 +37,7 @@ export const ConfigDocument = z.object({
     graphiql: z.boolean(),
   }),
   publicUrl: NonEmptyStringSchema,
+  webPublicUrl: NonEmptyStringSchema,
   database: z.object({
     name: NonEmptyStringSchema,
     host: NonEmptyStringSchema,

@@ -1,9 +1,53 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { injectable } from "inversify";
-import { agents, agentDefaultMcpServers, mcpServers } from "../../db/schema.ts";
-import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import { inject, injectable } from "inversify";
+import {
+  agents,
+  agentDefaultMcpServers,
+  mcpOauthConnections,
+  mcpServers,
+} from "../../db/schema.ts";
+import type {
+  AppRuntimeTransaction,
+  TransactionProviderInterface,
+} from "../../db/transaction_provider_interface.ts";
+import { SecretEncryptionService } from "../secrets/encryption.ts";
+import { McpOauthTokenRefreshService } from "./oauth/token_refresh.ts";
+import {
+  normalizeNonEmptyString,
+  parseStoredMcpOauthToken,
+  serializeStoredMcpOauthToken,
+  type McpOauthConnectionStatus,
+  type McpServerAuthType,
+} from "./oauth/types.ts";
 
 export type McpServerRecord = {
+  authType: McpServerAuthType;
+  callTimeoutMs: number;
+  companyId: string;
+  createdAt: Date;
+  description: string | null;
+  enabled: boolean;
+  headers: Record<string, string>;
+  id: string;
+  name: string;
+  oauthClientId: string | null;
+  oauthConnectionStatus: McpOauthConnectionStatus | null;
+  oauthGrantedScopes: string[];
+  oauthLastError: string | null;
+  oauthRequestedScopes: string[];
+  updatedAt: Date;
+  url: string;
+};
+
+type AgentRecord = {
+  id: string;
+};
+
+type SelectableDatabase = AppRuntimeTransaction;
+type UpdatableDatabase = AppRuntimeTransaction;
+
+type McpServerBaseRecord = {
+  authType: string;
   callTimeoutMs: number;
   companyId: string;
   createdAt: Date;
@@ -16,49 +60,42 @@ export type McpServerRecord = {
   url: string;
 };
 
-type AgentRecord = {
-  id: string;
-};
-
-type SelectableDatabase = {
-  select(selection: Record<string, unknown>): {
-    from(table: unknown): {
-      where(condition: unknown): Promise<Array<Record<string, unknown>>>;
-    };
-  };
-};
-
-type InsertableDatabase = {
-  insert(table: unknown): {
-    values(value: Record<string, unknown>): {
-      returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
-    };
-  };
-};
-
-type UpdatableDatabase = {
-  update(table: unknown): {
-    set(value: Record<string, unknown>): {
-      where(condition: unknown): {
-        returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
-      };
-    };
-  };
-};
-
-type DeletableDatabase = {
-  delete(table: unknown): {
-    where(condition: unknown): {
-      returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
-    };
-  };
+type McpOauthConnectionRecord = {
+  accessTokenExpiresAt: Date | null;
+  authorizationServerMetadata: Record<string, unknown>;
+  lastError: string | null;
+  mcpServerId: string;
+  oauthClientId: string;
+  oauthClientSecretEncryptedValue: string | null;
+  oauthClientSecretEncryptionKeyId: string | null;
+  requestedScopes: string[];
+  resourceIndicator: string;
+  resourceMetadataUrl: string;
+  status: string;
+  tokenEncryptedValue: string;
+  tokenEncryptionKeyId: string;
+  tokenEndpointAuthMethod: string;
+  updatedAt: Date;
 };
 
 @injectable()
 export class McpService {
+  private static readonly DEFAULT_REFRESH_WINDOW_MS = 120_000;
+  private readonly encryptionService: SecretEncryptionService;
+  private readonly tokenRefreshService: McpOauthTokenRefreshService;
+
+  constructor(
+    @inject(SecretEncryptionService) encryptionService?: SecretEncryptionService,
+    @inject(McpOauthTokenRefreshService) tokenRefreshService?: McpOauthTokenRefreshService,
+  ) {
+    this.encryptionService = encryptionService ?? ({} as SecretEncryptionService);
+    this.tokenRefreshService = tokenRefreshService ?? new McpOauthTokenRefreshService();
+  }
+
   async createMcpServer(
     transactionProvider: TransactionProviderInterface,
     input: {
+      authType?: McpServerAuthType | null;
       callTimeoutMs?: number | null;
       companyId: string;
       description?: string | null;
@@ -73,15 +110,16 @@ export class McpService {
     const url = this.requireHttpUrl(input.url);
     const description = this.normalizeOptionalText(input.description);
     const headers = this.parseHeadersText(input.headersText);
+    const authType = this.resolveAuthType(input.authType ?? undefined);
     const callTimeoutMs = this.resolveCallTimeoutMs(input.callTimeoutMs ?? undefined);
     const enabled = input.enabled ?? true;
 
     return transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
       const now = new Date();
-      const [createdServer] = await insertableDatabase
+      const [createdServer] = await tx
         .insert(mcpServers)
         .values({
+          authType,
           callTimeoutMs,
           companyId: input.companyId,
           createdAt: now,
@@ -94,19 +132,26 @@ export class McpService {
           updatedByUserId: input.userId,
           url,
         })
-        .returning?.(this.mcpServerSelection()) as McpServerRecord[];
+        .returning(this.mcpServerSelection()) as McpServerBaseRecord[];
 
       if (!createdServer) {
         throw new Error("Failed to create MCP server.");
       }
 
-      return createdServer;
+      return this.hydrateServerRecords(tx, [createdServer]).then(([server]) => {
+        if (!server) {
+          throw new Error("Failed to hydrate created MCP server.");
+        }
+
+        return server;
+      });
     });
   }
 
   async updateMcpServer(
     transactionProvider: TransactionProviderInterface,
     input: {
+      authType?: McpServerAuthType | null;
       callTimeoutMs?: number | null;
       companyId: string;
       description?: string | null;
@@ -119,12 +164,13 @@ export class McpService {
     },
   ): Promise<McpServerRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
-      const existingServer = await this.requireMcpServer(selectableDatabase, input.companyId, input.mcpServerId);
-      const [updatedServer] = await updatableDatabase
+      const existingServer = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
+      const [updatedServer] = await tx
         .update(mcpServers)
         .set({
+          authType: input.authType === undefined
+            ? existingServer.authType
+            : this.resolveAuthType(input.authType),
           callTimeoutMs: input.callTimeoutMs === undefined
             ? existingServer.callTimeoutMs
             : this.resolveCallTimeoutMs(input.callTimeoutMs),
@@ -148,13 +194,19 @@ export class McpService {
           eq(mcpServers.companyId, input.companyId),
           eq(mcpServers.id, input.mcpServerId),
         ))
-        .returning?.(this.mcpServerSelection()) as McpServerRecord[];
+        .returning(this.mcpServerSelection()) as McpServerBaseRecord[];
 
       if (!updatedServer) {
         throw new Error("Failed to update MCP server.");
       }
 
-      return updatedServer;
+      return this.hydrateServerRecords(tx, [updatedServer]).then(([server]) => {
+        if (!server) {
+          throw new Error("Failed to hydrate updated MCP server.");
+        }
+
+        return server;
+      });
     });
   }
 
@@ -164,20 +216,36 @@ export class McpService {
     mcpServerId: string,
   ): Promise<McpServerRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const deletableDatabase = tx as DeletableDatabase;
-      const [deletedServer] = await deletableDatabase
+      const [deletedServer] = await tx
         .delete(mcpServers)
         .where(and(
           eq(mcpServers.companyId, companyId),
           eq(mcpServers.id, mcpServerId),
         ))
-        .returning?.(this.mcpServerSelection()) as McpServerRecord[];
+        .returning(this.mcpServerSelection()) as McpServerBaseRecord[];
 
       if (!deletedServer) {
         throw new Error("MCP server not found.");
       }
 
-      return deletedServer;
+      return {
+        ...this.presentBaseServer(deletedServer),
+        oauthClientId: null,
+        oauthConnectionStatus: deletedServer.authType === "oauth" ? "not_connected" : null,
+        oauthGrantedScopes: [],
+        oauthLastError: null,
+        oauthRequestedScopes: [],
+      };
+    });
+  }
+
+  async getMcpServer(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    mcpServerId: string,
+  ): Promise<McpServerRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      return this.requireMcpServer(tx, companyId, mcpServerId);
     });
   }
 
@@ -186,13 +254,13 @@ export class McpService {
     companyId: string,
   ): Promise<McpServerRecord[]> {
     return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const records = await selectableDatabase
+      const records = await tx
         .select(this.mcpServerSelection())
         .from(mcpServers)
-        .where(eq(mcpServers.companyId, companyId)) as McpServerRecord[];
+        .where(eq(mcpServers.companyId, companyId)) as McpServerBaseRecord[];
 
-      return [...records].sort((left, right) => left.name.localeCompare(right.name));
+      const hydratedRecords = await this.hydrateServerRecords(tx, records);
+      return [...hydratedRecords].sort((left, right) => left.name.localeCompare(right.name));
     });
   }
 
@@ -202,9 +270,8 @@ export class McpService {
     agentId: string,
   ): Promise<McpServerRecord[]> {
     return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      await this.requireAgent(selectableDatabase, companyId, agentId);
-      const attachments = await selectableDatabase
+      await this.requireAgent(tx, companyId, agentId);
+      const attachments = await tx
         .select({
           mcpServerId: agentDefaultMcpServers.mcpServerId,
         })
@@ -215,7 +282,7 @@ export class McpService {
         )) as Array<{ mcpServerId: string }>;
 
       return this.listMcpServersByIds(
-        selectableDatabase,
+        tx,
         companyId,
         attachments.map((attachment) => attachment.mcpServerId),
       );
@@ -232,12 +299,10 @@ export class McpService {
     },
   ): Promise<McpServerRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const insertableDatabase = tx as InsertableDatabase;
-      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
-      const server = await this.requireMcpServer(selectableDatabase, input.companyId, input.mcpServerId);
+      await this.requireAgent(tx, input.companyId, input.agentId);
+      const server = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
 
-      await insertableDatabase
+      await tx
         .insert(agentDefaultMcpServers)
         .values({
           agentId: input.agentId,
@@ -246,7 +311,7 @@ export class McpService {
           createdByUserId: input.userId,
           mcpServerId: input.mcpServerId,
         })
-        .returning?.();
+        .returning();
 
       return server;
     }).catch((error) => {
@@ -267,19 +332,17 @@ export class McpService {
     },
   ): Promise<McpServerRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const deletableDatabase = tx as DeletableDatabase;
-      const server = await this.requireMcpServer(selectableDatabase, input.companyId, input.mcpServerId);
-      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const server = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
+      await this.requireAgent(tx, input.companyId, input.agentId);
 
-      const [deletedRecord] = await deletableDatabase
+      const [deletedRecord] = await tx
         .delete(agentDefaultMcpServers)
         .where(and(
           eq(agentDefaultMcpServers.companyId, input.companyId),
           eq(agentDefaultMcpServers.agentId, input.agentId),
           eq(agentDefaultMcpServers.mcpServerId, input.mcpServerId),
         ))
-        .returning?.({
+        .returning({
           mcpServerId: agentDefaultMcpServers.mcpServerId,
         }) as Array<{ mcpServerId: string }>;
 
@@ -288,6 +351,139 @@ export class McpService {
       }
 
       return server;
+    });
+  }
+
+  async resolveMcpServerRequestHeaders(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      mcpServerId: string;
+      now?: Date;
+      refreshWindowMs?: number;
+    },
+  ): Promise<Record<string, string>> {
+    return transactionProvider.transaction(async (tx) => {
+      const server = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
+      if (server.authType !== "oauth") {
+        return { ...server.headers };
+      }
+
+      const connection = await this.requireOauthConnection(tx, input.companyId, input.mcpServerId);
+      const storedToken = parseStoredMcpOauthToken(
+        this.encryptionService.decrypt(connection.tokenEncryptedValue, connection.tokenEncryptionKeyId),
+      );
+      const now = input.now ?? new Date();
+      const expiresAt = storedToken.expiresAt ? new Date(storedToken.expiresAt) : null;
+      const refreshWindowMs = input.refreshWindowMs ?? McpService.DEFAULT_REFRESH_WINDOW_MS;
+      if (expiresAt && Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() > now.getTime() + refreshWindowMs) {
+        return {
+          ...server.headers,
+          Authorization: `${storedToken.tokenType} ${storedToken.accessToken}`,
+        };
+      }
+
+      const refreshToken = normalizeNonEmptyString(storedToken.refreshToken);
+      const tokenEndpoint = normalizeNonEmptyString(connection.authorizationServerMetadata.token_endpoint);
+      if (!refreshToken || !tokenEndpoint) {
+        await this.markOauthConnectionDegraded(tx, {
+          companyId: input.companyId,
+          errorMessage: !refreshToken
+            ? "MCP OAuth connection is missing a refresh token."
+            : "MCP OAuth connection is missing a token endpoint.",
+          mcpServerId: input.mcpServerId,
+        });
+        throw new Error("MCP OAuth connection must be reconnected.");
+      }
+
+      try {
+        const refreshedToken = await this.tokenRefreshService.refreshTokens({
+          clientId: connection.oauthClientId,
+          clientSecret: connection.oauthClientSecretEncryptedValue
+            ? this.encryptionService.decrypt(
+              connection.oauthClientSecretEncryptedValue,
+              connection.oauthClientSecretEncryptionKeyId ?? "",
+            )
+            : null,
+          now,
+          refreshToken,
+          resource: connection.resourceIndicator,
+          tokenEndpoint,
+        });
+        const encryptedToken = this.encryptionService.encrypt(serializeStoredMcpOauthToken({
+          accessToken: refreshedToken.accessToken,
+          expiresAt: refreshedToken.expiresAt,
+          rawResponse: refreshedToken.rawResponse,
+          refreshToken: refreshedToken.refreshToken,
+          scope: refreshedToken.scope.length > 0 ? refreshedToken.scope : connection.requestedScopes,
+          tokenType: refreshedToken.tokenType,
+        }));
+
+        await tx
+          .update(mcpOauthConnections)
+          .set({
+            accessTokenExpiresAt: refreshedToken.expiresAt,
+            grantedScopes: refreshedToken.scope.length > 0 ? refreshedToken.scope : connection.requestedScopes,
+            lastError: null,
+            refreshedAt: now,
+            status: "connected",
+            tokenEncryptedValue: encryptedToken.encryptedValue,
+            tokenEncryptionKeyId: encryptedToken.encryptionKeyId,
+            updatedAt: now,
+          })
+          .where(and(
+            eq(mcpOauthConnections.companyId, input.companyId),
+            eq(mcpOauthConnections.mcpServerId, input.mcpServerId),
+          ))
+          .returning();
+
+        return {
+          ...server.headers,
+          Authorization: `${refreshedToken.tokenType} ${refreshedToken.accessToken}`,
+        };
+      } catch (error) {
+        await this.markOauthConnectionDegraded(tx, {
+          companyId: input.companyId,
+          errorMessage: error instanceof Error ? error.message : "Unknown OAuth refresh failure.",
+          mcpServerId: input.mcpServerId,
+        });
+
+        throw error;
+      }
+    });
+  }
+
+  private async hydrateServerRecords(
+    selectableDatabase: SelectableDatabase,
+    records: McpServerBaseRecord[],
+  ): Promise<McpServerRecord[]> {
+    const serverIds = [...new Set(records.map((record) => record.id).filter(Boolean))];
+    if (serverIds.length === 0) {
+      return [];
+    }
+
+    const oauthConnections = await selectableDatabase
+      .select(this.mcpOauthConnectionSelection())
+      .from(mcpOauthConnections)
+      .where(inArray(mcpOauthConnections.mcpServerId, serverIds)) as McpOauthConnectionRecord[];
+    const connectionMap = new Map<string, McpOauthConnectionRecord>(
+      oauthConnections.map((connection) => [connection.mcpServerId, connection]),
+    );
+
+    return records.map((record) => {
+      const connection = connectionMap.get(record.id);
+      return {
+        ...this.presentBaseServer(record),
+        oauthClientId: connection?.oauthClientId ?? null,
+        oauthConnectionStatus: record.authType === "oauth"
+          ? this.resolveOauthConnectionStatus(connection)
+          : null,
+        oauthGrantedScopes: connection
+          ? this.readGrantedScopes(connection)
+          : [],
+        oauthLastError: connection?.lastError ?? null,
+        oauthRequestedScopes: connection?.requestedScopes ?? [],
+      };
     });
   }
 
@@ -307,9 +503,10 @@ export class McpService {
       .where(and(
         eq(mcpServers.companyId, companyId),
         inArray(mcpServers.id, normalizedIds),
-      )) as McpServerRecord[];
+      )) as McpServerBaseRecord[];
 
-    return [...records].sort((left, right) => left.name.localeCompare(right.name));
+    const hydratedRecords = await this.hydrateServerRecords(selectableDatabase, records);
+    return [...hydratedRecords].sort((left, right) => left.name.localeCompare(right.name));
   }
 
   private async requireAgent(
@@ -325,7 +522,8 @@ export class McpService {
       .where(and(
         eq(agents.companyId, companyId),
         eq(agents.id, agentId),
-      )) as AgentRecord[];
+      ))
+      .limit(1) as AgentRecord[];
 
     if (!agent) {
       throw new Error("Agent not found.");
@@ -345,17 +543,67 @@ export class McpService {
       .where(and(
         eq(mcpServers.companyId, companyId),
         eq(mcpServers.id, mcpServerId),
-      )) as McpServerRecord[];
+      ))
+      .limit(1) as McpServerBaseRecord[];
 
     if (!server) {
       throw new Error("MCP server not found.");
     }
 
-    return server;
+    const [hydratedServer] = await this.hydrateServerRecords(selectableDatabase, [server]);
+    if (!hydratedServer) {
+      throw new Error("Failed to hydrate MCP server.");
+    }
+
+    return hydratedServer;
+  }
+
+  private async requireOauthConnection(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    mcpServerId: string,
+  ): Promise<McpOauthConnectionRecord> {
+    const [connection] = await selectableDatabase
+      .select(this.mcpOauthConnectionSelection())
+      .from(mcpOauthConnections)
+      .where(and(
+        eq(mcpOauthConnections.companyId, companyId),
+        eq(mcpOauthConnections.mcpServerId, mcpServerId),
+      ))
+      .limit(1) as McpOauthConnectionRecord[];
+
+    if (!connection) {
+      throw new Error("MCP OAuth connection not found.");
+    }
+
+    return connection;
+  }
+
+  private async markOauthConnectionDegraded(
+    updatableDatabase: UpdatableDatabase,
+    input: {
+      companyId: string;
+      errorMessage: string;
+      mcpServerId: string;
+    },
+  ): Promise<void> {
+    await updatableDatabase
+      .update(mcpOauthConnections)
+      .set({
+        lastError: input.errorMessage,
+        status: "degraded",
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(mcpOauthConnections.companyId, input.companyId),
+        eq(mcpOauthConnections.mcpServerId, input.mcpServerId),
+      ))
+      .returning();
   }
 
   private mcpServerSelection() {
     return {
+      authType: mcpServers.authType,
       callTimeoutMs: mcpServers.callTimeoutMs,
       companyId: mcpServers.companyId,
       createdAt: mcpServers.createdAt,
@@ -367,6 +615,64 @@ export class McpService {
       updatedAt: mcpServers.updatedAt,
       url: mcpServers.url,
     };
+  }
+
+  private mcpOauthConnectionSelection() {
+    return {
+      accessTokenExpiresAt: mcpOauthConnections.accessTokenExpiresAt,
+      authorizationServerMetadata: mcpOauthConnections.authorizationServerMetadata,
+      lastError: mcpOauthConnections.lastError,
+      mcpServerId: mcpOauthConnections.mcpServerId,
+      oauthClientId: mcpOauthConnections.oauthClientId,
+      oauthClientSecretEncryptedValue: mcpOauthConnections.oauthClientSecretEncryptedValue,
+      oauthClientSecretEncryptionKeyId: mcpOauthConnections.oauthClientSecretEncryptionKeyId,
+      requestedScopes: mcpOauthConnections.requestedScopes,
+      resourceIndicator: mcpOauthConnections.resourceIndicator,
+      resourceMetadataUrl: mcpOauthConnections.resourceMetadataUrl,
+      status: mcpOauthConnections.status,
+      tokenEncryptedValue: mcpOauthConnections.tokenEncryptedValue,
+      tokenEncryptionKeyId: mcpOauthConnections.tokenEncryptionKeyId,
+      tokenEndpointAuthMethod: mcpOauthConnections.tokenEndpointAuthMethod,
+      updatedAt: mcpOauthConnections.updatedAt,
+    };
+  }
+
+  private presentBaseServer(record: McpServerBaseRecord): Omit<
+    McpServerRecord,
+    "oauthClientId" | "oauthConnectionStatus" | "oauthGrantedScopes" | "oauthLastError" | "oauthRequestedScopes"
+  > {
+    return {
+      authType: this.resolveAuthType(record.authType),
+      callTimeoutMs: record.callTimeoutMs,
+      companyId: record.companyId,
+      createdAt: record.createdAt,
+      description: record.description,
+      enabled: record.enabled,
+      headers: record.headers,
+      id: record.id,
+      name: record.name,
+      updatedAt: record.updatedAt,
+      url: record.url,
+    };
+  }
+
+  private readGrantedScopes(connection: McpOauthConnectionRecord): string[] {
+    try {
+      const token = parseStoredMcpOauthToken(
+        this.encryptionService.decrypt(connection.tokenEncryptedValue, connection.tokenEncryptionKeyId),
+      );
+      return token.scope;
+    } catch {
+      return [];
+    }
+  }
+
+  private resolveOauthConnectionStatus(connection: McpOauthConnectionRecord | undefined): McpOauthConnectionStatus {
+    if (!connection) {
+      return "not_connected";
+    }
+
+    return connection.status === "degraded" ? "degraded" : "connected";
   }
 
   private requireNonEmptyValue(value: string, label: string): string {
@@ -406,6 +712,15 @@ export class McpService {
     }
 
     return Math.floor(normalizedValue);
+  }
+
+  private resolveAuthType(value: string | null | undefined): McpServerAuthType {
+    const normalizedValue = normalizeNonEmptyString(value) ?? "none";
+    if (normalizedValue === "none" || normalizedValue === "custom_headers" || normalizedValue === "oauth") {
+      return normalizedValue;
+    }
+
+    throw new Error("Unsupported MCP auth type.");
   }
 
   private parseHeadersText(value: string | null | undefined): Record<string, string> {

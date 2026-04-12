@@ -17,6 +17,7 @@ import { FlagsPage } from "./pages/flags/flags_page";
 import { InboxPage } from "./pages/inbox/inbox_page";
 import { KnowledgeBaseDetailPage } from "./pages/knowledge-base/knowledge_base_detail_page";
 import { KnowledgeBasePage } from "./pages/knowledge-base/knowledge_base_page";
+import { McpOauthCallbackPage } from "./pages/mcp-servers/mcp_oauth_callback_page";
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { McpServersPage } from "./pages/mcp-servers/mcp_servers_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
@@ -248,6 +249,12 @@ const githubInstallRoute = createRoute({
   component: GithubInstallCallbackPage,
 });
 
+const mcpOauthCallbackRoute = createRoute({
+  getParentRoute: () => pageContainerRoute,
+  path: "/mcp/oauth/callback",
+  component: McpOauthCallbackPage,
+});
+
 const repositoriesRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/repositories"),
@@ -354,6 +361,7 @@ const routeTree = rootRoute.addChildren([
         skillDetailRoute,
       ]),
       githubInstallRoute,
+      mcpOauthCallbackRoute,
     ]),
   ]),
   signInRoute,

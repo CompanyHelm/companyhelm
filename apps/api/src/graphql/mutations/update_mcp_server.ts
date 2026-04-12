@@ -1,11 +1,13 @@
 import { inject, injectable } from "inversify";
 import { GraphqlMcpServerPresenter, type GraphqlMcpServerRecord } from "../mcp_server_presenter.ts";
 import { McpService } from "../../services/mcp/service.ts";
+import type { McpServerAuthType } from "../../services/mcp/oauth/types.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type UpdateMcpServerMutationArguments = {
   input: {
+    authType?: McpServerAuthType | null;
     callTimeoutMs?: number | null;
     description?: string | null;
     enabled?: boolean | null;
@@ -34,6 +36,7 @@ export class UpdateMcpServerMutation extends Mutation<UpdateMcpServerMutationArg
     }
 
     const server = await this.mcpService.updateMcpServer(context.app_runtime_transaction_provider, {
+      authType: arguments_.input.authType,
       callTimeoutMs: arguments_.input.callTimeoutMs,
       companyId: context.authSession.company.id,
       description: arguments_.input.description,

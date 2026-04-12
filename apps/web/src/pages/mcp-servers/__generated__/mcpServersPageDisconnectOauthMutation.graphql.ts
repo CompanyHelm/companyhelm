@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<931f4f4941756ac4ee10edb5ef91e132>>
+ * @generated SignedSource<<482454ac0acd0f97b53a56f722d7a084>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,20 +11,14 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type McpOauthConnectionStatus = "connected" | "degraded" | "not_connected" | "%future added value";
 export type McpServerAuthType = "custom_headers" | "none" | "oauth" | "%future added value";
-export type CreateMcpServerInput = {
-  authType?: McpServerAuthType | null | undefined;
-  callTimeoutMs?: number | null | undefined;
-  description?: string | null | undefined;
-  enabled?: boolean | null | undefined;
-  headersText?: string | null | undefined;
-  name: string;
-  url: string;
+export type DisconnectMcpServerOAuthInput = {
+  mcpServerId: string;
 };
-export type mcpServersPageCreateMutation$variables = {
-  input: CreateMcpServerInput;
+export type mcpServersPageDisconnectOauthMutation$variables = {
+  input: DisconnectMcpServerOAuthInput;
 };
-export type mcpServersPageCreateMutation$data = {
-  readonly CreateMcpServer: {
+export type mcpServersPageDisconnectOauthMutation$data = {
+  readonly DisconnectMcpServerOAuth: {
     readonly authType: McpServerAuthType;
     readonly callTimeoutMs: number;
     readonly createdAt: string;
@@ -42,9 +36,9 @@ export type mcpServersPageCreateMutation$data = {
     readonly url: string;
   };
 };
-export type mcpServersPageCreateMutation = {
-  response: mcpServersPageCreateMutation$data;
-  variables: mcpServersPageCreateMutation$variables;
+export type mcpServersPageDisconnectOauthMutation = {
+  response: mcpServersPageDisconnectOauthMutation$data;
+  variables: mcpServersPageDisconnectOauthMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -67,7 +61,7 @@ v1 = [
     ],
     "concreteType": "McpServer",
     "kind": "LinkedField",
-    "name": "CreateMcpServer",
+    "name": "DisconnectMcpServerOAuth",
     "plural": false,
     "selections": [
       {
@@ -184,7 +178,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "mcpServersPageCreateMutation",
+    "name": "mcpServersPageDisconnectOauthMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -193,20 +187,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "mcpServersPageCreateMutation",
+    "name": "mcpServersPageDisconnectOauthMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "fe269b5825c67d970261e6f2a9ec44d2",
+    "cacheID": "b8daf2ea8e1c8c9f0f6c207bd4861cda",
     "id": null,
     "metadata": {},
-    "name": "mcpServersPageCreateMutation",
+    "name": "mcpServersPageDisconnectOauthMutation",
     "operationKind": "mutation",
-    "text": "mutation mcpServersPageCreateMutation(\n  $input: CreateMcpServerInput!\n) {\n  CreateMcpServer(input: $input) {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation mcpServersPageDisconnectOauthMutation(\n  $input: DisconnectMcpServerOAuthInput!\n) {\n  DisconnectMcpServerOAuth(input: $input) {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0670c7a0b88563d0f77e941429488bf6";
+(node as any).hash = "832c4a00573501d23610cdc94169e41c";
 
 export default node;

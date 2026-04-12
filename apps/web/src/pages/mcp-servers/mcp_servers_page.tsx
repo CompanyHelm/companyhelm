@@ -1,5 +1,5 @@
 import { Suspense, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
@@ -13,7 +13,9 @@ import type {
   mcpServersPageCreateMutation,
 } from "./__generated__/mcpServersPageCreateMutation.graphql";
 import type { mcpServersPageDeleteMutation } from "./__generated__/mcpServersPageDeleteMutation.graphql";
+import type { mcpServersPageDisconnectOauthMutation } from "./__generated__/mcpServersPageDisconnectOauthMutation.graphql";
 import type { mcpServersPageQuery } from "./__generated__/mcpServersPageQuery.graphql";
+import type { mcpServersPageStartOauthMutation } from "./__generated__/mcpServersPageStartOauthMutation.graphql";
 import type {
   UpdateMcpServerInput,
   mcpServersPageUpdateMutation,
@@ -26,9 +28,15 @@ const mcpServersPageQueryNode = graphql`
       name
       description
       url
+      authType
       headersText
       callTimeoutMs
       enabled
+      oauthClientId
+      oauthConnectionStatus
+      oauthGrantedScopes
+      oauthLastError
+      oauthRequestedScopes
       createdAt
       updatedAt
     }
@@ -42,9 +50,15 @@ const mcpServersPageCreateMutationNode = graphql`
       name
       description
       url
+      authType
       headersText
       callTimeoutMs
       enabled
+      oauthClientId
+      oauthConnectionStatus
+      oauthGrantedScopes
+      oauthLastError
+      oauthRequestedScopes
       createdAt
       updatedAt
     }
@@ -58,9 +72,15 @@ const mcpServersPageUpdateMutationNode = graphql`
       name
       description
       url
+      authType
       headersText
       callTimeoutMs
       enabled
+      oauthClientId
+      oauthConnectionStatus
+      oauthGrantedScopes
+      oauthLastError
+      oauthRequestedScopes
       createdAt
       updatedAt
     }
@@ -71,6 +91,36 @@ const mcpServersPageDeleteMutationNode = graphql`
   mutation mcpServersPageDeleteMutation($input: DeleteMcpServerInput!) {
     DeleteMcpServer(input: $input) {
       id
+    }
+  }
+`;
+
+const mcpServersPageStartOauthMutationNode = graphql`
+  mutation mcpServersPageStartOauthMutation($input: StartMcpServerOAuthInput!) {
+    StartMcpServerOAuth(input: $input) {
+      authorizationUrl
+    }
+  }
+`;
+
+const mcpServersPageDisconnectOauthMutationNode = graphql`
+  mutation mcpServersPageDisconnectOauthMutation($input: DisconnectMcpServerOAuthInput!) {
+    DisconnectMcpServerOAuth(input: $input) {
+      id
+      name
+      description
+      url
+      authType
+      headersText
+      callTimeoutMs
+      enabled
+      oauthClientId
+      oauthConnectionStatus
+      oauthGrantedScopes
+      oauthLastError
+      oauthRequestedScopes
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -90,7 +140,7 @@ function filterStoreMcpServerRecords(records: ReadonlyArray<unknown>): StoreMcpS
 
 function upsertMcpServerInStore(
   store: RecordSourceSelectorProxy,
-  rootFieldName: "CreateMcpServer" | "UpdateMcpServer",
+  rootFieldName: "CreateMcpServer" | "DisconnectMcpServerOAuth" | "UpdateMcpServer",
 ) {
   const nextServer = store.getRootField(rootFieldName);
   if (!nextServer) {
@@ -131,6 +181,22 @@ function getRelayErrorMessage(errors: ReadonlyArray<{ message?: string | null }>
   return message.length > 0 ? message : null;
 }
 
+function normalizeAuthType(value: string): EditableMcpServerRecord["authType"] {
+  if (value === "oauth" || value === "custom_headers" || value === "none") {
+    return value;
+  }
+
+  return "none";
+}
+
+function normalizeOauthConnectionStatus(value: string | null | undefined): EditableMcpServerRecord["oauthConnectionStatus"] {
+  if (value === "connected" || value === "degraded" || value === "not_connected") {
+    return value;
+  }
+
+  return null;
+}
+
 function McpServersPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -138,7 +204,7 @@ function McpServersPageFallback() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm stores request headers with each server definition and does not activate agent tooling yet.
+              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm supports no-auth, custom-header, and OAuth-backed server definitions, but does not activate agent tooling yet.
             </CardDescription>
           </div>
           <CardAction>
@@ -183,6 +249,10 @@ function McpServersPageDisabledState() {
 }
 
 function McpServersPageContent() {
+  const routeParams = useParams({ strict: false }) as {
+    organizationSlug?: string;
+  };
+  const organizationSlug = String(routeParams.organizationSlug || "").trim();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -203,7 +273,13 @@ function McpServersPageContent() {
   const [commitDeleteServer, isDeleteServerInFlight] = useMutation<mcpServersPageDeleteMutation>(
     mcpServersPageDeleteMutationNode,
   );
+  const [commitStartOauth, isStartOauthInFlight] = useMutation<mcpServersPageStartOauthMutation>(
+    mcpServersPageStartOauthMutationNode,
+  );
+  const [commitDisconnectOauth, isDisconnectOauthInFlight] =
+    useMutation<mcpServersPageDisconnectOauthMutation>(mcpServersPageDisconnectOauthMutationNode);
   const mcpServers: McpServersTableRecord[] = data.McpServers.map((server) => ({
+    authType: normalizeAuthType(server.authType),
     callTimeoutMs: server.callTimeoutMs,
     createdAt: server.createdAt,
     description: server.description ?? null,
@@ -211,10 +287,28 @@ function McpServersPageContent() {
     headersText: server.headersText,
     id: server.id,
     name: server.name,
+    oauthConnectionStatus: normalizeOauthConnectionStatus(server.oauthConnectionStatus),
     updatedAt: server.updatedAt,
     url: server.url,
   }));
-  const selectedServer: EditableMcpServerRecord | null = mcpServers.find((server) => server.id === selectedServerId) ?? null;
+  const selectedServerRecord = data.McpServers.find((server) => server.id === selectedServerId) ?? null;
+  const selectedServer: EditableMcpServerRecord | null = selectedServerRecord
+    ? {
+        authType: normalizeAuthType(selectedServerRecord.authType),
+        callTimeoutMs: selectedServerRecord.callTimeoutMs,
+        description: selectedServerRecord.description ?? null,
+        enabled: selectedServerRecord.enabled,
+        headersText: selectedServerRecord.headersText,
+        id: selectedServerRecord.id,
+        name: selectedServerRecord.name,
+        oauthClientId: selectedServerRecord.oauthClientId ?? null,
+        oauthConnectionStatus: normalizeOauthConnectionStatus(selectedServerRecord.oauthConnectionStatus),
+        oauthGrantedScopes: [...selectedServerRecord.oauthGrantedScopes],
+        oauthLastError: selectedServerRecord.oauthLastError ?? null,
+        oauthRequestedScopes: [...selectedServerRecord.oauthRequestedScopes],
+        url: selectedServerRecord.url,
+      }
+    : null;
   const isSaving = isCreateServerInFlight || isUpdateServerInFlight;
 
   return (
@@ -223,7 +317,7 @@ function McpServersPageContent() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm stores request headers with each server definition and does not activate agent tooling yet.
+              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm supports no-auth, custom-header, and OAuth-backed server definitions, but does not activate agent tooling yet.
             </CardDescription>
           </div>
           <CardAction>
@@ -262,6 +356,8 @@ function McpServersPageContent() {
       <McpServerDialog
         deletingServerId={deletingServerId}
         errorMessage={isDialogOpen ? errorMessage : null}
+        isOauthDisconnecting={isDisconnectOauthInFlight}
+        isOauthStarting={isStartOauthInFlight}
         isOpen={isDialogOpen}
         isSaving={isSaving}
         onDelete={async (serverId) => {
@@ -300,6 +396,34 @@ function McpServersPageContent() {
           });
 
           setDeletingServerId(null);
+        }}
+        onDisconnectOauth={async (serverId) => {
+          setErrorMessage(null);
+
+          await new Promise<void>((resolve, reject) => {
+            commitDisconnectOauth({
+              variables: {
+                input: {
+                  mcpServerId: serverId,
+                },
+              },
+              updater: (store) => {
+                upsertMcpServerInStore(store, "DisconnectMcpServerOAuth");
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = getRelayErrorMessage(errors);
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          }).catch((error: unknown) => {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to disconnect MCP OAuth.");
+          });
         }}
         onOpenChange={(open) => {
           setDialogOpen(open);
@@ -359,6 +483,50 @@ function McpServersPageContent() {
             });
           }).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to save MCP server.");
+          });
+        }}
+        onStartOauth={async (input) => {
+          setErrorMessage(null);
+          if (!organizationSlug) {
+            setErrorMessage("Organization slug is missing from the current route.");
+            return;
+          }
+
+          await new Promise<void>((resolve, reject) => {
+            commitStartOauth({
+              variables: {
+                input: {
+                  mcpServerId: input.mcpServerId,
+                  oauthClientId: input.oauthClientId ?? null,
+                  oauthClientSecret: input.oauthClientSecret ?? null,
+                  organizationSlug,
+                  requestedScopes: input.requestedScopes,
+                },
+              },
+              onCompleted: (response, errors) => {
+                const nextErrorMessage = getRelayErrorMessage(errors);
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                const authorizationUrl = String(
+                  response.StartMcpServerOAuth?.authorizationUrl || "",
+                ).trim();
+                if (!authorizationUrl) {
+                  reject(new Error("OAuth authorization URL is missing."));
+                  return;
+                }
+
+                if (typeof window !== "undefined") {
+                  window.location.assign(authorizationUrl);
+                }
+                resolve();
+              },
+              onError: reject,
+            });
+          }).catch((error: unknown) => {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to start MCP OAuth.");
           });
         }}
         server={selectedServer}

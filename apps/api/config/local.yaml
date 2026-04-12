@@ -16,6 +16,7 @@ graphql:
   endpoint: "/graphql"
   graphiql: true
 publicUrl: "http://localhost:4000"
+webPublicUrl: "http://localhost:5173"
 database:
   name: "companyhelm"
   host: "127.0.0.1"

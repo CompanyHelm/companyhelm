@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/table";
 
 export type McpServersTableRecord = {
+  authType: "none" | "custom_headers" | "oauth";
   callTimeoutMs: number;
   createdAt: string;
   description: string | null;
@@ -15,6 +17,7 @@ export type McpServersTableRecord = {
   headersText: string;
   id: string;
   name: string;
+  oauthConnectionStatus: "connected" | "degraded" | "not_connected" | null;
   updatedAt: string;
   url: string;
 };
@@ -40,6 +43,28 @@ function formatTimestamp(value: string): string {
   }).format(timestamp);
 }
 
+function formatAuthLabel(record: McpServersTableRecord): string {
+  if (record.authType === "oauth") {
+    return record.oauthConnectionStatus ?? "not_connected";
+  }
+  if (record.authType === "custom_headers") {
+    return "custom headers";
+  }
+
+  return "none";
+}
+
+function getAuthBadgeVariant(record: McpServersTableRecord) {
+  if (record.authType === "oauth" && record.oauthConnectionStatus === "connected") {
+    return "positive";
+  }
+  if (record.authType === "oauth" && record.oauthConnectionStatus === "degraded") {
+    return "warning";
+  }
+
+  return "outline";
+}
+
 export function McpServersTable(props: McpServersTableProps) {
   if (props.isLoading) {
     return (
@@ -63,6 +88,7 @@ export function McpServersTable(props: McpServersTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+            <TableHead>Auth</TableHead>
             <TableHead>URL</TableHead>
             <TableHead>Enabled</TableHead>
             <TableHead>Updated</TableHead>
@@ -85,6 +111,11 @@ export function McpServersTable(props: McpServersTableProps) {
                       {mcpServer.description?.trim() || "No description"}
                     </span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={getAuthBadgeVariant(mcpServer)}>
+                    {formatAuthLabel(mcpServer)}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <span className="block max-w-md truncate font-mono text-xs text-muted-foreground">
