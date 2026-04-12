@@ -36,11 +36,15 @@ nvm use
 npm install -g npm@11.6.2
 ```
 
-2. Copy the example environment file.
+2. Copy the web app example environment file.
 
 ```bash
-cp .env.example .env
+cp apps/web/.env.example apps/web/.env.local
 ```
+
+For local API development, export the required Clerk, GitHub, Exa, and E2B variables in your shell
+before starting `npm run dev:api`. `apps/api/config/local.yaml` reads those values directly from the
+environment.
 
 3. Install dependencies.
 
@@ -75,14 +79,18 @@ npm run dev:web
 - pgAdmin: `http://localhost:5050`
 - Redis: `localhost:6379`
 
+Local development defaults to HTTP for both the web app and API. Keep `VITE_GRAPHQL_URL` pointed at
+`http://localhost:4000/graphql` unless you also choose to proxy the API over HTTPS locally.
+
 ## Environment variables
 
-The root `.env.example` file contains the variables used by local development.
+`apps/web/.env.example` contains the Vite variables used by local web development.
 
 A few notes:
 
+- Copy it to `apps/web/.env.local` so Vite picks it up automatically.
 - `apps/api/config/local.yaml` reads Clerk, GitHub, and CompanyHelm E2B values from environment variables.
-- The placeholder values in `.env.example` are enough to boot the app locally.
+- The placeholder values in `apps/web/.env.example` are enough to boot the web shell locally.
 - Replace the placeholders with real secrets before using auth, GitHub install flows, or CompanyHelm-backed compute.
 - `DATABASE_URL` is used by Drizzle tooling. The API runtime itself reads database credentials from `apps/api/config/local.yaml`.
 
