@@ -7,7 +7,8 @@ Agents are model agnostic and multiple model providers are supported (OpenAi, An
 
 [Website](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
 
-<img width="1843" height="973" alt="Task management" src="https://github.com/user-attachments/assets/c0faa139-06ed-4299-a76f-63c186204038" />
+<img width="1695" height="874" alt="companyHelm-screenshot" src="https://github.com/user-attachments/assets/9f3c6f3f-5e1f-4065-989d-44cfad587e5f" />
+
 
 Monorepo with:
 
