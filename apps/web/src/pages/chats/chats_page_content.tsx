@@ -5,11 +5,12 @@ import type {
   DragEvent as ReactDragEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Loader2Icon, MessageSquareIcon, Settings2Icon } from "lucide-react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { ListTodoIcon, Loader2Icon, MessageSquareIcon, Settings2Icon } from "lucide-react";
 import { fetchQuery, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import {
@@ -1821,8 +1822,12 @@ export function ChatsPageContent() {
   const queueDraftAriaLabel = isPromptSessionInFlight ? "Queueing message" : "Queue message";
   const isDesktopChatListVisible = !isMobile && !isChatListHidden;
   const shouldShowChatListButton = isMobile ? !isMobileChatListOpen : isChatListHidden;
-  const chatsHeaderTitle = selectedSession
+  const selectedSessionTitle = selectedSession
     ? resolveSessionTitle(selectedSession, selectedSessionMessages)
+    : "Untitled chat";
+  const selectedSessionTask = selectedSession?.associatedTask ?? null;
+  const chatsHeaderTitle = selectedSession
+    ? selectedSessionTask?.name ?? selectedSessionTitle
     : selectedAgent
       ? selectedAgent.name
       : "Chat";
@@ -1870,21 +1875,45 @@ export function ChatsPageContent() {
     return <>{actions}</>;
   }, [isMobile, selectedAgent, selectedSession, shouldShowChatListButton, shouldUseCompactComposerSettings, showChatList]);
   const headerContent = useMemo(() => {
+    const shouldShowTaskSessionSubtitle = selectedSessionTask
+      && selectedSessionTitle.trim().length > 0
+      && selectedSessionTitle !== selectedSessionTask.name;
+
     return (
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-foreground">{chatsHeaderTitle}</p>
+        {selectedSessionTask ? (
+          <>
+            <div className="flex min-w-0 items-center gap-2">
+              <Badge className="shrink-0" variant="outline">
+                <ListTodoIcon className="size-3" />
+                Task
+              </Badge>
+              <Link
+                className="min-w-0 truncate text-sm font-medium text-foreground transition hover:text-primary hover:underline"
+                params={{
+                  organizationSlug,
+                  taskId: selectedSessionTask.id,
+                }}
+                to={OrganizationPath.route("/tasks/$taskId")}
+              >
+                {chatsHeaderTitle}
+              </Link>
+            </div>
+            {shouldShowTaskSessionSubtitle ? (
+              <p className="truncate pt-0.5 text-xs text-muted-foreground">{selectedSessionTitle}</p>
+            ) : null}
+          </>
+        ) : (
+          <p className="truncate text-sm font-medium text-foreground">{chatsHeaderTitle}</p>
+        )}
       </div>
     );
-  }, [chatsHeaderTitle]);
+  }, [chatsHeaderTitle, organizationSlug, selectedSessionTask, selectedSessionTitle]);
   useApplicationHeader({
     actions: headerAction,
     className: "min-h-12",
     content: headerContent,
   });
-
-  const selectedSessionTitle = selectedSession
-    ? resolveSessionTitle(selectedSession, selectedSessionMessages)
-    : "Untitled chat";
 
   const mobileChatListOverlay = isMobile ? (
     <Sheet open={isMobileChatListOpen} onOpenChange={setIsMobileChatListOpen}>

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<67f2c0c970b6fa6372f1ee7d5ee9c4d1>>
+ * @generated SignedSource<<22f95347c0fed454c3f375f0289a10db>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,11 @@ export type chatsPageDataSessionUpdatedSubscription$variables = Record<PropertyK
 export type chatsPageDataSessionUpdatedSubscription$data = {
   readonly SessionUpdated: {
     readonly agentId: string;
+    readonly associatedTask: {
+      readonly id: string;
+      readonly name: string;
+      readonly status: string;
+    } | null | undefined;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
     readonly forkedFromSessionAgentId: string | null | undefined;
@@ -41,7 +46,21 @@ export type chatsPageDataSessionUpdatedSubscription = {
 };
 
 const node: ConcreteRequest = (function(){
-var v0 = [
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "id",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v2 = [
   {
     "alias": null,
     "args": null,
@@ -50,18 +69,32 @@ var v0 = [
     "name": "SessionUpdated",
     "plural": false,
     "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "id",
-        "storageKey": null
-      },
+      (v0/*: any*/),
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
         "name": "agentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "SessionAssociatedTask",
+        "kind": "LinkedField",
+        "name": "associatedTask",
+        "plural": false,
+        "selections": [
+          (v0/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "name",
+            "storageKey": null
+          },
+          (v1/*: any*/)
+        ],
         "storageKey": null
       },
       {
@@ -155,13 +188,7 @@ var v0 = [
         "name": "isThinking",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
+      (v1/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -207,7 +234,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataSessionUpdatedSubscription",
-    "selections": (v0/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -216,19 +243,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageDataSessionUpdatedSubscription",
-    "selections": (v0/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "21cd194c69a8518d1e5bed16ac7391fd",
+    "cacheID": "d14aa91bcd7a61c91ffd1770e4a97f6d",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "160cbe3381e5135c9af5ad6fe9d1dea2";
+(node as any).hash = "284f64dc792fc186b5c19261043fefb3";
 
 export default node;

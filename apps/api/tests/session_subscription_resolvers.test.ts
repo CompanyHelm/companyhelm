@@ -51,6 +51,7 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     getSession: vi.fn(async () => ({
       id: "session-1",
       agentId: "agent-1",
+      associatedTask: null,
       currentContextTokens: 160000,
       hasUnread: true,
       isCompacting: false,
@@ -93,6 +94,7 @@ test("SessionUpdated subscription reloads the full session from Postgres when Re
     SessionUpdated: {
       id: "session-1",
       agentId: "agent-1",
+      associatedTask: null,
       currentContextTokens: 160000,
       hasUnread: true,
       isCompacting: false,
@@ -124,6 +126,7 @@ test("SessionUpdated subscription still works when Mercurius calls subscribe wit
     getSession: vi.fn(async () => ({
       id: "session-1",
       agentId: "agent-1",
+      associatedTask: null,
       currentContextTokens: null,
       hasUnread: false,
       isCompacting: false,
@@ -176,6 +179,7 @@ test("SessionUpdated subscription ignores message and queued channels that share
     getSession: vi.fn(async () => ({
       id: "session-1",
       agentId: "agent-1",
+      associatedTask: null,
       currentContextTokens: null,
       hasUnread: false,
       isCompacting: false,

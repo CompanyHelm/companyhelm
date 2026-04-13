@@ -448,6 +448,7 @@ type AgentCreateModelOption {
 type Session {
   id: ID!
   agentId: ID!
+  associatedTask: SessionAssociatedTask
   currentContextTokens: Int
   forkedFromSessionAgentId: ID
   forkedFromSessionId: ID
@@ -467,6 +468,12 @@ type Session {
   createdAt: String!
   updatedAt: String!
   userSetTitle: String
+}
+
+type SessionAssociatedTask {
+  id: ID!
+  name: String!
+  status: String!
 }
 
 type SessionEnvironmentInfo {
