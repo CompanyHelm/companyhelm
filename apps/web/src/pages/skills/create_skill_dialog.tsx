@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderPlusIcon, GithubIcon, PencilRulerIcon } from "lucide-react";
 import { fetchQuery, graphql, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ interface CreateSkillDialogProps {
 }
 
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
+const GITHUB_BRANCH_DISCOVERY_DEBOUNCE_MS = 500;
 
 type CreateSkillDialogMode = "choose" | "github" | "manual";
 type CreateSkillDialogGithubStep = "repository" | "skills";
@@ -129,9 +130,15 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const [skillGroupId, setSkillGroupId] = useState(UNGROUPED_SKILL_GROUP_VALUE);
   // Ignore slower branch responses once the repository URL changes or a newer request starts.
   const githubBranchDiscoveryRequestIdRef = useRef(0);
+  const githubBranchDiscoveryTimeoutIdRef = useRef<number | null>(null);
+  const hasQueuedGithubBranchDiscoveryRef = useRef(false);
 
   useEffect(() => {
     if (!props.isOpen) {
+      if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
+        window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
+        githubBranchDiscoveryTimeoutIdRef.current = null;
+      }
       setDescription("");
       setDraftSkillGroupName("");
       setEphemeralSkillGroup(null);
@@ -151,6 +158,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       setName("");
       setSkillGroupId(UNGROUPED_SKILL_GROUP_VALUE);
       githubBranchDiscoveryRequestIdRef.current += 1;
+      hasQueuedGithubBranchDiscoveryRef.current = false;
     }
   }, [props.isOpen]);
 
@@ -166,6 +174,38 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       : props.groups;
     return [...nextGroups].sort((left, right) => left.name.localeCompare(right.name));
   }, [ephemeralSkillGroup, props.groups]);
+  const githubRepositoryUrlDiscoveryCandidate = useMemo(() => {
+    const normalizedRepositoryUrl = githubRepositoryUrl.trim();
+    if (!normalizedRepositoryUrl) {
+      return null;
+    }
+
+    if (normalizedRepositoryUrl.startsWith("https://") || normalizedRepositoryUrl.startsWith("http://")) {
+      try {
+        const repositoryUrl = new URL(normalizedRepositoryUrl);
+        if (repositoryUrl.hostname !== "github.com" && repositoryUrl.hostname !== "www.github.com") {
+          return null;
+        }
+
+        return repositoryUrl.pathname
+          .replace(/^\/+|\/+$/g, "")
+          .split("/")
+          .filter((segment) => segment.length > 0)
+          .length >= 2
+          ? normalizedRepositoryUrl
+          : null;
+      } catch {
+        return null;
+      }
+    }
+
+    return normalizedRepositoryUrl
+      .split("/")
+      .filter((segment) => segment.length > 0)
+      .length >= 2
+      ? normalizedRepositoryUrl
+      : null;
+  }, [githubRepositoryUrl]);
   const isMutating = props.isSaving || isCreatingGroup;
 
   async function createSkillGroup() {
@@ -190,6 +230,10 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   function resetGithubRepositorySelection(cancelBranchDiscovery: boolean = false) {
     if (cancelBranchDiscovery) {
       githubBranchDiscoveryRequestIdRef.current += 1;
+      if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
+        window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
+        githubBranchDiscoveryTimeoutIdRef.current = null;
+      }
       setIsLoadingGithubBranches(false);
     }
     setGithubBranchName("");
@@ -290,7 +334,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     );
   }
 
-  async function discoverGithubBranches(repositoryUrl: string = githubRepositoryUrl) {
+  const discoverGithubBranches = useCallback(async (repositoryUrl: string) => {
     const normalizedRepositoryUrl = repositoryUrl.trim();
     if (!normalizedRepositoryUrl) {
       setLocalErrorMessage("Paste a public GitHub repository URL first.");
@@ -315,6 +359,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         createSkillDialogGithubSkillBranchesQueryNode,
         {
           repositoryUrl: normalizedRepositoryUrl,
+        },
+        {
+          fetchPolicy: "network-only",
         },
       ).toPromise();
       if (githubBranchDiscoveryRequestIdRef.current !== requestId) {
@@ -345,7 +392,45 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         setIsLoadingGithubBranches(false);
       }
     }
-  }
+  }, [environment]);
+
+  useEffect(() => {
+    if (!props.isOpen || mode !== "github" || githubStep !== "repository") {
+      if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
+        window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
+        githubBranchDiscoveryTimeoutIdRef.current = null;
+      }
+      return;
+    }
+
+    if (!githubRepositoryUrlDiscoveryCandidate) {
+      hasQueuedGithubBranchDiscoveryRef.current = false;
+      return;
+    }
+
+    // Fire immediately for the first valid URL, then debounce follow-up edits so typing does not
+    // fan out into redundant branch discovery requests.
+    const delayMs = hasQueuedGithubBranchDiscoveryRef.current ? GITHUB_BRANCH_DISCOVERY_DEBOUNCE_MS : 0;
+    const timeoutId = window.setTimeout(() => {
+      hasQueuedGithubBranchDiscoveryRef.current = true;
+      githubBranchDiscoveryTimeoutIdRef.current = null;
+      void discoverGithubBranches(githubRepositoryUrlDiscoveryCandidate);
+    }, delayMs);
+    githubBranchDiscoveryTimeoutIdRef.current = timeoutId;
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (githubBranchDiscoveryTimeoutIdRef.current === timeoutId) {
+        githubBranchDiscoveryTimeoutIdRef.current = null;
+      }
+    };
+  }, [
+    discoverGithubBranches,
+    githubRepositoryUrlDiscoveryCandidate,
+    githubStep,
+    mode,
+    props.isOpen,
+  ]);
 
   async function discoverGithubSkills() {
     const normalizedRepositoryUrl = githubRepositoryUrl.trim();
@@ -370,6 +455,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         {
           branchName: githubBranchName,
           repositoryUrl: normalizedRepositoryUrl,
+        },
+        {
+          fetchPolicy: "network-only",
         },
       ).toPromise();
       const nextSkills = (response?.GithubDiscoveredSkills ?? []).map((skill) => ({
@@ -509,30 +597,20 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
                           event.preventDefault();
-                          void discoverGithubBranches();
-                        }
-                      }}
-                      onPaste={(event) => {
-                        event.preventDefault();
-                        const pastedValue = event.clipboardData.getData("text");
-                        const nextRepositoryUrl = [
-                          event.currentTarget.value.slice(0, event.currentTarget.selectionStart ?? 0),
-                          pastedValue,
-                          event.currentTarget.value.slice(event.currentTarget.selectionEnd ?? event.currentTarget.value.length),
-                        ].join("");
-
-                        setGithubRepositoryUrl(nextRepositoryUrl);
-                        resetGithubRepositorySelection(true);
-                        if (nextRepositoryUrl.trim()) {
-                          void discoverGithubBranches(nextRepositoryUrl);
+                          if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
+                            window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
+                            githubBranchDiscoveryTimeoutIdRef.current = null;
+                          }
+                          hasQueuedGithubBranchDiscoveryRef.current = true;
+                          void discoverGithubBranches(event.currentTarget.value);
                         }
                       }}
                       placeholder="https://github.com/openai/skills"
                       value={githubRepositoryUrl}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Pasting a repository URL loads its branches automatically. Press Enter if you
-                      type the URL manually.
+                      Repository URLs load branches automatically. The first lookup starts
+                      immediately, and follow-up edits refresh after a short debounce.
                     </p>
                   </div>
 
@@ -562,6 +640,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                             ? "Paste a repository URL first"
                             : isLoadingGithubBranches
                             ? "Loading branches..."
+                            : !githubRepositoryUrlDiscoveryCandidate
+                            ? "Enter a GitHub repository URL"
                             : githubBranches.length > 0
                             ? "Select a branch"
                             : "No branches found"}
