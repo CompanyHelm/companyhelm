@@ -194,7 +194,7 @@ export class McpOauthCompleteConnectionService {
     await params.database
       .insert(mcpOauthConnections)
       .values({
-        accessTokenExpiresAt: expiresAt,
+        accessTokenExpiresAt: tokenSet.expiresAt,
         authorizationServerIssuer: session.authorizationServerIssuer,
         authorizationServerMetadata: session.authorizationServerMetadata,
         clientRegistrationMetadata: session.clientRegistrationMetadata,
