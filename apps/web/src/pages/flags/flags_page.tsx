@@ -9,11 +9,6 @@ const featureFlagDefinitions = [
     label: "Computer providers",
   },
   {
-    key: "mcp_servers" as const,
-    description: "Controls whether the MCP Servers page appears in navigation for this browser.",
-    label: "MCP servers",
-  },
-  {
     key: "tasks_management" as const,
     description: "Controls whether the Tasks entry appears in the left navigation for this browser.",
     label: "Tasks management",

@@ -165,13 +165,11 @@ export function ApplicationSidebar() {
       label: "Secrets",
       to: "/secrets",
     },
-    ...(featureFlags.isEnabled("mcp_servers")
-      ? [{
-        icon: PlugIcon,
-        label: "MCP Servers",
-        to: "/mcp-servers",
-      }]
-      : []),
+    {
+      icon: PlugIcon,
+      label: "MCP Servers",
+      to: "/mcp-servers",
+    },
     {
       icon: SparklesIcon,
       label: "Skills",
