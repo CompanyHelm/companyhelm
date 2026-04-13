@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<668fe16d4ac48f7cbe14e5276420f668>>
+ * @generated SignedSource<<9b494c49e155651fa918f387c08922b3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -51,6 +51,11 @@ export type chatsPageDataQuery$data = {
   }>;
   readonly Sessions: ReadonlyArray<{
     readonly agentId: string;
+    readonly associatedTask: {
+      readonly id: string;
+      readonly name: string;
+      readonly status: string;
+    } | null | undefined;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
     readonly forkedFromSessionAgentId: string | null | undefined;
@@ -128,7 +133,14 @@ v6 = {
   "name": "createdAt",
   "storageKey": null
 },
-v7 = [
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -315,6 +327,20 @@ v7 = [
       {
         "alias": null,
         "args": null,
+        "concreteType": "SessionAssociatedTask",
+        "kind": "LinkedField",
+        "name": "associatedTask",
+        "plural": false,
+        "selections": [
+          (v0/*: any*/),
+          (v1/*: any*/),
+          (v7/*: any*/)
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
         "kind": "ScalarField",
         "name": "hasUnread",
         "storageKey": null
@@ -385,13 +411,7 @@ v7 = [
         "name": "isThinking",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
+      (v7/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -431,7 +451,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataQuery",
-    "selections": (v7/*: any*/),
+    "selections": (v8/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -440,19 +460,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageDataQuery",
-    "selections": (v7/*: any*/)
+    "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "7a58b0016982cc95ea5700527fc626e5",
+    "cacheID": "866405bdb47a3f7e4a7e02229df9e623",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a6d3184bb5b2fab8d100bfe436e639f7";
+(node as any).hash = "cef14224da1c08e2bb6493cc87350407";
 
 export default node;

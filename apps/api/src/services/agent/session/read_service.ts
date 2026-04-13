@@ -6,6 +6,8 @@ import {
   modelProviderCredentialModels,
   sessionMessages,
   sessionTurns,
+  taskRuns,
+  tasks,
   userSessionReads,
 } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
@@ -28,6 +30,25 @@ type SessionRow = {
   createdAt: Date;
   updatedAt: Date;
   userSetTitle: string | null;
+};
+
+type SessionAssociatedTaskGraphqlRecord = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+type SessionActiveTaskRunRow = {
+  id: string;
+  sessionId: string | null;
+  taskId: string;
+  updatedAt: Date;
+};
+
+type SessionAssociatedTaskRow = {
+  id: string;
+  name: string;
+  status: string;
 };
 
 type SessionMessageRow = {
@@ -101,6 +122,7 @@ type SelectableDatabase = {
 export type SessionGraphqlRecord = {
   id: string;
   agentId: string;
+  associatedTask: SessionAssociatedTaskGraphqlRecord | null;
   currentContextTokens: number | null;
   forkedFromSessionAgentId: string | null;
   forkedFromSessionId: string | null;
@@ -261,6 +283,11 @@ export class SessionReadService {
         companyId,
         accessibleSessionRows,
       );
+      const associatedTaskBySessionId = await this.loadAssociatedTaskBySessionId(
+        selectableDatabase,
+        companyId,
+        accessibleSessionRows.map((sessionRow) => sessionRow.id),
+      );
       const readSessionIds = await this.loadReadSessionIds(
         selectableDatabase,
         companyId,
@@ -273,6 +300,7 @@ export class SessionReadService {
           sessionRow,
           forkSourceBySessionId,
           modelOptionIdBySessionKey,
+          associatedTaskBySessionId,
           readSessionIds.has(sessionRow.id),
         ));
     });
@@ -327,8 +355,19 @@ export class SessionReadService {
         [sessionRow],
       );
       const forkSourceBySessionId = await this.loadForkSourcesBySessionId(selectableDatabase, companyId, [sessionRow]);
+      const associatedTaskBySessionId = await this.loadAssociatedTaskBySessionId(
+        selectableDatabase,
+        companyId,
+        [sessionId],
+      );
       const readSessionIds = await this.loadReadSessionIds(selectableDatabase, companyId, userId, [sessionId]);
-      return this.serializeSession(sessionRow, forkSourceBySessionId, modelOptionIdBySessionKey, readSessionIds.has(sessionId));
+      return this.serializeSession(
+        sessionRow,
+        forkSourceBySessionId,
+        modelOptionIdBySessionKey,
+        associatedTaskBySessionId,
+        readSessionIds.has(sessionId),
+      );
     });
   }
 
@@ -712,6 +751,80 @@ export class SessionReadService {
     return sessionRows.map((sessionRow) => sessionRow.id);
   }
 
+  private async loadAssociatedTaskBySessionId(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionIds: ReadonlyArray<string>,
+  ): Promise<Map<string, SessionAssociatedTaskGraphqlRecord>> {
+    const uniqueSessionIds = [...new Set(sessionIds)];
+    if (uniqueSessionIds.length === 0) {
+      return new Map();
+    }
+
+    const activeTaskRunRows = await selectableDatabase
+      .select({
+        id: taskRuns.id,
+        sessionId: taskRuns.sessionId,
+        taskId: taskRuns.taskId,
+        updatedAt: taskRuns.updatedAt,
+      })
+      .from(taskRuns)
+      .where(and(
+        eq(taskRuns.companyId, companyId),
+        inArray(taskRuns.sessionId, uniqueSessionIds),
+        isNull(taskRuns.finishedAt),
+        inArray(taskRuns.status, ["queued", "running"]),
+      )) as SessionActiveTaskRunRow[];
+    if (activeTaskRunRows.length === 0) {
+      return new Map();
+    }
+
+    const associatedTaskRows = await selectableDatabase
+      .select({
+        id: tasks.id,
+        name: tasks.name,
+        status: tasks.status,
+      })
+      .from(tasks)
+      .where(and(
+        eq(tasks.companyId, companyId),
+        inArray(tasks.id, [...new Set(activeTaskRunRows.map((taskRunRow) => taskRunRow.taskId))]),
+      )) as SessionAssociatedTaskRow[];
+    const associatedTaskById = new Map(
+      associatedTaskRows.map((associatedTaskRow) => [associatedTaskRow.id, associatedTaskRow]),
+    );
+
+    const sortedActiveTaskRunRows = [...activeTaskRunRows].sort((leftRow, rightRow) => {
+      const updatedAtDelta = rightRow.updatedAt.getTime() - leftRow.updatedAt.getTime();
+      if (updatedAtDelta !== 0) {
+        return updatedAtDelta;
+      }
+
+      return rightRow.id.localeCompare(leftRow.id);
+    });
+
+    const associatedTaskBySessionId = new Map<string, SessionAssociatedTaskGraphqlRecord>();
+    for (const activeTaskRunRow of sortedActiveTaskRunRows) {
+      const sessionId = activeTaskRunRow.sessionId;
+      if (!sessionId || associatedTaskBySessionId.has(sessionId)) {
+        continue;
+      }
+
+      const associatedTask = associatedTaskById.get(activeTaskRunRow.taskId);
+      if (!associatedTask) {
+        continue;
+      }
+
+      associatedTaskBySessionId.set(sessionId, {
+        id: associatedTask.id,
+        name: associatedTask.name,
+        status: associatedTask.status,
+      });
+    }
+
+    return associatedTaskBySessionId;
+  }
+
   /**
    * Resolves each forked session's immediate source session so the web app can render a lightweight
    * banner linking back to the source conversation without replaying ancestor transcript rows.
@@ -797,6 +910,7 @@ export class SessionReadService {
     sessionRow: SessionRow,
     forkSourceBySessionId: Map<string, SessionForkSourceRecord>,
     modelIdByModelRecordId: Map<string, string>,
+    associatedTaskBySessionId: Map<string, SessionAssociatedTaskGraphqlRecord>,
     isRead: boolean,
   ): SessionGraphqlRecord {
     const modelId = modelIdByModelRecordId.get(sessionRow.currentModelProviderCredentialModelId);
@@ -808,6 +922,7 @@ export class SessionReadService {
     return {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
+      associatedTask: associatedTaskBySessionId.get(sessionRow.id) ?? null,
       currentContextTokens: sessionRow.currentContextTokens,
       forkedFromSessionAgentId: forkSource?.agentId ?? null,
       forkedFromSessionId: forkSource?.sessionId ?? null,

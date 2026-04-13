@@ -68,6 +68,11 @@ export const chatsPageQueryNode = graphql`
     Sessions {
       id
       agentId
+      associatedTask {
+        id
+        name
+        status
+      }
       hasUnread
       currentContextTokens
       forkedFromSessionAgentId
@@ -451,6 +456,11 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
     SessionUpdated {
       id
       agentId
+      associatedTask {
+        id
+        name
+        status
+      }
       hasUnread
       currentContextTokens
       forkedFromSessionAgentId

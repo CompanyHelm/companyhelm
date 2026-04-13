@@ -56,63 +56,49 @@ class SessionsQueryTestHarness {
               return {
                 from() {
                   return {
-                    async where() {
-                      return [
-                        {
-                          id: "session-older",
-                          agentId: "agent-1",
-                          currentContextTokens: 32000,
-                          currentModelProviderCredentialModelId: "model-row-1",
-                          currentReasoningLevel: "medium",
-                          forkedFromTurnId: null,
-                          inferredTitle: "Inferred older title",
-                          isCompacting: false,
-                          isThinking: false,
-                          maxContextTokens: 200000,
-                          ownerUserId: null,
-                          status: "running",
-                          thinkingText: null,
-                          createdAt: new Date("2026-03-24T08:00:00.000Z"),
-                          updatedAt: new Date("2026-03-24T08:05:00.000Z"),
-                          userSetTitle: null,
+                    where() {
+                      return {
+                        async orderBy() {
+                          return [
+                            {
+                              id: "session-newer",
+                              agentId: "agent-2",
+                              currentContextTokens: null,
+                              currentModelProviderCredentialModelId: "model-row-2",
+                              currentReasoningLevel: "high",
+                              forkedFromTurnId: "turn-source-1",
+                              inferredTitle: null,
+                              isCompacting: true,
+                              isThinking: true,
+                              maxContextTokens: 200000,
+                              ownerUserId: "user-123",
+                              status: "archived",
+                              thinkingText: "Inspecting deployment history",
+                              createdAt: new Date("2026-03-24T09:00:00.000Z"),
+                              updatedAt: new Date("2026-03-24T09:30:00.000Z"),
+                              userSetTitle: "Fallback user title",
+                            },
+                            {
+                              id: "session-older",
+                              agentId: "agent-1",
+                              currentContextTokens: 32000,
+                              currentModelProviderCredentialModelId: "model-row-1",
+                              currentReasoningLevel: "medium",
+                              forkedFromTurnId: null,
+                              inferredTitle: "Inferred older title",
+                              isCompacting: false,
+                              isThinking: false,
+                              maxContextTokens: 200000,
+                              ownerUserId: null,
+                              status: "running",
+                              thinkingText: null,
+                              createdAt: new Date("2026-03-24T08:00:00.000Z"),
+                              updatedAt: new Date("2026-03-24T08:05:00.000Z"),
+                              userSetTitle: null,
+                            },
+                          ];
                         },
-                        {
-                          id: "session-newer",
-                          agentId: "agent-2",
-                          currentContextTokens: null,
-                          currentModelProviderCredentialModelId: "model-row-2",
-                          currentReasoningLevel: "high",
-                          forkedFromTurnId: "turn-source-1",
-                          inferredTitle: null,
-                          isCompacting: true,
-                          isThinking: true,
-                          maxContextTokens: 200000,
-                          ownerUserId: "user-123",
-                          status: "archived",
-                          thinkingText: "Inspecting deployment history",
-                          createdAt: new Date("2026-03-24T09:00:00.000Z"),
-                          updatedAt: new Date("2026-03-24T09:30:00.000Z"),
-                          userSetTitle: "Fallback user title",
-                        },
-                        {
-                          id: "session-private-other-user",
-                          agentId: "agent-3",
-                          currentContextTokens: 128,
-                          currentModelProviderCredentialModelId: "model-row-1",
-                          currentReasoningLevel: "low",
-                          forkedFromTurnId: null,
-                          inferredTitle: "Someone else's session",
-                          isCompacting: false,
-                          isThinking: false,
-                          maxContextTokens: 4096,
-                          ownerUserId: "user-999",
-                          status: "stopped",
-                          thinkingText: null,
-                          createdAt: new Date("2026-03-24T09:35:00.000Z"),
-                          updatedAt: new Date("2026-03-24T09:40:00.000Z"),
-                          userSetTitle: null,
-                        },
-                      ];
+                      };
                     },
                   };
                 },
@@ -173,6 +159,54 @@ class SessionsQueryTestHarness {
             }
 
             if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          id: "task-run-older",
+                          sessionId: "session-older",
+                          taskId: "task-older",
+                          updatedAt: new Date("2026-03-24T08:03:00.000Z"),
+                        },
+                        {
+                          id: "task-run-newest",
+                          sessionId: "session-older",
+                          taskId: "task-newest",
+                          updatedAt: new Date("2026-03-24T08:04:00.000Z"),
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          id: "task-older",
+                          name: "Older linked task",
+                          status: "in_progress",
+                        },
+                        {
+                          id: "task-newest",
+                          name: "Newest linked task",
+                          status: "in_progress",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -253,6 +287,11 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
           Sessions {
             id
             agentId
+            associatedTask {
+              id
+              name
+              status
+            }
             hasUnread
             currentContextTokens
             forkedFromSessionAgentId
@@ -276,10 +315,12 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
+  assert.ok(document.data, JSON.stringify(document, null, 2));
   assert.deepEqual(document.data.Sessions, [
     {
       id: "session-newer",
       agentId: "agent-2",
+      associatedTask: null,
       hasUnread: true,
       currentContextTokens: null,
       forkedFromSessionAgentId: "agent-source",
@@ -299,6 +340,11 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     {
       id: "session-older",
       agentId: "agent-1",
+      associatedTask: {
+        id: "task-newest",
+        name: "Newest linked task",
+        status: "in_progress",
+      },
       hasUnread: false,
       currentContextTokens: 32000,
       forkedFromSessionAgentId: null,
