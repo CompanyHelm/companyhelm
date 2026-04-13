@@ -269,6 +269,7 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || actionableSecretCount === 0}
             onClick={async () => {
               if (!parsedEnvFile) {

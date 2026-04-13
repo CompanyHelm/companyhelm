@@ -201,6 +201,7 @@ export function ComputeProviderDefinitionDialog(props: ComputeProviderDefinition
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={isSaveDisabled || props.isSaving}
             onClick={async () => {
               await props.onSave(isEditing && props.definition

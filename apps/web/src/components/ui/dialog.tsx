@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
+import { ModalPrimaryCtaKeyboardHandler } from "@/lib/modal_primary_cta_keyboard_handler";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -36,6 +37,7 @@ function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) 
 function DialogContent({
   children,
   className,
+  onKeyDown,
   showCloseButton = true,
   ...props
 }: DialogPrimitive.Popup.Props & {
@@ -50,6 +52,12 @@ function DialogContent({
           "fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100vh-2rem)] w-[min(92vw,46rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overflow-x-hidden rounded-xl border border-border/70 bg-background p-6 text-xs/relaxed shadow-2xl transition duration-200 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
           className,
         )}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (ModalPrimaryCtaKeyboardHandler.trigger(event)) {
+            event.stopPropagation();
+          }
+        }}
         {...props}
       >
         {children}

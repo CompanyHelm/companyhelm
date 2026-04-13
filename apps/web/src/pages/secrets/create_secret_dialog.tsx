@@ -153,6 +153,7 @@ export function CreateSecretDialog(props: CreateSecretDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || !name.trim() || !value.trim()}
             onClick={async () => {
               setLocalErrorMessage(null);

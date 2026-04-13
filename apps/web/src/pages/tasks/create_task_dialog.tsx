@@ -226,6 +226,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || taskName.length === 0}
             onClick={async () => {
               const assignedUserId = taskAssigneeValue.startsWith("user:")

@@ -810,6 +810,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           </Button>
           {mode === "manual" ? (
             <Button
+              data-primary-cta=""
               disabled={isMutating || !name.trim() || !description.trim() || !instructions.trim()}
               onClick={async () => {
                 setLocalErrorMessage(null);
@@ -832,6 +833,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           ) : null}
           {mode === "github" && githubStep === "repository" ? (
             <Button
+              data-primary-cta=""
               disabled={isMutating || isLoadingGithubDiscoveredSkills || !githubRepositoryUrl.trim() || !githubBranchName}
               onClick={() => {
                 void discoverGithubSkills();
@@ -843,6 +845,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           ) : null}
           {mode === "github" && githubStep === "skills" ? (
             <Button
+              data-primary-cta=""
               disabled={isMutating || selectedGithubSkills.length === 0}
               onClick={async () => {
                 setLocalErrorMessage(null);

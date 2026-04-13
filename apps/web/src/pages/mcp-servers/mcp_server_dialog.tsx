@@ -1063,6 +1063,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
               Cancel
             </Button>
             <Button
+              data-primary-cta=""
               disabled={isSaveDisabled || isPrimaryActionPending}
               onClick={async () => {
                 const payload = {

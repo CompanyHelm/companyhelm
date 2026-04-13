@@ -72,6 +72,7 @@ export function CreateDocumentDialog(props: {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaveDisabled}
             onClick={props.onSave}
             type="button"

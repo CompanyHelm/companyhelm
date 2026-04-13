@@ -198,6 +198,7 @@ export function DeleteCredentialDialog(props: DeleteCredentialDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             variant="destructive"
             disabled={isDeleteDisabled}
             onClick={async (event) => {

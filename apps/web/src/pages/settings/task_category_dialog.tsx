@@ -72,6 +72,7 @@ export function TaskCategoryDialog(props: TaskCategoryDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || categoryName.length === 0}
             onClick={async () => {
               await props.onCreate(categoryName);

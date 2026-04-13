@@ -209,6 +209,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || !selectedProvider || (
               selectedProvider.type === "oauth" ? !authFileContents.trim() : !apiKey.trim()
             )}

@@ -716,6 +716,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || isCreateDisabled}
             onClick={async () => {
               if (!selectedProviderOption || !selectedModelOption) {

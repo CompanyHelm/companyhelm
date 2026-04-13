@@ -84,6 +84,7 @@ export function GroupDialog(props: GroupDialogProps) {
             Cancel
           </Button>
           <Button
+            data-primary-cta=""
             disabled={props.isSaving || groupName.length === 0}
             onClick={async () => {
               await props.onSubmit(groupName);

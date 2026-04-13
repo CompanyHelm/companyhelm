@@ -2,6 +2,7 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 import { cva } from "class-variance-authority";
 import { XIcon } from "lucide-react";
+import { ModalPrimaryCtaKeyboardHandler } from "@/lib/modal_primary_cta_keyboard_handler";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -40,7 +41,7 @@ const AlertDialogOverlay = React.forwardRef<
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(function AlertDialogContent({ className, onKeyDownCapture, ...props }, ref) {
+>(function AlertDialogContent({ className, onKeyDown, ...props }, ref) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -48,8 +49,12 @@ const AlertDialogContent = React.forwardRef<
         ref={ref}
         className={cn(alertDialogContentStyles(), className)}
         // Keep dialog keyboard interactions from bubbling back into parent cards or rows.
-        onKeyDownCapture={(event) => {
-          onKeyDownCapture?.(event);
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (ModalPrimaryCtaKeyboardHandler.trigger(event)) {
+            event.stopPropagation();
+            return;
+          }
           event.stopPropagation();
         }}
         {...props}
@@ -100,6 +105,7 @@ const AlertDialogActionButton = React.forwardRef<
   return (
     <Button
       ref={ref}
+      data-primary-cta=""
       className={cn(alertDialogPrimaryButtonStyles(), className)}
       {...props}
     />
