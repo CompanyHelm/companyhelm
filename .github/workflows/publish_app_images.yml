@@ -109,7 +109,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsFrontendImagePublisherRole
+          role-to-assume: arn:aws:iam::320042237800:role/GitHubActionsWebImagePublisherRole
           role-session-name: github-actions-web-image-publish
           aws-region: ${{ env.AWS_REGION }}
 
