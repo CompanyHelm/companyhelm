@@ -379,6 +379,13 @@ export function McpServerDialog(props: McpServerDialogProps) {
   const isAuthTypeLocked = hasAutoDetectedAuthType && !isAuthTypeOverrideEnabled;
   const shouldShowAuthorizationCodeManualClientFields = authType === "oauth_authorization_code"
     && authDetection?.requiresManualClient === true;
+  const shouldShowEditOauthFooterActions = isEditing
+    && (authType === "oauth_authorization_code" || authType === "oauth_client_credentials");
+  const isEditOauthFooterActionDisabled = props.isSaving
+    || hasUnsavedServerChanges
+    || !props.server
+    || (authType === "oauth_authorization_code" && props.server.authType !== "oauth_authorization_code")
+    || (authType === "oauth_client_credentials" && props.server.authType !== "oauth_client_credentials");
   const shouldSaveAndStartOauth = !isEditing && authType === "oauth_authorization_code";
   const isPrimaryActionPending = props.isSaving || (shouldSaveAndStartOauth && props.isOauthStarting);
   const headerLabel = authType === "none" ? "Headers (optional)" : "Additional headers (optional)";
@@ -982,6 +989,76 @@ export function McpServerDialog(props: McpServerDialogProps) {
             </Button>
           ) : <div />}
           <div className="flex gap-2">
+            {shouldShowEditOauthFooterActions ? (
+              <>
+                {authType === "oauth_authorization_code" ? (
+                  <>
+                    <Button
+                      disabled={isEditOauthFooterActionDisabled || props.isOauthStarting}
+                      onClick={async () => {
+                        await props.onStartOauth({
+                          mcpServerId: props.server!.id,
+                          oauthClientId: oauthClientId.trim() || undefined,
+                          oauthClientSecret: oauthClientSecret.trim() || undefined,
+                          requestedScopes,
+                        });
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {props.isOauthStarting
+                        ? "Redirecting…"
+                        : props.server?.oauthConnectionStatus === "connected"
+                          ? "Reconnect OAuth"
+                          : "Connect OAuth"}
+                    </Button>
+                    <Button
+                      disabled={isEditOauthFooterActionDisabled || props.isOauthDisconnecting}
+                      onClick={async () => {
+                        await props.onDisconnectOauth(props.server!.id);
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {props.isOauthDisconnecting ? "Disconnecting…" : "Disconnect OAuth"}
+                    </Button>
+                  </>
+                ) : null}
+                {authType === "oauth_client_credentials" ? (
+                  <>
+                    <Button
+                      disabled={isEditOauthFooterActionDisabled || props.isClientCredentialsConnecting}
+                      onClick={async () => {
+                        await props.onConnectClientCredentials({
+                          mcpServerId: props.server!.id,
+                          oauthClientId: oauthClientId.trim() || undefined,
+                          oauthClientSecret: oauthClientSecret.trim() || undefined,
+                          requestedScopes,
+                        });
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {props.isClientCredentialsConnecting
+                        ? "Connecting…"
+                        : props.server?.oauthConnectionStatus === "connected"
+                          ? "Reconnect client credentials"
+                          : "Connect client credentials"}
+                    </Button>
+                    <Button
+                      disabled={isEditOauthFooterActionDisabled || props.isOauthDisconnecting}
+                      onClick={async () => {
+                        await props.onDisconnectOauth(props.server!.id);
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {props.isOauthDisconnecting ? "Disconnecting…" : "Disconnect OAuth"}
+                    </Button>
+                  </>
+                ) : null}
+              </>
+            ) : null}
             <Button onClick={() => props.onOpenChange(false)} type="button" variant="ghost">
               Cancel
             </Button>
