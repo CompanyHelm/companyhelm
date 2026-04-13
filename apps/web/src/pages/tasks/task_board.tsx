@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CardContent, CardHeader } from "@/components/ui/card";
 
 type TaskStatus = "draft" | "in_progress" | "completed";
 
@@ -138,12 +138,12 @@ export function TaskBoard(props: TaskBoardProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 overflow-x-auto pb-1">
-      <div className="flex h-full min-h-0 min-w-full gap-3">
-        {columns.map((column) => (
-          <Card
+    <div className="h-full min-h-0 overflow-x-auto pb-1">
+      <div className="flex h-full min-h-0 min-w-full w-fit overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
+        {columns.map((column, columnIndex) => (
+          <section
             key={column.key}
-            className="flex h-full min-h-0 w-[18rem] shrink-0 flex-col border border-border/60 bg-card/80 shadow-sm"
+            className={`flex h-full min-h-0 w-[18rem] shrink-0 flex-col ${columnIndex === 0 ? "" : "border-l border-border/60"}`}
           >
             <CardHeader className="shrink-0 border-b border-border/60 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
@@ -328,7 +328,7 @@ export function TaskBoard(props: TaskBoardProps) {
                 </article>
               ))}
             </CardContent>
-          </Card>
+          </section>
         ))}
       </div>
     </div>
