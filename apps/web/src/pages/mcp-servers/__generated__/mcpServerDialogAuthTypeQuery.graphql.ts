@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<060cbc00ce4504df40c82333941cd9bd>>
+ * @generated SignedSource<<3f7d1d4d4fe4baa551b478f9dbc770ab>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type mcpServerDialogAuthTypeQuery$data = {
   readonly McpServerAuthType: {
     readonly detailMessage: string | null | undefined;
     readonly detectedAuthType: McpServerAuthType | null | undefined;
+    readonly requiresManualClient: boolean;
     readonly wasAutoDetected: boolean;
   };
 };
@@ -66,6 +67,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "requiresManualClient",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "wasAutoDetected",
         "storageKey": null
       }
@@ -91,16 +99,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "4eae83639dfdf1f5cef77b99e7c2f6c7",
+    "cacheID": "e28b9a36ab186c8c3a2c43a984532b28",
     "id": null,
     "metadata": {},
     "name": "mcpServerDialogAuthTypeQuery",
     "operationKind": "query",
-    "text": "query mcpServerDialogAuthTypeQuery(\n  $url: String!\n) {\n  McpServerAuthType(url: $url) {\n    detectedAuthType\n    detailMessage\n    wasAutoDetected\n  }\n}\n"
+    "text": "query mcpServerDialogAuthTypeQuery(\n  $url: String!\n) {\n  McpServerAuthType(url: $url) {\n    detectedAuthType\n    detailMessage\n    requiresManualClient\n    wasAutoDetected\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "aa69f6364afb5d1ce3b6600c2efc6137";
+(node as any).hash = "47029f7447b9c57ae6d6e17002ea216d";
 
 export default node;

@@ -26,6 +26,7 @@ test("McpAuthTypeDetectionService prefers authorization code when the server adv
   });
 
   assert.equal(result.detectedAuthType, "oauth_authorization_code");
+  assert.equal(result.requiresManualClient, true);
   assert.equal(result.wasAutoDetected, true);
   assert.match(String(result.detailMessage), /also advertises client credentials/i);
 });
@@ -52,6 +53,7 @@ test("McpAuthTypeDetectionService reports client credentials when authorization 
   });
 
   assert.equal(result.detectedAuthType, "oauth_client_credentials");
+  assert.equal(result.requiresManualClient, false);
   assert.equal(result.wasAutoDetected, true);
   assert.match(String(result.detailMessage), /client credentials/i);
 });

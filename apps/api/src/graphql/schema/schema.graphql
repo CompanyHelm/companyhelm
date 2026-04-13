@@ -320,6 +320,7 @@ type RefreshGithubInstallationRepositoriesPayload {
 type McpServerAuthTypeDetection {
   detectedAuthType: McpServerAuthType
   detailMessage: String
+  requiresManualClient: Boolean!
   wasAutoDetected: Boolean!
 }
 

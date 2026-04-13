@@ -12,6 +12,7 @@ import {
 export type McpServerAuthTypeDetection = {
   detailMessage: string | null;
   detectedAuthType: McpServerAuthType | null;
+  requiresManualClient: boolean;
   wasAutoDetected: boolean;
 };
 
@@ -58,6 +59,7 @@ export class McpAuthTypeDetectionService {
         return {
           detailMessage: null,
           detectedAuthType: null,
+          requiresManualClient: false,
           wasAutoDetected: false,
         };
       }
@@ -65,6 +67,7 @@ export class McpAuthTypeDetectionService {
       return {
         detailMessage: `Could not auto-detect auth type: ${errorMessage}`,
         detectedAuthType: null,
+        requiresManualClient: false,
         wasAutoDetected: false,
       };
     }
@@ -128,6 +131,7 @@ export class McpAuthTypeDetectionService {
       return {
         detailMessage: "OAuth metadata was discovered, but the advertised grant types are not supported.",
         detectedAuthType: null,
+        requiresManualClient: false,
         wasAutoDetected: false,
       };
     }
@@ -135,6 +139,8 @@ export class McpAuthTypeDetectionService {
     return {
       detailMessage: this.buildDetectionMessage(detectedAuthType, supportedAuthTypes, discovery.protectedResourceMetadata),
       detectedAuthType,
+      requiresManualClient: detectedAuthType === "oauth_authorization_code"
+        && !this.supportsDynamicClientRegistration(discovery.authorizationServerMetadata),
       wasAutoDetected: true,
     };
   }
@@ -185,6 +191,10 @@ export class McpAuthTypeDetectionService {
           .map((value) => normalizeNonEmptyString(value))
           .filter((value): value is string => Boolean(value))
       : [];
+  }
+
+  private supportsDynamicClientRegistration(metadata: OAuthAuthorizationServerMetadata): boolean {
+    return Boolean(normalizeNonEmptyString(metadata.registration_endpoint));
   }
 
   private isManualSelectionRequired(errorMessage: string): boolean {

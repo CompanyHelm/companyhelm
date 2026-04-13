@@ -100,6 +100,7 @@ type McpServerOauthDetectedAuthType = "oauth_client_credentials" | "oauth_author
 type McpServerAuthDetection = {
   detailMessage: string | null;
   detectedAuthType: McpServerOauthDetectedAuthType | null;
+  requiresManualClient: boolean;
   wasAutoDetected: boolean;
 };
 
@@ -108,6 +109,7 @@ const mcpServerDialogAuthTypeQueryNode = graphql`
     McpServerAuthType(url: $url) {
       detectedAuthType
       detailMessage
+      requiresManualClient
       wasAutoDetected
     }
   }
@@ -273,6 +275,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
           const nextDetection: McpServerAuthDetection = {
             detailMessage: detectionResponse?.detailMessage ?? null,
             detectedAuthType: normalizeDetectedAuthType(detectionResponse?.detectedAuthType),
+            requiresManualClient: Boolean(detectionResponse?.requiresManualClient),
             wasAutoDetected: Boolean(detectionResponse?.wasAutoDetected),
           };
           setAuthDetection(nextDetection);
@@ -288,6 +291,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
           setAuthDetection({
             detailMessage: error instanceof Error ? error.message : "Could not auto-detect auth type.",
             detectedAuthType: null,
+            requiresManualClient: false,
             wasAutoDetected: false,
           });
           if (!isAuthTypeOverrideEnabled) {
@@ -361,6 +365,8 @@ export function McpServerDialog(props: McpServerDialogProps) {
     && !hasUnsavedServerChanges;
   const hasAutoDetectedAuthType = Boolean(authDetection?.wasAutoDetected && authDetection.detectedAuthType);
   const isAuthTypeLocked = hasAutoDetectedAuthType && !isAuthTypeOverrideEnabled;
+  const shouldShowAuthorizationCodeManualClientFields = authType === "oauth_authorization_code"
+    && authDetection?.requiresManualClient === true;
   const headerLabel = authType === "none" ? "Headers (optional)" : "Additional headers (optional)";
   const headerDescription = authType === "oauth_authorization_code" || authType === "oauth_client_credentials"
     ? "These headers are sent alongside the OAuth bearer token on every MCP request."
@@ -403,6 +409,34 @@ export function McpServerDialog(props: McpServerDialogProps) {
         </DialogHeader>
 
         <div className="grid gap-4">
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-name">
+              Name
+            </label>
+            <Input
+              id="mcp-server-name"
+              onChange={(event) => {
+                setName(event.target.value);
+              }}
+              placeholder="GitHub MCP"
+              value={name}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-description">
+              Description (optional)
+            </label>
+            <Input
+              id="mcp-server-description"
+              onChange={(event) => {
+                setDescription(event.target.value);
+              }}
+              placeholder="Shared MCP connector for the company GitHub org"
+              value={description}
+            />
+          </div>
+
           <div className="grid gap-2">
             <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-url">
               URL
@@ -553,35 +587,37 @@ export function McpServerDialog(props: McpServerDialogProps) {
                 </p>
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-client-id">
-                    Manual client ID (optional)
-                  </label>
-                  <Input
-                    id="mcp-server-oauth-client-id"
-                    onChange={(event) => {
-                      setOauthClientId(event.target.value);
-                    }}
-                    placeholder="client-id"
-                    value={oauthClientId}
-                  />
+              {shouldShowAuthorizationCodeManualClientFields ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-client-id">
+                      Manual override client ID
+                    </label>
+                    <Input
+                      id="mcp-server-oauth-client-id"
+                      onChange={(event) => {
+                        setOauthClientId(event.target.value);
+                      }}
+                      placeholder="client-id"
+                      value={oauthClientId}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-client-secret">
+                      Manual override client secret
+                    </label>
+                    <Input
+                      id="mcp-server-oauth-client-secret"
+                      onChange={(event) => {
+                        setOauthClientSecret(event.target.value);
+                      }}
+                      placeholder="client-secret"
+                      type="password"
+                      value={oauthClientSecret}
+                    />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-oauth-client-secret">
-                    Manual client secret (optional)
-                  </label>
-                  <Input
-                    id="mcp-server-oauth-client-secret"
-                    onChange={(event) => {
-                      setOauthClientSecret(event.target.value);
-                    }}
-                    placeholder="client-secret"
-                    type="password"
-                    value={oauthClientSecret}
-                  />
-                </div>
-              </div>
+              ) : null}
 
               {props.server?.oauthGrantedScopes.length ? (
                 <p className="text-[11px] text-muted-foreground">
@@ -751,34 +787,6 @@ export function McpServerDialog(props: McpServerDialogProps) {
               )}
             </div>
           ) : null}
-
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-name">
-              Name
-            </label>
-            <Input
-              id="mcp-server-name"
-              onChange={(event) => {
-                setName(event.target.value);
-              }}
-              placeholder="GitHub MCP"
-              value={name}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-description">
-              Description (optional)
-            </label>
-            <Input
-              id="mcp-server-description"
-              onChange={(event) => {
-                setDescription(event.target.value);
-              }}
-              placeholder="Shared MCP connector for the company GitHub org"
-              value={description}
-            />
-          </div>
 
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-3">
