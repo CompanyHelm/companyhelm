@@ -347,6 +347,18 @@ function McpServersPageContent() {
     : null;
   const isSaving = isCreateServerInFlight || isUpdateServerInFlight;
 
+  const toCreateMcpServerInput = (input: CreateMcpServerInput): CreateMcpServerInput => {
+    return {
+      authType: input.authType,
+      callTimeoutMs: input.callTimeoutMs,
+      description: input.description,
+      enabled: input.enabled,
+      headersText: input.headersText,
+      name: input.name,
+      url: input.url,
+    };
+  };
+
   const startOauthForServer = async (input: {
     mcpServerId: string;
     oauthClientId?: string;
@@ -617,7 +629,7 @@ function McpServersPageContent() {
         onSaveAndStartOauth={async (input) => {
           setErrorMessage(null);
 
-          await createServer(input)
+          await createServer(toCreateMcpServerInput(input))
             .then(async (createdServerId) => {
               try {
                 await startOauthForServer({
