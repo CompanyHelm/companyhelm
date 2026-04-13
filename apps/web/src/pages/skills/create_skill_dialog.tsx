@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FolderPlusIcon, GithubIcon, PencilRulerIcon } from "lucide-react";
 import { fetchQuery, graphql, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
@@ -127,6 +127,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const [mode, setMode] = useState<CreateSkillDialogMode>("choose");
   const [name, setName] = useState("");
   const [skillGroupId, setSkillGroupId] = useState(UNGROUPED_SKILL_GROUP_VALUE);
+  // Ignore slower branch responses once the repository URL changes or a newer request starts.
+  const githubBranchDiscoveryRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!props.isOpen) {
@@ -148,6 +150,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       setMode("choose");
       setName("");
       setSkillGroupId(UNGROUPED_SKILL_GROUP_VALUE);
+      githubBranchDiscoveryRequestIdRef.current += 1;
     }
   }, [props.isOpen]);
 
@@ -182,6 +185,19 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     } finally {
       setIsCreatingGroup(false);
     }
+  }
+
+  function resetGithubRepositorySelection(cancelBranchDiscovery: boolean = false) {
+    if (cancelBranchDiscovery) {
+      githubBranchDiscoveryRequestIdRef.current += 1;
+      setIsLoadingGithubBranches(false);
+    }
+    setGithubBranchName("");
+    setGithubBranches([]);
+    setGithubDiscoveredSkills([]);
+    setGithubSelectedSkillDirectories([]);
+    setGithubStep("repository");
+    setLocalErrorMessage(null);
   }
 
   function renderSkillGroupField(selectId: string) {
@@ -274,8 +290,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     );
   }
 
-  async function discoverGithubBranches() {
-    const normalizedRepositoryUrl = githubRepositoryUrl.trim();
+  async function discoverGithubBranches(repositoryUrl: string = githubRepositoryUrl) {
+    const normalizedRepositoryUrl = repositoryUrl.trim();
     if (!normalizedRepositoryUrl) {
       setLocalErrorMessage("Paste a public GitHub repository URL first.");
       setGithubBranchName("");
@@ -283,6 +299,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       return;
     }
 
+    const requestId = githubBranchDiscoveryRequestIdRef.current + 1;
+    githubBranchDiscoveryRequestIdRef.current = requestId;
     setIsLoadingGithubBranches(true);
     setGithubBranchName("");
     setGithubBranches([]);
@@ -299,6 +317,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           repositoryUrl: normalizedRepositoryUrl,
         },
       ).toPromise();
+      if (githubBranchDiscoveryRequestIdRef.current !== requestId) {
+        return;
+      }
       const nextBranches = (response?.GithubSkillBranches ?? []).map((branch) => ({
         commitSha: branch.commitSha,
         isDefault: branch.isDefault,
@@ -312,12 +333,17 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           ?? "",
       );
     } catch (error: unknown) {
+      if (githubBranchDiscoveryRequestIdRef.current !== requestId) {
+        return;
+      }
       setGithubBranches([]);
       setLocalErrorMessage(
         error instanceof Error ? error.message : "Failed to load GitHub branches.",
       );
     } finally {
-      setIsLoadingGithubBranches(false);
+      if (githubBranchDiscoveryRequestIdRef.current === requestId) {
+        setIsLoadingGithubBranches(false);
+      }
     }
   }
 
@@ -399,7 +425,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                   <div>
                     <p className="text-sm font-semibold text-foreground">Import from GitHub</p>
                     <p className="text-xs text-muted-foreground">
-                      Paste a public repo URL, pick a branch, then choose skills
+                      Paste a public repo URL, confirm the branch, then choose skills
                     </p>
                   </div>
                 </div>
@@ -408,8 +434,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                     Public repositories
                   </p>
                   <p className="mt-3 text-sm text-foreground">
-                    Resolve repository branches first, then review every discovered `SKILL.md`
-                    package before importing all of them or only a selected subset.
+                    Paste a repository URL to resolve branches, then review every discovered
+                    `SKILL.md` package before importing all of them or only a selected subset.
                   </p>
                 </div>
                 <p className="mt-auto pt-5 text-xs text-muted-foreground">
@@ -469,45 +495,45 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
 
               {githubStep === "repository" ? (
                 <div className="grid gap-4">
-                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-                    <div className="grid gap-2">
-                      <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
-                        Repository URL
-                      </label>
-                      <Input
-                        autoComplete="off"
-                        id="skill-repository-url"
-                        onChange={(event) => {
-                          setGithubRepositoryUrl(event.target.value);
-                          setGithubBranchName("");
-                          setGithubBranches([]);
-                          setGithubDiscoveredSkills([]);
-                          setGithubSelectedSkillDirectories([]);
-                          setGithubStep("repository");
-                          setLocalErrorMessage(null);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            void discoverGithubBranches();
-                          }
-                        }}
-                        placeholder="https://github.com/openai/skills"
-                        value={githubRepositoryUrl}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        disabled={isLoadingGithubBranches || !githubRepositoryUrl.trim()}
-                        onClick={() => {
+                  <div className="grid gap-2">
+                    <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
+                      Repository URL
+                    </label>
+                    <Input
+                      autoComplete="off"
+                      id="skill-repository-url"
+                      onChange={(event) => {
+                        setGithubRepositoryUrl(event.target.value);
+                        resetGithubRepositorySelection(true);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
                           void discoverGithubBranches();
-                        }}
-                        type="button"
-                        variant="outline"
-                      >
-                        {isLoadingGithubBranches ? "Loading branches..." : "Discover branches"}
-                      </Button>
-                    </div>
+                        }
+                      }}
+                      onPaste={(event) => {
+                        event.preventDefault();
+                        const pastedValue = event.clipboardData.getData("text");
+                        const nextRepositoryUrl = [
+                          event.currentTarget.value.slice(0, event.currentTarget.selectionStart ?? 0),
+                          pastedValue,
+                          event.currentTarget.value.slice(event.currentTarget.selectionEnd ?? event.currentTarget.value.length),
+                        ].join("");
+
+                        setGithubRepositoryUrl(nextRepositoryUrl);
+                        resetGithubRepositorySelection(true);
+                        if (nextRepositoryUrl.trim()) {
+                          void discoverGithubBranches(nextRepositoryUrl);
+                        }
+                      }}
+                      placeholder="https://github.com/openai/skills"
+                      value={githubRepositoryUrl}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Pasting a repository URL loads its branches automatically. Press Enter if you
+                      type the URL manually.
+                    </p>
                   </div>
 
                   <div className="grid gap-2">
