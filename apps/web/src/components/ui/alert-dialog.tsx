@@ -40,13 +40,18 @@ const AlertDialogOverlay = React.forwardRef<
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(function AlertDialogContent({ className, ...props }, ref) {
+>(function AlertDialogContent({ className, onKeyDownCapture, ...props }, ref) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         ref={ref}
         className={cn(alertDialogContentStyles(), className)}
+        // Keep dialog keyboard interactions from bubbling back into parent cards or rows.
+        onKeyDownCapture={(event) => {
+          onKeyDownCapture?.(event);
+          event.stopPropagation();
+        }}
         {...props}
       />
     </AlertDialogPortal>

@@ -211,6 +211,10 @@ export function TaskBoard(props: TaskBoardProps) {
                     }, 0);
                   }}
                   onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) {
+                      return;
+                    }
+
                     if (event.key !== "Enter" && event.key !== " ") {
                       return;
                     }
