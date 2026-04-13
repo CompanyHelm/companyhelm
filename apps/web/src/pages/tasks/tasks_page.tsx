@@ -516,10 +516,10 @@ function TasksPageContent() {
                 }}
                 type="button"
               >
-                <span className="text-[9px] leading-none font-medium">
+                <span className="text-xs leading-none font-medium">
                   {filterOption.label}
                 </span>
-                <span className="text-[8px] leading-none tabular-nums opacity-60">
+                <span className="text-xs leading-none tabular-nums opacity-60">
                   {filterOption.count}
                 </span>
               </button>
