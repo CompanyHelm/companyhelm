@@ -78,7 +78,7 @@ export function MarkdownContent({
               {...codeProps}
               className={cn(
                 markdownClassName,
-                "max-w-full break-words rounded px-1 py-0.5 font-mono text-foreground [overflow-wrap:anywhere]",
+                "inline-block max-w-full whitespace-pre-wrap break-all rounded px-1 py-0.5 align-top font-mono text-foreground [overflow-wrap:anywhere]",
                 codeSurfaceClassName,
               )}
             >
