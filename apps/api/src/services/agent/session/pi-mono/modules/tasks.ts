@@ -28,6 +28,7 @@ export class TasksSessionModule extends AgentSessionModuleInterface {
           context.transactionProvider,
           context.companyId,
           context.agentId,
+          context.sessionId,
           this.taskService,
         ),
       ),

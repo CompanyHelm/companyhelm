@@ -29,17 +29,20 @@ export class AgentTaskToolService {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly companyId: string;
   private readonly agentId: string;
+  private readonly sessionId: string;
   private readonly taskService: TaskService;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     agentId: string,
+    sessionId: string,
     taskService: TaskService,
   ) {
     this.transactionProvider = transactionProvider;
     this.companyId = companyId;
     this.agentId = agentId;
+    this.sessionId = sessionId;
     this.taskService = taskService;
   }
 
@@ -78,7 +81,9 @@ export class AgentTaskToolService {
 
   async updateTaskStatus(input: { status: string; taskId: string }): Promise<TaskServiceTask> {
     return this.taskService.updateTaskStatus(this.transactionProvider, {
+      actorAgentId: this.agentId,
       companyId: this.companyId,
+      sessionId: this.sessionId,
       status: input.status,
       taskId: input.taskId,
     });
