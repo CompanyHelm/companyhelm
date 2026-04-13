@@ -1,4 +1,4 @@
-name: Publish CompanyHelm NG App Images
+name: Publish Docker images
 
 on:
   push:
