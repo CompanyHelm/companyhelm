@@ -370,7 +370,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
 
   return (
     <Dialog disablePointerDismissal onOpenChange={props.onOpenChange} open={props.isOpen}>
-      <DialogContent className="max-h-[90vh] w-[80vw] max-w-[80vw] overflow-hidden">
+      <DialogContent className="flex h-[min(90vh,56rem)] w-[80vw] max-w-[80vw] flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
@@ -379,257 +379,257 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        {mode === "choose" ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <button
-              className={cn(
-                "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-foreground/30 hover:bg-accent/20",
-              )}
-              onClick={() => {
-                setMode("github");
-                setGithubStep("repository");
-              }}
-              type="button"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-xl border border-border/60 bg-background/90">
-                  <GithubIcon className="size-5" />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {mode === "choose" ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <button
+                className={cn(
+                  "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-foreground/30 hover:bg-accent/20",
+                )}
+                onClick={() => {
+                  setMode("github");
+                  setGithubStep("repository");
+                }}
+                type="button"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-xl border border-border/60 bg-background/90">
+                    <GithubIcon className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Import from GitHub</p>
+                    <p className="text-xs text-muted-foreground">
+                      Paste a public repo URL, pick a branch, then choose skills
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Import from GitHub</p>
-                  <p className="text-xs text-muted-foreground">
-                    Paste a public repo URL, pick a branch, then choose skills
+                <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Public repositories
+                  </p>
+                  <p className="mt-3 text-sm text-foreground">
+                    Resolve repository branches first, then review every discovered `SKILL.md`
+                    package before importing all of them or only a selected subset.
                   </p>
                 </div>
-              </div>
-              <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Public repositories
+                <p className="mt-auto pt-5 text-xs text-muted-foreground">
+                  Best for existing skill packages that already live in source control.
                 </p>
-                <p className="mt-3 text-sm text-foreground">
-                  Resolve repository branches first, then review every discovered `SKILL.md`
-                  package before importing all of them or only a selected subset.
-                </p>
-              </div>
-              <p className="mt-auto pt-5 text-xs text-muted-foreground">
-                Best for existing skill packages that already live in source control.
-              </p>
-            </button>
+              </button>
 
-            <button
-              className={cn(
-                "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-primary/40 hover:bg-primary/5",
-              )}
-              onClick={() => {
-                setMode("manual");
-              }}
-              type="button"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-11 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
-                  <PencilRulerIcon className="size-5" />
+              <button
+                className={cn(
+                  "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-primary/40 hover:bg-primary/5",
+                )}
+                onClick={() => {
+                  setMode("manual");
+                }}
+                type="button"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary">
+                    <PencilRulerIcon className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Create manually</p>
+                    <p className="text-xs text-muted-foreground">Write the skill directly in the app</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Create manually</p>
-                  <p className="text-xs text-muted-foreground">Write the skill directly in the app</p>
-                </div>
-              </div>
-              <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Included now
-                </p>
-                <p className="mt-3 text-sm text-foreground">
-                  Capture the skill name, summary, instructions, and optional group assignment in one
-                  step.
-                </p>
-              </div>
-              <p className="mt-auto pt-5 text-xs text-muted-foreground">
-                Best for brand-new skills or quick internal guidance.
-              </p>
-            </button>
-          </div>
-        ) : null}
-
-        {mode === "github" ? (
-          <div className="grid gap-4">
-            <div className="rounded-2xl border border-border/60 bg-card/50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-background/80">
-                  <GithubIcon className="size-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">GitHub import</p>
-                  <p className="text-xs text-muted-foreground">
-                    Step {githubStep === "repository" ? "1" : "2"} of 2
+                <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Included now
+                  </p>
+                  <p className="mt-3 text-sm text-foreground">
+                    Capture the skill name, summary, instructions, and optional group assignment in one
+                    step.
                   </p>
                 </div>
-              </div>
+                <p className="mt-auto pt-5 text-xs text-muted-foreground">
+                  Best for brand-new skills or quick internal guidance.
+                </p>
+              </button>
             </div>
+          ) : null}
 
-            {githubStep === "repository" ? (
-              <div className="grid gap-4">
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+          {mode === "github" ? (
+            <div className="grid gap-4">
+              <div className="rounded-2xl border border-border/60 bg-card/50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-background/80">
+                    <GithubIcon className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">GitHub import</p>
+                    <p className="text-xs text-muted-foreground">
+                      Step {githubStep === "repository" ? "1" : "2"} of 2
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {githubStep === "repository" ? (
+                <div className="grid gap-4">
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="grid gap-2">
+                      <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
+                        Repository URL
+                      </label>
+                      <Input
+                        autoComplete="off"
+                        id="skill-repository-url"
+                        onChange={(event) => {
+                          setGithubRepositoryUrl(event.target.value);
+                          setGithubBranchName("");
+                          setGithubBranches([]);
+                          setGithubDiscoveredSkills([]);
+                          setGithubSelectedSkillDirectories([]);
+                          setGithubStep("repository");
+                          setLocalErrorMessage(null);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void discoverGithubBranches();
+                          }
+                        }}
+                        placeholder="https://github.com/openai/skills"
+                        value={githubRepositoryUrl}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        disabled={isLoadingGithubBranches || !githubRepositoryUrl.trim()}
+                        onClick={() => {
+                          void discoverGithubBranches();
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
+                        {isLoadingGithubBranches ? "Loading branches..." : "Discover branches"}
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="grid gap-2">
-                    <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
-                      Repository URL
+                    <label className="text-xs font-medium text-foreground" htmlFor="github-branch">
+                      Branch
                     </label>
-                    <Input
-                      autoComplete="off"
-                      id="skill-repository-url"
-                      onChange={(event) => {
-                        setGithubRepositoryUrl(event.target.value);
-                        setGithubBranchName("");
-                        setGithubBranches([]);
+                    <Select
+                      items={githubBranches.map((branch) => ({
+                        label: branch.name,
+                        value: branch.name,
+                      }))}
+                      onValueChange={(value) => {
+                        setGithubBranchName(typeof value === "string" ? value : "");
                         setGithubDiscoveredSkills([]);
                         setGithubSelectedSkillDirectories([]);
-                        setGithubStep("repository");
                         setLocalErrorMessage(null);
                       }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          void discoverGithubBranches();
-                        }
-                      }}
-                      placeholder="https://github.com/openai/skills"
-                      value={githubRepositoryUrl}
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      disabled={isLoadingGithubBranches || !githubRepositoryUrl.trim()}
-                      onClick={() => {
-                        void discoverGithubBranches();
-                      }}
-                      type="button"
-                      variant="outline"
+                      value={githubBranchName || undefined}
                     >
-                      {isLoadingGithubBranches ? "Loading branches..." : "Discover branches"}
-                    </Button>
+                      <SelectTrigger
+                        className={cn(isLoadingGithubBranches ? "animate-pulse" : null)}
+                        id="github-branch"
+                      >
+                        <SelectValue
+                          placeholder={!githubRepositoryUrl.trim()
+                            ? "Paste a repository URL first"
+                            : isLoadingGithubBranches
+                            ? "Loading branches..."
+                            : githubBranches.length > 0
+                            ? "Select a branch"
+                            : "No branches found"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {githubBranches.map((branch) => (
+                          <SelectItem key={branch.name} value={branch.name}>
+                            {branch.name}
+                            {branch.isDefault ? " (default)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </div>
 
-                <div className="grid gap-2">
-                  <label className="text-xs font-medium text-foreground" htmlFor="github-branch">
-                    Branch
-                  </label>
-                  <Select
-                    items={githubBranches.map((branch) => ({
-                      label: branch.name,
-                      value: branch.name,
-                    }))}
-                    onValueChange={(value) => {
-                      setGithubBranchName(typeof value === "string" ? value : "");
-                      setGithubDiscoveredSkills([]);
-                      setGithubSelectedSkillDirectories([]);
-                      setLocalErrorMessage(null);
-                    }}
-                    value={githubBranchName || undefined}
-                  >
-                    <SelectTrigger
-                      className={cn(isLoadingGithubBranches ? "animate-pulse" : null)}
-                      id="github-branch"
-                    >
-                      <SelectValue
-                        placeholder={!githubRepositoryUrl.trim()
-                          ? "Paste a repository URL first"
-                          : isLoadingGithubBranches
-                          ? "Loading branches..."
-                          : githubBranches.length > 0
-                          ? "Select a branch"
-                          : "No branches found"}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {githubBranches.map((branch) => (
-                        <SelectItem key={branch.name} value={branch.name}>
-                          {branch.name}
-                          {branch.isDefault ? " (default)" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {selectedGithubBranch ? (
+                    <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 md:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                          Repository
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {selectedGithubBranch.repository}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                          Selected branch
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {selectedGithubBranch.name}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Commit {selectedGithubBranch.commitSha.slice(0, 12)}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
+              ) : null}
 
-                {selectedGithubBranch ? (
-                  <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 md:grid-cols-2">
+              {githubStep === "skills" ? (
+                <div className="grid gap-4">
+                  <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 md:grid-cols-3">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                         Repository
                       </p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
-                        {selectedGithubBranch.repository}
+                        {selectedGithubBranch?.repository ?? githubRepositoryUrl.trim()}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                        Selected branch
+                        Branch
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">{githubBranchName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        Selected skills
                       </p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
-                        {selectedGithubBranch.name}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Commit {selectedGithubBranch.commitSha.slice(0, 12)}
+                        {selectedGithubSkills.length} of {githubDiscoveredSkills.length}
                       </p>
                     </div>
                   </div>
-                ) : null}
-              </div>
-            ) : null}
 
-            {githubStep === "skills" ? (
-              <div className="grid gap-4">
-                <div className="grid gap-3 rounded-xl border border-border/60 bg-card/40 p-4 md:grid-cols-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Repository
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {selectedGithubBranch?.repository ?? githubRepositoryUrl.trim()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Branch
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">{githubBranchName}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Selected skills
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {selectedGithubSkills.length} of {githubDiscoveredSkills.length}
-                    </p>
-                  </div>
-                </div>
+                  {renderSkillGroupField("github-skill-group")}
 
-                {renderSkillGroupField("github-skill-group")}
-
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Discovered skills</p>
-                    <p className="text-xs text-muted-foreground">
-                      Choose every skill you want to create from this branch.
-                    </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Discovered skills</p>
+                      <p className="text-xs text-muted-foreground">
+                        Choose every skill you want to create from this branch.
+                      </p>
+                    </div>
+                    <Button
+                      disabled={githubDiscoveredSkills.length === 0}
+                      onClick={() => {
+                        setGithubSelectedSkillDirectories(allGithubSkillsSelected
+                          ? []
+                          : githubDiscoveredSkills.map((skill) => skill.skillDirectory));
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {allGithubSkillsSelected ? "Deselect all" : "Select all"}
+                    </Button>
                   </div>
-                  <Button
-                    disabled={githubDiscoveredSkills.length === 0}
-                    onClick={() => {
-                      setGithubSelectedSkillDirectories(allGithubSkillsSelected
-                        ? []
-                        : githubDiscoveredSkills.map((skill) => skill.skillDirectory));
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
-                    {allGithubSkillsSelected ? "Deselect all" : "Select all"}
-                  </Button>
-                </div>
 
-                {githubDiscoveredSkills.length > 0 ? (
-                  <div className="overflow-hidden rounded-xl border border-border/60 bg-card/30">
-                    <div className="max-h-[calc(90vh-24rem)] overflow-y-auto">
+                  {githubDiscoveredSkills.length > 0 ? (
+                    <div className="overflow-hidden rounded-xl border border-border/60 bg-card/30">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -675,85 +675,85 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                         </TableBody>
                       </Table>
                     </div>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
-                    No importable skills were found on this branch.
-                  </div>
-                )}
-              </div>
-            ) : null}
+                  ) : (
+                    <div className="rounded-md border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+                      No importable skills were found on this branch.
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
-            {localErrorMessage || props.errorMessage ? (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {localErrorMessage || props.errorMessage}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {mode === "manual" ? (
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="skill-name">
-                Name
-              </label>
-              <Input
-                autoComplete="off"
-                id="skill-name"
-                onChange={(event) => {
-                  setName(event.target.value);
-                }}
-                placeholder="Playwright CLI"
-                value={name}
-              />
+              {localErrorMessage || props.errorMessage ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {localErrorMessage || props.errorMessage}
+                </div>
+              ) : null}
             </div>
+          ) : null}
 
-            {renderSkillGroupField("skill-group")}
-
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="skill-description">
-                Description
-              </label>
-              <textarea
-                autoComplete="off"
-                className={cn(
-                  "min-h-24 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
-                )}
-                id="skill-description"
-                onChange={(event) => {
-                  setDescription(event.target.value);
-                }}
-                placeholder="Reusable browser automation guidance for agent sessions."
-                value={description}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="skill-instructions">
-                Instructions
-              </label>
-              <textarea
-                autoComplete="off"
-                className={cn(
-                  "min-h-40 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
-                )}
-                id="skill-instructions"
-                onChange={(event) => {
-                  setInstructions(event.target.value);
-                }}
-                placeholder="Read SKILL.md first, then prefer the browser helper scripts if available..."
-                value={instructions}
-              />
-            </div>
-
-            {localErrorMessage || props.errorMessage ? (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {localErrorMessage || props.errorMessage}
+          {mode === "manual" ? (
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="skill-name">
+                  Name
+                </label>
+                <Input
+                  autoComplete="off"
+                  id="skill-name"
+                  onChange={(event) => {
+                    setName(event.target.value);
+                  }}
+                  placeholder="Playwright CLI"
+                  value={name}
+                />
               </div>
-            ) : null}
-          </div>
-        ) : null}
+
+              {renderSkillGroupField("skill-group")}
+
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="skill-description">
+                  Description
+                </label>
+                <textarea
+                  autoComplete="off"
+                  className={cn(
+                    "min-h-24 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+                  )}
+                  id="skill-description"
+                  onChange={(event) => {
+                    setDescription(event.target.value);
+                  }}
+                  placeholder="Reusable browser automation guidance for agent sessions."
+                  value={description}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="skill-instructions">
+                  Instructions
+                </label>
+                <textarea
+                  autoComplete="off"
+                  className={cn(
+                    "min-h-40 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+                  )}
+                  id="skill-instructions"
+                  onChange={(event) => {
+                    setInstructions(event.target.value);
+                  }}
+                  placeholder="Read SKILL.md first, then prefer the browser helper scripts if available..."
+                  value={instructions}
+                />
+              </div>
+
+              {localErrorMessage || props.errorMessage ? (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {localErrorMessage || props.errorMessage}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
 
         <DialogFooter>
           {mode !== "choose" ? (
