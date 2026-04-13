@@ -66,16 +66,20 @@ export type TaskServiceListTasksResult = {
 export type TaskServiceUpdateTaskInput = {
   assignedAgentId?: string | null;
   assignedUserId?: string | null;
+  actorAgentId?: string | null;
   companyId: string;
   description?: string | null;
   name?: string | null;
+  sessionId?: string | null;
   status?: string | null;
   taskCategoryId?: string | null;
   taskId: string;
 };
 
 export type TaskServiceUpdateTaskStatusInput = {
+  actorAgentId?: string | null;
   companyId: string;
+  sessionId?: string | null;
   status: string;
   taskId: string;
 };
@@ -353,6 +357,15 @@ export class TaskService {
         nextStatus,
         taskId: input.taskId,
       });
+      await this.ensureSessionTaskRunForInProgress(tx, {
+        actorAgentId: input.actorAgentId ?? null,
+        companyId: input.companyId,
+        nextAssignedAgentId,
+        nextAssignedUserId,
+        nextStatus,
+        sessionId: input.sessionId ?? null,
+        taskId: input.taskId,
+      });
 
       return this.loadSerializedTask(tx, updatedTaskRow);
     });
@@ -363,7 +376,9 @@ export class TaskService {
     input: TaskServiceUpdateTaskStatusInput,
   ): Promise<TaskServiceTask> {
     return this.updateTask(transactionProvider, {
+      actorAgentId: input.actorAgentId,
       companyId: input.companyId,
+      sessionId: input.sessionId,
       status: input.status,
       taskId: input.taskId,
     });
@@ -673,6 +688,56 @@ export class TaskService {
         eq(taskRuns.companyId, input.companyId),
         eq(taskRuns.id, openTaskRun.id),
       ));
+  }
+
+  private async ensureSessionTaskRunForInProgress(
+    tx: AppRuntimeTransaction,
+    input: {
+      actorAgentId: string | null;
+      companyId: string;
+      nextAssignedAgentId: string | null;
+      nextAssignedUserId: string | null;
+      nextStatus: TaskStatus;
+      sessionId: string | null;
+      taskId: string;
+    },
+  ): Promise<void> {
+    if (input.nextStatus !== "in_progress") {
+      return;
+    }
+    if (!input.sessionId || !input.actorAgentId) {
+      return;
+    }
+    if (input.nextAssignedUserId !== null || input.nextAssignedAgentId === null) {
+      return;
+    }
+    if (input.nextAssignedAgentId !== input.actorAgentId) {
+      return;
+    }
+
+    const now = new Date();
+
+    // Agent sessions can retry the same status transition, so rely on the session and open-run
+    // unique indexes to make task-run creation idempotent across duplicate tool calls.
+    await tx
+      .insert(taskRuns)
+      .values({
+        agentId: input.actorAgentId,
+        companyId: input.companyId,
+        createdAt: now,
+        createdByAgentId: input.actorAgentId,
+        createdByUserId: null,
+        endedReason: null,
+        finishedAt: null,
+        id: randomUUID(),
+        lastActivityAt: now,
+        sessionId: input.sessionId,
+        startedAt: now,
+        status: "running",
+        taskId: input.taskId,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
   }
 
   private async requireTaskRow(
