@@ -396,7 +396,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
 
   return (
     <Dialog disablePointerDismissal onOpenChange={props.onOpenChange} open={props.isOpen}>
-      <DialogContent className="flex h-[min(90vh,56rem)] w-[80vw] max-w-[80vw] flex-col overflow-hidden">
+      <DialogContent className="flex max-h-[min(90vh,56rem)] w-[80vw] max-w-[80vw] flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
