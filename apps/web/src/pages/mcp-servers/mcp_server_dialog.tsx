@@ -439,6 +439,10 @@ export function McpServerDialog(props: McpServerDialogProps) {
             <span className="text-xs font-medium text-foreground">Auth type</span>
             <div className="grid gap-2">
               <Select
+                items={authTypeOptions.map((option) => ({
+                  label: option.label,
+                  value: option.value,
+                }))}
                 onValueChange={(value) => {
                   if (!value) {
                     return;
