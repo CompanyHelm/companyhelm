@@ -57,6 +57,10 @@ type TaskArtifactDetailRouteSearch = {
   viewType?: "board" | "list";
 };
 
+type AgentDetailRouteSearch = {
+  tab?: "archived" | "overview";
+};
+
 type ConversationsRouteSearch = {
   conversationId?: string;
 };
@@ -102,6 +106,14 @@ function validateTaskArtifactDetailRouteSearch(search: Record<string, unknown>):
   return {
     viewType: search.viewType === "board" || search.viewType === "list"
       ? search.viewType
+      : undefined,
+  };
+}
+
+function validateAgentDetailRouteSearch(search: Record<string, unknown>): AgentDetailRouteSearch {
+  return {
+    tab: search.tab === "archived" || search.tab === "overview"
+      ? search.tab
       : undefined,
   };
 }
@@ -304,6 +316,7 @@ const settingsRoute = createRoute({
 const agentDetailRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/agents/$agentId"),
+  validateSearch: validateAgentDetailRouteSearch,
   component: AgentDetailPage,
 });
 

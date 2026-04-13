@@ -88,6 +88,7 @@ type Mutation {
   DeleteArtifact(input: DeleteArtifactInput!): Artifact!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
+  DeleteSession(input: DeleteSessionInput!): Session!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
   DeleteMcpServer(input: DeleteMcpServerInput!): McpServer!
@@ -105,6 +106,7 @@ type Mutation {
   ForkSession(input: ForkSessionInput!): Session!
   MarkSessionRead(input: MarkSessionReadInput!): Session!
   PromptSession(input: PromptSessionInput!): Session!
+  UnarchiveSession(input: UnarchiveSessionInput!): Session!
   UpdateSessionTitle(input: UpdateSessionTitleInput!): Session!
   ResolveInboxHumanQuestion(input: ResolveInboxHumanQuestionInput!): InboxHumanQuestion!
   SteerSessionQueuedMessage(input: SteerSessionQueuedMessageInput!): SessionQueuedMessage!
@@ -800,6 +802,10 @@ input ArchiveSessionInput {
   id: ID!
 }
 
+input UnarchiveSessionInput {
+  sessionId: ID!
+}
+
 input MarkSessionReadInput {
   sessionId: ID!
 }
@@ -857,6 +863,10 @@ input SteerSessionQueuedMessageInput {
 
 input DeleteSessionQueuedMessageInput {
   id: ID!
+}
+
+input DeleteSessionInput {
+  sessionId: ID!
 }
 
 input CreateSecretInput {

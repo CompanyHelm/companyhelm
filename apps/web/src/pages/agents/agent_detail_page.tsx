@@ -1,10 +1,13 @@
 import { Suspense, useEffect, useMemo } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { AgentArchivedChatsTab } from "./agent_archived_chats_tab";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
 import { AgentMcpServerDefaultsCard } from "./agent_mcp_server_defaults_card";
 import { AgentSkillDefaultsCard } from "./agent_skill_defaults_card";
@@ -69,6 +72,21 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       skillGroupId
+    }
+    Sessions {
+      id
+      agentId
+      associatedTask {
+        id
+        name
+        status
+      }
+      inferredTitle
+      status
+      createdAt
+      updatedAt
+      lastUserMessageAt
+      userSetTitle
     }
     AgentCreateOptions {
       id
@@ -244,6 +262,9 @@ function resolveReasoningLevel(
 
 function AgentDetailPageContent() {
   const params = useParams({ strict: false }) as { agentId?: string };
+  const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
+  const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" };
   const normalizedAgentId = String(params.agentId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   if (!normalizedAgentId) {
@@ -264,6 +285,7 @@ function AgentDetailPageContent() {
   );
 
   const agent = data.Agent;
+  const selectedTab = search.tab === "archived" ? "archived" : "overview";
   const agentSecrets = data.AgentSecrets.map((secret) => ({
     description: secret.description ?? null,
     envVarName: secret.envVarName,
@@ -368,6 +390,17 @@ function AgentDetailPageContent() {
       (option) => option.modelProviderCredentialModelId === agent.modelProviderCredentialModelId,
     ) ?? null
     : null;
+  const archivedChats = data.Sessions.filter((session) => {
+    return session.agentId === agent.id && session.status.trim().toLowerCase() === "archived";
+  }).map((session) => {
+    return {
+      ...session,
+      associatedTask: session.associatedTask ?? null,
+      inferredTitle: session.inferredTitle ?? null,
+      lastUserMessageAt: session.lastUserMessageAt ?? null,
+      userSetTitle: session.userSetTitle ?? null,
+    };
+  });
   const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
 
   const saveAgent = async (patch: {
@@ -451,210 +484,272 @@ function AgentDetailPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardDescription>
-            Update the agent name, environment provider, model provider, model, reasoning level,
-            and agent prompt override inline. Sessions apply the static CompanyHelm prompt first,
-            then the inherited company prompt, then this agent prompt override.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <EditableField
-            emptyValueLabel="Unnamed agent"
-            fieldType="text"
-            label="Name"
-            onSave={async (value) => {
-              await saveAgent({
-                name: value,
-              });
-            }}
-            value={agent.name}
-          />
-
-          <EditableField
-            displayValue={selectedComputeProviderDefinitionOption?.label ?? agent.defaultComputeProviderDefinitionName ?? null}
-            emptyValueLabel="No environment provider selected"
-            fieldType="select"
-            label="Environment provider"
-            onSave={async (value) => {
-              await saveAgent({
-                defaultComputeProviderDefinitionId: value,
-              });
-            }}
-            options={computeProviderDefinitionOptions.map((option) => ({
-              label: option.label,
-              value: option.id,
-            }))}
-            value={agent.defaultComputeProviderDefinitionId ?? null}
-          />
-
-          <EditableField
-            displayValue={selectedEnvironmentTemplateOption?.name ?? agent.environmentTemplate.name}
-            emptyValueLabel="No environment template selected"
-            fieldType="select"
-            label="Environment template"
-            onSave={async (value) => {
-              await saveAgent({
-                defaultEnvironmentTemplateId: value,
-              });
-            }}
-            options={(selectedComputeProviderDefinitionOption?.templates ?? []).map((option) => ({
-              label: option.name,
-              value: option.templateId,
-            }))}
-            value={agent.defaultEnvironmentTemplateId ?? null}
-          />
-
-          <EditableField
-            displayValue={selectedProviderOption?.label ?? null}
-            emptyValueLabel="No provider selected"
-            fieldType="select"
-            label="Provider"
-            onSave={async (value) => {
-              const nextProviderOption = resolveProviderOption(providerOptions, value);
-              const nextModelOption = resolveModelOption(nextProviderOption, null);
-              await saveAgent({
-                modelProviderCredentialId: nextProviderOption.modelProviderCredentialId,
-                modelProviderCredentialModelId: nextModelOption?.modelProviderCredentialModelId,
-                reasoningLevel: resolveReasoningLevel(nextProviderOption, nextModelOption, null),
-              });
-            }}
-            options={providerOptions.map((option) => ({
-              label: option.label,
-              value: option.id,
-            }))}
-            value={selectedProviderOption?.id ?? ""}
-          />
-
-          <EditableField
-            displayValue={selectedModelOption?.name ?? null}
-            emptyValueLabel="No model selected"
-            fieldType="select"
-            label="Model"
-            onSave={async (value) => {
-              const nextModelOption = selectedProviderOption?.models.find((option) => option.id === value) ?? null;
-              if (!nextModelOption) {
-                throw new Error("Selected model is not available.");
-              }
-
-              await saveAgent({
-                modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
-              });
-            }}
-            options={(selectedProviderOption?.models ?? []).map((option) => ({
-              label: option.name,
-              value: option.id,
-            }))}
-            value={selectedModelOption?.id ?? null}
-          />
-
-          <EditableField
-            displayValue={agent.reasoningLevel}
-            emptyValueLabel="Not supported by this model"
-            fieldType="select"
-            label="Reasoning level"
-            onSave={async (value) => {
-              await saveAgent({
-                reasoningLevel: value,
-              });
-            }}
-            options={(selectedModelOption?.reasoningLevels ?? []).map((level) => ({
-              label: level,
-              value: level,
-            }))}
-            value={agent.reasoningLevel ?? null}
-          />
-
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Inherited company prompt
-            </p>
-            <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">
-              {companyBaseSystemPrompt && companyBaseSystemPrompt.length > 0
-                ? companyBaseSystemPrompt
-                : "No company base prompt configured"}
-            </p>
-            <p className="mt-3 text-xs/relaxed text-muted-foreground">
-              Manage this layer from Settings, on the Agents / AI tab. It is applied before this
-              agent prompt override.
-            </p>
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span>{agent.name}</span>
           </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {selectedTab === "overview"
+              ? "Manage the agent configuration, defaults, and runtime template in one place."
+              : "Review archived chats for this agent, restore them to the chats workspace, or permanently delete them."}
+          </p>
+        </div>
 
-          <EditableField
-            emptyValueLabel="No agent-specific prompt override"
-            fieldType="textarea"
-            label="Agent prompt override"
-            onSave={async (value) => {
-              await saveAgent({
-                systemPrompt: value,
-              });
-            }}
-            readOnlyFormat="markdown"
-            value={agent.systemPrompt ?? null}
+        <div className="border-b border-border/60">
+          <div className="flex items-center gap-6 overflow-x-auto">
+            {[
+              {
+                key: "overview" as const,
+                label: "Overview",
+              },
+              {
+                key: "archived" as const,
+                label: "Archived chats",
+              },
+            ].map((tab) => {
+              const isSelected = selectedTab === tab.key;
+
+              return (
+                <button
+                  key={tab.key}
+                  className={`-mb-px shrink-0 border-b-2 px-0 py-3 text-sm font-medium transition ${
+                    isSelected
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  }`}
+                  onClick={() => {
+                    void navigate({
+                      params: {
+                        agentId: agent.id,
+                        organizationSlug,
+                      },
+                      search: {
+                        tab: tab.key,
+                      },
+                      to: OrganizationPath.route("/agents/$agentId"),
+                    });
+                  }}
+                  type="button"
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {selectedTab === "overview" ? (
+        <>
+          <Card className="rounded-2xl border border-border/60 shadow-sm">
+            <CardHeader>
+              <CardDescription>
+                Update the agent name, environment provider, model provider, model, reasoning level,
+                and agent prompt override inline. Sessions apply the static CompanyHelm prompt first,
+                then the inherited company prompt, then this agent prompt override.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <EditableField
+                emptyValueLabel="Unnamed agent"
+                fieldType="text"
+                label="Name"
+                onSave={async (value) => {
+                  await saveAgent({
+                    name: value,
+                  });
+                }}
+                value={agent.name}
+              />
+
+              <EditableField
+                displayValue={selectedComputeProviderDefinitionOption?.label ?? agent.defaultComputeProviderDefinitionName ?? null}
+                emptyValueLabel="No environment provider selected"
+                fieldType="select"
+                label="Environment provider"
+                onSave={async (value) => {
+                  await saveAgent({
+                    defaultComputeProviderDefinitionId: value,
+                  });
+                }}
+                options={computeProviderDefinitionOptions.map((option) => ({
+                  label: option.label,
+                  value: option.id,
+                }))}
+                value={agent.defaultComputeProviderDefinitionId ?? null}
+              />
+
+              <EditableField
+                displayValue={selectedEnvironmentTemplateOption?.name ?? agent.environmentTemplate.name}
+                emptyValueLabel="No environment template selected"
+                fieldType="select"
+                label="Environment template"
+                onSave={async (value) => {
+                  await saveAgent({
+                    defaultEnvironmentTemplateId: value,
+                  });
+                }}
+                options={(selectedComputeProviderDefinitionOption?.templates ?? []).map((option) => ({
+                  label: option.name,
+                  value: option.templateId,
+                }))}
+                value={agent.defaultEnvironmentTemplateId ?? null}
+              />
+
+              <EditableField
+                displayValue={selectedProviderOption?.label ?? null}
+                emptyValueLabel="No provider selected"
+                fieldType="select"
+                label="Provider"
+                onSave={async (value) => {
+                  const nextProviderOption = resolveProviderOption(providerOptions, value);
+                  const nextModelOption = resolveModelOption(nextProviderOption, null);
+                  await saveAgent({
+                    modelProviderCredentialId: nextProviderOption.modelProviderCredentialId,
+                    modelProviderCredentialModelId: nextModelOption?.modelProviderCredentialModelId,
+                    reasoningLevel: resolveReasoningLevel(nextProviderOption, nextModelOption, null),
+                  });
+                }}
+                options={providerOptions.map((option) => ({
+                  label: option.label,
+                  value: option.id,
+                }))}
+                value={selectedProviderOption?.id ?? ""}
+              />
+
+              <EditableField
+                displayValue={selectedModelOption?.name ?? null}
+                emptyValueLabel="No model selected"
+                fieldType="select"
+                label="Model"
+                onSave={async (value) => {
+                  const nextModelOption = selectedProviderOption?.models.find((option) => option.id === value) ?? null;
+                  if (!nextModelOption) {
+                    throw new Error("Selected model is not available.");
+                  }
+
+                  await saveAgent({
+                    modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
+                  });
+                }}
+                options={(selectedProviderOption?.models ?? []).map((option) => ({
+                  label: option.name,
+                  value: option.id,
+                }))}
+                value={selectedModelOption?.id ?? null}
+              />
+
+              <EditableField
+                displayValue={agent.reasoningLevel}
+                emptyValueLabel="Not supported by this model"
+                fieldType="select"
+                label="Reasoning level"
+                onSave={async (value) => {
+                  await saveAgent({
+                    reasoningLevel: value,
+                  });
+                }}
+                options={(selectedModelOption?.reasoningLevels ?? []).map((level) => ({
+                  label: level,
+                  value: level,
+                }))}
+                value={agent.reasoningLevel ?? null}
+              />
+
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Inherited company prompt
+                </p>
+                <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">
+                  {companyBaseSystemPrompt && companyBaseSystemPrompt.length > 0
+                    ? companyBaseSystemPrompt
+                    : "No company base prompt configured"}
+                </p>
+                <p className="mt-3 text-xs/relaxed text-muted-foreground">
+                  Manage this layer from Settings, on the Agents / AI tab. It is applied before this
+                  agent prompt override.
+                </p>
+              </div>
+
+              <EditableField
+                emptyValueLabel="No agent-specific prompt override"
+                fieldType="textarea"
+                label="Agent prompt override"
+                onSave={async (value) => {
+                  await saveAgent({
+                    systemPrompt: value,
+                  });
+                }}
+                readOnlyFormat="markdown"
+                value={agent.systemPrompt ?? null}
+              />
+            </CardContent>
+          </Card>
+
+          <AgentSecretDefaultsCard
+            agentId={agent.id}
+            agentSecrets={agentSecrets}
+            companySecrets={companySecrets}
           />
-        </CardContent>
-      </Card>
 
-      <AgentSecretDefaultsCard
-        agentId={agent.id}
-        agentSecrets={agentSecrets}
-        companySecrets={companySecrets}
-      />
+          <AgentSkillDefaultsCard
+            agentId={agent.id}
+            agentSkillGroups={agentSkillGroups}
+            agentSkills={agentSkills}
+            companySkillGroups={companySkillGroups}
+            companySkills={companySkills}
+          />
 
-      <AgentSkillDefaultsCard
-        agentId={agent.id}
-        agentSkillGroups={agentSkillGroups}
-        agentSkills={agentSkills}
-        companySkillGroups={companySkillGroups}
-        companySkills={companySkills}
-      />
+          <AgentMcpServerDefaultsCard
+            agentId={agent.id}
+            agentMcpServers={agentMcpServers}
+            companyMcpServers={companyMcpServers}
+          />
 
-      <AgentMcpServerDefaultsCard
-        agentId={agent.id}
-        agentMcpServers={agentMcpServers}
-        companyMcpServers={companyMcpServers}
-      />
+          <Card className="rounded-2xl border border-border/60 shadow-sm">
+            <CardHeader>
+              <CardDescription>
+                Future environments for this agent use the selected provider template instead of custom CPU and memory overrides.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Template</p>
+                <p className="mt-3 text-sm text-foreground">{agent.environmentTemplate.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{agent.environmentTemplate.templateId}</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Resources</p>
+                <p className="mt-3 text-sm text-foreground">
+                  {agent.environmentTemplate.cpuCount} vCPU • {agent.environmentTemplate.memoryGb} GB RAM
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {agent.environmentTemplate.diskSpaceGb} GB disk • Computer use {agent.environmentTemplate.computerUse ? "enabled" : "disabled"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardDescription>
-            Future environments for this agent use the selected provider template instead of custom CPU and memory overrides.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Template</p>
-            <p className="mt-3 text-sm text-foreground">{agent.environmentTemplate.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{agent.environmentTemplate.templateId}</p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Resources</p>
-            <p className="mt-3 text-sm text-foreground">
-              {agent.environmentTemplate.cpuCount} vCPU • {agent.environmentTemplate.memoryGb} GB RAM
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {agent.environmentTemplate.diskSpaceGb} GB disk • Computer use {agent.environmentTemplate.computerUse ? "enabled" : "disabled"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardDescription>Metadata for this agent record.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Created</p>
-            <p className="mt-3 text-sm text-foreground">{formatTimestamp(agent.createdAt)}</p>
-          </div>
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Updated</p>
-            <p className="mt-3 text-sm text-foreground">{formatTimestamp(agent.updatedAt)}</p>
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="rounded-2xl border border-border/60 shadow-sm">
+            <CardHeader>
+              <CardDescription>Metadata for this agent record.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Created</p>
+                <p className="mt-3 text-sm text-foreground">{formatTimestamp(agent.createdAt)}</p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Updated</p>
+                <p className="mt-3 text-sm text-foreground">{formatTimestamp(agent.updatedAt)}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <AgentArchivedChatsTab sessions={archivedChats} />
+      )}
     </main>
   );
 }

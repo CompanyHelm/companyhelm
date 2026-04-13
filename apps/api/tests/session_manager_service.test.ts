@@ -1089,6 +1089,204 @@ test("SessionManagerService archiveSession dismisses open human questions for th
   ]);
 });
 
+test("SessionManagerService unarchiveSession restores archived sessions as stopped chats", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  let selectCallCount = 0;
+  const transaction = {
+    select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  id: "session-1",
+                  status: "archived",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "model-row-1",
+                  modelId: "gpt-5.4",
+                  modelProviderCredentialId: "credential-1",
+                  reasoningLevels: ["low", "medium", "high"],
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
+          return {
+            where() {
+              return {
+                async returning() {
+                  return [{
+                    id: "session-1",
+                    agentId: "agent-1",
+                    currentModelProviderCredentialModelId: "model-row-1",
+                    currentReasoningLevel: "high",
+                    inferredTitle: "Existing title",
+                    isCompacting: false,
+                    isThinking: false,
+                    lastUserMessageAt: new Date("2026-03-25T01:45:00.000Z"),
+                    maxContextTokens: null,
+                    status: "stopped",
+                    thinkingText: null,
+                    createdAt: new Date("2026-03-25T01:00:00.000Z"),
+                    updatedAt: new Date("2026-03-25T02:30:00.000Z"),
+                    userSetTitle: null,
+                  }];
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    },
+    sessionQueuedMessageService: {},
+  });
+
+  const sessionRecord = await service.unarchiveSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.equal(sessionRecord.status, "stopped");
+  assert.equal(sessionRecord.currentModelId, "gpt-5.4");
+  assert.equal(updatedValues[0]?.status, "stopped");
+  assert.equal(updatedValues[0]?.isThinking, false);
+  assert.equal(updatedValues[0]?.thinkingText, null);
+  assert.ok(updatedValues[0]?.updated_at instanceof Date);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:session:session-1:update",
+      message: "",
+    },
+  ]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "unarchived agent session",
+    payload: {
+      companyId: "company-1",
+      sessionId: "session-1",
+    },
+  }]);
+});
+
+test("SessionManagerService deleteSession removes archived chats and notifies the inbox stream", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const deleteFilters: unknown[] = [];
+  const transaction = {
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              return [{
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                id: "session-1",
+                status: "archived",
+              }];
+            },
+          };
+        },
+      };
+    },
+    delete() {
+      return {
+        async where(condition: unknown) {
+          deleteFilters.push(condition);
+        },
+      };
+    },
+  };
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    },
+    sessionQueuedMessageService: {},
+  });
+
+  await service.deleteSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.equal(deleteFilters.length, 1);
+  assert.deepEqual(publishCalls, [
+    {
+      channel: "company:company-1:inbox:human_questions:update",
+      message: "",
+    },
+  ]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "deleted agent session",
+    payload: {
+      companyId: "company-1",
+      sessionId: "session-1",
+    },
+  }]);
+});
+
 test("SessionManagerService interruptSession publishes the interrupt channel only for running sessions", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];

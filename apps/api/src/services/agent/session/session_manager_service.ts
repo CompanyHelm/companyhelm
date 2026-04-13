@@ -114,6 +114,46 @@ export class SessionManagerService {
     return sessionRecord;
   }
 
+  async unarchiveSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    userId?: string | null,
+  ): Promise<SessionRecord> {
+    const sessionRecord = await this.sessionLifecycleService.unarchiveSession(
+      transactionProvider,
+      companyId,
+      sessionId,
+      userId,
+    );
+
+    this.logger.info({
+      companyId,
+      sessionId,
+    }, "unarchived agent session");
+
+    return sessionRecord;
+  }
+
+  async deleteSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    userId?: string | null,
+  ): Promise<void> {
+    await this.sessionLifecycleService.deleteSession(
+      transactionProvider,
+      companyId,
+      sessionId,
+      userId,
+    );
+
+    this.logger.info({
+      companyId,
+      sessionId,
+    }, "deleted agent session");
+  }
+
   async forkSession(
     transactionProvider: TransactionProviderInterface,
     companyId: string,

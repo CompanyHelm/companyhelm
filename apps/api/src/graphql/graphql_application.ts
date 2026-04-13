@@ -34,6 +34,7 @@ import { DeleteComputeProviderDefinitionMutation } from "./mutations/delete_comp
 import { DeleteEnvironmentMutation } from "./mutations/delete_environment.ts";
 import { DeleteGithubInstallationMutation } from "./mutations/delete_github_installation.ts";
 import { DeleteModelProviderCredentialMutation } from "./mutations/delete_model_provider_credential.ts";
+import { DeleteSessionMutation } from "./mutations/delete_session.ts";
 import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
 import { DeleteSkillGroupMutation } from "./mutations/delete_skill_group.ts";
@@ -63,6 +64,7 @@ import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { SteerSessionQueuedMessageMutation } from "./mutations/steer_session_queued_message.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
+import { UnarchiveSessionMutation } from "./mutations/unarchive_session.ts";
 import { UpdateAgentMutation } from "./mutations/update_agent.ts";
 import { UpdateArtifactMutation } from "./mutations/update_artifact.ts";
 import { UpdateCompanySettingsMutation } from "./mutations/update_company_settings.ts";
@@ -283,6 +285,8 @@ export class GraphqlApplication {
     githubDiscoveredSkillsQueryResolver?: GithubDiscoveredSkillsQueryResolver,
     importGithubSkillsMutation?: ImportGithubSkillsMutation,
     updateSkillGroupMutation?: UpdateSkillGroupMutation,
+    deleteSessionMutation?: DeleteSessionMutation,
+    unarchiveSessionMutation?: UnarchiveSessionMutation,
   ): GraphqlApplication {
     const resolvedRedisService = redisService ?? GraphqlApplication.createFallbackRedisService(config);
     const resolvedGraphqlErrorLogger = graphqlErrorLogger ?? new GraphqlErrorLogger();
@@ -325,6 +329,7 @@ export class GraphqlApplication {
       createSessionMutation,
       archiveSessionMutation,
       deleteAgentConversationMutation,
+      deleteSessionMutation,
       deleteSessionQueuedMessageMutation,
       dismissInboxHumanQuestionMutation,
       forkSessionMutation,
@@ -344,6 +349,7 @@ export class GraphqlApplication {
       sessionsQueryResolver,
       sessionUpdatedSubscriptionResolver,
       steerSessionQueuedMessageMutation,
+      unarchiveSessionMutation,
       updateSessionTitleMutation,
       attachSecretToSessionMutation,
       detachSecretFromSessionMutation,

@@ -6,6 +6,7 @@ import { ArchiveSessionMutation } from "../mutations/archive_session.ts";
 import { AttachSecretToSessionMutation } from "../mutations/attach_secret_to_session.ts";
 import { CreateSessionMutation } from "../mutations/create_session.ts";
 import { DeleteAgentConversationMutation } from "../mutations/delete_agent_conversation.ts";
+import { DeleteSessionMutation } from "../mutations/delete_session.ts";
 import { DeleteSessionQueuedMessageMutation } from "../mutations/delete_session_queued_message.ts";
 import { DismissInboxHumanQuestionMutation } from "../mutations/dismiss_inbox_human_question.ts";
 import { DetachSecretFromSessionMutation } from "../mutations/detach_secret_from_session.ts";
@@ -15,6 +16,7 @@ import { MarkSessionReadMutation } from "../mutations/mark_session_read.ts";
 import { PromptSessionMutation } from "../mutations/prompt_session.ts";
 import { ResolveInboxHumanQuestionMutation } from "../mutations/resolve_inbox_human_question.ts";
 import { SteerSessionQueuedMessageMutation } from "../mutations/steer_session_queued_message.ts";
+import { UnarchiveSessionMutation } from "../mutations/unarchive_session.ts";
 import { UpdateSessionTitleMutation } from "../mutations/update_session_title.ts";
 import { AgentConversationMessagesQueryResolver } from "../resolvers/agent_conversation_messages.ts";
 import { AgentConversationsQueryResolver } from "../resolvers/agent_conversations.ts";
@@ -51,6 +53,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly attachSecretToSessionMutation: AttachSecretToSessionMutation;
   private readonly createSessionMutation: CreateSessionMutation;
   private readonly deleteAgentConversationMutation: DeleteAgentConversationMutation;
+  private readonly deleteSessionMutation: DeleteSessionMutation;
   private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
   private readonly dismissInboxHumanQuestionMutation: DismissInboxHumanQuestionMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
@@ -71,6 +74,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly sessionsQueryResolver: SessionsQueryResolver;
   private readonly sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver;
   private readonly steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation;
+  private readonly unarchiveSessionMutation: UnarchiveSessionMutation;
   private updateSessionTitleMutation: UpdateSessionTitleMutationLike;
 
   constructor(
@@ -114,6 +118,12 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     } as never),
     @inject(DeleteAgentConversationMutation)
     deleteAgentConversationMutation: DeleteAgentConversationMutation = new DeleteAgentConversationMutation(),
+    @inject(DeleteSessionMutation)
+    deleteSessionMutation: DeleteSessionMutation = new DeleteSessionMutation({
+      async deleteSession() {
+        throw new Error("DeleteSession mutation is not configured.");
+      },
+    } as never),
     @inject(DeleteSessionQueuedMessageMutation)
     deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation = new DeleteSessionQueuedMessageMutation(),
     @inject(DismissInboxHumanQuestionMutation)
@@ -192,6 +202,12 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     sessionUpdatedSubscriptionResolver: SessionUpdatedSubscriptionResolver = new SessionUpdatedSubscriptionResolver(),
     @inject(SteerSessionQueuedMessageMutation)
     steerSessionQueuedMessageMutation: SteerSessionQueuedMessageMutation = new SteerSessionQueuedMessageMutation(),
+    @inject(UnarchiveSessionMutation)
+    unarchiveSessionMutation: UnarchiveSessionMutation = new UnarchiveSessionMutation({
+      async unarchiveSession() {
+        throw new Error("UnarchiveSession mutation is not configured.");
+      },
+    } as never),
     @inject(UpdateSessionTitleMutation)
     updateSessionTitleMutation: UpdateSessionTitleMutation = new UpdateSessionTitleMutation({
       async updateSessionTitle() {
@@ -212,6 +228,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
       ?? new AttachSecretToSessionMutation(defaultSecretService);
     this.createSessionMutation = createSessionMutation;
     this.deleteAgentConversationMutation = deleteAgentConversationMutation;
+    this.deleteSessionMutation = deleteSessionMutation;
     this.deleteSessionQueuedMessageMutation = deleteSessionQueuedMessageMutation;
     this.dismissInboxHumanQuestionMutation = dismissInboxHumanQuestionMutation;
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
@@ -235,6 +252,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     this.sessionsQueryResolver = sessionsQueryResolver;
     this.sessionUpdatedSubscriptionResolver = sessionUpdatedSubscriptionResolver;
     this.steerSessionQueuedMessageMutation = steerSessionQueuedMessageMutation;
+    this.unarchiveSessionMutation = unarchiveSessionMutation;
     this.updateSessionTitleMutation = updateSessionTitleMutation;
   }
 
@@ -245,6 +263,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
         AttachSecretToSession: this.attachSecretToSessionMutation.execute,
         CreateSession: this.createSessionMutation.execute,
         DeleteAgentConversation: this.deleteAgentConversationMutation.execute,
+        DeleteSession: this.deleteSessionMutation.execute,
         DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,
         DismissInboxHumanQuestion: this.dismissInboxHumanQuestionMutation.execute,
         DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
@@ -254,6 +273,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
         PromptSession: this.promptSessionMutation.execute,
         ResolveInboxHumanQuestion: this.resolveInboxHumanQuestionMutation.execute,
         SteerSessionQueuedMessage: this.steerSessionQueuedMessageMutation.execute,
+        UnarchiveSession: this.unarchiveSessionMutation.execute,
         UpdateSessionTitle: this.updateSessionTitleMutation.execute,
       },
       Query: {

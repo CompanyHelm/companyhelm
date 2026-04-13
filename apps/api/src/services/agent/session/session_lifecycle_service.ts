@@ -278,6 +278,115 @@ export class SessionLifecycleService {
     return sessionRecord;
   }
 
+  async unarchiveSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    userId?: string | null,
+  ): Promise<SessionRecord> {
+    const sessionRecord = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const [existingSession] = await selectableDatabase
+        .select({
+          agentId: agentSessions.agentId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          id: agentSessions.id,
+          ownerUserId: agentSessions.ownerUserId,
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!existingSession) {
+        throw new Error("Session not found.");
+      }
+      this.assertUserCanMutateSession(existingSession.ownerUserId, userId);
+      if (existingSession.status !== "archived") {
+        throw new Error("Session is not archived.");
+      }
+
+      const now = new Date();
+      const [updatedSessionRecord] = await updatableDatabase
+        .update(agentSessions)
+        .set({
+          isThinking: false,
+          status: "stopped",
+          thinkingText: null,
+          updated_at: now,
+        })
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        ))
+        .returning?.(agentSessionSelection) as SessionRecord[];
+
+      if (!updatedSessionRecord) {
+        throw new Error("Session not found.");
+      }
+
+      const currentModelRecord = await this.sessionModelSelectionService.resolveModelRecordById(
+        selectableDatabase,
+        companyId,
+        updatedSessionRecord.currentModelProviderCredentialModelId,
+      );
+
+      return {
+        ...updatedSessionRecord,
+        currentModelId: currentModelRecord.modelId,
+      };
+    });
+
+    await this.publishSessionUpdate(companyId, sessionRecord.id);
+
+    return sessionRecord;
+  }
+
+  async deleteSession(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+    userId?: string | null,
+  ): Promise<void> {
+    await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      const [existingSession] = await selectableDatabase
+        .select({
+          agentId: agentSessions.agentId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
+          currentReasoningLevel: agentSessions.currentReasoningLevel,
+          id: agentSessions.id,
+          ownerUserId: agentSessions.ownerUserId,
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as ExistingSessionRow[];
+      if (!existingSession) {
+        throw new Error("Session not found.");
+      }
+      this.assertUserCanMutateSession(existingSession.ownerUserId, userId);
+      if (existingSession.status !== "archived") {
+        throw new Error("Session is not archived.");
+      }
+
+      await deletableDatabase
+        .delete(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        ));
+    });
+
+    await this.publishHumanQuestionsUpdate(companyId);
+  }
+
   async forkSession(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
