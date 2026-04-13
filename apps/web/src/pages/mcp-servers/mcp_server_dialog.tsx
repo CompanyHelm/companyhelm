@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { fetchQuery, graphql, useRelayEnvironment } from "react-relay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DEFAULT_MCP_SERVER_CALL_TIMEOUT_MS,
   formatMcpServerCallTimeout,
   hasIncompleteMcpServerHeaders,
@@ -19,9 +27,10 @@ import {
   serializeMcpServerHeaders,
   type McpServerHeaderDraft,
 } from "./mcp_server_headers";
+import type { mcpServerDialogAuthTypeQuery } from "./__generated__/mcpServerDialogAuthTypeQuery.graphql";
 
 export type EditableMcpServerRecord = {
-  authType: "none" | "custom_headers" | "oauth";
+  authType: "none" | "authorization_header" | "oauth_client_credentials" | "oauth_authorization_code";
   callTimeoutMs: number;
   description: string | null;
   enabled: boolean;
@@ -39,16 +48,23 @@ export type EditableMcpServerRecord = {
 interface McpServerDialogProps {
   deletingServerId: string | null;
   errorMessage: string | null;
+  isClientCredentialsConnecting: boolean;
   isOauthDisconnecting: boolean;
   isOauthStarting: boolean;
   isOpen: boolean;
   isSaving: boolean;
+  onConnectClientCredentials(input: {
+    mcpServerId: string;
+    oauthClientId?: string;
+    oauthClientSecret?: string;
+    requestedScopes: string[];
+  }): Promise<void>;
   onDelete(serverId: string): Promise<void>;
   onDisconnectOauth(serverId: string): Promise<void>;
   onOpenChange(open: boolean): void;
   onSave(input:
     | {
-        authType: "none" | "custom_headers" | "oauth";
+        authType: EditableMcpServerRecord["authType"];
         callTimeoutMs: number;
         description?: string;
         enabled: boolean;
@@ -57,7 +73,7 @@ interface McpServerDialogProps {
         url: string;
       }
     | {
-        authType: "none" | "custom_headers" | "oauth";
+        authType: EditableMcpServerRecord["authType"];
         callTimeoutMs: number;
         description?: string;
         enabled: boolean;
@@ -80,11 +96,36 @@ type HeaderDraftRow = McpServerHeaderDraft & {
   id: string;
 };
 
+type McpServerOauthDetectedAuthType = "oauth_client_credentials" | "oauth_authorization_code";
+type McpServerAuthDetection = {
+  detailMessage: string | null;
+  detectedAuthType: McpServerOauthDetectedAuthType | null;
+  wasAutoDetected: boolean;
+};
+
+const mcpServerDialogAuthTypeQueryNode = graphql`
+  query mcpServerDialogAuthTypeQuery($url: String!) {
+    McpServerAuthType(url: $url) {
+      detectedAuthType
+      detailMessage
+      wasAutoDetected
+    }
+  }
+`;
+
 function parseRequestedScopesText(value: string): string[] {
   return [...new Set(value
     .split(/\s+/u)
     .map((scope) => scope.trim())
     .filter(Boolean))];
+}
+
+function normalizeDetectedAuthType(value: string | null | undefined): McpServerOauthDetectedAuthType | null {
+  if (value === "oauth_client_credentials" || value === "oauth_authorization_code") {
+    return value;
+  }
+
+  return null;
 }
 
 function getOauthStatusBadgeVariant(status: EditableMcpServerRecord["oauthConnectionStatus"] | undefined) {
@@ -99,17 +140,24 @@ function getOauthStatusBadgeVariant(status: EditableMcpServerRecord["oauthConnec
 }
 
 export function McpServerDialog(props: McpServerDialogProps) {
+  const environment = useRelayEnvironment();
   const [authType, setAuthType] = useState<EditableMcpServerRecord["authType"]>("none");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [url, setUrl] = useState("");
-  const [headerDrafts, setHeaderDrafts] = useState<HeaderDraftRow[]>([]);
+  const [authorizationHeaderValue, setAuthorizationHeaderValue] = useState("");
+  const [authDetection, setAuthDetection] = useState<McpServerAuthDetection | null>(null);
   const [callTimeoutMs, setCallTimeoutMs] = useState(String(DEFAULT_MCP_SERVER_CALL_TIMEOUT_MS));
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [description, setDescription] = useState("");
   const [enabled, setEnabled] = useState(true);
-  const [requestedScopesText, setRequestedScopesText] = useState("");
+  const [headerDrafts, setHeaderDrafts] = useState<HeaderDraftRow[]>([]);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isAuthDetectionLoading, setAuthDetectionLoading] = useState(false);
+  const [isAuthTypeOverrideEnabled, setAuthTypeOverrideEnabled] = useState(false);
+  const [name, setName] = useState("");
   const [oauthClientId, setOauthClientId] = useState("");
   const [oauthClientSecret, setOauthClientSecret] = useState("");
+  const [requestedScopesText, setRequestedScopesText] = useState("");
+  const [url, setUrl] = useState("");
+  const initialUrlRef = useRef("");
+  const detectionRequestIdRef = useRef(0);
   const nextHeaderDraftIdRef = useRef(0);
   const isEditing = props.server !== null;
 
@@ -122,51 +170,172 @@ export function McpServerDialog(props: McpServerDialogProps) {
     });
 
     if (!props.isOpen || !props.server) {
+      initialUrlRef.current = "";
       setAuthType("none");
-      setName("");
-      setDescription("");
-      setUrl("");
-      setHeaderDrafts([createHeaderDraft()]);
+      setAuthorizationHeaderValue("");
+      setAuthDetection(null);
+      setAuthDetectionLoading(false);
+      setAuthTypeOverrideEnabled(false);
       setCallTimeoutMs(String(DEFAULT_MCP_SERVER_CALL_TIMEOUT_MS));
-      setIsAdvancedOpen(false);
+      setDescription("");
       setEnabled(true);
-      setRequestedScopesText("");
+      setHeaderDrafts([createHeaderDraft()]);
+      setIsAdvancedOpen(false);
+      setName("");
       setOauthClientId("");
       setOauthClientSecret("");
+      setRequestedScopesText("");
+      setUrl("");
       return;
     }
 
-    setAuthType(props.server.authType);
-    setName(props.server.name);
-    setDescription(props.server.description ?? "");
-    setUrl(props.server.url);
     const parsedHeaders = parseMcpServerHeadersText(props.server.headersText);
-    setHeaderDrafts(
-      parsedHeaders.length > 0
-        ? parsedHeaders.map((header) => createHeaderDraft(header))
-        : [createHeaderDraft()],
-    );
+    const authorizationHeader = parsedHeaders.find((header) => header.name.toLowerCase() === "authorization");
+
+    initialUrlRef.current = props.server.url;
+    setAuthType(props.server.authType);
+    setAuthorizationHeaderValue(authorizationHeader?.value ?? "");
+    setAuthDetection(null);
+    setAuthDetectionLoading(false);
+    setAuthTypeOverrideEnabled(false);
     setCallTimeoutMs(String(props.server.callTimeoutMs));
-    setIsAdvancedOpen(false);
+    setDescription(props.server.description ?? "");
     setEnabled(props.server.enabled);
-    setRequestedScopesText(props.server.oauthRequestedScopes.join(" "));
+    setHeaderDrafts(
+      parsedHeaders
+        .filter((header) => header.name.toLowerCase() !== "authorization")
+        .map((header) => createHeaderDraft(header))
+        .concat(parsedHeaders.some((header) => header.name.toLowerCase() !== "authorization") ? [] : [createHeaderDraft()]),
+    );
+    setIsAdvancedOpen(false);
+    setName(props.server.name);
     setOauthClientId(props.server.oauthClientId ?? "");
     setOauthClientSecret("");
+    setRequestedScopesText(props.server.oauthRequestedScopes.join(" "));
+    setUrl(props.server.url);
   }, [props.isOpen, props.server]);
+
+  const isUrlChangedSinceLoad = url.trim() !== initialUrlRef.current.trim();
+
+  useEffect(() => {
+    if (!props.isOpen) {
+      return;
+    }
+
+    const trimmedUrl = url.trim();
+    if (trimmedUrl.length === 0) {
+      setAuthDetection(null);
+      setAuthDetectionLoading(false);
+      if (!isAuthTypeOverrideEnabled && (!isEditing || isUrlChangedSinceLoad)) {
+        setAuthType("none");
+      }
+      return;
+    }
+
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(trimmedUrl);
+    } catch {
+      setAuthDetection(null);
+      setAuthDetectionLoading(false);
+      return;
+    }
+
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      setAuthDetection(null);
+      setAuthDetectionLoading(false);
+      return;
+    }
+
+    if (isEditing && !isUrlChangedSinceLoad) {
+      setAuthDetection(null);
+      setAuthDetectionLoading(false);
+      return;
+    }
+
+    const timeoutHandle = window.setTimeout(() => {
+      const requestId = ++detectionRequestIdRef.current;
+      setAuthDetectionLoading(true);
+      fetchQuery<mcpServerDialogAuthTypeQuery>(
+        environment,
+        mcpServerDialogAuthTypeQueryNode,
+        {
+          url: parsedUrl.toString(),
+        },
+      )
+        .toPromise()
+        .then((response) => {
+          if (requestId !== detectionRequestIdRef.current) {
+            return;
+          }
+
+          const detectionResponse = response?.McpServerAuthType;
+          const nextDetection: McpServerAuthDetection = {
+            detailMessage: detectionResponse?.detailMessage ?? null,
+            detectedAuthType: normalizeDetectedAuthType(detectionResponse?.detectedAuthType),
+            wasAutoDetected: Boolean(detectionResponse?.wasAutoDetected),
+          };
+          setAuthDetection(nextDetection);
+          if (!isAuthTypeOverrideEnabled) {
+            setAuthType(nextDetection.detectedAuthType ?? "none");
+          }
+        })
+        .catch((error: unknown) => {
+          if (requestId !== detectionRequestIdRef.current) {
+            return;
+          }
+
+          setAuthDetection({
+            detailMessage: error instanceof Error ? error.message : "Could not auto-detect auth type.",
+            detectedAuthType: null,
+            wasAutoDetected: false,
+          });
+          if (!isAuthTypeOverrideEnabled) {
+            setAuthType("none");
+          }
+        })
+        .finally(() => {
+          if (requestId === detectionRequestIdRef.current) {
+            setAuthDetectionLoading(false);
+          }
+        });
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timeoutHandle);
+    };
+  }, [environment, isAuthTypeOverrideEnabled, isEditing, isUrlChangedSinceLoad, props.isOpen, url]);
+
+  useEffect(() => {
+    if (!isAuthTypeOverrideEnabled && authDetection?.wasAutoDetected && authDetection.detectedAuthType) {
+      setAuthType(authDetection.detectedAuthType);
+    }
+  }, [authDetection, isAuthTypeOverrideEnabled]);
 
   const title = isEditing ? "Edit MCP server" : "Create MCP server";
   const descriptionText = isEditing
-    ? "Update the shared remote HTTP MCP server definition and its auth mode."
+    ? "Update the shared remote HTTP MCP server definition and its auth type."
     : "Add a shared remote HTTP MCP server definition that agents can attach as a default.";
   const normalizedCallTimeoutMs = Number(callTimeoutMs);
+  const requestedScopes = parseRequestedScopesText(requestedScopesText);
+  const headersText = serializeMcpServerHeaders([
+    ...(authType === "authorization_header" && authorizationHeaderValue.trim()
+      ? [{
+          name: "Authorization",
+          value: authorizationHeaderValue.trim(),
+        }]
+      : []),
+    ...headerDrafts,
+  ]);
   const hasIncompleteHeaders = hasIncompleteMcpServerHeaders(headerDrafts);
-  const headersText = serializeMcpServerHeaders(headerDrafts);
   const advancedSummary = Number.isFinite(normalizedCallTimeoutMs) && normalizedCallTimeoutMs > 0
     ? `Timeout ${formatMcpServerCallTimeout(normalizedCallTimeoutMs)}`
     : "Timeout required";
+  const requiresAuthorizationHeader = authType === "authorization_header" && authorizationHeaderValue.trim().length === 0;
   const isSaveDisabled = name.trim().length === 0
     || url.trim().length === 0
     || hasIncompleteHeaders
+    || requiresAuthorizationHeader
     || !Number.isFinite(normalizedCallTimeoutMs)
     || normalizedCallTimeoutMs < 1;
   const hasUnsavedServerChanges = Boolean(
@@ -182,15 +351,48 @@ export function McpServerDialog(props: McpServerDialogProps) {
         || props.server.enabled !== enabled
       ),
   );
-  const canManageOauthConnection = isEditing
-    && props.server?.authType === "oauth"
-    && authType === "oauth"
+  const canManageAuthorizationCodeConnection = isEditing
+    && props.server?.authType === "oauth_authorization_code"
+    && authType === "oauth_authorization_code"
     && !hasUnsavedServerChanges;
-  const requestedScopes = parseRequestedScopesText(requestedScopesText);
-  const headerLabel = authType === "oauth" ? "Additional headers (optional)" : "Headers (optional)";
-  const headerDescription = authType === "oauth"
+  const canManageClientCredentialsConnection = isEditing
+    && props.server?.authType === "oauth_client_credentials"
+    && authType === "oauth_client_credentials"
+    && !hasUnsavedServerChanges;
+  const hasAutoDetectedAuthType = Boolean(authDetection?.wasAutoDetected && authDetection.detectedAuthType);
+  const isAuthTypeLocked = hasAutoDetectedAuthType && !isAuthTypeOverrideEnabled;
+  const headerLabel = authType === "none" ? "Headers (optional)" : "Additional headers (optional)";
+  const headerDescription = authType === "oauth_authorization_code" || authType === "oauth_client_credentials"
     ? "These headers are sent alongside the OAuth bearer token on every MCP request."
-    : "Add request headers that should be sent with MCP calls. Empty rows are ignored.";
+    : authType === "authorization_header"
+      ? "These headers are sent alongside the configured Authorization header on every MCP request."
+      : "Add request headers that should be sent with MCP calls. Empty rows are ignored.";
+  const authTypeOptions: Array<{
+    description: string;
+    label: string;
+    value: EditableMcpServerRecord["authType"];
+  }> = [
+    {
+      description: "Use no built-in authentication for the MCP endpoint.",
+      label: "None",
+      value: "none",
+    },
+    {
+      description: "Send a manually configured Authorization header with each MCP request.",
+      label: "Authorization header",
+      value: "authorization_header",
+    },
+    {
+      description: "Use OAuth 2.0 client credentials to fetch bearer tokens from the auth server.",
+      label: "OAuth client credentials",
+      value: "oauth_client_credentials",
+    },
+    {
+      description: "Use OAuth 2.1 authorization code with PKCE and browser sign-in.",
+      label: "OAuth authorization code",
+      value: "oauth_authorization_code",
+    },
+  ];
 
   return (
     <Dialog disablePointerDismissal onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -202,57 +404,121 @@ export function McpServerDialog(props: McpServerDialogProps) {
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <span className="text-xs font-medium text-foreground">Auth mode</span>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {[
-                {
-                  description: "Use no built-in auth and rely only on the server URL plus optional headers.",
-                  label: "No auth",
-                  value: "none",
-                },
-                {
-                  description: "Use static request headers managed with the MCP server definition.",
-                  label: "Custom headers",
-                  value: "custom_headers",
-                },
-                {
-                  description: "Use OAuth 2.1 authorization code with PKCE and lazy token refresh.",
-                  label: "OAuth",
-                  value: "oauth",
-                },
-              ].map((option) => {
-                const isSelected = authType === option.value;
-                return (
-                  <button
-                    className={[
-                      "rounded-xl border px-3 py-3 text-left transition",
-                      isSelected
-                        ? "border-primary bg-primary/5 shadow-sm"
-                        : "border-border/60 bg-muted/10 hover:bg-muted/30",
-                    ].join(" ")}
-                    key={option.value}
-                    onClick={() => {
-                      setAuthType(option.value as EditableMcpServerRecord["authType"]);
-                    }}
-                    type="button"
-                  >
-                    <div className="grid gap-1">
-                      <span className="text-sm font-medium text-foreground">{option.label}</span>
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
-                    </div>
-                  </button>
-                );
-              })}
+            <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-url">
+              URL
+            </label>
+            <Input
+              id="mcp-server-url"
+              onChange={(event) => {
+                setUrl(event.target.value);
+              }}
+              placeholder="https://mcp.example.com"
+              value={url}
+            />
+            <div className="grid gap-1">
+              <p className="text-[11px] text-muted-foreground">
+                Remote MCP servers are currently HTTP-only and should expose a streamable HTTP endpoint.
+              </p>
+              {isAuthDetectionLoading ? (
+                <p className="text-[11px] text-muted-foreground">Detecting auth type…</p>
+              ) : null}
+              {authDetection?.detailMessage ? (
+                <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+                  {authDetection.wasAutoDetected ? (
+                    <Badge variant="positive">Auto-detected</Badge>
+                  ) : (
+                    <Badge variant="outline">Detection</Badge>
+                  )}
+                  <span>{authDetection.detailMessage}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
-          {authType === "oauth" ? (
+          <div className="grid gap-2">
+            <span className="text-xs font-medium text-foreground">Auth type</span>
+            <div className="grid gap-2">
+              <Select
+                onValueChange={(value) => {
+                  if (!value) {
+                    return;
+                  }
+
+                  setAuthType(value as EditableMcpServerRecord["authType"]);
+                }}
+                value={authType}
+              >
+                <SelectTrigger disabled={isAuthTypeLocked} id="mcp-server-auth-type">
+                  <SelectValue placeholder="Select an auth type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {authTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {authTypeOptions.find((option) => option.value === authType)?.description}
+              </p>
+              {hasAutoDetectedAuthType ? (
+                <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+                  <input
+                    checked={isAuthTypeOverrideEnabled}
+                    className="mt-0.5 size-4 rounded border border-input bg-background"
+                    onChange={(event) => {
+                      setAuthTypeOverrideEnabled(event.target.checked);
+                    }}
+                    type="checkbox"
+                  />
+                  <div className="grid gap-1">
+                    <span className="text-xs font-medium text-foreground">Override auto-detected auth type</span>
+                    <span className="text-xs text-muted-foreground">
+                      Keep the detected OAuth type unless you explicitly want to force a different configuration.
+                    </span>
+                  </div>
+                </label>
+              ) : null}
+            </div>
+          </div>
+
+          {authType === "authorization_header" ? (
+            <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-3">
+              <div className="grid gap-1">
+                <span className="text-sm font-medium text-foreground">Authorization header</span>
+                <span className="text-xs text-muted-foreground">
+                  Set the full Authorization header value that should be sent with each MCP request.
+                </span>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-authorization-header">
+                  Authorization value
+                </label>
+                <Input
+                  id="mcp-server-authorization-header"
+                  onChange={(event) => {
+                    setAuthorizationHeaderValue(event.target.value);
+                  }}
+                  placeholder="Bearer example-token"
+                  value={authorizationHeaderValue}
+                />
+                {requiresAuthorizationHeader ? (
+                  <p className="text-[11px] text-destructive">
+                    Authorization header auth requires a header value.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {authType === "oauth_authorization_code" ? (
             <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="grid gap-1">
-                  <span className="text-sm font-medium text-foreground">OAuth connection</span>
+                  <span className="text-sm font-medium text-foreground">OAuth authorization code</span>
                   <span className="text-xs text-muted-foreground">
-                    OAuth credentials are stored per company and refreshed only when MCP authorization is needed.
+                    Uses browser sign-in with PKCE and stores company-scoped OAuth credentials for lazy refresh.
                   </span>
                 </div>
                 <Badge variant={getOauthStatusBadgeVariant(props.server?.oauthConnectionStatus)}>
@@ -319,7 +585,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
                 </p>
               ) : null}
 
-              {canManageOauthConnection ? (
+              {canManageAuthorizationCodeConnection ? (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     disabled={props.isOauthStarting || props.isSaving}
@@ -357,8 +623,126 @@ export function McpServerDialog(props: McpServerDialogProps) {
                   {isEditing
                     ? hasUnsavedServerChanges
                       ? "Save your MCP server changes before starting or disconnecting OAuth."
-                      : "Save the MCP server with OAuth enabled before starting the authorization flow."
-                    : "Create the MCP server first, then reconnect here to start OAuth."}
+                      : "Save the MCP server with OAuth authorization code enabled before starting the browser flow."
+                    : "Create the MCP server first, then reopen it here to start OAuth."}
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          {authType === "oauth_client_credentials" ? (
+            <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/10 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="grid gap-1">
+                  <span className="text-sm font-medium text-foreground">OAuth client credentials</span>
+                  <span className="text-xs text-muted-foreground">
+                    Uses client ID and client secret to fetch bearer tokens directly from the auth server.
+                  </span>
+                </div>
+                <Badge variant={getOauthStatusBadgeVariant(props.server?.oauthConnectionStatus)}>
+                  {props.server?.oauthConnectionStatus ?? "not_connected"}
+                </Badge>
+              </div>
+
+              {props.server?.oauthLastError ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                  {props.server.oauthLastError}
+                </div>
+              ) : null}
+
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-client-credentials-scopes">
+                  Requested scopes
+                </label>
+                <Input
+                  id="mcp-server-client-credentials-scopes"
+                  onChange={(event) => {
+                    setRequestedScopesText(event.target.value);
+                  }}
+                  placeholder="read:repo mcp:tools"
+                  value={requestedScopesText}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Space-delimited scopes to request during the client-credentials token exchange.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-client-credentials-id">
+                    Client ID
+                  </label>
+                  <Input
+                    id="mcp-server-client-credentials-id"
+                    onChange={(event) => {
+                      setOauthClientId(event.target.value);
+                    }}
+                    placeholder="client-id"
+                    value={oauthClientId}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-client-credentials-secret">
+                    Client secret
+                  </label>
+                  <Input
+                    id="mcp-server-client-credentials-secret"
+                    onChange={(event) => {
+                      setOauthClientSecret(event.target.value);
+                    }}
+                    placeholder="client-secret"
+                    type="password"
+                    value={oauthClientSecret}
+                  />
+                </div>
+              </div>
+
+              {props.server?.oauthGrantedScopes.length ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Granted scopes: {props.server.oauthGrantedScopes.join(" ")}
+                </p>
+              ) : null}
+
+              {canManageClientCredentialsConnection ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={props.isClientCredentialsConnecting || props.isSaving}
+                    onClick={async () => {
+                      await props.onConnectClientCredentials({
+                        mcpServerId: props.server!.id,
+                        oauthClientId: oauthClientId.trim() || undefined,
+                        oauthClientSecret: oauthClientSecret.trim() || undefined,
+                        requestedScopes,
+                      });
+                    }}
+                    size="sm"
+                    type="button"
+                  >
+                    {props.isClientCredentialsConnecting
+                      ? "Connecting…"
+                      : props.server?.oauthConnectionStatus === "connected"
+                        ? "Reconnect client credentials"
+                        : "Connect client credentials"}
+                  </Button>
+                  <Button
+                    disabled={props.isOauthDisconnecting || props.isSaving}
+                    onClick={async () => {
+                      await props.onDisconnectOauth(props.server!.id);
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {props.isOauthDisconnecting ? "Disconnecting…" : "Disconnect OAuth"}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  {isEditing
+                    ? hasUnsavedServerChanges
+                      ? "Save your MCP server changes before connecting or disconnecting client credentials."
+                      : "Save the MCP server with OAuth client credentials enabled before connecting."
+                    : "Create the MCP server first, then reopen it here to connect client credentials."}
                 </p>
               )}
             </div>
@@ -376,23 +760,6 @@ export function McpServerDialog(props: McpServerDialogProps) {
               placeholder="GitHub MCP"
               value={name}
             />
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-xs font-medium text-foreground" htmlFor="mcp-server-url">
-              URL
-            </label>
-            <Input
-              id="mcp-server-url"
-              onChange={(event) => {
-                setUrl(event.target.value);
-              }}
-              placeholder="https://mcp.example.com"
-              value={url}
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Remote MCP servers are currently HTTP-only and should expose a streamable HTTP endpoint.
-            </p>
           </div>
 
           <div className="grid gap-2">
@@ -452,7 +819,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
                         };
                       }));
                     }}
-                    placeholder={index === 0 ? "Authorization" : "Header name"}
+                    placeholder={index === 0 ? "X-Workspace" : "Header name"}
                     value={headerDraft.name}
                   />
                   <Input
@@ -470,7 +837,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
                         };
                       }));
                     }}
-                    placeholder={index === 0 ? "Bearer example-token" : "Header value"}
+                    placeholder={index === 0 ? "acme" : "Header value"}
                     value={headerDraft.value}
                   />
                   <Button

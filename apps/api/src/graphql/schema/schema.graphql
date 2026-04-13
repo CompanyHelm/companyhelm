@@ -23,6 +23,7 @@ type Query {
   Skills: [Skill!]!
   Secrets: [Secret!]!
   McpServers: [McpServer!]!
+  McpServerAuthType(url: String!): McpServerAuthTypeDetection!
   AgentSecrets(agentId: ID!): [Secret!]!
   AgentMcpServers(agentId: ID!): [McpServer!]!
   AgentSkillGroups(agentId: ID!): [SkillGroup!]!
@@ -71,6 +72,9 @@ type Mutation {
   CreateSecret(input: CreateSecretInput!): Secret!
   CreateMcpServer(input: CreateMcpServerInput!): McpServer!
   StartMcpServerOAuth(input: StartMcpServerOAuthInput!): StartMcpServerOAuthPayload!
+  ConnectMcpServerOAuthClientCredentials(
+    input: ConnectMcpServerOAuthClientCredentialsInput!
+  ): McpServer!
   CompleteMcpServerOAuth(input: CompleteMcpServerOAuthInput!): CompleteMcpServerOAuthPayload!
   CreateSession(input: CreateSessionInput!): Session!
   CreateExternalLinkArtifact(input: CreateExternalLinkArtifactInput!): Artifact!
@@ -152,8 +156,9 @@ scalar JSON
 
 enum McpServerAuthType {
   none
-  custom_headers
-  oauth
+  authorization_header
+  oauth_client_credentials
+  oauth_authorization_code
 }
 
 enum McpOauthConnectionStatus {
@@ -310,6 +315,12 @@ type DeleteAgentConversationPayload {
 
 type RefreshGithubInstallationRepositoriesPayload {
   repositories: [GithubRepository!]!
+}
+
+type McpServerAuthTypeDetection {
+  detectedAuthType: McpServerAuthType
+  detailMessage: String
+  wasAutoDetected: Boolean!
 }
 
 type StartMcpServerOAuthPayload {
@@ -919,6 +930,13 @@ input StartMcpServerOAuthInput {
   oauthClientId: String
   oauthClientSecret: String
   organizationSlug: String!
+  requestedScopes: [String!]
+}
+
+input ConnectMcpServerOAuthClientCredentialsInput {
+  mcpServerId: ID!
+  oauthClientId: String
+  oauthClientSecret: String
   requestedScopes: [String!]
 }
 

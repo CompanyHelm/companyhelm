@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 
 export type McpServersTableRecord = {
-  authType: "none" | "custom_headers" | "oauth";
+  authType: "none" | "authorization_header" | "oauth_client_credentials" | "oauth_authorization_code";
   callTimeoutMs: number;
   createdAt: string;
   description: string | null;
@@ -44,21 +44,38 @@ function formatTimestamp(value: string): string {
 }
 
 function formatAuthLabel(record: McpServersTableRecord): string {
-  if (record.authType === "oauth") {
-    return record.oauthConnectionStatus ?? "not_connected";
+  if (record.authType === "oauth_authorization_code") {
+    return record.oauthConnectionStatus === "connected"
+      ? "oauth code connected"
+      : record.oauthConnectionStatus === "degraded"
+        ? "oauth code degraded"
+        : "oauth code";
   }
-  if (record.authType === "custom_headers") {
-    return "custom headers";
+  if (record.authType === "oauth_client_credentials") {
+    return record.oauthConnectionStatus === "connected"
+      ? "client creds connected"
+      : record.oauthConnectionStatus === "degraded"
+        ? "client creds degraded"
+        : "client creds";
+  }
+  if (record.authType === "authorization_header") {
+    return "authorization header";
   }
 
   return "none";
 }
 
 function getAuthBadgeVariant(record: McpServersTableRecord) {
-  if (record.authType === "oauth" && record.oauthConnectionStatus === "connected") {
+  if (
+    (record.authType === "oauth_authorization_code" || record.authType === "oauth_client_credentials")
+    && record.oauthConnectionStatus === "connected"
+  ) {
     return "positive";
   }
-  if (record.authType === "oauth" && record.oauthConnectionStatus === "degraded") {
+  if (
+    (record.authType === "oauth_authorization_code" || record.authType === "oauth_client_credentials")
+    && record.oauthConnectionStatus === "degraded"
+  ) {
     return "warning";
   }
 

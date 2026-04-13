@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<482454ac0acd0f97b53a56f722d7a084>>
+ * @generated SignedSource<<a3472b4b5588b2e93d4ea3dfb0a42ea0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,7 +10,7 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type McpOauthConnectionStatus = "connected" | "degraded" | "not_connected" | "%future added value";
-export type McpServerAuthType = "custom_headers" | "none" | "oauth" | "%future added value";
+export type McpServerAuthType = "authorization_header" | "none" | "oauth_authorization_code" | "oauth_client_credentials" | "%future added value";
 export type DisconnectMcpServerOAuthInput = {
   mcpServerId: string;
 };

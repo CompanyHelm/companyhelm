@@ -1,6 +1,12 @@
-export type McpServerAuthType = "none" | "custom_headers" | "oauth";
+export type McpServerAuthType =
+  | "none"
+  | "authorization_header"
+  | "oauth_client_credentials"
+  | "oauth_authorization_code";
 
 export type McpOauthConnectionStatus = "connected" | "degraded" | "not_connected";
+
+export type McpSupportedOauthAuthType = "oauth_client_credentials" | "oauth_authorization_code";
 
 export type McpProtectedResourceMetadata = {
   authorization_servers?: string[];
@@ -13,6 +19,7 @@ export type McpProtectedResourceMetadata = {
 export type OAuthAuthorizationServerMetadata = {
   authorization_endpoint?: string;
   code_challenge_methods_supported?: string[];
+  grant_types_supported?: string[];
   issuer?: string;
   registration_endpoint?: string;
   scopes_supported?: string[];
@@ -46,7 +53,7 @@ export type StoredMcpOauthToken = {
 
 export type RefreshedMcpOauthTokenSet = {
   accessToken: string;
-  expiresAt: Date;
+  expiresAt: Date | null;
   rawResponse: Record<string, unknown>;
   refreshToken: string | null;
   scope: string[];

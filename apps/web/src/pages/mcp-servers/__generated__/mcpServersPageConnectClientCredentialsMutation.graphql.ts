@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5ca97f599264d06a1beb941d9f33cf2a>>
+ * @generated SignedSource<<eea57b9b06f562ad4813904c81f1cc8e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,9 +11,17 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type McpOauthConnectionStatus = "connected" | "degraded" | "not_connected" | "%future added value";
 export type McpServerAuthType = "authorization_header" | "none" | "oauth_authorization_code" | "oauth_client_credentials" | "%future added value";
-export type mcpServersPageQuery$variables = Record<PropertyKey, never>;
-export type mcpServersPageQuery$data = {
-  readonly McpServers: ReadonlyArray<{
+export type ConnectMcpServerOAuthClientCredentialsInput = {
+  mcpServerId: string;
+  oauthClientId?: string | null | undefined;
+  oauthClientSecret?: string | null | undefined;
+  requestedScopes?: ReadonlyArray<string> | null | undefined;
+};
+export type mcpServersPageConnectClientCredentialsMutation$variables = {
+  input: ConnectMcpServerOAuthClientCredentialsInput;
+};
+export type mcpServersPageConnectClientCredentialsMutation$data = {
+  readonly ConnectMcpServerOAuthClientCredentials: {
     readonly authType: McpServerAuthType;
     readonly callTimeoutMs: number;
     readonly createdAt: string;
@@ -29,22 +37,35 @@ export type mcpServersPageQuery$data = {
     readonly oauthRequestedScopes: ReadonlyArray<string>;
     readonly updatedAt: string;
     readonly url: string;
-  }>;
+  };
 };
-export type mcpServersPageQuery = {
-  response: mcpServersPageQuery$data;
-  variables: mcpServersPageQuery$variables;
+export type mcpServersPageConnectClientCredentialsMutation = {
+  response: mcpServersPageConnectClientCredentialsMutation$data;
+  variables: mcpServersPageConnectClientCredentialsMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = [
   {
+    "defaultValue": null,
+    "kind": "LocalArgument",
+    "name": "input"
+  }
+],
+v1 = [
+  {
     "alias": null,
-    "args": null,
+    "args": [
+      {
+        "kind": "Variable",
+        "name": "input",
+        "variableName": "input"
+      }
+    ],
     "concreteType": "McpServer",
     "kind": "LinkedField",
-    "name": "McpServers",
-    "plural": true,
+    "name": "ConnectMcpServerOAuthClientCredentials",
+    "plural": false,
     "selections": [
       {
         "alias": null,
@@ -157,32 +178,32 @@ var v0 = [
 ];
 return {
   "fragment": {
-    "argumentDefinitions": [],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "mcpServersPageQuery",
-    "selections": (v0/*: any*/),
-    "type": "Query",
+    "name": "mcpServersPageConnectClientCredentialsMutation",
+    "selections": (v1/*: any*/),
+    "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
-    "argumentDefinitions": [],
+    "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "mcpServersPageQuery",
-    "selections": (v0/*: any*/)
+    "name": "mcpServersPageConnectClientCredentialsMutation",
+    "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "788f06fa711d400e03196ed356a37ac4",
+    "cacheID": "8301c9a9a332ae2cdc6efbdc2b70c9a9",
     "id": null,
     "metadata": {},
-    "name": "mcpServersPageQuery",
-    "operationKind": "query",
-    "text": "query mcpServersPageQuery {\n  McpServers {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    createdAt\n    updatedAt\n  }\n}\n"
+    "name": "mcpServersPageConnectClientCredentialsMutation",
+    "operationKind": "mutation",
+    "text": "mutation mcpServersPageConnectClientCredentialsMutation(\n  $input: ConnectMcpServerOAuthClientCredentialsInput!\n) {\n  ConnectMcpServerOAuthClientCredentials(input: $input) {\n    id\n    name\n    description\n    url\n    authType\n    headersText\n    callTimeoutMs\n    enabled\n    oauthClientId\n    oauthConnectionStatus\n    oauthGrantedScopes\n    oauthLastError\n    oauthRequestedScopes\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2a89cbffd4da774afdf5d05edd3b8091";
+(node as any).hash = "71987f7aa1c25fb97578f9227edad20a";
 
 export default node;

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { ConnectMcpServerOauthClientCredentialsMutation } from "../src/graphql/mutations/connect_mcp_server_oauth_client_credentials.ts";
 import { CompleteMcpServerOauthMutation } from "../src/graphql/mutations/complete_mcp_server_oauth.ts";
 import { DisconnectMcpServerOauthMutation } from "../src/graphql/mutations/disconnect_mcp_server_oauth.ts";
 import { StartMcpServerOauthMutation } from "../src/graphql/mutations/start_mcp_server_oauth.ts";
@@ -25,7 +26,7 @@ test("StartMcpServerOauthMutation returns an authorization URL and stores a pend
     } as never,
     {
       getMcpServer: vi.fn().mockResolvedValue({
-        authType: "oauth",
+        authType: "oauth_authorization_code",
         callTimeoutMs: 10_000,
         companyId: "company-123",
         createdAt: new Date(),
@@ -197,7 +198,7 @@ test("CompleteMcpServerOauthMutation uses the signed callback state to target th
     } as never,
     {
       getMcpServer: vi.fn().mockResolvedValue({
-        authType: "oauth",
+        authType: "oauth_authorization_code",
         callTimeoutMs: 10_000,
         companyId: "company-target",
         createdAt: new Date("2026-04-11T18:00:00.000Z"),
@@ -246,7 +247,7 @@ test("DisconnectMcpServerOauthMutation deletes the connection and any pending se
   const deletedWhereConditions: unknown[] = [];
   const mutation = new DisconnectMcpServerOauthMutation({
     getMcpServer: vi.fn().mockResolvedValue({
-      authType: "oauth",
+      authType: "oauth_authorization_code",
       callTimeoutMs: 10_000,
       companyId: "company-123",
       createdAt: new Date(),
@@ -301,4 +302,86 @@ test("DisconnectMcpServerOauthMutation deletes the connection and any pending se
 
   assert.equal(payload.id, "mcp-server-123");
   assert.equal(deletedWhereConditions.length, 2);
+});
+
+test("ConnectMcpServerOauthClientCredentialsMutation stores a connected client-credentials server", async () => {
+  const connect = vi.fn().mockResolvedValue(undefined);
+  const getMcpServer = vi
+    .fn()
+    .mockResolvedValueOnce({
+      authType: "oauth_client_credentials",
+      callTimeoutMs: 10_000,
+      companyId: "company-123",
+      createdAt: new Date("2026-04-12T18:00:00.000Z"),
+      description: null,
+      enabled: true,
+      headers: {},
+      id: "mcp-server-123",
+      name: "Supabase MCP",
+      oauthClientId: null,
+      oauthConnectionStatus: "not_connected",
+      oauthGrantedScopes: [],
+      oauthLastError: null,
+      oauthRequestedScopes: [],
+      updatedAt: new Date("2026-04-12T18:00:00.000Z"),
+      url: "https://mcp.supabase.com/mcp",
+    })
+    .mockResolvedValueOnce({
+      authType: "oauth_client_credentials",
+      callTimeoutMs: 10_000,
+      companyId: "company-123",
+      createdAt: new Date("2026-04-12T18:00:00.000Z"),
+      description: null,
+      enabled: true,
+      headers: {},
+      id: "mcp-server-123",
+      name: "Supabase MCP",
+      oauthClientId: "client-123",
+      oauthConnectionStatus: "connected",
+      oauthGrantedScopes: ["projects:read"],
+      oauthLastError: null,
+      oauthRequestedScopes: ["projects:read"],
+      updatedAt: new Date("2026-04-12T18:01:00.000Z"),
+      url: "https://mcp.supabase.com/mcp",
+    });
+  const mutation = new ConnectMcpServerOauthClientCredentialsMutation(
+    {
+      getMcpServer,
+    } as never,
+    {
+      connect,
+    } as never,
+  );
+
+  const payload = await mutation.execute(
+    {},
+    {
+      input: {
+        mcpServerId: "mcp-server-123",
+        oauthClientId: "client-123",
+        oauthClientSecret: "secret-123",
+        requestedScopes: ["projects:read"],
+      },
+    },
+    {
+      authSession: {
+        company: {
+          id: "company-123",
+          name: "Acme",
+        },
+        user: {
+          id: "user-123",
+        },
+      },
+      app_runtime_transaction_provider: {
+        async transaction<T>(callback: (tx: unknown) => Promise<T>) {
+          return callback({});
+        },
+      },
+    } as never,
+  );
+
+  assert.equal(connect.mock.calls.length, 1);
+  assert.equal(payload.id, "mcp-server-123");
+  assert.equal(payload.oauthConnectionStatus, "connected");
 });

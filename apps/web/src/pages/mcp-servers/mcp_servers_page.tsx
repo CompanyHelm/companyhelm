@@ -8,6 +8,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import { McpServerDialog, type EditableMcpServerRecord } from "./mcp_server_dialog";
 import { McpServersTable, type McpServersTableRecord } from "./mcp_servers_table";
+import type { mcpServersPageConnectClientCredentialsMutation } from "./__generated__/mcpServersPageConnectClientCredentialsMutation.graphql";
 import type {
   CreateMcpServerInput,
   mcpServersPageCreateMutation,
@@ -103,6 +104,30 @@ const mcpServersPageStartOauthMutationNode = graphql`
   }
 `;
 
+const mcpServersPageConnectClientCredentialsMutationNode = graphql`
+  mutation mcpServersPageConnectClientCredentialsMutation(
+    $input: ConnectMcpServerOAuthClientCredentialsInput!
+  ) {
+    ConnectMcpServerOAuthClientCredentials(input: $input) {
+      id
+      name
+      description
+      url
+      authType
+      headersText
+      callTimeoutMs
+      enabled
+      oauthClientId
+      oauthConnectionStatus
+      oauthGrantedScopes
+      oauthLastError
+      oauthRequestedScopes
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 const mcpServersPageDisconnectOauthMutationNode = graphql`
   mutation mcpServersPageDisconnectOauthMutation($input: DisconnectMcpServerOAuthInput!) {
     DisconnectMcpServerOAuth(input: $input) {
@@ -140,7 +165,11 @@ function filterStoreMcpServerRecords(records: ReadonlyArray<unknown>): StoreMcpS
 
 function upsertMcpServerInStore(
   store: RecordSourceSelectorProxy,
-  rootFieldName: "CreateMcpServer" | "DisconnectMcpServerOAuth" | "UpdateMcpServer",
+  rootFieldName:
+    | "ConnectMcpServerOAuthClientCredentials"
+    | "CreateMcpServer"
+    | "DisconnectMcpServerOAuth"
+    | "UpdateMcpServer",
 ) {
   const nextServer = store.getRootField(rootFieldName);
   if (!nextServer) {
@@ -182,7 +211,12 @@ function getRelayErrorMessage(errors: ReadonlyArray<{ message?: string | null }>
 }
 
 function normalizeAuthType(value: string): EditableMcpServerRecord["authType"] {
-  if (value === "oauth" || value === "custom_headers" || value === "none") {
+  if (
+    value === "none"
+    || value === "authorization_header"
+    || value === "oauth_client_credentials"
+    || value === "oauth_authorization_code"
+  ) {
     return value;
   }
 
@@ -204,7 +238,7 @@ function McpServersPageFallback() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm supports no-auth, custom-header, and OAuth-backed server definitions, but does not activate agent tooling yet.
+              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm supports no auth, manual Authorization headers, OAuth client credentials, and OAuth authorization code flows.
             </CardDescription>
           </div>
           <CardAction>
@@ -276,6 +310,8 @@ function McpServersPageContent() {
   const [commitStartOauth, isStartOauthInFlight] = useMutation<mcpServersPageStartOauthMutation>(
     mcpServersPageStartOauthMutationNode,
   );
+  const [commitConnectClientCredentials, isConnectClientCredentialsInFlight] =
+    useMutation<mcpServersPageConnectClientCredentialsMutation>(mcpServersPageConnectClientCredentialsMutationNode);
   const [commitDisconnectOauth, isDisconnectOauthInFlight] =
     useMutation<mcpServersPageDisconnectOauthMutation>(mcpServersPageDisconnectOauthMutationNode);
   const mcpServers: McpServersTableRecord[] = data.McpServers.map((server) => ({
@@ -317,7 +353,7 @@ function McpServersPageContent() {
         <CardHeader>
           <div className="min-w-0">
             <CardDescription>
-              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm supports no-auth, custom-header, and OAuth-backed server definitions, but does not activate agent tooling yet.
+              Manage shared remote HTTP MCP servers that agents can attach as defaults. CompanyHelm supports no auth, manual Authorization headers, OAuth client credentials, and OAuth authorization code flows.
             </CardDescription>
           </div>
           <CardAction>
@@ -356,10 +392,42 @@ function McpServersPageContent() {
       <McpServerDialog
         deletingServerId={deletingServerId}
         errorMessage={isDialogOpen ? errorMessage : null}
+        isClientCredentialsConnecting={isConnectClientCredentialsInFlight}
         isOauthDisconnecting={isDisconnectOauthInFlight}
         isOauthStarting={isStartOauthInFlight}
         isOpen={isDialogOpen}
         isSaving={isSaving}
+        onConnectClientCredentials={async (input) => {
+          setErrorMessage(null);
+
+          await new Promise<void>((resolve, reject) => {
+            commitConnectClientCredentials({
+              variables: {
+                input: {
+                  mcpServerId: input.mcpServerId,
+                  oauthClientId: input.oauthClientId ?? null,
+                  oauthClientSecret: input.oauthClientSecret ?? null,
+                  requestedScopes: input.requestedScopes,
+                },
+              },
+              updater: (store) => {
+                upsertMcpServerInStore(store, "ConnectMcpServerOAuthClientCredentials");
+              },
+              onCompleted: (_response, errors) => {
+                const nextErrorMessage = getRelayErrorMessage(errors);
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                resolve();
+              },
+              onError: reject,
+            });
+          }).catch((error: unknown) => {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to connect OAuth client credentials.");
+          });
+        }}
         onDelete={async (serverId) => {
           if (isDeleteServerInFlight) {
             return;

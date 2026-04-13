@@ -3,10 +3,9 @@ import { inject, injectable } from "inversify";
 import { mcpOauthConnections, mcpOauthSessions } from "../../../db/schema.ts";
 import { SecretEncryptionService } from "../../secrets/encryption.ts";
 import { McpOauthStateService } from "./state_service.ts";
+import { McpOauthTokenService } from "./token_service.ts";
 import {
   normalizeNonEmptyString,
-  normalizePositiveNumber,
-  normalizeScopeList,
   serializeStoredMcpOauthToken,
 } from "./types.ts";
 
@@ -70,34 +69,20 @@ type SessionRecord = {
   tokenEndpointAuthMethod: string;
 };
 
-async function readJsonResponse(
-  response: Response,
-  errorPrefix: string,
-): Promise<Record<string, unknown>> {
-  const rawBody = await response.text();
-  if (!response.ok) {
-    const normalizedBody = normalizeNonEmptyString(rawBody);
-    throw new Error(normalizedBody ? `${errorPrefix}: ${normalizedBody}` : errorPrefix);
-  }
-
-  try {
-    return JSON.parse(rawBody) as Record<string, unknown>;
-  } catch {
-    throw new Error(`${errorPrefix}: response body must be valid JSON.`);
-  }
-}
-
 @injectable()
 export class McpOauthCompleteConnectionService {
   private readonly encryptionService: SecretEncryptionService;
   private readonly stateService: McpOauthStateService;
+  private readonly tokenService: McpOauthTokenService;
 
   constructor(
     @inject(SecretEncryptionService) encryptionService: SecretEncryptionService,
     @inject(McpOauthStateService) stateService: McpOauthStateService,
+    @inject(McpOauthTokenService) tokenService: McpOauthTokenService,
   ) {
     this.encryptionService = encryptionService;
     this.stateService = stateService;
+    this.tokenService = tokenService;
   }
 
   async completeConnection(params: {
@@ -178,44 +163,25 @@ export class McpOauthCompleteConnectionService {
       )
       : null;
 
-    const body = new URLSearchParams({
-      client_id: session.oauthClientId,
+    const tokenSet = await this.tokenService.exchangeAuthorizationCode({
+      clientId: session.oauthClientId,
+      clientSecret,
       code: normalizedCode,
-      code_verifier: session.codeVerifier,
-      grant_type: "authorization_code",
-      redirect_uri: session.redirectUri,
+      codeVerifier: session.codeVerifier,
+      fetchImpl: params.fetchImpl,
+      now,
+      redirectUri: session.redirectUri,
       resource: session.resourceIndicator,
+      tokenEndpoint,
+      tokenEndpointAuthMethod: session.tokenEndpointAuthMethod,
     });
-    if (clientSecret) {
-      body.set("client_secret", clientSecret);
-    }
-
-    const fetchImpl = params.fetchImpl ?? fetch;
-    const tokenPayload = await readJsonResponse(
-      await fetchImpl(tokenEndpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded",
-        },
-        body,
-      }),
-      "Failed to exchange OAuth authorization code",
-    );
-    const accessToken = normalizeNonEmptyString(tokenPayload.access_token);
-    if (!accessToken) {
-      throw new Error("OAuth token response is missing access_token.");
-    }
-
-    const expiresInSeconds = normalizePositiveNumber(tokenPayload.expires_in);
-    const expiresAt = expiresInSeconds ? new Date(now.getTime() + (expiresInSeconds * 1000)) : null;
-    const grantedScopes = normalizeScopeList(tokenPayload.scope);
     const encryptedToken = this.encryptionService.encrypt(serializeStoredMcpOauthToken({
-      accessToken,
-      expiresAt,
-      rawResponse: tokenPayload,
-      refreshToken: normalizeNonEmptyString(tokenPayload.refresh_token),
-      scope: grantedScopes.length > 0 ? grantedScopes : session.requestedScopes,
-      tokenType: normalizeNonEmptyString(tokenPayload.token_type) ?? "Bearer",
+      accessToken: tokenSet.accessToken,
+      expiresAt: tokenSet.expiresAt,
+      rawResponse: tokenSet.rawResponse,
+      refreshToken: tokenSet.refreshToken,
+      scope: tokenSet.scope.length > 0 ? tokenSet.scope : session.requestedScopes,
+      tokenType: tokenSet.tokenType,
     }));
 
     await params.database.delete(mcpOauthConnections).where(and(
@@ -236,7 +202,7 @@ export class McpOauthCompleteConnectionService {
         companyId: session.companyId,
         createdAt: now,
         createdByUserId: session.createdByUserId ?? authenticatedUserId,
-        grantedScopes: grantedScopes.length > 0 ? grantedScopes : session.requestedScopes,
+        grantedScopes: tokenSet.scope.length > 0 ? tokenSet.scope : session.requestedScopes,
         lastError: null,
         mcpServerId: session.mcpServerId,
         oauthClientId: session.oauthClientId,

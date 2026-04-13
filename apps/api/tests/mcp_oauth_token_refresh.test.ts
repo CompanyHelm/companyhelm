@@ -125,7 +125,7 @@ test("McpService lazily refreshes expired OAuth tokens when MCP authorization is
       updatedAt: new Date(),
     }],
     serverRows: [{
-      authType: "oauth",
+      authType: "oauth_authorization_code",
       callTimeoutMs: 10_000,
       companyId: "company-123",
       createdAt: new Date(),
@@ -204,7 +204,7 @@ test("McpService marks the OAuth connection degraded when lazy refresh fails", a
       updatedAt: new Date(),
     }],
     serverRows: [{
-      authType: "oauth",
+      authType: "oauth_authorization_code",
       callTimeoutMs: 10_000,
       companyId: "company-123",
       createdAt: new Date(),
@@ -231,4 +231,88 @@ test("McpService marks the OAuth connection degraded when lazy refresh fails", a
   assert.equal(harness.updateCalls.length, 1);
   assert.equal(harness.updateCalls[0]?.status, "degraded");
   assert.equal(harness.updateCalls[0]?.lastError, "invalid_grant");
+});
+
+test("McpService reacquires expired client-credentials tokens when no refresh token is available", async () => {
+  const service = new McpService(
+    {
+      decrypt(value: string) {
+        return value;
+      },
+      encrypt(value: string) {
+        return {
+          encryptedValue: value,
+          encryptionKeyId: "enc-key",
+        };
+      },
+    } as never,
+    {
+      async requestClientCredentialsToken() {
+        return {
+          accessToken: "fresh-client-credentials-token",
+          expiresAt: new Date("2026-04-11T20:00:00.000Z"),
+          rawResponse: {
+            access_token: "fresh-client-credentials-token",
+          },
+          refreshToken: null,
+          scope: ["projects:read"],
+          tokenType: "Bearer",
+        };
+      },
+    } as never,
+  );
+  const harness = createTransactionHarness({
+    connectionRows: [{
+      accessTokenExpiresAt: new Date("2026-04-11T18:00:00.000Z"),
+      authorizationServerMetadata: {
+        token_endpoint: "https://auth.example.com/token",
+      },
+      lastError: null,
+      mcpServerId: "mcp-server-123",
+      oauthClientId: "client-123",
+      oauthClientSecretEncryptedValue: "secret-123",
+      oauthClientSecretEncryptionKeyId: "enc-key",
+      requestedScopes: ["projects:read"],
+      resourceIndicator: "https://mcp.example.com/",
+      resourceMetadataUrl: "https://mcp.example.com/resource-metadata",
+      status: "connected",
+      tokenEncryptedValue: JSON.stringify({
+        accessToken: "old-access-token",
+        expiresAt: "2026-04-11T18:00:00.000Z",
+        rawResponse: {},
+        refreshToken: null,
+        scope: ["projects:read"],
+        tokenType: "Bearer",
+      }),
+      tokenEncryptionKeyId: "enc-key",
+      tokenEndpointAuthMethod: "client_secret_post",
+      updatedAt: new Date(),
+    }],
+    serverRows: [{
+      authType: "oauth_client_credentials",
+      callTimeoutMs: 10_000,
+      companyId: "company-123",
+      createdAt: new Date(),
+      description: null,
+      enabled: true,
+      headers: {},
+      id: "mcp-server-123",
+      name: "Supabase MCP",
+      updatedAt: new Date(),
+      url: "https://mcp.example.com/",
+    }],
+  });
+
+  const headers = await service.resolveMcpServerRequestHeaders(harness.transactionProvider as never, {
+    companyId: "company-123",
+    mcpServerId: "mcp-server-123",
+    now: new Date("2026-04-11T18:30:00.000Z"),
+    refreshWindowMs: 60_000,
+  });
+
+  assert.deepEqual(headers, {
+    Authorization: "Bearer fresh-client-credentials-token",
+  });
+  assert.equal(harness.updateCalls.length, 1);
+  assert.equal(harness.updateCalls[0]?.status, "connected");
 });

@@ -120,8 +120,8 @@ export class StartMcpServerOauthMutation extends Mutation<
         context.authSession.company.id,
         arguments_.input.mcpServerId,
       );
-      if (server.authType !== "oauth") {
-        throw new Error("MCP server must be configured for OAuth before connecting.");
+      if (server.authType !== "oauth_authorization_code") {
+        throw new Error("MCP server must be configured for OAuth authorization code before connecting.");
       }
 
       const organizationSlug = normalizeNonEmptyString(arguments_.input.organizationSlug);

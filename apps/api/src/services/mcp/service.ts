@@ -4,6 +4,7 @@ import {
   agents,
   agentDefaultMcpServers,
   mcpOauthConnections,
+  mcpOauthSessions,
   mcpServers,
 } from "../../db/schema.ts";
 import type {
@@ -11,7 +12,7 @@ import type {
   TransactionProviderInterface,
 } from "../../db/transaction_provider_interface.ts";
 import { SecretEncryptionService } from "../secrets/encryption.ts";
-import { McpOauthTokenRefreshService } from "./oauth/token_refresh.ts";
+import { McpOauthTokenService } from "./oauth/token_service.ts";
 import {
   normalizeNonEmptyString,
   parseStoredMcpOauthToken,
@@ -82,14 +83,14 @@ type McpOauthConnectionRecord = {
 export class McpService {
   private static readonly DEFAULT_REFRESH_WINDOW_MS = 120_000;
   private readonly encryptionService: SecretEncryptionService;
-  private readonly tokenRefreshService: McpOauthTokenRefreshService;
+  private readonly tokenService: McpOauthTokenService;
 
   constructor(
     @inject(SecretEncryptionService) encryptionService?: SecretEncryptionService,
-    @inject(McpOauthTokenRefreshService) tokenRefreshService?: McpOauthTokenRefreshService,
+    @inject(McpOauthTokenService) tokenService?: McpOauthTokenService,
   ) {
     this.encryptionService = encryptionService ?? ({} as SecretEncryptionService);
-    this.tokenRefreshService = tokenRefreshService ?? new McpOauthTokenRefreshService();
+    this.tokenService = tokenService ?? new McpOauthTokenService();
   }
 
   async createMcpServer(
@@ -165,12 +166,13 @@ export class McpService {
   ): Promise<McpServerRecord> {
     return transactionProvider.transaction(async (tx) => {
       const existingServer = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
+      const nextAuthType = input.authType === undefined
+        ? existingServer.authType
+        : this.resolveAuthType(input.authType);
       const [updatedServer] = await tx
         .update(mcpServers)
         .set({
-          authType: input.authType === undefined
-            ? existingServer.authType
-            : this.resolveAuthType(input.authType),
+          authType: nextAuthType,
           callTimeoutMs: input.callTimeoutMs === undefined
             ? existingServer.callTimeoutMs
             : this.resolveCallTimeoutMs(input.callTimeoutMs),
@@ -198,6 +200,10 @@ export class McpService {
 
       if (!updatedServer) {
         throw new Error("Failed to update MCP server.");
+      }
+
+      if (nextAuthType !== existingServer.authType) {
+        await this.resetOauthState(tx, input.companyId, input.mcpServerId);
       }
 
       return this.hydrateServerRecords(tx, [updatedServer]).then(([server]) => {
@@ -231,7 +237,7 @@ export class McpService {
       return {
         ...this.presentBaseServer(deletedServer),
         oauthClientId: null,
-        oauthConnectionStatus: deletedServer.authType === "oauth" ? "not_connected" : null,
+        oauthConnectionStatus: this.isOauthAuthType(deletedServer.authType) ? "not_connected" : null,
         oauthGrantedScopes: [],
         oauthLastError: null,
         oauthRequestedScopes: [],
@@ -365,7 +371,7 @@ export class McpService {
   ): Promise<Record<string, string>> {
     return transactionProvider.transaction(async (tx) => {
       const server = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
-      if (server.authType !== "oauth") {
+      if (!this.isOauthAuthType(server.authType)) {
         return { ...server.headers };
       }
 
@@ -385,31 +391,45 @@ export class McpService {
 
       const refreshToken = normalizeNonEmptyString(storedToken.refreshToken);
       const tokenEndpoint = normalizeNonEmptyString(connection.authorizationServerMetadata.token_endpoint);
-      if (!refreshToken || !tokenEndpoint) {
+      if (!tokenEndpoint) {
         await this.markOauthConnectionDegraded(tx, {
           companyId: input.companyId,
-          errorMessage: !refreshToken
-            ? "MCP OAuth connection is missing a refresh token."
-            : "MCP OAuth connection is missing a token endpoint.",
+          errorMessage: "MCP OAuth connection is missing a token endpoint.",
           mcpServerId: input.mcpServerId,
         });
         throw new Error("MCP OAuth connection must be reconnected.");
       }
 
       try {
-        const refreshedToken = await this.tokenRefreshService.refreshTokens({
-          clientId: connection.oauthClientId,
-          clientSecret: connection.oauthClientSecretEncryptedValue
-            ? this.encryptionService.decrypt(
-              connection.oauthClientSecretEncryptedValue,
-              connection.oauthClientSecretEncryptionKeyId ?? "",
-            )
-            : null,
-          now,
-          refreshToken,
-          resource: connection.resourceIndicator,
-          tokenEndpoint,
-        });
+        const clientSecret = connection.oauthClientSecretEncryptedValue
+          ? this.encryptionService.decrypt(
+            connection.oauthClientSecretEncryptedValue,
+            connection.oauthClientSecretEncryptionKeyId ?? "",
+          )
+          : null;
+        const refreshedToken = refreshToken
+          ? await this.tokenService.refreshTokens({
+            clientId: connection.oauthClientId,
+            clientSecret,
+            now,
+            refreshToken,
+            resource: connection.resourceIndicator,
+            tokenEndpoint,
+            tokenEndpointAuthMethod: connection.tokenEndpointAuthMethod,
+          })
+          : server.authType === "oauth_client_credentials"
+            ? await this.tokenService.requestClientCredentialsToken({
+              clientId: connection.oauthClientId,
+              clientSecret,
+              now,
+              requestedScopes: connection.requestedScopes,
+              resource: connection.resourceIndicator,
+              tokenEndpoint,
+              tokenEndpointAuthMethod: connection.tokenEndpointAuthMethod,
+            })
+            : (() => {
+              throw new Error("MCP OAuth connection must be reconnected.");
+            })();
         const encryptedToken = this.encryptionService.encrypt(serializeStoredMcpOauthToken({
           accessToken: refreshedToken.accessToken,
           expiresAt: refreshedToken.expiresAt,
@@ -470,17 +490,17 @@ export class McpService {
       oauthConnections.map((connection) => [connection.mcpServerId, connection]),
     );
 
-    return records.map((record) => {
-      const connection = connectionMap.get(record.id);
-      return {
-        ...this.presentBaseServer(record),
-        oauthClientId: connection?.oauthClientId ?? null,
-        oauthConnectionStatus: record.authType === "oauth"
-          ? this.resolveOauthConnectionStatus(connection)
-          : null,
-        oauthGrantedScopes: connection
-          ? this.readGrantedScopes(connection)
-          : [],
+      return records.map((record) => {
+        const connection = connectionMap.get(record.id);
+        return {
+          ...this.presentBaseServer(record),
+          oauthClientId: connection?.oauthClientId ?? null,
+          oauthConnectionStatus: this.isOauthAuthType(record.authType)
+            ? this.resolveOauthConnectionStatus(connection)
+            : null,
+          oauthGrantedScopes: connection
+            ? this.readGrantedScopes(connection)
+            : [],
         oauthLastError: connection?.lastError ?? null,
         oauthRequestedScopes: connection?.requestedScopes ?? [],
       };
@@ -601,6 +621,25 @@ export class McpService {
       .returning();
   }
 
+  private async resetOauthState(
+    updatableDatabase: UpdatableDatabase & {
+      delete(table: unknown): {
+        where(condition: unknown): Promise<unknown>;
+      };
+    },
+    companyId: string,
+    mcpServerId: string,
+  ): Promise<void> {
+    await updatableDatabase.delete(mcpOauthConnections).where(and(
+      eq(mcpOauthConnections.companyId, companyId),
+      eq(mcpOauthConnections.mcpServerId, mcpServerId),
+    ));
+    await updatableDatabase.delete(mcpOauthSessions).where(and(
+      eq(mcpOauthSessions.companyId, companyId),
+      eq(mcpOauthSessions.mcpServerId, mcpServerId),
+    ));
+  }
+
   private mcpServerSelection() {
     return {
       authType: mcpServers.authType,
@@ -716,7 +755,12 @@ export class McpService {
 
   private resolveAuthType(value: string | null | undefined): McpServerAuthType {
     const normalizedValue = normalizeNonEmptyString(value) ?? "none";
-    if (normalizedValue === "none" || normalizedValue === "custom_headers" || normalizedValue === "oauth") {
+    if (
+      normalizedValue === "none"
+      || normalizedValue === "authorization_header"
+      || normalizedValue === "oauth_client_credentials"
+      || normalizedValue === "oauth_authorization_code"
+    ) {
       return normalizedValue;
     }
 
@@ -751,5 +795,9 @@ export class McpService {
     }
 
     return headers;
+  }
+
+  private isOauthAuthType(value: string): boolean {
+    return value === "oauth_authorization_code" || value === "oauth_client_credentials";
   }
 }
