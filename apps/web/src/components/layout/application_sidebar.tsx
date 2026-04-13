@@ -140,13 +140,11 @@ export function ApplicationSidebar() {
       label: "Agent Conversations",
       to: "/conversations",
     },
-    ...(featureFlags.isEnabled("tasks_management")
-      ? [{
-        icon: WorkflowIcon,
-        label: "Tasks",
-        to: "/tasks",
-      }]
-      : []),
+    {
+      icon: WorkflowIcon,
+      label: "Tasks",
+      to: "/tasks",
+    },
   ];
 
   const resourceNavigationItems: NavigationItem[] = [
@@ -300,21 +298,19 @@ export function ApplicationSidebar() {
             </span>
           </Button>
 
-          {featureFlags.isEnabled("tasks_management") ? (
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isNavigationItemActive(pathname, "/settings")}
-                  onClick={handleNavigationClick}
-                  render={<Link params={{ organizationSlug }} to={OrganizationPath.route("/settings")} />}
-                  tooltip="Settings"
-                >
-                  <Settings2Icon />
-                  <span>Settings</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          ) : null}
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isNavigationItemActive(pathname, "/settings")}
+                onClick={handleNavigationClick}
+                render={<Link params={{ organizationSlug }} to={OrganizationPath.route("/settings")} />}
+                tooltip="Settings"
+              >
+                <Settings2Icon />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
 
           <div className="flex h-8 items-center gap-3 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <UserButton />

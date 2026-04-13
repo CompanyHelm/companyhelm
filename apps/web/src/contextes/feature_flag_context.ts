@@ -9,7 +9,6 @@ import {
 
 export interface FeatureFlags {
   computer_providers: boolean;
-  tasks_management: boolean;
 }
 
 type FeatureFlagName = keyof FeatureFlags;
@@ -24,7 +23,6 @@ const FEATURE_FLAGS_STORAGE_KEY = "companyhelm-feature-flags";
 
 const defaultFeatureFlags: FeatureFlags = {
   computer_providers: false,
-  tasks_management: false,
 };
 
 const FeatureFlagContext = createContext<FeatureFlagContextValue | null>(null);
@@ -40,9 +38,6 @@ function parseFeatureFlags(source: unknown): FeatureFlags {
     computer_providers: typeof storedFlags.computer_providers === "boolean"
       ? storedFlags.computer_providers
       : defaultFeatureFlags.computer_providers,
-    tasks_management: typeof storedFlags.tasks_management === "boolean"
-      ? storedFlags.tasks_management
-      : defaultFeatureFlags.tasks_management,
   };
 }
 
