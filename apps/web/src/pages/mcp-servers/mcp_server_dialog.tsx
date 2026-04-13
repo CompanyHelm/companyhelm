@@ -83,6 +83,18 @@ interface McpServerDialogProps {
         url: string;
       }
   ): Promise<void>;
+  onSaveAndStartOauth(input: {
+    authType: "oauth_authorization_code";
+    callTimeoutMs: number;
+    description?: string;
+    enabled: boolean;
+    headersText?: string;
+    name: string;
+    oauthClientId?: string;
+    oauthClientSecret?: string;
+    requestedScopes: string[];
+    url: string;
+  }): Promise<void>;
   onStartOauth(input: {
     mcpServerId: string;
     oauthClientId?: string;
@@ -367,6 +379,8 @@ export function McpServerDialog(props: McpServerDialogProps) {
   const isAuthTypeLocked = hasAutoDetectedAuthType && !isAuthTypeOverrideEnabled;
   const shouldShowAuthorizationCodeManualClientFields = authType === "oauth_authorization_code"
     && authDetection?.requiresManualClient === true;
+  const shouldSaveAndStartOauth = !isEditing && authType === "oauth_authorization_code";
+  const isPrimaryActionPending = props.isSaving || (shouldSaveAndStartOauth && props.isOauthStarting);
   const headerLabel = authType === "none" ? "Headers (optional)" : "Additional headers (optional)";
   const headerDescription = authType === "oauth_authorization_code" || authType === "oauth_client_credentials"
     ? "These headers are sent alongside the OAuth bearer token on every MCP request."
@@ -664,7 +678,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
                     ? hasUnsavedServerChanges
                       ? "Save your MCP server changes before starting or disconnecting OAuth."
                       : "Save the MCP server with OAuth authorization code enabled before starting the browser flow."
-                    : "Create the MCP server first, then reopen it here to start OAuth."}
+                    : "Use Save & connect OAuth to create the server and start the browser flow."}
                 </p>
               )}
             </div>
@@ -972,7 +986,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
               Cancel
             </Button>
             <Button
-              disabled={isSaveDisabled || props.isSaving}
+              disabled={isSaveDisabled || isPrimaryActionPending}
               onClick={async () => {
                 const payload = {
                   authType,
@@ -983,6 +997,17 @@ export function McpServerDialog(props: McpServerDialogProps) {
                   name: name.trim(),
                   url: url.trim(),
                 };
+                if (shouldSaveAndStartOauth) {
+                  await props.onSaveAndStartOauth({
+                    ...payload,
+                    authType: "oauth_authorization_code",
+                    oauthClientId: oauthClientId.trim() || undefined,
+                    oauthClientSecret: oauthClientSecret.trim() || undefined,
+                    requestedScopes,
+                  });
+                  return;
+                }
+
                 await props.onSave(isEditing && props.server
                   ? {
                       ...payload,
@@ -992,7 +1017,15 @@ export function McpServerDialog(props: McpServerDialogProps) {
               }}
               type="button"
             >
-              {props.isSaving ? "Saving…" : isEditing ? "Save changes" : "Create MCP server"}
+              {props.isSaving
+                ? "Saving…"
+                : shouldSaveAndStartOauth && props.isOauthStarting
+                  ? "Redirecting…"
+                  : isEditing
+                    ? "Save changes"
+                    : shouldSaveAndStartOauth
+                      ? "Save & connect OAuth"
+                      : "Create MCP server"}
             </Button>
           </div>
         </DialogFooter>

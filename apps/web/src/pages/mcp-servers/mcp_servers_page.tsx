@@ -347,6 +347,81 @@ function McpServersPageContent() {
     : null;
   const isSaving = isCreateServerInFlight || isUpdateServerInFlight;
 
+  const startOauthForServer = async (input: {
+    mcpServerId: string;
+    oauthClientId?: string;
+    oauthClientSecret?: string;
+    requestedScopes: string[];
+  }) => {
+    if (!organizationSlug) {
+      throw new Error("Organization slug is missing from the current route.");
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      commitStartOauth({
+        variables: {
+          input: {
+            mcpServerId: input.mcpServerId,
+            oauthClientId: input.oauthClientId ?? null,
+            oauthClientSecret: input.oauthClientSecret ?? null,
+            organizationSlug,
+            requestedScopes: input.requestedScopes,
+          },
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = getRelayErrorMessage(errors);
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const authorizationUrl = String(
+            response.StartMcpServerOAuth?.authorizationUrl || "",
+          ).trim();
+          if (!authorizationUrl) {
+            reject(new Error("OAuth authorization URL is missing."));
+            return;
+          }
+
+          if (typeof window !== "undefined") {
+            window.location.assign(authorizationUrl);
+          }
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  };
+
+  const createServer = async (input: CreateMcpServerInput) => {
+    return await new Promise<string>((resolve, reject) => {
+      commitCreateServer({
+        variables: {
+          input,
+        },
+        updater: (store) => {
+          upsertMcpServerInStore(store, "CreateMcpServer");
+        },
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = getRelayErrorMessage(errors);
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          const createdServerId = String(response.CreateMcpServer?.id || "").trim();
+          if (!createdServerId) {
+            reject(new Error("Created MCP server id is missing."));
+            return;
+          }
+
+          resolve(createdServerId);
+        },
+        onError: reject,
+      });
+    });
+  };
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card className="rounded-2xl border border-border/60 shadow-sm">
@@ -528,72 +603,41 @@ function McpServersPageContent() {
               return;
             }
 
-            const createInput: CreateMcpServerInput = input;
-            commitCreateServer({
-              variables: {
-                input: createInput,
-              },
-              updater: (store) => {
-                upsertMcpServerInStore(store, "CreateMcpServer");
-              },
-              onCompleted: (_response, errors) => {
-                const nextErrorMessage = getRelayErrorMessage(errors);
-                if (nextErrorMessage) {
-                  reject(new Error(nextErrorMessage));
-                  return;
-                }
-
+            createServer(input)
+              .then(() => {
                 setDialogOpen(false);
                 setSelectedServerId(null);
                 resolve();
-              },
-              onError: reject,
-            });
+              })
+              .catch(reject);
           }).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to save MCP server.");
           });
         }}
+        onSaveAndStartOauth={async (input) => {
+          setErrorMessage(null);
+
+          await createServer(input)
+            .then(async (createdServerId) => {
+              try {
+                await startOauthForServer({
+                  mcpServerId: createdServerId,
+                  oauthClientId: input.oauthClientId,
+                  oauthClientSecret: input.oauthClientSecret,
+                  requestedScopes: input.requestedScopes,
+                });
+              } catch (error) {
+                setSelectedServerId(createdServerId);
+                throw error;
+              }
+            })
+            .catch((error: unknown) => {
+              setErrorMessage(error instanceof Error ? error.message : "Failed to save and start MCP OAuth.");
+            });
+        }}
         onStartOauth={async (input) => {
           setErrorMessage(null);
-          if (!organizationSlug) {
-            setErrorMessage("Organization slug is missing from the current route.");
-            return;
-          }
-
-          await new Promise<void>((resolve, reject) => {
-            commitStartOauth({
-              variables: {
-                input: {
-                  mcpServerId: input.mcpServerId,
-                  oauthClientId: input.oauthClientId ?? null,
-                  oauthClientSecret: input.oauthClientSecret ?? null,
-                  organizationSlug,
-                  requestedScopes: input.requestedScopes,
-                },
-              },
-              onCompleted: (response, errors) => {
-                const nextErrorMessage = getRelayErrorMessage(errors);
-                if (nextErrorMessage) {
-                  reject(new Error(nextErrorMessage));
-                  return;
-                }
-
-                const authorizationUrl = String(
-                  response.StartMcpServerOAuth?.authorizationUrl || "",
-                ).trim();
-                if (!authorizationUrl) {
-                  reject(new Error("OAuth authorization URL is missing."));
-                  return;
-                }
-
-                if (typeof window !== "undefined") {
-                  window.location.assign(authorizationUrl);
-                }
-                resolve();
-              },
-              onError: reject,
-            });
-          }).catch((error: unknown) => {
+          await startOauthForServer(input).catch((error: unknown) => {
             setErrorMessage(error instanceof Error ? error.message : "Failed to start MCP OAuth.");
           });
         }}
