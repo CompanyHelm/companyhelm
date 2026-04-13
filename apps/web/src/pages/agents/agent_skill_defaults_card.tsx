@@ -346,7 +346,7 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
   };
 
   return (
-    <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardDescription>
           Choose which skills or skill groups are stored on this agent for future session skill activation.

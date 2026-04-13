@@ -108,7 +108,7 @@ export function ConversationTranscript(properties: ConversationTranscriptPropert
   const hasMessages = properties.messages.length > 0;
 
   return (
-    <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-border/60 shadow-sm">
       <CardHeader className="shrink-0 gap-3 border-b border-border/60">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="grid gap-2">

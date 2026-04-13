@@ -88,7 +88,7 @@ export function McpOauthCallbackPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle>Connecting MCP server</CardTitle>
           <CardDescription>

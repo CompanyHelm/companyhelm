@@ -98,12 +98,12 @@ function KnowledgeBaseMarkdown({ content, emptyLabel }: { content: string; empty
 function KnowledgeBaseDetailPageFallback() {
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle>Loading document…</CardTitle>
         </CardHeader>
       </Card>
-      <Card className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
         <CardContent className="flex min-h-0 flex-1 flex-col pt-4">
           <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
             Loading document…
@@ -292,7 +292,7 @@ function KnowledgeBaseDetailPageContent() {
   if (!isDocumentArtifact) {
     return (
       <main className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Document not available</CardTitle>
             <CardDescription>
@@ -311,7 +311,7 @@ function KnowledgeBaseDetailPageContent() {
 
   return (
     <main className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-      <Card className="shrink-0 rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="shrink-0 rounded-2xl border border-border/60 shadow-sm">
         <CardHeader className="border-b border-border/50">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -412,7 +412,7 @@ function KnowledgeBaseDetailPageContent() {
         </CardHeader>
       </Card>
 
-      <Card className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border/60 shadow-sm">
         <CardHeader className="border-b border-border/50">
           <div className="flex items-start justify-between gap-4">
             <div>

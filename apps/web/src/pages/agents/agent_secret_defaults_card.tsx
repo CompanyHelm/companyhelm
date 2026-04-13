@@ -212,7 +212,7 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
   };
 
   return (
-    <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardDescription>
           Choose which company secrets are copied into new sessions created from this agent. Existing sessions keep

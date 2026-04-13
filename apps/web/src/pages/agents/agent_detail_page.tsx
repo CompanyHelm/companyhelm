@@ -178,7 +178,7 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
 function AgentDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>Loading agent configuration…</CardDescription>
         </CardHeader>
@@ -542,7 +542,7 @@ function AgentDetailPageContent() {
 
       {selectedTab === "overview" ? (
         <>
-          <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
             <CardHeader>
               <CardDescription>
                 Update the agent name, environment provider, model provider, model, reasoning level,
@@ -707,7 +707,7 @@ function AgentDetailPageContent() {
             companyMcpServers={companyMcpServers}
           />
 
-          <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
             <CardHeader>
               <CardDescription>
                 Future environments for this agent use the selected provider template instead of custom CPU and memory overrides.
@@ -731,7 +731,7 @@ function AgentDetailPageContent() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
             <CardHeader>
               <CardDescription>Metadata for this agent record.</CardDescription>
             </CardHeader>

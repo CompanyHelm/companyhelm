@@ -180,7 +180,7 @@ function SettingsPageContent() {
       </div>
 
       {selectedTab === "tasks" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
               <CardTitle>Task Categories</CardTitle>
@@ -298,7 +298,7 @@ function SettingsPageContent() {
       ) : null}
 
       {selectedTab === "AI" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
               <CardTitle>Agents / AI</CardTitle>

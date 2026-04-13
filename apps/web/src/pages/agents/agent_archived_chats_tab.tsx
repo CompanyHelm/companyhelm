@@ -279,7 +279,7 @@ export function AgentArchivedChatsTab(props: AgentArchivedChatsTabProps) {
   };
 
   return (
-    <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <div className="min-w-0">
           <CardTitle>Archived chats</CardTitle>

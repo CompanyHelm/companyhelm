@@ -219,7 +219,7 @@ export function AgentMcpServerDefaultsCard(props: AgentMcpServerDefaultsCardProp
   };
 
   return (
-    <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardDescription>
           Choose which shared MCP servers should be attached to future sessions created from this agent. Attached, enabled servers are discovered at session start and their tools are exposed to the agent with namespaced MCP tool names.

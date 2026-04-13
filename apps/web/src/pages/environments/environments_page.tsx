@@ -68,7 +68,7 @@ const environmentsPageStopEnvironmentMutationNode = graphql`
 function EnvironmentsPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>
             Review the current agent environments provisioned for this workspace in a single table.
@@ -159,7 +159,7 @@ function EnvironmentsPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>
             Review the current agent environments provisioned for this workspace in a single table.

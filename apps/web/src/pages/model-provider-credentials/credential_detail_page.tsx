@@ -86,7 +86,7 @@ const modelProviderCredentialDetailPageRefreshModelsMutationNode = graphql`
 function ModelProviderCredentialDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>Models available for this credential.</CardDescription>
         </CardHeader>
@@ -182,7 +182,7 @@ function ModelProviderCredentialDetailPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{providerLabel}</Badge>

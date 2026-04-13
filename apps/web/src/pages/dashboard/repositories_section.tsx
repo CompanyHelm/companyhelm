@@ -71,7 +71,7 @@ export function RepositoriesSection(props: {
   );
 
   return (
-    <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
         <CardAction>
           <Link

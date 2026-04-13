@@ -79,7 +79,7 @@ function resolveArtifactTypeIcon(type: TaskArtifactType) {
 function ArtifactDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>Loading artifact…</CardDescription>
         </CardHeader>
@@ -134,7 +134,7 @@ function ArtifactDetailPageContent() {
   if (artifact.taskId !== task.id) {
     return (
       <main className="flex flex-1 flex-col gap-6">
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Artifact not available</CardTitle>
             <CardDescription>
@@ -161,7 +161,7 @@ function ArtifactDetailPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ function ArtifactDetailPageContent() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle>Description</CardTitle>
           <CardDescription>Summary and context for this artifact.</CardDescription>
@@ -214,7 +214,7 @@ function ArtifactDetailPageContent() {
       </Card>
 
       {artifactType === "markdown_document" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Content</CardTitle>
             <CardDescription>Rendered markdown document.</CardDescription>
@@ -230,7 +230,7 @@ function ArtifactDetailPageContent() {
       ) : null}
 
       {artifactType === "external_link" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>External Link</CardTitle>
             <CardDescription>Open the reference attached to this task.</CardDescription>
@@ -258,7 +258,7 @@ function ArtifactDetailPageContent() {
       ) : null}
 
       {artifactType === "pull_request" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <CardTitle>Pull Request</CardTitle>
             <CardDescription>Delivery target linked to this task.</CardDescription>

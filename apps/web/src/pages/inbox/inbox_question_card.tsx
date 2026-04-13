@@ -64,7 +64,7 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
   const isBusy = props.isResolving || props.isDismissing;
 
   return (
-    <Card className="rounded-2xl border border-border/60 shadow-sm">
+    <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader className="gap-3">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">

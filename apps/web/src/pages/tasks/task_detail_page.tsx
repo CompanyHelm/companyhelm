@@ -148,7 +148,7 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 function TaskDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>Loading task details…</CardDescription>
         </CardHeader>
@@ -504,7 +504,7 @@ function TaskDetailPageContent() {
 
       {selectedTab === "details" ? (
         <>
-          <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
             <CardHeader>
               <div className="min-w-0">
                 <CardTitle>Task Details</CardTitle>
@@ -623,7 +623,7 @@ function TaskDetailPageContent() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border border-border/60 shadow-sm">
+          <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
             <CardHeader>
               <CardDescription>Metadata for this task record.</CardDescription>
             </CardHeader>
@@ -646,7 +646,7 @@ function TaskDetailPageContent() {
       ) : null}
 
       {selectedTab === "runs" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
               <CardTitle>Task Runs</CardTitle>
@@ -745,7 +745,7 @@ function TaskDetailPageContent() {
       ) : null}
 
       {selectedTab === "artifacts" ? (
-        <Card className="rounded-2xl border border-border/60 shadow-sm">
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
               <CardTitle>Task Artifacts</CardTitle>

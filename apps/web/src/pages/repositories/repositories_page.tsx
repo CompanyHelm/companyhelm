@@ -168,7 +168,7 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): StoreRecord[] {
 function RepositoriesPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="min-w-0">
             <CardTitle>GitHub Repositories</CardTitle>
@@ -274,7 +274,7 @@ function RepositoriesPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="min-w-0">
             <CardTitle>GitHub Repositories</CardTitle>
@@ -335,7 +335,7 @@ function RepositoriesPageContent() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="min-w-0">
             <CardTitle>Linked Installations</CardTitle>
@@ -556,7 +556,7 @@ function RepositoriesPageContent() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="min-w-0">
             <CardTitle>Cached Repositories</CardTitle>

@@ -48,7 +48,7 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
 function SkillDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>Loading skill configuration…</CardDescription>
         </CardHeader>
@@ -145,7 +145,7 @@ function SkillDetailPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>
             Keep the skill instructions current, move the skill between groups, and inspect its
@@ -209,7 +209,7 @@ function SkillDetailPageContent() {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border border-border/60 shadow-sm">
+      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription>Source metadata for this skill.</CardDescription>
         </CardHeader>
