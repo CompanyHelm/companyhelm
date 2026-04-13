@@ -7,12 +7,12 @@ Agents are model agnostic and multiple model providers are supported (OpenAi, An
 
 A few things it can do today:
 
-- Isolation: every agent session runs in a fresh E2B VM
-- E2E testing: agents can spin up your app and run end-to-end tests in isolation
-- Feature videos: agents can generate demo videos for new features and attach them to PRs
-- Live demos: you can open a remote desktop and interact with the feature before merging
-- Multi-repo workflows: agents can operate across multiple repos in the same session
-- Collaboration: you can invite other users into the same company workspace
+- **Isolation**: every agent session runs in a fresh E2B VM
+- **E2E testing**: agents can spin up your app and run end-to-end tests in isolation
+- **Feature videos**: agents can generate demo videos for new features and attach them to PRs
+- **Live demos**: you can open a remote desktop and interact with the feature before merging
+- **Multi-repo workflows**: agents can operate across multiple repos in the same session
+- **Collaboration**: you can invite other users into the same company workspace
 
 [Website](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
 
