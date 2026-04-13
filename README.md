@@ -1,4 +1,4 @@
-# CompanyHelm - Ship faster without the Chaos
+# CompanyHelm - Distributed Coding Agent Orchestrator
 
 <a href="https://discord.gg/YueY3dQM9Q"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
 
