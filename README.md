@@ -5,6 +5,15 @@
 CompanyHelm is an open-source control plane for running AI coding agent in dedicated environments. Each agent session is completely isolated and allows to run coding tasks in a distributed fashion.
 Agents are model agnostic and multiple model providers are supported (OpenAi, Anthropic, OpenRouter). Agents can be customized with MCP, Skills and custom instructions.
 
+A few things it can do today:
+
+- Isolation: every agent session runs in a fresh E2B VM
+- E2E testing: agents can spin up your app and run end-to-end tests in isolation
+- Feature videos: agents can generate demo videos for new features and attach them to PRs
+- Live demos: you can open a remote desktop and interact with the feature before merging
+- Multi-repo workflows: agents can operate across multiple repos in the same session
+- Collaboration: you can invite other users into the same company workspace
+
 [Website](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
 
 <img width="1695" height="874" alt="companyHelm-screenshot" src="https://github.com/user-attachments/assets/9f3c6f3f-5e1f-4065-989d-44cfad587e5f" />
