@@ -49,6 +49,7 @@ companyhelm:
     template_prefix: "realequityapps/"
 github:
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
+  app_client_secret: "${GITHUB_APP_CLIENT_SECRET}"
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
   app_link: "${GITHUB_APP_URL}"
   key_id: "companyhelm-local-github-state-key"

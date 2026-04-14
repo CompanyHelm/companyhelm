@@ -17,6 +17,7 @@ class AppConfigTestHarness {
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
     clerkJwksUrlVariableName: string;
+    githubClientSecretVariableName: string;
     exaApiKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyIdVariableName: string;
@@ -30,6 +31,7 @@ class AppConfigTestHarness {
     const clerkPublishableKeyVariableName = "COMPANYHELM_TEST_CLERK_PUBLISHABLE_KEY";
     const clerkJwksUrlVariableName = "COMPANYHELM_TEST_CLERK_JWKS_URL";
     const githubClientVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT";
+    const githubClientSecretVariableName = "COMPANYHELM_TEST_GITHUB_CLIENT_SECRET";
     const githubKeyIdVariableName = "COMPANYHELM_TEST_GITHUB_KEY_ID";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
@@ -40,6 +42,7 @@ class AppConfigTestHarness {
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
     process.env[clerkJwksUrlVariableName] = "https://clerk.example/.well-known/jwks.json";
     process.env[githubClientVariableName] = "client-id";
+    process.env[githubClientSecretVariableName] = "client-secret";
     process.env[githubKeyIdVariableName] = "github-state-key";
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
@@ -52,6 +55,7 @@ class AppConfigTestHarness {
       AppConfigTestHarness.createConfigDocument({
         companyHelmE2bApiKeyVariableName,
         githubClientVariableName,
+        githubClientSecretVariableName,
         githubKeyIdVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
@@ -69,6 +73,7 @@ class AppConfigTestHarness {
       clerkSecretKeyVariableName,
       clerkPublishableKeyVariableName,
       clerkJwksUrlVariableName,
+      githubClientSecretVariableName,
       githubClientVariableName,
       githubKeyIdVariableName,
       githubKeyVariableName,
@@ -80,6 +85,7 @@ class AppConfigTestHarness {
   private static createConfigDocument(params: {
     companyHelmE2bApiKeyVariableName: string;
     githubClientVariableName: string;
+    githubClientSecretVariableName: string;
     githubKeyIdVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
@@ -118,6 +124,7 @@ graphql:
   endpoint: "/graphql"
   graphiql: true
 publicUrl: "http://localhost:4000"
+webPublicUrl: "http://localhost:5173"
 database:
   name: "postgres"
   host: "127.0.0.1"
@@ -149,6 +156,7 @@ companyhelm:
     template_prefix: "realequityapps/"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
+  app_client_secret: "\${${params.githubClientSecretVariableName}}"
   key_id: "\${${params.githubKeyIdVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
   app_link: "\${${params.githubUrlVariableName}}"
@@ -222,6 +230,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     width: 1920,
   });
   assert.equal(document.github.app_client_id, "client-id");
+  assert.equal(document.github.app_client_secret, "client-secret");
   assert.equal(document.github.key_id, "github-state-key");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");

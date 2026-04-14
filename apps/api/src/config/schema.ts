@@ -75,6 +75,7 @@ export const ConfigDocument = z.object({
   }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,
+    app_client_secret: NonEmptyStringSchema,
     app_private_key_pem: NonEmptyStringSchema,
     app_link: NonEmptyStringSchema,
     key_id: NonEmptyStringSchema.optional(),

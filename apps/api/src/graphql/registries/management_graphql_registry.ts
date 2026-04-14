@@ -4,6 +4,7 @@ import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
 import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
 import { SecretService } from "../../services/secrets/service.ts";
+import { SkillGithubPublicClient } from "../../services/skills/github/public_client.ts";
 import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
 import { SkillService } from "../../services/skills/service.ts";
 import { McpService } from "../../services/mcp/service.ts";
@@ -188,7 +189,11 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new SecretEncryptionService(config),
       defaultMcpOauthTokenService,
     );
-    const defaultSkillGithubCatalog = new SkillGithubCatalog();
+    const defaultSkillGithubCatalog = new SkillGithubCatalog(
+      new SkillGithubPublicClient({
+        github: config.github,
+      }),
+    );
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.companySettingsQueryResolver = companySettingsQueryResolver;

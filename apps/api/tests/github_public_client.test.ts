@@ -3,6 +3,9 @@ import { test } from "vitest";
 import { SkillGithubPublicClient } from "../src/services/skills/github/public_client.ts";
 import { SkillGithubRepositoryReference } from "../src/services/skills/github/repository_reference.ts";
 
+const TEST_GITHUB_CLIENT_ID = "Iv-test-local";
+const TEST_GITHUB_CLIENT_SECRET = "github-test-secret";
+
 function createJsonResponse(payload: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     headers: {
@@ -21,8 +24,13 @@ test("SkillGithubRepositoryReference parses GitHub URLs into owner and repositor
 });
 
 test("SkillGithubPublicClient reads a public repository tree and blob contents with Octokit", async () => {
-  const fetchImpl: typeof fetch = async (input) => {
-    const url = String(input);
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(String(input), init);
+    const url = request.url;
+    assert.equal(
+      request.headers.get("authorization"),
+      `basic ${Buffer.from(`${TEST_GITHUB_CLIENT_ID}:${TEST_GITHUB_CLIENT_SECRET}`).toString("base64")}`,
+    );
     if (url.endsWith("/repos/openai/skills")) {
       return createJsonResponse({
         default_branch: "main",
@@ -63,6 +71,10 @@ test("SkillGithubPublicClient reads a public repository tree and blob contents w
   };
   const client = new SkillGithubPublicClient({
     fetchImpl,
+    github: {
+      app_client_id: TEST_GITHUB_CLIENT_ID,
+      app_client_secret: TEST_GITHUB_CLIENT_SECRET,
+    },
   });
 
   const repositoryTree = await client.getRepositoryTree("https://github.com/openai/skills");
@@ -105,4 +117,69 @@ test("SkillGithubPublicClient rejects private repositories", async () => {
   await assert.rejects(async () => {
     await client.getRepositoryTree("https://github.com/openai/private-skills");
   }, /Only public GitHub repositories are supported/);
+});
+
+test("SkillGithubPublicClient fails fast and returns a quota error without retrying", async () => {
+  let requestCount = 0;
+  const fetchImpl: typeof fetch = async (input) => {
+    requestCount += 1;
+    const url = String(input);
+    if (url.endsWith("/repos/openai/skills")) {
+      return createJsonResponse({
+        documentation_url: "https://docs.github.com/rest/using-the-rest-api/rate-limits-for-the-rest-api",
+        message: "API rate limit exceeded for 127.0.0.1.",
+      }, 403);
+    }
+
+    throw new Error(`Unexpected GitHub request: ${url}`);
+  };
+  const client = new SkillGithubPublicClient({
+    fetchImpl,
+  });
+
+  await assert.rejects(async () => {
+    await client.getRepositoryTree("https://github.com/openai/skills");
+  }, /GitHub API request quota is exhausted while trying to read the GitHub repository/);
+  assert.equal(requestCount, 1);
+});
+
+test("SkillGithubPublicClient returns generic GitHub API failures as user-facing errors", async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/repos/openai/skills")) {
+      return createJsonResponse({
+        message: "GitHub service unavailable",
+      }, 500);
+    }
+
+    throw new Error(`Unexpected GitHub request: ${url}`);
+  };
+  const client = new SkillGithubPublicClient({
+    fetchImpl,
+    github: {
+      app_client_id: TEST_GITHUB_CLIENT_ID,
+      app_client_secret: TEST_GITHUB_CLIENT_SECRET,
+    },
+  });
+
+  await assert.rejects(async () => {
+    await client.getRepositoryTree("https://github.com/openai/skills");
+  }, /GitHub request failed while trying to read the GitHub repository: GitHub service unavailable/);
+});
+
+test("SkillGithubPublicClient turns timed out GitHub requests into user-facing errors", async () => {
+  const fetchImpl: typeof fetch = async (_input, init) =>
+    new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => {
+        reject(init.signal?.reason ?? new Error("Aborted."));
+      }, { once: true });
+    });
+  const client = new SkillGithubPublicClient({
+    fetchImpl,
+    requestTimeoutMs: 10,
+  });
+
+  await assert.rejects(async () => {
+    await client.getRepositoryTree("https://github.com/openai/skills");
+  }, /GitHub request timed out while trying to read the GitHub repository/);
 });

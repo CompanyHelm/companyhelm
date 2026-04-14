@@ -40,6 +40,7 @@ const TEST_PRIVATE_KEY_PEM = (() => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
 })();
+const TEST_GITHUB_CLIENT_SECRET = "github-test-secret";
 
 class SkillsGraphqlTestHarness {
   static createConfigMock(): Config {
@@ -68,6 +69,7 @@ class SkillsGraphqlTestHarness {
       },
       github: {
         app_client_id: "Iv-test-local",
+        app_client_secret: TEST_GITHUB_CLIENT_SECRET,
         app_link: "https://github.com/apps/companyhelm-test",
         app_private_key_pem: TEST_PRIVATE_KEY_PEM,
       },
@@ -455,8 +457,13 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
   };
   const originalFetch = global.fetch;
   let allowGithubFetchDuringMutation = true;
-  global.fetch = async (input) => {
-    const url = String(input);
+  global.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(String(input), init);
+    const url = request.url;
+    assert.equal(
+      request.headers.get("authorization"),
+      `basic ${Buffer.from(`Iv-test-local:${TEST_GITHUB_CLIENT_SECRET}`).toString("base64")}`,
+    );
     if (!allowGithubFetchDuringMutation && url.includes("/repos/companyhelm/skills")) {
       throw new Error(`Mutation should not refetch GitHub content: ${url}`);
     }
@@ -666,6 +673,100 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
     assert.equal(importedSkillInsert?.repository, "companyhelm/skills");
     assert.equal(importedSkillInsert?.skillDirectory, "skills/github-browser");
     assert.deepEqual(importedSkillInsert?.fileList, ["skills/github-browser/scripts/import.sh"]);
+  } finally {
+    global.fetch = originalFetch;
+    await app.close();
+  }
+});
+
+test("GraphQL GitHub branch discovery returns GitHub quota errors instead of hanging", async () => {
+  const app = Fastify();
+  const config = SkillsGraphqlTestHarness.createConfigMock();
+  const database = SkillsGraphqlTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+        token: "jwt-token",
+        user: {
+          email: "user@example.com",
+          firstName: "User",
+          id: "user-123",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+      };
+    },
+  };
+  const originalFetch = global.fetch;
+  global.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(String(input), init);
+    assert.equal(
+      request.headers.get("authorization"),
+      `basic ${Buffer.from(`Iv-test-local:${TEST_GITHUB_CLIENT_SECRET}`).toString("base64")}`,
+    );
+    if (request.url.endsWith("/repos/companyhelm/skills")) {
+      return createJsonResponse({
+        documentation_url: "https://docs.github.com/rest/using-the-rest-api/rate-limits-for-the-rest-api",
+        message: "API rate limit exceeded for 127.0.0.1.",
+      }, 403);
+    }
+
+    throw new Error(`Unexpected GitHub request: ${request.url}`);
+  };
+
+  try {
+    await GraphqlApplication.fromResolvers(
+      config,
+      new AddModelProviderCredentialMutation(modelManager as never),
+      new DeleteModelProviderCredentialMutation(),
+      new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+      new GraphqlRequestContextResolver(authProvider as never, database as never),
+      new HealthQueryResolver(),
+      new MeQueryResolver(),
+      new ModelProviderCredentialModelsQueryResolver(),
+      new ModelProviderCredentialsQueryResolver(),
+    ).register(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/graphql",
+      headers: {
+        authorization: "Bearer jwt-token",
+      },
+      payload: {
+        query: `
+          query GithubSkillBranches($repositoryUrl: String!) {
+            GithubSkillBranches(repositoryUrl: $repositoryUrl) {
+              commitSha
+              isDefault
+              name
+              repository
+            }
+          }
+        `,
+        variables: {
+          repositoryUrl: "https://github.com/companyhelm/skills",
+        },
+      },
+    });
+
+    assert.equal(response.statusCode, 200);
+    const document = response.json();
+    assert.ok(document.data === null || document.data.GithubSkillBranches === null);
+    assert.equal(
+      document.errors[0]?.message,
+      "GitHub API request quota is exhausted while trying to read the GitHub repository. Please try again later.",
+    );
   } finally {
     global.fetch = originalFetch;
     await app.close();
