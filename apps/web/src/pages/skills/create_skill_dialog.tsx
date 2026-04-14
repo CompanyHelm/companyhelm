@@ -36,14 +36,9 @@ export type CreateSkillDialogGroupOption = {
 };
 
 export type CreateSkillDialogGithubImportRecord = {
-  branchName: string;
-  commitSha: string;
-  description: string | null;
-  fileList: string[];
-  instructions: string;
   name: string;
-  repository: string;
   skillDirectory: string;
+  trackedFileCount: number;
 };
 
 export type CreateSkillDialogGithubImportSelectionRecord = {
@@ -98,14 +93,9 @@ const createSkillDialogGithubSkillBranchesQueryNode = graphql`
 const createSkillDialogGithubDiscoveredSkillsQueryNode = graphql`
   query createSkillDialogGithubDiscoveredSkillsQuery($repositoryUrl: String!, $branchName: String!) {
     GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {
-      branchName
-      commitSha
-      description
-      fileList
-      instructions
       name
-      repository
       skillDirectory
+      trackedFileCount
     }
   }
 `;
@@ -219,6 +209,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       ? normalizedRepositoryUrl
       : null;
   }, [githubRepositoryUrl]);
+  const githubImportRepository = selectedGithubBranch?.repository
+    ?? githubRepositoryUrlDiscoveryCandidate
+    ?? githubRepositoryUrl.trim();
   const isMutating = props.isSaving || isCreatingGroup;
 
   async function createSkillGroup() {
@@ -476,14 +469,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         },
       ).toPromise();
       const nextSkills = (response?.GithubDiscoveredSkills ?? []).map((skill) => ({
-        branchName: skill.branchName,
-        commitSha: skill.commitSha,
-        description: skill.description ?? null,
-        fileList: [...skill.fileList],
-        instructions: skill.instructions,
         name: skill.name,
-        repository: skill.repository,
         skillDirectory: skill.skillDirectory,
+        trackedFileCount: skill.trackedFileCount,
       }));
       setGithubDiscoveredSkills(nextSkills);
       setGithubSelectedSkillDirectories(nextSkills.map((skill) => skill.skillDirectory));
@@ -793,7 +781,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                                   {skill.skillDirectory}
                                 </TableCell>
                                 <TableCell>
-                                  {skill.fileList.length} tracked file{skill.fileList.length === 1 ? "" : "s"}
+                                  {skill.trackedFileCount} tracked file{skill.trackedFileCount === 1 ? "" : "s"}
                                 </TableCell>
                               </TableRow>
                             );
@@ -954,8 +942,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                   await props.onImportGithub({
                     skillGroupId: skillGroupId === UNGROUPED_SKILL_GROUP_VALUE ? null : skillGroupId,
                     skills: selectedGithubSkills.map((skill) => ({
-                      branchName: skill.branchName,
-                      repository: skill.repository,
+                      branchName: githubBranchName,
+                      repository: githubImportRepository,
                       skillDirectory: skill.skillDirectory,
                     })),
                   });

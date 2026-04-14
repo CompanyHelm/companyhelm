@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<324c81037d71e90a662ce679c3e6e96d>>
+ * @generated SignedSource<<41806afbaedf9356a60a82af4ebf432b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,14 +15,9 @@ export type createSkillDialogGithubDiscoveredSkillsQuery$variables = {
 };
 export type createSkillDialogGithubDiscoveredSkillsQuery$data = {
   readonly GithubDiscoveredSkills: ReadonlyArray<{
-    readonly branchName: string;
-    readonly commitSha: string;
-    readonly description: string | null | undefined;
-    readonly fileList: ReadonlyArray<string>;
-    readonly instructions: string;
     readonly name: string;
-    readonly repository: string;
     readonly skillDirectory: string;
+    readonly trackedFileCount: number;
   }>;
 };
 export type createSkillDialogGithubDiscoveredSkillsQuery = {
@@ -65,41 +60,6 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "branchName",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "commitSha",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "fileList",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "instructions",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "name",
         "storageKey": null
       },
@@ -107,14 +67,14 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "repository",
+        "name": "skillDirectory",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "skillDirectory",
+        "name": "trackedFileCount",
         "storageKey": null
       }
     ],
@@ -145,16 +105,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "5278a2a4cfdf26267339513542614cf1",
+    "cacheID": "9b0073219ff2044346b25b7d3c3558f0",
     "id": null,
     "metadata": {},
     "name": "createSkillDialogGithubDiscoveredSkillsQuery",
     "operationKind": "query",
-    "text": "query createSkillDialogGithubDiscoveredSkillsQuery(\n  $repositoryUrl: String!\n  $branchName: String!\n) {\n  GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {\n    branchName\n    commitSha\n    description\n    fileList\n    instructions\n    name\n    repository\n    skillDirectory\n  }\n}\n"
+    "text": "query createSkillDialogGithubDiscoveredSkillsQuery(\n  $repositoryUrl: String!\n  $branchName: String!\n) {\n  GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {\n    name\n    skillDirectory\n    trackedFileCount\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a2ef417e80e045ac6725f147e130f6ff";
+(node as any).hash = "a2e6c666c90f3555f80eba15e56414e5";
 
 export default node;

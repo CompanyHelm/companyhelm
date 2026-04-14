@@ -588,14 +588,9 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
         query: `
           query GithubDiscoveredSkills($repositoryUrl: String!, $branchName: String!) {
             GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {
-              branchName
-              commitSha
-              description
-              fileList
-              instructions
               name
-              repository
               skillDirectory
+              trackedFileCount
             }
           }
         `,
@@ -609,14 +604,9 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
     assert.equal(discoveredSkillsResponse.statusCode, 200);
     const discoveredSkillsDocument = discoveredSkillsResponse.json();
     assert.deepEqual(discoveredSkillsDocument.data.GithubDiscoveredSkills, [{
-      branchName: "main",
-      commitSha: "commit-sha-main",
-      description: "Use the imported browser helpers.",
-      fileList: ["skills/github-browser/scripts/import.sh"],
-      instructions: "Use the imported browser helpers.",
       name: "Imported browser",
-      repository: "companyhelm/skills",
       skillDirectory: "skills/github-browser",
+      trackedFileCount: 1,
     }]);
 
     const importResponse = await app.inject({

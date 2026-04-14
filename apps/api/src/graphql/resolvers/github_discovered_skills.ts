@@ -8,14 +8,9 @@ type GithubDiscoveredSkillsQueryArguments = {
 };
 
 type GraphqlGithubDiscoveredSkillRecord = {
-  branchName: string;
-  commitSha: string;
-  description: string | null;
-  fileList: string[];
-  instructions: string;
   name: string;
-  repository: string;
   skillDirectory: string;
+  trackedFileCount: number;
 };
 
 /**
@@ -47,14 +42,9 @@ export class GithubDiscoveredSkillsQueryResolver {
     return discoveredSkills
       .filter((skill) => skill.importable && skill.instructions)
       .map((skill) => ({
-        branchName: skill.branchName,
-        commitSha: skill.commitSha,
-        description: skill.description,
-        fileList: [...skill.fileList],
-        instructions: skill.instructions ?? "",
         name: skill.name,
-        repository: skill.repository,
         skillDirectory: skill.skillDirectory,
+        trackedFileCount: skill.fileList.length,
       }));
   };
 }

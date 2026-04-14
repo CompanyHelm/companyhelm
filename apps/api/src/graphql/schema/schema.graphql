@@ -212,14 +212,9 @@ type GithubSkillBranch {
 }
 
 type GithubDiscoveredSkill {
-  branchName: String!
-  commitSha: String!
-  description: String
-  fileList: [String!]!
-  instructions: String!
   name: String!
-  repository: String!
   skillDirectory: String!
+  trackedFileCount: Int!
 }
 
 type InboxHumanQuestion {
