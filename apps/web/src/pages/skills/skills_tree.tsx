@@ -5,12 +5,9 @@ import {
   ChevronRightIcon,
   FolderIcon,
   FolderOpenIcon,
-  GithubIcon,
   SparklesIcon,
   Trash2Icon,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 
@@ -73,7 +70,7 @@ export function SkillsTree(props: SkillsTreeProps) {
     );
   }
 
-  async function handleDrop(event: DragEvent<HTMLDivElement>, skillGroupId: string | null, groupKey: string) {
+  async function handleDrop(event: DragEvent<HTMLElement>, skillGroupId: string | null, groupKey: string) {
     event.preventDefault();
     setDropTargetKey("");
     const skillId = event.dataTransfer.getData("text/skill-id");
@@ -86,16 +83,25 @@ export function SkillsTree(props: SkillsTreeProps) {
   }
 
   return (
-    <div className="grid gap-2.5">
+    <div className="grid gap-1">
       {groups.map((group) => {
         const isExpanded = expandedGroupKeys[group.key] ?? true;
         const GroupIcon = isExpanded ? FolderOpenIcon : FolderIcon;
+        const isDropTarget = dropTargetKey === group.key;
 
         return (
-          <Card key={group.key} className="border border-border/60 bg-card/70 shadow-sm">
+          <section className="grid gap-0.5" key={group.key}>
             <button
               aria-expanded={isExpanded}
-              className="flex w-full items-center justify-between gap-3 rounded-t-xl px-4 py-2.5 text-left transition hover:bg-accent/30"
+              className={`flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition ${isDropTarget ? "bg-accent/25" : "hover:bg-accent/20"}`}
+              onDragLeave={() => {
+                setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDropTargetKey(group.key);
+              }}
+              onDrop={(event) => void handleDrop(event, group.id, group.key)}
               onClick={() => {
                 setExpandedGroupKeys((currentState) => ({
                   ...currentState,
@@ -104,19 +110,21 @@ export function SkillsTree(props: SkillsTreeProps) {
               }}
               type="button"
             >
-              <div className="flex min-w-0 items-center gap-3">
-                {isExpanded ? <ChevronDownIcon className="size-4 text-muted-foreground" /> : <ChevronRightIcon className="size-4 text-muted-foreground" />}
-                <GroupIcon className="size-4 text-primary" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">{group.name}</p>
+              <div className="flex min-w-0 items-center gap-2">
+                {isExpanded ? <ChevronDownIcon className="size-3.5 text-muted-foreground" /> : <ChevronRightIcon className="size-3.5 text-muted-foreground" />}
+                <GroupIcon className="size-3.5 text-primary" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="truncate text-sm font-medium text-foreground">{group.name}</p>
+                  <span className="shrink-0 text-[0.7rem] font-medium text-muted-foreground">
+                    {group.skills.length}
+                  </span>
                 </div>
               </div>
-              <Badge variant="outline">{group.skills.length}</Badge>
             </button>
 
             {isExpanded ? (
-              <CardContent
-                className={`grid gap-2 border-t border-border/60 p-2.5 ${dropTargetKey === group.key ? "rounded-b-xl bg-accent/25" : ""}`}
+              <div
+                className={`grid gap-0.5 pl-3 ${isDropTarget ? "rounded-md bg-accent/10" : ""}`}
                 onDragLeave={() => {
                   setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
                 }}
@@ -127,15 +135,13 @@ export function SkillsTree(props: SkillsTreeProps) {
                 onDrop={(event) => void handleDrop(event, group.id, group.key)}
               >
                 {group.skills.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-center text-xs text-muted-foreground">
-                    Drop skills here.
-                  </div>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">Drop skills here.</div>
                 ) : null}
 
                 {group.skills.map((skill) => (
                   <article
                     key={skill.id}
-                    className={`cursor-grab rounded-lg border border-border/60 bg-background/90 px-3 py-2.5 shadow-sm transition hover:border-primary/40 hover:shadow-md active:cursor-grabbing ${(props.movingSkillId === skill.id || props.deletingSkillId === skill.id) ? "opacity-60" : ""}`}
+                    className={`cursor-grab rounded-md transition active:cursor-grabbing ${(props.movingSkillId === skill.id || props.deletingSkillId === skill.id) ? "opacity-60" : ""}`}
                     draggable
                     onClick={() => {
                       if (suppressOpenSkillIdRef.current === skill.id) {
@@ -179,24 +185,17 @@ export function SkillsTree(props: SkillsTreeProps) {
                     role="button"
                     tabIndex={0}
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <SparklesIcon className="size-4 shrink-0 text-primary" />
-                        <p className="truncate text-sm font-semibold text-foreground">{skill.name}</p>
+                    <div className="flex min-h-7 items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-accent/20">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <SparklesIcon className="size-3.5 shrink-0 text-primary" />
+                        <p className="truncate text-sm font-medium text-foreground">{skill.name}</p>
                       </div>
-                      <div className="flex shrink-0 items-center justify-end gap-2">
-                        <Badge variant="outline">{skill.fileCount} files</Badge>
-                        {skill.repository ? (
-                          <Badge className="gap-1" variant="secondary">
-                            <GithubIcon className="size-3" />
-                            GitHub
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Manual</Badge>
-                        )}
+                      <div className="flex shrink-0 items-center gap-2 text-[0.7rem] text-muted-foreground">
+                        <span>{skill.fileCount} files</span>
+                        <span>{skill.repository ? "GitHub" : "Manual"}</span>
                         <button
                           aria-label={`Delete ${skill.name}`}
-                          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={props.deletingSkillId === skill.id}
                           onClick={(event) => {
                             event.preventDefault();
@@ -205,15 +204,15 @@ export function SkillsTree(props: SkillsTreeProps) {
                           }}
                           type="button"
                         >
-                          <Trash2Icon className="size-4" />
+                          <Trash2Icon className="size-3.5" />
                         </button>
                       </div>
                     </div>
                   </article>
                 ))}
-              </CardContent>
+              </div>
             ) : null}
-          </Card>
+          </section>
         );
       })}
     </div>

@@ -128,9 +128,9 @@ const githubSkillImportRelayUpdater = new GithubSkillImportRelayUpdater();
 
 function SkillsPageFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6">
+    <main className="flex flex-1 flex-col gap-6 md:-mx-2 lg:-mx-3">
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
+        <CardHeader className="px-2 md:px-3 lg:px-4">
           <div className="min-w-0">
             <CardDescription>
               Organize your company skill catalog, group reusable guidance, and keep manual skills
@@ -147,7 +147,7 @@ function SkillsPageFallback() {
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 md:px-3 lg:px-4">
           <SkillsTree
             deletingSkillId={null}
             groups={[]}
@@ -327,9 +327,9 @@ function SkillsPageContent() {
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6">
+    <main className="flex flex-1 flex-col gap-6 md:-mx-2 lg:-mx-3">
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
+        <CardHeader className="px-2 md:px-3 lg:px-4">
           <div className="min-w-0">
             <CardDescription>
               Organize your company skill catalog, group reusable guidance, and keep manual skills
@@ -362,7 +362,7 @@ function SkillsPageContent() {
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent className="grid gap-4 px-2 md:px-3 lg:px-4">
           {errorMessage && !isCreateDialogOpen ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {errorMessage}
