@@ -231,6 +231,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   });
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.github.app_client_secret, "client-secret");
+  assert.equal(document.github.public_repository_token, undefined);
   assert.equal(document.github.key_id, "github-state-key");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");
