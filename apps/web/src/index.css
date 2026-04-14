@@ -957,9 +957,7 @@ button {
 }
 
 .no-scrollbar::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
   border-radius: 999px;
-  background-clip: padding-box;
   background-color: var(--scrollbar-thumb);
 }
 
