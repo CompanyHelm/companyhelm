@@ -10,6 +10,7 @@ import {
   CreateSkillDialog,
   type CreateSkillDialogGroupOption,
 } from "./create_skill_dialog";
+import { GithubSkillImportRelayUpdater } from "./github_skill_import_relay_updater";
 import { SkillsTree, type SkillsTreeGroupRecord, type SkillsTreeSkillRecord } from "./skills_tree";
 import type { skillsPageCreateSkillMutation } from "./__generated__/skillsPageCreateSkillMutation.graphql";
 import type { skillsPageCreateSkillGroupMutation } from "./__generated__/skillsPageCreateSkillGroupMutation.graphql";
@@ -122,6 +123,8 @@ const skillsPageUpdateSkillMutationNode = graphql`
     }
   }
 `;
+
+const githubSkillImportRelayUpdater = new GithubSkillImportRelayUpdater();
 
 function SkillsPageFallback() {
   return (
@@ -475,16 +478,7 @@ function SkillsPageContent() {
                 input,
               },
               updater: (store) => {
-                const importedSkills = (store.getRoot().getLinkedRecords("ImportGithubSkills") || [])
-                  .filter((record): record is NonNullable<typeof record> => record !== null);
-                if (importedSkills.length === 0) {
-                  return;
-                }
-
-                const rootRecord = store.getRoot();
-                const currentSkills = (rootRecord.getLinkedRecords("Skills") || [])
-                  .filter((record): record is NonNullable<typeof record> => record !== null);
-                rootRecord.setLinkedRecords([...importedSkills, ...currentSkills], "Skills");
+                githubSkillImportRelayUpdater.apply(store);
               },
               onCompleted: (_response, errors) => {
                 const nextErrorMessage = errors?.[0]?.message;

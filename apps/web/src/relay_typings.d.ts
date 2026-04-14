@@ -37,6 +37,7 @@ declare module "relay-runtime" {
     get(dataId: string): RecordProxy | null;
     getRoot(): RootRecordProxy;
     getRootField(name: string): RecordProxy | null | undefined;
+    getPluralRootField(name: string): ReadonlyArray<RecordProxy | null> | null | undefined;
   }
 
   export class Observable<T> {
