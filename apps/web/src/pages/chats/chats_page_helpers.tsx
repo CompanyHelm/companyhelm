@@ -399,6 +399,22 @@ export function resolveComposerReasoningLevel(
   return supportedLevels[0] ?? "";
 }
 
+export function shouldHydrateComposerSelection(
+  previousTargetKey: string | null,
+  nextTargetKey: string | null,
+  currentModelOptionId: string,
+  modelOptionById: ReadonlyMap<string, ChatComposerModelOption>,
+): boolean {
+  if (nextTargetKey === null) {
+    return true;
+  }
+  if (previousTargetKey !== nextTargetKey) {
+    return true;
+  }
+
+  return !modelOptionById.has(currentModelOptionId);
+}
+
 export function formatSessionTitle(messages: ReadonlyArray<Pick<SessionMessageRecord, "role" | "text">>): string {
   const normalizedMessage = (
     messages.find((message) => message.role === "user" && message.text.trim().length > 0)?.text

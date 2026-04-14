@@ -95,6 +95,7 @@ import {
   resolveComposerReasoningLevel,
   resolveDraftTextareaHeightBounds,
   resolveSessionTitle,
+  shouldHydrateComposerSelection,
   upsertRootLinkedRecord,
 } from "./chats_page_helpers";
 import { ChatListPanel } from "./chat_list_panel";
@@ -190,6 +191,7 @@ export function ChatsPageContent() {
   const draftTextareaResizeStartHeightRef = useRef(0);
   const draftTextareaResizeStartYRef = useRef(0);
   const composerDragDepthRef = useRef(0);
+  const composerSelectionTargetKeyRef = useRef<string | null>(null);
   const markSessionReadInFlightSessionIdRef = useRef<string | null>(null);
   const queuedMessagesRequestIdRef = useRef(0);
   const activeQueuedMessagesSessionIdRef = useRef<string | null>(null);
@@ -885,12 +887,28 @@ export function ChatsPageContent() {
   }, [loadQueuedMessages, selectedSession?.id]);
 
   useEffect(() => {
+    const nextComposerSelectionTargetKey = selectedAgent
+      ? `${selectedAgent.id}:${selectedSession?.id ?? ""}`
+      : null;
+    const previousComposerSelectionTargetKey = composerSelectionTargetKeyRef.current;
+    composerSelectionTargetKeyRef.current = nextComposerSelectionTargetKey;
+
     if (!selectedAgent) {
       setComposerModelOptionId("");
       setComposerReasoningLevel("");
       return;
     }
+    if (!shouldHydrateComposerSelection(
+      previousComposerSelectionTargetKey,
+      nextComposerSelectionTargetKey,
+      composerModelOptionId,
+      composerModelOptionById,
+    )) {
+      return;
+    }
 
+    // Streaming updates mutate the selected session record frequently. Only re-seed the draft
+    // picker when the operator actually switches chat targets or the current model disappears.
     const nextModelOptionId = resolveComposerModelOptionId(
       composerModelOptions,
       selectedSession?.modelProviderCredentialModelId ?? null,
@@ -907,9 +925,13 @@ export function ChatsPageContent() {
     setComposerReasoningLevel(nextReasoningLevel);
   }, [
     composerModelOptionById,
+    composerModelOptionId,
     composerModelOptions,
     selectedAgent,
-    selectedSession,
+    selectedSession?.id,
+    selectedSession?.modelId,
+    selectedSession?.modelProviderCredentialModelId,
+    selectedSession?.reasoningLevel,
   ]);
 
   useEffect(() => {
