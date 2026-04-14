@@ -14,6 +14,7 @@ import { AgentSkillDefaultsCard } from "./agent_skill_defaults_card";
 import type {
   AgentCreateComputeProviderDefinitionOption,
   AgentCreateProviderOption,
+  AgentCreateSecretGroupOption,
   AgentCreateSkillGroupOption,
   AgentCreateSkillOption,
   AgentCreateMcpServerOption,
@@ -56,6 +57,10 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       envVarName
+    }
+    AgentSecretGroups(agentId: $agentId) {
+      id
+      name
     }
     AgentMcpServers(agentId: $agentId) {
       id
@@ -111,6 +116,10 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       envVarName
+    }
+    SecretGroups {
+      id
+      name
     }
     McpServers {
       id
@@ -292,11 +301,19 @@ function AgentDetailPageContent() {
     id: secret.id,
     name: secret.name,
   }));
+  const agentSecretGroups = data.AgentSecretGroups.map((secretGroup) => ({
+    id: secretGroup.id,
+    name: secretGroup.name,
+  }));
   const companySecrets = data.Secrets.map((secret) => ({
     description: secret.description ?? null,
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
+  }));
+  const companySecretGroups: AgentCreateSecretGroupOption[] = data.SecretGroups.map((secretGroup) => ({
+    id: secretGroup.id,
+    name: secretGroup.name,
   }));
   const agentMcpServers = data.AgentMcpServers.map((server) => ({
     description: server.description ?? null,
@@ -689,7 +706,9 @@ function AgentDetailPageContent() {
 
           <AgentSecretDefaultsCard
             agentId={agent.id}
+            agentSecretGroups={agentSecretGroups}
             agentSecrets={agentSecrets}
+            companySecretGroups={companySecretGroups}
             companySecrets={companySecrets}
           />
 

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e4d2cc42b783fa2c19e88aff93a45cea>>
+ * @generated SignedSource<<309d4727706eb8d1aa87c6f6f6f12297>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type CreateSecretInput = {
   description?: string | null | undefined;
   envVarName?: string | null | undefined;
   name: string;
+  secretGroupId?: string | null | undefined;
   value: string;
 };
 export type secretsPageCreateSecretMutation$variables = {
@@ -25,6 +26,7 @@ export type secretsPageCreateSecretMutation$data = {
     readonly envVarName: string;
     readonly id: string;
     readonly name: string;
+    readonly secretGroupId: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -88,6 +90,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "secretGroupId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -120,16 +129,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "f06645b790f9e0f0104edc3a313afb61",
+    "cacheID": "e48cb85c58f60d912a041c16b6523577",
     "id": null,
     "metadata": {},
     "name": "secretsPageCreateSecretMutation",
     "operationKind": "mutation",
-    "text": "mutation secretsPageCreateSecretMutation(\n  $input: CreateSecretInput!\n) {\n  CreateSecret(input: $input) {\n    id\n    name\n    description\n    envVarName\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation secretsPageCreateSecretMutation(\n  $input: CreateSecretInput!\n) {\n  CreateSecret(input: $input) {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4a2367716772333cf7e9766a67aad815";
+(node as any).hash = "ae173c284c35e2a4209e8cee65149b21";
 
 export default node;

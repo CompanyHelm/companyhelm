@@ -23,6 +23,7 @@ type AddAgentMutationArguments = {
     modelProviderCredentialModelId: string;
     name: string;
     reasoningLevel?: string | null;
+    secretGroupIds?: string[] | null;
     secretIds?: string[] | null;
     skillGroupIds?: string[] | null;
     skillIds?: string[] | null;
@@ -106,6 +107,9 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
   constructor(
     @inject(SecretService)
     secretService: SecretService = {
+      async attachSecretGroupToAgent() {
+        throw new Error("Secret service is not configured.");
+      },
       async attachSecretToAgent() {
         throw new Error("Secret service is not configured.");
       },
@@ -157,7 +161,8 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     arguments_: AddAgentMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlAgentRecord> => {
-    if (!context.authSession?.company) {
+    const authSession = context.authSession;
+    if (!authSession?.company) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
@@ -178,7 +183,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
     if (arguments_.input.defaultEnvironmentTemplateId.length === 0) {
       throw new Error("defaultEnvironmentTemplateId is required.");
     }
-    const authSession = context.authSession;
+    const company = authSession.company;
     const runtimeTransactionProvider = context.app_runtime_transaction_provider;
 
     return runtimeTransactionProvider.transaction(async (tx) => {
@@ -195,7 +200,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, authSession.company.id),
+          eq(modelProviderCredentials.companyId, company.id),
           eq(modelProviderCredentials.id, arguments_.input.modelProviderCredentialId),
         )) as CredentialRecord[];
       if (!credentialRecord) {
@@ -211,7 +216,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, company.id),
           eq(modelProviderCredentialModels.id, arguments_.input.modelProviderCredentialModelId),
         )) as ModelRecord[];
       if (!modelRecord) {
@@ -229,7 +234,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
         })
         .from(computeProviderDefinitions)
         .where(and(
-          eq(computeProviderDefinitions.companyId, authSession.company.id),
+          eq(computeProviderDefinitions.companyId, company.id),
           eq(computeProviderDefinitions.id, arguments_.input.defaultComputeProviderDefinitionId),
         )) as ComputeProviderDefinitionRecord[];
       if (!computeProviderDefinitionRecord) {
@@ -238,7 +243,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       const environmentTemplate = await this.templateService.resolveTemplateForProvider(
         transactionProvider,
         {
-          companyId: authSession.company.id,
+          companyId: company.id,
           providerDefinitionId: computeProviderDefinitionRecord.id,
           templateId: arguments_.input.defaultEnvironmentTemplateId,
         },
@@ -252,7 +257,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       const insertedAgentRecords = await databaseTransaction
         .insert(agents)
         .values({
-          companyId: authSession.company.id,
+          companyId: company.id,
           name: arguments_.input.name,
           defaultModelProviderCredentialModelId: modelRecord.id,
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
@@ -281,15 +286,23 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       for (const secretId of AddAgentMutation.resolveSecretIds(arguments_.input.secretIds)) {
         await this.secretService.attachSecretToAgent(transactionProvider, {
           agentId: agentRecord.id,
-          companyId: authSession.company.id,
+          companyId: company.id,
           secretId,
+          userId: authSession.user.id,
+        });
+      }
+      for (const secretGroupId of AddAgentMutation.resolveDistinctIds(arguments_.input.secretGroupIds)) {
+        await this.secretService.attachSecretGroupToAgent(transactionProvider, {
+          agentId: agentRecord.id,
+          companyId: company.id,
+          secretGroupId,
           userId: authSession.user.id,
         });
       }
       for (const skillGroupId of AddAgentMutation.resolveDistinctIds(arguments_.input.skillGroupIds)) {
         await this.skillService.attachSkillGroupToAgent(transactionProvider, {
           agentId: agentRecord.id,
-          companyId: authSession.company.id,
+          companyId: company.id,
           skillGroupId,
           userId: authSession.user.id,
         });
@@ -297,7 +310,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       for (const skillId of AddAgentMutation.resolveDistinctIds(arguments_.input.skillIds)) {
         await this.skillService.attachSkillToAgent(transactionProvider, {
           agentId: agentRecord.id,
-          companyId: authSession.company.id,
+          companyId: company.id,
           skillId,
           userId: authSession.user.id,
         });
@@ -305,7 +318,7 @@ export class AddAgentMutation extends Mutation<AddAgentMutationArguments, Graphq
       for (const mcpServerId of AddAgentMutation.resolveDistinctIds(arguments_.input.mcpServerIds)) {
         await this.mcpService.attachMcpServerToAgent(transactionProvider, {
           agentId: agentRecord.id,
-          companyId: authSession.company.id,
+          companyId: company.id,
           mcpServerId,
           userId: authSession.user.id,
         });

@@ -46,20 +46,31 @@ class UpdateSecretMutationTestHarness {
       envVarName: "GITHUB_TOKEN",
       id: "secret-1",
       name: "github token",
+      secretGroupId: "group-2",
       updatedAt: new Date("2026-03-30T18:00:00.000Z"),
     };
     const updatedValues: Array<Record<string, unknown>> = [];
+    let selectCallCount = 0;
 
     return {
       updatedValues,
       getDatabase() {
         return {
           select() {
+            selectCallCount += 1;
             return {
               from() {
                 return {
                   async where() {
-                    return [existingSecret];
+                    if (selectCallCount === 1) {
+                      return [existingSecret];
+                    }
+
+                    return [{
+                      companyId: "company-123",
+                      id: "group-2",
+                      name: "Deployments",
+                    }];
                   },
                 };
               },
@@ -80,6 +91,7 @@ class UpdateSecretMutationTestHarness {
                           envVarName: String(value.envVarName ?? existingSecret.envVarName),
                           id: existingSecret.id,
                           name: String(value.name ?? existingSecret.name),
+                          secretGroupId: (value.secretGroupId as string | null | undefined) ?? existingSecret.secretGroupId,
                           updatedAt: value.updatedAt as Date,
                         }];
                       },
@@ -154,6 +166,7 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
             name
             description
             envVarName
+            secretGroupId
             createdAt
             updatedAt
           }
@@ -164,6 +177,7 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
           envVarName: "GITHUB_APP_TOKEN",
           id: "secret-1",
           name: "github app token",
+          secretGroupId: "group-2",
           value: "rotated\nmultiline\nsecret\n",
         },
       },
@@ -180,12 +194,14 @@ test("GraphQL UpdateSecret mutation rotates encrypted values without exposing pl
     envVarName: "GITHUB_APP_TOKEN",
     id: "secret-1",
     name: "github app token",
+    secretGroupId: "group-2",
     updatedAt: document.data.UpdateSecret.updatedAt,
   });
 
   const [updatedSecret] = database.updatedValues;
   assert.equal(updatedSecret?.name, "github app token");
   assert.equal(updatedSecret?.envVarName, "GITHUB_APP_TOKEN");
+  assert.equal(updatedSecret?.secretGroupId, "group-2");
   assert.equal(updatedSecret?.updatedByUserId, "user-123");
   assert.equal(updatedSecret?.encryptionKeyId, "companyhelm-test-key");
   assert.notEqual(updatedSecret?.encryptedValue, "rotated\nmultiline\nsecret\n");

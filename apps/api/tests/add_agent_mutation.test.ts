@@ -5,6 +5,7 @@ import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
+import { AddAgentMutation } from "../src/graphql/mutations/add_agent.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
 import { DeleteModelProviderCredentialMutation } from "../src/graphql/mutations/delete_model_provider_credential.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../src/graphql/mutations/refresh_model_provider_credential_models.ts";
@@ -327,4 +328,209 @@ test("GraphQL AddAgent mutation creates an agent with optional advanced defaults
     secretId: "secret-1",
   });
   await app.close();
+});
+
+test("AddAgentMutation attaches each secret group once when secretGroupIds are provided", async () => {
+  const secretAttachmentCalls: Array<{
+    agentId: string;
+    companyId: string;
+    kind: "group" | "secret";
+    secretGroupId?: string;
+    secretId?: string;
+    userId: string | null;
+  }> = [];
+  let selectCallCount = 0;
+  const mutation = new AddAgentMutation(
+    {
+      async attachSecretGroupToAgent(_transactionProvider, input) {
+        secretAttachmentCalls.push({
+          agentId: input.agentId,
+          companyId: input.companyId,
+          kind: "group",
+          secretGroupId: input.secretGroupId,
+          userId: input.userId,
+        });
+        return {
+          companyId: input.companyId,
+          id: input.secretGroupId,
+          name: "Infra",
+        };
+      },
+      async attachSecretToAgent(_transactionProvider, input) {
+        secretAttachmentCalls.push({
+          agentId: input.agentId,
+          companyId: input.companyId,
+          kind: "secret",
+          secretId: input.secretId,
+          userId: input.userId,
+        });
+        return {
+          companyId: input.companyId,
+          createdAt: new Date("2026-03-24T12:00:00.000Z"),
+          description: null,
+          envVarName: "GITHUB_TOKEN",
+          id: input.secretId,
+          name: "GitHub token",
+          secretGroupId: null,
+          updatedAt: new Date("2026-03-24T12:00:00.000Z"),
+        };
+      },
+    } as never,
+    {
+      async attachSkillGroupToAgent() {
+        throw new Error("Skill groups should not be attached in this test.");
+      },
+      async attachSkillToAgent() {
+        throw new Error("Skills should not be attached in this test.");
+      },
+    } as never,
+    {
+      async resolveTemplateForProvider(_transactionProvider, input) {
+        return {
+          computerUse: true,
+          cpuCount: 4,
+          diskSpaceGb: 10,
+          memoryGb: 8,
+          name: "Desktop",
+          templateId: input.templateId,
+        };
+      },
+    } as never,
+    {
+      async attachMcpServerToAgent() {
+        throw new Error("MCP servers should not be attached in this test.");
+      },
+    } as never,
+  );
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          selectCallCount += 1;
+          if (selectCallCount === 1) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      id: "credential-1",
+                      modelProvider: "openai",
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 2) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      id: "model-row-1",
+                      modelProviderCredentialId: "credential-1",
+                      name: "GPT-5.4",
+                      reasoningLevels: ["low", "medium", "high"],
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          if (selectCallCount === 3) {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      id: "compute-provider-definition-1",
+                      name: "Primary E2B",
+                      provider: "e2b",
+                    }];
+                  },
+                };
+              },
+            };
+          }
+
+          throw new Error(`Unexpected select call: ${selectCallCount}`);
+        },
+        insert() {
+          return {
+            values(value: Record<string, unknown>) {
+              return {
+                async returning() {
+                  return [{
+                    createdAt: new Date("2026-03-24T12:00:00.000Z"),
+                    defaultComputeProviderDefinitionId: String(value.defaultComputeProviderDefinitionId),
+                    defaultEnvironmentTemplateId: String(value.defaultEnvironmentTemplateId),
+                    defaultReasoningLevel: value.default_reasoning_level ?? null,
+                    defaultModelProviderCredentialModelId: String(value.defaultModelProviderCredentialModelId),
+                    id: "agent-1",
+                    name: String(value.name),
+                    systemPrompt: value.system_prompt ?? null,
+                    updatedAt: new Date("2026-03-24T12:00:00.000Z"),
+                  }];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+
+  const result = await mutation.execute(
+    null,
+    {
+      input: {
+        defaultComputeProviderDefinitionId: "compute-provider-definition-1",
+        defaultEnvironmentTemplateId: "e2b/desktop",
+        modelProviderCredentialId: "credential-1",
+        modelProviderCredentialModelId: "model-row-1",
+        name: "Research Agent",
+        reasoningLevel: "high",
+        secretGroupIds: ["group-1", "group-1"],
+        secretIds: ["secret-1"],
+      },
+    },
+    {
+      app_runtime_transaction_provider: transactionProvider as never,
+      authSession: {
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+        token: "jwt-token",
+        user: {
+          email: "user@example.com",
+          firstName: "User",
+          id: "user-123",
+          lastName: "Example",
+          provider: "clerk",
+          providerSubject: "user_clerk_123",
+        },
+      },
+    } as never,
+  );
+
+  assert.equal(result.id, "agent-1");
+  assert.deepEqual(secretAttachmentCalls, [
+    {
+      agentId: "agent-1",
+      companyId: "company-123",
+      kind: "secret",
+      secretId: "secret-1",
+      userId: "user-123",
+    },
+    {
+      agentId: "agent-1",
+      companyId: "company-123",
+      kind: "group",
+      secretGroupId: "group-1",
+      userId: "user-123",
+    },
+  ]);
 });

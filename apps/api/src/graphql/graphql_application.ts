@@ -299,12 +299,18 @@ export class GraphqlApplication {
       deleteAgentMutation,
       updateAgentMutation,
       attachSecretToAgentMutation,
+      undefined,
+      undefined,
       attachSkillGroupToAgentMutation,
       attachSkillToAgentMutation,
       detachSecretFromAgentMutation,
+      undefined,
+      undefined,
       detachSkillGroupFromAgentMutation,
       detachSkillFromAgentMutation,
       agentSecretsQueryResolver,
+      undefined,
+      undefined,
       agentSkillGroupsQueryResolver,
       agentSkillsQueryResolver,
       agentEnvironmentTemplateService,
@@ -394,12 +400,18 @@ export class GraphqlApplication {
       undefined,
       undefined,
       undefined,
+      undefined,
+      undefined,
       deleteSecretMutation,
+      undefined,
       undefined,
       undefined,
       updateSecretMutation,
       undefined,
+      undefined,
       secretsQueryResolver,
+      undefined,
+      undefined,
       undefined,
       updateCompanySettingsMutation,
       createSkillMutation,
@@ -506,11 +518,11 @@ export class GraphqlApplication {
     await app.register(mercurius as never, graphqlPluginOptions as never);
   }
 
-  private get agentEnvironmentTemplateResolver(): ResolverExecutorLike {
+  private get agentEnvironmentTemplateResolver(): AgentEnvironmentTemplateResolver {
     return this.graphqlResolverRegistry.getAgentGraphqlRegistry().getAgentEnvironmentTemplateResolver();
   }
 
-  private set agentEnvironmentTemplateResolver(agentEnvironmentTemplateResolver: ResolverExecutorLike) {
+  private set agentEnvironmentTemplateResolver(agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolver) {
     this.graphqlResolverRegistry
       .getAgentGraphqlRegistry()
       .setAgentEnvironmentTemplateResolver(agentEnvironmentTemplateResolver);

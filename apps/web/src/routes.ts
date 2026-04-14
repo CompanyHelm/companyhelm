@@ -24,6 +24,7 @@ import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { SecretsPage } from "./pages/secrets/secrets_page";
+import { SecretGroupsPage } from "./pages/secret-groups/secret_groups_page";
 import { SkillGroupsPage } from "./pages/skill-groups/skill_groups_page";
 import { SkillDetailPage } from "./pages/skills/skill_detail_page";
 import { SkillsPage } from "./pages/skills/skills_page";
@@ -237,6 +238,12 @@ const secretsRoute = createRoute({
   component: SecretsPage,
 });
 
+const secretGroupsRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/secret-groups"),
+  component: SecretGroupsPage,
+});
+
 const mcpServersRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/mcp-servers"),
@@ -358,6 +365,7 @@ const routeTree = rootRoute.addChildren([
         inboxRoute,
         conversationsRoute,
         secretsRoute,
+        secretGroupsRoute,
         mcpServersRoute,
         skillsRoute,
         skillGroupsRoute,

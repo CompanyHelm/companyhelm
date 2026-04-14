@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<1c0279389682141d97745dd2234aae4e>>
+ * @generated SignedSource<<bec0a0eed3eceae9eab51a107a0cce34>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,7 @@ export type AddAgentInput = {
   modelProviderCredentialModelId: string;
   name: string;
   reasoningLevel?: string | null | undefined;
+  secretGroupIds?: ReadonlyArray<string> | null | undefined;
   secretIds?: ReadonlyArray<string> | null | undefined;
   skillGroupIds?: ReadonlyArray<string> | null | undefined;
   skillIds?: ReadonlyArray<string> | null | undefined;

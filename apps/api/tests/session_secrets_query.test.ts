@@ -21,6 +21,7 @@ test("SessionSecretsQueryResolver lists attached secrets for the authenticated c
           envVarName: "GITHUB_TOKEN",
           id: "secret-1",
           name: "GitHub Token",
+          secretGroupId: null,
           updatedAt: new Date("2026-03-30T18:05:00.000Z"),
         }];
       },
@@ -81,6 +82,7 @@ test("SessionSecretsQueryResolver lists attached secrets for the authenticated c
     envVarName: "GITHUB_TOKEN",
     id: "secret-1",
     name: "GitHub Token",
+    secretGroupId: null,
     updatedAt: "2026-03-30T18:05:00.000Z",
   }]);
 });

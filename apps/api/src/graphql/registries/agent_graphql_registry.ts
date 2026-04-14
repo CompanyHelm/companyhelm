@@ -8,11 +8,13 @@ import { SkillService } from "../../services/skills/service.ts";
 import { McpService } from "../../services/mcp/service.ts";
 import { AddAgentMutation } from "../mutations/add_agent.ts";
 import { AttachSecretToAgentMutation } from "../mutations/attach_secret_to_agent.ts";
+import { AttachSecretGroupToAgentMutation } from "../mutations/attach_secret_group_to_agent.ts";
 import { AttachMcpServerToAgentMutation } from "../mutations/attach_mcp_server_to_agent.ts";
 import { AttachSkillGroupToAgentMutation } from "../mutations/attach_skill_group_to_agent.ts";
 import { AttachSkillToAgentMutation } from "../mutations/attach_skill_to_agent.ts";
 import { DeleteAgentMutation } from "../mutations/delete_agent.ts";
 import { DetachSecretFromAgentMutation } from "../mutations/detach_secret_from_agent.ts";
+import { DetachSecretGroupFromAgentMutation } from "../mutations/detach_secret_group_from_agent.ts";
 import { DetachMcpServerFromAgentMutation } from "../mutations/detach_mcp_server_from_agent.ts";
 import { DetachSkillGroupFromAgentMutation } from "../mutations/detach_skill_group_from_agent.ts";
 import { DetachSkillFromAgentMutation } from "../mutations/detach_skill_from_agent.ts";
@@ -21,15 +23,12 @@ import { AgentQueryResolver } from "../resolvers/agent.ts";
 import { AgentCreateOptionsQueryResolver } from "../resolvers/agent_create_options.ts";
 import { AgentEnvironmentTemplateResolver } from "../resolvers/agent_environment_template.ts";
 import { AgentSecretsQueryResolver } from "../resolvers/agent_secrets.ts";
+import { AgentSecretGroupsQueryResolver } from "../resolvers/agent_secret_groups.ts";
 import { AgentMcpServersQueryResolver } from "../resolvers/agent_mcp_servers.ts";
 import { AgentSkillGroupsQueryResolver } from "../resolvers/agent_skill_groups.ts";
 import { AgentSkillsQueryResolver } from "../resolvers/agent_skills.ts";
 import { AgentsQueryResolver } from "../resolvers/agents.ts";
 import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
-
-type AgentEnvironmentTemplateResolverLike = {
-  execute: (...arguments_: unknown[]) => unknown;
-};
 
 /**
  * Owns the GraphQL schema surface that directly reads and mutates agents plus their attached
@@ -39,19 +38,22 @@ type AgentEnvironmentTemplateResolverLike = {
 export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
   private addAgentMutation: AddAgentMutation;
   private attachSecretToAgentMutation: AttachSecretToAgentMutation;
+  private attachSecretGroupToAgentMutation: AttachSecretGroupToAgentMutation;
   private attachMcpServerToAgentMutation: AttachMcpServerToAgentMutation;
   private attachSkillGroupToAgentMutation: AttachSkillGroupToAgentMutation;
   private attachSkillToAgentMutation: AttachSkillToAgentMutation;
   private agentQueryResolver: AgentQueryResolver;
   private agentCreateOptionsQueryResolver: AgentCreateOptionsQueryResolver;
-  private agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolverLike;
+  private agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolver;
   private agentSecretsQueryResolver: AgentSecretsQueryResolver;
+  private agentSecretGroupsQueryResolver: AgentSecretGroupsQueryResolver;
   private agentMcpServersQueryResolver: AgentMcpServersQueryResolver;
   private agentSkillGroupsQueryResolver: AgentSkillGroupsQueryResolver;
   private agentSkillsQueryResolver: AgentSkillsQueryResolver;
   private agentsQueryResolver: AgentsQueryResolver;
   private deleteAgentMutation: DeleteAgentMutation;
   private detachSecretFromAgentMutation: DetachSecretFromAgentMutation;
+  private detachSecretGroupFromAgentMutation: DetachSecretGroupFromAgentMutation;
   private detachMcpServerFromAgentMutation: DetachMcpServerFromAgentMutation;
   private detachSkillGroupFromAgentMutation: DetachSkillGroupFromAgentMutation;
   private detachSkillFromAgentMutation: DetachSkillFromAgentMutation;
@@ -68,6 +70,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(UpdateAgentMutation) updateAgentMutation: UpdateAgentMutation = new UpdateAgentMutation(),
     @inject(AttachSecretToAgentMutation)
     attachSecretToAgentMutation?: AttachSecretToAgentMutation,
+    @inject(AttachSecretGroupToAgentMutation)
+    attachSecretGroupToAgentMutation?: AttachSecretGroupToAgentMutation,
     @inject(AttachMcpServerToAgentMutation)
     attachMcpServerToAgentMutation?: AttachMcpServerToAgentMutation,
     @inject(AttachSkillGroupToAgentMutation)
@@ -76,6 +80,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     attachSkillToAgentMutation?: AttachSkillToAgentMutation,
     @inject(DetachSecretFromAgentMutation)
     detachSecretFromAgentMutation?: DetachSecretFromAgentMutation,
+    @inject(DetachSecretGroupFromAgentMutation)
+    detachSecretGroupFromAgentMutation?: DetachSecretGroupFromAgentMutation,
     @inject(DetachMcpServerFromAgentMutation)
     detachMcpServerFromAgentMutation?: DetachMcpServerFromAgentMutation,
     @inject(DetachSkillGroupFromAgentMutation)
@@ -84,6 +90,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     detachSkillFromAgentMutation?: DetachSkillFromAgentMutation,
     @inject(AgentSecretsQueryResolver)
     agentSecretsQueryResolver?: AgentSecretsQueryResolver,
+    @inject(AgentSecretGroupsQueryResolver)
+    agentSecretGroupsQueryResolver?: AgentSecretGroupsQueryResolver,
     @inject(AgentMcpServersQueryResolver)
     agentMcpServersQueryResolver?: AgentMcpServersQueryResolver,
     @inject(AgentSkillGroupsQueryResolver)
@@ -110,6 +118,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
       );
     this.attachSecretToAgentMutation = attachSecretToAgentMutation
       ?? new AttachSecretToAgentMutation(defaultSecretService);
+    this.attachSecretGroupToAgentMutation = attachSecretGroupToAgentMutation
+      ?? new AttachSecretGroupToAgentMutation(defaultSecretService);
     this.attachMcpServerToAgentMutation = attachMcpServerToAgentMutation
       ?? new AttachMcpServerToAgentMutation(defaultMcpService);
     this.attachSkillGroupToAgentMutation = attachSkillGroupToAgentMutation
@@ -122,6 +132,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
       ?? new AgentEnvironmentTemplateResolver(defaultAgentEnvironmentTemplateService);
     this.agentSecretsQueryResolver = agentSecretsQueryResolver
       ?? new AgentSecretsQueryResolver(defaultSecretService);
+    this.agentSecretGroupsQueryResolver = agentSecretGroupsQueryResolver
+      ?? new AgentSecretGroupsQueryResolver(defaultSecretService);
     this.agentMcpServersQueryResolver = agentMcpServersQueryResolver
       ?? new AgentMcpServersQueryResolver(defaultMcpService);
     this.agentSkillGroupsQueryResolver = agentSkillGroupsQueryResolver
@@ -132,6 +144,8 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     this.deleteAgentMutation = deleteAgentMutation;
     this.detachSecretFromAgentMutation = detachSecretFromAgentMutation
       ?? new DetachSecretFromAgentMutation(defaultSecretService);
+    this.detachSecretGroupFromAgentMutation = detachSecretGroupFromAgentMutation
+      ?? new DetachSecretGroupFromAgentMutation(defaultSecretService);
     this.detachMcpServerFromAgentMutation = detachMcpServerFromAgentMutation
       ?? new DetachMcpServerFromAgentMutation(defaultMcpService);
     this.detachSkillGroupFromAgentMutation = detachSkillGroupFromAgentMutation
@@ -149,11 +163,13 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
       Mutation: {
         AddAgent: this.addAgentMutation.execute,
         AttachSecretToAgent: this.attachSecretToAgentMutation.execute,
+        AttachSecretGroupToAgent: this.attachSecretGroupToAgentMutation.execute,
         AttachMcpServerToAgent: this.attachMcpServerToAgentMutation.execute,
         AttachSkillGroupToAgent: this.attachSkillGroupToAgentMutation.execute,
         AttachSkillToAgent: this.attachSkillToAgentMutation.execute,
         DeleteAgent: this.deleteAgentMutation.execute,
         DetachSecretFromAgent: this.detachSecretFromAgentMutation.execute,
+        DetachSecretGroupFromAgent: this.detachSecretGroupFromAgentMutation.execute,
         DetachMcpServerFromAgent: this.detachMcpServerFromAgentMutation.execute,
         DetachSkillGroupFromAgent: this.detachSkillGroupFromAgentMutation.execute,
         DetachSkillFromAgent: this.detachSkillFromAgentMutation.execute,
@@ -163,6 +179,7 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
         Agent: this.agentQueryResolver.execute,
         AgentCreateOptions: this.agentCreateOptionsQueryResolver.execute,
         AgentSecrets: this.agentSecretsQueryResolver.execute,
+        AgentSecretGroups: this.agentSecretGroupsQueryResolver.execute,
         AgentMcpServers: this.agentMcpServersQueryResolver.execute,
         AgentSkillGroups: this.agentSkillGroupsQueryResolver.execute,
         AgentSkills: this.agentSkillsQueryResolver.execute,
@@ -171,11 +188,11 @@ export class AgentGraphqlRegistry implements GraphqlRegistryInterface {
     };
   }
 
-  getAgentEnvironmentTemplateResolver(): AgentEnvironmentTemplateResolverLike {
+  getAgentEnvironmentTemplateResolver(): AgentEnvironmentTemplateResolver {
     return this.agentEnvironmentTemplateResolver;
   }
 
-  setAgentEnvironmentTemplateResolver(agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolverLike): void {
+  setAgentEnvironmentTemplateResolver(agentEnvironmentTemplateResolver: AgentEnvironmentTemplateResolver): void {
     this.agentEnvironmentTemplateResolver = agentEnvironmentTemplateResolver;
   }
 

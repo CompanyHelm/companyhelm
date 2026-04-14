@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
 
-import { companySecrets, companies, users } from "./company.ts";
+import { companySecrets, companies, secret_groups, users } from "./company.ts";
 import { computeProviderDefinitions } from "./environments.ts";
 
 export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic", "openai-codex", "openrouter"]);
@@ -112,4 +112,24 @@ export const agentDefaultSecrets = pgTable("agent_default_secrets", {
   companyIdIndex: index("agent_default_secrets_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_default_secrets_agent_id_idx").on(table.agentId),
   secretIdIndex: index("agent_default_secrets_secret_id_idx").on(table.secretId),
+}));
+
+export const agentDefaultSecretGroups = pgTable("agent_default_secret_groups", {
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+  secretGroupId: uuid("secret_group_id")
+    .references(() => secret_groups.id, { onDelete: "cascade" })
+    .notNull(),
+  createdByUserId: uuid("created_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.agentId, table.secretGroupId] }),
+  companyIdIndex: index("agent_default_secret_groups_company_id_idx").on(table.companyId),
+  agentIdIndex: index("agent_default_secret_groups_agent_id_idx").on(table.agentId),
+  secretGroupIdIndex: index("agent_default_secret_groups_secret_group_id_idx").on(table.secretGroupId),
 }));

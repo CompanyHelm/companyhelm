@@ -11,6 +11,7 @@ export type SecretsTableRecord = {
   createdAt: string;
   description: string | null;
   envVarName: string;
+  groupName: string;
   id: string;
   name: string;
   updatedAt: string;
@@ -65,6 +66,7 @@ export function SecretsTable(props: SecretsTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
+          <TableHead>Group</TableHead>
           <TableHead>Environment Variable</TableHead>
           <TableHead>Description</TableHead>
           <TableHead>Created</TableHead>
@@ -81,6 +83,7 @@ export function SecretsTable(props: SecretsTableProps) {
             }}
           >
             <TableCell className="font-medium text-foreground">{secret.name}</TableCell>
+            <TableCell className="text-sm text-muted-foreground">{secret.groupName}</TableCell>
             <TableCell className="font-mono text-xs text-muted-foreground">{secret.envVarName}</TableCell>
             <TableCell className="max-w-sm text-sm text-muted-foreground">
               {secret.description?.trim() || "—"}

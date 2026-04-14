@@ -64,6 +64,18 @@ export const companyMembers = pgTable("company_members", {
   userIdIndex: index("company_members_user_id_idx").on(table.userId),
 }));
 
+export const secret_groups = pgTable("secret_groups", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  name: text("name").notNull(),
+}, (table) => ({
+  companyIdIndex: index("secret_groups_company_id_idx").on(table.companyId),
+}));
+
 export const companySecrets = pgTable("company_secrets", {
   id: uuid("id")
     .primaryKey()
@@ -71,6 +83,8 @@ export const companySecrets = pgTable("company_secrets", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
+  secretGroupId: uuid("secret_group_id")
+    .references(() => secret_groups.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),
   envVarName: text("env_var_name").notNull(),
@@ -86,6 +100,7 @@ export const companySecrets = pgTable("company_secrets", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   companyIdIndex: index("company_secrets_company_id_idx").on(table.companyId),
+  secretGroupIdIndex: index("company_secrets_secret_group_id_idx").on(table.secretGroupId),
   companyNameLowerUnique: uniqueIndex("company_secrets_company_name_lower_uidx")
     .on(table.companyId, sql`lower(${table.name})`),
   companyEnvVarLowerUnique: uniqueIndex("company_secrets_company_env_var_lower_uidx")

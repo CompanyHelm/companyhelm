@@ -2,29 +2,10 @@ import { inject, injectable } from "inversify";
 import { SecretService } from "../../services/secrets/service.ts";
 import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
+import { GraphqlSecretPresenter, type GraphqlSecretRecord } from "../secret_presenter.ts";
 
 type SessionSecretsQueryArguments = {
   sessionId: string;
-};
-
-type SecretRecord = {
-  companyId: string;
-  createdAt: Date;
-  description: string | null;
-  envVarName: string;
-  id: string;
-  name: string;
-  updatedAt: Date;
-};
-
-type GraphqlSecretRecord = {
-  companyId: string;
-  createdAt: string;
-  description: string | null;
-  envVarName: string;
-  id: string;
-  name: string;
-  updatedAt: string;
 };
 
 /**
@@ -69,18 +50,6 @@ export class SessionSecretsQueryResolver {
       arguments_.sessionId,
     );
 
-    return secrets.map((secret) => SessionSecretsQueryResolver.serializeRecord(secret));
+    return secrets.map((secret) => GraphqlSecretPresenter.presentSecret(secret));
   };
-
-  private static serializeRecord(secret: SecretRecord): GraphqlSecretRecord {
-    return {
-      companyId: secret.companyId,
-      createdAt: secret.createdAt.toISOString(),
-      description: secret.description,
-      envVarName: secret.envVarName,
-      id: secret.id,
-      name: secret.name,
-      updatedAt: secret.updatedAt.toISOString(),
-    };
-  }
 }

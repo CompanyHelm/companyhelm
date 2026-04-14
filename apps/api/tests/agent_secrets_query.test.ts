@@ -19,6 +19,7 @@ test("AgentSecretsQueryResolver lists agent default secrets for the authenticate
         envVarName: "GITHUB_TOKEN",
         id: "secret-1",
         name: "GitHub Token",
+        secretGroupId: null,
         updatedAt: new Date("2026-03-30T21:05:00.000Z"),
       }];
     },
@@ -60,6 +61,7 @@ test("AgentSecretsQueryResolver lists agent default secrets for the authenticate
     envVarName: "GITHUB_TOKEN",
     id: "secret-1",
     name: "GitHub Token",
+    secretGroupId: null,
     updatedAt: "2026-03-30T21:05:00.000Z",
   }]);
 });

@@ -34,6 +34,8 @@ export function ApplicationHeader() {
       ? "Compute Providers"
         : normalizedPathname.startsWith("/environments")
           ? "Environments"
+        : normalizedPathname.startsWith("/secret-groups")
+          ? "Secret Groups"
         : normalizedPathname.startsWith("/secrets")
           ? "Secrets"
           : normalizedPathname.startsWith("/skill-groups")

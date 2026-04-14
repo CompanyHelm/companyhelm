@@ -1,15 +1,15 @@
 import { inject, injectable } from "inversify";
 import { SecretService } from "../../services/secrets/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { GraphqlSecretPresenter, type GraphqlSecretRecord } from "../secret_presenter.ts";
+import { GraphqlSecretPresenter, type GraphqlSecretGroupRecord } from "../secret_presenter.ts";
 import { Resolver } from "./resolver.ts";
 
 /**
- * Lists company secrets without exposing plaintext values. The UI uses this to render the reusable
- * secret catalog and to pick secrets that can be attached to sessions.
+ * Lists the company secret groups so the web UI can render the secret catalog as grouped folders
+ * without exposing any plaintext secret values.
  */
 @injectable()
-export class SecretsQueryResolver extends Resolver<GraphqlSecretRecord[]> {
+export class SecretGroupsQueryResolver extends Resolver<GraphqlSecretGroupRecord[]> {
   private readonly secretService: SecretService;
 
   constructor(@inject(SecretService) secretService: SecretService) {
@@ -17,16 +17,16 @@ export class SecretsQueryResolver extends Resolver<GraphqlSecretRecord[]> {
     this.secretService = secretService;
   }
 
-  protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlSecretRecord[]> => {
+  protected resolve = async (context: GraphqlRequestContext): Promise<GraphqlSecretGroupRecord[]> => {
     if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
 
-    const secrets = await this.secretService.listSecrets(
+    const groups = await this.secretService.listSecretGroups(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
     );
 
-    return secrets.map((secret) => GraphqlSecretPresenter.presentSecret(secret));
+    return groups.map((group) => GraphqlSecretPresenter.presentSecretGroup(group));
   };
 }

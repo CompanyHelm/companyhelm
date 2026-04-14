@@ -21,10 +21,12 @@ type Query {
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
+  SecretGroups: [SecretGroup!]!
   Secrets: [Secret!]!
   McpServers: [McpServer!]!
   McpServerAuthType(url: String!): McpServerAuthTypeDetection!
   AgentSecrets(agentId: ID!): [Secret!]!
+  AgentSecretGroups(agentId: ID!): [SecretGroup!]!
   AgentMcpServers(agentId: ID!): [McpServer!]!
   AgentSkillGroups(agentId: ID!): [SkillGroup!]!
   AgentSkills(agentId: ID!): [Skill!]!
@@ -64,12 +66,14 @@ type Mutation {
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
   AttachSecretToAgent(input: AttachSecretToAgentInput!): Secret!
+  AttachSecretGroupToAgent(input: AttachSecretGroupToAgentInput!): SecretGroup!
   AttachSkillGroupToAgent(input: AttachSkillGroupToAgentInput!): SkillGroup!
   AttachSkillToAgent(input: AttachSkillToAgentInput!): Skill!
   AttachSecretToSession(input: AttachSecretToSessionInput!): Secret!
   ArchiveSession(input: ArchiveSessionInput!): Session!
   ArchiveArtifact(input: ArchiveArtifactInput!): Artifact!
   CreateSecret(input: CreateSecretInput!): Secret!
+  CreateSecretGroup(input: CreateSecretGroupInput!): SecretGroup!
   CreateMcpServer(input: CreateMcpServerInput!): McpServer!
   StartMcpServerOAuth(input: StartMcpServerOAuthInput!): StartMcpServerOAuthPayload!
   ConnectMcpServerOAuthClientCredentials(
@@ -91,11 +95,13 @@ type Mutation {
   DeleteSession(input: DeleteSessionInput!): Session!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
   DeleteSecret(input: DeleteSecretInput!): Secret!
+  DeleteSecretGroup(input: DeleteSecretGroupInput!): SecretGroup!
   DeleteMcpServer(input: DeleteMcpServerInput!): McpServer!
   DisconnectMcpServerOAuth(input: DisconnectMcpServerOAuthInput!): McpServer!
   DeleteSkill(input: DeleteSkillInput!): Skill!
   DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
+  DetachSecretGroupFromAgent(input: DetachSecretGroupFromAgentInput!): SecretGroup!
   AttachMcpServerToAgent(input: AttachMcpServerToAgentInput!): McpServer!
   DetachMcpServerFromAgent(input: DetachMcpServerFromAgentInput!): McpServer!
   DetachSkillGroupFromAgent(input: DetachSkillGroupFromAgentInput!): SkillGroup!
@@ -141,6 +147,7 @@ type Mutation {
   UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
   UpdateMarkdownArtifact(input: UpdateMarkdownArtifactInput!): Artifact!
   UpdateSecret(input: UpdateSecretInput!): Secret!
+  UpdateSecretGroup(input: UpdateSecretGroupInput!): SecretGroup!
   UpdateMcpServer(input: UpdateMcpServerInput!): McpServer!
   UpdateSkill(input: UpdateSkillInput!): Skill!
   UpdateSkillGroup(input: UpdateSkillGroupInput!): SkillGroup!
@@ -567,11 +574,18 @@ type ModelProviderCredential {
 type Secret {
   id: ID!
   companyId: ID!
+  secretGroupId: ID
   name: String!
   description: String
   envVarName: String!
   createdAt: String!
   updatedAt: String!
+}
+
+type SecretGroup {
+  id: ID!
+  companyId: ID!
+  name: String!
 }
 
 type McpServer {
@@ -726,6 +740,7 @@ input AddAgentInput {
   modelProviderCredentialId: ID!
   modelProviderCredentialModelId: ID!
   reasoningLevel: String
+  secretGroupIds: [ID!]
   systemPrompt: String
   secretIds: [ID!]
   skillGroupIds: [ID!]
@@ -868,7 +883,12 @@ input CreateSecretInput {
   name: String!
   description: String
   envVarName: String
+  secretGroupId: ID
   value: String!
+}
+
+input CreateSecretGroupInput {
+  name: String!
 }
 
 input ImportGithubSkillsInput {
@@ -905,6 +925,10 @@ input UpdateE2bComputeProviderDefinitionInput {
 }
 
 input DeleteSecretInput {
+  id: ID!
+}
+
+input DeleteSecretGroupInput {
   id: ID!
 }
 
@@ -979,7 +1003,13 @@ input UpdateSecretInput {
   id: ID!
   name: String
   envVarName: String
+  secretGroupId: ID
   value: String
+}
+
+input UpdateSecretGroupInput {
+  id: ID!
+  name: String
 }
 
 input UpdateSkillInput {
@@ -1005,6 +1035,11 @@ input AttachSecretToAgentInput {
   secretId: ID!
 }
 
+input AttachSecretGroupToAgentInput {
+  agentId: ID!
+  secretGroupId: ID!
+}
+
 input AttachSkillGroupToAgentInput {
   agentId: ID!
   skillGroupId: ID!
@@ -1018,6 +1053,11 @@ input AttachSkillToAgentInput {
 input DetachSecretFromAgentInput {
   agentId: ID!
   secretId: ID!
+}
+
+input DetachSecretGroupFromAgentInput {
+  agentId: ID!
+  secretGroupId: ID!
 }
 
 input DetachSkillGroupFromAgentInput {

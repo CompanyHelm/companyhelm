@@ -8,6 +8,7 @@ import { AgentsTable, type AgentsTableRecord } from "./agents_table";
 import {
   CreateAgentDialog,
   type AgentCreateComputeProviderDefinitionOption,
+  type AgentCreateSecretGroupOption,
   type AgentCreateSecretOption,
   type AgentCreateSkillGroupOption,
   type AgentCreateSkillOption,
@@ -52,6 +53,10 @@ const agentsPageQueryNode = graphql`
       name
       description
       envVarName
+    }
+    SecretGroups {
+      id
+      name
     }
     SkillGroups {
       id
@@ -188,6 +193,10 @@ function AgentsPageContent() {
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
+  }));
+  const secretGroupOptions: AgentCreateSecretGroupOption[] = data.SecretGroups.map((secretGroup) => ({
+    id: secretGroup.id,
+    name: secretGroup.name,
   }));
   const skillGroupOptions: AgentCreateSkillGroupOption[] = data.SkillGroups.map((skillGroup) => ({
     id: skillGroup.id,
@@ -341,6 +350,7 @@ function AgentsPageContent() {
         isSaving={isCreateAgentInFlight}
         providerOptions={providerOptions}
         secretOptions={secretOptions}
+        secretGroupOptions={secretGroupOptions}
         skillGroupOptions={skillGroupOptions}
         skillOptions={skillOptions}
         mcpServerOptions={mcpServerOptions}

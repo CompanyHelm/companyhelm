@@ -45,6 +45,21 @@ class CreateSecretMutationTestHarness {
       insertedValues,
       getDatabase() {
         return {
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      companyId: "company-123",
+                      id: "group-1",
+                      name: "Infra",
+                    }];
+                  },
+                };
+              },
+            };
+          },
           insert() {
             return {
               values(value: Record<string, unknown>) {
@@ -58,6 +73,7 @@ class CreateSecretMutationTestHarness {
                       envVarName: String(value.envVarName),
                       id: "secret-1",
                       name: String(value.name),
+                      secretGroupId: value.secretGroupId as string | null,
                       updatedAt: value.updatedAt as Date,
                     }];
                   },
@@ -131,6 +147,7 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
             name
             description
             envVarName
+            secretGroupId
             createdAt
             updatedAt
           }
@@ -140,6 +157,7 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
         input: {
           description: "Main production key",
           name: "api key primary",
+          secretGroupId: "group-1",
           value: "line one\nline two\n",
         },
       },
@@ -154,6 +172,7 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
     name: "api key primary",
     description: "Main production key",
     envVarName: "API_KEY_PRIMARY",
+    secretGroupId: "group-1",
     createdAt: document.data.CreateSecret.createdAt,
     updatedAt: document.data.CreateSecret.updatedAt,
   });
@@ -163,6 +182,7 @@ test("GraphQL CreateSecret mutation encrypts the value and defaults the env var 
   assert.equal(insertedSecret?.createdByUserId, "user-123");
   assert.equal(insertedSecret?.updatedByUserId, "user-123");
   assert.equal(insertedSecret?.envVarName, "API_KEY_PRIMARY");
+  assert.equal(insertedSecret?.secretGroupId, "group-1");
   assert.equal(insertedSecret?.encryptionKeyId, "companyhelm-test-key");
   assert.notEqual(insertedSecret?.encryptedValue, "line one\nline two\n");
   assert.equal(

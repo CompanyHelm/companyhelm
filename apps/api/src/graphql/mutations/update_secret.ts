@@ -1,6 +1,7 @@
 import { inject, injectable } from "inversify";
 import { SecretService } from "../../services/secrets/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
+import { GraphqlSecretPresenter, type GraphqlSecretRecord } from "../secret_presenter.ts";
 import { Mutation } from "./mutation.ts";
 
 type UpdateSecretMutationArguments = {
@@ -8,28 +9,9 @@ type UpdateSecretMutationArguments = {
     envVarName?: string | null;
     id: string;
     name?: string | null;
+    secretGroupId?: string | null;
     value?: string | null;
   };
-};
-
-type SecretRecord = {
-  companyId: string;
-  createdAt: Date;
-  description: string | null;
-  envVarName: string;
-  id: string;
-  name: string;
-  updatedAt: Date;
-};
-
-type GraphqlSecretRecord = {
-  companyId: string;
-  createdAt: string;
-  description: string | null;
-  envVarName: string;
-  id: string;
-  name: string;
-  updatedAt: string;
 };
 
 /**
@@ -57,23 +39,12 @@ export class UpdateSecretMutation extends Mutation<UpdateSecretMutationArguments
       companyId: context.authSession.company.id,
       envVarName: arguments_.input.envVarName,
       name: arguments_.input.name,
+      secretGroupId: arguments_.input.secretGroupId,
       secretId: arguments_.input.id,
       userId: context.authSession.user.id,
       value: arguments_.input.value,
     });
 
-    return UpdateSecretMutation.serializeRecord(secret);
+    return GraphqlSecretPresenter.presentSecret(secret);
   };
-
-  private static serializeRecord(secret: SecretRecord): GraphqlSecretRecord {
-    return {
-      companyId: secret.companyId,
-      createdAt: secret.createdAt.toISOString(),
-      description: secret.description,
-      envVarName: secret.envVarName,
-      id: secret.id,
-      name: secret.name,
-      updatedAt: secret.updatedAt.toISOString(),
-    };
-  }
 }

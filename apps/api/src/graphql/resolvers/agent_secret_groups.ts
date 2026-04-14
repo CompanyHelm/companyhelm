@@ -1,18 +1,18 @@
 import { inject, injectable } from "inversify";
 import { SecretService } from "../../services/secrets/service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { GraphqlSecretPresenter, type GraphqlSecretRecord } from "../secret_presenter.ts";
+import { GraphqlSecretPresenter, type GraphqlSecretGroupRecord } from "../secret_presenter.ts";
 
-type AgentSecretsQueryArguments = {
+type AgentSecretGroupsQueryArguments = {
   agentId: string;
 };
 
 /**
- * Lists the secret defaults configured on one agent so the web app can show the exact reusable
- * company secrets that will be copied into future sessions created from that agent.
+ * Lists the secret groups explicitly attached to one agent so grouped defaults can be managed
+ * separately from direct individual secret attachments.
  */
 @injectable()
-export class AgentSecretsQueryResolver {
+export class AgentSecretGroupsQueryResolver {
   private readonly secretService: SecretService;
 
   constructor(@inject(SecretService) secretService: SecretService) {
@@ -21,19 +21,19 @@ export class AgentSecretsQueryResolver {
 
   execute = async (
     _root: unknown,
-    arguments_: AgentSecretsQueryArguments,
+    arguments_: AgentSecretGroupsQueryArguments,
     context: GraphqlRequestContext,
-  ): Promise<GraphqlSecretRecord[]> => {
+  ): Promise<GraphqlSecretGroupRecord[]> => {
     if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
 
-    const secrets = await this.secretService.listAgentSecrets(
+    const groups = await this.secretService.listAgentSecretGroups(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       arguments_.agentId,
     );
 
-    return secrets.map((secret) => GraphqlSecretPresenter.presentSecret(secret));
+    return groups.map((group) => GraphqlSecretPresenter.presentSecretGroup(group));
   };
 }

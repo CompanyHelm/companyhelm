@@ -1,6 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agentDefaultSecrets, agentSessionSecrets } from "../../../db/schema.ts";
+import {
+  agentDefaultSecretGroups,
+  agentDefaultSecrets,
+  agentSessionSecrets,
+  companySecrets,
+} from "../../../db/schema.ts";
 import type {
   AgentDefaultSecretRecord,
   AgentSessionSecretRecord,
@@ -23,7 +28,7 @@ export class SessionSecretCopyService {
     sessionId: string,
     userId?: string | null,
   ): Promise<void> {
-    const defaultSecrets = await selectableDatabase
+    const directDefaultSecrets = await selectableDatabase
       .select({
         createdByUserId: agentDefaultSecrets.createdByUserId,
         secretId: agentDefaultSecrets.secretId,
@@ -33,6 +38,49 @@ export class SessionSecretCopyService {
         eq(agentDefaultSecrets.companyId, companyId),
         eq(agentDefaultSecrets.agentId, agentId),
       )) as AgentDefaultSecretRecord[];
+    const groupedSecretAttachments = await selectableDatabase
+      .select({
+        createdByUserId: agentDefaultSecretGroups.createdByUserId,
+        secretGroupId: agentDefaultSecretGroups.secretGroupId,
+      })
+      .from(agentDefaultSecretGroups)
+      .where(and(
+        eq(agentDefaultSecretGroups.companyId, companyId),
+        eq(agentDefaultSecretGroups.agentId, agentId),
+      )) as Array<{ createdByUserId: string | null; secretGroupId: string }>;
+    const groupedSecretIds = groupedSecretAttachments.length === 0
+      ? []
+      : await selectableDatabase
+        .select({
+          secretGroupId: companySecrets.secretGroupId,
+          secretId: companySecrets.id,
+        })
+        .from(companySecrets)
+        .where(and(
+          eq(companySecrets.companyId, companyId),
+          inArray(
+            companySecrets.secretGroupId,
+            groupedSecretAttachments.map((attachment) => attachment.secretGroupId),
+          ),
+        )) as Array<{ secretGroupId: string | null; secretId: string }>;
+    const groupedCreatedByUserIdByGroupId = new Map(
+      groupedSecretAttachments.map((attachment) => [attachment.secretGroupId, attachment.createdByUserId]),
+    );
+    const groupedDefaultSecrets = groupedSecretIds
+      .map((groupedSecret) => {
+        if (groupedSecret.secretGroupId === null) {
+          return null;
+        }
+
+        return {
+          createdByUserId: groupedCreatedByUserIdByGroupId.get(groupedSecret.secretGroupId) ?? null,
+          secretId: groupedSecret.secretId,
+        };
+      })
+      .filter((groupedSecret): groupedSecret is AgentDefaultSecretRecord => groupedSecret !== null);
+    const defaultSecrets = [...new Map(
+      [...directDefaultSecrets, ...groupedDefaultSecrets].map((defaultSecret) => [defaultSecret.secretId, defaultSecret]),
+    ).values()];
 
     if (defaultSecrets.length === 0) {
       return;

@@ -1,26 +1,50 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import {
+  agentDefaultSecretGroups,
   agentDefaultSecrets,
   agentSessions,
   agentSessionSecrets,
   agents,
   companySecrets,
+  secret_groups,
 } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { SecretEncryptionService } from "./encryption.ts";
+
+type AgentDefaultSecretAttachmentRecord = {
+  createdByUserId: string | null;
+  secretId: string;
+};
+
+type AgentDefaultSecretGroupAttachmentRecord = {
+  createdByUserId: string | null;
+  secretGroupId: string;
+};
 
 type AgentRecord = {
   id: string;
 };
 
-type SecretRecord = {
+type AgentSecretGroupAgentRecord = {
+  agentId: string;
+  createdByUserId: string | null;
+};
+
+export type SecretGroupRecord = {
+  companyId: string;
+  id: string;
+  name: string;
+};
+
+export type SecretRecord = {
   companyId: string;
   createdAt: Date;
   description: string | null;
   envVarName: string;
   id: string;
   name: string;
+  secretGroupId: string | null;
   updatedAt: Date;
 };
 
@@ -41,6 +65,7 @@ type AgentSessionIdRecord = {
 };
 
 type SessionSecretAttachmentRecord = {
+  secretId: string;
   sessionId: string;
 };
 
@@ -54,7 +79,7 @@ type SelectableDatabase = {
 
 type InsertableDatabase = {
   insert(table: unknown): {
-    values(value: Record<string, unknown>): {
+    values(value: Record<string, unknown> | Record<string, unknown>[]): {
       returning?(selection?: Record<string, unknown>): Promise<Array<Record<string, unknown>>>;
     };
   };
@@ -79,9 +104,9 @@ type UpdatableDatabase = {
 };
 
 /**
- * Owns the company secret catalog plus the agent and session attachment layers. It keeps secret
- * values encrypted at rest, fans agent default secret changes out to existing sessions for that
- * agent, and never exposes plaintext back through GraphQL.
+ * Owns the company secret catalog, folder-like secret groups, and the agent and session
+ * attachment layers. It keeps secret values encrypted at rest while centralizing the rules that
+ * decide which default secrets an agent contributes through direct and grouped assignments.
  */
 @injectable()
 export class SecretService {
@@ -91,6 +116,66 @@ export class SecretService {
     this.encryptionService = encryptionService;
   }
 
+  async createSecretGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      name: string;
+    },
+  ): Promise<SecretGroupRecord> {
+    const name = this.requireNonEmptyName(input.name, "Secret group name");
+
+    return transactionProvider.transaction(async (tx) => {
+      const insertableDatabase = tx as InsertableDatabase;
+      const [createdGroup] = await insertableDatabase
+        .insert(secret_groups)
+        .values({
+          companyId: input.companyId,
+          name,
+        })
+        .returning?.(this.secretGroupSelection()) as SecretGroupRecord[];
+
+      if (!createdGroup) {
+        throw new Error("Failed to create secret group.");
+      }
+
+      return createdGroup;
+    });
+  }
+
+  async updateSecretGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      name?: string | null;
+      secretGroupId: string;
+    },
+  ): Promise<SecretGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingGroup = await this.requireSecretGroup(selectableDatabase, input.companyId, input.secretGroupId);
+      const [updatedGroup] = await updatableDatabase
+        .update(secret_groups)
+        .set({
+          name: input.name == null
+            ? existingGroup.name
+            : this.requireNonEmptyName(input.name, "Secret group name"),
+        })
+        .where(and(
+          eq(secret_groups.companyId, input.companyId),
+          eq(secret_groups.id, input.secretGroupId),
+        ))
+        .returning?.(this.secretGroupSelection()) as SecretGroupRecord[];
+
+      if (!updatedGroup) {
+        throw new Error("Failed to update secret group.");
+      }
+
+      return updatedGroup;
+    });
+  }
+
   async createSecret(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -98,26 +183,24 @@ export class SecretService {
       description?: string | null;
       envVarName?: string | null;
       name: string;
+      secretGroupId?: string | null;
       userId: string;
       value: string;
     },
   ): Promise<SecretRecord> {
-    const name = input.name.trim();
-    if (name.length === 0) {
-      throw new Error("Secret name is required.");
-    }
-
-    if (input.value.trim().length === 0) {
-      throw new Error("Secret value is required.");
-    }
-
+    const name = this.requireNonEmptyName(input.name, "Secret name");
+    const value = this.requireNonEmptyValue(input.value);
     const description = this.normalizeOptionalText(input.description);
-    const envVarName = this.resolveEnvVarName(name, input.envVarName);
-    const encryptedSecret = this.encryptionService.encrypt(input.value);
+    const encryptedSecret = this.encryptionService.encrypt(value);
 
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
+      const selectableDatabase = tx as SelectableDatabase;
       const now = new Date();
+      const secretGroupId = input.secretGroupId === undefined
+        ? null
+        : await this.requireSecretGroupId(selectableDatabase, input.companyId, input.secretGroupId);
+      const envVarName = this.resolveEnvVarName(name, input.envVarName);
       const [createdSecret] = await insertableDatabase
         .insert(companySecrets)
         .values({
@@ -129,6 +212,7 @@ export class SecretService {
           encryptionKeyId: encryptedSecret.encryptionKeyId,
           envVarName,
           name,
+          secretGroupId,
           updatedAt: now,
           updatedByUserId: input.userId,
         })
@@ -138,7 +222,33 @@ export class SecretService {
         throw new Error("Failed to create secret.");
       }
 
+      if (secretGroupId !== null) {
+        await this.attachSecretToExistingSessionsForGroup(
+          selectableDatabase,
+          insertableDatabase,
+          input.companyId,
+          secretGroupId,
+          createdSecret.id,
+          input.userId,
+        );
+      }
+
       return createdSecret;
+    });
+  }
+
+  async listSecretGroups(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+  ): Promise<SecretGroupRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const groups = await selectableDatabase
+        .select(this.secretGroupSelection())
+        .from(secret_groups)
+        .where(eq(secret_groups.companyId, companyId)) as SecretGroupRecord[];
+
+      return [...groups].sort((left, right) => left.name.localeCompare(right.name));
     });
   }
 
@@ -154,6 +264,32 @@ export class SecretService {
         .where(eq(companySecrets.companyId, companyId)) as SecretRecord[];
 
       return [...secrets].sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async listAgentSecretGroups(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+  ): Promise<SecretGroupRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const attachments = await selectableDatabase
+        .select({
+          secretGroupId: agentDefaultSecretGroups.secretGroupId,
+        })
+        .from(agentDefaultSecretGroups)
+        .where(and(
+          eq(agentDefaultSecretGroups.companyId, companyId),
+          eq(agentDefaultSecretGroups.agentId, agentId),
+        )) as Array<{ secretGroupId: string }>;
+
+      return this.listSecretGroupsByIds(
+        selectableDatabase,
+        companyId,
+        attachments.map((attachment) => attachment.secretGroupId),
+      );
     });
   }
 
@@ -209,6 +345,52 @@ export class SecretService {
     });
   }
 
+  async deleteSecretGroup(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      secretGroupId: string;
+    },
+  ): Promise<SecretGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      const agentsWithGroup = await this.listAgentIdsForGroup(selectableDatabase, input.companyId, input.secretGroupId);
+      const groupedSecretIds = await this.listSecretIdsByGroupIds(
+        selectableDatabase,
+        input.companyId,
+        [input.secretGroupId],
+      );
+      const [deletedGroup] = await deletableDatabase
+        .delete(secret_groups)
+        .where(and(
+          eq(secret_groups.companyId, input.companyId),
+          eq(secret_groups.id, input.secretGroupId),
+        ))
+        .returning?.(this.secretGroupSelection()) as SecretGroupRecord[];
+
+      if (!deletedGroup) {
+        throw new Error("Secret group not found.");
+      }
+
+      for (const agent of agentsWithGroup) {
+        const remainingSecretIds = new Set(
+          await this.listDefaultSecretIdsForAgent(selectableDatabase, input.companyId, agent.agentId),
+        );
+        const removableSecretIds = groupedSecretIds.filter((secretId) => !remainingSecretIds.has(secretId));
+        await this.detachSecretsFromExistingAgentSessions(
+          selectableDatabase,
+          deletableDatabase,
+          input.companyId,
+          agent.agentId,
+          removableSecretIds,
+        );
+      }
+
+      return deletedGroup;
+    });
+  }
+
   async deleteSecret(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -238,6 +420,7 @@ export class SecretService {
       companyId: string;
       envVarName?: string | null;
       name?: string | null;
+      secretGroupId?: string | null;
       secretId: string;
       userId: string;
       value?: string | null;
@@ -245,17 +428,22 @@ export class SecretService {
   ): Promise<SecretRecord> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
       const existingSecret = await this.requireSecret(selectableDatabase, input.companyId, input.secretId);
-      const nextName = input.name === undefined
+      const nextName = input.name == null
         ? existingSecret.name
-        : this.requireNonEmptyName(input.name);
+        : this.requireNonEmptyName(input.name, "Secret name");
       const nextEnvVarName = input.envVarName === undefined
         ? existingSecret.envVarName
         : this.resolveEnvVarName(nextName, input.envVarName);
-      const nextValue = input.value === undefined
+      const nextValue = input.value == null
         ? null
         : this.requireNonEmptyValue(input.value);
+      const nextSecretGroupId = input.secretGroupId === undefined
+        ? existingSecret.secretGroupId
+        : await this.requireSecretGroupId(selectableDatabase, input.companyId, input.secretGroupId);
       const encryptedSecret = nextValue === null ? null : this.encryptionService.encrypt(nextValue);
       const [updatedSecret] = await updatableDatabase
         .update(companySecrets)
@@ -264,6 +452,7 @@ export class SecretService {
           encryptionKeyId: encryptedSecret?.encryptionKeyId ?? undefined,
           envVarName: nextEnvVarName,
           name: nextName,
+          secretGroupId: nextSecretGroupId,
           updatedAt: new Date(),
           updatedByUserId: input.userId,
         })
@@ -275,6 +464,41 @@ export class SecretService {
 
       if (!updatedSecret) {
         throw new Error("Failed to update secret.");
+      }
+
+      if (existingSecret.secretGroupId !== nextSecretGroupId) {
+        if (existingSecret.secretGroupId !== null) {
+          const agentsWithOldGroup = await this.listAgentIdsForGroup(
+            selectableDatabase,
+            input.companyId,
+            existingSecret.secretGroupId,
+          );
+          for (const agent of agentsWithOldGroup) {
+            const remainingSecretIds = new Set(
+              await this.listDefaultSecretIdsForAgent(selectableDatabase, input.companyId, agent.agentId),
+            );
+            if (!remainingSecretIds.has(updatedSecret.id)) {
+              await this.detachSecretsFromExistingAgentSessions(
+                selectableDatabase,
+                deletableDatabase,
+                input.companyId,
+                agent.agentId,
+                [updatedSecret.id],
+              );
+            }
+          }
+        }
+
+        if (nextSecretGroupId !== null) {
+          await this.attachSecretToExistingSessionsForGroup(
+            selectableDatabase,
+            insertableDatabase,
+            input.companyId,
+            nextSecretGroupId,
+            updatedSecret.id,
+            input.userId,
+          );
+        }
       }
 
       return updatedSecret;
@@ -362,16 +586,68 @@ export class SecretService {
             secretId: input.secretId,
           });
       }
-      await this.attachSecretToExistingAgentSessions(
+
+      await this.attachSecretsToExistingAgentSessions(
         selectableDatabase,
         insertableDatabase,
         input.companyId,
         input.agentId,
-        input.secretId,
+        [input.secretId],
         input.userId,
       );
 
       return secret;
+    });
+  }
+
+  async attachSecretGroupToAgent(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      agentId: string;
+      companyId: string;
+      secretGroupId: string;
+      userId: string | null;
+    },
+  ): Promise<SecretGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
+      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const group = await this.requireSecretGroup(selectableDatabase, input.companyId, input.secretGroupId);
+      const existingAttachment = await selectableDatabase
+        .select({
+          secretGroupId: agentDefaultSecretGroups.secretGroupId,
+        })
+        .from(agentDefaultSecretGroups)
+        .where(and(
+          eq(agentDefaultSecretGroups.companyId, input.companyId),
+          eq(agentDefaultSecretGroups.agentId, input.agentId),
+          eq(agentDefaultSecretGroups.secretGroupId, input.secretGroupId),
+        )) as Array<{ secretGroupId: string }>;
+
+      if (existingAttachment.length === 0) {
+        await insertableDatabase
+          .insert(agentDefaultSecretGroups)
+          .values({
+            agentId: input.agentId,
+            companyId: input.companyId,
+            createdAt: new Date(),
+            createdByUserId: input.userId,
+            secretGroupId: input.secretGroupId,
+          });
+      }
+
+      const secretIds = await this.listSecretIdsByGroupIds(selectableDatabase, input.companyId, [input.secretGroupId]);
+      await this.attachSecretsToExistingAgentSessions(
+        selectableDatabase,
+        insertableDatabase,
+        input.companyId,
+        input.agentId,
+        secretIds,
+        input.userId,
+      );
+
+      return group;
     });
   }
 
@@ -430,15 +706,64 @@ export class SecretService {
       if (!deletedAttachment) {
         throw new Error("Secret is not attached to the agent.");
       }
-      await this.detachSecretFromExistingAgentSessions(
+
+      const remainingSecretIds = new Set(
+        await this.listDefaultSecretIdsForAgent(selectableDatabase, companyId, agentId),
+      );
+      if (!remainingSecretIds.has(secretId)) {
+        await this.detachSecretsFromExistingAgentSessions(
+          selectableDatabase,
+          deletableDatabase,
+          companyId,
+          agentId,
+          [secretId],
+        );
+      }
+
+      return secret;
+    });
+  }
+
+  async detachSecretGroupFromAgent(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+    secretGroupId: string,
+  ): Promise<SecretGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const group = await this.requireSecretGroup(selectableDatabase, companyId, secretGroupId);
+      const groupedSecretIds = await this.listSecretIdsByGroupIds(selectableDatabase, companyId, [secretGroupId]);
+      const [deletedAttachment] = await deletableDatabase
+        .delete(agentDefaultSecretGroups)
+        .where(and(
+          eq(agentDefaultSecretGroups.companyId, companyId),
+          eq(agentDefaultSecretGroups.agentId, agentId),
+          eq(agentDefaultSecretGroups.secretGroupId, secretGroupId),
+        ))
+        .returning?.({
+          secretGroupId: agentDefaultSecretGroups.secretGroupId,
+        }) as Array<{ secretGroupId: string }>;
+
+      if (!deletedAttachment) {
+        throw new Error("Secret group is not attached to the agent.");
+      }
+
+      const remainingSecretIds = new Set(
+        await this.listDefaultSecretIdsForAgent(selectableDatabase, companyId, agentId),
+      );
+      const removableSecretIds = groupedSecretIds.filter((candidateSecretId) => !remainingSecretIds.has(candidateSecretId));
+      await this.detachSecretsFromExistingAgentSessions(
         selectableDatabase,
         deletableDatabase,
         companyId,
         agentId,
-        secretId,
+        removableSecretIds,
       );
 
-      return secret;
+      return group;
     });
   }
 
@@ -490,10 +815,10 @@ export class SecretService {
     return normalizedValue.length > 0 ? normalizedValue : null;
   }
 
-  private requireNonEmptyName(value: string): string {
+  private requireNonEmptyName(value: string, label: string): string {
     const normalizedValue = value.trim();
     if (normalizedValue.length === 0) {
-      throw new Error("Secret name is required.");
+      throw new Error(`${label} is required.`);
     }
 
     return normalizedValue;
@@ -586,6 +911,39 @@ export class SecretService {
     return secret;
   }
 
+  private async requireSecretGroup(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretGroupId: string,
+  ): Promise<SecretGroupRecord> {
+    const [group] = await selectableDatabase
+      .select(this.secretGroupSelection())
+      .from(secret_groups)
+      .where(and(
+        eq(secret_groups.companyId, companyId),
+        eq(secret_groups.id, secretGroupId),
+      )) as SecretGroupRecord[];
+
+    if (!group) {
+      throw new Error("Secret group not found.");
+    }
+
+    return group;
+  }
+
+  private async requireSecretGroupId(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretGroupId: string | null,
+  ): Promise<string | null> {
+    if (secretGroupId === null) {
+      return null;
+    }
+
+    const group = await this.requireSecretGroup(selectableDatabase, companyId, secretGroupId);
+    return group.id;
+  }
+
   private async requireSession(
     selectableDatabase: SelectableDatabase,
     companyId: string,
@@ -627,14 +985,137 @@ export class SecretService {
     return sessions.map((session) => session.id);
   }
 
-  private async attachSecretToExistingAgentSessions(
+  private async listAgentIdsForGroup(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretGroupId: string,
+  ): Promise<AgentSecretGroupAgentRecord[]> {
+    return await selectableDatabase
+      .select({
+        agentId: agentDefaultSecretGroups.agentId,
+        createdByUserId: agentDefaultSecretGroups.createdByUserId,
+      })
+      .from(agentDefaultSecretGroups)
+      .where(and(
+        eq(agentDefaultSecretGroups.companyId, companyId),
+        eq(agentDefaultSecretGroups.secretGroupId, secretGroupId),
+      )) as AgentSecretGroupAgentRecord[];
+  }
+
+  private async listDefaultSecretIdsForAgent(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    agentId: string,
+  ): Promise<string[]> {
+    const directAttachments = await selectableDatabase
+      .select({
+        createdByUserId: agentDefaultSecrets.createdByUserId,
+        secretId: agentDefaultSecrets.secretId,
+      })
+      .from(agentDefaultSecrets)
+      .where(and(
+        eq(agentDefaultSecrets.companyId, companyId),
+        eq(agentDefaultSecrets.agentId, agentId),
+      )) as AgentDefaultSecretAttachmentRecord[];
+    const groupAttachments = await selectableDatabase
+      .select({
+        createdByUserId: agentDefaultSecretGroups.createdByUserId,
+        secretGroupId: agentDefaultSecretGroups.secretGroupId,
+      })
+      .from(agentDefaultSecretGroups)
+      .where(and(
+        eq(agentDefaultSecretGroups.companyId, companyId),
+        eq(agentDefaultSecretGroups.agentId, agentId),
+      )) as AgentDefaultSecretGroupAttachmentRecord[];
+
+    const groupedSecretIds = await this.listSecretIdsByGroupIds(
+      selectableDatabase,
+      companyId,
+      groupAttachments.map((attachment) => attachment.secretGroupId),
+    );
+
+    return [...new Set([
+      ...directAttachments.map((attachment) => attachment.secretId),
+      ...groupedSecretIds,
+    ])];
+  }
+
+  private async listSecretGroupsByIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretGroupIds: string[],
+  ): Promise<SecretGroupRecord[]> {
+    if (secretGroupIds.length === 0) {
+      return [];
+    }
+
+    const groups = await selectableDatabase
+      .select(this.secretGroupSelection())
+      .from(secret_groups)
+      .where(and(
+        eq(secret_groups.companyId, companyId),
+        inArray(secret_groups.id, secretGroupIds),
+      )) as SecretGroupRecord[];
+
+    return [...groups].sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  private async listSecretIdsByGroupIds(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    secretGroupIds: string[],
+  ): Promise<string[]> {
+    if (secretGroupIds.length === 0) {
+      return [];
+    }
+
+    const secrets = await selectableDatabase
+      .select({
+        id: companySecrets.id,
+      })
+      .from(companySecrets)
+      .where(and(
+        eq(companySecrets.companyId, companyId),
+        inArray(companySecrets.secretGroupId, secretGroupIds),
+      )) as Array<{ id: string }>;
+
+    return [...new Set(secrets.map((secret) => secret.id))];
+  }
+
+  private async attachSecretToExistingSessionsForGroup(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+    secretGroupId: string,
+    secretId: string,
+    userId: string | null,
+  ): Promise<void> {
+    const agentsWithGroup = await this.listAgentIdsForGroup(selectableDatabase, companyId, secretGroupId);
+    for (const agent of agentsWithGroup) {
+      await this.attachSecretsToExistingAgentSessions(
+        selectableDatabase,
+        insertableDatabase,
+        companyId,
+        agent.agentId,
+        [secretId],
+        userId ?? agent.createdByUserId,
+      );
+    }
+  }
+
+  private async attachSecretsToExistingAgentSessions(
     selectableDatabase: SelectableDatabase,
     insertableDatabase: InsertableDatabase,
     companyId: string,
     agentId: string,
-    secretId: string,
+    secretIds: string[],
     userId: string | null,
   ): Promise<void> {
+    const uniqueSecretIds = [...new Set(secretIds.filter((secretId) => secretId.length > 0))];
+    if (uniqueSecretIds.length === 0) {
+      return;
+    }
+
     const sessionIds = await this.listAgentSessionIds(selectableDatabase, companyId, agentId);
     if (sessionIds.length === 0) {
       return;
@@ -642,40 +1123,49 @@ export class SecretService {
 
     const existingAttachments = await selectableDatabase
       .select({
+        secretId: agentSessionSecrets.secretId,
         sessionId: agentSessionSecrets.sessionId,
       })
       .from(agentSessionSecrets)
       .where(and(
         eq(agentSessionSecrets.companyId, companyId),
-        eq(agentSessionSecrets.secretId, secretId),
+        inArray(agentSessionSecrets.secretId, uniqueSecretIds),
         inArray(agentSessionSecrets.sessionId, sessionIds),
       )) as SessionSecretAttachmentRecord[];
-    const existingSessionIds = new Set(existingAttachments.map((attachment) => attachment.sessionId));
+    const existingAttachmentKeys = new Set(
+      existingAttachments.map((attachment) => `${attachment.sessionId}:${attachment.secretId}`),
+    );
+    const valuesToInsert = sessionIds.flatMap((sessionId) => uniqueSecretIds
+      .filter((secretId) => !existingAttachmentKeys.has(`${sessionId}:${secretId}`))
+      .map((secretId) => ({
+        companyId,
+        createdAt: new Date(),
+        createdByUserId: userId,
+        secretId,
+        sessionId,
+      })));
 
-    for (const sessionId of sessionIds) {
-      if (existingSessionIds.has(sessionId)) {
-        continue;
-      }
-
-      await insertableDatabase
-        .insert(agentSessionSecrets)
-        .values({
-          companyId,
-          createdAt: new Date(),
-          createdByUserId: userId,
-          secretId,
-          sessionId,
-        });
+    if (valuesToInsert.length === 0) {
+      return;
     }
+
+    await insertableDatabase
+      .insert(agentSessionSecrets)
+      .values(valuesToInsert);
   }
 
-  private async detachSecretFromExistingAgentSessions(
+  private async detachSecretsFromExistingAgentSessions(
     selectableDatabase: SelectableDatabase,
     deletableDatabase: DeletableDatabase,
     companyId: string,
     agentId: string,
-    secretId: string,
+    secretIds: string[],
   ): Promise<void> {
+    const uniqueSecretIds = [...new Set(secretIds.filter((secretId) => secretId.length > 0))];
+    if (uniqueSecretIds.length === 0) {
+      return;
+    }
+
     const sessionIds = await this.listAgentSessionIds(selectableDatabase, companyId, agentId);
     if (sessionIds.length === 0) {
       return;
@@ -685,9 +1175,17 @@ export class SecretService {
       .delete(agentSessionSecrets)
       .where(and(
         eq(agentSessionSecrets.companyId, companyId),
-        eq(agentSessionSecrets.secretId, secretId),
+        inArray(agentSessionSecrets.secretId, uniqueSecretIds),
         inArray(agentSessionSecrets.sessionId, sessionIds),
       ));
+  }
+
+  private secretGroupSelection(): Record<string, unknown> {
+    return {
+      companyId: secret_groups.companyId,
+      id: secret_groups.id,
+      name: secret_groups.name,
+    };
   }
 
   private secretSelection(): Record<string, unknown> {
@@ -698,6 +1196,7 @@ export class SecretService {
       envVarName: companySecrets.envVarName,
       id: companySecrets.id,
       name: companySecrets.name,
+      secretGroupId: companySecrets.secretGroupId,
       updatedAt: companySecrets.updatedAt,
     };
   }

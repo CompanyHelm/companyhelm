@@ -44,6 +44,11 @@ export type AgentCreateSecretOption = {
   name: string;
 };
 
+export type AgentCreateSecretGroupOption = {
+  id: string;
+  name: string;
+};
+
 export type AgentCreateSkillGroupOption = {
   id: string;
   name: string;
@@ -87,6 +92,7 @@ interface CreateAgentDialogProps {
   isSaving: boolean;
   providerOptions: AgentCreateProviderOption[];
   secretOptions: AgentCreateSecretOption[];
+  secretGroupOptions: AgentCreateSecretGroupOption[];
   skillGroupOptions: AgentCreateSkillGroupOption[];
   skillOptions: AgentCreateSkillOption[];
   mcpServerOptions: AgentCreateMcpServerOption[];
@@ -97,6 +103,7 @@ interface CreateAgentDialogProps {
     modelProviderCredentialModelId: string;
     name: string;
     reasoningLevel?: string;
+    secretGroupIds?: string[];
     secretIds?: string[];
     skillGroupIds?: string[];
     skillIds?: string[];
@@ -120,6 +127,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [modelOptionId, setModelOptionId] = useState("");
   const [reasoningLevel, setReasoningLevel] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [selectedSecretGroupIds, setSelectedSecretGroupIds] = useState<string[]>([]);
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
   const [selectedSkillGroupIds, setSelectedSkillGroupIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
@@ -221,6 +229,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setModelOptionId("");
       setReasoningLevel("");
       setSystemPrompt("");
+      setSelectedSecretGroupIds([]);
       setSelectedSecretIds([]);
       setSelectedSkillGroupIds([]);
       setSelectedSkillIds([]);
@@ -307,6 +316,9 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
   const isReasoningLevelRequired = selectedReasoningLevels.length > 0;
   const advancedSummary = [
+    selectedSecretGroupIds.length > 0
+      ? `${selectedSecretGroupIds.length} secret group${selectedSecretGroupIds.length === 1 ? "" : "s"}`
+      : null,
     selectedSecretIds.length > 0 ? `${selectedSecretIds.length} secret${selectedSecretIds.length === 1 ? "" : "s"}` : null,
     selectedSkillGroupIds.length > 0
       ? `${selectedSkillGroupIds.length} group${selectedSkillGroupIds.length === 1 ? "" : "s"}`
@@ -324,6 +336,23 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         metaLabel: secretOption.envVarName,
       }));
   }, [props.secretOptions, selectedSecretIds]);
+  const selectedSecretGroupOptions = useMemo(() => {
+    return props.secretGroupOptions
+      .filter((secretGroupOption) => selectedSecretGroupIds.includes(secretGroupOption.id))
+      .map((secretGroupOption) => ({
+        id: secretGroupOption.id,
+        label: secretGroupOption.name,
+      }));
+  }, [props.secretGroupOptions, selectedSecretGroupIds]);
+  const availableSecretGroupOptions = useMemo(() => {
+    const attachedSecretGroupIds = new Set(selectedSecretGroupIds);
+    return props.secretGroupOptions
+      .filter((secretGroupOption) => !attachedSecretGroupIds.has(secretGroupOption.id))
+      .map((secretGroupOption) => ({
+        id: secretGroupOption.id,
+        label: secretGroupOption.name,
+      }));
+  }, [props.secretGroupOptions, selectedSecretGroupIds]);
   const availableSecretOptions = useMemo(() => {
     const attachedSecretIds = new Set(selectedSecretIds);
     return props.secretOptions
@@ -632,6 +661,22 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             {isAdvancedOpen ? (
               <div className="grid gap-4 border-t border-border/60 pt-3">
                 <DefaultAttachmentSection
+                  addLabel="Add secret group"
+                  availableEmptyLabel="All company secret groups already added"
+                  availableOptions={availableSecretGroupOptions}
+                  currentLabel="Current secret groups"
+                  emptyStateLabel="No secret groups selected yet."
+                  onAdd={(secretGroupId) => {
+                    setSelectedSecretGroupIds((currentValue) => [...currentValue, secretGroupId]);
+                  }}
+                  onRemove={(secretGroupId) => {
+                    setSelectedSecretGroupIds((currentValue) => currentValue.filter((value) => value !== secretGroupId));
+                  }}
+                  placeholder="Select a secret group"
+                  selectedOptions={selectedSecretGroupOptions}
+                />
+
+                <DefaultAttachmentSection
                   addLabel="Add default secret"
                   availableEmptyLabel="All company secrets already added"
                   availableOptions={availableSecretOptions}
@@ -730,6 +775,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 modelProviderCredentialModelId: selectedModelOption.modelProviderCredentialModelId,
                 name: agentName,
                 reasoningLevel: reasoningLevel.length === 0 ? undefined : reasoningLevel,
+                secretGroupIds: selectedSecretGroupIds.length > 0 ? selectedSecretGroupIds : undefined,
                 secretIds: selectedSecretIds.length > 0 ? selectedSecretIds : undefined,
                 skillGroupIds: selectedSkillGroupIds.length > 0 ? selectedSkillGroupIds : undefined,
                 skillIds: selectedSkillIds.length > 0 ? selectedSkillIds : undefined,

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5c148990135ee8152918edf7b91c8117>>
+ * @generated SignedSource<<65b2132ee7d7f1df47a1ac356e6e3912>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,25 +9,21 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type secretsPageQuery$variables = Record<PropertyKey, never>;
-export type secretsPageQuery$data = {
+export type secretGroupsPageQuery$variables = Record<PropertyKey, never>;
+export type secretGroupsPageQuery$data = {
   readonly SecretGroups: ReadonlyArray<{
     readonly id: string;
     readonly name: string;
   }>;
   readonly Secrets: ReadonlyArray<{
-    readonly createdAt: string;
-    readonly description: string | null | undefined;
-    readonly envVarName: string;
     readonly id: string;
     readonly name: string;
     readonly secretGroupId: string | null | undefined;
-    readonly updatedAt: string;
   }>;
 };
-export type secretsPageQuery = {
-  response: secretsPageQuery$data;
-  variables: secretsPageQuery$variables;
+export type secretGroupsPageQuery = {
+  response: secretGroupsPageQuery$data;
+  variables: secretGroupsPageQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -73,35 +69,7 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "envVarName",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "secretGroupId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "createdAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "updatedAt",
         "storageKey": null
       }
     ],
@@ -113,7 +81,7 @@ return {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "secretsPageQuery",
+    "name": "secretGroupsPageQuery",
     "selections": (v2/*: any*/),
     "type": "Query",
     "abstractKey": null
@@ -122,20 +90,20 @@ return {
   "operation": {
     "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "secretsPageQuery",
+    "name": "secretGroupsPageQuery",
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "2faa61a4262317077d28ff7a282cf930",
+    "cacheID": "db3d68c8575611303b0e13b99cba55ba",
     "id": null,
     "metadata": {},
-    "name": "secretsPageQuery",
+    "name": "secretGroupsPageQuery",
     "operationKind": "query",
-    "text": "query secretsPageQuery {\n  SecretGroups {\n    id\n    name\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n    secretGroupId\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query secretGroupsPageQuery {\n  SecretGroups {\n    id\n    name\n  }\n  Secrets {\n    id\n    name\n    secretGroupId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cde47bce7633cfaf51ed8983cd7a0daf";
+(node as any).hash = "5ef9a8505176ec1b77917ea4be942918";
 
 export default node;
