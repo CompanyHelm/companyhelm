@@ -5,6 +5,7 @@ import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { TaskCategoryDialog } from "./task_category_dialog";
@@ -136,47 +137,30 @@ function SettingsPageContent() {
           </p>
         </div>
 
-        <div className="border-b border-border/60">
-          <div className="modern-scrollbar flex items-center gap-6 overflow-x-auto">
-            {[
-              {
-                key: "tasks" as const,
-                label: "Tasks",
+        <PageTabs
+          items={[
+            {
+              key: "tasks" as const,
+              label: "Tasks",
+            },
+            {
+              key: "AI" as const,
+              label: "Agents / AI",
+            },
+          ]}
+          onSelect={(tab) => {
+            void navigate({
+              params: {
+                organizationSlug,
               },
-              {
-                key: "AI" as const,
-                label: "Agents / AI",
+              search: {
+                tab,
               },
-            ].map((tab) => {
-              const isSelected = selectedTab === tab.key;
-
-              return (
-                <button
-                  key={tab.key}
-                  className={`-mb-px shrink-0 border-b-2 px-0 py-3 text-sm font-medium transition ${
-                    isSelected
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground hover:border-border/80 hover:text-foreground"
-                  }`}
-                  onClick={() => {
-                    void navigate({
-                      params: {
-                        organizationSlug,
-                      },
-                      search: {
-                        tab: tab.key,
-                      },
-                      to: OrganizationPath.route("/settings"),
-                    });
-                  }}
-                  type="button"
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+              to: OrganizationPath.route("/settings"),
+            });
+          }}
+          selectedKey={selectedTab}
+        />
       </div>
 
       {selectedTab === "tasks" ? (

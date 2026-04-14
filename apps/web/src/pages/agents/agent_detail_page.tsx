@@ -5,6 +5,7 @@ import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { AgentArchivedChatsTab } from "./agent_archived_chats_tab";
@@ -501,61 +502,31 @@ function AgentDetailPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-col gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <span>{agent.name}</span>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {selectedTab === "overview"
-              ? "Manage the agent configuration, defaults, and runtime template in one place."
-              : "Review archived chats for this agent, restore them to the chats workspace, or permanently delete them."}
-          </p>
-        </div>
-
-        <div className="border-b border-border/60">
-          <div className="modern-scrollbar flex items-center gap-6 overflow-x-auto">
-            {[
-              {
-                key: "overview" as const,
-                label: "Overview",
-              },
-              {
-                key: "archived" as const,
-                label: "Archived chats",
-              },
-            ].map((tab) => {
-              const isSelected = selectedTab === tab.key;
-
-              return (
-                <button
-                  key={tab.key}
-                  className={`-mb-px shrink-0 border-b-2 px-0 py-3 text-sm font-medium transition ${
-                    isSelected
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground hover:border-border/80 hover:text-foreground"
-                  }`}
-                  onClick={() => {
-                    void navigate({
-                      params: {
-                        agentId: agent.id,
-                        organizationSlug,
-                      },
-                      search: {
-                        tab: tab.key,
-                      },
-                      to: OrganizationPath.route("/agents/$agentId"),
-                    });
-                  }}
-                  type="button"
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <PageTabs
+        items={[
+          {
+            key: "overview" as const,
+            label: "Overview",
+          },
+          {
+            key: "archived" as const,
+            label: "Archived chats",
+          },
+        ]}
+        onSelect={(tab) => {
+          void navigate({
+            params: {
+              agentId: agent.id,
+              organizationSlug,
+            },
+            search: {
+              tab,
+            },
+            to: OrganizationPath.route("/agents/$agentId"),
+          });
+        }}
+        selectedKey={selectedTab}
+      />
 
       {selectedTab === "overview" ? (
         <>
