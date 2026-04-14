@@ -147,7 +147,7 @@ export function ChatSelectionDialog(props: ChatSelectionDialogProps) {
               {props.noResultsMessage}
             </div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
               <div aria-label={props.title} className="grid gap-2" id={listboxId} role="listbox">
                 {filteredItems.map((item, index) => {
                   const isHighlighted = index === highlightedIndex;

@@ -149,7 +149,7 @@ function ToolTranscriptMessage(
                       : null}
                     <span>session: {terminalStructuredContent.sessionId}</span>
                   </div>
-                  <pre className="max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
                     {terminalOutputText.length > 0
                       ? terminalOutputText
                       : terminalStructuredContent.completed
@@ -190,7 +190,7 @@ function ToolTranscriptMessage(
                       {commandToolYieldTimeMs !== null ? <span>yield: {commandToolYieldTimeMs}ms</span> : null}
                     </div>
                   ) : null}
-                  <pre className="max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+                  <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto border-t border-border/60 px-3 py-3 whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
                     {commandOutputText.length > 0
                       ? commandOutputText
                       : normalizedStatus === "running"
@@ -204,7 +204,7 @@ function ToolTranscriptMessage(
             return (
               <pre
                 key={`${message.id}-content-${contentIndex}`}
-                className="max-h-[calc(30*1.5rem)] overflow-y-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]"
+                className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto whitespace-pre-wrap break-words font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]"
               >
                 {content.text}
               </pre>
@@ -433,7 +433,7 @@ export function ChatTranscriptPane({
     return turn.inlineMessages.length > 0 || turn.hiddenMessages.length > 0;
   });
   const showJumpToLatestButton = sessionMessages.length > 0 && !isTranscriptStuckToBottom;
-  const transcriptViewportClassName = "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]";
+  const transcriptViewportClassName = "no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]";
 
   useEffect(() => {
     setExpandedTurnIds({});

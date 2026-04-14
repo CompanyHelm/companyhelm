@@ -114,7 +114,7 @@ function ChatsQueuedMessagesComposerList({
             </DialogDescription>
           </DialogHeader>
           {fullscreenQueuedMessage ? (
-            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+            <div className="no-scrollbar flex-1 space-y-4 overflow-y-auto px-6 py-5">
               {fullscreenQueuedMessage.text.trim().length > 0 ? (
                 <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
                   <p className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
