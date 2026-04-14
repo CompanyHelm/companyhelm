@@ -11,6 +11,8 @@ import { AgentTerminalResultFormatter } from "./result_formatter.ts";
  * a tmux-backed PTY session.
  */
 export class AgentBashExecTool {
+  private static readonly maxTimeoutSeconds = 60;
+
   private static readonly parameters = AgentToolParameterSchema.object({
     command: Type.String({
       description: "Bash command body to execute with bash -lc inside the leased environment.",
@@ -23,7 +25,8 @@ export class AgentBashExecTool {
       },
     )),
     timeoutSeconds: Type.Optional(Type.Number({
-      description: "Optional timeout in seconds for the direct provider shell execution.",
+      description: `Optional timeout in seconds for the direct provider shell execution. Maximum ${AgentBashExecTool.maxTimeoutSeconds} seconds; use pty_exec for longer-running commands.`,
+      maximum: AgentBashExecTool.maxTimeoutSeconds,
     })),
     workingDirectory: Type.Optional(Type.String({
       description: "Optional working directory to use for the bash execution.",
@@ -40,8 +43,12 @@ export class AgentBashExecTool {
 
   createDefinition(): ToolDefinition<typeof AgentBashExecTool.parameters> {
     return {
-      description: "Execute a one-shot bash command directly through the environment provider shell.",
+      description: "Execute a one-shot bash command directly through the environment provider shell. Use pty_exec for commands that may need more than 60 seconds.",
       execute: async (_toolCallId, params) => {
+        if ((params.timeoutSeconds ?? 0) > AgentBashExecTool.maxTimeoutSeconds) {
+          throw new Error(`bash_exec timeoutSeconds cannot exceed ${AgentBashExecTool.maxTimeoutSeconds} seconds. Use pty_exec for longer-running commands.`);
+        }
+
         const environment = await this.promptScope.getEnvironment();
         let result;
         try {
@@ -80,6 +87,7 @@ export class AgentBashExecTool {
         "Use bash_exec for one-shot commands that should execute directly through the provider shell instead of a tmux-backed PTY session.",
         "The command always runs through bash -lc, so shell features such as pipes, globs, and command substitution are available.",
         "Use pty_exec instead when you need a reusable PTY session or follow-up interaction through pty_send_input.",
+        "timeoutSeconds cannot exceed 60 seconds in bash_exec; use pty_exec instead when a command may need longer to run.",
         "Pass timeoutSeconds when the command should fail instead of waiting indefinitely on the provider shell.",
       ],
       promptSnippet: "Execute a one-shot bash command",
