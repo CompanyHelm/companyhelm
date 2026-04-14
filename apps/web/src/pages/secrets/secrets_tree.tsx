@@ -83,7 +83,7 @@ export function SecretsTree(props: SecretsTreeProps) {
           <section className="grid gap-0.5" key={group.key}>
             <button
               aria-expanded={isExpanded}
-              className={`flex min-h-7 w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left transition ${isDropTarget ? "bg-accent/25" : "hover:bg-accent/20"}`}
+              className={`flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition ${isDropTarget ? "bg-accent/25" : "hover:bg-accent/20"}`}
               onDragLeave={() => {
                 setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
               }}
@@ -107,18 +107,18 @@ export function SecretsTree(props: SecretsTreeProps) {
                   <ChevronRightIcon className="size-3.5 text-muted-foreground" />
                 )}
                 <GroupIcon className="size-3.5 text-primary" />
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
                   <p className="truncate text-sm font-medium text-foreground">{group.name}</p>
+                  <span className="shrink-0 text-[0.7rem] font-medium text-muted-foreground">
+                    {group.secrets.length}
+                  </span>
                 </div>
               </div>
-              <span className="shrink-0 text-[0.7rem] font-medium text-muted-foreground">
-                {group.secrets.length}
-              </span>
             </button>
 
             {isExpanded ? (
               <div
-                className={`grid gap-0.5 pl-5 ${isDropTarget ? "rounded-md bg-accent/10" : ""}`}
+                className={`grid gap-0.5 pl-3 ${isDropTarget ? "rounded-md bg-accent/10" : ""}`}
                 onDragLeave={() => {
                   setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
                 }}
@@ -169,7 +169,7 @@ export function SecretsTree(props: SecretsTreeProps) {
                     role="button"
                     tabIndex={0}
                   >
-                    <div className="min-h-7 truncate rounded-md px-2.5 py-1.5 text-sm font-medium text-foreground transition hover:bg-accent/20">
+                    <div className="min-h-7 truncate rounded-md px-2 py-1.5 text-sm font-medium text-foreground transition hover:bg-accent/20">
                       {secret.name}
                     </div>
                   </article>
