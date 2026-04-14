@@ -69,7 +69,6 @@ class ModelProviderCredentialsQueryTestHarness {
       },
       github: {
         app_client_id: "Iv-test-local",
-        app_client_secret: "github-test-secret",
         app_link: "https://github.com/apps/companyhelm-test",
         app_private_key_pem: TEST_PRIVATE_KEY_PEM,
       },

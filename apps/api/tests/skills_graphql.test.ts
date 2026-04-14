@@ -40,7 +40,6 @@ const TEST_PRIVATE_KEY_PEM = (() => {
   const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
   return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
 })();
-const TEST_GITHUB_CLIENT_SECRET = "github-test-secret";
 const TEST_GITHUB_PUBLIC_TOKEN = "ghp_test_public_repository_token";
 
 class SkillsGraphqlTestHarness {
@@ -70,7 +69,6 @@ class SkillsGraphqlTestHarness {
       },
       github: {
         app_client_id: "Iv-test-local",
-        app_client_secret: TEST_GITHUB_CLIENT_SECRET,
         public_repository_token: TEST_GITHUB_PUBLIC_TOKEN,
         app_link: "https://github.com/apps/companyhelm-test",
         app_private_key_pem: TEST_PRIVATE_KEY_PEM,
