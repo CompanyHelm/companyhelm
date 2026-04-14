@@ -41,6 +41,7 @@ const TEST_PRIVATE_KEY_PEM = (() => {
   return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
 })();
 const TEST_GITHUB_CLIENT_SECRET = "github-test-secret";
+const TEST_GITHUB_PUBLIC_TOKEN = "ghp_test_public_repository_token";
 
 class SkillsGraphqlTestHarness {
   static createConfigMock(): Config {
@@ -70,6 +71,7 @@ class SkillsGraphqlTestHarness {
       github: {
         app_client_id: "Iv-test-local",
         app_client_secret: TEST_GITHUB_CLIENT_SECRET,
+        public_repository_token: TEST_GITHUB_PUBLIC_TOKEN,
         app_link: "https://github.com/apps/companyhelm-test",
         app_private_key_pem: TEST_PRIVATE_KEY_PEM,
       },
@@ -462,7 +464,7 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
     const url = request.url;
     assert.equal(
       request.headers.get("authorization"),
-      `basic ${Buffer.from(`Iv-test-local:${TEST_GITHUB_CLIENT_SECRET}`).toString("base64")}`,
+      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
     );
     if (!allowGithubFetchDuringMutation && url.includes("/repos/companyhelm/skills")) {
       throw new Error(`Mutation should not refetch GitHub content: ${url}`);
@@ -712,7 +714,7 @@ test("GraphQL GitHub branch discovery returns GitHub quota errors instead of han
     const request = input instanceof Request ? input : new Request(String(input), init);
     assert.equal(
       request.headers.get("authorization"),
-      `basic ${Buffer.from(`Iv-test-local:${TEST_GITHUB_CLIENT_SECRET}`).toString("base64")}`,
+      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
     );
     if (request.url.endsWith("/repos/companyhelm/skills")) {
       return createJsonResponse({

@@ -1,10 +1,20 @@
+import "reflect-metadata";
 import assert from "node:assert/strict";
+import { Container } from "inversify";
 import { test } from "vitest";
+import { Config } from "../src/config/schema.ts";
 import { SkillGithubPublicClient } from "../src/services/skills/github/public_client.ts";
 import { SkillGithubRepositoryReference } from "../src/services/skills/github/repository_reference.ts";
 
-const TEST_GITHUB_CLIENT_ID = "Iv-test-local";
-const TEST_GITHUB_CLIENT_SECRET = "github-test-secret";
+const TEST_GITHUB_PUBLIC_TOKEN = "ghp_test_public_repository_token";
+
+function createConfigMock(): Config {
+  return {
+    github: {
+      public_repository_token: TEST_GITHUB_PUBLIC_TOKEN,
+    },
+  } as Config;
+}
 
 function createJsonResponse(payload: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -29,7 +39,7 @@ test("SkillGithubPublicClient reads a public repository tree and blob contents w
     const url = request.url;
     assert.equal(
       request.headers.get("authorization"),
-      `basic ${Buffer.from(`${TEST_GITHUB_CLIENT_ID}:${TEST_GITHUB_CLIENT_SECRET}`).toString("base64")}`,
+      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
     );
     if (url.endsWith("/repos/openai/skills")) {
       return createJsonResponse({
@@ -69,12 +79,8 @@ test("SkillGithubPublicClient reads a public repository tree and blob contents w
 
     throw new Error(`Unexpected GitHub request: ${url}`);
   };
-  const client = new SkillGithubPublicClient({
+  const client = new SkillGithubPublicClient(createConfigMock(), {
     fetchImpl,
-    github: {
-      app_client_id: TEST_GITHUB_CLIENT_ID,
-      app_client_secret: TEST_GITHUB_CLIENT_SECRET,
-    },
   });
 
   const repositoryTree = await client.getRepositoryTree("https://github.com/openai/skills");
@@ -110,7 +116,7 @@ test("SkillGithubPublicClient rejects private repositories", async () => {
 
     throw new Error(`Unexpected GitHub request: ${url}`);
   };
-  const client = new SkillGithubPublicClient({
+  const client = new SkillGithubPublicClient({} as Config, {
     fetchImpl,
   });
 
@@ -133,7 +139,7 @@ test("SkillGithubPublicClient fails fast and returns a quota error without retry
 
     throw new Error(`Unexpected GitHub request: ${url}`);
   };
-  const client = new SkillGithubPublicClient({
+  const client = new SkillGithubPublicClient({} as Config, {
     fetchImpl,
   });
 
@@ -154,12 +160,8 @@ test("SkillGithubPublicClient returns generic GitHub API failures as user-facing
 
     throw new Error(`Unexpected GitHub request: ${url}`);
   };
-  const client = new SkillGithubPublicClient({
+  const client = new SkillGithubPublicClient(createConfigMock(), {
     fetchImpl,
-    github: {
-      app_client_id: TEST_GITHUB_CLIENT_ID,
-      app_client_secret: TEST_GITHUB_CLIENT_SECRET,
-    },
   });
 
   await assert.rejects(async () => {
@@ -174,7 +176,7 @@ test("SkillGithubPublicClient turns timed out GitHub requests into user-facing e
         reject(init.signal?.reason ?? new Error("Aborted."));
       }, { once: true });
     });
-  const client = new SkillGithubPublicClient({
+  const client = new SkillGithubPublicClient({} as Config, {
     fetchImpl,
     requestTimeoutMs: 10,
   });
@@ -182,4 +184,54 @@ test("SkillGithubPublicClient turns timed out GitHub requests into user-facing e
   await assert.rejects(async () => {
     await client.getRepositoryTree("https://github.com/openai/skills");
   }, /GitHub request timed out while trying to read the GitHub repository/);
+});
+
+test("SkillGithubPublicClient resolved through DI uses the configured GitHub client credentials", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(String(input), init);
+    assert.equal(
+      request.headers.get("authorization"),
+      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
+    );
+    if (request.url.endsWith("/repos/openai/skills")) {
+      return createJsonResponse({
+        default_branch: "main",
+        full_name: "openai/skills",
+        private: false,
+      });
+    }
+    if (request.url.includes("/repos/openai/skills/branches?")) {
+      return createJsonResponse([{
+        commit: {
+          sha: "commit-sha-main",
+        },
+        name: "main",
+      }]);
+    }
+
+    throw new Error(`Unexpected GitHub request: ${request.url}`);
+  };
+
+  try {
+    const container = new Container({
+      autobind: true,
+      defaultScope: "Singleton",
+    });
+    container.bind(Config).toConstantValue(createConfigMock());
+
+    const client = container.get(SkillGithubPublicClient);
+    const branches = await client.getRepositoryBranches("https://github.com/openai/skills");
+
+    assert.deepEqual(branches, {
+      branches: [{
+        commitSha: "commit-sha-main",
+        isDefault: true,
+        name: "main",
+      }],
+      repository: "openai/skills",
+    });
+  } finally {
+    global.fetch = originalFetch;
+  }
 });

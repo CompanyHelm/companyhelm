@@ -1,6 +1,7 @@
 import matter from "gray-matter";
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
+import { Config } from "../../../config/schema.ts";
 import { skill_groups, skills } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import type { SkillRecord } from "../service.ts";
@@ -67,7 +68,7 @@ export class SkillGithubCatalog {
 
   constructor(
     @inject(SkillGithubPublicClient)
-    githubPublicClient: SkillGithubPublicClient = new SkillGithubPublicClient(),
+    githubPublicClient: SkillGithubPublicClient = new SkillGithubPublicClient({} as Config),
   ) {
     this.githubPublicClient = githubPublicClient;
   }

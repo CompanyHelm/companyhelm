@@ -1,7 +1,6 @@
-import { injectable } from "inversify";
-import { createOAuthAppAuth } from "@octokit/auth-oauth-app";
+import { inject, injectable } from "inversify";
 import { Octokit, RequestError } from "octokit";
-import type { Config } from "../../../config/schema.ts";
+import { Config } from "../../../config/schema.ts";
 import { SkillGithubRepositoryReference } from "./repository_reference.ts";
 
 export type SkillGithubRepositoryBranchRecord = {
@@ -38,8 +37,8 @@ type OctokitError = Error & {
 };
 
 type SkillGithubPublicClientOptions = {
+  accessToken?: string;
   fetchImpl?: typeof fetch;
-  github?: Pick<Config["github"], "app_client_id" | "app_client_secret">;
   requestTimeoutMs?: number;
 };
 
@@ -55,10 +54,13 @@ export class SkillGithubPublicClient {
   private readonly fetchImpl: typeof fetch;
   private readonly requestTimeoutMs: number;
 
-  constructor(options: SkillGithubPublicClientOptions = {}) {
+  constructor(
+    @inject(Config) config: Config = {} as Config,
+    options: SkillGithubPublicClientOptions = {},
+  ) {
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.requestTimeoutMs = this.normalizeRequestTimeoutMs(options.requestTimeoutMs);
-    this.octokit = this.createOctokit(options.github);
+    this.octokit = this.createOctokit(options.accessToken ?? config.github?.public_repository_token);
   }
 
   async getRepositoryBranches(repository: string): Promise<{
@@ -312,9 +314,8 @@ export class SkillGithubPublicClient {
       && Number((error as { status?: unknown }).status) === 404;
   }
 
-  private createOctokit(github: SkillGithubPublicClientOptions["github"]): Octokit {
-    const clientId = String(github?.app_client_id ?? "").trim();
-    const clientSecret = String(github?.app_client_secret ?? "").trim();
+  private createOctokit(accessToken: string | undefined): Octokit {
+    const normalizedAccessToken = String(accessToken ?? "").trim();
     const baseOptions = {
       retry: {
         enabled: false,
@@ -327,17 +328,13 @@ export class SkillGithubPublicClient {
       },
     };
 
-    if (!clientId || !clientSecret) {
+    if (!normalizedAccessToken) {
       return new Octokit(baseOptions);
     }
 
     return new Octokit({
       ...baseOptions,
-      auth: {
-        clientId,
-        clientSecret,
-      },
-      authStrategy: createOAuthAppAuth,
+      auth: normalizedAccessToken,
     });
   }
 

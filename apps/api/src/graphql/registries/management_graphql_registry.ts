@@ -189,11 +189,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new SecretEncryptionService(config),
       defaultMcpOauthTokenService,
     );
-    const defaultSkillGithubCatalog = new SkillGithubCatalog(
-      new SkillGithubPublicClient({
-        github: config.github,
-      }),
-    );
+    const defaultSkillGithubCatalog = new SkillGithubCatalog(new SkillGithubPublicClient(config));
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
