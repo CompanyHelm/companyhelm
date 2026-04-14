@@ -1980,7 +1980,7 @@ export function ChatsPageContent() {
   );
 
   return (
-    <main className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+    <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {mobileChatListOverlay}
       {newChatDialog}
       <ChatEnvironmentPanel
@@ -2024,7 +2024,7 @@ export function ChatsPageContent() {
         shouldUseCompactComposerSettings={shouldUseCompactComposerSettings}
       />
 
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+      <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
         <ChatsReconnectBanner visible={isReconnectingLiveUpdates} />
 
         {errorMessage ? (
@@ -2071,7 +2071,7 @@ export function ChatsPageContent() {
         ) : null}
 
         {selectedAgent && selectedSession ? (
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden pl-4 pr-0 pt-0 pb-0 md:pt-0 md:pb-0">
+          <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-4 pr-0 pt-0 pb-0 md:pt-0 md:pb-0">
             <ChatTranscriptPane
               forkingTurnId={forkingTurnId}
               isTranscriptStuckToBottom={isTranscriptStuckToBottom}
