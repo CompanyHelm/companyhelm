@@ -454,7 +454,7 @@ function TaskDetailPageContent() {
         </div>
 
         <div className="border-b border-border/60">
-          <div className="flex items-center gap-6 overflow-x-auto">
+          <div className="modern-scrollbar flex items-center gap-6 overflow-x-auto">
             {[
               {
                 key: "details" as const,

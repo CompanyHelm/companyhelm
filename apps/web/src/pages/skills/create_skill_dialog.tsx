@@ -496,7 +496,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="modern-scrollbar min-h-0 flex-1 overflow-y-auto">
           {mode === "choose" ? (
             <div className="grid gap-4 md:grid-cols-2">
               <button

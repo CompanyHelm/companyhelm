@@ -942,29 +942,35 @@ button {
   font-weight: var(--sidebar-font-weight);
 }
 
+.modern-scrollbar,
 .no-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
+.modern-scrollbar::-webkit-scrollbar,
 .no-scrollbar::-webkit-scrollbar {
   width: 0.45rem;
   height: 0.45rem;
 }
 
+.modern-scrollbar::-webkit-scrollbar-track,
 .no-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 
+.modern-scrollbar::-webkit-scrollbar-thumb,
 .no-scrollbar::-webkit-scrollbar-thumb {
   border-radius: 999px;
   background-color: var(--scrollbar-thumb);
 }
 
+.modern-scrollbar::-webkit-scrollbar-thumb:hover,
 .no-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--scrollbar-thumb-hover);
 }
 
+.modern-scrollbar::-webkit-scrollbar-corner,
 .no-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }

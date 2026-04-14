@@ -322,7 +322,7 @@ export function ImportSecretsDialog(props: ImportSecretsDialogProps) {
 
               <div className="grid gap-2">
                 <p className="text-xs font-medium text-foreground">Preview</p>
-                <div className="max-h-64 overflow-y-auto rounded-xl border border-border/60">
+                <div className="modern-scrollbar max-h-64 overflow-y-auto rounded-xl border border-border/60">
                   <div className="grid divide-y divide-border/50">
                     {previewRows.map((previewRow) => (
                       <div

@@ -138,7 +138,7 @@ export function TaskBoard(props: TaskBoardProps) {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-x-auto pb-1">
+    <div className="modern-scrollbar h-full min-h-0 overflow-x-auto pb-1">
       <div className="flex h-full min-h-0 min-w-full w-fit overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
         {columns.map((column, columnIndex) => (
           <section

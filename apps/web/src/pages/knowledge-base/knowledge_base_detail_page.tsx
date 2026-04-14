@@ -465,7 +465,7 @@ function KnowledgeBaseDetailPageContent() {
               value={editorState.markdownContent}
             />
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+            <div className="modern-scrollbar min-h-0 flex-1 overflow-y-auto pr-2">
               <KnowledgeBaseMarkdown
                 content={artifact.markdownContent ?? ""}
                 emptyLabel="This document is empty."

@@ -146,7 +146,7 @@ export function MarkdownContent({
             <pre
               className={cn(
                 isCompact ? "mt-3 px-3 py-2 leading-5" : "mt-4 px-4 py-3 leading-6",
-                "w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 font-mono text-foreground",
+                "modern-scrollbar w-full max-w-full overflow-x-auto overflow-y-hidden rounded-xl border border-border/60 font-mono text-foreground",
                 preSurfaceClassName,
                 "[&>code]:block [&>code]:w-max [&>code]:min-w-full [&>code]:bg-transparent [&>code]:p-0 [&>code]:whitespace-pre [&>code]:break-normal [&>code]:[overflow-wrap:normal]",
               )}
@@ -155,7 +155,7 @@ export function MarkdownContent({
             </pre>
           ),
           table: ({ children }) => (
-            <div className={cn(isCompact ? "mt-3" : "mt-4", "w-full overflow-x-auto rounded-xl border border-border/60")}>
+            <div className={cn(isCompact ? "mt-3" : "mt-4", "modern-scrollbar w-full overflow-x-auto rounded-xl border border-border/60")}>
               <table className={cn("w-full min-w-max border-collapse bg-background/40 text-left", tableTextClassName)}>
                 {children}
               </table>
