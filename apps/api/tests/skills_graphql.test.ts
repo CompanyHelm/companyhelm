@@ -429,7 +429,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
   await app.close();
 });
 
-test("GraphQL GitHub skill discovery and batch import reuse the discovered payload", async () => {
+test("GraphQL GitHub skill discovery and batch import resolve selected skills server-side", async () => {
   const app = Fastify();
   const config = SkillsGraphqlTestHarness.createConfigMock();
   const database = SkillsGraphqlTestHarness.createDatabaseMock();
@@ -458,7 +458,8 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
     },
   };
   const originalFetch = global.fetch;
-  let allowGithubFetchDuringMutation = true;
+  let repositoryTreeRequestCount = 0;
+  let skillBlobRequestCount = 0;
   global.fetch = async (input, init) => {
     const request = input instanceof Request ? input : new Request(String(input), init);
     const url = request.url;
@@ -466,9 +467,6 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
       request.headers.get("authorization"),
       `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
     );
-    if (!allowGithubFetchDuringMutation && url.includes("/repos/companyhelm/skills")) {
-      throw new Error(`Mutation should not refetch GitHub content: ${url}`);
-    }
     if (url.endsWith("/repos/companyhelm/skills")) {
       return createJsonResponse({
         default_branch: "main",
@@ -498,6 +496,7 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
       });
     }
     if (url.includes("/repos/companyhelm/skills/git/trees/commit-sha-main")) {
+      repositoryTreeRequestCount += 1;
       return createJsonResponse({
         truncated: false,
         tree: [{
@@ -512,6 +511,7 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
       });
     }
     if (url.includes("/repos/companyhelm/skills/git/blobs/sha-github-browser-skill")) {
+      skillBlobRequestCount += 1;
       return createJsonResponse({
         content: Buffer.from([
           "---",
@@ -619,7 +619,6 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
       skillDirectory: "skills/github-browser",
     }]);
 
-    allowGithubFetchDuringMutation = false;
     const importResponse = await app.inject({
       method: "POST",
       url: "/graphql",
@@ -647,7 +646,11 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
         variables: {
           input: {
             skillGroupId: "group-research",
-            skills: discoveredSkillsDocument.data.GithubDiscoveredSkills,
+            skills: [{
+              branchName: "main",
+              repository: "companyhelm/skills",
+              skillDirectory: "skills/github-browser",
+            }],
           },
         },
       },
@@ -675,6 +678,8 @@ test("GraphQL GitHub skill discovery and batch import reuse the discovered paylo
     assert.equal(importedSkillInsert?.repository, "companyhelm/skills");
     assert.equal(importedSkillInsert?.skillDirectory, "skills/github-browser");
     assert.deepEqual(importedSkillInsert?.fileList, ["skills/github-browser/scripts/import.sh"]);
+    assert.equal(repositoryTreeRequestCount, 2);
+    assert.equal(skillBlobRequestCount, 2);
   } finally {
     global.fetch = originalFetch;
     await app.close();

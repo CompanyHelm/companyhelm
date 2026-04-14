@@ -883,11 +883,6 @@ input ImportGithubSkillsInput {
 
 input ImportGithubSkillRecordInput {
   branchName: String!
-  commitSha: String!
-  description: String
-  fileList: [String!]!
-  instructions: String!
-  name: String!
   repository: String!
   skillDirectory: String!
 }

@@ -46,6 +46,12 @@ export type CreateSkillDialogGithubImportRecord = {
   skillDirectory: string;
 };
 
+export type CreateSkillDialogGithubImportSelectionRecord = {
+  branchName: string;
+  repository: string;
+  skillDirectory: string;
+};
+
 type CreateSkillDialogGithubBranchOption = {
   commitSha: string;
   isDefault: boolean;
@@ -67,7 +73,7 @@ interface CreateSkillDialogProps {
   onCreateGroup(name: string): Promise<CreateSkillDialogGroupOption>;
   onImportGithub(input: {
     skillGroupId?: string | null;
-    skills: CreateSkillDialogGithubImportRecord[];
+    skills: CreateSkillDialogGithubImportSelectionRecord[];
   }): Promise<void>;
   onOpenChange(open: boolean): void;
 }
@@ -947,7 +953,11 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 try {
                   await props.onImportGithub({
                     skillGroupId: skillGroupId === UNGROUPED_SKILL_GROUP_VALUE ? null : skillGroupId,
-                    skills: selectedGithubSkills,
+                    skills: selectedGithubSkills.map((skill) => ({
+                      branchName: skill.branchName,
+                      repository: skill.repository,
+                      skillDirectory: skill.skillDirectory,
+                    })),
                   });
                 } catch (error) {
                   setLocalErrorMessage(

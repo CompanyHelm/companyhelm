@@ -9,11 +9,6 @@ type ImportGithubSkillsMutationArguments = {
     skillGroupId?: string | null;
     skills: Array<{
       branchName: string;
-      commitSha: string;
-      description?: string | null;
-      fileList: string[];
-      instructions: string;
-      name: string;
       repository: string;
       skillDirectory: string;
     }>;
@@ -21,8 +16,9 @@ type ImportGithubSkillsMutationArguments = {
 };
 
 /**
- * Persists the selected GitHub discovery results into the company skill catalog without issuing a
- * second repository download during submit.
+ * Persists the selected GitHub skills into the company catalog after reloading their canonical
+ * repository contents on the server. This keeps the mutation payload small enough to avoid large
+ * GraphQL request bodies when skill instructions are long.
  */
 @injectable()
 export class ImportGithubSkillsMutation extends Mutation<

@@ -172,19 +172,43 @@ test("SkillGithubCatalog discovers SKILL.md files from a public repository tree"
   }]);
 });
 
-test("SkillGithubCatalog imports discovered GitHub skills without refetching repository content", async () => {
+test("SkillGithubCatalog imports selected GitHub skills by resolving their content server-side", async () => {
   const transactionProvider = GithubSkillCatalogServiceTestHarness.createTransactionProvider({
     groups: [{
       id: "group-1",
     }],
     skills: [],
   });
+  let repositoryTreeReadCount = 0;
+  let blobReadCount = 0;
   const catalog = new SkillGithubCatalog({
     async getRepositoryTree() {
-      throw new Error("importSkills should not refetch the repository tree.");
+      repositoryTreeReadCount += 1;
+      return {
+        branchName: "main",
+        commitSha: "commit-sha-2",
+        repository: "openai/skills",
+        treeEntries: [{
+          path: "skills/browser/SKILL.md",
+          sha: "blob-skill",
+          type: "blob" as const,
+        }, {
+          path: "skills/browser/scripts/open.sh",
+          sha: "blob-script",
+          type: "blob" as const,
+        }],
+      };
     },
     async readBlob() {
-      throw new Error("importSkills should not read GitHub blobs during submit.");
+      blobReadCount += 1;
+      return [
+        "---",
+        "name: Browser automation",
+        "description: Browser automation guidance",
+        "---",
+        "",
+        "Read SKILL.md first.",
+      ].join("\n");
     },
   } as never);
 
@@ -193,11 +217,6 @@ test("SkillGithubCatalog imports discovered GitHub skills without refetching rep
     skillGroupId: "group-1",
     skills: [{
       branchName: "main",
-      commitSha: "commit-sha-2",
-      description: "Browser automation guidance",
-      fileList: ["skills/browser/scripts/open.sh"],
-      instructions: "Read SKILL.md first.",
-      name: "Browser automation",
       repository: "openai/skills",
       skillDirectory: "skills/browser",
     }],
@@ -209,4 +228,6 @@ test("SkillGithubCatalog imports discovered GitHub skills without refetching rep
   assert.equal(createdSkill.skillDirectory, "skills/browser");
   assert.equal(createdSkill.name, "Browser automation");
   assert.deepEqual(transactionProvider.skillRecords[0]?.fileList, ["skills/browser/scripts/open.sh"]);
+  assert.equal(repositoryTreeReadCount, 1);
+  assert.equal(blobReadCount, 1);
 });

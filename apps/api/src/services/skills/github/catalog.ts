@@ -58,9 +58,16 @@ type CreateGithubSkillRecord = {
   skillDirectory: string;
 };
 
+type GithubSkillSelectionRecord = {
+  branchName: string;
+  repository: string;
+  skillDirectory: string;
+};
+
 /**
  * Discovers GitHub-backed skills from public repositories and imports selected discovery results
- * into the company skill catalog without cloning repositories or refetching content during submit.
+ * into the company skill catalog. Imports reload the selected SKILL.md files on the server so the
+ * client never needs to echo large instructions payloads back through GraphQL.
  */
 @injectable()
 export class SkillGithubCatalog {
@@ -182,17 +189,13 @@ export class SkillGithubCatalog {
       skillGroupId?: string | null;
       skills: Array<{
         branchName: string;
-        commitSha: string;
-        description?: string | null;
-        fileList: string[];
-        instructions: string;
-        name: string;
         repository: string;
         skillDirectory: string;
       }>;
     },
   ): Promise<SkillRecord[]> {
-    const githubSkillRecords = this.requireGithubSkillRecords(input.skills);
+    const githubSkillSelections = this.requireGithubSkillSelections(input.skills);
+    const githubSkillRecords = await this.resolveGithubSkillSelections(githubSkillSelections);
 
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -285,16 +288,6 @@ export class SkillGithubCatalog {
     return normalizedValue.length > 0 ? normalizedValue : null;
   }
 
-  private normalizeFileList(value: string[]): string[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-
-    return value
-      .map((path) => String(path || "").trim())
-      .filter((path) => path.length > 0);
-  }
-
   private normalizeSkillDirectory(value: string): string {
     const normalizedValue = String(value || "").trim().replace(/^\/+|\/+$/g, "");
     if (!normalizedValue) {
@@ -304,29 +297,64 @@ export class SkillGithubCatalog {
     return normalizedValue;
   }
 
-  private requireGithubSkillRecords(
+  private async resolveGithubSkillSelections(
+    value: GithubSkillSelectionRecord[],
+  ): Promise<CreateGithubSkillRecord[]> {
+    const discoveredSkillsByBranchKey = new Map<string, SkillGithubDiscoveredSkillRecord[]>();
+    const githubSkillRecords: CreateGithubSkillRecord[] = [];
+
+    for (const selection of value) {
+      const branchKey = `${selection.repository}:${selection.branchName}`;
+      let discoveredSkills = discoveredSkillsByBranchKey.get(branchKey);
+      if (!discoveredSkills) {
+        discoveredSkills = await this.discoverSkills({
+          branchName: selection.branchName,
+          repository: selection.repository,
+        });
+        discoveredSkillsByBranchKey.set(branchKey, discoveredSkills);
+      }
+
+      const selectedSkill = discoveredSkills.find((skill) => skill.skillDirectory === selection.skillDirectory);
+      if (!selectedSkill) {
+        throw new Error(
+          `Skill ${selection.skillDirectory} could not be found on branch ${selection.branchName}.`,
+        );
+      }
+      if (!selectedSkill.importable || !selectedSkill.instructions) {
+        throw new Error(
+          selectedSkill.validationError
+          ?? `Skill ${selection.skillDirectory} could not be imported from GitHub.`,
+        );
+      }
+
+      githubSkillRecords.push({
+        branchName: selectedSkill.branchName,
+        commitSha: selectedSkill.commitSha,
+        description: selectedSkill.description ?? "",
+        fileList: [...selectedSkill.fileList],
+        instructions: selectedSkill.instructions,
+        name: selectedSkill.name,
+        repository: selectedSkill.repository,
+        skillDirectory: selectedSkill.skillDirectory,
+      });
+    }
+
+    return githubSkillRecords;
+  }
+
+  private requireGithubSkillSelections(
     value: Array<{
       branchName: string;
-      commitSha: string;
-      description?: string | null;
-      fileList: string[];
-      instructions: string;
-      name: string;
       repository: string;
       skillDirectory: string;
     }>,
-  ): CreateGithubSkillRecord[] {
+  ): GithubSkillSelectionRecord[] {
     if (!Array.isArray(value) || value.length === 0) {
       throw new Error("At least one GitHub skill must be selected.");
     }
 
     return value.map((record) => ({
       branchName: this.requireNonEmptyValue(record.branchName, "GitHub branch name"),
-      commitSha: this.requireNonEmptyValue(record.commitSha, "GitHub tracked commit sha"),
-      description: this.normalizeOptionalTextValue(record.description) ?? "",
-      fileList: this.normalizeFileList(record.fileList),
-      instructions: this.requireNonEmptyValue(record.instructions, "GitHub skill instructions"),
-      name: this.requireNonEmptyValue(record.name, "GitHub skill name"),
       repository: this.requireNonEmptyValue(record.repository, "GitHub repository"),
       skillDirectory: this.normalizeSkillDirectory(record.skillDirectory),
     }));

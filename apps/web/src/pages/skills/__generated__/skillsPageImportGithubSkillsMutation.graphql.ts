@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fc94191ca3123b1e58fb30a24e0529eb>>
+ * @generated SignedSource<<6fb699e27f118c7f61c5ebd6cca35f18>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,11 +15,6 @@ export type ImportGithubSkillsInput = {
 };
 export type ImportGithubSkillRecordInput = {
   branchName: string;
-  commitSha: string;
-  description?: string | null | undefined;
-  fileList: ReadonlyArray<string>;
-  instructions: string;
-  name: string;
   repository: string;
   skillDirectory: string;
 };

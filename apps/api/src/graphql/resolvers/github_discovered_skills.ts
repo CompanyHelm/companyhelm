@@ -20,7 +20,7 @@ type GraphqlGithubDiscoveredSkillRecord = {
 
 /**
  * Lists the importable skill packages discovered on one GitHub branch so the web UI can present
- * exactly what will be created without fetching repository content again during submit.
+ * exactly what will be created before submit.
  */
 @injectable()
 export class GithubDiscoveredSkillsQueryResolver {
