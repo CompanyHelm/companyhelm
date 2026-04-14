@@ -292,36 +292,38 @@ export function ChatListPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Card className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
-        <CardContent className={`no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
-          <div className="mb-2 flex items-center justify-end pr-1">
+        <CardContent className="no-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto pr-0">
+          <div className={`${CHAT_LIST_LEFT_GUTTER_CLASS} pr-3 md:pr-3`}>
+            <div className="mb-2 flex items-center justify-end pr-1">
+              <Button
+                aria-label={hideButtonLabel}
+                className="text-muted-foreground hover:text-foreground"
+                onClick={onHideChatList}
+                size="icon-sm"
+                title={hideButtonLabel}
+                variant="ghost"
+              >
+                <XIcon className="size-4" />
+              </Button>
+            </div>
+
             <Button
-              aria-label={hideButtonLabel}
-              className="text-muted-foreground hover:text-foreground"
-              onClick={onHideChatList}
-              size="icon-sm"
-              title={hideButtonLabel}
-              variant="ghost"
+              className="mb-2 w-full justify-start gap-2 px-5"
+              disabled={!hasAvailableAgents}
+              onClick={onOpenNewChat}
+              size="lg"
+              type="button"
             >
-              <XIcon className="size-4" />
+              <PlusIcon className="size-4" />
+              New chat
             </Button>
+
+            {emptyState ? (
+              <div className="mb-4">{emptyState}</div>
+            ) : null}
+
+            {content}
           </div>
-
-          <Button
-            className="mb-2 w-full justify-start gap-2 px-5"
-            disabled={!hasAvailableAgents}
-            onClick={onOpenNewChat}
-            size="lg"
-            type="button"
-          >
-            <PlusIcon className="size-4" />
-            New chat
-          </Button>
-
-          {emptyState ? (
-            <div className="mb-4">{emptyState}</div>
-          ) : null}
-
-          {content}
         </CardContent>
       </Card>
     </div>

@@ -433,7 +433,7 @@ export function ChatTranscriptPane({
     return turn.inlineMessages.length > 0 || turn.hiddenMessages.length > 0;
   });
   const showJumpToLatestButton = sessionMessages.length > 0 && !isTranscriptStuckToBottom;
-  const transcriptViewportClassName = "no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overflow-anchor:none]";
+  const transcriptViewportClassName = "no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]";
 
   useEffect(() => {
     setExpandedTurnIds({});
