@@ -144,7 +144,14 @@ function SecretsPageFallback() {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <SecretsTree deletingSecretId={null} groups={[]} isLoading onSelect={() => undefined} />
+          <SecretsTree
+            deletingSecretId={null}
+            groups={[]}
+            isLoading
+            movingSecretId={null}
+            onMoveSecret={() => Promise.resolve()}
+            onSelect={() => undefined}
+          />
         </CardContent>
       </Card>
     </main>
@@ -155,6 +162,7 @@ function SecretsPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingSecretId, setDeletingSecretId] = useState<string | null>(null);
+  const [movingSecretId, setMovingSecretId] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [isImportDialogOpen, setImportDialogOpen] = useState(false);
   const [isImportingSecrets, setImportingSecrets] = useState(false);
@@ -455,6 +463,27 @@ function SecretsPageContent() {
     }
   };
 
+  const moveSecret = async (secretId: string, secretGroupId: string | null) => {
+    if (isUpdateSecretInFlight) {
+      return;
+    }
+
+    const secret = secrets.find((candidateSecret) => candidateSecret.id === secretId) ?? null;
+    if (!secret || secret.secretGroupId === secretGroupId) {
+      return;
+    }
+
+    setMovingSecretId(secretId);
+    try {
+      await updateSecret({
+        secretGroupId,
+        secretId,
+      });
+    } finally {
+      setMovingSecretId(null);
+    }
+  };
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
@@ -502,6 +531,8 @@ function SecretsPageContent() {
             deletingSecretId={deletingSecretId}
             groups={groupedSecrets}
             isLoading={false}
+            movingSecretId={movingSecretId}
+            onMoveSecret={moveSecret}
             onSelect={(secretId) => {
               setSelectedSecretId(secretId);
             }}
