@@ -81,6 +81,8 @@
   --sidebar-font-size: var(--font-size-xs);
   --sidebar-font-line-height: var(--font-line-height-xs);
   --sidebar-font-weight: 500;
+  --scrollbar-thumb: oklch(0.556 0 0 / 28%);
+  --scrollbar-thumb-hover: oklch(0.205 0 0 / 38%);
 }
 
 *,
@@ -922,6 +924,8 @@ button {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --scrollbar-thumb: oklch(0.708 0 0 / 28%);
+  --scrollbar-thumb-hover: oklch(0.985 0 0 / 34%);
 }
 
 .app-shell-sidebar [data-slot="sidebar-group-label"],
@@ -936,6 +940,35 @@ button {
 .app-shell-sidebar [data-slot="sidebar-menu-button"],
 .app-shell-sidebar__meta {
   font-weight: var(--sidebar-font-weight);
+}
+
+.no-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0.45rem;
+  height: 0.45rem;
+}
+
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: var(--scrollbar-thumb);
+}
+
+.no-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+.no-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 @layer base {
