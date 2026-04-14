@@ -117,6 +117,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const [githubBranches, setGithubBranches] = useState<CreateSkillDialogGithubBranchOption[]>([]);
   const [githubDiscoveredSkills, setGithubDiscoveredSkills] = useState<CreateSkillDialogGithubImportRecord[]>([]);
   const [githubRepositoryUrl, setGithubRepositoryUrl] = useState("");
+  const [isGithubBranchAutoSelected, setIsGithubBranchAutoSelected] = useState(false);
   const [githubSelectedSkillDirectories, setGithubSelectedSkillDirectories] = useState<string[]>([]);
   const [githubStep, setGithubStep] = useState<CreateSkillDialogGithubStep>("repository");
   const [instructions, setInstructions] = useState("");
@@ -146,6 +147,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       setGithubBranches([]);
       setGithubDiscoveredSkills([]);
       setGithubRepositoryUrl("");
+      setIsGithubBranchAutoSelected(false);
       setGithubSelectedSkillDirectories([]);
       setGithubStep("repository");
       setInstructions("");
@@ -163,6 +165,11 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   }, [props.isOpen]);
 
   const selectedGithubBranch = githubBranches.find((branch) => branch.name === githubBranchName) ?? null;
+  const githubBranchTriggerLabel = selectedGithubBranch
+    ? isGithubBranchAutoSelected
+      ? `${selectedGithubBranch.name} (auto-selected)`
+      : selectedGithubBranch.name
+    : null;
   const selectedGithubSkills = githubDiscoveredSkills.filter((skill) =>
     githubSelectedSkillDirectories.includes(skill.skillDirectory)
   );
@@ -239,6 +246,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     setGithubBranchName("");
     setGithubBranches([]);
     setGithubDiscoveredSkills([]);
+    setIsGithubBranchAutoSelected(false);
     setGithubSelectedSkillDirectories([]);
     setGithubStep("repository");
     setLocalErrorMessage(null);
@@ -373,17 +381,18 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         name: branch.name,
         repository: branch.repository,
       }));
+      const autoSelectedBranchName = nextBranches.find((branch) => branch.isDefault)?.name
+        ?? nextBranches[0]?.name
+        ?? "";
       setGithubBranches(nextBranches);
-      setGithubBranchName(
-        nextBranches.find((branch) => branch.isDefault)?.name
-          ?? nextBranches[0]?.name
-          ?? "",
-      );
+      setGithubBranchName(autoSelectedBranchName);
+      setIsGithubBranchAutoSelected(autoSelectedBranchName.length > 0);
     } catch (error: unknown) {
       if (githubBranchDiscoveryRequestIdRef.current !== requestId) {
         return;
       }
       setGithubBranches([]);
+      setIsGithubBranchAutoSelected(false);
       setLocalErrorMessage(
         error instanceof Error ? error.message : "Failed to load GitHub branches.",
       );
@@ -626,6 +635,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                       onValueChange={(value) => {
                         setGithubBranchName(typeof value === "string" ? value : "");
                         setGithubDiscoveredSkills([]);
+                        setIsGithubBranchAutoSelected(false);
                         setGithubSelectedSkillDirectories([]);
                         setLocalErrorMessage(null);
                       }}
@@ -635,17 +645,21 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                         className={cn(isLoadingGithubBranches ? "animate-pulse" : null)}
                         id="github-branch"
                       >
-                        <SelectValue
-                          placeholder={!githubRepositoryUrl.trim()
-                            ? "Paste a repository URL first"
-                            : isLoadingGithubBranches
-                            ? "Loading branches..."
-                            : !githubRepositoryUrlDiscoveryCandidate
-                            ? "Enter a GitHub repository URL"
-                            : githubBranches.length > 0
-                            ? "Select a branch"
-                            : "No branches found"}
-                        />
+                        {githubBranchTriggerLabel ? (
+                          <span className="truncate">{githubBranchTriggerLabel}</span>
+                        ) : (
+                          <SelectValue
+                            placeholder={!githubRepositoryUrl.trim()
+                              ? "Paste a repository URL first"
+                              : isLoadingGithubBranches
+                              ? "Loading branches..."
+                              : !githubRepositoryUrlDiscoveryCandidate
+                              ? "Enter a GitHub repository URL"
+                              : githubBranches.length > 0
+                              ? "Select a branch"
+                              : "No branches found"}
+                          />
+                        )}
                       </SelectTrigger>
                       <SelectContent>
                         {githubBranches.map((branch) => (
