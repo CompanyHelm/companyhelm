@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { agentSkillDefaultsCardAttachSkillGroupToAgentMutation } from "./__generated__/agentSkillDefaultsCardAttachSkillGroupToAgentMutation.graphql";
 import type { agentSkillDefaultsCardAttachSkillToAgentMutation } from "./__generated__/agentSkillDefaultsCardAttachSkillToAgentMutation.graphql";
 import type { agentSkillDefaultsCardDetachSkillGroupFromAgentMutation } from "./__generated__/agentSkillDefaultsCardDetachSkillGroupFromAgentMutation.graphql";
@@ -348,6 +348,7 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
   return (
     <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardTitle>Skills</CardTitle>
         <CardDescription>
           Choose which skills or skill groups are stored on this agent for future session skill activation.
         </CardDescription>

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { agentSecretDefaultsCardAttachSecretGroupToAgentMutation } from "./__generated__/agentSecretDefaultsCardAttachSecretGroupToAgentMutation.graphql";
 import type { agentSecretDefaultsCardAttachSecretToAgentMutation } from "./__generated__/agentSecretDefaultsCardAttachSecretToAgentMutation.graphql";
 import type { agentSecretDefaultsCardDetachSecretGroupFromAgentMutation } from "./__generated__/agentSecretDefaultsCardDetachSecretGroupFromAgentMutation.graphql";
@@ -348,6 +348,7 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
   return (
     <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardTitle>Secrets</CardTitle>
         <CardDescription>
           Choose which secrets or secret groups are stored on this agent for future session setup.
           Existing sessions keep their current attachments.

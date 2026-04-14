@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
 import { useToast } from "@/components/toast_provider";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { agentMcpServerDefaultsCardAttachMcpServerToAgentMutation } from "./__generated__/agentMcpServerDefaultsCardAttachMcpServerToAgentMutation.graphql";
 import type { agentMcpServerDefaultsCardDetachMcpServerFromAgentMutation } from "./__generated__/agentMcpServerDefaultsCardDetachMcpServerFromAgentMutation.graphql";
 import type { AgentCreateMcpServerOption } from "./create_agent_dialog";
@@ -221,6 +221,7 @@ export function AgentMcpServerDefaultsCard(props: AgentMcpServerDefaultsCardProp
   return (
     <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
       <CardHeader>
+        <CardTitle>MCP Servers</CardTitle>
         <CardDescription>
           Choose which shared MCP servers should be attached to future sessions created from this agent. Attached, enabled servers are discovered at session start and their tools are exposed to the agent with namespaced MCP tool names.
         </CardDescription>

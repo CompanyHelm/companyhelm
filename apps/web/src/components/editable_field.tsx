@@ -40,11 +40,17 @@ type EditableFieldSelectProps = {
 
 type EditableFieldProps = EditableFieldTextProps | EditableFieldSelectProps;
 
+type EditableFieldVariant = "card" | "plain";
+
+interface EditableFieldLayoutProps {
+  variant?: EditableFieldVariant;
+}
+
 /**
  * Renders one inline-edit card that toggles between a read-only value and an editor while keeping
  * save, cancel, and feedback behavior consistent across settings and agent configuration pages.
  */
-export function EditableField(props: EditableFieldProps) {
+export function EditableField(props: EditableFieldProps & EditableFieldLayoutProps) {
   const [draftValue, setDraftValue] = useState(props.value ?? "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEditing, setEditing] = useState(false);
@@ -53,6 +59,14 @@ export function EditableField(props: EditableFieldProps) {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const renderedValue = props.displayValue ?? props.value;
   const shouldRenderMarkdown = props.fieldType !== "select" && props.readOnlyFormat === "markdown";
+  const variant = props.variant ?? "card";
+  const containerClassName = variant === "plain"
+    ? "grid gap-3"
+    : "rounded-xl border border-border/60 bg-card/50 p-4";
+  const labelClassName = variant === "plain"
+    ? "text-sm font-medium text-muted-foreground"
+    : "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
+  const valueSpacingClassName = variant === "plain" ? "mt-0" : "mt-3";
 
   useEffect(() => {
     if (!isEditing) {
@@ -96,10 +110,10 @@ export function EditableField(props: EditableFieldProps) {
   };
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+    <div className={containerClassName}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <p className={labelClassName}>
             {props.label}
           </p>
         </div>
@@ -120,7 +134,7 @@ export function EditableField(props: EditableFieldProps) {
         </Button>
       </div>
 
-      <div className="mt-3">
+      <div className={valueSpacingClassName}>
         {(props.fieldType === "text" || props.fieldType === "number") && isEditing ? (
           <Input
             max={props.fieldType === "number" ? props.max : undefined}
