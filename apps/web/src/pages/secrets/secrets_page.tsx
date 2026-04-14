@@ -19,7 +19,11 @@ import {
   ImportSecretsDialog,
   type ImportSecretsDialogGroupOption,
 } from "./import_secrets_dialog";
-import { SecretsTable, type SecretsTableRecord } from "./secrets_table";
+import {
+  SecretsTree,
+  type SecretsTreeGroupRecord,
+  type SecretsTreeSecretRecord,
+} from "./secrets_tree";
 import type { secretsPageCreateSecretMutation } from "./__generated__/secretsPageCreateSecretMutation.graphql";
 import type { secretsPageCreateSecretGroupMutation } from "./__generated__/secretsPageCreateSecretGroupMutation.graphql";
 import type { secretsPageDeleteSecretMutation } from "./__generated__/secretsPageDeleteSecretMutation.graphql";
@@ -140,7 +144,7 @@ function SecretsPageFallback() {
           </CardAction>
         </CardHeader>
         <CardContent>
-          <SecretsTable isLoading onSelect={() => undefined} secrets={[]} />
+          <SecretsTree deletingSecretId={null} groups={[]} isLoading onSelect={() => undefined} />
         </CardContent>
       </Card>
     </main>
@@ -173,9 +177,6 @@ function SecretsPageContent() {
   const [commitUpdateSecret, isUpdateSecretInFlight] = useMutation<secretsPageUpdateSecretMutation>(
     secretsPageUpdateSecretMutationNode,
   );
-  const secretGroupNameById = useMemo(() => {
-    return new Map(data.SecretGroups.map((group) => [group.id, group.name]));
-  }, [data.SecretGroups]);
   const groupOptions = useMemo<CreateSecretDialogGroupOption[]>(() => {
     return [...data.SecretGroups]
       .sort((left, right) => left.name.localeCompare(right.name))
@@ -196,15 +197,52 @@ function SecretsPageContent() {
       name: group.name,
     }));
   }, [groupOptions]);
-  const secrets: SecretsTableRecord[] = data.Secrets.map((secret) => ({
+  const secrets = useMemo<SecretsTreeSecretRecord[]>(() => data.Secrets.map((secret) => ({
     createdAt: secret.createdAt,
     description: secret.description ?? null,
     envVarName: secret.envVarName,
-    groupName: secret.secretGroupId ? (secretGroupNameById.get(secret.secretGroupId) ?? "Unknown group") : "Ungrouped",
     id: secret.id,
     name: secret.name,
+    secretGroupId: secret.secretGroupId ?? null,
     updatedAt: secret.updatedAt,
-  }));
+  })), [data.Secrets]);
+  const groupedSecrets = useMemo<SecretsTreeGroupRecord[]>(() => {
+    const secretsByGroupId = new Map<string | null, SecretsTreeSecretRecord[]>();
+    const sortedSecrets = [...secrets].sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const secret of sortedSecrets) {
+      const nextGroupId = secret.secretGroupId ?? null;
+      const currentSecrets = secretsByGroupId.get(nextGroupId) ?? [];
+      currentSecrets.push(secret);
+      secretsByGroupId.set(nextGroupId, currentSecrets);
+    }
+
+    if (sortedSecrets.length === 0 && data.SecretGroups.length === 0) {
+      return [];
+    }
+
+    return [
+      ...data.SecretGroups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        secrets: secretsByGroupId.get(group.id) ?? [],
+      })),
+      {
+        id: null,
+        name: "Ungrouped",
+        secrets: secretsByGroupId.get(null) ?? [],
+      },
+    ].sort((left, right) => {
+      if (left.id === null) {
+        return 1;
+      }
+      if (right.id === null) {
+        return -1;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+  }, [data.SecretGroups, secrets]);
   const editableSecrets: EditableSecretRecord[] = data.Secrets.map((secret) => ({
     description: secret.description ?? null,
     envVarName: secret.envVarName,
@@ -460,12 +498,13 @@ function SecretsPageContent() {
             </div>
           ) : null}
 
-          <SecretsTable
+          <SecretsTree
+            deletingSecretId={deletingSecretId}
+            groups={groupedSecrets}
             isLoading={false}
             onSelect={(secretId) => {
               setSelectedSecretId(secretId);
             }}
-            secrets={secrets}
           />
         </CardContent>
       </Card>
