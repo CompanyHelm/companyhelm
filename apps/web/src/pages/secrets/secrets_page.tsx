@@ -1,6 +1,6 @@
 import { Suspense, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { FileUpIcon, FolderPlusIcon, PlusIcon } from "lucide-react";
+import { FileUpIcon, PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -123,23 +123,20 @@ function SecretsPageFallback() {
               Store encrypted company secrets, organize them into reusable groups, and reference them from chats when command execution needs sensitive values.
             </CardDescription>
           </div>
-          <CardAction>
-            <div className="flex items-center gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link params={{ organizationSlug }} to={OrganizationPath.route("/secret-groups")}>
-                  <FolderPlusIcon />
-                  Manage groups
-                </Link>
-              </Button>
-              <Button disabled size="sm" variant="outline">
-                <FileUpIcon />
-                Import .env
-              </Button>
-              <Button disabled size="sm">
-                <PlusIcon />
-                Create secret
-              </Button>
-            </div>
+          <CardAction className="flex items-center gap-2.5">
+            <Button asChild size="sm" variant="outline">
+              <Link params={{ organizationSlug }} to={OrganizationPath.route("/secret-groups")}>
+                Manage groups
+              </Link>
+            </Button>
+            <Button disabled size="sm" variant="outline">
+              <FileUpIcon />
+              Import .env
+            </Button>
+            <Button disabled size="sm">
+              <PlusIcon />
+              Create secret
+            </Button>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -429,34 +426,31 @@ function SecretsPageContent() {
               Store encrypted company secrets, organize them into reusable groups, and reference them from chats when command execution needs sensitive values.
             </CardDescription>
           </div>
-          <CardAction>
-            <div className="flex items-center gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link params={{ organizationSlug }} to={OrganizationPath.route("/secret-groups")}>
-                  <FolderPlusIcon />
-                  Manage groups
-                </Link>
-              </Button>
-              <Button
-                onClick={() => {
-                  setImportDialogOpen(true);
-                }}
-                size="sm"
-                variant="outline"
-              >
-                <FileUpIcon />
-                Import .env
-              </Button>
-              <Button
-                onClick={() => {
-                  setCreateDialogOpen(true);
-                }}
-                size="sm"
-              >
-                <PlusIcon />
-                Create secret
-              </Button>
-            </div>
+          <CardAction className="flex items-center gap-2.5">
+            <Button asChild size="sm" variant="outline">
+              <Link params={{ organizationSlug }} to={OrganizationPath.route("/secret-groups")}>
+                Manage groups
+              </Link>
+            </Button>
+            <Button
+              onClick={() => {
+                setImportDialogOpen(true);
+              }}
+              size="sm"
+              variant="outline"
+            >
+              <FileUpIcon />
+              Import .env
+            </Button>
+            <Button
+              onClick={() => {
+                setCreateDialogOpen(true);
+              }}
+              size="sm"
+            >
+              <PlusIcon />
+              Create secret
+            </Button>
           </CardAction>
         </CardHeader>
         <CardContent className="grid gap-4">
