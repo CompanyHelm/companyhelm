@@ -1,19 +1,19 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { taskCategories, tasks } from "../../db/schema.ts";
+import { taskStages, tasks } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
 type TaskStatus = "draft" | "pending" | "in_progress" | "completed";
 
-type SetTaskCategoryMutationArguments = {
+type SetTaskStageMutationArguments = {
   input: {
     taskId: string;
-    taskCategoryId?: string | null;
+    taskStageId?: string | null;
   };
 };
 
-type TaskCategoryRecord = {
+type TaskStageRecord = {
   id: string;
   name: string;
 };
@@ -23,7 +23,7 @@ type TaskRecord = {
   name: string;
   description: string | null;
   status: TaskStatus;
-  taskCategoryId: string | null;
+  taskStageId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -33,8 +33,8 @@ type GraphqlTaskRecord = {
   name: string;
   description: string | null;
   status: TaskStatus;
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -55,13 +55,13 @@ type DatabaseTransaction = {
 };
 
 /**
- * Moves one task between persisted kanban lanes by rewriting the optional category foreign key for
+ * Moves one task between persisted kanban lanes by rewriting the optional stage foreign key for
  * the authenticated company.
  */
 @injectable()
-export class SetTaskCategoryMutation extends Mutation<SetTaskCategoryMutationArguments, GraphqlTaskRecord> {
+export class SetTaskStageMutation extends Mutation<SetTaskStageMutationArguments, GraphqlTaskRecord> {
   protected resolve = async (
-    arguments_: SetTaskCategoryMutationArguments,
+    arguments_: SetTaskStageMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlTaskRecord> => {
     if (!context.authSession?.company) {
@@ -76,11 +76,11 @@ export class SetTaskCategoryMutation extends Mutation<SetTaskCategoryMutationArg
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
-      const taskCategoryRecord = await this.resolveTaskCategoryRecord(databaseTransaction, context, arguments_);
+      const taskStageRecord = await this.resolveTaskStageRecord(databaseTransaction, context, arguments_);
       const [taskRecord] = await databaseTransaction
         .update(tasks)
         .set({
-          taskCategoryId: taskCategoryRecord?.id ?? null,
+          taskStageId: taskStageRecord?.id ?? null,
           updatedAt: new Date(),
         })
         .where(and(
@@ -92,7 +92,7 @@ export class SetTaskCategoryMutation extends Mutation<SetTaskCategoryMutationArg
           name: tasks.name,
           description: tasks.description,
           status: tasks.status,
-          taskCategoryId: tasks.taskCategoryId,
+          taskStageId: tasks.taskStageId,
           createdAt: tasks.createdAt,
           updatedAt: tasks.updatedAt,
         }) as Promise<TaskRecord[]>;
@@ -105,37 +105,37 @@ export class SetTaskCategoryMutation extends Mutation<SetTaskCategoryMutationArg
         name: taskRecord.name,
         description: taskRecord.description,
         status: taskRecord.status,
-        taskCategoryId: taskRecord.taskCategoryId,
-        taskCategoryName: taskCategoryRecord?.name ?? null,
+        taskStageId: taskRecord.taskStageId,
+        taskStageName: taskStageRecord?.name ?? null,
         createdAt: taskRecord.createdAt.toISOString(),
         updatedAt: taskRecord.updatedAt.toISOString(),
       };
     });
   };
 
-  private async resolveTaskCategoryRecord(
+  private async resolveTaskStageRecord(
     databaseTransaction: DatabaseTransaction,
     context: GraphqlRequestContext,
-    arguments_: SetTaskCategoryMutationArguments,
-  ): Promise<TaskCategoryRecord | null> {
-    if (!arguments_.input.taskCategoryId) {
+    arguments_: SetTaskStageMutationArguments,
+  ): Promise<TaskStageRecord | null> {
+    if (!arguments_.input.taskStageId) {
       return null;
     }
 
-    const [taskCategoryRecord] = await databaseTransaction
+    const [taskStageRecord] = await databaseTransaction
       .select({
-        id: taskCategories.id,
-        name: taskCategories.name,
+        id: taskStages.id,
+        name: taskStages.name,
       })
-      .from(taskCategories)
+      .from(taskStages)
       .where(and(
-        eq(taskCategories.companyId, context.authSession!.company!.id),
-        eq(taskCategories.id, arguments_.input.taskCategoryId),
-      )) as TaskCategoryRecord[];
-    if (!taskCategoryRecord) {
-      throw new Error("Task category not found.");
+        eq(taskStages.companyId, context.authSession!.company!.id),
+        eq(taskStages.id, arguments_.input.taskStageId),
+      )) as TaskStageRecord[];
+    if (!taskStageRecord) {
+      throw new Error("Task stage not found.");
     }
 
-    return taskCategoryRecord;
+    return taskStageRecord;
   }
 }

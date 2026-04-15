@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5c57bfa175e062c2b5f04e3f165692ac>>
+ * @generated SignedSource<<9ce61487cc4940e78456459b009c58c1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,14 +9,14 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type CreateTaskCategoryInput = {
+export type CreateTaskStageInput = {
   name: string;
 };
-export type settingsPageCreateTaskCategoryMutation$variables = {
-  input: CreateTaskCategoryInput;
+export type settingsPageCreateTaskStageMutation$variables = {
+  input: CreateTaskStageInput;
 };
-export type settingsPageCreateTaskCategoryMutation$data = {
-  readonly CreateTaskCategory: {
+export type settingsPageCreateTaskStageMutation$data = {
+  readonly CreateTaskStage: {
     readonly createdAt: string;
     readonly id: string;
     readonly name: string;
@@ -24,9 +24,9 @@ export type settingsPageCreateTaskCategoryMutation$data = {
     readonly updatedAt: string;
   };
 };
-export type settingsPageCreateTaskCategoryMutation = {
-  response: settingsPageCreateTaskCategoryMutation$data;
-  variables: settingsPageCreateTaskCategoryMutation$variables;
+export type settingsPageCreateTaskStageMutation = {
+  response: settingsPageCreateTaskStageMutation$data;
+  variables: settingsPageCreateTaskStageMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -47,9 +47,9 @@ v1 = [
         "variableName": "input"
       }
     ],
-    "concreteType": "TaskCategory",
+    "concreteType": "TaskStage",
     "kind": "LinkedField",
-    "name": "CreateTaskCategory",
+    "name": "CreateTaskStage",
     "plural": false,
     "selections": [
       {
@@ -96,7 +96,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "settingsPageCreateTaskCategoryMutation",
+    "name": "settingsPageCreateTaskStageMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -105,20 +105,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "settingsPageCreateTaskCategoryMutation",
+    "name": "settingsPageCreateTaskStageMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "7cc9892add8e7cf796342a880d8f1698",
+    "cacheID": "c5d6cadcc1f078d7778b820026a6d2a5",
     "id": null,
     "metadata": {},
-    "name": "settingsPageCreateTaskCategoryMutation",
+    "name": "settingsPageCreateTaskStageMutation",
     "operationKind": "mutation",
-    "text": "mutation settingsPageCreateTaskCategoryMutation(\n  $input: CreateTaskCategoryInput!\n) {\n  CreateTaskCategory(input: $input) {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation settingsPageCreateTaskStageMutation(\n  $input: CreateTaskStageInput!\n) {\n  CreateTaskStage(input: $input) {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "0577d077e312205a4103dfc1e15abefd";
+(node as any).hash = "1d847b1e6eeadab1274bb9dcaaddbac2";
 
 export default node;

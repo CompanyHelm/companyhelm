@@ -49,7 +49,7 @@ class TaskQueryTestHarness {
                         id: "task-1",
                         name: "Review launch notes",
                         status: "in_progress",
-                        taskCategoryId: "category-1",
+                        taskStageId: "stage-1",
                         updatedAt: new Date("2026-04-02T18:30:00.000Z"),
                       }];
                     },
@@ -64,7 +64,7 @@ class TaskQueryTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "category-1",
+                        id: "stage-1",
                         name: "Backlog",
                       }];
                     },
@@ -101,7 +101,7 @@ class TaskQueryTestHarness {
   }
 }
 
-test("GraphQL Task query loads one task with category and assignee metadata", async () => {
+test("GraphQL Task query loads one task with stage and assignee metadata", async () => {
   const app = Fastify();
   const config = TaskQueryTestHarness.createConfigMock();
   const database = TaskQueryTestHarness.createDatabaseMock();
@@ -156,8 +156,8 @@ test("GraphQL Task query loads one task with category and assignee metadata", as
             name
             description
             status
-            taskCategoryId
-            taskCategoryName
+            taskStageId
+            taskStageName
             assignedAt
             assignee {
               kind
@@ -183,8 +183,8 @@ test("GraphQL Task query loads one task with category and assignee metadata", as
     name: "Review launch notes",
     description: "Keep the artifact scope narrow.",
     status: "in_progress",
-    taskCategoryId: "category-1",
-    taskCategoryName: "Backlog",
+    taskStageId: "stage-1",
+    taskStageName: "Backlog",
     assignedAt: "2026-04-02T18:00:00.000Z",
     assignee: {
       kind: "user",

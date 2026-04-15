@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9e7de26c40220e5e9742402f128968e3>>
+ * @generated SignedSource<<52b8e4e6472f8b398fc7ce634a887785>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type CreateTaskInput = {
   description?: string | null | undefined;
   name: string;
   status?: string | null | undefined;
-  taskCategoryId?: string | null | undefined;
+  taskStageId?: string | null | undefined;
 };
 export type tasksPageCreateTaskMutation$variables = {
   input: CreateTaskInput;
@@ -34,8 +34,8 @@ export type tasksPageCreateTaskMutation$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskCategoryId: string | null | undefined;
-    readonly taskCategoryName: string | null | undefined;
+    readonly taskStageId: string | null | undefined;
+    readonly taskStageName: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -101,14 +101,14 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskCategoryId",
+        "name": "taskStageId",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskCategoryName",
+        "name": "taskStageName",
         "storageKey": null
       },
       {
@@ -181,16 +181,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "0f8947bd1ab0efaf7405e068315a4636",
+    "cacheID": "12e69f487bc19af4c11a020fd6c04c3d",
     "id": null,
     "metadata": {},
     "name": "tasksPageCreateTaskMutation",
     "operationKind": "mutation",
-    "text": "mutation tasksPageCreateTaskMutation(\n  $input: CreateTaskInput!\n) {\n  CreateTask(input: $input) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation tasksPageCreateTaskMutation(\n  $input: CreateTaskInput!\n) {\n  CreateTask(input: $input) {\n    id\n    name\n    description\n    status\n    taskStageId\n    taskStageName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b81a88c663e3f538ab6e8d920019cde4";
+(node as any).hash = "d8bd55830abbcd96afc2b09553ffb252";
 
 export default node;

@@ -25,7 +25,7 @@ import { CreateSecretMutation } from "./mutations/create_secret.ts";
 import { CreateSessionMutation } from "./mutations/create_session.ts";
 import { CreateSkillGroupMutation } from "./mutations/create_skill_group.ts";
 import { CreateSkillMutation } from "./mutations/create_skill.ts";
-import { CreateTaskCategoryMutation } from "./mutations/create_task_category.ts";
+import { CreateTaskStageMutation } from "./mutations/create_task_stage.ts";
 import { CreateTaskMutation } from "./mutations/create_task.ts";
 import { DeleteAgentConversationMutation } from "./mutations/delete_agent_conversation.ts";
 import { DeleteAgentMutation } from "./mutations/delete_agent.ts";
@@ -39,7 +39,7 @@ import { DeleteSecretMutation } from "./mutations/delete_secret.ts";
 import { DeleteSessionQueuedMessageMutation } from "./mutations/delete_session_queued_message.ts";
 import { DeleteSkillGroupMutation } from "./mutations/delete_skill_group.ts";
 import { DeleteSkillMutation } from "./mutations/delete_skill.ts";
-import { DeleteTaskCategoryMutation } from "./mutations/delete_task_category.ts";
+import { DeleteTaskStageMutation } from "./mutations/delete_task_stage.ts";
 import { DeleteTaskMutation } from "./mutations/delete_task.ts";
 import { DismissInboxHumanQuestionMutation } from "./mutations/dismiss_inbox_human_question.ts";
 import { DetachSecretFromAgentMutation } from "./mutations/detach_secret_from_agent.ts";
@@ -60,7 +60,7 @@ import { ResolveInboxHumanQuestionMutation } from "./mutations/resolve_inbox_hum
 import { SetDefaultComputeProviderDefinitionMutation } from "./mutations/set_default_compute_provider_definition.ts";
 import { SetDefaultModelProviderCredentialMutation } from "./mutations/set_default_model_provider_credential.ts";
 import { SetDefaultModelProviderCredentialModelMutation } from "./mutations/set_default_model_provider_credential_model.ts";
-import { SetTaskCategoryMutation } from "./mutations/set_task_category.ts";
+import { SetTaskStageMutation } from "./mutations/set_task_stage.ts";
 import { StartEnvironmentMutation } from "./mutations/start_environment.ts";
 import { SteerSessionQueuedMessageMutation } from "./mutations/steer_session_queued_message.ts";
 import { StopEnvironmentMutation } from "./mutations/stop_environment.ts";
@@ -118,7 +118,7 @@ import { SkillGroupsQueryResolver } from "./resolvers/skill_groups.ts";
 import { SkillQueryResolver } from "./resolvers/skill.ts";
 import { SkillsQueryResolver } from "./resolvers/skills.ts";
 import { TaskAssignableUsersQueryResolver } from "./resolvers/task_assignable_users.ts";
-import { TaskCategoriesQueryResolver } from "./resolvers/task_categories.ts";
+import { TaskStagesQueryResolver } from "./resolvers/task_stages.ts";
 import { TaskQueryResolver } from "./resolvers/task.ts";
 import { TaskRunsQueryResolver } from "./resolvers/task_runs.ts";
 import { TasksQueryResolver } from "./resolvers/tasks.ts";
@@ -198,10 +198,10 @@ export class GraphqlApplication {
     promptSessionMutation?: PromptSessionMutation,
     redisService?: RedisService,
     createTaskMutation?: CreateTaskMutation,
-    createTaskCategoryMutation?: CreateTaskCategoryMutation,
-    setTaskCategoryMutation?: SetTaskCategoryMutation,
+    createTaskStageMutation?: CreateTaskStageMutation,
+    setTaskStageMutation?: SetTaskStageMutation,
     taskAssignableUsersQueryResolver?: TaskAssignableUsersQueryResolver,
-    taskCategoriesQueryResolver?: TaskCategoriesQueryResolver,
+    taskStagesQueryResolver?: TaskStagesQueryResolver,
     tasksQueryResolver?: TasksQueryResolver,
     companySettingsQueryResolver?: CompanySettingsQueryResolver,
     githubAppConfigQueryResolver?: GithubAppConfigQueryResolver,
@@ -260,7 +260,7 @@ export class GraphqlApplication {
     executeTaskMutation?: ExecuteTaskMutation,
     updateSessionTitleMutation?: UpdateSessionTitleMutation,
     interruptSessionMutation?: InterruptSessionMutation,
-    deleteTaskCategoryMutation?: DeleteTaskCategoryMutation,
+    deleteTaskStageMutation?: DeleteTaskStageMutation,
     graphqlErrorLogger?: GraphqlErrorLogger,
     setDefaultComputeProviderDefinitionMutation?: SetDefaultComputeProviderDefinitionMutation,
     setDefaultModelProviderCredentialMutation?: SetDefaultModelProviderCredentialMutation,
@@ -429,13 +429,13 @@ export class GraphqlApplication {
     );
     const taskGraphqlRegistry = new TaskGraphqlRegistry(
       createTaskMutation,
-      createTaskCategoryMutation,
-      setTaskCategoryMutation,
+      createTaskStageMutation,
+      setTaskStageMutation,
       taskAssignableUsersQueryResolver,
-      taskCategoriesQueryResolver,
+      taskStagesQueryResolver,
       tasksQueryResolver,
       deleteTaskMutation,
-      deleteTaskCategoryMutation,
+      deleteTaskStageMutation,
       taskQueryResolver,
       updateTaskMutation,
       taskRunsQueryResolver,

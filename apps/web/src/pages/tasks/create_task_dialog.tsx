@@ -19,7 +19,7 @@ import {
 
 type TaskStatus = "draft" | "in_progress" | "completed";
 
-export type CreateTaskDialogCategory = {
+export type CreateTaskDialogStage = {
   id: string;
   name: string;
 };
@@ -32,33 +32,33 @@ export type CreateTaskDialogAssignee = {
 interface CreateTaskDialogProps {
   assignees: CreateTaskDialogAssignee[];
   errorMessage: string | null;
-  initialCategoryId?: string | null;
+  initialStageId?: string | null;
   isOpen: boolean;
   isSaving: boolean;
-  categories: CreateTaskDialogCategory[];
+  stages: CreateTaskDialogStage[];
   onCreate(input: {
     assignedAgentId?: string;
     assignedUserId?: string;
     name: string;
     description?: string;
     status: TaskStatus;
-    taskCategoryId?: string;
+    taskStageId?: string;
   }): Promise<void>;
   onOpenChange(open: boolean): void;
 }
 
-const uncategorizedValue = "__uncategorized__";
+const noStageValue = "__no_stage__";
 const unassignedValue = "__unassigned__";
 
 /**
  * Collects the minimal task fields needed for the first `-ng` task-management slice: title,
- * optional description, status, and optional kanban category.
+ * optional description, status, and optional kanban stage.
  */
 export function CreateTaskDialog(props: CreateTaskDialogProps) {
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("draft");
-  const [taskCategoryId, setTaskCategoryId] = useState(uncategorizedValue);
+  const [taskStageId, setTaskStageId] = useState(noStageValue);
   const [taskAssigneeValue, setTaskAssigneeValue] = useState(unassignedValue);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
       setTaskName("");
       setTaskDescription("");
       setTaskStatus("draft");
-      setTaskCategoryId(uncategorizedValue);
+      setTaskStageId(noStageValue);
       setTaskAssigneeValue(unassignedValue);
     }
   }, [props.isOpen]);
@@ -76,8 +76,8 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
       return;
     }
 
-    setTaskCategoryId(props.initialCategoryId ?? uncategorizedValue);
-  }, [props.initialCategoryId, props.isOpen]);
+    setTaskStageId(props.initialStageId ?? noStageValue);
+  }, [props.initialStageId, props.isOpen]);
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -85,7 +85,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
         <DialogHeader>
           <DialogTitle>Create task</DialogTitle>
           <DialogDescription>
-            Add a new task and optionally place it into one of the configured lanes.
+            Add a new task and optionally place it into one of the configured stages.
           </DialogDescription>
         </DialogHeader>
 
@@ -105,30 +105,30 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-sm font-medium text-foreground" htmlFor="task-category">
-              Category (optional)
+            <label className="text-sm font-medium text-foreground" htmlFor="task-stage">
+              Stage (optional)
             </label>
             <Select
               items={[
-                { label: "Uncategorized", value: uncategorizedValue },
-                ...props.categories.map((category) => ({
-                  label: category.name,
-                  value: category.id,
+                { label: "No stage", value: noStageValue },
+                ...props.stages.map((stage) => ({
+                  label: stage.name,
+                  value: stage.id,
                 })),
               ]}
               onValueChange={(value) => {
-                setTaskCategoryId(value ?? uncategorizedValue);
+                setTaskStageId(value ?? noStageValue);
               }}
-              value={taskCategoryId}
+              value={taskStageId}
             >
-              <SelectTrigger id="task-category">
-                <SelectValue placeholder="Select a lane" />
+              <SelectTrigger id="task-stage">
+                <SelectValue placeholder="Select a stage" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={uncategorizedValue}>Uncategorized</SelectItem>
-                {props.categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
+                <SelectItem value={noStageValue}>No stage</SelectItem>
+                {props.stages.map((stage) => (
+                  <SelectItem key={stage.id} value={stage.id}>
+                    {stage.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -242,7 +242,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
                 name: taskName,
                 description: taskDescription.length > 0 ? taskDescription : undefined,
                 status: taskStatus,
-                taskCategoryId: taskCategoryId === uncategorizedValue ? undefined : taskCategoryId,
+                taskStageId: taskStageId === noStageValue ? undefined : taskStageId,
               });
             }}
             type="button"

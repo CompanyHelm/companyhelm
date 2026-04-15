@@ -1,22 +1,22 @@
 import { injectable } from "inversify";
-import { taskCategories } from "../../db/schema.ts";
+import { taskStages } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
-type CreateTaskCategoryMutationArguments = {
+type CreateTaskStageMutationArguments = {
   input: {
     name: string;
   };
 };
 
-type TaskCategoryRecord = {
+type TaskStageRecord = {
   id: string;
   name: string;
   createdAt: Date;
   updatedAt: Date;
 };
 
-type GraphqlTaskCategoryRecord = {
+type GraphqlTaskStageRecord = {
   id: string;
   name: string;
   taskCount: number;
@@ -27,24 +27,24 @@ type GraphqlTaskCategoryRecord = {
 type DatabaseTransaction = {
   insert(table: unknown): {
     values(value: Record<string, unknown>): {
-      returning?(selection?: Record<string, unknown>): Promise<TaskCategoryRecord[]>;
+      returning?(selection?: Record<string, unknown>): Promise<TaskStageRecord[]>;
     };
   };
 };
 
 /**
- * Persists one new kanban category for the authenticated company so the board and settings page
+ * Persists one new kanban stage for the authenticated company so the board and settings page
  * can share a single source of truth for available lanes.
  */
 @injectable()
-export class CreateTaskCategoryMutation extends Mutation<
-  CreateTaskCategoryMutationArguments,
-  GraphqlTaskCategoryRecord
+export class CreateTaskStageMutation extends Mutation<
+  CreateTaskStageMutationArguments,
+  GraphqlTaskStageRecord
 > {
   protected resolve = async (
-    arguments_: CreateTaskCategoryMutationArguments,
+    arguments_: CreateTaskStageMutationArguments,
     context: GraphqlRequestContext,
-  ): Promise<GraphqlTaskCategoryRecord> => {
+  ): Promise<GraphqlTaskStageRecord> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -58,8 +58,8 @@ export class CreateTaskCategoryMutation extends Mutation<
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
       const now = new Date();
-      const [taskCategoryRecord] = await databaseTransaction
-        .insert(taskCategories)
+      const [taskStageRecord] = await databaseTransaction
+        .insert(taskStages)
         .values({
           companyId: context.authSession.company.id,
           name: arguments_.input.name,
@@ -67,21 +67,21 @@ export class CreateTaskCategoryMutation extends Mutation<
           updatedAt: now,
         })
         .returning?.({
-          id: taskCategories.id,
-          name: taskCategories.name,
-          createdAt: taskCategories.createdAt,
-          updatedAt: taskCategories.updatedAt,
-        }) as Promise<TaskCategoryRecord[]>;
-      if (!taskCategoryRecord) {
-        throw new Error("Failed to create task category.");
+          id: taskStages.id,
+          name: taskStages.name,
+          createdAt: taskStages.createdAt,
+          updatedAt: taskStages.updatedAt,
+        }) as Promise<TaskStageRecord[]>;
+      if (!taskStageRecord) {
+        throw new Error("Failed to create task stage.");
       }
 
       return {
-        id: taskCategoryRecord.id,
-        name: taskCategoryRecord.name,
+        id: taskStageRecord.id,
+        name: taskStageRecord.name,
         taskCount: 0,
-        createdAt: taskCategoryRecord.createdAt.toISOString(),
-        updatedAt: taskCategoryRecord.updatedAt.toISOString(),
+        createdAt: taskStageRecord.createdAt.toISOString(),
+        updatedAt: taskStageRecord.updatedAt.toISOString(),
       };
     });
   };

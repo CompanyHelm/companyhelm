@@ -10,7 +10,7 @@ type UpdateTaskMutationArguments = {
     description?: string | null;
     name?: string | null;
     status?: string | null;
-    taskCategoryId?: string | null;
+    taskStageId?: string | null;
     taskId: string;
   };
 };
@@ -30,14 +30,14 @@ type GraphqlTaskRecord = {
   id: string;
   name: string;
   status: "draft" | "in_progress" | "completed";
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   updatedAt: string;
 };
 
 /**
  * Updates one company task record while reusing the shared task service for assignee validation,
- * category lookups, and task serialization so detail-page edits stay consistent with task tools.
+ * stage lookups, and task serialization so detail-page edits stay consistent with task tools.
  */
 @injectable()
 export class UpdateTaskMutation extends Mutation<UpdateTaskMutationArguments, GraphqlTaskRecord> {
@@ -71,7 +71,7 @@ export class UpdateTaskMutation extends Mutation<UpdateTaskMutationArguments, Gr
       description: arguments_.input.description,
       name: arguments_.input.name,
       status: arguments_.input.status,
-      taskCategoryId: arguments_.input.taskCategoryId,
+      taskStageId: arguments_.input.taskStageId,
       taskId: arguments_.input.taskId,
     });
 
@@ -83,8 +83,8 @@ export class UpdateTaskMutation extends Mutation<UpdateTaskMutationArguments, Gr
       id: task.id,
       name: task.name,
       status: task.status,
-      taskCategoryId: task.taskCategoryId,
-      taskCategoryName: task.taskCategoryName,
+      taskStageId: task.taskStageId,
+      taskStageName: task.taskStageName,
       updatedAt: task.updatedAt.toISOString(),
     };
   };

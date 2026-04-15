@@ -43,7 +43,7 @@ class CreateTaskMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "category-1",
+                        id: "stage-1",
                         name: "Backlog",
                       }];
                     },
@@ -65,7 +65,7 @@ class CreateTaskMutationTestHarness {
                       name: String(value.name),
                       description: value.description ?? null,
                       status: value.status,
-                      taskCategoryId: value.taskCategoryId ?? null,
+                      taskStageId: value.taskStageId ?? null,
                       createdAt: new Date("2026-03-25T10:15:00.000Z"),
                       updatedAt: new Date("2026-03-25T10:15:00.000Z"),
                     }];
@@ -83,7 +83,7 @@ class CreateTaskMutationTestHarness {
   }
 }
 
-test("GraphQL CreateTask mutation creates one task in the selected category", async () => {
+test("GraphQL CreateTask mutation creates one task in the selected stage", async () => {
   const app = Fastify();
   const config = CreateTaskMutationTestHarness.createConfigMock();
   const database = CreateTaskMutationTestHarness.createDatabaseMock();
@@ -138,8 +138,8 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
             name
             description
             status
-            taskCategoryId
-            taskCategoryName
+            taskStageId
+            taskStageName
             assignedAt
             assignee {
               kind
@@ -155,7 +155,7 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
           name: "Write landing page copy",
           description: "Keep the first pass short.",
           status: "draft",
-          taskCategoryId: "category-1",
+          taskStageId: "stage-1",
         },
       },
     },
@@ -168,15 +168,15 @@ test("GraphQL CreateTask mutation creates one task in the selected category", as
     name: "Write landing page copy",
     description: "Keep the first pass short.",
     status: "draft",
-    taskCategoryId: "category-1",
-    taskCategoryName: "Backlog",
+    taskStageId: "stage-1",
+    taskStageName: "Backlog",
     assignedAt: null,
     assignee: null,
   });
   assert.equal(database.insertedValues.length, 1);
   assert.equal(database.insertedValues[0]?.companyId, "company-123");
   assert.equal(database.insertedValues[0]?.createdByUserId, "user-123");
-  assert.equal(database.insertedValues[0]?.taskCategoryId, "category-1");
+  assert.equal(database.insertedValues[0]?.taskStageId, "stage-1");
   assert.equal(database.insertedValues[0]?.rootTaskId, database.insertedValues[0]?.id);
 
   await app.close();

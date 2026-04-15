@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<91a346a53851be96723fcc010a3cfe1b>>
+ * @generated SignedSource<<f5270de5dfc44b2d3bd842f076b779b3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,28 +9,24 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type SetTaskCategoryInput = {
-  taskCategoryId?: string | null | undefined;
-  taskId: string;
+export type DeleteTaskStageInput = {
+  id: string;
 };
-export type tasksPageSetTaskCategoryMutation$variables = {
-  input: SetTaskCategoryInput;
+export type settingsPageDeleteTaskStageMutation$variables = {
+  input: DeleteTaskStageInput;
 };
-export type tasksPageSetTaskCategoryMutation$data = {
-  readonly SetTaskCategory: {
+export type settingsPageDeleteTaskStageMutation$data = {
+  readonly DeleteTaskStage: {
     readonly createdAt: string;
-    readonly description: string | null | undefined;
     readonly id: string;
     readonly name: string;
-    readonly status: string;
-    readonly taskCategoryId: string | null | undefined;
-    readonly taskCategoryName: string | null | undefined;
+    readonly taskCount: number;
     readonly updatedAt: string;
   };
 };
-export type tasksPageSetTaskCategoryMutation = {
-  response: tasksPageSetTaskCategoryMutation$data;
-  variables: tasksPageSetTaskCategoryMutation$variables;
+export type settingsPageDeleteTaskStageMutation = {
+  response: settingsPageDeleteTaskStageMutation$data;
+  variables: settingsPageDeleteTaskStageMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -51,9 +47,9 @@ v1 = [
         "variableName": "input"
       }
     ],
-    "concreteType": "Task",
+    "concreteType": "TaskStage",
     "kind": "LinkedField",
-    "name": "SetTaskCategory",
+    "name": "DeleteTaskStage",
     "plural": false,
     "selections": [
       {
@@ -74,28 +70,7 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "taskCategoryId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "taskCategoryName",
+        "name": "taskCount",
         "storageKey": null
       },
       {
@@ -121,7 +96,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "tasksPageSetTaskCategoryMutation",
+    "name": "settingsPageDeleteTaskStageMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -130,20 +105,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "tasksPageSetTaskCategoryMutation",
+    "name": "settingsPageDeleteTaskStageMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "010c775e3aae1d6732a73323ec029b70",
+    "cacheID": "d9f250f69f1a5e3fef97910f727c9857",
     "id": null,
     "metadata": {},
-    "name": "tasksPageSetTaskCategoryMutation",
+    "name": "settingsPageDeleteTaskStageMutation",
     "operationKind": "mutation",
-    "text": "mutation tasksPageSetTaskCategoryMutation(\n  $input: SetTaskCategoryInput!\n) {\n  SetTaskCategory(input: $input) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation settingsPageDeleteTaskStageMutation(\n  $input: DeleteTaskStageInput!\n) {\n  DeleteTaskStage(input: $input) {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b0fee0b983a4f81afe8a63e1f78b6212";
+(node as any).hash = "344a76ed2e0b5ff62090825b5058b1fe";
 
 export default node;

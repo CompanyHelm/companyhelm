@@ -21,13 +21,13 @@ type GraphqlTaskRecord = {
   id: string;
   name: string;
   status: "draft" | "in_progress" | "completed";
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   updatedAt: string;
 };
 
 /**
- * Loads one company-scoped task with its assignee and category metadata so the task detail page
+ * Loads one company-scoped task with its assignee and stage metadata so the task detail page
  * can edit the persisted record without reconstructing task state from the kanban board query.
  */
 @injectable()
@@ -68,8 +68,8 @@ export class TaskQueryResolver {
       id: task.id,
       name: task.name,
       status: task.status,
-      taskCategoryId: task.taskCategoryId,
-      taskCategoryName: task.taskCategoryName,
+      taskStageId: task.taskStageId,
+      taskStageName: task.taskStageName,
       updatedAt: task.updatedAt.toISOString(),
     };
   };

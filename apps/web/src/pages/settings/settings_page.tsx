@@ -8,9 +8,9 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
-import { TaskCategoryDialog } from "./task_category_dialog";
-import type { settingsPageCreateTaskCategoryMutation } from "./__generated__/settingsPageCreateTaskCategoryMutation.graphql";
-import type { settingsPageDeleteTaskCategoryMutation } from "./__generated__/settingsPageDeleteTaskCategoryMutation.graphql";
+import { TaskStageDialog } from "./task_stage_dialog";
+import type { settingsPageCreateTaskStageMutation } from "./__generated__/settingsPageCreateTaskStageMutation.graphql";
+import type { settingsPageDeleteTaskStageMutation } from "./__generated__/settingsPageDeleteTaskStageMutation.graphql";
 import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphql";
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
@@ -24,7 +24,7 @@ const settingsPageQueryNode = graphql`
       companyId
       baseSystemPrompt
     }
-    TaskCategories {
+    TaskStages {
       id
       name
       taskCount
@@ -34,9 +34,9 @@ const settingsPageQueryNode = graphql`
   }
 `;
 
-const settingsPageCreateTaskCategoryMutationNode = graphql`
-  mutation settingsPageCreateTaskCategoryMutation($input: CreateTaskCategoryInput!) {
-    CreateTaskCategory(input: $input) {
+const settingsPageCreateTaskStageMutationNode = graphql`
+  mutation settingsPageCreateTaskStageMutation($input: CreateTaskStageInput!) {
+    CreateTaskStage(input: $input) {
       id
       name
       taskCount
@@ -46,9 +46,9 @@ const settingsPageCreateTaskCategoryMutationNode = graphql`
   }
 `;
 
-const settingsPageDeleteTaskCategoryMutationNode = graphql`
-  mutation settingsPageDeleteTaskCategoryMutation($input: DeleteTaskCategoryInput!) {
-    DeleteTaskCategory(input: $input) {
+const settingsPageDeleteTaskStageMutationNode = graphql`
+  mutation settingsPageDeleteTaskStageMutation($input: DeleteTaskStageInput!) {
+    DeleteTaskStage(input: $input) {
       id
       name
       taskCount
@@ -104,8 +104,8 @@ function SettingsPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
   const search = useSearch({ strict: false }) as SettingsPageSearch;
   const [taskErrorMessage, setTaskErrorMessage] = useState<string | null>(null);
-  const [isTaskCategoryDialogOpen, setTaskCategoryDialogOpen] = useState(false);
-  const [deletingTaskCategoryId, setDeletingTaskCategoryId] = useState<string | null>(null);
+  const [isTaskStageDialogOpen, setTaskStageDialogOpen] = useState(false);
+  const [deletingTaskStageId, setDeletingTaskStageId] = useState<string | null>(null);
   const data = useLazyLoadQuery<settingsPageQuery>(
     settingsPageQueryNode,
     {},
@@ -113,11 +113,11 @@ function SettingsPageContent() {
       fetchPolicy: "store-and-network",
     },
   );
-  const [commitCreateTaskCategory, isCreateTaskCategoryInFlight] = useMutation<settingsPageCreateTaskCategoryMutation>(
-    settingsPageCreateTaskCategoryMutationNode,
+  const [commitCreateTaskStage, isCreateTaskStageInFlight] = useMutation<settingsPageCreateTaskStageMutation>(
+    settingsPageCreateTaskStageMutationNode,
   );
-  const [commitDeleteTaskCategory] = useMutation<settingsPageDeleteTaskCategoryMutation>(
-    settingsPageDeleteTaskCategoryMutationNode,
+  const [commitDeleteTaskStage] = useMutation<settingsPageDeleteTaskStageMutation>(
+    settingsPageDeleteTaskStageMutationNode,
   );
   const [commitUpdateCompanySettings] = useMutation<settingsPageUpdateCompanySettingsMutation>(
     settingsPageUpdateCompanySettingsMutationNode,
@@ -167,9 +167,9 @@ function SettingsPageContent() {
         <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
             <div className="min-w-0">
-              <CardTitle>Task Categories</CardTitle>
+              <CardTitle>Task Stages</CardTitle>
               <CardDescription>
-                Categories appear as dedicated lanes on the tasks board and stay available for all
+                Stages appear as dedicated lanes on the tasks board and stay available for all
                 future tasks.
               </CardDescription>
             </div>
@@ -177,12 +177,12 @@ function SettingsPageContent() {
               <Button
                 onClick={() => {
                   setTaskErrorMessage(null);
-                  setTaskCategoryDialogOpen(true);
+                  setTaskStageDialogOpen(true);
                 }}
                 size="sm"
               >
                 <PlusIcon />
-                Add category
+                Add stage
               </Button>
             </CardAction>
           </CardHeader>
@@ -193,57 +193,57 @@ function SettingsPageContent() {
               </div>
             ) : null}
 
-            {data.TaskCategories.length === 0 ? (
+            {data.TaskStages.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
-                <p className="text-sm font-medium text-foreground">No categories yet</p>
+                <p className="text-sm font-medium text-foreground">No stages yet</p>
                 <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                  Create your first lane here, or keep using the built-in uncategorized column on
-                  the tasks page.
+                  Create your first stage here, or keep using the built-in no-stage column on the
+                  tasks page.
                 </p>
               </div>
             ) : null}
 
-            {data.TaskCategories.map((category) => (
+            {data.TaskStages.map((stage) => (
               <div
-                key={category.id}
+                key={stage.id}
                 className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-background/90 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{category.name}</p>
+                  <p className="text-sm font-semibold text-foreground">{stage.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {category.taskCount} {category.taskCount === 1 ? "task" : "tasks"} in this lane
+                    {stage.taskCount} {stage.taskCount === 1 ? "task" : "tasks"} in this lane
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <p className="text-[0.625rem] uppercase tracking-[0.18em] text-muted-foreground/80">
-                    Added {new Date(category.createdAt).toLocaleDateString()}
+                    Added {new Date(stage.createdAt).toLocaleDateString()}
                   </p>
                   <Button
-                    aria-label={`Delete ${category.name}`}
+                    aria-label={`Delete ${stage.name}`}
                     className="text-muted-foreground hover:text-destructive"
-                    disabled={deletingTaskCategoryId === category.id}
+                    disabled={deletingTaskStageId === stage.id}
                     onClick={() => {
                       setTaskErrorMessage(null);
-                      setDeletingTaskCategoryId(category.id);
+                      setDeletingTaskStageId(stage.id);
 
                       void new Promise<void>((resolve, reject) => {
-                        commitDeleteTaskCategory({
+                        commitDeleteTaskStage({
                           variables: {
                             input: {
-                              id: category.id,
+                              id: stage.id,
                             },
                           },
                           updater: (store) => {
-                            const deletedCategory = store.getRootField("DeleteTaskCategory");
-                            if (!deletedCategory) {
+                            const deletedStage = store.getRootField("DeleteTaskStage");
+                            if (!deletedStage) {
                               return;
                             }
 
                             const rootRecord = store.getRoot();
-                            const currentCategories = filterStoreRecords(rootRecord.getLinkedRecords("TaskCategories") || []);
+                            const currentStages = filterStoreRecords(rootRecord.getLinkedRecords("TaskStages") || []);
                             rootRecord.setLinkedRecords(
-                              currentCategories.filter((record) => record.getDataID() !== deletedCategory.getDataID()),
-                              "TaskCategories",
+                              currentStages.filter((record) => record.getDataID() !== deletedStage.getDataID()),
+                              "TaskStages",
                             );
                           },
                           onCompleted: (_response, errors) => {
@@ -258,19 +258,19 @@ function SettingsPageContent() {
                           onError: reject,
                         });
                       }).catch((error: unknown) => {
-                        setTaskErrorMessage(error instanceof Error ? error.message : "Failed to delete task category.");
+                        setTaskErrorMessage(error instanceof Error ? error.message : "Failed to delete task stage.");
                       }).finally(() => {
-                        setDeletingTaskCategoryId((currentCategoryId) => {
-                          return currentCategoryId === category.id ? null : currentCategoryId;
+                        setDeletingTaskStageId((currentStageId) => {
+                          return currentStageId === stage.id ? null : currentStageId;
                         });
                       });
                     }}
                     size="icon-sm"
-                    title={`Delete ${category.name}`}
+                    title={`Delete ${stage.name}`}
                     type="button"
                     variant="ghost"
                   >
-                    {deletingTaskCategoryId === category.id
+                    {deletingTaskStageId === stage.id
                       ? <Loader2Icon className="size-4 animate-spin" />
                       : <Trash2Icon className="size-4" />}
                   </Button>
@@ -341,29 +341,29 @@ function SettingsPageContent() {
         </Card>
       ) : null}
 
-      <TaskCategoryDialog
-        errorMessage={isTaskCategoryDialogOpen ? taskErrorMessage : null}
-        isOpen={isTaskCategoryDialogOpen}
-        isSaving={isCreateTaskCategoryInFlight}
+      <TaskStageDialog
+        errorMessage={isTaskStageDialogOpen ? taskErrorMessage : null}
+        isOpen={isTaskStageDialogOpen}
+        isSaving={isCreateTaskStageInFlight}
         onCreate={async (name) => {
           setTaskErrorMessage(null);
 
           await new Promise<void>((resolve, reject) => {
-            commitCreateTaskCategory({
+            commitCreateTaskStage({
               variables: {
                 input: {
                   name,
                 },
               },
               updater: (store) => {
-                const createdCategory = store.getRootField("CreateTaskCategory");
-                if (!createdCategory) {
+                const createdStage = store.getRootField("CreateTaskStage");
+                if (!createdStage) {
                   return;
                 }
 
                 const rootRecord = store.getRoot();
-                const currentCategories = filterStoreRecords(rootRecord.getLinkedRecords("TaskCategories") || []);
-                rootRecord.setLinkedRecords([...currentCategories, createdCategory], "TaskCategories");
+                const currentStages = filterStoreRecords(rootRecord.getLinkedRecords("TaskStages") || []);
+                rootRecord.setLinkedRecords([...currentStages, createdStage], "TaskStages");
               },
               onCompleted: (_response, errors) => {
                 const nextErrorMessage = errors?.[0]?.message;
@@ -377,19 +377,19 @@ function SettingsPageContent() {
               onError: reject,
             });
           }).then(() => {
-            setTaskCategoryDialogOpen(false);
+            setTaskStageDialogOpen(false);
           }).catch((error: unknown) => {
-            setTaskErrorMessage(error instanceof Error ? error.message : "Failed to create task category.");
+            setTaskErrorMessage(error instanceof Error ? error.message : "Failed to create task stage.");
           });
         }}
-        onOpenChange={setTaskCategoryDialogOpen}
+        onOpenChange={setTaskStageDialogOpen}
       />
     </main>
   );
 }
 
 /**
- * Hosts the company settings surface for task categories and shared agent AI configuration.
+ * Hosts the company settings surface for task stages and shared agent AI configuration.
  */
 export function SettingsPage() {
   return (

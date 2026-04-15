@@ -14,7 +14,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class DeleteTaskCategoryMutationTestHarness {
+class DeleteTaskStageMutationTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -53,9 +53,9 @@ class DeleteTaskCategoryMutationTestHarness {
               where() {
                 return {
                   async returning() {
-                    deletedIds.push("category-1");
+                    deletedIds.push("stage-1");
                     return [{
-                      id: "category-1",
+                      id: "stage-1",
                       name: "Backlog",
                       createdAt: new Date("2026-03-25T10:00:00.000Z"),
                       updatedAt: new Date("2026-03-25T10:00:00.000Z"),
@@ -74,10 +74,10 @@ class DeleteTaskCategoryMutationTestHarness {
   }
 }
 
-test("GraphQL DeleteTaskCategory mutation deletes one persisted task category", async () => {
+test("GraphQL DeleteTaskStage mutation deletes one persisted task stage", async () => {
   const app = Fastify();
-  const config = DeleteTaskCategoryMutationTestHarness.createConfigMock();
-  const database = DeleteTaskCategoryMutationTestHarness.createDatabaseMock();
+  const config = DeleteTaskStageMutationTestHarness.createConfigMock();
+  const database = DeleteTaskStageMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -123,8 +123,8 @@ test("GraphQL DeleteTaskCategory mutation deletes one persisted task category", 
     },
     payload: {
       query: `
-        mutation DeleteTaskCategory($input: DeleteTaskCategoryInput!) {
-          DeleteTaskCategory(input: $input) {
+        mutation DeleteTaskStage($input: DeleteTaskStageInput!) {
+          DeleteTaskStage(input: $input) {
             id
             name
             taskCount
@@ -133,7 +133,7 @@ test("GraphQL DeleteTaskCategory mutation deletes one persisted task category", 
       `,
       variables: {
         input: {
-          id: "category-1",
+          id: "stage-1",
         },
       },
     },
@@ -141,12 +141,12 @@ test("GraphQL DeleteTaskCategory mutation deletes one persisted task category", 
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.DeleteTaskCategory, {
-    id: "category-1",
+  assert.deepEqual(document.data.DeleteTaskStage, {
+    id: "stage-1",
     name: "Backlog",
     taskCount: 2,
   });
-  assert.deepEqual(database.deletedIds, ["category-1"]);
+  assert.deepEqual(database.deletedIds, ["stage-1"]);
 
   await app.close();
 });

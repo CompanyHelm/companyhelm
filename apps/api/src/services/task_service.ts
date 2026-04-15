@@ -3,7 +3,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
-import { agents, companyMembers, taskCategories, taskRuns, tasks, users } from "../db/schema.ts";
+import { agents, companyMembers, taskStages, taskRuns, tasks, users } from "../db/schema.ts";
 
 export type TaskStatus = "draft" | "in_progress" | "completed";
 
@@ -22,8 +22,8 @@ export type TaskServiceTask = {
   id: string;
   name: string;
   status: TaskStatus;
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   updatedAt: Date;
 };
 
@@ -36,7 +36,7 @@ export type TaskServiceCreateTaskInput = {
   description?: string | null;
   name: string;
   status?: string | null;
-  taskCategoryId?: string | null;
+  taskStageId?: string | null;
 };
 
 export type TaskServiceListTasksInput = {
@@ -72,7 +72,7 @@ export type TaskServiceUpdateTaskInput = {
   name?: string | null;
   sessionId?: string | null;
   status?: string | null;
-  taskCategoryId?: string | null;
+  taskStageId?: string | null;
   taskId: string;
 };
 
@@ -93,7 +93,7 @@ type TaskRow = {
   id: string;
   name: string;
   status: TaskStatus;
-  taskCategoryId: string | null;
+  taskStageId: string | null;
   updatedAt: Date;
 };
 
@@ -103,7 +103,7 @@ type OpenTaskRunRow = {
   id: string;
 };
 
-type TaskCategoryRow = {
+type TaskStageRow = {
   id: string;
   name: string;
 };
@@ -122,7 +122,7 @@ type UserRow = {
 
 /**
  * Centralizes task persistence and validation so GraphQL handlers and agent tools share the same
- * rules for assignee validation, category checks, task tree defaults, and task-run synchronization.
+ * rules for assignee validation, stage checks, task tree defaults, and task-run synchronization.
  */
 @injectable()
 export class TaskService {
@@ -140,7 +140,7 @@ export class TaskService {
     }
 
     return transactionProvider.transaction(async (tx) => {
-      const taskCategoryRecord = await this.resolveTaskCategoryRecord(tx, input.companyId, input.taskCategoryId ?? null);
+      const taskStageRecord = await this.resolveTaskStageRecord(tx, input.companyId, input.taskStageId ?? null);
       const assignee = await this.resolveAssignee(tx, {
         assignedAgentId: input.assignedAgentId ?? null,
         assignedUserId: input.assignedUserId ?? null,
@@ -164,7 +164,7 @@ export class TaskService {
           parentTaskId: null,
           rootTaskId: taskId,
           status: this.resolveStatus(input.status),
-          taskCategoryId: taskCategoryRecord?.id ?? null,
+          taskStageId: taskStageRecord?.id ?? null,
           updatedAt: now,
         })
         .returning({
@@ -176,7 +176,7 @@ export class TaskService {
           id: tasks.id,
           name: tasks.name,
           status: tasks.status,
-          taskCategoryId: tasks.taskCategoryId,
+          taskStageId: tasks.taskStageId,
           updatedAt: tasks.updatedAt,
         }) as TaskRow[];
       if (!taskRecord) {
@@ -191,8 +191,8 @@ export class TaskService {
         id: taskRecord.id,
         name: taskRecord.name,
         status: taskRecord.status,
-        taskCategoryId: taskRecord.taskCategoryId,
-        taskCategoryName: taskCategoryRecord?.name ?? null,
+        taskStageId: taskRecord.taskStageId,
+        taskStageName: taskStageRecord?.name ?? null,
         updatedAt: taskRecord.updatedAt,
       };
     });
@@ -214,7 +214,7 @@ export class TaskService {
           id: tasks.id,
           name: tasks.name,
           status: tasks.status,
-          taskCategoryId: tasks.taskCategoryId,
+          taskStageId: tasks.taskStageId,
           updatedAt: tasks.updatedAt,
         })
         .from(tasks)
@@ -223,7 +223,7 @@ export class TaskService {
       const resolvedLimit = input.limit ?? (taskRows.length > 0 ? taskRows.length : 1);
       const normalizedLimit = Math.max(1, resolvedLimit);
       const paginatedTaskRows = taskRows.slice(normalizedOffset, normalizedOffset + normalizedLimit);
-      const taskCategoryNameById = await this.loadTaskCategoryNameById(tx, paginatedTaskRows);
+      const taskStageNameById = await this.loadTaskStageNameById(tx, paginatedTaskRows);
       const userAssigneeById = await this.loadUserAssigneeById(tx, paginatedTaskRows);
       const agentAssigneeById = await this.loadAgentAssigneeById(tx, paginatedTaskRows);
 
@@ -234,7 +234,7 @@ export class TaskService {
         tasks: paginatedTaskRows.map((taskRow) => {
           return this.serializeTaskRecord(
             taskRow,
-            taskCategoryNameById,
+            taskStageNameById,
             userAssigneeById,
             agentAssigneeById,
           );
@@ -288,12 +288,12 @@ export class TaskService {
       const nextStatus = input.status === undefined
         ? existingTaskRow.status
         : this.resolveStatus(input.status);
-      const taskCategoryRecord = input.taskCategoryId === undefined
+      const taskStageRecord = input.taskStageId === undefined
         ? null
-        : await this.resolveTaskCategoryRecord(tx, input.companyId, input.taskCategoryId ?? null);
-      const nextTaskCategoryId = input.taskCategoryId === undefined
-        ? existingTaskRow.taskCategoryId
-        : taskCategoryRecord?.id ?? null;
+        : await this.resolveTaskStageRecord(tx, input.companyId, input.taskStageId ?? null);
+      const nextTaskStageId = input.taskStageId === undefined
+        ? existingTaskRow.taskStageId
+        : taskStageRecord?.id ?? null;
       const assignee = input.assignedAgentId === undefined && input.assignedUserId === undefined
         ? null
         : await this.resolveAssignee(tx, {
@@ -326,7 +326,7 @@ export class TaskService {
           description: nextDescription,
           name: nextName,
           status: nextStatus,
-          taskCategoryId: nextTaskCategoryId,
+          taskStageId: nextTaskStageId,
           updatedAt: now,
         })
         .where(and(
@@ -342,7 +342,7 @@ export class TaskService {
           id: tasks.id,
           name: tasks.name,
           status: tasks.status,
-          taskCategoryId: tasks.taskCategoryId,
+          taskStageId: tasks.taskStageId,
           updatedAt: tasks.updatedAt,
         }) as TaskRow[];
       if (!updatedTaskRow) {
@@ -432,28 +432,28 @@ export class TaskService {
     }));
   }
 
-  private async loadTaskCategoryNameById(
+  private async loadTaskStageNameById(
     tx: AppRuntimeTransaction,
     taskRows: TaskRow[],
   ): Promise<Map<string, string>> {
-    const taskCategoryIds = [...new Set(
+    const taskStageIds = [...new Set(
       taskRows
-        .map((taskRow) => taskRow.taskCategoryId)
-        .filter((taskCategoryId): taskCategoryId is string => taskCategoryId !== null),
+        .map((taskRow) => taskRow.taskStageId)
+        .filter((taskStageId): taskStageId is string => taskStageId !== null),
     )];
-    if (taskCategoryIds.length === 0) {
+    if (taskStageIds.length === 0) {
       return new Map();
     }
 
-    const taskCategoryRows = await tx
+    const taskStageRows = await tx
       .select({
-        id: taskCategories.id,
-        name: taskCategories.name,
+        id: taskStages.id,
+        name: taskStages.name,
       })
-      .from(taskCategories)
-      .where(inArray(taskCategories.id, taskCategoryIds)) as TaskCategoryRow[];
+      .from(taskStages)
+      .where(inArray(taskStages.id, taskStageIds)) as TaskStageRow[];
 
-    return new Map(taskCategoryRows.map((taskCategoryRow) => [taskCategoryRow.id, taskCategoryRow.name]));
+    return new Map(taskStageRows.map((taskStageRow) => [taskStageRow.id, taskStageRow.name]));
   }
 
   private async loadUserAssigneeById(
@@ -508,30 +508,30 @@ export class TaskService {
     return name;
   }
 
-  private async resolveTaskCategoryRecord(
+  private async resolveTaskStageRecord(
     tx: AppRuntimeTransaction,
     companyId: string,
-    taskCategoryId: string | null,
-  ): Promise<TaskCategoryRow | null> {
-    if (!taskCategoryId) {
+    taskStageId: string | null,
+  ): Promise<TaskStageRow | null> {
+    if (!taskStageId) {
       return null;
     }
 
-    const [taskCategoryRecord] = await tx
+    const [taskStageRecord] = await tx
       .select({
-        id: taskCategories.id,
-        name: taskCategories.name,
+        id: taskStages.id,
+        name: taskStages.name,
       })
-      .from(taskCategories)
+      .from(taskStages)
       .where(and(
-        eq(taskCategories.companyId, companyId),
-        eq(taskCategories.id, taskCategoryId),
-      )) as TaskCategoryRow[];
-    if (!taskCategoryRecord) {
-      throw new Error("Task category not found.");
+        eq(taskStages.companyId, companyId),
+        eq(taskStages.id, taskStageId),
+      )) as TaskStageRow[];
+    if (!taskStageRecord) {
+      throw new Error("Task stage not found.");
     }
 
-    return taskCategoryRecord;
+    return taskStageRecord;
   }
 
   private async resolveAssignee(
@@ -755,7 +755,7 @@ export class TaskService {
         id: tasks.id,
         name: tasks.name,
         status: tasks.status,
-        taskCategoryId: tasks.taskCategoryId,
+        taskStageId: tasks.taskStageId,
         updatedAt: tasks.updatedAt,
       })
       .from(tasks)
@@ -774,15 +774,15 @@ export class TaskService {
     tx: AppRuntimeTransaction,
     taskRow: TaskRow,
   ): Promise<TaskServiceTask> {
-    const taskCategoryNameById = await this.loadTaskCategoryNameById(tx, [taskRow]);
+    const taskStageNameById = await this.loadTaskStageNameById(tx, [taskRow]);
     const userAssigneeById = await this.loadUserAssigneeById(tx, [taskRow]);
     const agentAssigneeById = await this.loadAgentAssigneeById(tx, [taskRow]);
-    return this.serializeTaskRecord(taskRow, taskCategoryNameById, userAssigneeById, agentAssigneeById);
+    return this.serializeTaskRecord(taskRow, taskStageNameById, userAssigneeById, agentAssigneeById);
   }
 
   private serializeTaskRecord(
     taskRow: TaskRow,
-    taskCategoryNameById: Map<string, string>,
+    taskStageNameById: Map<string, string>,
     userAssigneeById: Map<string, TaskServiceTaskAssignee>,
     agentAssigneeById: Map<string, TaskServiceTaskAssignee>,
   ): TaskServiceTask {
@@ -800,8 +800,8 @@ export class TaskService {
       id: taskRow.id,
       name: taskRow.name,
       status: taskRow.status,
-      taskCategoryId: taskRow.taskCategoryId,
-      taskCategoryName: taskRow.taskCategoryId ? taskCategoryNameById.get(taskRow.taskCategoryId) ?? null : null,
+      taskStageId: taskRow.taskStageId,
+      taskStageName: taskRow.taskStageId ? taskStageNameById.get(taskRow.taskStageId) ?? null : null,
       updatedAt: taskRow.updatedAt,
     };
   }

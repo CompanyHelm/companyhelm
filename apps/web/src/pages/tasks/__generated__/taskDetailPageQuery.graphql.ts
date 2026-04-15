@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<345c546b3290b2d47766195e8f36abea>>
+ * @generated SignedSource<<bf57c740ea8da5d293e2bc80c0ae35e3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -44,18 +44,14 @@ export type taskDetailPageQuery$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskCategoryId: string | null | undefined;
-    readonly taskCategoryName: string | null | undefined;
+    readonly taskStageId: string | null | undefined;
+    readonly taskStageName: string | null | undefined;
     readonly updatedAt: string;
   };
   readonly TaskAssignableUsers: ReadonlyArray<{
     readonly displayName: string;
     readonly email: string;
     readonly id: string;
-  }>;
-  readonly TaskCategories: ReadonlyArray<{
-    readonly id: string;
-    readonly name: string;
   }>;
   readonly TaskRuns: ReadonlyArray<{
     readonly agentId: string;
@@ -70,6 +66,10 @@ export type taskDetailPageQuery$data = {
     readonly status: string;
     readonly taskId: string;
     readonly updatedAt: string;
+  }>;
+  readonly TaskStages: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
   }>;
 };
 export type taskDetailPageQuery = {
@@ -166,14 +166,14 @@ v10 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskCategoryId",
+        "name": "taskStageId",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskCategoryName",
+        "name": "taskStageName",
         "storageKey": null
       },
       {
@@ -393,9 +393,9 @@ v10 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "TaskCategory",
+    "concreteType": "TaskStage",
     "kind": "LinkedField",
-    "name": "TaskCategories",
+    "name": "TaskStages",
     "plural": true,
     "selections": (v9/*: any*/),
     "storageKey": null
@@ -419,16 +419,16 @@ return {
     "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "ee1aca085a31a83b27be3c5ecc7a6dc2",
+    "cacheID": "eaa3787635d9587afb26e40cc2b20e7b",
     "id": null,
     "metadata": {},
     "name": "taskDetailPageQuery",
     "operationKind": "query",
-    "text": "query taskDetailPageQuery(\n  $taskId: ID!\n) {\n  Task(id: $taskId) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n  TaskRuns(taskId: $taskId) {\n    id\n    taskId\n    agentId\n    agentName\n    sessionId\n    status\n    startedAt\n    finishedAt\n    lastActivityAt\n    endedReason\n    createdAt\n    updatedAt\n  }\n  Artifacts(input: {scopeType: \"task\", taskId: $taskId}) {\n    id\n    type\n    state\n    name\n    description\n    markdownContent\n    url\n    pullRequestProvider\n    pullRequestRepository\n    pullRequestNumber\n    createdAt\n    updatedAt\n  }\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskCategories {\n    id\n    name\n  }\n}\n"
+    "text": "query taskDetailPageQuery(\n  $taskId: ID!\n) {\n  Task(id: $taskId) {\n    id\n    name\n    description\n    status\n    taskStageId\n    taskStageName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n  TaskRuns(taskId: $taskId) {\n    id\n    taskId\n    agentId\n    agentName\n    sessionId\n    status\n    startedAt\n    finishedAt\n    lastActivityAt\n    endedReason\n    createdAt\n    updatedAt\n  }\n  Artifacts(input: {scopeType: \"task\", taskId: $taskId}) {\n    id\n    type\n    state\n    name\n    description\n    markdownContent\n    url\n    pullRequestProvider\n    pullRequestRepository\n    pullRequestNumber\n    createdAt\n    updatedAt\n  }\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskStages {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "37280fac4e1748b87182c31b2a48959d";
+(node as any).hash = "5a904678b4721a5c55b393e79108b520";
 
 export default node;

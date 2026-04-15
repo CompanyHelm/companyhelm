@@ -14,7 +14,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class CreateTaskCategoryMutationTestHarness {
+class TaskStagesQueryTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -28,42 +28,64 @@ class CreateTaskCategoryMutationTestHarness {
   }
 
   static createDatabaseMock() {
-    const insertedValues: Array<Record<string, unknown>> = [];
+    const scopedCompanyIds: string[] = [];
+    let selectCallCount = 0;
 
     return {
-      insertedValues,
+      scopedCompanyIds,
       getDatabase() {
         return {
-          insert() {
-            return {
-              values(value: Record<string, unknown>) {
-                insertedValues.push(value);
-                return {
-                  async returning() {
-                    return [{
-                      id: "category-1",
-                      name: String(value.name),
-                      createdAt: new Date("2026-03-25T10:00:00.000Z"),
-                      updatedAt: new Date("2026-03-25T10:00:00.000Z"),
-                    }];
-                  },
-                };
-              },
-            };
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        id: "stage-1",
+                        name: "Backlog",
+                        createdAt: new Date("2026-03-24T09:00:00.000Z"),
+                        updatedAt: new Date("2026-03-24T09:00:00.000Z"),
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        { taskStageId: "stage-1" },
+                        { taskStageId: "stage-1" },
+                        { taskStageId: null },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
           },
         } as never;
       },
-      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        scopedCompanyIds.push(companyId);
         return callback(this.getDatabase());
       },
     };
   }
 }
 
-test("GraphQL CreateTaskCategory mutation creates one persisted task category", async () => {
+test("GraphQL TaskStages query lists persisted stages with task counts", async () => {
   const app = Fastify();
-  const config = CreateTaskCategoryMutationTestHarness.createConfigMock();
-  const database = CreateTaskCategoryMutationTestHarness.createDatabaseMock();
+  const config = TaskStagesQueryTestHarness.createConfigMock();
+  const database = TaskStagesQueryTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -109,32 +131,29 @@ test("GraphQL CreateTaskCategory mutation creates one persisted task category", 
     },
     payload: {
       query: `
-        mutation CreateTaskCategory($input: CreateTaskCategoryInput!) {
-          CreateTaskCategory(input: $input) {
+        query TaskStages {
+          TaskStages {
             id
             name
             taskCount
+            createdAt
+            updatedAt
           }
         }
       `,
-      variables: {
-        input: {
-          name: "Backlog",
-        },
-      },
     },
   });
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.CreateTaskCategory, {
-    id: "category-1",
+  assert.deepEqual(document.data.TaskStages, [{
+    id: "stage-1",
     name: "Backlog",
-    taskCount: 0,
-  });
-  assert.equal(database.insertedValues.length, 1);
-  assert.equal(database.insertedValues[0]?.companyId, "company-123");
-  assert.equal(database.insertedValues[0]?.name, "Backlog");
+    taskCount: 2,
+    createdAt: "2026-03-24T09:00:00.000Z",
+    updatedAt: "2026-03-24T09:00:00.000Z",
+  }]);
+  assert.deepEqual(database.scopedCompanyIds, ["company-123"]);
 
   await app.close();
 });

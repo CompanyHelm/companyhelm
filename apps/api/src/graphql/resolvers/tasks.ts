@@ -18,13 +18,13 @@ type GraphqlTaskRecord = {
   id: string;
   name: string;
   status: "draft" | "in_progress" | "completed";
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   updatedAt: string;
 };
 
 /**
- * Lists company-scoped tasks together with category and assignee metadata so the kanban page can
+ * Lists company-scoped tasks together with stage and assignee metadata so the kanban page can
  * render one complete board without stitching together separate task lookups client-side.
  */
 @injectable()
@@ -58,8 +58,8 @@ export class TasksQueryResolver extends Resolver<GraphqlTaskRecord[]> {
       id: task.id,
       name: task.name,
       status: task.status,
-      taskCategoryId: task.taskCategoryId,
-      taskCategoryName: task.taskCategoryName,
+      taskStageId: task.taskStageId,
+      taskStageName: task.taskStageName,
       updatedAt: task.updatedAt.toISOString(),
     }));
   };

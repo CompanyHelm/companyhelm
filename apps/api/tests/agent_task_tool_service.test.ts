@@ -26,8 +26,8 @@ test("AgentTaskToolService forwards session-aware task status updates", async ()
           id: "task-1",
           name: "Ship the task-run fix",
           status: "in_progress",
-          taskCategoryId: null,
-          taskCategoryName: null,
+          taskStageId: null,
+          taskStageName: null,
           updatedAt: new Date("2026-04-13T12:00:00.000Z"),
         };
       },

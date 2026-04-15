@@ -23,7 +23,7 @@ type TaskDetailPageSearch = {
   viewType?: TaskViewType;
 };
 type TaskDetailPageTaskAssignee = NonNullable<taskDetailPageQuery["response"]["Task"]["assignee"]>;
-type TaskDetailPageTaskCategory = taskDetailPageQuery["response"]["TaskCategories"][number];
+type TaskDetailPageTaskStage = taskDetailPageQuery["response"]["TaskStages"][number];
 type TaskDetailPageAssignableUser = taskDetailPageQuery["response"]["TaskAssignableUsers"][number];
 type TaskDetailPageAgent = taskDetailPageQuery["response"]["Agents"][number];
 type TaskDetailPageRun = taskDetailPageQuery["response"]["TaskRuns"][number];
@@ -36,8 +36,8 @@ const taskDetailPageQueryNode = graphql`
       name
       description
       status
-      taskCategoryId
-      taskCategoryName
+      taskStageId
+      taskStageName
       assignedAt
       assignee {
         kind
@@ -85,7 +85,7 @@ const taskDetailPageQueryNode = graphql`
       displayName
       email
     }
-    TaskCategories {
+    TaskStages {
       id
       name
     }
@@ -99,8 +99,8 @@ const taskDetailPageUpdateTaskMutationNode = graphql`
       name
       description
       status
-      taskCategoryId
-      taskCategoryName
+      taskStageId
+      taskStageName
       assignedAt
       assignee {
         kind
@@ -133,7 +133,7 @@ const taskDetailPageExecuteTaskMutationNode = graphql`
   }
 `;
 
-const uncategorizedValue = "__uncategorized__";
+const noStageValue = "__no_stage__";
 const unassignedValue = "__unassigned__";
 
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
@@ -314,15 +314,15 @@ function TaskDetailPageContent() {
     };
   }, [setDetailLabel, task.name]);
 
-  const categoryOptions = useMemo(() => {
+  const stageOptions = useMemo(() => {
     return [{
-      label: "Uncategorized",
-      value: uncategorizedValue,
-    }, ...data.TaskCategories.map((category: TaskDetailPageTaskCategory) => ({
-      label: category.name,
-      value: category.id,
+      label: "No stage",
+      value: noStageValue,
+    }, ...data.TaskStages.map((stage: TaskDetailPageTaskStage) => ({
+      label: stage.name,
+      value: stage.id,
     }))];
-  }, [data.TaskCategories]);
+  }, [data.TaskStages]);
   const assigneeOptions = useMemo(() => {
     const nextOptions = [{
       label: "Unassigned",
@@ -351,7 +351,7 @@ function TaskDetailPageContent() {
     description?: string | null;
     name?: string | null;
     status?: TaskStatus;
-    taskCategoryId?: string | null;
+    taskStageId?: string | null;
   }) => {
     await new Promise<void>((resolve, reject) => {
       commitUpdateTask({
@@ -363,7 +363,7 @@ function TaskDetailPageContent() {
             description: patch.description === undefined ? task.description : patch.description,
             name: patch.name === undefined ? task.name : patch.name,
             status: patch.status ?? currentTaskStatus,
-            taskCategoryId: patch.taskCategoryId === undefined ? task.taskCategoryId : patch.taskCategoryId,
+            taskStageId: patch.taskStageId === undefined ? task.taskStageId : patch.taskStageId,
           },
         },
         onCompleted: (
@@ -509,7 +509,7 @@ function TaskDetailPageContent() {
               <div className="min-w-0">
                 <CardTitle>Task Details</CardTitle>
                 <CardDescription>
-                  Update the task name, description, status, category, and assignee inline.
+                  Update the task name, description, status, stage, and assignee inline.
                 </CardDescription>
               </div>
               <CardAction>
@@ -570,17 +570,17 @@ function TaskDetailPageContent() {
               />
 
               <EditableField
-                displayValue={task.taskCategoryName ?? "Uncategorized"}
-                emptyValueLabel="Uncategorized"
+                displayValue={task.taskStageName ?? "No stage"}
+                emptyValueLabel="No stage"
                 fieldType="select"
-                label="Category"
+                label="Stage"
                 onSave={async (value) => {
                   await saveTask({
-                    taskCategoryId: value === uncategorizedValue ? null : value,
+                    taskStageId: value === noStageValue ? null : value,
                   });
                 }}
-                options={categoryOptions}
-                value={task.taskCategoryId ?? uncategorizedValue}
+                options={stageOptions}
+                value={task.taskStageId ?? noStageValue}
               />
 
               <EditableField

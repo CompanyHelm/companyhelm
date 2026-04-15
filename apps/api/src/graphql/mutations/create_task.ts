@@ -10,7 +10,7 @@ type CreateTaskMutationArguments = {
     description?: string | null;
     name: string;
     status?: string | null;
-    taskCategoryId?: string | null;
+    taskStageId?: string | null;
   };
 };
 
@@ -29,13 +29,13 @@ type GraphqlTaskRecord = {
   id: string;
   name: string;
   status: "draft" | "in_progress" | "completed";
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   updatedAt: string;
 };
 
 /**
- * Creates one company-scoped task and validates the optional category plus typed assignee before
+ * Creates one company-scoped task and validates the optional stage plus typed assignee before
  * persisting it so both the web UI and agent tools share the same task rules.
  */
 @injectable()
@@ -68,7 +68,7 @@ export class CreateTaskMutation extends Mutation<CreateTaskMutationArguments, Gr
       description: arguments_.input.description,
       name: arguments_.input.name,
       status: arguments_.input.status,
-      taskCategoryId: arguments_.input.taskCategoryId,
+      taskStageId: arguments_.input.taskStageId,
     });
 
     return {
@@ -79,8 +79,8 @@ export class CreateTaskMutation extends Mutation<CreateTaskMutationArguments, Gr
       id: task.id,
       name: task.name,
       status: task.status,
-      taskCategoryId: task.taskCategoryId,
-      taskCategoryName: task.taskCategoryName,
+      taskStageId: task.taskStageId,
+      taskStageName: task.taskStageName,
       updatedAt: task.updatedAt.toISOString(),
     };
   };

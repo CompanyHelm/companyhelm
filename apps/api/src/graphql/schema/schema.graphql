@@ -49,7 +49,7 @@ type Query {
   Task(id: ID!): Task!
   TaskRuns(taskId: ID!): [TaskRun!]!
   TaskAssignableUsers: [TaskAssignableUser!]!
-  TaskCategories: [TaskCategory!]!
+  TaskStages: [TaskStage!]!
   Tasks: [Task!]!
 }
 
@@ -122,8 +122,8 @@ type Mutation {
   UpdateAgent(input: UpdateAgentInput!): Agent!
   UpdateComputeProviderDefinition(input: UpdateComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateTask(input: CreateTaskInput!): Task!
-  CreateTaskCategory(input: CreateTaskCategoryInput!): TaskCategory!
-  DeleteTaskCategory(input: DeleteTaskCategoryInput!): TaskCategory!
+  CreateTaskStage(input: CreateTaskStageInput!): TaskStage!
+  DeleteTaskStage(input: DeleteTaskStageInput!): TaskStage!
   DeleteTask(input: DeleteTaskInput!): Task!
   ExecuteTask(input: ExecuteTaskInput!): TaskRun!
   RefreshModelProviderCredentialToken(
@@ -141,7 +141,7 @@ type Mutation {
   SetDefaultModelProviderCredentialModel(
     input: SetDefaultModelProviderCredentialModelInput!
   ): ModelProviderCredentialModel!
-  SetTaskCategory(input: SetTaskCategoryInput!): Task!
+  SetTaskStage(input: SetTaskStageInput!): Task!
   UpdateTask(input: UpdateTaskInput!): Task!
   UpdateArtifact(input: UpdateArtifactInput!): Artifact!
   UpdateExternalLinkArtifact(input: UpdateExternalLinkArtifactInput!): Artifact!
@@ -662,7 +662,7 @@ type Artifact {
   updatedAt: String!
 }
 
-type TaskCategory {
+type TaskStage {
   id: ID!
   name: String!
   taskCount: Int!
@@ -675,8 +675,8 @@ type Task {
   name: String!
   description: String
   status: String!
-  taskCategoryId: ID
-  taskCategoryName: String
+  taskStageId: ID
+  taskStageName: String
   assignee: TaskAssignee
   assignedAt: String
   createdAt: String!
@@ -1100,11 +1100,11 @@ input ArtifactsInput {
   taskId: ID
 }
 
-input CreateTaskCategoryInput {
+input CreateTaskStageInput {
   name: String!
 }
 
-input DeleteTaskCategoryInput {
+input DeleteTaskStageInput {
   id: ID!
 }
 
@@ -1146,7 +1146,7 @@ input CreateTaskInput {
   name: String!
   description: String
   status: String
-  taskCategoryId: ID
+  taskStageId: ID
   assignedUserId: ID
   assignedAgentId: ID
 }
@@ -1180,9 +1180,9 @@ input DeleteTaskInput {
   taskId: ID!
 }
 
-input SetTaskCategoryInput {
+input SetTaskStageInput {
   taskId: ID!
-  taskCategoryId: ID
+  taskStageId: ID
 }
 
 input UpdateTaskInput {
@@ -1190,7 +1190,7 @@ input UpdateTaskInput {
   name: String
   description: String
   status: String
-  taskCategoryId: ID
+  taskStageId: ID
   assignedUserId: ID
   assignedAgentId: ID
 }

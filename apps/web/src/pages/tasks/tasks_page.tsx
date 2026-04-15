@@ -10,7 +10,7 @@ import { CreateTaskDialog } from "./create_task_dialog";
 import { TaskBoard } from "./task_board";
 import { TaskList } from "./task_list";
 import type {
-  TaskCategoryRecord,
+  TaskStageRecord,
   TaskRecord,
   TaskViewType,
 } from "./task_ui";
@@ -18,9 +18,9 @@ import type { tasksPageCreateTaskMutation } from "./__generated__/tasksPageCreat
 import type { tasksPageDeleteTaskMutation } from "./__generated__/tasksPageDeleteTaskMutation.graphql";
 import type { tasksPageExecuteTaskMutation } from "./__generated__/tasksPageExecuteTaskMutation.graphql";
 import type { tasksPageQuery } from "./__generated__/tasksPageQuery.graphql";
-import type { tasksPageSetTaskCategoryMutation } from "./__generated__/tasksPageSetTaskCategoryMutation.graphql";
+import type { tasksPageSetTaskStageMutation } from "./__generated__/tasksPageSetTaskStageMutation.graphql";
 
-type TasksPageCategory = tasksPageQuery["response"]["TaskCategories"][number];
+type TasksPageStage = tasksPageQuery["response"]["TaskStages"][number];
 type TasksPageTask = tasksPageQuery["response"]["Tasks"][number];
 type TasksPageAssignableUser = tasksPageQuery["response"]["TaskAssignableUsers"][number];
 type TasksPageAgent = tasksPageQuery["response"]["Agents"][number];
@@ -36,7 +36,7 @@ const tasksPageQueryNode = graphql`
       displayName
       email
     }
-    TaskCategories {
+    TaskStages {
       id
       name
       taskCount
@@ -48,8 +48,8 @@ const tasksPageQueryNode = graphql`
       name
       description
       status
-      taskCategoryId
-      taskCategoryName
+      taskStageId
+      taskStageName
       assignedAt
       assignee {
         kind
@@ -70,8 +70,8 @@ const tasksPageCreateTaskMutationNode = graphql`
       name
       description
       status
-      taskCategoryId
-      taskCategoryName
+      taskStageId
+      taskStageName
       assignedAt
       assignee {
         kind
@@ -85,15 +85,15 @@ const tasksPageCreateTaskMutationNode = graphql`
   }
 `;
 
-const tasksPageSetTaskCategoryMutationNode = graphql`
-  mutation tasksPageSetTaskCategoryMutation($input: SetTaskCategoryInput!) {
-    SetTaskCategory(input: $input) {
+const tasksPageSetTaskStageMutationNode = graphql`
+  mutation tasksPageSetTaskStageMutation($input: SetTaskStageInput!) {
+    SetTaskStage(input: $input) {
       id
       name
       description
       status
-      taskCategoryId
-      taskCategoryName
+      taskStageId
+      taskStageName
       createdAt
       updatedAt
     }
@@ -120,33 +120,33 @@ const tasksPageExecuteTaskMutationNode = graphql`
 `;
 
 type TasksPageSearch = {
-  category?: string;
+  stage?: string;
   viewType?: TaskViewType;
 };
 
-function parseSelectedTaskCategoryKeys(
-  categorySearchValue: string | undefined,
-  validCategoryKeys: Set<string>,
+function parseSelectedTaskStageKeys(
+  stageSearchValue: string | undefined,
+  validStageKeys: Set<string>,
 ): string[] {
-  if (!categorySearchValue) {
+  if (!stageSearchValue) {
     return [];
   }
 
-  const selectedCategoryKeys = [] as string[];
-  for (const rawCategoryKey of categorySearchValue.split(",")) {
-    const categoryKey = rawCategoryKey.trim();
+  const selectedStageKeys = [] as string[];
+  for (const rawStageKey of stageSearchValue.split(",")) {
+    const stageKey = rawStageKey.trim();
     if (
-      categoryKey.length === 0
-      || !validCategoryKeys.has(categoryKey)
-      || selectedCategoryKeys.includes(categoryKey)
+      stageKey.length === 0
+      || !validStageKeys.has(stageKey)
+      || selectedStageKeys.includes(stageKey)
     ) {
       continue;
     }
 
-    selectedCategoryKeys.push(categoryKey);
+    selectedStageKeys.push(stageKey);
   }
 
-  return selectedCategoryKeys;
+  return selectedStageKeys;
 }
 
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
@@ -159,11 +159,11 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(
 }
 
 function buildTasksPageSearch(input: {
-  category?: string;
+  stage?: string;
   viewType: TaskViewType;
 }): TasksPageSearch {
   return {
-    category: input.category,
+    stage: input.stage,
     viewType: input.viewType,
   };
 }
@@ -197,7 +197,7 @@ function TasksPageContent() {
   const search = useSearch({ strict: false }) as TasksPageSearch;
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [createTaskCategoryId, setCreateTaskCategoryId] = useState<string | null>(null);
+  const [createTaskStageId, setCreateTaskStageId] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [executingTaskId, setExecutingTaskId] = useState<string | null>(null);
   const [isViewMenuOpen, setViewMenuOpen] = useState(false);
@@ -212,8 +212,8 @@ function TasksPageContent() {
   const [commitCreateTask, isCreateTaskInFlight] = useMutation<tasksPageCreateTaskMutation>(
     tasksPageCreateTaskMutationNode,
   );
-  const [commitSetTaskCategory] = useMutation<tasksPageSetTaskCategoryMutation>(
-    tasksPageSetTaskCategoryMutationNode,
+  const [commitSetTaskStage] = useMutation<tasksPageSetTaskStageMutation>(
+    tasksPageSetTaskStageMutationNode,
   );
   const [commitDeleteTask] = useMutation<tasksPageDeleteTaskMutation>(
     tasksPageDeleteTaskMutationNode,
@@ -222,41 +222,41 @@ function TasksPageContent() {
     tasksPageExecuteTaskMutationNode,
   );
   const selectedViewType: TaskViewType = search.viewType === "list" ? "list" : "board";
-  const allCategories: TaskCategoryRecord[] = data.TaskCategories.map((category: TasksPageCategory) => ({
-    id: category.id,
-    name: category.name,
+  const allStages: TaskStageRecord[] = data.TaskStages.map((stage: TasksPageStage) => ({
+    id: stage.id,
+    name: stage.name,
   }));
-  const uncategorizedTaskCount = data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === null).length;
-  const categoryFilterOptions = [
-    ...allCategories.map((category: TaskCategoryRecord) => ({
-      key: category.id,
-      label: category.name,
-      count: data.Tasks.filter((task: TasksPageTask) => task.taskCategoryId === category.id).length,
+  const noStageTaskCount = data.Tasks.filter((task: TasksPageTask) => task.taskStageId === null).length;
+  const stageFilterOptions = [
+    ...allStages.map((stage: TaskStageRecord) => ({
+      key: stage.id,
+      label: stage.name,
+      count: data.Tasks.filter((task: TasksPageTask) => task.taskStageId === stage.id).length,
     })),
     {
-      key: "uncategorized",
-      label: "Uncategorized",
-      count: uncategorizedTaskCount,
+      key: "noStage",
+      label: "No stage",
+      count: noStageTaskCount,
     },
   ];
-  const allCategoryKeys = categoryFilterOptions.map((filterOption) => filterOption.key);
-  const validCategoryKeys = new Set(allCategoryKeys);
-  const parsedSelectedCategoryKeys = parseSelectedTaskCategoryKeys(search.category, validCategoryKeys);
-  const selectedCategoryKeys = parsedSelectedCategoryKeys.length === allCategoryKeys.length
+  const allStageKeys = stageFilterOptions.map((filterOption) => filterOption.key);
+  const validStageKeys = new Set(allStageKeys);
+  const parsedSelectedStageKeys = parseSelectedTaskStageKeys(search.stage, validStageKeys);
+  const selectedStageKeys = parsedSelectedStageKeys.length === allStageKeys.length
     ? []
-    : parsedSelectedCategoryKeys;
-  const effectiveSelectedCategoryKeys = selectedCategoryKeys.length > 0
-    ? selectedCategoryKeys
-    : allCategoryKeys;
-  const hasSelectedCategoryFilters = selectedCategoryKeys.length > 0;
-  const includeUncategorizedGroup = effectiveSelectedCategoryKeys.includes("uncategorized");
-  const visibleCategories = allCategories.filter((category: TaskCategoryRecord) => {
-    return effectiveSelectedCategoryKeys.includes(category.id);
+    : parsedSelectedStageKeys;
+  const effectiveSelectedStageKeys = selectedStageKeys.length > 0
+    ? selectedStageKeys
+    : allStageKeys;
+  const hasSelectedStageFilters = selectedStageKeys.length > 0;
+  const includeNoStageGroup = effectiveSelectedStageKeys.includes("noStage");
+  const visibleStages = allStages.filter((stage: TaskStageRecord) => {
+    return effectiveSelectedStageKeys.includes(stage.id);
   });
-  const visibleTasks: TaskRecord[] = (!hasSelectedCategoryFilters
+  const visibleTasks: TaskRecord[] = (!hasSelectedStageFilters
     ? data.Tasks
     : data.Tasks.filter((task: TasksPageTask) => {
-      return effectiveSelectedCategoryKeys.includes(task.taskCategoryId ?? "uncategorized");
+      return effectiveSelectedStageKeys.includes(task.taskStageId ?? "noStage");
     }))
     .map((task: TasksPageTask) => ({
       assignedAt: task.assignedAt,
@@ -273,12 +273,12 @@ function TasksPageContent() {
       id: task.id,
       name: task.name,
       status: task.status as "draft" | "in_progress" | "completed",
-      taskCategoryId: task.taskCategoryId,
-      taskCategoryName: task.taskCategoryName,
+      taskStageId: task.taskStageId,
+      taskStageName: task.taskStageName,
       updatedAt: task.updatedAt,
     }));
-  const currentCategorySearchValue = selectedCategoryKeys.length > 0
-    ? selectedCategoryKeys.join(",")
+  const currentStageSearchValue = selectedStageKeys.length > 0
+    ? selectedStageKeys.join(",")
     : undefined;
 
   useEffect(() => {
@@ -317,28 +317,28 @@ function TasksPageContent() {
         organizationSlug,
       },
       search: buildTasksPageSearch({
-        category: currentCategorySearchValue,
+        stage: currentStageSearchValue,
         viewType,
       }),
       to: OrganizationPath.route("/tasks"),
     });
   }
 
-  function openCreateTaskDialog(taskCategoryId: string | null) {
-    setCreateTaskCategoryId(taskCategoryId);
+  function openCreateTaskDialog(taskStageId: string | null) {
+    setCreateTaskStageId(taskStageId);
     setCreateDialogOpen(true);
   }
 
-  function toggleCategory(categoryKey: string) {
-    const currentSelectedKeys = selectedCategoryKeys.length > 0
-      ? selectedCategoryKeys
-      : allCategoryKeys;
-    const isSelected = currentSelectedKeys.includes(categoryKey);
+  function toggleStage(stageKey: string) {
+    const currentSelectedKeys = selectedStageKeys.length > 0
+      ? selectedStageKeys
+      : allStageKeys;
+    const isSelected = currentSelectedKeys.includes(stageKey);
     const nextSelectedKeySet = isSelected
-      ? currentSelectedKeys.filter((key) => key !== categoryKey)
-      : [...currentSelectedKeys, categoryKey];
-    const nextSelectedKeys = allCategoryKeys.filter((key) => nextSelectedKeySet.includes(key));
-    const nextCategorySearchValue = nextSelectedKeys.length === 0 || nextSelectedKeys.length === allCategoryKeys.length
+      ? currentSelectedKeys.filter((key) => key !== stageKey)
+      : [...currentSelectedKeys, stageKey];
+    const nextSelectedKeys = allStageKeys.filter((key) => nextSelectedKeySet.includes(key));
+    const nextStageSearchValue = nextSelectedKeys.length === 0 || nextSelectedKeys.length === allStageKeys.length
       ? undefined
       : nextSelectedKeys.join(",");
 
@@ -347,7 +347,7 @@ function TasksPageContent() {
         organizationSlug,
       },
       search: buildTasksPageSearch({
-        category: nextCategorySearchValue,
+        stage: nextStageSearchValue,
         viewType: selectedViewType,
       }),
       to: OrganizationPath.route("/tasks"),
@@ -449,19 +449,19 @@ function TasksPageContent() {
     }
   }
 
-  async function moveTask(taskId: string, taskCategoryId: string | null) {
+  async function moveTask(taskId: string, taskStageId: string | null) {
     setErrorMessage(null);
 
     await new Promise<void>((resolve, reject) => {
-      commitSetTaskCategory({
+      commitSetTaskStage({
         variables: {
           input: {
             taskId,
-            taskCategoryId,
+            taskStageId,
           },
         },
         onCompleted: (
-          _response: tasksPageSetTaskCategoryMutation["response"],
+          _response: tasksPageSetTaskStageMutation["response"],
           errors: ReadonlyArray<{ message: string }> | null | undefined,
         ) => {
           const nextErrorMessage = errors?.[0]?.message;
@@ -499,8 +499,8 @@ function TasksPageContent() {
     )}>
       <div className="flex shrink-0 items-start justify-between gap-4">
         <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
-          {categoryFilterOptions.map((filterOption) => {
-            const isSelected = effectiveSelectedCategoryKeys.includes(filterOption.key);
+          {stageFilterOptions.map((filterOption) => {
+            const isSelected = effectiveSelectedStageKeys.includes(filterOption.key);
 
             return (
               <button
@@ -512,7 +512,7 @@ function TasksPageContent() {
                     : "bg-background/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                 )}
                 onClick={() => {
-                  toggleCategory(filterOption.key);
+                  toggleStage(filterOption.key);
                 }}
                 type="button"
               >
@@ -597,10 +597,10 @@ function TasksPageContent() {
       <div className={cn("min-h-0 flex-1", selectedViewType === "board" && "overflow-hidden")}>
         {selectedViewType === "board" ? (
           <TaskBoard
-            categories={visibleCategories}
+            stages={visibleStages}
             deletingTaskId={deletingTaskId}
             executingTaskId={executingTaskId}
-            includeUncategorizedColumn={includeUncategorizedGroup}
+            includeNoStageColumn={includeNoStageGroup}
             onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
@@ -610,11 +610,11 @@ function TasksPageContent() {
           />
         ) : (
           <TaskList
-            categories={visibleCategories}
+            stages={visibleStages}
             deletingTaskId={deletingTaskId}
             executingTaskId={executingTaskId}
-            hasActiveFilters={hasSelectedCategoryFilters}
-            includeUncategorizedGroup={includeUncategorizedGroup}
+            hasActiveFilters={hasSelectedStageFilters}
+            includeNoStageGroup={includeNoStageGroup}
             onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
@@ -636,12 +636,12 @@ function TasksPageContent() {
             value: `agent:${agent.id}`,
           })),
         ]}
-        categories={data.TaskCategories.map((category: TasksPageCategory) => ({
-          id: category.id,
-          name: category.name,
+        stages={data.TaskStages.map((stage: TasksPageStage) => ({
+          id: stage.id,
+          name: stage.name,
         }))}
         errorMessage={isCreateDialogOpen ? errorMessage : null}
-        initialCategoryId={createTaskCategoryId}
+        initialStageId={createTaskStageId}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateTaskInFlight}
         onCreate={async (input) => {
@@ -679,7 +679,7 @@ function TasksPageContent() {
                 }
 
                 setCreateDialogOpen(false);
-                setCreateTaskCategoryId(null);
+                setCreateTaskStageId(null);
                 resolve();
               },
               onError: reject,
@@ -691,7 +691,7 @@ function TasksPageContent() {
         onOpenChange={(open) => {
           setCreateDialogOpen(open);
           if (!open) {
-            setCreateTaskCategoryId(null);
+            setCreateTaskStageId(null);
           }
         }}
       />

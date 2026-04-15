@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ba05d6cbe925306239bed2822883c6e5>>
+ * @generated SignedSource<<05bf1e4685cca3945f5ae5c6e5beca5b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,7 +15,7 @@ export type settingsPageQuery$data = {
     readonly baseSystemPrompt: string | null | undefined;
     readonly companyId: string;
   };
-  readonly TaskCategories: ReadonlyArray<{
+  readonly TaskStages: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
     readonly name: string;
@@ -58,9 +58,9 @@ var v0 = [
   {
     "alias": null,
     "args": null,
-    "concreteType": "TaskCategory",
+    "concreteType": "TaskStage",
     "kind": "LinkedField",
-    "name": "TaskCategories",
+    "name": "TaskStages",
     "plural": true,
     "selections": [
       {
@@ -120,16 +120,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "3b424d3012e54ca5e342f7d12717a76f",
+    "cacheID": "c6dae18e6da698ed9c427de308f178e8",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskCategories {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f6a3c91ed06625f786a41517e24c16c6";
+(node as any).hash = "da4865c4f1b4c0956b4893f0b4cc63df";
 
 export default node;

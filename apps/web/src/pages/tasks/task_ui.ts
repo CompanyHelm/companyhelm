@@ -15,12 +15,12 @@ export type TaskRecord = {
   id: string;
   name: string;
   status: TaskStatus;
-  taskCategoryId: string | null | undefined;
-  taskCategoryName: string | null | undefined;
+  taskStageId: string | null | undefined;
+  taskStageName: string | null | undefined;
   updatedAt: string;
 };
 
-export type TaskCategoryRecord = {
+export type TaskStageRecord = {
   id: string;
   name: string;
 };

@@ -1,27 +1,27 @@
 import { and, eq } from "drizzle-orm";
 import { injectable } from "inversify";
-import { taskCategories, tasks } from "../../db/schema.ts";
+import { taskStages, tasks } from "../../db/schema.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
-type DeleteTaskCategoryMutationArguments = {
+type DeleteTaskStageMutationArguments = {
   input: {
     id: string;
   };
 };
 
-type TaskCategoryRecord = {
+type TaskStageRecord = {
   id: string;
   name: string;
   createdAt: Date;
   updatedAt: Date;
 };
 
-type TaskCategoryTaskRecord = {
+type TaskStageTaskRecord = {
   id: string;
 };
 
-type GraphqlTaskCategoryRecord = {
+type GraphqlTaskStageRecord = {
   id: string;
   name: string;
   taskCount: number;
@@ -46,18 +46,18 @@ type DeletableDatabase = {
 };
 
 /**
- * Deletes one persisted kanban category for the authenticated company. Tasks keep their records and
- * fall back to the uncategorized column because the task foreign key is defined with `onDelete: set null`.
+ * Deletes one persisted kanban stage for the authenticated company. Tasks keep their records and
+ * fall back to the no-stage column because the task foreign key is defined with `onDelete: set null`.
  */
 @injectable()
-export class DeleteTaskCategoryMutation extends Mutation<
-  DeleteTaskCategoryMutationArguments,
-  GraphqlTaskCategoryRecord
+export class DeleteTaskStageMutation extends Mutation<
+  DeleteTaskStageMutationArguments,
+  GraphqlTaskStageRecord
 > {
   protected resolve = async (
-    arguments_: DeleteTaskCategoryMutationArguments,
+    arguments_: DeleteTaskStageMutationArguments,
     context: GraphqlRequestContext,
-  ): Promise<GraphqlTaskCategoryRecord> => {
+  ): Promise<GraphqlTaskStageRecord> => {
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
@@ -78,30 +78,30 @@ export class DeleteTaskCategoryMutation extends Mutation<
         .from(tasks)
         .where(and(
           eq(tasks.companyId, context.authSession.company.id),
-          eq(tasks.taskCategoryId, arguments_.input.id),
-        )) as TaskCategoryTaskRecord[];
-      const [deletedTaskCategoryRecord] = await deletableDatabase
-        .delete(taskCategories)
+          eq(tasks.taskStageId, arguments_.input.id),
+        )) as TaskStageTaskRecord[];
+      const [deletedTaskStageRecord] = await deletableDatabase
+        .delete(taskStages)
         .where(and(
-          eq(taskCategories.companyId, context.authSession.company.id),
-          eq(taskCategories.id, arguments_.input.id),
+          eq(taskStages.companyId, context.authSession.company.id),
+          eq(taskStages.id, arguments_.input.id),
         ))
         .returning?.({
-          id: taskCategories.id,
-          name: taskCategories.name,
-          createdAt: taskCategories.createdAt,
-          updatedAt: taskCategories.updatedAt,
-        }) as TaskCategoryRecord[];
-      if (!deletedTaskCategoryRecord) {
-        throw new Error("Task category not found.");
+          id: taskStages.id,
+          name: taskStages.name,
+          createdAt: taskStages.createdAt,
+          updatedAt: taskStages.updatedAt,
+        }) as TaskStageRecord[];
+      if (!deletedTaskStageRecord) {
+        throw new Error("Task stage not found.");
       }
 
       return {
-        id: deletedTaskCategoryRecord.id,
-        name: deletedTaskCategoryRecord.name,
+        id: deletedTaskStageRecord.id,
+        name: deletedTaskStageRecord.name,
         taskCount: assignedTaskRecords.length,
-        createdAt: deletedTaskCategoryRecord.createdAt.toISOString(),
-        updatedAt: deletedTaskCategoryRecord.updatedAt.toISOString(),
+        createdAt: deletedTaskStageRecord.createdAt.toISOString(),
+        updatedAt: deletedTaskStageRecord.updatedAt.toISOString(),
       };
     });
   };

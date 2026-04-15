@@ -35,7 +35,7 @@ export class AgentTaskResultFormatter {
       `id: ${task.id}`,
       `name: ${task.name}`,
       `status: ${task.status}`,
-      `taskCategoryName: ${task.taskCategoryName ?? "(uncategorized)"}`,
+      `taskStageName: ${task.taskStageName ?? "(no stage)"}`,
       `assignee: ${AgentTaskResultFormatter.formatAssignee(task)}`,
       `description: ${task.description ?? "(no description)"}`,
     ].join("\n");

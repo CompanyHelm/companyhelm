@@ -1,13 +1,13 @@
 import { inject, injectable } from "inversify";
-import { CreateTaskCategoryMutation } from "../mutations/create_task_category.ts";
+import { CreateTaskStageMutation } from "../mutations/create_task_stage.ts";
 import { CreateTaskMutation } from "../mutations/create_task.ts";
-import { DeleteTaskCategoryMutation } from "../mutations/delete_task_category.ts";
+import { DeleteTaskStageMutation } from "../mutations/delete_task_stage.ts";
 import { DeleteTaskMutation } from "../mutations/delete_task.ts";
 import { ExecuteTaskMutation } from "../mutations/execute_task.ts";
-import { SetTaskCategoryMutation } from "../mutations/set_task_category.ts";
+import { SetTaskStageMutation } from "../mutations/set_task_stage.ts";
 import { UpdateTaskMutation } from "../mutations/update_task.ts";
 import { TaskAssignableUsersQueryResolver } from "../resolvers/task_assignable_users.ts";
-import { TaskCategoriesQueryResolver } from "../resolvers/task_categories.ts";
+import { TaskStagesQueryResolver } from "../resolvers/task_stages.ts";
 import { TaskQueryResolver } from "../resolvers/task.ts";
 import { TaskRunsQueryResolver } from "../resolvers/task_runs.ts";
 import { TasksQueryResolver } from "../resolvers/tasks.ts";
@@ -22,21 +22,21 @@ export class TaskGraphqlRegistry implements GraphqlRegistryInterface {
   constructor(
     @inject(CreateTaskMutation)
     private readonly createTaskMutation: CreateTaskMutation = new CreateTaskMutation(),
-    @inject(CreateTaskCategoryMutation)
-    private readonly createTaskCategoryMutation: CreateTaskCategoryMutation = new CreateTaskCategoryMutation(),
-    @inject(SetTaskCategoryMutation)
-    private readonly setTaskCategoryMutation: SetTaskCategoryMutation = new SetTaskCategoryMutation(),
+    @inject(CreateTaskStageMutation)
+    private readonly createTaskStageMutation: CreateTaskStageMutation = new CreateTaskStageMutation(),
+    @inject(SetTaskStageMutation)
+    private readonly setTaskStageMutation: SetTaskStageMutation = new SetTaskStageMutation(),
     @inject(TaskAssignableUsersQueryResolver)
     private readonly taskAssignableUsersQueryResolver: TaskAssignableUsersQueryResolver =
       new TaskAssignableUsersQueryResolver(),
-    @inject(TaskCategoriesQueryResolver)
-    private readonly taskCategoriesQueryResolver: TaskCategoriesQueryResolver = new TaskCategoriesQueryResolver(),
+    @inject(TaskStagesQueryResolver)
+    private readonly taskStagesQueryResolver: TaskStagesQueryResolver = new TaskStagesQueryResolver(),
     @inject(TasksQueryResolver)
     private readonly tasksQueryResolver: TasksQueryResolver = new TasksQueryResolver(),
     @inject(DeleteTaskMutation)
     private readonly deleteTaskMutation: DeleteTaskMutation = new DeleteTaskMutation(),
-    @inject(DeleteTaskCategoryMutation)
-    private readonly deleteTaskCategoryMutation: DeleteTaskCategoryMutation = new DeleteTaskCategoryMutation(),
+    @inject(DeleteTaskStageMutation)
+    private readonly deleteTaskStageMutation: DeleteTaskStageMutation = new DeleteTaskStageMutation(),
     @inject(TaskQueryResolver)
     private readonly taskQueryResolver: TaskQueryResolver = new TaskQueryResolver(),
     @inject(UpdateTaskMutation)
@@ -65,17 +65,17 @@ export class TaskGraphqlRegistry implements GraphqlRegistryInterface {
     return {
       Mutation: {
         CreateTask: this.createTaskMutation.execute,
-        CreateTaskCategory: this.createTaskCategoryMutation.execute,
+        CreateTaskStage: this.createTaskStageMutation.execute,
         DeleteTask: this.deleteTaskMutation.execute,
-        DeleteTaskCategory: this.deleteTaskCategoryMutation.execute,
+        DeleteTaskStage: this.deleteTaskStageMutation.execute,
         ExecuteTask: this.executeTaskMutation.execute,
-        SetTaskCategory: this.setTaskCategoryMutation.execute,
+        SetTaskStage: this.setTaskStageMutation.execute,
         UpdateTask: this.updateTaskMutation.execute,
       },
       Query: {
         Task: this.taskQueryResolver.execute,
         TaskAssignableUsers: this.taskAssignableUsersQueryResolver.execute,
-        TaskCategories: this.taskCategoriesQueryResolver.execute,
+        TaskStages: this.taskStagesQueryResolver.execute,
         TaskRuns: this.taskRunsQueryResolver.execute,
         Tasks: this.tasksQueryResolver.execute,
       },

@@ -50,7 +50,7 @@ class TasksQueryTestHarness {
                         name: "Draft launch checklist",
                         description: "Collect the first pass of rollout steps.",
                         status: "draft",
-                        taskCategoryId: "category-1",
+                        taskStageId: "stage-1",
                         createdAt: new Date("2026-03-25T09:00:00.000Z"),
                         updatedAt: new Date("2026-03-25T09:30:00.000Z"),
                       }];
@@ -66,7 +66,7 @@ class TasksQueryTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "category-1",
+                        id: "stage-1",
                         name: "Backlog",
                       }];
                     },
@@ -87,7 +87,7 @@ class TasksQueryTestHarness {
   }
 }
 
-test("GraphQL Tasks query lists company-scoped tasks with category labels", async () => {
+test("GraphQL Tasks query lists company-scoped tasks with stage labels", async () => {
   const app = Fastify();
   const config = TasksQueryTestHarness.createConfigMock();
   const database = TasksQueryTestHarness.createDatabaseMock();
@@ -142,8 +142,8 @@ test("GraphQL Tasks query lists company-scoped tasks with category labels", asyn
             name
             description
             status
-            taskCategoryId
-            taskCategoryName
+            taskStageId
+            taskStageName
             assignedAt
             assignee {
               kind
@@ -166,8 +166,8 @@ test("GraphQL Tasks query lists company-scoped tasks with category labels", asyn
     name: "Draft launch checklist",
     description: "Collect the first pass of rollout steps.",
     status: "draft",
-    taskCategoryId: "category-1",
-    taskCategoryName: "Backlog",
+    taskStageId: "stage-1",
+    taskStageName: "Backlog",
     assignedAt: null,
     assignee: null,
     createdAt: "2026-03-25T09:00:00.000Z",

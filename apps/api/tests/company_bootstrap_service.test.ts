@@ -3,7 +3,7 @@ import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import {
   computeProviderDefinitions,
-  taskCategories,
+  taskStages,
 } from "../src/db/schema.ts";
 import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 import { CompanyHelmComputeProviderService } from "../src/services/compute_provider_definitions/companyhelm_service.ts";
@@ -19,7 +19,7 @@ type BaseDefinitionRow = {
   updatedAt: Date;
 };
 
-type TaskCategoryRow = {
+type TaskStageRow = {
   companyId: string;
   createdAt: Date;
   name: string;
@@ -32,14 +32,14 @@ type TaskCategoryRow = {
  */
 class CompanyBootstrapServiceTestHarness {
   private readonly baseDefinitions: BaseDefinitionRow[];
-  private readonly taskCategoryRows: TaskCategoryRow[];
+  private readonly taskStageRows: TaskStageRow[];
 
   constructor(params?: {
     baseDefinitions?: BaseDefinitionRow[];
-    taskCategoryRows?: TaskCategoryRow[];
+    taskStageRows?: TaskStageRow[];
   }) {
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
-    this.taskCategoryRows = [...(params?.taskCategoryRows ?? [])];
+    this.taskStageRows = [...(params?.taskStageRows ?? [])];
   }
 
   buildService(): CompanyBootstrapService {
@@ -56,7 +56,7 @@ class CompanyBootstrapServiceTestHarness {
 
   buildTransaction() {
     const baseDefinitions = this.baseDefinitions;
-    const taskCategoryRows = this.taskCategoryRows;
+    const taskStageRows = this.taskStageRows;
 
     return {
       insert(table: unknown) {
@@ -83,14 +83,14 @@ class CompanyBootstrapServiceTestHarness {
               };
             }
 
-            if (table === taskCategories) {
+            if (table === taskStages) {
               return {
                 onConflictDoNothing() {
-                  if (!taskCategoryRows.some((row) => {
+                  if (!taskStageRows.some((row) => {
                     return row.companyId === value.companyId
                       && row.name.toLowerCase() === String(value.name).toLowerCase();
                   })) {
-                    taskCategoryRows.push({
+                    taskStageRows.push({
                       companyId: value.companyId as string,
                       createdAt: value.createdAt as Date,
                       name: value.name as string,
@@ -134,8 +134,8 @@ class CompanyBootstrapServiceTestHarness {
     return this.baseDefinitions.map((row) => row.name);
   }
 
-  listTaskCategoryNames(): string[] {
-    return this.taskCategoryRows.map((row) => row.name);
+  listTaskStageNames(): string[] {
+    return this.taskStageRows.map((row) => row.name);
   }
 
   loadDefaultDefinition(): BaseDefinitionRow | null {
@@ -143,7 +143,7 @@ class CompanyBootstrapServiceTestHarness {
   }
 }
 
-test("CompanyBootstrapService seeds the CompanyHelm definition and default task categories", async () => {
+test("CompanyBootstrapService seeds the CompanyHelm definition and default task stages", async () => {
   const harness = new CompanyBootstrapServiceTestHarness();
   const service = harness.buildService();
 
@@ -157,7 +157,7 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.equal(defaultDefinition?.description, "Managed by CompanyHelm");
   assert.equal(defaultDefinition?.provider, "e2b");
   assert.equal(defaultDefinition?.isDefault, true);
-  assert.deepEqual(harness.listTaskCategoryNames(), ["Backlog", "TODO", "Archive"]);
+  assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
 test("CompanyBootstrapService does not duplicate seeded defaults when rerun", async () => {
@@ -173,7 +173,7 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       provider: "e2b",
       updatedAt: now,
     }],
-    taskCategoryRows: [{
+    taskStageRows: [{
       companyId: "company-1",
       createdAt: now,
       name: "Backlog",
@@ -198,5 +198,5 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
   );
 
   assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
-  assert.deepEqual(harness.listTaskCategoryNames(), ["Backlog", "TODO", "Archive"]);
+  assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });

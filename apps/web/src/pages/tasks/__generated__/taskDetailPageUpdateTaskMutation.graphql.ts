@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3c9719036fa068a8dcadd69f7e728456>>
+ * @generated SignedSource<<affe4f609e90b83a8a8ca6f39c9bcdcf>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,8 +15,8 @@ export type UpdateTaskInput = {
   description?: string | null | undefined;
   name?: string | null | undefined;
   status?: string | null | undefined;
-  taskCategoryId?: string | null | undefined;
   taskId: string;
+  taskStageId?: string | null | undefined;
 };
 export type taskDetailPageUpdateTaskMutation$variables = {
   input: UpdateTaskInput;
@@ -35,8 +35,8 @@ export type taskDetailPageUpdateTaskMutation$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskCategoryId: string | null | undefined;
-    readonly taskCategoryName: string | null | undefined;
+    readonly taskStageId: string | null | undefined;
+    readonly taskStageName: string | null | undefined;
     readonly updatedAt: string;
   };
 };
@@ -102,14 +102,14 @@ v3 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskCategoryId",
+        "name": "taskStageId",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "taskCategoryName",
+        "name": "taskStageName",
         "storageKey": null
       },
       {
@@ -182,16 +182,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "3bbe1e948ac7c4c366339f311febb8b9",
+    "cacheID": "64005fd411f0d76e2371c2d3f718e4b4",
     "id": null,
     "metadata": {},
     "name": "taskDetailPageUpdateTaskMutation",
     "operationKind": "mutation",
-    "text": "mutation taskDetailPageUpdateTaskMutation(\n  $input: UpdateTaskInput!\n) {\n  UpdateTask(input: $input) {\n    id\n    name\n    description\n    status\n    taskCategoryId\n    taskCategoryName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation taskDetailPageUpdateTaskMutation(\n  $input: UpdateTaskInput!\n) {\n  UpdateTask(input: $input) {\n    id\n    name\n    description\n    status\n    taskStageId\n    taskStageName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "104d19ff71a240be2103fe0d3a84ceb7";
+(node as any).hash = "048a939b35f3915e98fd2af4049b61ad";
 
 export default node;

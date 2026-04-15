@@ -51,7 +51,7 @@ class UpdateTaskMutationTestHarness {
                         id: "task-1",
                         name: "Draft GTM checklist",
                         status: "draft",
-                        taskCategoryId: null,
+                        taskStageId: null,
                         updatedAt: new Date("2026-04-01T10:00:00.000Z"),
                       }];
                     },
@@ -66,7 +66,7 @@ class UpdateTaskMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "category-2",
+                        id: "stage-2",
                         name: "In Progress",
                       }];
                     },
@@ -124,7 +124,7 @@ class UpdateTaskMutationTestHarness {
                   return {
                     async where() {
                       return [{
-                        id: "category-2",
+                        id: "stage-2",
                         name: "In Progress",
                       }];
                     },
@@ -169,7 +169,7 @@ class UpdateTaskMutationTestHarness {
                           id: "task-1",
                           name: "Finalize GTM checklist",
                           status: "in_progress",
-                          taskCategoryId: "category-2",
+                          taskStageId: "stage-2",
                           updatedAt: new Date("2026-04-03T13:00:00.000Z"),
                         }];
                       },
@@ -243,8 +243,8 @@ test("GraphQL UpdateTask mutation rewrites one task inline", async () => {
             name
             description
             status
-            taskCategoryId
-            taskCategoryName
+            taskStageId
+            taskStageName
             assignedAt
             assignee {
               kind
@@ -263,7 +263,7 @@ test("GraphQL UpdateTask mutation rewrites one task inline", async () => {
           name: "Finalize GTM checklist",
           description: "Capture the first launch blockers.",
           status: "in_progress",
-          taskCategoryId: "category-2",
+          taskStageId: "stage-2",
           assignedUserId: "user-2",
           assignedAgentId: null,
         },
@@ -278,8 +278,8 @@ test("GraphQL UpdateTask mutation rewrites one task inline", async () => {
     name: "Finalize GTM checklist",
     description: "Capture the first launch blockers.",
     status: "in_progress",
-    taskCategoryId: "category-2",
-    taskCategoryName: "In Progress",
+    taskStageId: "stage-2",
+    taskStageName: "In Progress",
     assignedAt: "2026-04-03T13:00:00.000Z",
     assignee: {
       kind: "user",
@@ -292,7 +292,7 @@ test("GraphQL UpdateTask mutation rewrites one task inline", async () => {
   });
   assert.equal(database.updatedValues.length, 1);
   assert.equal(database.updatedValues[0]?.name, "Finalize GTM checklist");
-  assert.equal(database.updatedValues[0]?.taskCategoryId, "category-2");
+  assert.equal(database.updatedValues[0]?.taskStageId, "stage-2");
   assert.equal(database.updatedValues[0]?.assignedUserId, "user-2");
   assert.equal(database.updatedValues[0]?.assignedAgentId, null);
   assert.ok(database.updatedValues[0]?.assignedAt instanceof Date);

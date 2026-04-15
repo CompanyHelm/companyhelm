@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-interface TaskCategoryDialogProps {
+interface TaskStageDialogProps {
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
@@ -19,15 +19,15 @@ interface TaskCategoryDialogProps {
 }
 
 /**
- * Collects the single persisted field needed to create a new task category from settings without
+ * Collects the single persisted field needed to create a new task stage from settings without
  * crowding the primary list view.
  */
-export function TaskCategoryDialog(props: TaskCategoryDialogProps) {
-  const [categoryName, setCategoryName] = useState("");
+export function TaskStageDialog(props: TaskStageDialogProps) {
+  const [stageName, setStageName] = useState("");
 
   useEffect(() => {
     if (!props.isOpen) {
-      setCategoryName("");
+      setStageName("");
     }
   }, [props.isOpen]);
 
@@ -35,23 +35,23 @@ export function TaskCategoryDialog(props: TaskCategoryDialogProps) {
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add task category</DialogTitle>
+          <DialogTitle>Add task stage</DialogTitle>
           <DialogDescription>
             Create a new persisted kanban lane that will appear immediately on the tasks board.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-2">
-          <label className="text-xs font-medium text-foreground" htmlFor="task-category-name">
-            Category name
+          <label className="text-xs font-medium text-foreground" htmlFor="task-stage-name">
+            Stage name
           </label>
           <Input
-            id="task-category-name"
+            id="task-stage-name"
             onChange={(event) => {
-              setCategoryName(event.target.value);
+              setStageName(event.target.value);
             }}
             placeholder="Backlog"
-            value={categoryName}
+            value={stageName}
           />
         </div>
 
@@ -73,13 +73,13 @@ export function TaskCategoryDialog(props: TaskCategoryDialogProps) {
           </Button>
           <Button
             data-primary-cta=""
-            disabled={props.isSaving || categoryName.length === 0}
+            disabled={props.isSaving || stageName.length === 0}
             onClick={async () => {
-              await props.onCreate(categoryName);
+              await props.onCreate(stageName);
             }}
             type="button"
           >
-            Create category
+            Create stage
           </Button>
         </DialogFooter>
       </DialogContent>

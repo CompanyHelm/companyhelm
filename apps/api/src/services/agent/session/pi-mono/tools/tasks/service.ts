@@ -11,7 +11,7 @@ export type AgentTaskToolCreateTaskInput = {
   description?: string | null;
   name: string;
   status?: string | null;
-  taskCategoryId?: string | null;
+  taskStageId?: string | null;
 };
 
 export type AgentTaskToolListTasksInput = {
@@ -55,7 +55,7 @@ export class AgentTaskToolService {
       description: input.description,
       name: input.name,
       status: input.status,
-      taskCategoryId: input.taskCategoryId,
+      taskStageId: input.taskStageId,
     });
   }
 

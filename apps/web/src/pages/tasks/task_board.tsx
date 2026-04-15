@@ -31,58 +31,58 @@ export type TaskBoardTask = {
   name: string;
   description: string | null | undefined;
   status: TaskStatus;
-  taskCategoryId: string | null | undefined;
-  taskCategoryName: string | null | undefined;
+  taskStageId: string | null | undefined;
+  taskStageName: string | null | undefined;
   createdAt: string;
   updatedAt: string;
 };
 
-export type TaskBoardCategory = {
+export type TaskBoardStage = {
   id: string;
   name: string;
 };
 
 interface TaskBoardProps {
-  categories: TaskBoardCategory[];
+  stages: TaskBoardStage[];
   deletingTaskId?: string | null;
   executingTaskId?: string | null;
-  onCreateTask(taskCategoryId: string | null): void;
+  onCreateTask(taskStageId: string | null): void;
   onDeleteTask(taskId: string): Promise<void>;
   onExecuteTask(taskId: string): Promise<void>;
   tasks: TaskBoardTask[];
-  includeUncategorizedColumn?: boolean;
-  onMoveTask(taskId: string, taskCategoryId: string | null): Promise<void>;
+  includeNoStageColumn?: boolean;
+  onMoveTask(taskId: string, taskStageId: string | null): Promise<void>;
   onOpenTask(taskId: string): void;
 }
 
 type TaskBoardColumn = {
   key: string;
   label: string;
-  taskCategoryId: string | null;
+  taskStageId: string | null;
   tasks: TaskBoardTask[];
 };
 
 function buildTaskBoardColumns(
-  categories: TaskBoardCategory[],
+  stages: TaskBoardStage[],
   tasks: TaskBoardTask[],
-  includeUncategorizedColumn: boolean,
+  includeNoStageColumn: boolean,
 ): TaskBoardColumn[] {
-  const categoryColumns = categories.map((category) => ({
-    key: category.id,
-    label: category.name,
-    taskCategoryId: category.id,
-    tasks: tasks.filter((task) => task.taskCategoryId === category.id),
+  const stageColumns = stages.map((stage) => ({
+    key: stage.id,
+    label: stage.name,
+    taskStageId: stage.id,
+    tasks: tasks.filter((task) => task.taskStageId === stage.id),
   }));
 
-  if (!includeUncategorizedColumn) {
-    return categoryColumns;
+  if (!includeNoStageColumn) {
+    return stageColumns;
   }
 
-  return [...categoryColumns, {
-      key: "uncategorized",
-      label: "Uncategorized",
-      taskCategoryId: null,
-      tasks: tasks.filter((task) => task.taskCategoryId === null),
+  return [...stageColumns, {
+      key: "noStage",
+      label: "No stage",
+      taskStageId: null,
+      tasks: tasks.filter((task) => task.taskStageId === null),
     }];
 }
 
@@ -118,14 +118,14 @@ function stopTaskCardPropagation(event: {
 
 /**
  * Renders the minimal kanban experience for the first `-ng` tasks slice, with persisted lanes and
- * drag-and-drop moves backed by the `SetTaskCategory` mutation.
+ * drag-and-drop moves backed by the `SetTaskStage` mutation.
  */
 export function TaskBoard(props: TaskBoardProps) {
   const [dropTargetKey, setDropTargetKey] = useState("");
   const suppressOpenTaskIdRef = useRef<string | null>(null);
-  const columns = buildTaskBoardColumns(props.categories, props.tasks, props.includeUncategorizedColumn ?? true);
+  const columns = buildTaskBoardColumns(props.stages, props.tasks, props.includeNoStageColumn ?? true);
 
-  async function handleDrop(event: DragEvent<HTMLDivElement>, taskCategoryId: string | null, columnKey: string) {
+  async function handleDrop(event: DragEvent<HTMLDivElement>, taskStageId: string | null, columnKey: string) {
     event.preventDefault();
     setDropTargetKey("");
     const taskId = event.dataTransfer.getData("text/task-id");
@@ -133,7 +133,7 @@ export function TaskBoard(props: TaskBoardProps) {
       return;
     }
 
-    await props.onMoveTask(taskId, taskCategoryId);
+    await props.onMoveTask(taskId, taskStageId);
     setDropTargetKey((currentKey) => currentKey === columnKey ? "" : currentKey);
   }
 
@@ -159,7 +159,7 @@ export function TaskBoard(props: TaskBoardProps) {
                   aria-label={`Create task in ${column.label}`}
                   className="rounded-full"
                   onClick={() => {
-                    props.onCreateTask(column.taskCategoryId);
+                    props.onCreateTask(column.taskStageId);
                   }}
                   size="icon-xs"
                   type="button"
@@ -178,7 +178,7 @@ export function TaskBoard(props: TaskBoardProps) {
                 event.preventDefault();
                 setDropTargetKey(column.key);
               }}
-              onDrop={(event) => void handleDrop(event, column.taskCategoryId, column.key)}
+              onDrop={(event) => void handleDrop(event, column.taskStageId, column.key)}
             >
               {column.tasks.length === 0 ? (
                 <div className="flex min-h-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/20 px-3 text-center text-[0.7rem] leading-5 text-muted-foreground">

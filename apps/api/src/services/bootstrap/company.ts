@@ -5,7 +5,7 @@ import {
   companies,
   companyMembers,
   computeProviderDefinitions,
-  taskCategories,
+  taskStages,
 } from "../../db/schema.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
@@ -127,7 +127,7 @@ export class CompanyBootstrapService {
     companyId: string,
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
-    await this.ensureDefaultTaskCategories(transaction, companyId);
+    await this.ensureDefaultTaskStages(transaction, companyId);
   }
 
   private async findCompanyByClerkOrganizationId(
@@ -202,19 +202,19 @@ export class CompanyBootstrapService {
     await insertOperation.onConflictDoNothing();
   }
 
-  private async ensureDefaultTaskCategories(
+  private async ensureDefaultTaskStages(
     transaction: DatabaseTransactionInterface,
     companyId: string,
   ): Promise<void> {
     const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    for (const categoryName of CompanyBootstrapService.DEFAULT_TASK_CATEGORY_NAMES) {
+    for (const stageName of CompanyBootstrapService.DEFAULT_TASK_CATEGORY_NAMES) {
       const now = new Date();
       const insertOperation = insertableDatabase
-        .insert(taskCategories)
+        .insert(taskStages)
         .values({
           companyId,
           createdAt: now,
-          name: categoryName,
+          name: stageName,
           updatedAt: now,
         }) as BootstrapInsertOperation;
       await insertOperation.onConflictDoNothing();

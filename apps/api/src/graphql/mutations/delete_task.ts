@@ -24,8 +24,8 @@ type GraphqlTaskRecord = {
   id: string;
   name: string;
   status: "draft" | "in_progress" | "completed";
-  taskCategoryId: string | null;
-  taskCategoryName: string | null;
+  taskStageId: string | null;
+  taskStageName: string | null;
   updatedAt: string;
 };
 
@@ -71,8 +71,8 @@ export class DeleteTaskMutation extends Mutation<DeleteTaskMutationArguments, Gr
       id: task.id,
       name: task.name,
       status: task.status,
-      taskCategoryId: task.taskCategoryId,
-      taskCategoryName: task.taskCategoryName,
+      taskStageId: task.taskStageId,
+      taskStageName: task.taskStageName,
       updatedAt: task.updatedAt.toISOString(),
     };
   };

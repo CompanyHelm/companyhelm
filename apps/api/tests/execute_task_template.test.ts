@@ -9,12 +9,12 @@ test("ExecuteTaskTemplate renders the task id and task context for the agent", (
     description: "Ship the settings page update.",
     id: "task-123",
     name: "Update settings tabs",
-    taskCategoryName: "Product",
+    taskStageName: "Product",
   });
 
   assert.match(renderedPrompt, /Task ID: task-123/);
   assert.match(renderedPrompt, /Task: Update settings tabs/);
-  assert.match(renderedPrompt, /Category: Product/);
+  assert.match(renderedPrompt, /Stage: Product/);
   assert.match(renderedPrompt, /Description:\nShip the settings page update\./);
   assert.match(renderedPrompt, /include the task id above/i);
 });

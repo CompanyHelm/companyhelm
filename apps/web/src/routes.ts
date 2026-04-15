@@ -45,7 +45,7 @@ type ChatsRouteSearch = {
 };
 
 type TasksRouteSearch = {
-  category?: string;
+  stage?: string;
   viewType?: "board" | "list";
 };
 
@@ -83,8 +83,8 @@ function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSe
 
 function validateTasksRouteSearch(search: Record<string, unknown>): TasksRouteSearch {
   return {
-    category: typeof search.category === "string" && search.category.trim().length > 0
-      ? search.category.trim()
+    stage: typeof search.stage === "string" && search.stage.trim().length > 0
+      ? search.stage.trim()
       : undefined,
     viewType: search.viewType === "board" || search.viewType === "list"
       ? search.viewType

@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
-import { agents, taskCategories, taskRuns, tasks } from "../db/schema.ts";
+import { agents, taskStages, taskRuns, tasks } from "../db/schema.ts";
 import { ExecuteTaskTemplate } from "../prompts/execute_task_template.ts";
 import { SessionManagerService } from "./agent/session/session_manager_service.ts";
 
@@ -43,7 +43,7 @@ type TaskExecutionRow = {
   description: string | null;
   id: string;
   name: string;
-  taskCategoryId: string | null;
+  taskStageId: string | null;
 };
 
 type AgentRow = {
@@ -160,7 +160,7 @@ export class TaskRunService {
           ));
       }
 
-      const taskCategoryName = await this.loadTaskCategoryName(tx, input.companyId, taskRow.taskCategoryId);
+      const taskStageName = await this.loadTaskStageName(tx, input.companyId, taskRow.taskStageId);
       const sessionRecord = await this.sessionManagerService.createSessionInTransaction(
         tx as never,
         tx as never,
@@ -170,7 +170,7 @@ export class TaskRunService {
           description: taskRow.description,
           id: taskRow.id,
           name: taskRow.name,
-          taskCategoryName,
+          taskStageName,
         }),
         {
           userId: input.userId,
@@ -274,27 +274,27 @@ export class TaskRunService {
     return new Map(agentRows.map((agentRow) => [agentRow.id, agentRow.name]));
   }
 
-  private async loadTaskCategoryName(
+  private async loadTaskStageName(
     tx: AppRuntimeTransaction,
     companyId: string,
-    taskCategoryId: string | null,
+    taskStageId: string | null,
   ): Promise<string | null> {
-    if (!taskCategoryId) {
+    if (!taskStageId) {
       return null;
     }
 
-    const [taskCategoryRow] = await tx
+    const [taskStageRow] = await tx
       .select({
-        id: taskCategories.id,
-        name: taskCategories.name,
+        id: taskStages.id,
+        name: taskStages.name,
       })
-      .from(taskCategories)
+      .from(taskStages)
       .where(and(
-        eq(taskCategories.companyId, companyId),
-        eq(taskCategories.id, taskCategoryId),
+        eq(taskStages.companyId, companyId),
+        eq(taskStages.id, taskStageId),
       )) as Array<{ id: string; name: string }>;
 
-    return taskCategoryRow?.name ?? null;
+    return taskStageRow?.name ?? null;
   }
 
   private async requireTaskRow(
@@ -309,7 +309,7 @@ export class TaskRunService {
         description: tasks.description,
         id: tasks.id,
         name: tasks.name,
-        taskCategoryId: tasks.taskCategoryId,
+        taskStageId: tasks.taskStageId,
       })
       .from(tasks)
       .where(and(

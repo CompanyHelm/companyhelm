@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   formatTaskAssigneeMeta,
-  type TaskCategoryRecord,
+  type TaskStageRecord,
   type TaskRecord,
   resolveTaskStatusDotClass,
 } from "./task_ui";
@@ -25,46 +25,46 @@ import {
 type TaskListGroup = {
   key: string;
   label: string;
-  taskCategoryId: string | null;
+  taskStageId: string | null;
   tasks: TaskRecord[];
 };
 
 interface TaskListProps {
-  categories: TaskCategoryRecord[];
+  stages: TaskStageRecord[];
   deletingTaskId?: string | null;
   executingTaskId?: string | null;
   hasActiveFilters: boolean;
-  includeUncategorizedGroup?: boolean;
-  onCreateTask(taskCategoryId: string | null): void;
+  includeNoStageGroup?: boolean;
+  onCreateTask(taskStageId: string | null): void;
   onDeleteTask(taskId: string): Promise<void>;
   onExecuteTask(taskId: string): Promise<void>;
-  onMoveTask(taskId: string, taskCategoryId: string | null): Promise<void>;
+  onMoveTask(taskId: string, taskStageId: string | null): Promise<void>;
   onOpenTask(taskId: string): void;
   tasks: TaskRecord[];
 }
 
 function buildTaskListGroups(
-  categories: TaskCategoryRecord[],
+  stages: TaskStageRecord[],
   tasks: TaskRecord[],
-  includeUncategorizedGroup: boolean,
+  includeNoStageGroup: boolean,
 ): TaskListGroup[] {
-  const categoryGroups = categories.map((category) => ({
-    key: category.id,
-    label: category.name,
-    taskCategoryId: category.id,
-    tasks: tasks.filter((task) => task.taskCategoryId === category.id),
+  const stageGroups = stages.map((stage) => ({
+    key: stage.id,
+    label: stage.name,
+    taskStageId: stage.id,
+    tasks: tasks.filter((task) => task.taskStageId === stage.id),
   }));
 
-  if (!includeUncategorizedGroup) {
-    return categoryGroups;
+  if (!includeNoStageGroup) {
+    return stageGroups;
   }
 
-  const uncategorizedTasks = tasks.filter((task) => task.taskCategoryId === null);
-  return [...categoryGroups, {
-    key: "uncategorized",
-    label: "Uncategorized",
-    taskCategoryId: null,
-    tasks: uncategorizedTasks,
+  const noStageTasks = tasks.filter((task) => task.taskStageId === null);
+  return [...stageGroups, {
+    key: "noStage",
+    label: "No stage",
+    taskStageId: null,
+    tasks: noStageTasks,
   }];
 }
 
@@ -77,11 +77,11 @@ function stopRowNavigation(event: {
 export function TaskList(props: TaskListProps) {
   const groups = useMemo(() => {
     return buildTaskListGroups(
-      props.categories,
+      props.stages,
       props.tasks,
-      props.includeUncategorizedGroup ?? true,
+      props.includeNoStageGroup ?? true,
     );
-  }, [props.categories, props.includeUncategorizedGroup, props.tasks]);
+  }, [props.stages, props.includeNoStageGroup, props.tasks]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [dropTargetKey, setDropTargetKey] = useState("");
   const suppressOpenTaskIdRef = useRef<string | null>(null);
@@ -105,7 +105,7 @@ export function TaskList(props: TaskListProps) {
     });
   }, [groups]);
 
-  async function handleDrop(event: DragEvent<HTMLElement>, taskCategoryId: string | null, groupKey: string) {
+  async function handleDrop(event: DragEvent<HTMLElement>, taskStageId: string | null, groupKey: string) {
     event.preventDefault();
     setDropTargetKey("");
     const taskId = event.dataTransfer.getData("text/task-id");
@@ -114,11 +114,11 @@ export function TaskList(props: TaskListProps) {
     }
 
     const draggedTask = props.tasks.find((task) => task.id === taskId);
-    if (draggedTask?.taskCategoryId === taskCategoryId) {
+    if (draggedTask?.taskStageId === taskStageId) {
       return;
     }
 
-    await props.onMoveTask(taskId, taskCategoryId);
+    await props.onMoveTask(taskId, taskStageId);
     setDropTargetKey((currentKey) => currentKey === groupKey ? "" : currentKey);
   }
 
@@ -130,7 +130,7 @@ export function TaskList(props: TaskListProps) {
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {props.hasActiveFilters
-            ? "Try a different lane filter or switch back to the board to rearrange tasks."
+            ? "Try a different stage filter or switch back to the board to rearrange tasks."
             : "Create the first task to start planning work across lanes and assignees."}
         </p>
       </div>
@@ -161,7 +161,7 @@ export function TaskList(props: TaskListProps) {
               event.preventDefault();
               setDropTargetKey(group.key);
             }}
-            onDrop={(event) => void handleDrop(event, group.taskCategoryId, group.key)}
+            onDrop={(event) => void handleDrop(event, group.taskStageId, group.key)}
           >
             <div className={cn(
               "flex items-center justify-between gap-3 bg-muted/20 px-4 py-3 transition-colors",
@@ -190,7 +190,7 @@ export function TaskList(props: TaskListProps) {
                   aria-label={`Create task in ${group.label}`}
                   className="rounded-full"
                   onClick={() => {
-                    props.onCreateTask(group.taskCategoryId);
+                    props.onCreateTask(group.taskStageId);
                   }}
                   size="icon-xs"
                   type="button"
@@ -210,7 +210,7 @@ export function TaskList(props: TaskListProps) {
                       dropTargetKey === group.key && "bg-accent/20 text-foreground",
                     )}
                   >
-                    No tasks in this category yet. Drag a task here to change its category.
+                    No tasks in this stage yet. Drag a task here to change its stage.
                   </div>
                 ) : null}
                 {group.tasks.map((task) => (

@@ -5,7 +5,7 @@ type ExecuteTaskTemplateInput = {
   description: string | null;
   id: string;
   name: string;
-  taskCategoryName: string | null;
+  taskStageName: string | null;
 };
 
 /**

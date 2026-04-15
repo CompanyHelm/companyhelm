@@ -19,7 +19,7 @@ export class AgentCreateTaskTool {
       Type.Literal("in_progress"),
       Type.Literal("completed"),
     ])),
-    taskCategoryId: Type.Optional(Type.String()),
+    taskStageId: Type.Optional(Type.String()),
   });
 
   private readonly taskToolService: AgentTaskToolService;

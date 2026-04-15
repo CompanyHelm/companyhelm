@@ -14,7 +14,7 @@ import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resol
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
-class SetTaskCategoryMutationTestHarness {
+class CreateTaskStageMutationTestHarness {
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -28,51 +28,24 @@ class SetTaskCategoryMutationTestHarness {
   }
 
   static createDatabaseMock() {
-    const updatedValues: Array<Record<string, unknown>> = [];
-    let selectCallCount = 0;
+    const insertedValues: Array<Record<string, unknown>> = [];
 
     return {
-      updatedValues,
+      insertedValues,
       getDatabase() {
         return {
-          select() {
-            selectCallCount += 1;
-            if (selectCallCount === 1) {
-              return {
-                from() {
-                  return {
-                    async where() {
-                      return [{
-                        id: "category-2",
-                        name: "In Progress",
-                      }];
-                    },
-                  };
-                },
-              };
-            }
-
-            throw new Error("Unexpected select call.");
-          },
-          update() {
+          insert() {
             return {
-              set(value: Record<string, unknown>) {
-                updatedValues.push(value);
+              values(value: Record<string, unknown>) {
+                insertedValues.push(value);
                 return {
-                  where() {
-                    return {
-                      async returning() {
-                        return [{
-                          id: "task-1",
-                          name: "Write landing page copy",
-                          description: "Keep the first pass short.",
-                          status: "draft",
-                          taskCategoryId: "category-2",
-                          createdAt: new Date("2026-03-25T10:15:00.000Z"),
-                          updatedAt: new Date("2026-03-25T11:00:00.000Z"),
-                        }];
-                      },
-                    };
+                  async returning() {
+                    return [{
+                      id: "stage-1",
+                      name: String(value.name),
+                      createdAt: new Date("2026-03-25T10:00:00.000Z"),
+                      updatedAt: new Date("2026-03-25T10:00:00.000Z"),
+                    }];
                   },
                 };
               },
@@ -87,10 +60,10 @@ class SetTaskCategoryMutationTestHarness {
   }
 }
 
-test("GraphQL SetTaskCategory mutation moves one task into a persisted lane", async () => {
+test("GraphQL CreateTaskStage mutation creates one persisted task stage", async () => {
   const app = Fastify();
-  const config = SetTaskCategoryMutationTestHarness.createConfigMock();
-  const database = SetTaskCategoryMutationTestHarness.createDatabaseMock();
+  const config = CreateTaskStageMutationTestHarness.createConfigMock();
+  const database = CreateTaskStageMutationTestHarness.createDatabaseMock();
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {
       return [];
@@ -136,18 +109,17 @@ test("GraphQL SetTaskCategory mutation moves one task into a persisted lane", as
     },
     payload: {
       query: `
-        mutation SetTaskCategory($input: SetTaskCategoryInput!) {
-          SetTaskCategory(input: $input) {
+        mutation CreateTaskStage($input: CreateTaskStageInput!) {
+          CreateTaskStage(input: $input) {
             id
-            taskCategoryId
-            taskCategoryName
+            name
+            taskCount
           }
         }
       `,
       variables: {
         input: {
-          taskId: "task-1",
-          taskCategoryId: "category-2",
+          name: "Backlog",
         },
       },
     },
@@ -155,13 +127,14 @@ test("GraphQL SetTaskCategory mutation moves one task into a persisted lane", as
 
   assert.equal(response.statusCode, 200);
   const document = response.json();
-  assert.deepEqual(document.data.SetTaskCategory, {
-    id: "task-1",
-    taskCategoryId: "category-2",
-    taskCategoryName: "In Progress",
+  assert.deepEqual(document.data.CreateTaskStage, {
+    id: "stage-1",
+    name: "Backlog",
+    taskCount: 0,
   });
-  assert.equal(database.updatedValues.length, 1);
-  assert.equal(database.updatedValues[0]?.taskCategoryId, "category-2");
+  assert.equal(database.insertedValues.length, 1);
+  assert.equal(database.insertedValues[0]?.companyId, "company-123");
+  assert.equal(database.insertedValues[0]?.name, "Backlog");
 
   await app.close();
 });
