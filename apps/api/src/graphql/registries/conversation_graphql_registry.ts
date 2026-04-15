@@ -10,6 +10,7 @@ import { DeleteSessionMutation } from "../mutations/delete_session.ts";
 import { DeleteSessionQueuedMessageMutation } from "../mutations/delete_session_queued_message.ts";
 import { DismissInboxHumanQuestionMutation } from "../mutations/dismiss_inbox_human_question.ts";
 import { DetachSecretFromSessionMutation } from "../mutations/detach_secret_from_session.ts";
+import { DetachSkillFromSessionMutation } from "../mutations/detach_skill_from_session.ts";
 import { ForkSessionMutation } from "../mutations/fork_session.ts";
 import { InterruptSessionMutation } from "../mutations/interrupt_session.ts";
 import { MarkSessionReadMutation } from "../mutations/mark_session_read.ts";
@@ -57,6 +58,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly deleteSessionQueuedMessageMutation: DeleteSessionQueuedMessageMutation;
   private readonly dismissInboxHumanQuestionMutation: DismissInboxHumanQuestionMutation;
   private readonly detachSecretFromSessionMutation: DetachSecretFromSessionMutation;
+  private readonly detachSkillFromSessionMutation: DetachSkillFromSessionMutation;
   private readonly forkSessionMutation: ForkSessionMutation;
   private readonly inboxHumanQuestionsQueryResolver: InboxHumanQuestionsQueryResolver;
   private readonly inboxHumanQuestionsUpdatedSubscriptionResolver: InboxHumanQuestionsUpdatedSubscriptionResolver;
@@ -218,6 +220,8 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     attachSecretToSessionMutation?: AttachSecretToSessionMutation,
     @inject(DetachSecretFromSessionMutation)
     detachSecretFromSessionMutation?: DetachSecretFromSessionMutation,
+    @inject(DetachSkillFromSessionMutation)
+    detachSkillFromSessionMutation?: DetachSkillFromSessionMutation,
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
 
@@ -233,6 +237,8 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
     this.dismissInboxHumanQuestionMutation = dismissInboxHumanQuestionMutation;
     this.detachSecretFromSessionMutation = detachSecretFromSessionMutation
       ?? new DetachSecretFromSessionMutation(defaultSecretService);
+    this.detachSkillFromSessionMutation = detachSkillFromSessionMutation
+      ?? new DetachSkillFromSessionMutation();
     this.forkSessionMutation = forkSessionMutation;
     this.inboxHumanQuestionsQueryResolver = inboxHumanQuestionsQueryResolver;
     this.inboxHumanQuestionsUpdatedSubscriptionResolver = inboxHumanQuestionsUpdatedSubscriptionResolver;
@@ -267,6 +273,7 @@ export class ConversationGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteSessionQueuedMessage: this.deleteSessionQueuedMessageMutation.execute,
         DismissInboxHumanQuestion: this.dismissInboxHumanQuestionMutation.execute,
         DetachSecretFromSession: this.detachSecretFromSessionMutation.execute,
+        DetachSkillFromSession: this.detachSkillFromSessionMutation.execute,
         ForkSession: this.forkSessionMutation.execute,
         InterruptSession: this.interruptSessionMutation.execute,
         MarkSessionRead: this.markSessionReadMutation.execute,

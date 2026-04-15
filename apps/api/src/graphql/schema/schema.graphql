@@ -107,6 +107,7 @@ type Mutation {
   DetachSkillGroupFromAgent(input: DetachSkillGroupFromAgentInput!): SkillGroup!
   DetachSkillFromAgent(input: DetachSkillFromAgentInput!): Skill!
   DetachSecretFromSession(input: DetachSecretFromSessionInput!): Secret!
+  DetachSkillFromSession(input: DetachSkillFromSessionInput!): Skill!
   InterruptSession(input: InterruptSessionInput!): Session!
   DismissInboxHumanQuestion(input: DismissInboxHumanQuestionInput!): InboxHumanQuestion!
   ForkSession(input: ForkSessionInput!): Session!
@@ -481,6 +482,7 @@ type SessionAssociatedTask {
 }
 
 type SessionEnvironmentInfo {
+  activeSkills: [Skill!]!
   currentEnvironment: Environment
   agentDefaultComputeProviderDefinition: ComputeProviderDefinition
 }
@@ -1073,6 +1075,11 @@ input DetachSkillFromAgentInput {
 input DetachSecretFromSessionInput {
   sessionId: ID!
   secretId: ID!
+}
+
+input DetachSkillFromSessionInput {
+  sessionId: ID!
+  skillId: ID!
 }
 
 input RefreshModelProviderCredentialModelsInput {

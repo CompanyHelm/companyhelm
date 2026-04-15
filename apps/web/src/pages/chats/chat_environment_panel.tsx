@@ -1,4 +1,4 @@
-import { ChevronRightIcon, Loader2Icon } from "lucide-react";
+import { ChevronRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { EditableField } from "@/components/editable_field";
 import { EnvironmentActions } from "@/components/environment_actions";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export function ChatEnvironmentPanel({
   isLoadingSessionEnvironment,
   actingSessionEnvironmentId,
   deletingSessionEnvironmentId,
+  removingSessionSkillId,
   shouldUseCompactComposerSettings,
   composerModelOptions,
   selectedComposerModelOption,
@@ -30,6 +31,7 @@ export function ChatEnvironmentPanel({
   onManageEnvironments,
   onDeleteEnvironment,
   onOpenEnvironmentDesktop,
+  onRemoveActiveSkill,
   onStartEnvironment,
   onStopEnvironment,
 }: {
@@ -43,6 +45,7 @@ export function ChatEnvironmentPanel({
   isLoadingSessionEnvironment: boolean;
   actingSessionEnvironmentId: string | null;
   deletingSessionEnvironmentId: string | null;
+  removingSessionSkillId: string | null;
   shouldUseCompactComposerSettings: boolean;
   composerModelOptions: ReadonlyArray<ChatComposerModelOption>;
   selectedComposerModelOption: ChatComposerModelOption | null;
@@ -55,6 +58,7 @@ export function ChatEnvironmentPanel({
   onManageEnvironments: () => void;
   onDeleteEnvironment: (environmentId: string, force: boolean) => Promise<void>;
   onOpenEnvironmentDesktop: (environmentId: string) => Promise<void>;
+  onRemoveActiveSkill: (skillId: string) => Promise<void>;
   onStartEnvironment: (environmentId: string) => Promise<void>;
   onStopEnvironment: (environmentId: string) => Promise<void>;
 }) {
@@ -133,6 +137,56 @@ export function ChatEnvironmentPanel({
                   value={composerReasoningLevel}
                 />
               ) : null}
+            </section>
+          ) : null}
+
+          {selectedSession ? (
+            <section className="grid gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Active skills
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  These session-scoped skills are re-injected into the prompt and materialized into the leased environment when needed.
+                </p>
+              </div>
+
+              {sessionEnvironmentInfo?.activeSkills.length ? (
+                <div className="grid gap-2 rounded-xl border border-border/60 bg-card/50 p-3">
+                  {sessionEnvironmentInfo.activeSkills.map((skill) => {
+                    const isRemovingSkill = removingSessionSkillId === skill.id;
+
+                    return (
+                      <div
+                        key={skill.id}
+                        className="flex items-start justify-between gap-3 rounded-lg border border-border/50 bg-background/70 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{skill.name}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{skill.description}</p>
+                        </div>
+                        <Button
+                          aria-label={`Remove ${skill.name} from active skills`}
+                          className="shrink-0 text-muted-foreground hover:text-foreground"
+                          disabled={isRemovingSkill}
+                          onClick={() => {
+                            void onRemoveActiveSkill(skill.id);
+                          }}
+                          size="icon-sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          {isRemovingSkill ? <Loader2Icon className="size-4 animate-spin" /> : <XIcon className="size-4" />}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+                  No session-specific skills are active right now.
+                </div>
+              )}
             </section>
           ) : null}
 

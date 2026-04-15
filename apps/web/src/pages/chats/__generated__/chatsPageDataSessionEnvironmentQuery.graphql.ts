@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f2befd8f59b2da510426b3ebb4f36ba1>>
+ * @generated SignedSource<<76078b923335b1ae019279bb94ff15a6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,11 @@ export type chatsPageDataSessionEnvironmentQuery$variables = {
 };
 export type chatsPageDataSessionEnvironmentQuery$data = {
   readonly SessionEnvironment: {
+    readonly activeSkills: ReadonlyArray<{
+      readonly description: string;
+      readonly id: string;
+      readonly name: string;
+    }>;
     readonly agentDefaultComputeProviderDefinition: {
       readonly id: string;
       readonly name: string;
@@ -60,7 +65,21 @@ v2 = {
   "name": "provider",
   "storageKey": null
 },
-v3 = [
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v5 = [
   {
     "alias": null,
     "args": [
@@ -75,6 +94,20 @@ v3 = [
     "name": "SessionEnvironment",
     "plural": false,
     "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "Skill",
+        "kind": "LinkedField",
+        "name": "activeSkills",
+        "plural": true,
+        "selections": [
+          (v1/*: any*/),
+          (v3/*: any*/),
+          (v4/*: any*/)
+        ],
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -153,13 +186,7 @@ v3 = [
         "plural": false,
         "selections": [
           (v1/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "name",
-            "storageKey": null
-          },
+          (v3/*: any*/),
           (v2/*: any*/)
         ],
         "storageKey": null
@@ -174,7 +201,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataSessionEnvironmentQuery",
-    "selections": (v3/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -183,19 +210,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageDataSessionEnvironmentQuery",
-    "selections": (v3/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "e539071e7d4ff43593b65916ff4ccbe7",
+    "cacheID": "a753db3142b2e61368d45844811e5b4d",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionEnvironmentQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataSessionEnvironmentQuery(\n  $sessionId: ID!\n) {\n  SessionEnvironment(sessionId: $sessionId) {\n    currentEnvironment {\n      id\n      displayName\n      provider\n      providerDefinitionName\n      providerEnvironmentId\n      status\n      platform\n      cpuCount\n      memoryGb\n      diskSpaceGb\n    }\n    agentDefaultComputeProviderDefinition {\n      id\n      name\n      provider\n    }\n  }\n}\n"
+    "text": "query chatsPageDataSessionEnvironmentQuery(\n  $sessionId: ID!\n) {\n  SessionEnvironment(sessionId: $sessionId) {\n    activeSkills {\n      id\n      name\n      description\n    }\n    currentEnvironment {\n      id\n      displayName\n      provider\n      providerDefinitionName\n      providerEnvironmentId\n      status\n      platform\n      cpuCount\n      memoryGb\n      diskSpaceGb\n    }\n    agentDefaultComputeProviderDefinition {\n      id\n      name\n      provider\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9cf636c84e4fe7121f8d99ede9f80c5a";
+(node as any).hash = "bc6a7f4075bb96cf9f8907cd77f7f9cb";
 
 export default node;

@@ -194,6 +194,20 @@ export class AgentEnvironmentAccessService {
     );
   }
 
+  async removeSkillFromOpenEnvironmentForSession(
+    transactionProvider: TransactionProviderInterface,
+    agentId: string,
+    sessionId: string,
+    skill: SkillRecord,
+  ): Promise<boolean> {
+    return this.skillSyncService.removeSkillFromOpenEnvironmentForSession(
+      transactionProvider,
+      agentId,
+      sessionId,
+      skill,
+    );
+  }
+
   private async canReuseEnvironment(
     transactionProvider: TransactionProviderInterface,
     environment: AgentEnvironmentRecord,

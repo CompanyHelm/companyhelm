@@ -96,6 +96,30 @@ export class AgentEnvironmentSkillSyncService {
     return skill.fileList.length > 0;
   }
 
+  async removeSkillFromOpenEnvironmentForSession(
+    transactionProvider: TransactionProviderInterface,
+    agentId: string,
+    sessionId: string,
+    skill: SkillRecord,
+  ): Promise<boolean> {
+    await this.leaseService.expireElapsedLeases(transactionProvider);
+    const openLease = await this.leaseService.findOpenLeaseForSession(transactionProvider, agentId, sessionId);
+    if (!openLease) {
+      return false;
+    }
+
+    const environment = await this.catalogService.loadEnvironmentById(transactionProvider, openLease.environmentId);
+    if (!environment) {
+      throw new Error("Leased environment not found.");
+    }
+
+    const environmentShell = await this.providerRegistry
+      .get(environment.provider)
+      .createShell(transactionProvider, environment);
+    await this.materializationService.dematerializeSkill(environmentShell, skill);
+    return skill.fileList.length > 0;
+  }
+
   private static isProvider(value: unknown): value is AgentComputeProviderInterface {
     return typeof value === "object"
       && value !== null

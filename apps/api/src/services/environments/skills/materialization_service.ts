@@ -70,6 +70,28 @@ export class AgentEnvironmentSkillMaterializationService {
     }
   }
 
+  async dematerializeSkill(
+    environmentShell: AgentEnvironmentShellInterface,
+    skill: SkillRecord,
+  ): Promise<void> {
+    const fileBackedSkill = this.pathService.resolveFileBackedSkill(skill);
+    if (!fileBackedSkill) {
+      return;
+    }
+
+    const materializationDirectory = this.pathService.getSkillMaterializationDirectory(skill.name);
+    const result = await environmentShell.executeCommand(
+      `bash -lc ${AgentEnvironmentSkillMaterializationService.shellQuote([
+        "set -eu",
+        `target_dir=${AgentEnvironmentSkillMaterializationService.shellQuote(materializationDirectory)}`,
+        "rm -rf \"$target_dir\"",
+      ].join("\n"))}`,
+    );
+    if (result.exitCode !== 0) {
+      throw new Error(`Failed to remove file-backed skill ${skill.name}: ${result.stdout}`);
+    }
+  }
+
   private static shellQuote(value: string): string {
     return `'${value.replaceAll("'", `'"'"'`)}'`;
   }

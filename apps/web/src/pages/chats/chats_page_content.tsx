@@ -29,6 +29,7 @@ import {
   type ChatsPageCreateSessionMutation,
   type ChatsPageDeleteEnvironmentMutation,
   type ChatsPageDeleteSessionQueuedMessageMutation,
+  type ChatsPageDetachSkillFromSessionMutation,
   type ChatsPageDismissInboxHumanQuestionMutation,
   type ChatsPageForkSessionMutation,
   type ChatsPageGetEnvironmentVncUrlMutation,
@@ -59,6 +60,7 @@ import {
   chatsPageCreateSessionMutationNode,
   chatsPageDeleteEnvironmentMutationNode,
   chatsPageDeleteSessionQueuedMessageMutationNode,
+  chatsPageDetachSkillFromSessionMutationNode,
   chatsPageDismissInboxHumanQuestionMutationNode,
   chatsPageForkSessionMutationNode,
   chatsPageGetEnvironmentVncUrlMutationNode,
@@ -168,6 +170,7 @@ export function ChatsPageContent() {
   const [sessionEnvironmentErrorMessage, setSessionEnvironmentErrorMessage] = useState<string | null>(null);
   const [actingSessionEnvironmentId, setActingSessionEnvironmentId] = useState<string | null>(null);
   const [deletingSessionEnvironmentId, setDeletingSessionEnvironmentId] = useState<string | null>(null);
+  const [removingSessionSkillId, setRemovingSessionSkillId] = useState<string | null>(null);
   const [isResizingChatList, setIsResizingChatList] = useState(false);
   const [draftTextareaHeight, setDraftTextareaHeight] = useState<number | null>(null);
   const [isResizingDraftTextarea, setIsResizingDraftTextarea] = useState(false);
@@ -231,6 +234,9 @@ export function ChatsPageContent() {
   );
   const [commitDeleteEnvironment, isDeleteEnvironmentInFlight] = useMutation<ChatsPageDeleteEnvironmentMutation>(
     chatsPageDeleteEnvironmentMutationNode,
+  );
+  const [commitDetachSkillFromSession] = useMutation<ChatsPageDetachSkillFromSessionMutation>(
+    chatsPageDetachSkillFromSessionMutationNode,
   );
   const [commitStartEnvironment, isStartEnvironmentInFlight] = useMutation<ChatsPageStartEnvironmentMutation>(
     chatsPageStartEnvironmentMutationNode,
@@ -592,6 +598,50 @@ export function ChatsPageContent() {
       };
     });
   }, []);
+
+  const removeActiveSessionSkill = useCallback(async (sessionId: string, skillId: string) => {
+    if (removingSessionSkillId === skillId) {
+      return;
+    }
+
+    setSessionEnvironmentErrorMessage(null);
+    setRemovingSessionSkillId(skillId);
+
+    await new Promise<void>((resolve, reject) => {
+      commitDetachSkillFromSession({
+        variables: {
+          input: {
+            sessionId,
+            skillId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          setSessionEnvironmentInfo((currentInfo) => {
+            if (!currentInfo) {
+              return currentInfo;
+            }
+
+            return {
+              ...currentInfo,
+              activeSkills: currentInfo.activeSkills.filter((skill) => skill.id !== skillId),
+            };
+          });
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setSessionEnvironmentErrorMessage(error instanceof Error ? error.message : "Failed to remove active skill.");
+    }).finally(() => {
+      setRemovingSessionSkillId((currentSkillId) => currentSkillId === skillId ? null : currentSkillId);
+    });
+  }, [commitDetachSkillFromSession, removingSessionSkillId]);
 
   const openSessionEnvironmentDesktop = useCallback(async (environmentId: string) => {
     if (
@@ -2028,8 +2078,16 @@ export function ChatsPageContent() {
         }}
         onOpenChange={setIsEnvironmentPanelOpen}
         onOpenEnvironmentDesktop={openSessionEnvironmentDesktop}
+        onRemoveActiveSkill={async (skillId) => {
+          if (!selectedSession) {
+            return;
+          }
+
+          await removeActiveSessionSkill(selectedSession.id, skillId);
+        }}
         onStartEnvironment={startSessionEnvironment}
         onStopEnvironment={stopSessionEnvironment}
+        removingSessionSkillId={removingSessionSkillId}
         onUpdateSessionTitle={async (nextTitle) => {
           if (!selectedSession) {
             return;

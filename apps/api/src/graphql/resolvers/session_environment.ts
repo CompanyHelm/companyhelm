@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { agents } from "../../db/schema.ts";
+import { SessionSkillService } from "../../services/skills/session_service.ts";
 import { AgentComputeProviderRegistry } from "../../services/environments/providers/provider_registry.ts";
 import type {
   AgentEnvironmentRecord,
@@ -12,6 +13,7 @@ import { AgentEnvironmentSelectionService } from "../../services/environments/se
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
 import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
+import { GraphqlSkillPresenter, type GraphqlSkillRecord } from "../skill_presenter.ts";
 
 type SessionEnvironmentArguments = {
   sessionId: string;
@@ -56,6 +58,7 @@ type GraphqlComputeProviderDefinitionRecord = {
 };
 
 type GraphqlSessionEnvironmentInfo = {
+  activeSkills: GraphqlSkillRecord[];
   agentDefaultComputeProviderDefinition: GraphqlComputeProviderDefinitionRecord | null;
   currentEnvironment: GraphqlEnvironmentRecord | null;
 };
@@ -79,6 +82,7 @@ export class SessionEnvironmentQueryResolver {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly leaseService: AgentEnvironmentLeaseService;
   private readonly providerRegistry: AgentComputeProviderRegistry;
+  private readonly sessionSkillService: SessionSkillService;
   private readonly sessionReadService: SessionReadService;
   private readonly selectionService: AgentEnvironmentSelectionService;
 
@@ -88,6 +92,7 @@ export class SessionEnvironmentQueryResolver {
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
     @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
+    @inject(SessionSkillService) sessionSkillService: SessionSkillService = new SessionSkillService(),
     @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
     @inject(AgentEnvironmentSelectionService) selectionService: AgentEnvironmentSelectionService,
   ) {
@@ -95,6 +100,7 @@ export class SessionEnvironmentQueryResolver {
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.leaseService = leaseService;
     this.providerRegistry = providerRegistry;
+    this.sessionSkillService = sessionSkillService;
     this.sessionReadService = sessionReadService;
     this.selectionService = selectionService;
   }
@@ -177,7 +183,12 @@ export class SessionEnvironmentQueryResolver {
       );
     }
 
-    const [currentEnvironmentStatus, currentEnvironmentDefinition, defaultComputeProviderDefinition] = await Promise.all([
+    const [activeSkills, currentEnvironmentStatus, currentEnvironmentDefinition, defaultComputeProviderDefinition] = await Promise.all([
+      this.sessionSkillService.listActiveSkills(
+        context.app_runtime_transaction_provider,
+        context.authSession.company.id,
+        arguments_.sessionId,
+      ),
       currentEnvironment
         ? this.resolveEnvironmentStatus(context.app_runtime_transaction_provider, currentEnvironment)
         : Promise.resolve<AgentEnvironmentStatus | null>(null),
@@ -198,6 +209,7 @@ export class SessionEnvironmentQueryResolver {
     ]);
 
     return {
+      activeSkills: activeSkills.map((skill) => GraphqlSkillPresenter.presentSkill(skill)),
       agentDefaultComputeProviderDefinition: defaultComputeProviderDefinition
         ? {
             companyId: defaultComputeProviderDefinition.companyId,

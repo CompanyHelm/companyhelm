@@ -4,6 +4,7 @@ import type { chatsPageDataArchiveSessionMutation } from "./__generated__/chatsP
 import type { chatsPageDataCreateSessionMutation } from "./__generated__/chatsPageDataCreateSessionMutation.graphql";
 import type { chatsPageDataDeleteEnvironmentMutation } from "./__generated__/chatsPageDataDeleteEnvironmentMutation.graphql";
 import type { chatsPageDataDeleteSessionQueuedMessageMutation } from "./__generated__/chatsPageDataDeleteSessionQueuedMessageMutation.graphql";
+import type { chatsPageDataDetachSkillFromSessionMutation } from "./__generated__/chatsPageDataDetachSkillFromSessionMutation.graphql";
 import type { chatsPageDataDismissInboxHumanQuestionMutation } from "./__generated__/chatsPageDataDismissInboxHumanQuestionMutation.graphql";
 import type { chatsPageDataForkSessionMutation } from "./__generated__/chatsPageDataForkSessionMutation.graphql";
 import type { chatsPageDataGetEnvironmentVncUrlMutation } from "./__generated__/chatsPageDataGetEnvironmentVncUrlMutation.graphql";
@@ -162,6 +163,11 @@ export const chatsPageQueuedMessagesQueryNode = graphql`
 export const chatsPageSessionEnvironmentQueryNode = graphql`
   query chatsPageDataSessionEnvironmentQuery($sessionId: ID!) {
     SessionEnvironment(sessionId: $sessionId) {
+      activeSkills {
+        id
+        name
+        description
+      }
       currentEnvironment {
         id
         displayName
@@ -179,6 +185,16 @@ export const chatsPageSessionEnvironmentQueryNode = graphql`
         name
         provider
       }
+    }
+  }
+`;
+
+export const chatsPageDetachSkillFromSessionMutationNode = graphql`
+  mutation chatsPageDataDetachSkillFromSessionMutation($input: DetachSkillFromSessionInput!) {
+    DetachSkillFromSession(input: $input) {
+      id
+      name
+      description
     }
   }
 `;
@@ -578,6 +594,7 @@ export type ChatsPageArchiveSessionMutation = chatsPageDataArchiveSessionMutatio
 export type ChatsPageCreateSessionMutation = chatsPageDataCreateSessionMutation;
 export type ChatsPageDeleteEnvironmentMutation = chatsPageDataDeleteEnvironmentMutation;
 export type ChatsPageDeleteSessionQueuedMessageMutation = chatsPageDataDeleteSessionQueuedMessageMutation;
+export type ChatsPageDetachSkillFromSessionMutation = chatsPageDataDetachSkillFromSessionMutation;
 export type ChatsPageDismissInboxHumanQuestionMutation = chatsPageDataDismissInboxHumanQuestionMutation;
 export type ChatsPageForkSessionMutation = chatsPageDataForkSessionMutation;
 export type ChatsPageGetEnvironmentVncUrlMutation = chatsPageDataGetEnvironmentVncUrlMutation;
@@ -609,6 +626,7 @@ export type SessionTranscriptEdgeRecord = SessionTranscriptConnection["edges"][n
 export type SessionMessageRecord = SessionTranscriptEdgeRecord["node"];
 export type SessionMessageContentRecord = SessionMessageRecord["contents"][number];
 export type SessionEnvironmentInfoRecord = chatsPageDataSessionEnvironmentQuery["response"]["SessionEnvironment"];
+export type SessionEnvironmentActiveSkillRecord = SessionEnvironmentInfoRecord["activeSkills"][number];
 export type DraftComposerImageRecord = ChatComposerImageDraft;
 export type ChatsPageSearch = {
   agentId?: string;
