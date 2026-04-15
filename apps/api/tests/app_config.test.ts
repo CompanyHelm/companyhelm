@@ -120,7 +120,6 @@ graphql:
 analytics:
   amplitude:
     enabled: false
-    id: ""
 publicUrl: "http://localhost:4000"
 webPublicUrl: "http://localhost:5173"
 database:
@@ -182,7 +181,6 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     analytics: {
       amplitude: {
         enabled: false,
-        id: "",
       },
     },
   });

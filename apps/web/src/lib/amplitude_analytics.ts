@@ -31,7 +31,7 @@ type EnvironmentActionProperties = {
 
 type AmplitudeConfiguration = {
   enabled: boolean;
-  id: string;
+  id?: string;
 };
 
 declare global {
@@ -46,7 +46,12 @@ declare global {
  */
 export class AmplitudeAnalytics {
   static initialize(router: AnalyticsRouter, configuration: AmplitudeConfiguration): void {
-    if (typeof window === "undefined" || !configuration.enabled || configuration.id.length === 0) {
+    if (
+      typeof window === "undefined"
+      || !configuration.enabled
+      || typeof configuration.id !== "string"
+      || configuration.id.length === 0
+    ) {
       return;
     }
 

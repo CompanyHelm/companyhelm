@@ -37,6 +37,12 @@ resolve_javascript_boolean() {
   esac
 }
 
+build_optional_amplitude_id_property() {
+  if [ -n "$AMPLITUDE_ID" ]; then
+    printf ',\n      id: "%s"' "$(escape_javascript_string "$AMPLITUDE_ID")"
+  fi
+}
+
 write_runtime_config() {
   mkdir -p "$(dirname "$RUNTIME_CONFIG_PATH")"
 
@@ -48,8 +54,7 @@ window.__COMPANYHELM_CONFIG__ = Object.freeze({
   termsOfServiceUrl: "$(escape_javascript_string "$TERMS_OF_SERVICE_URL")",
   analytics: {
     amplitude: {
-      enabled: $(resolve_javascript_boolean "$AMPLITUDE_ENABLED"),
-      id: "$(escape_javascript_string "$AMPLITUDE_ID")"
+      enabled: $(resolve_javascript_boolean "$AMPLITUDE_ENABLED")$(build_optional_amplitude_id_property)
     }
   }
 });

@@ -15,7 +15,7 @@ test("falls back to the local HTTP GraphQL endpoint by default", () => {
     assert.equal(document.privacyPolicyUrl, "");
     assert.equal(document.termsOfServiceUrl, "");
     assert.equal(document.analytics.amplitude.enabled, false);
-    assert.equal(document.analytics.amplitude.id, "");
+    assert.equal(document.analytics.amplitude.id, undefined);
   } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;

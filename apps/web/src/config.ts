@@ -2,7 +2,7 @@ import packageDocument from "../../../package.json";
 
 export type AmplitudeConfigDocument = {
   enabled: boolean;
-  id: string;
+  id?: string;
 };
 
 export type AnalyticsConfigDocument = {
@@ -43,22 +43,22 @@ export class Config {
 
     return {
       appVersion: Config.resolveAppVersion(),
-      clerkPublishableKey: Config.resolveRuntimeStringValue(
+      clerkPublishableKey: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.clerkPublishableKey,
         importMetaEnv?.VITE_CLERK_PUBLISHABLE_KEY,
         "",
       ),
-      graphqlUrl: Config.resolveRuntimeStringValue(
+      graphqlUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.graphqlUrl,
         importMetaEnv?.VITE_GRAPHQL_URL,
         "http://localhost:4000/graphql",
       ),
-      privacyPolicyUrl: Config.resolveRuntimeStringValue(
+      privacyPolicyUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.privacyPolicyUrl,
         importMetaEnv?.VITE_CLERK_PRIVACY_POLICY_URL,
         "",
       ),
-      termsOfServiceUrl: Config.resolveRuntimeStringValue(
+      termsOfServiceUrl: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.termsOfServiceUrl,
         importMetaEnv?.VITE_CLERK_TERMS_OF_SERVICE_URL,
         "",
@@ -70,10 +70,9 @@ export class Config {
             importMetaEnv?.VITE_AMPLITUDE_ENABLED,
             false,
           ),
-          id: Config.resolveRuntimeStringValue(
+          id: Config.resolveRuntimeOptionalStringValue(
             runtimeDocument.analytics?.amplitude?.id,
             importMetaEnv?.VITE_AMPLITUDE_ID,
-            "",
           ),
         },
       },
@@ -89,7 +88,7 @@ export class Config {
     return packageVersion;
   }
 
-  private static resolveRuntimeStringValue(
+  private static resolveRuntimeRequiredStringValue(
     runtimeValue: unknown,
     fallbackSourceValue: unknown,
     fallbackValue: string,
@@ -98,7 +97,18 @@ export class Config {
       return runtimeValue.trim();
     }
 
-    return Config.resolveStringValue(fallbackSourceValue, fallbackValue);
+    return Config.resolveRequiredStringValue(fallbackSourceValue, fallbackValue);
+  }
+
+  private static resolveRuntimeOptionalStringValue(
+    runtimeValue: unknown,
+    fallbackSourceValue: unknown,
+  ): string | undefined {
+    if (typeof runtimeValue === "string" && runtimeValue.trim().length > 0) {
+      return runtimeValue.trim();
+    }
+
+    return Config.resolveOptionalStringValue(fallbackSourceValue);
   }
 
   private static resolveRuntimeBooleanValue(
@@ -121,9 +131,14 @@ export class Config {
     return window.__COMPANYHELM_CONFIG__ ?? {};
   }
 
-  private static resolveStringValue(value: unknown, fallbackValue: string): string {
+  private static resolveRequiredStringValue(value: unknown, fallbackValue: string): string {
     const normalizedValue = String(value || "").trim();
     return normalizedValue || fallbackValue;
+  }
+
+  private static resolveOptionalStringValue(value: unknown): string | undefined {
+    const normalizedValue = String(value || "").trim();
+    return normalizedValue || undefined;
   }
 
   private static resolveBooleanValue(value: unknown, fallbackValue: boolean): boolean {
