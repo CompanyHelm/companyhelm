@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { AmplitudeAnalytics } from "@/lib/amplitude_analytics";
 import { cn } from "@/lib/utils";
 
 export type EnvironmentActionRecord = {
@@ -126,6 +127,13 @@ function DeleteEnvironmentDialog(props: DeleteEnvironmentDialogProps) {
                 || props.deletingEnvironmentId === props.environment.id
               }
               onClick={async () => {
+                AmplitudeAnalytics.trackEnvironmentAction({
+                  action: "delete",
+                  environmentId: props.environment.id,
+                  force: forceDelete,
+                  provider: props.environment.provider,
+                  status: props.environment.status,
+                });
                 await props.onDelete(props.environment.id, forceDelete);
                 setForceDelete(false);
               }}
@@ -156,6 +164,12 @@ export function EnvironmentActions(props: EnvironmentActionsProps) {
           aria-label="Open desktop"
           disabled={isDisabled}
           onClick={async () => {
+            AmplitudeAnalytics.trackEnvironmentAction({
+              action: "open_desktop",
+              environmentId: props.environment.id,
+              provider: props.environment.provider,
+              status: props.environment.status,
+            });
             await props.onOpenDesktop(props.environment.id);
           }}
           size={size}
@@ -170,6 +184,12 @@ export function EnvironmentActions(props: EnvironmentActionsProps) {
           aria-label="Start environment"
           disabled={isDisabled}
           onClick={async () => {
+            AmplitudeAnalytics.trackEnvironmentAction({
+              action: "start",
+              environmentId: props.environment.id,
+              provider: props.environment.provider,
+              status: props.environment.status,
+            });
             await props.onStart(props.environment.id);
           }}
           size={size}
@@ -184,6 +204,12 @@ export function EnvironmentActions(props: EnvironmentActionsProps) {
           aria-label="Stop environment"
           disabled={isDisabled}
           onClick={async () => {
+            AmplitudeAnalytics.trackEnvironmentAction({
+              action: "stop",
+              environmentId: props.environment.id,
+              provider: props.environment.provider,
+              status: props.environment.status,
+            });
             await props.onStop(props.environment.id);
           }}
           size={size}

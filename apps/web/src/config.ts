@@ -8,6 +8,8 @@ export type ConfigDocument = {
   appVersion: string;
   clerkPublishableKey: string;
   graphqlUrl: string;
+  privacyPolicyUrl: string;
+  termsOfServiceUrl: string;
 };
 
 declare global {
@@ -31,6 +33,16 @@ export class Config {
         "graphqlUrl",
         importMetaEnv?.VITE_GRAPHQL_URL,
         "http://localhost:4000/graphql",
+      ),
+      privacyPolicyUrl: Config.resolveRuntimeStringValue(
+        "privacyPolicyUrl",
+        importMetaEnv?.VITE_CLERK_PRIVACY_POLICY_URL,
+        "",
+      ),
+      termsOfServiceUrl: Config.resolveRuntimeStringValue(
+        "termsOfServiceUrl",
+        importMetaEnv?.VITE_CLERK_TERMS_OF_SERVICE_URL,
+        "",
       ),
     };
   }

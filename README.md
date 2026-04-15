@@ -142,7 +142,10 @@ If you do not pass `--config-path`, the image defaults to `apps/api/config/conta
 ### Web runtime config
 
 Local Vite development uses `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_GRAPHQL_URL` from your
-local environment.
+local environment. To show Clerk's terms/privacy consent during sign-up, also set
+`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL` locally, or
+`COMPANYHELM_WEB_CLERK_TERMS_OF_SERVICE_URL` and `COMPANYHELM_WEB_CLERK_PRIVACY_POLICY_URL`
+for the container runtime config.
 
 ## Common commands
 
