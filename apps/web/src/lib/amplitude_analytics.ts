@@ -29,6 +29,11 @@ type EnvironmentActionProperties = {
   status: string;
 };
 
+type AmplitudeConfiguration = {
+  enabled: boolean;
+  id: string;
+};
+
 declare global {
   interface Window {
     __COMPANYHELM_AMPLITUDE__?: AmplitudeWindowState;
@@ -40,10 +45,8 @@ declare global {
  * then reuses the same tracking helpers across routed pages and shared interaction surfaces.
  */
 export class AmplitudeAnalytics {
-  private static readonly apiKey = "1895118e01cb83012517aa3955e4d606";
-
-  static initialize(router: AnalyticsRouter): void {
-    if (typeof window === "undefined") {
+  static initialize(router: AnalyticsRouter, configuration: AmplitudeConfiguration): void {
+    if (typeof window === "undefined" || !configuration.enabled || configuration.id.length === 0) {
       return;
     }
 
@@ -53,7 +56,7 @@ export class AmplitudeAnalytics {
     }
 
     state.initialized = true;
-    void amplitude.initAll(AmplitudeAnalytics.apiKey, {
+    void amplitude.initAll(configuration.id, {
       analytics: {
         autocapture: true,
       },
@@ -80,6 +83,10 @@ export class AmplitudeAnalytics {
 
   static trackEnvironmentAction(properties: EnvironmentActionProperties): void {
     if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!AmplitudeAnalytics.getWindowState().initialized) {
       return;
     }
 

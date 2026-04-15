@@ -14,6 +14,8 @@ test("falls back to the local HTTP GraphQL endpoint by default", () => {
     assert.equal(document.graphqlUrl, "http://localhost:4000/graphql");
     assert.equal(document.privacyPolicyUrl, "");
     assert.equal(document.termsOfServiceUrl, "");
+    assert.equal(document.analytics.amplitude.enabled, false);
+    assert.equal(document.analytics.amplitude.id, "");
   } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;
@@ -33,6 +35,12 @@ test("prefers injected runtime configuration over local defaults", () => {
         graphqlUrl: "http://127.0.0.1:4100/graphql",
         privacyPolicyUrl: "https://companyhelm.example/privacy",
         termsOfServiceUrl: "https://companyhelm.example/terms",
+        analytics: {
+          amplitude: {
+            enabled: true,
+            id: "amplitude-runtime-id",
+          },
+        },
       },
     } as Window;
 
@@ -42,6 +50,8 @@ test("prefers injected runtime configuration over local defaults", () => {
     assert.equal(document.graphqlUrl, "http://127.0.0.1:4100/graphql");
     assert.equal(document.privacyPolicyUrl, "https://companyhelm.example/privacy");
     assert.equal(document.termsOfServiceUrl, "https://companyhelm.example/terms");
+    assert.equal(document.analytics.amplitude.enabled, true);
+    assert.equal(document.analytics.amplitude.id, "amplitude-runtime-id");
   } finally {
     if (originalWindow) {
       globalThis.window = originalWindow;

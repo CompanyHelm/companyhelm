@@ -21,7 +21,7 @@ if (!rootElement) {
   throw new Error("Missing #app element.");
 }
 
-AmplitudeAnalytics.initialize(applicationRouter);
+AmplitudeAnalytics.initialize(applicationRouter, config.analytics.amplitude);
 
 createRoot(rootElement).render(
   <StrictMode>

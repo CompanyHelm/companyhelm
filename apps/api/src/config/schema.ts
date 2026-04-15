@@ -36,6 +36,15 @@ export const ConfigDocument = z.object({
     endpoint: NonEmptyStringSchema,
     graphiql: z.boolean(),
   }),
+  analytics: z.object({
+    amplitude: z.object({
+      enabled: z.boolean(),
+      id: z.string(),
+    }).refine((value) => !value.enabled || value.id.trim().length > 0, {
+      message: "Amplitude analytics requires a non-empty id when enabled.",
+      path: ["id"],
+    }),
+  }),
   publicUrl: NonEmptyStringSchema,
   webPublicUrl: NonEmptyStringSchema,
   database: z.object({

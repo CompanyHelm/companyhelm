@@ -117,6 +117,10 @@ cors:
 graphql:
   endpoint: "/graphql"
   graphiql: true
+analytics:
+  amplitude:
+    enabled: false
+    id: ""
 publicUrl: "http://localhost:4000"
 webPublicUrl: "http://localhost:5173"
 database:
@@ -171,9 +175,16 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   assert.deepEqual({
     host: document.host,
     port: document.port,
+    analytics: document.analytics,
   }, {
     host: "127.0.0.1",
     port: 4000,
+    analytics: {
+      amplitude: {
+        enabled: false,
+        id: "",
+      },
+    },
   });
   assert.deepEqual(document.cors, {
     origin: [
