@@ -1,5 +1,7 @@
 :4173 {
   root * /srv
+  @runtimeConfig path /runtime-config.js
+  header @runtimeConfig Cache-Control "no-store, no-cache, must-revalidate"
   try_files {path} /index.html
   file_server
 }
