@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { AgentSessionBootstrapContext } from "../src/services/agent/session/pi-mono/bootstrap_context.ts";
 import { SkillsSessionModule } from "../src/services/agent/session/pi-mono/modules/skills.ts";
 
-test("skills session module prompt includes the materialized skill directory path and available skill summaries", async () => {
+test("skills session module prompt includes the materialized skill directory path plus active and available skill summaries", async () => {
   const bootstrapContext = new AgentSessionBootstrapContext({
     agentId: "agent-1",
     agentName: "My Agent",
@@ -35,15 +35,26 @@ test("skills session module prompt includes the materialized skill directory pat
     protected createSkillToolService() {
       return {
         async listAvailableSkills() {
-          return [{
-            active: false,
-            description: "Browser automation guidance.",
-            files: [],
-            githubTrackedCommitSha: null,
-            name: "Browser skill",
-            repository: null,
-            skillDirectory: null,
-          }];
+          return [
+            {
+              active: true,
+              description: "Browser automation guidance.",
+              files: [],
+              githubTrackedCommitSha: null,
+              name: "Browser skill",
+              repository: null,
+              skillDirectory: null,
+            },
+            {
+              active: false,
+              description: "Database migration checklist.",
+              files: [],
+              githubTrackedCommitSha: null,
+              name: "Migration skill",
+              repository: null,
+              skillDirectory: null,
+            },
+          ];
         },
       } as never;
     }
@@ -52,6 +63,8 @@ test("skills session module prompt includes the materialized skill directory pat
   const [prompt] = await new TestSkillsSessionModule().createAppendSystemPrompts(bootstrapContext);
 
   assert.match(prompt, /\/home\/user\/skills\/<Skill Name>/u);
-  assert.match(prompt, /Available skills for this session:/u);
+  assert.match(prompt, /Active skills for this session:/u);
   assert.match(prompt, /- Browser skill: Browser automation guidance\./u);
+  assert.match(prompt, /Available skills for this session:/u);
+  assert.match(prompt, /- Migration skill: Database migration checklist\./u);
 });

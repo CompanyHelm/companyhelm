@@ -1,6 +1,14 @@
 ## Skills Tools
 
 Use skill tools when the task would benefit from reusable company instructions that are already stored in the CompanyHelm skill catalog.
+Active skills for this session:
+{% if activeSkills.length > 0 %}
+{% for skill in activeSkills %}
+- {{ skill.name }}: {{ skill.description }}
+{% endfor %}
+{% else %}
+- None
+{% endif %}
 Available skills for this session:
 {% if availableSkills.length > 0 %}
 {% for skill in availableSkills %}

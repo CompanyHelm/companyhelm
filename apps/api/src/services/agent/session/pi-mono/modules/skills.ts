@@ -18,19 +18,24 @@ export class SkillsSessionModule extends AgentSessionModuleInterface {
   async createAppendSystemPrompts(context: AgentSessionBootstrapContext): Promise<string[]> {
     const skillToolService = this.createSkillToolService(context);
     const availableSkills = await skillToolService.listAvailableSkills();
+    const promptVisibleSkills = availableSkills.filter((skill) => skill.name.length > 0 && skill.description.length > 0);
 
     return [
       new AgentSessionModulePromptTemplate(this.getName()).render(
         new SkillsSessionModulePromptContext(
           context,
-          availableSkills
-            .filter((skill) => skill.name.length > 0 && skill.description.length > 0)
-            .map((skill) => {
-              return {
-                description: skill.description,
-                name: skill.name,
-              };
-            }),
+          promptVisibleSkills.filter((skill) => skill.active).map((skill) => {
+            return {
+              description: skill.description,
+              name: skill.name,
+            };
+          }),
+          promptVisibleSkills.map((skill) => {
+            return {
+              description: skill.description,
+              name: skill.name,
+            };
+          }),
         ),
       ),
     ];
