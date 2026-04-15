@@ -250,16 +250,18 @@ function TranscriptMessageRow({
       <div
         className={`${
           isUserMessage
-            ? "min-w-0 w-fit max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
+            ? "min-w-0 max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
             : isToolMessage
             ? "min-w-0 w-full px-0 py-0 text-foreground"
             : "min-w-0 w-full px-0 py-0 text-foreground"
         }`}
       >
         {isUserMessage ? (
-          <div className="grid min-w-0 gap-2">
+          <div className="grid min-w-0 w-full max-w-full gap-2">
             {message.text.trim().length > 0 ? (
-              <p className="whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">{message.text}</p>
+              <p className="min-w-0 max-w-full whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">
+                {message.text}
+              </p>
             ) : null}
             {userImageContents.length > 0 ? (
               <div className="grid justify-items-end gap-2">
@@ -433,14 +435,14 @@ export function ChatTranscriptPane({
     return turn.inlineMessages.length > 0 || turn.hiddenMessages.length > 0;
   });
   const showJumpToLatestButton = sessionMessages.length > 0 && !isTranscriptStuckToBottom;
-  const transcriptViewportClassName = "no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]";
+  const transcriptViewportClassName = "no-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]";
 
   useEffect(() => {
     setExpandedTurnIds({});
   }, [session.id]);
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 min-w-0 flex-1">
       <div
         ref={transcriptScrollRef}
         className={transcriptViewportClassName}

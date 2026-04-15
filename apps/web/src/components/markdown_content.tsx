@@ -56,7 +56,7 @@ export function MarkdownContent({
           a: ({ children, ...anchorProps }) => (
             <a
               {...anchorProps}
-              className="font-medium text-foreground underline underline-offset-4"
+              className="break-words font-medium text-foreground underline underline-offset-4 [overflow-wrap:anywhere]"
               rel="noreferrer"
               target="_blank"
             >
