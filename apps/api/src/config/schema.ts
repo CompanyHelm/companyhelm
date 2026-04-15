@@ -36,12 +36,6 @@ export const ConfigDocument = z.object({
     endpoint: NonEmptyStringSchema,
     graphiql: z.boolean(),
   }),
-  analytics: z.object({
-    amplitude: z.object({
-      enabled: z.boolean(),
-      id: z.string().optional(),
-    }),
-  }),
   publicUrl: NonEmptyStringSchema,
   webPublicUrl: NonEmptyStringSchema,
   database: z.object({

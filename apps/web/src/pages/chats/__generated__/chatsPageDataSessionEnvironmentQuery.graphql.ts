@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<76078b923335b1ae019279bb94ff15a6>>
+ * @generated SignedSource<<23d4c5821cde613531dee48f939fb680>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -62,24 +62,17 @@ v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "provider",
+  "name": "name",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "name",
+  "name": "provider",
   "storageKey": null
 },
-v4 = {
-  "alias": null,
-  "args": null,
-  "kind": "ScalarField",
-  "name": "description",
-  "storageKey": null
-},
-v5 = [
+v4 = [
   {
     "alias": null,
     "args": [
@@ -103,8 +96,14 @@ v5 = [
         "plural": true,
         "selections": [
           (v1/*: any*/),
-          (v3/*: any*/),
-          (v4/*: any*/)
+          (v2/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "description",
+            "storageKey": null
+          }
         ],
         "storageKey": null
       },
@@ -124,7 +123,7 @@ v5 = [
             "name": "displayName",
             "storageKey": null
           },
-          (v2/*: any*/),
+          (v3/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -186,8 +185,8 @@ v5 = [
         "plural": false,
         "selections": [
           (v1/*: any*/),
-          (v3/*: any*/),
-          (v2/*: any*/)
+          (v2/*: any*/),
+          (v3/*: any*/)
         ],
         "storageKey": null
       }
@@ -201,7 +200,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataSessionEnvironmentQuery",
-    "selections": (v5/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -210,10 +209,10 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageDataSessionEnvironmentQuery",
-    "selections": (v5/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "a753db3142b2e61368d45844811e5b4d",
+    "cacheID": "029ca93abc4bb8d45e71c90a200ebf7b",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionEnvironmentQuery",
@@ -223,6 +222,6 @@ return {
 };
 })();
 
-(node as any).hash = "bc6a7f4075bb96cf9f8907cd77f7f9cb";
+(node as any).hash = "9c4eee9ef94032306e408c2387623d91";
 
 export default node;

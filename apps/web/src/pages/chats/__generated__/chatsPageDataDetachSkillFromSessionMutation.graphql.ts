@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cbb2a7c1825e2173e9863241da2de026>>
+ * @generated SignedSource<<dba24b175d8ceaac1805fa892cb5e3d6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -94,7 +94,7 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "1fa88d319c6cc6d65e9001b4221e8e2c",
+    "cacheID": "32a06db948a9bd2e11a2fd485bc42047",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataDetachSkillFromSessionMutation",
@@ -104,6 +104,6 @@ return {
 };
 })();
 
-(node as any).hash = "fd4d92c7523516dc0fd0dbe5d4c34337";
+(node as any).hash = "fdf48ef8cce1248b8ac4e0d62b510f18";
 
 export default node;
