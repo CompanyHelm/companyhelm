@@ -143,11 +143,10 @@ If you do not pass `--config-path`, the image defaults to `apps/api/config/conta
 
 Local Vite development uses `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_GRAPHQL_URL` from your
 local environment. To show Clerk's terms/privacy consent during sign-up, also set
-`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL` locally, or
-`COMPANYHELM_WEB_CLERK_TERMS_OF_SERVICE_URL` and `COMPANYHELM_WEB_CLERK_PRIVACY_POLICY_URL`
-for the container runtime config. Amplitude runtime config follows the same pattern with
-`VITE_AMPLITUDE_ENABLED` and `VITE_AMPLITUDE_ID` locally, or `COMPANYHELM_WEB_AMPLITUDE_ENABLED`
-and `COMPANYHELM_WEB_AMPLITUDE_ID` in the container runtime config.
+`VITE_CLERK_TERMS_OF_SERVICE_URL` and `VITE_CLERK_PRIVACY_POLICY_URL`. The web Docker image
+uses the same `VITE_*` variables to generate `/runtime-config.js` at startup, so local `.env`
+files and deployed runtime YAML share the same schema. Amplitude runtime config follows the
+same pattern with `VITE_AMPLITUDE_ENABLED` and `VITE_AMPLITUDE_ID`.
 
 ## Common commands
 
