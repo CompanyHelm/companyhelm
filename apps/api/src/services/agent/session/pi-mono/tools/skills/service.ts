@@ -97,17 +97,17 @@ export class AgentSkillToolService {
   ): AgentSkillSummary {
     return {
       active,
-      description: skill.description,
+      description: typeof skill.description === "string" ? skill.description : "",
       files: this.toSkillFiles(skill),
       githubTrackedCommitSha: skill.githubTrackedCommitSha,
-      name: skill.name,
+      name: typeof skill.name === "string" ? skill.name : "",
       repository: skill.repository,
       skillDirectory: skill.skillDirectory,
     };
   }
 
   private toSkillFiles(skill: Awaited<ReturnType<SkillService["getSkill"]>>): string[] {
-    if (skill.fileList.length === 0) {
+    if (!Array.isArray(skill.fileList) || skill.fileList.length === 0) {
       return [];
     }
 

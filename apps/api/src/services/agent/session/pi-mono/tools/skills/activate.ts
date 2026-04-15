@@ -44,7 +44,7 @@ export class AgentActivateSkillTool {
       name: "activate_skill",
       parameters: AgentActivateSkillTool.parameters,
       promptGuidelines: [
-        "Call list_available_skills first when you are not certain which skill name should be activated.",
+        "Choose the skill name from the available-skills catalog in the prompt before activating it.",
         "Activate a skill only when its instructions are relevant to the current task.",
       ],
       promptSnippet: "Activate one skill for the current chat session",

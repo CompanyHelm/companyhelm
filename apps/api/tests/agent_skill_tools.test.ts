@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { AgentActivateSkillTool } from "../src/services/agent/session/pi-mono/tools/skills/activate.ts";
-import { AgentListAvailableSkillsTool } from "../src/services/agent/session/pi-mono/tools/skills/list_available.ts";
 import { AgentSkillToolProvider } from "../src/services/agent/session/pi-mono/tools/skills/provider.ts";
 
-test("AgentSkillToolProvider contributes the session skill tools", () => {
+test("AgentSkillToolProvider contributes the skill activation tool", () => {
   const provider = new AgentSkillToolProvider({
     async activateSkill() {
       throw new Error("skill activation is lazy");
@@ -16,46 +15,8 @@ test("AgentSkillToolProvider contributes the session skill tools", () => {
 
   assert.deepEqual(
     provider.createToolDefinitions().map((tool) => tool.name),
-    ["list_available_skills", "activate_skill"],
+    ["activate_skill"],
   );
-});
-
-test("AgentListAvailableSkillsTool renders the company skill catalog", async () => {
-  const tool = new AgentListAvailableSkillsTool({
-    async listAvailableSkills() {
-      return [{
-        active: false,
-        description: "Browser automation guidance.",
-        files: ["scripts/open.sh", "references/FOO.md"],
-        githubTrackedCommitSha: "commit-sha-1",
-        name: "Browser skill",
-        repository: "companyhelm/skills",
-        skillDirectory: "skills/browser",
-      }];
-    },
-  } as never);
-
-  const result = await tool.createDefinition().execute(
-    "tool-call-1",
-    {},
-    undefined,
-    undefined,
-    {} as never,
-  );
-
-  assert.deepEqual(result, {
-    content: [{
-      text: [
-        "name: Browser skill",
-        "active: no",
-        'files: ["scripts/open.sh","references/FOO.md"]',
-        "description: Browser automation guidance.",
-        "repository: companyhelm/skills",
-        "skillDirectory: skills/browser",
-      ].join("\n"),
-      type: "text",
-    }],
-  });
 });
 
 test("AgentActivateSkillTool renders the activated skill with relative file paths", async () => {

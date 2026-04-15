@@ -1,5 +1,13 @@
 ## Skills Tools
 
 Use skill tools when the task would benefit from reusable company instructions that are already stored in the CompanyHelm skill catalog.
-Inspect the available skills first when the right skill is not obvious, then activate only the specific skills that are relevant to the current work.
+Available skills for this session:
+{% if availableSkills.length > 0 %}
+{% for skill in availableSkills %}
+- {{ skill.name }}: {{ skill.description }}
+{% endfor %}
+{% else %}
+- None
+{% endif %}
+Activate only the specific skills that are relevant to the current work.
 Activating a file-backed skill may copy files into the leased environment at /home/user/skills/<Skill Name>, so inspect that directory when you need the materialized skill files and avoid activating unrelated skills "just in case."

@@ -1,7 +1,5 @@
 import { readFileSync } from "node:fs";
 import nunjucks from "nunjucks";
-import { AgentSessionModulePromptContext } from "./prompt_context.ts";
-
 /**
  * Loads and renders one module-owned append-system-prompt template from the shared template tree.
  * The module name stays the lookup key so prompt text lives beside other templates instead of
@@ -17,7 +15,7 @@ export class AgentSessionModulePromptTemplate {
     ).trim();
   }
 
-  render(context: AgentSessionModulePromptContext): string {
+  render(context: object): string {
     return nunjucks.renderString(this.templateSource, context).trim();
   }
 }

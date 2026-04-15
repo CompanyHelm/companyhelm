@@ -128,7 +128,6 @@ const baseToolNames = [
   "list_assigned_secrets",
   "read_secret",
   "list_available_secrets",
-  "list_available_skills",
   "activate_skill",
   "list_company_members",
   "list_company_agents",

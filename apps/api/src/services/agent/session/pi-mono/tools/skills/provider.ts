@@ -1,7 +1,6 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentActivateSkillTool } from "./activate.ts";
-import { AgentListAvailableSkillsTool } from "./list_available.ts";
 import { AgentSkillToolService } from "./service.ts";
 
 /**
@@ -18,7 +17,6 @@ export class AgentSkillToolProvider extends AgentToolProviderInterface {
 
   createToolDefinitions(): ToolDefinition[] {
     return [
-      new AgentListAvailableSkillsTool(this.skillToolService).createDefinition(),
       new AgentActivateSkillTool(this.skillToolService).createDefinition(),
     ] as unknown as ToolDefinition[];
   }
