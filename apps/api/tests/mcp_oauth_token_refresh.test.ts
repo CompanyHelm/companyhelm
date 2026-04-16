@@ -92,7 +92,7 @@ test("McpService lazily refreshes expired OAuth tokens when MCP authorization is
           },
           refreshToken: "new-refresh-token",
           scope: ["repo:read"],
-          tokenType: "Bearer",
+          tokenType: "bearer",
         };
       },
     } as never,
@@ -155,6 +155,76 @@ test("McpService lazily refreshes expired OAuth tokens when MCP authorization is
   assert.equal(harness.updateCalls.length, 1);
   assert.equal(harness.updateCalls[0]?.status, "connected");
   assert.equal(harness.updateCalls[0]?.lastError, null);
+});
+
+test("McpService canonicalizes lowercase bearer tokens before MCP requests", async () => {
+  const service = new McpService(
+    {
+      decrypt(value: string) {
+        return value;
+      },
+      encrypt(value: string) {
+        return {
+          encryptedValue: value,
+          encryptionKeyId: "enc-key",
+        };
+      },
+    } as never,
+    {} as never,
+  );
+  const harness = createTransactionHarness({
+    connectionRows: [{
+      accessTokenExpiresAt: new Date("2026-04-11T20:00:00.000Z"),
+      authorizationServerMetadata: {
+        token_endpoint: "https://auth.example.com/token",
+      },
+      lastError: null,
+      mcpServerId: "mcp-server-123",
+      oauthClientId: "client-123",
+      oauthClientSecretEncryptedValue: null,
+      oauthClientSecretEncryptionKeyId: null,
+      requestedScopes: [],
+      resourceIndicator: "https://mcp.example.com/",
+      resourceMetadataUrl: "https://mcp.example.com/resource-metadata",
+      status: "connected",
+      tokenEncryptedValue: JSON.stringify({
+        accessToken: "notion-access-token",
+        expiresAt: "2026-04-11T20:00:00.000Z",
+        rawResponse: {},
+        refreshToken: "refresh-token",
+        scope: [],
+        tokenType: "bearer",
+      }),
+      tokenEncryptionKeyId: "enc-key",
+      tokenEndpointAuthMethod: "client_secret_post",
+      updatedAt: new Date(),
+    }],
+    serverRows: [{
+      authType: "oauth_authorization_code",
+      callTimeoutMs: 10_000,
+      companyId: "company-123",
+      createdAt: new Date(),
+      description: null,
+      enabled: true,
+      headers: {},
+      id: "mcp-server-123",
+      name: "Notion MCP",
+      updatedAt: new Date(),
+      url: "https://mcp.example.com/",
+    }],
+  });
+
+  const headers = await service.resolveMcpServerRequestHeaders(harness.transactionProvider as never, {
+    companyId: "company-123",
+    mcpServerId: "mcp-server-123",
+    now: new Date("2026-04-11T18:30:00.000Z"),
+    refreshWindowMs: 60_000,
+  });
+
+  assert.deepEqual(headers, {
+    Authorization: "Bearer notion-access-token",
+  });
+  assert.equal(harness.updateCalls.length, 0);
 });
 
 test("McpService marks the OAuth connection degraded when lazy refresh fails", async () => {
