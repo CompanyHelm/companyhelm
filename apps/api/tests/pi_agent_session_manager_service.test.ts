@@ -5,6 +5,7 @@ import { PiMonoSessionManagerService } from "../src/services/agent/session/pi-mo
 const piAgentMocks = vi.hoisted(() => {
   return {
     abortMock: vi.fn(async () => undefined),
+    appendMessageMock: vi.fn<(message: unknown) => void>(),
     continueMock: vi.fn(async () => undefined),
     createExtensionRuntimeMock: vi.fn(() => ({})),
     createAgentSessionMock: vi.fn(),
@@ -12,14 +13,16 @@ const piAgentMocks = vi.hoisted(() => {
     findModelMock: vi.fn<(providerId: string, modelId: string) => unknown>(),
     newSessionMock: vi.fn<(options: { id?: string }) => void>(),
     promptMock: vi.fn(async () => undefined),
-    replaceMessagesMock: vi.fn<(messages: unknown[]) => void>(),
     setActiveToolsByNameMock: vi.fn<(toolNames: string[]) => void>(),
     setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
     steerMock: vi.fn(async () => undefined),
     subscribeMock: vi.fn(),
     authStorageInstances: [] as Array<{ setRuntimeApiKey: ReturnType<typeof vi.fn> }>,
     modelRegistryInstances: [] as Array<{ authStorage: unknown; find: ReturnType<typeof vi.fn> }>,
-    sessionManagerInstances: [] as Array<{ newSession: ReturnType<typeof vi.fn> }>,
+    sessionManagerInstances: [] as Array<{
+      appendMessage: ReturnType<typeof vi.fn>;
+      newSession: ReturnType<typeof vi.fn>;
+    }>,
   };
 });
 
@@ -52,6 +55,7 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
   }
 
   class MockSessionManager {
+    appendMessage = piAgentMocks.appendMessageMock;
     newSession = piAgentMocks.newSessionMock;
 
     static inMemory() {
@@ -83,6 +87,7 @@ vi.mock("../src/services/mcp/runtime/client.ts", () => {
 
 beforeEach(() => {
   piAgentMocks.abortMock.mockReset();
+  piAgentMocks.appendMessageMock.mockReset();
   piAgentMocks.continueMock.mockReset();
   piAgentMocks.createExtensionRuntimeMock.mockClear();
   piAgentMocks.createAgentSessionMock.mockReset();
@@ -90,7 +95,6 @@ beforeEach(() => {
   piAgentMocks.findModelMock.mockReset();
   piAgentMocks.newSessionMock.mockReset();
   piAgentMocks.promptMock.mockReset();
-  piAgentMocks.replaceMessagesMock.mockReset();
   piAgentMocks.setActiveToolsByNameMock.mockReset();
   piAgentMocks.setRuntimeApiKeyMock.mockReset();
   piAgentMocks.steerMock.mockReset();
@@ -222,7 +226,6 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     abort: piAgentMocks.abortMock,
     agent: {
       continue: piAgentMocks.continueMock,
-      replaceMessages: piAgentMocks.replaceMessagesMock,
       state: {
         messages: [{
           content: "Updated context",
@@ -457,7 +460,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.findModelMock.mock.calls, [["openai", "gpt-5.4"]]);
   assert.deepEqual(piAgentMocks.setRuntimeApiKeyMock.mock.calls, [["openai", "sk-test"]]);
   assert.deepEqual(piAgentMocks.newSessionMock.mock.calls, [[{ id: "session-1" }]]);
-  assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[storedMessages]]);
+  assert.deepEqual(piAgentMocks.appendMessageMock.mock.calls, storedMessages.map((message) => [message]));
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
     cwd?: string;
@@ -562,7 +565,6 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
     abort: piAgentMocks.abortMock,
     agent: {
       continue: piAgentMocks.continueMock,
-      replaceMessages: piAgentMocks.replaceMessagesMock,
       state: {
         messages: [{
           content: "Updated context",
@@ -782,7 +784,6 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   const createdSession = {
     abort: piAgentMocks.abortMock,
     agent: {
-      replaceMessages: piAgentMocks.replaceMessagesMock,
       state: {
         messages: [],
       },
@@ -968,7 +969,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   assert.equal(second, createdSession);
   assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
   assert.equal(piAgentMocks.disposeMock.mock.calls.length, 0);
-  assert.deepEqual(piAgentMocks.replaceMessagesMock.mock.calls, [[[]]]);
+  assert.deepEqual(piAgentMocks.appendMessageMock.mock.calls, []);
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
     resourceLoader?: {
       getAppendSystemPrompt(): string[];
@@ -989,7 +990,6 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
     abort: piAgentMocks.abortMock,
     agent: {
       continue: piAgentMocks.continueMock,
-      replaceMessages: piAgentMocks.replaceMessagesMock,
       state: {
         messages: [],
       },

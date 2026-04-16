@@ -190,6 +190,10 @@ export class PiMonoSessionManagerService {
       id: sessionId,
     });
     const storedContextMessagesSnapshot = await this.loadStoredContextMessagesSnapshot(transactionProvider, sessionId);
+    for (const message of storedContextMessagesSnapshot.contextMessagesSnapshot) {
+      // PI Mono restores initial agent state from the SessionManager history.
+      sessionManager.appendMessage(message);
+    }
     const resourceLoader = new CompanyHelmResourceLoader(
       bootstrapContext.toSystemPromptTemplateContext(),
       sessionModuleResolution.appendSystemPrompts,
@@ -211,7 +215,6 @@ export class PiMonoSessionManagerService {
       thinkingLevel: this.resolveThinkingLevel(bootstrapContext.reasoningLevel),
     });
     session.setActiveToolsByName(initializedTools.map((tool) => tool.name));
-    session.agent.replaceMessages(storedContextMessagesSnapshot.contextMessagesSnapshot);
     const sessionEventHandler = new PiMonoSessionEventHandler(
       transactionProvider,
       sessionId,
