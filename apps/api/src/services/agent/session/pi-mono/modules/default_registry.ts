@@ -60,7 +60,7 @@ export class DefaultAgentSessionModuleRegistry {
     this.registry = new AgentSessionModuleRegistry([
       new CorePromptSessionModule(),
       new RuntimeSessionModule(),
-      new TerminalSessionModule(input.logger),
+      new TerminalSessionModule(input.logger, input.config),
       new ComputerUseSessionModule(input.config, input.computeProviderDefinitionService),
       new SecretsSessionModule(input.secretService),
       new SkillsSessionModule(),

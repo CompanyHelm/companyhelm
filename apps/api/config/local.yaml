@@ -36,6 +36,13 @@ redis:
 workers:
   session_process:
     concurrency: 100
+agent_tools:
+  read_image:
+    max_source_bytes: 26214400
+    max_return_bytes: 4194304
+    default_resolution:
+      width: 1280
+      height: 1280
 web_search:
   exa:
     api_key: "${EXA_API_KEY}"

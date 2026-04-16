@@ -58,6 +58,16 @@ export const ConfigDocument = z.object({
       concurrency: PositiveIntegerSchema,
     }),
   }),
+  agent_tools: z.object({
+    read_image: z.object({
+      default_resolution: z.object({
+        height: PositiveIntegerSchema,
+        width: PositiveIntegerSchema,
+      }),
+      max_return_bytes: PositiveIntegerSchema,
+      max_source_bytes: PositiveIntegerSchema,
+    }),
+  }),
   web_search: z.object({
     exa: z.object({
       api_key: NonEmptyStringSchema,

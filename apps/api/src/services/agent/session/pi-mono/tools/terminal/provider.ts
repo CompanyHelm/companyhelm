@@ -10,6 +10,8 @@ import { AgentPtyListTool } from "./pty_list.ts";
 import { AgentPtyReadOutputTool } from "./pty_read_output.ts";
 import { AgentPtyResizeTool } from "./pty_resize.ts";
 import { AgentPtySendInputTool } from "./pty_send_input.ts";
+import { AgentReadImageTool } from "./read_image.ts";
+import { AgentReadImageToolService } from "./read_image_service.ts";
 
 /**
  * Groups the environment-backed shell editing and terminal tools behind one provider so the
@@ -18,11 +20,17 @@ import { AgentPtySendInputTool } from "./pty_send_input.ts";
 export class AgentTerminalToolProvider extends AgentToolProviderInterface {
   private readonly logger: PinoLogger;
   private readonly promptScope: AgentEnvironmentPromptScope;
+  private readonly readImageToolService: AgentReadImageToolService;
 
-  constructor(promptScope: AgentEnvironmentPromptScope, logger: PinoLogger) {
+  constructor(
+    promptScope: AgentEnvironmentPromptScope,
+    logger: PinoLogger,
+    readImageToolService: AgentReadImageToolService,
+  ) {
     super();
     this.promptScope = promptScope;
     this.logger = logger;
+    this.readImageToolService = readImageToolService;
   }
 
   createToolDefinitions(): ToolDefinition[] {
@@ -35,6 +43,7 @@ export class AgentTerminalToolProvider extends AgentToolProviderInterface {
       new AgentPtyReadOutputTool(this.promptScope).createDefinition(),
       new AgentPtyResizeTool(this.promptScope).createDefinition(),
       new AgentPtyKillTool(this.promptScope).createDefinition(),
+      new AgentReadImageTool(this.promptScope, this.readImageToolService).createDefinition(),
     ];
   }
 }

@@ -17,7 +17,17 @@ import { AgentSkillToolProvider } from "../src/services/agent/session/pi-mono/to
 import { AgentToolsService } from "../src/services/agent/session/pi-mono/tools/service.ts";
 import { AgentTaskToolProvider } from "../src/services/agent/session/pi-mono/tools/tasks/provider.ts";
 import { AgentTerminalToolProvider } from "../src/services/agent/session/pi-mono/tools/terminal/provider.ts";
+import { AgentReadImageToolService } from "../src/services/agent/session/pi-mono/tools/terminal/read_image_service.ts";
 import { AgentWebToolProvider } from "../src/services/agent/session/pi-mono/tools/web/provider.ts";
+
+function createReadImageToolService(): AgentReadImageToolService {
+  return new AgentReadImageToolService({
+    defaultResolutionHeight: 1280,
+    defaultResolutionWidth: 1280,
+    maxReturnBytes: 4 * 1024 * 1024,
+    maxSourceBytes: 25 * 1024 * 1024,
+  });
+}
 
 test("AgentToolsService initializes the environment-backed terminal tool catalog once per prompt scope", () => {
   const service = new AgentToolsService({
@@ -32,7 +42,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       async getEnvironment() {
         throw new Error("tools should not acquire the environment during initialization");
       },
-    } as never, {} as never),
+    } as never, {} as never, createReadImageToolService()),
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during initialization");
@@ -159,6 +169,7 @@ test("AgentToolsService initializes the environment-backed terminal tool catalog
       "pty_read_output",
       "pty_resize",
       "pty_kill",
+      "read_image",
       "list_assigned_secrets",
       "read_secret",
       "list_available_secrets",
@@ -207,7 +218,7 @@ test("AgentToolsService cleanup disposes the prompt scope", async () => {
       async getEnvironment() {
         throw new Error("tools should not acquire the environment during cleanup");
       },
-    } as never, {} as never),
+    } as never, {} as never, createReadImageToolService()),
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during cleanup");
@@ -348,7 +359,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       async getEnvironment() {
         throw new Error("session creation should not eagerly acquire the environment");
       },
-    } as never, {} as never),
+    } as never, {} as never, createReadImageToolService()),
     new AgentSecretToolProvider({
       async listAssignedSecrets() {
         throw new Error("assigned secrets should not be loaded during session creation");
@@ -489,6 +500,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
       "pty_read_output",
       "pty_resize",
       "pty_kill",
+      "read_image",
       "list_assigned_secrets",
       "read_secret",
       "list_available_secrets",

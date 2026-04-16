@@ -138,6 +138,13 @@ redis:
 workers:
   session_process:
     concurrency: 4
+agent_tools:
+  read_image:
+    max_source_bytes: 26214400
+    max_return_bytes: 4194304
+    default_resolution:
+      width: 1280
+      height: 1280
 web_search:
   exa:
     api_key: "\${${params.exaApiKeyVariableName}}"
@@ -212,6 +219,14 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     session_process: {
       concurrency: 4,
     },
+  });
+  assert.deepEqual(document.agent_tools.read_image, {
+    default_resolution: {
+      height: 1280,
+      width: 1280,
+    },
+    max_return_bytes: 4194304,
+    max_source_bytes: 26214400,
   });
   assert.deepEqual(document.security.encryption, {
     key: "companyhelm-local-encryption-key",
