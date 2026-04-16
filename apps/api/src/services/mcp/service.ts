@@ -385,7 +385,7 @@ export class McpService {
       if (expiresAt && Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() > now.getTime() + refreshWindowMs) {
         return {
           ...server.headers,
-          Authorization: `${storedToken.tokenType} ${storedToken.accessToken}`,
+          Authorization: this.buildOauthAuthorizationHeader(storedToken.tokenType, storedToken.accessToken),
         };
       }
 
@@ -459,7 +459,7 @@ export class McpService {
 
         return {
           ...server.headers,
-          Authorization: `${refreshedToken.tokenType} ${refreshedToken.accessToken}`,
+          Authorization: this.buildOauthAuthorizationHeader(refreshedToken.tokenType, refreshedToken.accessToken),
         };
       } catch (error) {
         await this.markOauthConnectionDegraded(tx, {
@@ -712,6 +712,15 @@ export class McpService {
     }
 
     return connection.status === "degraded" ? "degraded" : "connected";
+  }
+
+  private buildOauthAuthorizationHeader(tokenType: string, accessToken: string): string {
+    const normalizedTokenType = normalizeNonEmptyString(tokenType) ?? "Bearer";
+    const authorizationScheme = normalizedTokenType.toLowerCase() === "bearer"
+      ? "Bearer"
+      : normalizedTokenType;
+
+    return `${authorizationScheme} ${accessToken}`;
   }
 
   private requireNonEmptyValue(value: string, label: string): string {
