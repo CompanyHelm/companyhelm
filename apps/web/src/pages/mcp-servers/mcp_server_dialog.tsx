@@ -369,12 +369,10 @@ export function McpServerDialog(props: McpServerDialogProps) {
   );
   const canManageAuthorizationCodeConnection = isEditing
     && props.server?.authType === "oauth_authorization_code"
-    && authType === "oauth_authorization_code"
-    && !hasUnsavedServerChanges;
+    && authType === "oauth_authorization_code";
   const canManageClientCredentialsConnection = isEditing
     && props.server?.authType === "oauth_client_credentials"
-    && authType === "oauth_client_credentials"
-    && !hasUnsavedServerChanges;
+    && authType === "oauth_client_credentials";
   const hasAutoDetectedAuthType = Boolean(authDetection?.wasAutoDetected && authDetection.detectedAuthType);
   const isAuthTypeLocked = hasAutoDetectedAuthType && !isAuthTypeOverrideEnabled;
   const shouldShowAuthorizationCodeManualClientFields = authType === "oauth_authorization_code"
@@ -382,7 +380,6 @@ export function McpServerDialog(props: McpServerDialogProps) {
   const shouldShowEditOauthFooterActions = isEditing
     && (authType === "oauth_authorization_code" || authType === "oauth_client_credentials");
   const isEditOauthFooterActionDisabled = props.isSaving
-    || hasUnsavedServerChanges
     || !props.server
     || (authType === "oauth_authorization_code" && props.server.authType !== "oauth_authorization_code")
     || (authType === "oauth_client_credentials" && props.server.authType !== "oauth_client_credentials");
