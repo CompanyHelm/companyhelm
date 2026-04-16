@@ -103,6 +103,7 @@ export class SessionProcessExecutionService {
   async execute(companyId: string, sessionId: string): Promise<void> {
     const lease = await this.sessionLeaseService.acquire(companyId, sessionId);
     if (!lease) {
+      await this.enqueueDelayedWakeIfPending(companyId, sessionId);
       this.logger.debug({
         companyId,
         sessionId,
@@ -307,6 +308,25 @@ export class SessionProcessExecutionService {
     sessionId: string,
   ): Promise<void> {
     await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdateChannel(sessionId));
+  }
+
+  private async enqueueDelayedWakeIfPending(
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const transactionProvider = new AppRuntimeTransactionProvider(this.appRuntimeDatabase, companyId);
+    const hasPendingMessages = await this.sessionQueuedMessageService.hasPendingMessages(
+      transactionProvider,
+      companyId,
+      sessionId,
+    );
+    if (!hasPendingMessages) {
+      return;
+    }
+
+    await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId, {
+      delayMilliseconds: SessionLeaseService.LEASE_TTL_MILLISECONDS,
+    });
   }
 
   private async loadRuntimeConfig(

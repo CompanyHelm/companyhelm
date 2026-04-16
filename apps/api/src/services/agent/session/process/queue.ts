@@ -9,6 +9,10 @@ export type SessionWakeJobPayload = {
   sessionId: string;
 };
 
+export type SessionWakeQueueOptions = {
+  delayMilliseconds?: number;
+};
+
 /**
  * Owns the BullMQ queue used to wake session-processing workers. Its scope is queue configuration
  * and graceful queue shutdown for the API process. Wake jobs intentionally do not use a
@@ -38,7 +42,11 @@ export class SessionProcessQueueService {
     });
   }
 
-  async enqueueSessionWake(companyId: string, sessionId: string): Promise<void> {
+  async enqueueSessionWake(
+    companyId: string,
+    sessionId: string,
+    options: SessionWakeQueueOptions = {},
+  ): Promise<void> {
     await this.queue.add(
       this.names.getWakeJobName(),
       {
@@ -46,8 +54,14 @@ export class SessionProcessQueueService {
         sessionId,
       },
       {
-      removeOnComplete: true,
-      removeOnFail: true,
+        attempts: 3,
+        backoff: {
+          delay: 2_000,
+          type: "exponential",
+        },
+        delay: options.delayMilliseconds,
+        removeOnComplete: true,
+        removeOnFail: true,
       },
     );
   }

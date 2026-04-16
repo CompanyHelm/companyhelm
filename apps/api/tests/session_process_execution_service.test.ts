@@ -50,12 +50,80 @@ test("SessionProcessExecutionService no-ops when another worker already owns the
       async listProcessable() {
         throw new Error("Queued messages should not be loaded without a lease.");
       },
+      async hasPendingMessages() {
+        return false;
+      },
     } as never,
     undefined as never,
     companySettingsService as never,
   );
 
   await service.execute("company-1", "session-1");
+});
+
+test("SessionProcessExecutionService schedules a delayed wake when pending work is blocked by an active lease", async () => {
+  const queueWakeCalls: Array<{ companyId: string; delayMilliseconds?: number; sessionId: string }> = [];
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        return callback({});
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {},
+        };
+      },
+    } as never,
+    {
+      async ensureSession() {
+        throw new Error("ensureSession should not be called.");
+      },
+    } as never,
+    {
+      async getClient() {
+        throw new Error("Redis should not be used without a lease.");
+      },
+    } as never,
+    {
+      async acquire() {
+        return null;
+      },
+    } as never,
+    {
+      async enqueueSessionWake(
+        companyId: string,
+        sessionId: string,
+        options: { delayMilliseconds?: number },
+      ) {
+        queueWakeCalls.push({
+          companyId,
+          delayMilliseconds: options.delayMilliseconds,
+          sessionId,
+        });
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        throw new Error("Queued messages should not be loaded without a lease.");
+      },
+      async hasPendingMessages() {
+        return true;
+      },
+    } as never,
+    undefined as never,
+    companySettingsService as never,
+  );
+
+  await service.execute("company-1", "session-1");
+
+  assert.deepEqual(queueWakeCalls, [{
+    companyId: "company-1",
+    delayMilliseconds: 30_000,
+    sessionId: "session-1",
+  }]);
 });
 
 test("SessionProcessExecutionService does not replay an in-flight row when another wake arrives", async () => {
