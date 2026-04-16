@@ -11,6 +11,10 @@ export function formatProviderLabel(value: string): string {
     return "OpenAI (Subscription)";
   }
 
+  if (value === "google-gemini-cli") {
+    return "Google Gemini CLI (Subscription)";
+  }
+
   if (value === "anthropic") {
     return "Anthropic (API key)";
   }
@@ -19,7 +23,7 @@ export function formatProviderLabel(value: string): string {
 }
 
 export function formatProviderCredentialType(value: string): string {
-  if (value === "oauth" || value === "oauth_token" || value === "openai-codex") {
+  if (value === "oauth" || value === "oauth_token" || value === "openai-codex" || value === "google-gemini-cli") {
     return "Subscription";
   }
 

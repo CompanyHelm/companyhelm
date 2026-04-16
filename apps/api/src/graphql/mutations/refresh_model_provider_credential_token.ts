@@ -109,10 +109,6 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
       if (credential.type !== "oauth_token") {
         throw new Error("Only OAuth credentials can be refreshed.");
       }
-      if (credential.modelProvider !== "openai-codex") {
-        throw new Error(`OAuth refresh is not supported for model provider ${credential.modelProvider}.`);
-      }
-
       let refreshedCredential;
       try {
         refreshedCredential = await this.refreshService.refreshCredential({

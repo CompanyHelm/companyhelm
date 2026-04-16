@@ -48,12 +48,28 @@ test("ModelProviderService returns oauth instructions for openai-codex", () => {
   });
 });
 
+test("ModelProviderService returns oauth instructions for google-gemini-cli", () => {
+  const service = new ModelProviderService();
+
+  assert.deepEqual(service.get("google-gemini-cli"), {
+    id: "google-gemini-cli",
+    name: "Google Gemini CLI",
+    type: ModelProviderAuthorizationType.Oauth,
+    authorizationInstructionsMarkdown: [
+      "run this command",
+      "```",
+      "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json and paste below",
+      "```",
+    ].join("\n"),
+  });
+});
+
 test("ModelProviderService lists supported providers in modal order", () => {
   const service = new ModelProviderService();
 
   assert.deepEqual(
     service.list().map((provider) => provider.id),
-    ["openai", "anthropic", "openrouter", "openai-codex"],
+    ["openai", "anthropic", "openrouter", "openai-codex", "google-gemini-cli"],
   );
 });
 

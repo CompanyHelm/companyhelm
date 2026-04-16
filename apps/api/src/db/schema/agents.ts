@@ -15,7 +15,13 @@ import { sql } from "drizzle-orm/sql";
 import { companySecrets, companies, secret_groups, users } from "./company.ts";
 import { computeProviderDefinitions } from "./environments.ts";
 
-export const modelProviderEnum = pgEnum("model_provider", ["openai", "anthropic", "openai-codex", "openrouter"]);
+export const modelProviderEnum = pgEnum("model_provider", [
+  "openai",
+  "anthropic",
+  "openai-codex",
+  "openrouter",
+  "google-gemini-cli",
+]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
 export const modelProviderCredentialStatusEnum = pgEnum("model_provider_credential_status", ["active", "error"]);
 

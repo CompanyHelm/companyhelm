@@ -208,6 +208,46 @@ test("ModelService fetchModels uses the dedicated openai-codex adapter", async (
   }
 });
 
+test("ModelService fetchModels uses the dedicated google-gemini-cli adapter", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCallCount = 0;
+  globalThis.fetch = (async () => {
+    fetchCallCount += 1;
+    throw new Error("google-gemini-cli should not call a model discovery API");
+  }) as typeof fetch;
+
+  try {
+    const modelService = new ModelService(new ModelRegistry());
+
+    const models = await modelService.fetchModels(
+      "google-gemini-cli",
+      JSON.stringify({
+        token: "oauth-access-token",
+        projectId: "project-1",
+      }),
+    );
+
+    assert.equal(fetchCallCount, 0);
+    assert.equal(models[0]?.provider, "google-gemini-cli");
+    assert.ok(models.some((model) => model.modelId === "gemini-3.1-pro-preview"));
+    assert.deepEqual(
+      models.find((model) => model.modelId === "gemini-3.1-pro-preview")?.reasoningLevels,
+      ["minimal", "low", "medium", "high"],
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("ModelService rejects google-gemini-cli credentials without projectId", async () => {
+  const modelService = new ModelService(new ModelRegistry());
+
+  await assert.rejects(
+    () => modelService.fetchModels("google-gemini-cli", JSON.stringify({ token: "oauth-access-token" })),
+    /token and projectId/,
+  );
+});
+
 test("ModelService fetchModels uses the dedicated openrouter adapter", async () => {
   const originalFetch = globalThis.fetch;
   const calls: string[] = [];

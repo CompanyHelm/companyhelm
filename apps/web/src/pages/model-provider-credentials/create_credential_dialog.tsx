@@ -163,7 +163,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                 onChange={(event) => {
                   setAuthFileContents(event.target.value);
                 }}
-                placeholder='{\n  "openai-codex": {\n    "type": "oauth",\n    "access": "...",\n    "refresh": "...",\n    "expires": 1775358352922\n  }\n}'
+                placeholder='{\n  "google-gemini-cli": {\n    "type": "oauth",\n    "access": "...",\n    "refresh": "...",\n    "expires": 1775358352922,\n    "projectId": "..."\n  }\n}'
                 value={authFileContents}
                 className={cn(
                   "min-h-32 w-full rounded-md border border-input bg-input/20 px-3 py-2 font-mono text-xs transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",

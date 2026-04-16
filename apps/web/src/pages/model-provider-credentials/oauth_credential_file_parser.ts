@@ -40,10 +40,34 @@ export class OauthCredentialFileParser {
     }
 
     return {
-      accessToken,
+      accessToken: this.resolveAccessToken({
+        accessToken,
+        providerId: normalizedProviderId,
+        providerPayload,
+      }),
       accessTokenExpiresAtMilliseconds: String(expires),
       refreshToken,
     };
+  }
+
+  private resolveAccessToken(input: {
+    accessToken: string;
+    providerId: string;
+    providerPayload: Record<string, unknown>;
+  }): string {
+    if (input.providerId !== "google-gemini-cli") {
+      return input.accessToken;
+    }
+
+    const projectId = String(input.providerPayload.projectId || "").trim();
+    if (!projectId) {
+      throw new Error("Auth file entry for google-gemini-cli is missing projectId.");
+    }
+
+    return JSON.stringify({
+      token: input.accessToken,
+      projectId,
+    });
   }
 
   private parseJsonDocument(rawDocument: string): Record<string, unknown> {

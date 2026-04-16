@@ -1,6 +1,6 @@
 import { injectable } from "inversify";
 
-export type ModelProviderId = "anthropic" | "openai" | "openai-codex" | "openrouter";
+export type ModelProviderId = "anthropic" | "google-gemini-cli" | "openai" | "openai-codex" | "openrouter";
 
 export enum ModelProviderAuthorizationType {
   ApiKey = "api_key",
@@ -62,6 +62,20 @@ export class ModelProviderService {
           "run this command",
           "```",
           "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json and paste below",
+          "```",
+        ].join("\n"),
+      },
+    ],
+    [
+      "google-gemini-cli",
+      {
+        id: "google-gemini-cli",
+        name: "Google Gemini CLI",
+        type: ModelProviderAuthorizationType.Oauth,
+        authorizationInstructionsMarkdown: [
+          "run this command",
+          "```",
+          "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json and paste below",
           "```",
         ].join("\n"),
       },

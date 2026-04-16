@@ -5,6 +5,7 @@ import type { TransactionProviderInterface } from "../../db/transaction_provider
 import { ModelRegistry } from "./model_registry.js";
 import { ModelProviderModel } from "./model_provider_model.js";
 import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_model_adapter.js";
+import { GoogleGeminiCliModelAdapter } from "../providers/models-adapters/google_gemini_cli_model_adapter.js";
 import type { ModelAdapterInterface } from "../providers/models-adapters/model_adapter_interface.js";
 import { OpenAiCodexModelAdapter } from "../providers/models-adapters/openai_codex_model_adapter.js";
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
@@ -66,6 +67,7 @@ export class ModelService {
       ["openai-codex", new OpenAiCodexModelAdapter(modelRegistry)],
       ["anthropic", new AnthropicModelAdapter(modelRegistry)],
       ["openrouter", new OpenRouterModelAdapter()],
+      ["google-gemini-cli", new GoogleGeminiCliModelAdapter()],
     ]);
   }
 

@@ -135,6 +135,73 @@ test("RefreshModelProviderCredentialTokenMutation refreshes an oauth credential 
   assert.match(result.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
+test("RefreshModelProviderCredentialTokenMutation refreshes a google-gemini-cli credential", async () => {
+  const credentialRows = [{
+    id: "credential-1",
+    companyId: "company-123",
+    name: "Google Gemini CLI",
+    modelProvider: "google-gemini-cli",
+    type: "oauth_token",
+    refreshToken: "old-refresh-token",
+    refreshedAt: new Date("2026-04-01T10:00:00.000Z"),
+    createdAt: new Date("2026-03-20T10:00:00.000Z"),
+    isDefault: true,
+    updatedAt: new Date("2026-04-01T10:00:00.000Z"),
+    encryptedApiKey: JSON.stringify({
+      token: "old-access-token",
+      projectId: "project-1",
+    }),
+    accessTokenExpiresAt: new Date("2026-04-20T10:00:00.000Z"),
+  }];
+  const modelRows = [{
+    isDefault: true,
+    modelId: "gemini-3.1-pro-preview",
+    modelProviderCredentialId: "credential-1",
+    reasoningLevels: ["minimal", "low", "medium", "high"],
+  }];
+  const refreshService = {
+    calls: [] as Array<Record<string, unknown>>,
+    async refreshCredential(credential: Record<string, unknown>) {
+      this.calls.push(credential);
+
+      return {
+        access: JSON.stringify({
+          token: "new-access-token",
+          projectId: "project-1",
+        }),
+        refresh: "new-refresh-token",
+        expires: Date.parse("2026-04-20T12:00:00.000Z"),
+      };
+    },
+  };
+  const mutation = new RefreshModelProviderCredentialTokenMutation(undefined, refreshService as never);
+
+  const result = await mutation.execute(
+    {},
+    {
+      input: {
+        modelProviderCredentialId: "credential-1",
+      },
+    },
+    RefreshModelProviderCredentialTokenMutationTestHarness.createContext(credentialRows, modelRows),
+  );
+
+  assert.deepEqual(refreshService.calls, [{
+    accessTokenExpiresAtMilliseconds: Date.parse("2026-04-20T10:00:00.000Z"),
+    encryptedApiKey: JSON.stringify({
+      token: "old-access-token",
+      projectId: "project-1",
+    }),
+    id: "credential-1",
+    modelProvider: "google-gemini-cli",
+    refreshToken: "old-refresh-token",
+  }]);
+  assert.equal(result.id, "credential-1");
+  assert.equal(result.defaultModelId, "gemini-3.1-pro-preview");
+  assert.equal(result.defaultReasoningLevel, "high");
+  assert.equal(result.refreshToken, "new-refresh-token");
+});
+
 test("RefreshModelProviderCredentialTokenMutation rejects non-oauth credentials", async () => {
   const credentialRows = [{
     id: "credential-1",
