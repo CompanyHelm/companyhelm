@@ -65,7 +65,7 @@ type GithubSkillSelectionRecord = {
 };
 
 /**
- * Discovers GitHub-backed skills from public repositories and imports selected discovery results
+ * Discovers Git-backed skills from public repositories and imports selected discovery results
  * into the company skill catalog. Imports reload the selected SKILL.md files on the server so the
  * client never needs to echo large instructions payloads back through GraphQL.
  */
@@ -95,91 +95,15 @@ export class SkillGithubCatalog {
     branchName: string;
     repository: string;
   }): Promise<SkillGithubDiscoveredSkillRecord[]> {
-    const repositoryTree = await this.githubPublicClient.getRepositoryTree(
-      input.repository,
-      input.branchName,
-    );
-    const skillFilePaths = repositoryTree.treeEntries
-      .filter((treeEntry) => treeEntry.path === "SKILL.md" || treeEntry.path.endsWith("/SKILL.md"))
-      .map((treeEntry) => treeEntry.path)
-      .sort((left, right) => left.localeCompare(right));
-    const skillDirectories = skillFilePaths.map((skillFilePath) => this.getSkillDirectory(skillFilePath));
+    return this.githubPublicClient.inspectRepository(input.repository, input.branchName, async (repositoryTree) => {
+      const skillFilePaths = this.getSkillFilePaths(repositoryTree.treeEntries);
+      const skillDirectories = skillFilePaths.map((skillFilePath) => this.getSkillDirectory(skillFilePath));
 
-    return Promise.all(skillFilePaths.map(async (skillFilePath, skillIndex) => {
-      const skillDirectory = skillDirectories[skillIndex] || ".";
-      const fileList = repositoryTree.treeEntries
-        .filter((treeEntry) =>
-          treeEntry.path !== skillFilePath
-          && this.isWithinSkillDirectory(treeEntry.path, skillDirectory)
-          && !this.isWithinNestedSkillDirectory(treeEntry.path, skillDirectory, skillDirectories)
-        )
-        .map((treeEntry) => treeEntry.path)
-        .sort((left, right) => left.localeCompare(right));
-      const skillTreeEntry = repositoryTree.treeEntries.find((treeEntry) => treeEntry.path === skillFilePath);
-      if (!skillTreeEntry) {
-        return {
-          branchName: repositoryTree.branchName,
-          commitSha: repositoryTree.commitSha,
-          description: null,
-          fileList,
-          importable: false,
-          instructions: null,
-          name: this.getSkillName(skillDirectory, repositoryTree.repository),
-          repository: repositoryTree.repository,
-          skillDirectory,
-          validationError: "GitHub skill file could not be found.",
-        };
-      }
-
-      try {
-        const skillDocument = matter(
-          await this.githubPublicClient.readBlob(repositoryTree.repository, skillTreeEntry.sha),
-        );
-        const skillName = this.normalizeOptionalTextValue(skillDocument.data.name)
-          ?? this.getSkillName(skillDirectory, repositoryTree.repository);
-        const instructions = String(skillDocument.content || "").trim();
-        if (!instructions) {
-          return {
-            branchName: repositoryTree.branchName,
-            commitSha: repositoryTree.commitSha,
-            description: this.normalizeOptionalTextValue(skillDocument.data.description),
-            fileList,
-            importable: false,
-            instructions: null,
-            name: skillName,
-            repository: repositoryTree.repository,
-            skillDirectory,
-            validationError: "SKILL.md does not contain any instructions.",
-          };
-        }
-
-        return {
-          branchName: repositoryTree.branchName,
-          commitSha: repositoryTree.commitSha,
-          description: this.normalizeOptionalTextValue(skillDocument.data.description),
-          fileList,
-          importable: true,
-          instructions,
-          name: skillName,
-          repository: repositoryTree.repository,
-          skillDirectory,
-          validationError: null,
-        };
-      } catch (error: unknown) {
-        return {
-          branchName: repositoryTree.branchName,
-          commitSha: repositoryTree.commitSha,
-          description: null,
-          fileList,
-          importable: false,
-          instructions: null,
-          name: this.getSkillName(skillDirectory, repositoryTree.repository),
-          repository: repositoryTree.repository,
-          skillDirectory,
-          validationError: error instanceof Error ? error.message : "Failed to parse SKILL.md.",
-        };
-      }
-    }));
+      return Promise.all(skillFilePaths.map(async (skillFilePath, skillIndex) => {
+        const skillDirectory = skillDirectories[skillIndex] || ".";
+        return this.readDiscoveredSkill(repositoryTree, skillDirectory, skillDirectories);
+      }));
+    });
   }
 
   async importSkills(
@@ -228,7 +152,7 @@ export class SkillGithubCatalog {
           .returning?.(this.skillSelection()) as SkillRecord[];
 
         if (!createdSkill) {
-          throw new Error(`Failed to import GitHub skill ${githubSkillRecord.skillDirectory}.`);
+          throw new Error(`Failed to import Git skill ${githubSkillRecord.skillDirectory}.`);
         }
 
         createdSkills.push(createdSkill);
@@ -291,7 +215,16 @@ export class SkillGithubCatalog {
   private normalizeSkillDirectory(value: string): string {
     const normalizedValue = String(value || "").trim().replace(/^\/+|\/+$/g, "");
     if (!normalizedValue) {
-      throw new Error("GitHub skill directory is required.");
+      throw new Error("Git skill directory is required.");
+    }
+    if (normalizedValue === ".") {
+      return normalizedValue;
+    }
+    if (
+      normalizedValue.includes("\0")
+      || normalizedValue.split("/").some((segment) => segment === "." || segment === "..")
+    ) {
+      throw new Error("Git skill directory is invalid.");
     }
 
     return normalizedValue;
@@ -300,46 +233,156 @@ export class SkillGithubCatalog {
   private async resolveGithubSkillSelections(
     value: GithubSkillSelectionRecord[],
   ): Promise<CreateGithubSkillRecord[]> {
-    const discoveredSkillsByBranchKey = new Map<string, SkillGithubDiscoveredSkillRecord[]>();
     const githubSkillRecords: CreateGithubSkillRecord[] = [];
+    const selectionsByBranchKey = this.groupSelectionsByBranch(value);
 
-    for (const selection of value) {
-      const branchKey = `${selection.repository}:${selection.branchName}`;
-      let discoveredSkills = discoveredSkillsByBranchKey.get(branchKey);
-      if (!discoveredSkills) {
-        discoveredSkills = await this.discoverSkills({
-          branchName: selection.branchName,
-          repository: selection.repository,
-        });
-        discoveredSkillsByBranchKey.set(branchKey, discoveredSkills);
+    for (const selections of selectionsByBranchKey.values()) {
+      const [firstSelection] = selections;
+      if (!firstSelection) {
+        continue;
       }
 
-      const selectedSkill = discoveredSkills.find((skill) => skill.skillDirectory === selection.skillDirectory);
-      if (!selectedSkill) {
-        throw new Error(
-          `Skill ${selection.skillDirectory} could not be found on branch ${selection.branchName}.`,
-        );
-      }
-      if (!selectedSkill.importable || !selectedSkill.instructions) {
-        throw new Error(
-          selectedSkill.validationError
-          ?? `Skill ${selection.skillDirectory} could not be imported from GitHub.`,
-        );
-      }
+      await this.githubPublicClient.inspectRepository(firstSelection.repository, firstSelection.branchName, async (repositoryTree) => {
+        const skillDirectories = this.getSkillFilePaths(repositoryTree.treeEntries)
+          .map((skillFilePath) => this.getSkillDirectory(skillFilePath));
 
-      githubSkillRecords.push({
-        branchName: selectedSkill.branchName,
-        commitSha: selectedSkill.commitSha,
-        description: selectedSkill.description ?? "",
-        fileList: [...selectedSkill.fileList],
-        instructions: selectedSkill.instructions,
-        name: selectedSkill.name,
-        repository: selectedSkill.repository,
-        skillDirectory: selectedSkill.skillDirectory,
+        for (const selection of selections) {
+          const selectedSkill = await this.readDiscoveredSkill(
+            repositoryTree,
+            selection.skillDirectory,
+            skillDirectories,
+          );
+          if (!selectedSkill.importable || !selectedSkill.instructions) {
+            throw new Error(
+              selectedSkill.validationError
+              ?? `Skill ${selection.skillDirectory} could not be imported from Git.`,
+            );
+          }
+
+          githubSkillRecords.push({
+            branchName: selectedSkill.branchName,
+            commitSha: selectedSkill.commitSha,
+            description: selectedSkill.description ?? "",
+            fileList: [...selectedSkill.fileList],
+            instructions: selectedSkill.instructions,
+            name: selectedSkill.name,
+            repository: selectedSkill.repository,
+            skillDirectory: selectedSkill.skillDirectory,
+          });
+        }
       });
     }
 
     return githubSkillRecords;
+  }
+
+  private async readDiscoveredSkill(
+    repositoryTree: {
+      branchName: string;
+      commitSha: string;
+      repository: string;
+      treeEntries: Array<{ path: string }>;
+      readFile(path: string): Promise<string>;
+    },
+    skillDirectory: string,
+    skillDirectories: string[],
+  ): Promise<SkillGithubDiscoveredSkillRecord> {
+    const skillFilePath = this.getSkillFilePath(skillDirectory);
+    const fileList = repositoryTree.treeEntries
+      .filter((treeEntry) =>
+        treeEntry.path !== skillFilePath
+        && this.isWithinSkillDirectory(treeEntry.path, skillDirectory)
+        && !this.isWithinNestedSkillDirectory(treeEntry.path, skillDirectory, skillDirectories)
+      )
+      .map((treeEntry) => treeEntry.path)
+      .sort((left, right) => left.localeCompare(right));
+    const skillTreeEntry = repositoryTree.treeEntries.find((treeEntry) => treeEntry.path === skillFilePath);
+    if (!skillTreeEntry) {
+      return {
+        branchName: repositoryTree.branchName,
+        commitSha: repositoryTree.commitSha,
+        description: null,
+        fileList,
+        importable: false,
+        instructions: null,
+        name: this.getSkillName(skillDirectory, repositoryTree.repository),
+        repository: repositoryTree.repository,
+        skillDirectory,
+        validationError: "Git skill file could not be found.",
+      };
+    }
+
+    try {
+      const skillDocument = matter(await repositoryTree.readFile(skillFilePath));
+      const skillName = this.normalizeOptionalTextValue(skillDocument.data.name)
+        ?? this.getSkillName(skillDirectory, repositoryTree.repository);
+      const instructions = String(skillDocument.content || "").trim();
+      if (!instructions) {
+        return {
+          branchName: repositoryTree.branchName,
+          commitSha: repositoryTree.commitSha,
+          description: this.normalizeOptionalTextValue(skillDocument.data.description),
+          fileList,
+          importable: false,
+          instructions: null,
+          name: skillName,
+          repository: repositoryTree.repository,
+          skillDirectory,
+          validationError: "SKILL.md does not contain any instructions.",
+        };
+      }
+
+      return {
+        branchName: repositoryTree.branchName,
+        commitSha: repositoryTree.commitSha,
+        description: this.normalizeOptionalTextValue(skillDocument.data.description),
+        fileList,
+        importable: true,
+        instructions,
+        name: skillName,
+        repository: repositoryTree.repository,
+        skillDirectory,
+        validationError: null,
+      };
+    } catch (error: unknown) {
+      return {
+        branchName: repositoryTree.branchName,
+        commitSha: repositoryTree.commitSha,
+        description: null,
+        fileList,
+        importable: false,
+        instructions: null,
+        name: this.getSkillName(skillDirectory, repositoryTree.repository),
+        repository: repositoryTree.repository,
+        skillDirectory,
+        validationError: error instanceof Error ? error.message : "Failed to parse SKILL.md.",
+      };
+    }
+  }
+
+  private getSkillFilePaths(treeEntries: Array<{ path: string }>): string[] {
+    return treeEntries
+      .filter((treeEntry) => treeEntry.path === "SKILL.md" || treeEntry.path.endsWith("/SKILL.md"))
+      .map((treeEntry) => treeEntry.path)
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  private getSkillFilePath(skillDirectory: string): string {
+    return skillDirectory === "." ? "SKILL.md" : `${skillDirectory}/SKILL.md`;
+  }
+
+  private groupSelectionsByBranch(
+    selections: GithubSkillSelectionRecord[],
+  ): Map<string, GithubSkillSelectionRecord[]> {
+    const selectionsByBranchKey = new Map<string, GithubSkillSelectionRecord[]>();
+    for (const selection of selections) {
+      const branchKey = `${selection.repository}:${selection.branchName}`;
+      const currentSelections = selectionsByBranchKey.get(branchKey) ?? [];
+      currentSelections.push(selection);
+      selectionsByBranchKey.set(branchKey, currentSelections);
+    }
+
+    return selectionsByBranchKey;
   }
 
   private requireGithubSkillSelections(
@@ -350,12 +393,12 @@ export class SkillGithubCatalog {
     }>,
   ): GithubSkillSelectionRecord[] {
     if (!Array.isArray(value) || value.length === 0) {
-      throw new Error("At least one GitHub skill must be selected.");
+      throw new Error("At least one Git skill must be selected.");
     }
 
     return value.map((record) => ({
-      branchName: this.requireNonEmptyValue(record.branchName, "GitHub branch name"),
-      repository: this.requireNonEmptyValue(record.repository, "GitHub repository"),
+      branchName: this.requireNonEmptyValue(record.branchName, "Git branch name"),
+      repository: this.requireNonEmptyValue(record.repository, "Git repository"),
       skillDirectory: this.normalizeSkillDirectory(record.skillDirectory),
     }));
   }

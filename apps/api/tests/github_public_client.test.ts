@@ -1,237 +1,197 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
-import { Container } from "inversify";
 import { test } from "vitest";
 import { Config } from "../src/config/schema.ts";
 import { SkillGithubPublicClient } from "../src/services/skills/github/public_client.ts";
 import { SkillGithubRepositoryReference } from "../src/services/skills/github/repository_reference.ts";
 
-const TEST_GITHUB_PUBLIC_TOKEN = "ghp_test_public_repository_token";
+type GitCall = {
+  args: string[];
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+};
 
-function createConfigMock(): Config {
-  return {
-    github: {
-      public_repository_token: TEST_GITHUB_PUBLIC_TOKEN,
+function createClientMock(input: {
+  gitCommandRunner: (call: GitCall) => Promise<{ stderr?: string; stdout?: string }>;
+  removedDirectories?: string[];
+  tempDirectory?: string;
+}) {
+  return new SkillGithubPublicClient({} as Config, {
+    gitCommandRunner: async (args, options) => {
+      const result = await input.gitCommandRunner({
+        args,
+        cwd: options.cwd,
+        env: options.env,
+      });
+      return {
+        stderr: result.stderr ?? "",
+        stdout: result.stdout ?? "",
+      };
     },
-  } as Config;
-}
-
-function createJsonResponse(payload: Record<string, unknown>, status = 200): Response {
-  return new Response(JSON.stringify(payload), {
-    headers: {
-      "content-type": "application/json",
+    makeTempDirectory: async () => input.tempDirectory ?? "/tmp/companyhelm-git-skills-test",
+    removeDirectory: async (path) => {
+      input.removedDirectories?.push(path);
     },
-    status,
   });
 }
 
-test("SkillGithubRepositoryReference parses GitHub URLs into owner and repository segments", () => {
-  const repositoryReference = SkillGithubRepositoryReference.parse("https://github.com/openai/skills.git");
+test("SkillGithubRepositoryReference parses GitHub shorthand and generic HTTPS Git URLs", () => {
+  const githubReference = SkillGithubRepositoryReference.parse("openai/skills");
+  assert.equal(githubReference.owner, "openai");
+  assert.equal(githubReference.repository, "skills");
+  assert.equal(githubReference.remoteUrl, "https://github.com/openai/skills.git");
+  assert.equal(githubReference.getFullName(), "openai/skills");
 
-  assert.equal(repositoryReference.owner, "openai");
-  assert.equal(repositoryReference.repository, "skills");
-  assert.equal(repositoryReference.getFullName(), "openai/skills");
+  const gitlabReference = SkillGithubRepositoryReference.parse("https://gitlab.com/acme/platform-skills.git");
+  assert.equal(gitlabReference.owner, "acme");
+  assert.equal(gitlabReference.repository, "platform-skills");
+  assert.equal(gitlabReference.remoteUrl, "https://gitlab.com/acme/platform-skills.git");
+  assert.equal(gitlabReference.getFullName(), "https://gitlab.com/acme/platform-skills");
 });
 
-test("SkillGithubPublicClient reads a public repository tree and blob contents with Octokit", async () => {
-  const fetchImpl: typeof fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(String(input), init);
-    const url = request.url;
-    assert.equal(
-      request.headers.get("authorization"),
-      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
-    );
-    if (url.endsWith("/repos/openai/skills")) {
-      return createJsonResponse({
-        default_branch: "main",
-        full_name: "openai/skills",
-        private: false,
-      });
-    }
-    if (url.includes("/repos/openai/skills/branches/main")) {
-      return createJsonResponse({
-        commit: {
-          sha: "commit-sha-1",
-        },
-        name: "main",
-      });
-    }
-    if (url.includes("/repos/openai/skills/git/trees/commit-sha-1")) {
-      return createJsonResponse({
-        truncated: false,
-        tree: [{
-          path: "skills/browser/SKILL.md",
-          sha: "blob-skill",
-          type: "blob",
-        }, {
-          path: "skills/browser/scripts/open.sh",
-          sha: "blob-script",
-          type: "blob",
-        }],
-      });
-    }
-    if (url.includes("/repos/openai/skills/git/blobs/blob-skill")) {
-      return createJsonResponse({
-        content: Buffer.from("---\ndescription: Browser automation guidance\n---\n\nRead SKILL.md first.\n").toString("base64"),
-        encoding: "base64",
-      });
-    }
+test("SkillGithubRepositoryReference rejects unsafe Git repository URLs", () => {
+  assert.throws(() => SkillGithubRepositoryReference.parse("file:///tmp/repo"), /Git repository/);
+  assert.throws(() => SkillGithubRepositoryReference.parse("https://token@example.com/acme/repo.git"), /must not include credentials/);
+  assert.throws(() => SkillGithubRepositoryReference.parse("openai/skills/tree/main"), /owner\/repository/);
+  assert.throws(() => SkillGithubRepositoryReference.parse("https://github.com/openai/skills/tree/main"), /repository root/);
+});
 
-    throw new Error(`Unexpected GitHub request: ${url}`);
-  };
-  const client = new SkillGithubPublicClient(createConfigMock(), {
-    fetchImpl,
+test("SkillGithubPublicClient lists branches with git ls-remote and does not create a checkout", async () => {
+  const calls: GitCall[] = [];
+  const removedDirectories: string[] = [];
+  const client = createClientMock({
+    removedDirectories,
+    async gitCommandRunner(call) {
+      calls.push(call);
+      assert.equal(call.env?.GIT_TERMINAL_PROMPT, "0");
+      if (call.args.join(" ") === "ls-remote --symref https://gitlab.com/acme/platform-skills.git HEAD") {
+        return {
+          stdout: "ref: refs/heads/main\tHEAD\ncommit-main\tHEAD\n",
+        };
+      }
+      if (call.args.join(" ") === "ls-remote --heads https://gitlab.com/acme/platform-skills.git") {
+        return {
+          stdout: [
+            "commit-dev\trefs/heads/dev",
+            "commit-main\trefs/heads/main",
+          ].join("\n"),
+        };
+      }
+
+      throw new Error(`Unexpected git command: ${call.args.join(" ")}`);
+    },
   });
 
-  const repositoryTree = await client.getRepositoryTree("https://github.com/openai/skills");
-  const blobContent = await client.readBlob("openai/skills", "blob-skill");
+  const branches = await client.getRepositoryBranches("https://gitlab.com/acme/platform-skills.git");
 
-  assert.deepEqual(repositoryTree, {
+  assert.deepEqual(branches, {
+    branches: [{
+      commitSha: "commit-main",
+      isDefault: true,
+      name: "main",
+    }, {
+      commitSha: "commit-dev",
+      isDefault: false,
+      name: "dev",
+    }],
+    repository: "https://gitlab.com/acme/platform-skills",
+  });
+  assert.deepEqual(removedDirectories, []);
+  assert.equal(calls.some((call) => call.args[0] === "fetch"), false);
+});
+
+test("SkillGithubPublicClient inspects a repository through one temporary shallow checkout", async () => {
+  const calls: GitCall[] = [];
+  const removedDirectories: string[] = [];
+  const client = createClientMock({
+    removedDirectories,
+    tempDirectory: "/tmp/companyhelm-git-skills-test-123",
+    async gitCommandRunner(call) {
+      calls.push(call);
+      assert.equal(call.env?.GIT_TERMINAL_PROMPT, "0");
+      const command = call.args.join(" ");
+      if (command === "init") {
+        assert.equal(call.cwd, "/tmp/companyhelm-git-skills-test-123");
+        return {};
+      }
+      if (command === "remote add origin https://github.com/openai/skills.git") {
+        assert.equal(call.cwd, "/tmp/companyhelm-git-skills-test-123");
+        return {};
+      }
+      if (command === "fetch --depth=1 --filter=blob:none origin main") {
+        assert.equal(call.cwd, "/tmp/companyhelm-git-skills-test-123");
+        return {};
+      }
+      if (command === "rev-parse FETCH_HEAD") {
+        return {
+          stdout: "commit-sha-1\n",
+        };
+      }
+      if (command === "ls-tree -r --full-tree FETCH_HEAD") {
+        return {
+          stdout: [
+            "100644 blob 1111111111111111111111111111111111111111\tskills/browser/SKILL.md",
+            "100755 blob 2222222222222222222222222222222222222222\tskills/browser/scripts/open.sh",
+          ].join("\n"),
+        };
+      }
+      if (command === "show FETCH_HEAD:skills/browser/SKILL.md") {
+        return {
+          stdout: "---\ndescription: Browser automation guidance\n---\n\nRead SKILL.md first.\n",
+        };
+      }
+
+      throw new Error(`Unexpected git command: ${command}`);
+    },
+  });
+
+  const result = await client.inspectRepository("openai/skills", "main", async (snapshot) => ({
+    file: await snapshot.readFile("skills/browser/SKILL.md"),
+    tree: {
+      branchName: snapshot.branchName,
+      commitSha: snapshot.commitSha,
+      repository: snapshot.repository,
+      treeEntries: snapshot.treeEntries,
+    },
+  }));
+
+  assert.deepEqual(result.tree, {
     branchName: "main",
     commitSha: "commit-sha-1",
     repository: "openai/skills",
     treeEntries: [{
       path: "skills/browser/scripts/open.sh",
-      sha: "blob-script",
+      sha: "2222222222222222222222222222222222222222",
       type: "blob",
     }, {
       path: "skills/browser/SKILL.md",
-      sha: "blob-skill",
+      sha: "1111111111111111111111111111111111111111",
       type: "blob",
     }],
   });
-  assert.equal(blobContent, "---\ndescription: Browser automation guidance\n---\n\nRead SKILL.md first.\n");
+  assert.equal(result.file, "---\ndescription: Browser automation guidance\n---\n\nRead SKILL.md first.\n");
+  assert.deepEqual(removedDirectories, ["/tmp/companyhelm-git-skills-test-123"]);
+  assert.deepEqual(
+    calls.map((call) => call.args[0]),
+    ["init", "remote", "fetch", "rev-parse", "ls-tree", "show"],
+  );
 });
 
-test("SkillGithubPublicClient rejects private repositories", async () => {
-  const fetchImpl: typeof fetch = async (input) => {
-    const url = String(input);
-    if (url.endsWith("/repos/openai/private-skills")) {
-      return createJsonResponse({
-        default_branch: "main",
-        full_name: "openai/private-skills",
-        private: true,
-      });
-    }
+test("SkillGithubPublicClient removes the temporary checkout when git fails", async () => {
+  const removedDirectories: string[] = [];
+  const client = createClientMock({
+    removedDirectories,
+    async gitCommandRunner(call) {
+      if (call.args[0] === "fetch") {
+        throw new Error("remote rejected fetch");
+      }
 
-    throw new Error(`Unexpected GitHub request: ${url}`);
-  };
-  const client = new SkillGithubPublicClient({} as Config, {
-    fetchImpl,
+      return {};
+    },
   });
 
   await assert.rejects(async () => {
-    await client.getRepositoryTree("https://github.com/openai/private-skills");
-  }, /Only public GitHub repositories are supported/);
-});
-
-test("SkillGithubPublicClient fails fast and returns a quota error without retrying", async () => {
-  let requestCount = 0;
-  const fetchImpl: typeof fetch = async (input) => {
-    requestCount += 1;
-    const url = String(input);
-    if (url.endsWith("/repos/openai/skills")) {
-      return createJsonResponse({
-        documentation_url: "https://docs.github.com/rest/using-the-rest-api/rate-limits-for-the-rest-api",
-        message: "API rate limit exceeded for 127.0.0.1.",
-      }, 403);
-    }
-
-    throw new Error(`Unexpected GitHub request: ${url}`);
-  };
-  const client = new SkillGithubPublicClient({} as Config, {
-    fetchImpl,
-  });
-
-  await assert.rejects(async () => {
-    await client.getRepositoryTree("https://github.com/openai/skills");
-  }, /GitHub API request quota is exhausted while trying to read the GitHub repository/);
-  assert.equal(requestCount, 1);
-});
-
-test("SkillGithubPublicClient returns generic GitHub API failures as user-facing errors", async () => {
-  const fetchImpl: typeof fetch = async (input) => {
-    const url = String(input);
-    if (url.endsWith("/repos/openai/skills")) {
-      return createJsonResponse({
-        message: "GitHub service unavailable",
-      }, 500);
-    }
-
-    throw new Error(`Unexpected GitHub request: ${url}`);
-  };
-  const client = new SkillGithubPublicClient(createConfigMock(), {
-    fetchImpl,
-  });
-
-  await assert.rejects(async () => {
-    await client.getRepositoryTree("https://github.com/openai/skills");
-  }, /GitHub request failed while trying to read the GitHub repository: GitHub service unavailable/);
-});
-
-test("SkillGithubPublicClient turns timed out GitHub requests into user-facing errors", async () => {
-  const fetchImpl: typeof fetch = async (_input, init) =>
-    new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener("abort", () => {
-        reject(init.signal?.reason ?? new Error("Aborted."));
-      }, { once: true });
-    });
-  const client = new SkillGithubPublicClient({} as Config, {
-    fetchImpl,
-    requestTimeoutMs: 10,
-  });
-
-  await assert.rejects(async () => {
-    await client.getRepositoryTree("https://github.com/openai/skills");
-  }, /GitHub request timed out while trying to read the GitHub repository/);
-});
-
-test("SkillGithubPublicClient resolved through DI uses the configured GitHub client credentials", async () => {
-  const originalFetch = global.fetch;
-  global.fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(String(input), init);
-    assert.equal(
-      request.headers.get("authorization"),
-      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
-    );
-    if (request.url.endsWith("/repos/openai/skills")) {
-      return createJsonResponse({
-        default_branch: "main",
-        full_name: "openai/skills",
-        private: false,
-      });
-    }
-    if (request.url.includes("/repos/openai/skills/branches?")) {
-      return createJsonResponse([{
-        commit: {
-          sha: "commit-sha-main",
-        },
-        name: "main",
-      }]);
-    }
-
-    throw new Error(`Unexpected GitHub request: ${request.url}`);
-  };
-
-  try {
-    const container = new Container({
-      autobind: true,
-      defaultScope: "Singleton",
-    });
-    container.bind(Config).toConstantValue(createConfigMock());
-
-    const client = container.get(SkillGithubPublicClient);
-    const branches = await client.getRepositoryBranches("https://github.com/openai/skills");
-
-    assert.deepEqual(branches, {
-      branches: [{
-        commitSha: "commit-sha-main",
-        isDefault: true,
-        name: "main",
-      }],
-      repository: "openai/skills",
-    });
-  } finally {
-    global.fetch = originalFetch;
-  }
+    await client.getRepositoryTree("openai/skills", "main");
+  }, /Git request failed while trying to read the Git repository: remote rejected fetch/);
+  assert.deepEqual(removedDirectories, ["/tmp/companyhelm-git-skills-test"]);
 });

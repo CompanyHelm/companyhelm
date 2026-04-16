@@ -187,11 +187,11 @@ export class SkillService {
     const name = this.requireNonEmptyValue(input.name, "Skill name");
     const description = this.requireNonEmptyValue(input.description, "Skill description");
     const instructions = this.requireNonEmptyValue(input.instructions, "Skill instructions");
-    const repository = this.requireNonEmptyValue(input.repository, "GitHub repository");
-    const skillDirectory = this.requireNonEmptyValue(input.skillDirectory, "GitHub skill directory");
+    const repository = this.requireNonEmptyValue(input.repository, "Git repository");
+    const skillDirectory = this.requireNonEmptyValue(input.skillDirectory, "Git skill directory");
     const githubBranchName = input.githubBranchName === undefined || input.githubBranchName === null
       ? null
-      : this.requireNonEmptyValue(input.githubBranchName, "GitHub branch name");
+      : this.requireNonEmptyValue(input.githubBranchName, "Git branch name");
     const githubTrackedCommitSha = this.resolveTrackedCommitSha(input.fileList, input.githubTrackedCommitSha);
 
     return transactionProvider.transaction(async (tx) => {
@@ -217,7 +217,7 @@ export class SkillService {
         .returning?.(this.skillSelection()) as SkillRecord[];
 
       if (!createdSkill) {
-        throw new Error("Failed to import GitHub skill.");
+        throw new Error("Failed to import Git skill.");
       }
 
       return createdSkill;
@@ -573,10 +573,10 @@ export class SkillService {
         return null;
       }
 
-      return this.requireNonEmptyValue(githubTrackedCommitSha, "GitHub tracked commit sha");
+      return this.requireNonEmptyValue(githubTrackedCommitSha, "Git tracked commit sha");
     }
 
-    return this.requireNonEmptyValue(githubTrackedCommitSha ?? null, "GitHub tracked commit sha");
+    return this.requireNonEmptyValue(githubTrackedCommitSha ?? null, "Git tracked commit sha");
   }
 
   private async requireAgent(

@@ -1,5 +1,9 @@
+import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import { inject, injectable } from "inversify";
-import { Octokit, RequestError } from "octokit";
 import { Config } from "../../../config/schema.ts";
 import { SkillGithubRepositoryReference } from "./repository_reference.ts";
 
@@ -22,45 +26,57 @@ export type SkillGithubRepositoryTreeRecord = {
   treeEntries: SkillGithubRepositoryTreeEntry[];
 };
 
-type OctokitError = Error & {
-  request?: {
-    method?: string;
-    url?: string;
-  };
-  response?: {
-    data?: {
-      message?: string;
-    };
-    headers?: Record<string, string | number | undefined>;
-  };
-  status?: number;
+export type SkillGithubRepositorySnapshot = SkillGithubRepositoryTreeRecord & {
+  readFile(path: string): Promise<string>;
 };
+
+type GitCommandResult = {
+  stderr: string;
+  stdout: string;
+};
+
+type GitCommandRunner = (
+  args: string[],
+  options: {
+    cwd?: string;
+    env?: NodeJS.ProcessEnv;
+    timeoutMs: number;
+  },
+) => Promise<GitCommandResult>;
 
 type SkillGithubPublicClientOptions = {
-  accessToken?: string;
-  fetchImpl?: typeof fetch;
-  requestTimeoutMs?: number;
+  commandTimeoutMs?: number;
+  gitCommandRunner?: GitCommandRunner;
+  makeTempDirectory?: () => Promise<string>;
+  removeDirectory?: (path: string) => Promise<void>;
 };
 
-const DEFAULT_GITHUB_REQUEST_TIMEOUT_MS = 15_000;
+const DEFAULT_GIT_COMMAND_TIMEOUT_MS = 30_000;
+const GIT_OUTPUT_MAX_BUFFER_BYTES = 20 * 1024 * 1024;
+const execFileAsync = promisify(execFile);
 
 /**
- * Reads public GitHub repository metadata and file contents directly from the GitHub REST API
- * using Octokit so skill discovery can stay entirely in memory without cloning repositories.
+ * Reads public Git repositories through the Git transport instead of host-specific REST APIs. Each
+ * tree/file inspection uses an ephemeral shallow, blobless checkout and removes it after the call.
  */
 @injectable()
 export class SkillGithubPublicClient {
-  private readonly octokit: Octokit;
-  private readonly fetchImpl: typeof fetch;
-  private readonly requestTimeoutMs: number;
+  private readonly commandTimeoutMs: number;
+  private readonly gitCommandRunner: GitCommandRunner;
+  private readonly makeTempDirectory: () => Promise<string>;
+  private readonly removeDirectory: (path: string) => Promise<void>;
 
   constructor(
     @inject(Config) config: Config = {} as Config,
     options: SkillGithubPublicClientOptions = {},
   ) {
-    this.fetchImpl = options.fetchImpl ?? fetch;
-    this.requestTimeoutMs = this.normalizeRequestTimeoutMs(options.requestTimeoutMs);
-    this.octokit = this.createOctokit(options.accessToken ?? config.github?.public_repository_token);
+    void config;
+    this.commandTimeoutMs = this.normalizeCommandTimeoutMs(options.commandTimeoutMs);
+    this.gitCommandRunner = options.gitCommandRunner ?? this.runGitCommand;
+    this.makeTempDirectory = options.makeTempDirectory
+      ?? (() => mkdtemp(join(tmpdir(), "companyhelm-git-skills-")));
+    this.removeDirectory = options.removeDirectory
+      ?? ((path) => rm(path, { force: true, recursive: true }));
   }
 
   async getRepositoryBranches(repository: string): Promise<{
@@ -68,23 +84,18 @@ export class SkillGithubPublicClient {
     repository: string;
   }> {
     const repositoryReference = SkillGithubRepositoryReference.parse(repository);
-    const repositoryRecord = await this.getRepositoryRecord(repositoryReference);
     try {
-      const defaultBranchName = String(repositoryRecord.data.default_branch || "").trim();
-      const branchResponses = await this.octokit.paginate(this.octokit.rest.repos.listBranches, {
-        owner: repositoryReference.owner,
-        per_page: 100,
-        repo: repositoryReference.repository,
-      });
+      const [defaultBranchName, branches] = await Promise.all([
+        this.resolveDefaultBranchName(repositoryReference.remoteUrl),
+        this.listRemoteBranches(repositoryReference.remoteUrl),
+      ]);
 
       return {
-        branches: branchResponses
-          .map((branchResponse) => ({
-            commitSha: String(branchResponse.commit.sha || "").trim(),
-            isDefault: branchResponse.name === defaultBranchName,
-            name: String(branchResponse.name || "").trim(),
+        branches: branches
+          .map((branch) => ({
+            ...branch,
+            isDefault: branch.name === defaultBranchName,
           }))
-          .filter((branchResponse) => branchResponse.name.length > 0 && branchResponse.commitSha.length > 0)
           .sort((left, right) => {
             if (left.isDefault && !right.isDefault) {
               return -1;
@@ -95,10 +106,10 @@ export class SkillGithubPublicClient {
 
             return left.name.localeCompare(right.name);
           }),
-        repository: repositoryRecord.data.full_name,
+        repository: repositoryReference.getFullName(),
       };
     } catch (error: unknown) {
-      throw this.createGithubRequestError(error, "list GitHub branches");
+      throw this.createGitRequestError(error, "list Git branches");
     }
   }
 
@@ -106,339 +117,193 @@ export class SkillGithubPublicClient {
     repository: string,
     branchName?: string,
   ): Promise<SkillGithubRepositoryTreeRecord> {
+    return this.inspectRepository(repository, branchName, async (snapshot) => ({
+      branchName: snapshot.branchName,
+      commitSha: snapshot.commitSha,
+      repository: snapshot.repository,
+      treeEntries: snapshot.treeEntries,
+    }));
+  }
+
+  async inspectRepository<T>(
+    repository: string,
+    branchName: string | undefined,
+    callback: (snapshot: SkillGithubRepositorySnapshot) => Promise<T>,
+  ): Promise<T> {
     const repositoryReference = SkillGithubRepositoryReference.parse(repository);
-    const repositoryRecord = await this.getRepositoryRecord(repositoryReference);
-    const resolvedBranchName = this.requireBranchName(
-      branchName ?? repositoryRecord.data.default_branch ?? "",
-    );
-    const branchRecord = await this.getBranchRecord(repositoryReference, resolvedBranchName);
-    const treeEntries = await this.listTreeEntries(repositoryReference, branchRecord.data.commit.sha);
-
-    return {
-      branchName: branchRecord.data.name,
-      commitSha: branchRecord.data.commit.sha,
-      repository: repositoryRecord.data.full_name,
-      treeEntries,
-    };
-  }
-
-  async readBlob(repository: string, blobSha: string): Promise<string> {
-    const repositoryReference = SkillGithubRepositoryReference.parse(repository);
-    const normalizedBlobSha = String(blobSha || "").trim();
-    if (!normalizedBlobSha) {
-      throw new Error("GitHub blob sha is required.");
-    }
-
+    const resolvedBranchName = await this.resolveBranchName(repositoryReference.remoteUrl, branchName);
+    const tempDirectory = await this.makeTempDirectory();
     try {
-      const blobRecord = await this.octokit.rest.git.getBlob({
-        file_sha: normalizedBlobSha,
-        owner: repositoryReference.owner,
-        repo: repositoryReference.repository,
+      await this.git(["init"], { cwd: tempDirectory });
+      await this.git(["remote", "add", "origin", repositoryReference.remoteUrl], { cwd: tempDirectory });
+      await this.git(["fetch", "--depth=1", "--filter=blob:none", "origin", resolvedBranchName], {
+        cwd: tempDirectory,
       });
+      const commitSha = (await this.git(["rev-parse", "FETCH_HEAD"], { cwd: tempDirectory })).stdout.trim();
+      const treeEntries = this.parseTreeEntries(
+        (await this.git(["ls-tree", "-r", "--full-tree", "FETCH_HEAD"], { cwd: tempDirectory })).stdout,
+      );
+      const snapshot: SkillGithubRepositorySnapshot = {
+        branchName: resolvedBranchName,
+        commitSha,
+        repository: repositoryReference.getFullName(),
+        treeEntries,
+        readFile: async (path: string) => {
+          const normalizedPath = this.requireRepositoryPath(path);
+          return (await this.git(["show", `FETCH_HEAD:${normalizedPath}`], { cwd: tempDirectory })).stdout;
+        },
+      };
 
-      return this.decodeBlobContent(blobRecord.data.content, blobRecord.data.encoding);
+      return await callback(snapshot);
     } catch (error: unknown) {
-      if (this.isNotFoundError(error)) {
-        throw new Error("GitHub file could not be read.", {
-          cause: error,
-        });
-      }
-
-      throw this.createGithubRequestError(error, "read the GitHub file");
+      throw this.createGitRequestError(error, "read the Git repository");
+    } finally {
+      await this.removeDirectory(tempDirectory);
     }
   }
 
-  private async getRepositoryRecord(repositoryReference: SkillGithubRepositoryReference) {
-    try {
-      const repositoryRecord = await this.octokit.rest.repos.get({
-        owner: repositoryReference.owner,
-        repo: repositoryReference.repository,
-      });
-      if (repositoryRecord.data.private) {
-        throw new Error("Only public GitHub repositories are supported.");
-      }
-
-      return repositoryRecord;
-    } catch (error: unknown) {
-      if (error instanceof Error && error.message === "Only public GitHub repositories are supported.") {
-        throw error;
-      }
-      if (this.isNotFoundError(error)) {
-        throw new Error("Public GitHub repository not found.", {
-          cause: error,
-        });
-      }
-
-      throw this.createGithubRequestError(error, "read the GitHub repository");
+  private async resolveDefaultBranchName(remoteUrl: string): Promise<string> {
+    const response = await this.git(["ls-remote", "--symref", remoteUrl, "HEAD"]);
+    const defaultBranchLine = response.stdout
+      .split("\n")
+      .find((line) => line.startsWith("ref: refs/heads/") && line.endsWith("\tHEAD"));
+    const defaultBranchName = defaultBranchLine
+      ?.replace(/^ref: refs\/heads\//u, "")
+      .replace(/\tHEAD$/u, "")
+      .trim();
+    if (!defaultBranchName) {
+      throw new Error("Git repository default branch is not available.");
     }
+
+    return defaultBranchName;
   }
 
-  private async getBranchRecord(
-    repositoryReference: SkillGithubRepositoryReference,
-    branchName: string,
-  ) {
-    try {
-      return await this.octokit.rest.repos.getBranch({
-        branch: branchName,
-        owner: repositoryReference.owner,
-        repo: repositoryReference.repository,
-      });
-    } catch (error: unknown) {
-      if (this.isNotFoundError(error)) {
-        throw new Error("GitHub branch not found.", {
-          cause: error,
-        });
-      }
+  private async resolveBranchName(remoteUrl: string, branchName: string | undefined): Promise<string> {
+    const normalizedBranchName = String(branchName || "").trim();
+    const resolvedBranchName = normalizedBranchName.length > 0
+      ? normalizedBranchName
+      : await this.resolveDefaultBranchName(remoteUrl);
+    this.assertSafeBranchName(resolvedBranchName);
 
-      throw this.createGithubRequestError(error, "read the GitHub branch");
-    }
+    return resolvedBranchName;
   }
 
-  private async listTreeEntries(
-    repositoryReference: SkillGithubRepositoryReference,
-    commitSha: string,
-  ): Promise<SkillGithubRepositoryTreeEntry[]> {
-    try {
-      const recursiveTree = await this.octokit.rest.git.getTree({
-        owner: repositoryReference.owner,
-        recursive: "true",
-        repo: repositoryReference.repository,
-        tree_sha: commitSha,
-      });
-      if (!recursiveTree.data.truncated) {
-        return recursiveTree.data.tree
-          .map((treeEntry) => this.toBlobTreeEntry(treeEntry.path, treeEntry.sha, treeEntry.type))
-          .filter((treeEntry): treeEntry is SkillGithubRepositoryTreeEntry => treeEntry !== null)
-          .sort((left, right) => left.path.localeCompare(right.path));
-      }
+  private async listRemoteBranches(remoteUrl: string): Promise<Array<Omit<SkillGithubRepositoryBranchRecord, "isDefault">>> {
+    const response = await this.git(["ls-remote", "--heads", remoteUrl]);
+    return response.stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => {
+        const [commitSha, reference] = line.split(/\s+/u);
+        const name = String(reference || "").replace(/^refs\/heads\//u, "").trim();
+        return {
+          commitSha: String(commitSha || "").trim(),
+          name,
+        };
+      })
+      .filter((branch) => branch.commitSha.length > 0 && branch.name.length > 0);
+  }
 
-      const treeEntries: SkillGithubRepositoryTreeEntry[] = [];
-      const pendingTrees = [{
-        prefix: "",
-        treeSha: commitSha,
-      }];
-
-      while (pendingTrees.length > 0) {
-        const nextTree = pendingTrees.shift();
-        if (!nextTree) {
-          continue;
+  private parseTreeEntries(output: string): SkillGithubRepositoryTreeEntry[] {
+    return output
+      .split("\n")
+      .map((line) => {
+        const match = /^(?<mode>\d+)\s+(?<type>\S+)\s+(?<sha>[0-9a-fA-F]+)\t(?<path>.+)$/u.exec(line);
+        if (!match?.groups || match.groups.type !== "blob") {
+          return null;
         }
-
-        const treeResponse = await this.octokit.rest.git.getTree({
-          owner: repositoryReference.owner,
-          repo: repositoryReference.repository,
-          tree_sha: nextTree.treeSha,
-        });
-
-        for (const treeEntry of treeResponse.data.tree) {
-          const normalizedPath = this.joinTreePath(nextTree.prefix, treeEntry.path);
-          if (!normalizedPath) {
-            continue;
-          }
-          if (treeEntry.type === "tree" && treeEntry.sha) {
-            pendingTrees.push({
-              prefix: normalizedPath,
-              treeSha: treeEntry.sha,
-            });
-            continue;
-          }
-
-          const blobTreeEntry = this.toBlobTreeEntry(normalizedPath, treeEntry.sha, treeEntry.type);
-          if (blobTreeEntry) {
-            treeEntries.push(blobTreeEntry);
-          }
-        }
-      }
-
-      return treeEntries.sort((left, right) => left.path.localeCompare(right.path));
-    } catch (error: unknown) {
-      throw this.createGithubRequestError(error, "read the GitHub repository tree");
-    }
+        const normalizedPath = this.requireRepositoryPath(match.groups.path);
+        return {
+          path: normalizedPath,
+          sha: match.groups.sha,
+          type: "blob" as const,
+        };
+      })
+      .filter((entry): entry is SkillGithubRepositoryTreeEntry => entry !== null)
+      .sort((left, right) => left.path.localeCompare(right.path));
   }
 
-  private decodeBlobContent(content: string, encoding?: string): string {
-    const normalizedEncoding = String(encoding || "").trim().toLowerCase();
-    if (normalizedEncoding === "base64") {
-      return Buffer.from(content.replace(/\n/g, ""), "base64").toString("utf8");
-    }
-    if (normalizedEncoding === "utf-8" || normalizedEncoding === "utf8") {
-      return content;
-    }
-
-    throw new Error(`GitHub blob encoding ${normalizedEncoding || "unknown"} is not supported.`);
-  }
-
-  private joinTreePath(prefix: string, path?: string | null): string {
-    const normalizedPath = String(path || "").trim();
+  private requireRepositoryPath(path: string): string {
+    const normalizedPath = String(path || "").trim().replace(/^\/+|\/+$/g, "");
     if (!normalizedPath) {
-      return "";
+      throw new Error("Git repository path is required.");
     }
-    if (!prefix) {
-      return normalizedPath;
-    }
-
-    return `${prefix}/${normalizedPath}`;
-  }
-
-  private requireBranchName(value: string): string {
-    const normalizedValue = String(value || "").trim();
-    if (!normalizedValue) {
-      throw new Error("GitHub repository default branch is not available.");
+    if (
+      normalizedPath === "."
+      || normalizedPath.includes("\0")
+      || normalizedPath.split("/").some((segment) => segment === ".." || segment === ".")
+    ) {
+      throw new Error("Git repository path is invalid.");
     }
 
-    return normalizedValue;
+    return normalizedPath;
   }
 
-  private toBlobTreeEntry(
-    path?: string | null,
-    sha?: string | null,
-    type?: string | null,
-  ): SkillGithubRepositoryTreeEntry | null {
-    const normalizedPath = String(path || "").trim();
-    const normalizedSha = String(sha || "").trim();
-    if (!normalizedPath || !normalizedSha || type !== "blob") {
-      return null;
+  private assertSafeBranchName(branchName: string): void {
+    if (
+      branchName.startsWith("-")
+      || branchName.startsWith("/")
+      || branchName.endsWith("/")
+      || branchName.endsWith(".lock")
+      || branchName.includes("..")
+      || branchName.includes("@{")
+      || /[\s~^:?*[\]\\\0]/u.test(branchName)
+    ) {
+      throw new Error("Git branch name is invalid.");
     }
-
-    return {
-      path: normalizedPath,
-      sha: normalizedSha,
-      type: "blob",
-    };
   }
 
-  private isNotFoundError(error: unknown): error is OctokitError {
-    return typeof error === "object"
-      && error !== null
-      && "status" in error
-      && Number((error as { status?: unknown }).status) === 404;
-  }
-
-  private createOctokit(accessToken: string | undefined): Octokit {
-    const normalizedAccessToken = String(accessToken ?? "").trim();
-    const baseOptions = {
-      retry: {
-        enabled: false,
+  private async git(args: string[], options: { cwd?: string } = {}): Promise<GitCommandResult> {
+    return this.gitCommandRunner(args, {
+      cwd: options.cwd,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
       },
-      throttle: {
-        enabled: false,
-      },
-      request: {
-        fetch: this.createTimedFetch(),
-      },
-    };
-
-    if (!normalizedAccessToken) {
-      return new Octokit(baseOptions);
-    }
-
-    return new Octokit({
-      ...baseOptions,
-      auth: normalizedAccessToken,
+      timeoutMs: this.commandTimeoutMs,
     });
   }
 
-  private createTimedFetch(): typeof fetch {
-    return async (resource: string | URL | Request, init?: RequestInit) => {
-      const timeoutController = new AbortController();
-      const timeoutHandle = setTimeout(() => {
-        timeoutController.abort();
-      }, this.requestTimeoutMs);
-      const signal = this.mergeAbortSignals(init?.signal, timeoutController.signal);
+  private async runGitCommand(
+    args: string[],
+    options: {
+      cwd?: string;
+      env?: NodeJS.ProcessEnv;
+      timeoutMs: number;
+    },
+  ): Promise<GitCommandResult> {
+    const result = await execFileAsync("git", args, {
+      cwd: options.cwd,
+      env: options.env,
+      maxBuffer: GIT_OUTPUT_MAX_BUFFER_BYTES,
+      timeout: options.timeoutMs,
+    });
 
-      try {
-        return await this.fetchImpl(resource, {
-          ...init,
-          signal,
-        });
-      } catch (error: unknown) {
-        if (timeoutController.signal.aborted) {
-          throw new Error(`GitHub request timed out after ${this.requestTimeoutMs}ms.`, {
-            cause: error,
-          });
-        }
-
-        throw error;
-      } finally {
-        clearTimeout(timeoutHandle);
-      }
+    return {
+      stderr: result.stderr,
+      stdout: result.stdout,
     };
   }
 
-  private mergeAbortSignals(
-    leftSignal: AbortSignal | null | undefined,
-    rightSignal: AbortSignal | null | undefined,
-  ): AbortSignal | undefined {
-    if (leftSignal && rightSignal) {
-      return AbortSignal.any([leftSignal, rightSignal]);
-    }
-
-    return leftSignal ?? rightSignal ?? undefined;
-  }
-
-  private createGithubRequestError(error: unknown, action: string): Error {
-    if (this.isTimedOutError(error)) {
-      return new Error(`GitHub request timed out while trying to ${action}.`, {
-        cause: error,
-      });
-    }
-
-    if (this.isRateLimitedError(error)) {
-      return new Error(`GitHub API request quota is exhausted while trying to ${action}. Please try again later.`, {
-        cause: error,
-      });
-    }
-
-    if (error instanceof RequestError || this.isOctokitError(error)) {
-      const message = this.normalizeGithubErrorMessage(error.message);
-      return new Error(`GitHub request failed while trying to ${action}: ${message}`, {
-        cause: error,
-      });
-    }
-
+  private createGitRequestError(error: unknown, action: string): Error {
     if (error instanceof Error) {
-      return new Error(`GitHub request failed while trying to ${action}: ${this.normalizeGithubErrorMessage(error.message)}`, {
+      return new Error(`Git request failed while trying to ${action}: ${this.normalizeGitErrorMessage(error.message)}`, {
         cause: error,
       });
     }
 
-    return new Error(`GitHub request failed while trying to ${action}.`);
+    return new Error(`Git request failed while trying to ${action}.`);
   }
 
-  private isTimedOutError(error: unknown): error is Error {
-    return error instanceof Error && /timed out after \d+ms/i.test(error.message);
-  }
-
-  private isRateLimitedError(error: unknown): error is OctokitError {
-    if (!this.isOctokitError(error)) {
-      return false;
-    }
-
-    const message = this.normalizeGithubErrorMessage(error.message).toLowerCase();
-    const remaining = String(error.response?.headers?.["x-ratelimit-remaining"] ?? "").trim();
-    return remaining === "0"
-      || Number(error.status) === 429
-      || message.includes("rate limit")
-      || message.includes("quota exhausted")
-      || message.includes("secondary rate");
-  }
-
-  private isOctokitError(error: unknown): error is OctokitError {
-    return typeof error === "object"
-      && error !== null
-      && "message" in error
-      && typeof (error as { message?: unknown }).message === "string"
-      && "status" in error;
-  }
-
-  private normalizeGithubErrorMessage(message: string): string {
+  private normalizeGitErrorMessage(message: string): string {
     const normalizedMessage = String(message || "").trim();
-    return normalizedMessage || "Unknown GitHub API error.";
+    return normalizedMessage || "Unknown Git error.";
   }
 
-  private normalizeRequestTimeoutMs(value: number | undefined): number {
+  private normalizeCommandTimeoutMs(value: number | undefined): number {
     if (!Number.isFinite(value) || !value || value <= 0) {
-      return DEFAULT_GITHUB_REQUEST_TIMEOUT_MS;
+      return DEFAULT_GIT_COMMAND_TIMEOUT_MS;
     }
 
     return Math.floor(value);

@@ -1,6 +1,9 @@
 import "reflect-metadata";
 import { generateKeyPairSync } from "node:crypto";
 import assert from "node:assert/strict";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { delimiter, join } from "node:path";
+import { tmpdir } from "node:os";
 import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
@@ -41,6 +44,8 @@ const TEST_PRIVATE_KEY_PEM = (() => {
   return privateKey.export({ type: "pkcs1", format: "pem" }).toString();
 })();
 const TEST_GITHUB_PUBLIC_TOKEN = "ghp_test_public_repository_token";
+const TEST_MAIN_COMMIT_SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const TEST_RELEASE_COMMIT_SHA = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 class SkillsGraphqlTestHarness {
   static createConfigMock(): Config {
@@ -272,13 +277,92 @@ class SkillsGraphqlTestHarness {
   }
 }
 
-function createJsonResponse(payload: unknown, status = 200): Response {
-  return new Response(JSON.stringify(payload), {
-    headers: {
-      "content-type": "application/json",
+type FakeGitHandle = {
+  readInvocations(): Promise<string[][]>;
+  restore(): Promise<void>;
+};
+
+async function installFakeGit(options: { failBranchDiscovery?: boolean } = {}): Promise<FakeGitHandle> {
+  const tempDirectory = await mkdtemp(join(tmpdir(), "companyhelm-test-git-"));
+  const logPath = join(tempDirectory, "git.log");
+  const gitPath = join(tempDirectory, "git");
+  const originalPath = process.env.PATH;
+
+  await writeFile(logPath, "");
+  await writeFile(gitPath, `#!/usr/bin/env node
+const fs = require("node:fs");
+
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(logPath)}, JSON.stringify(args) + "\\n");
+
+if (${JSON.stringify(Boolean(options.failBranchDiscovery))} && args[0] === "ls-remote") {
+  console.error("fatal: remote unavailable");
+  process.exit(128);
+}
+
+if (args[0] === "ls-remote" && args[1] === "--symref") {
+  process.stdout.write("ref: refs/heads/main\\tHEAD\\n${TEST_MAIN_COMMIT_SHA}\\tHEAD\\n");
+  process.exit(0);
+}
+
+if (args[0] === "ls-remote" && args[1] === "--heads") {
+  process.stdout.write("${TEST_MAIN_COMMIT_SHA}\\trefs/heads/main\\n${TEST_RELEASE_COMMIT_SHA}\\trefs/heads/release\\n");
+  process.exit(0);
+}
+
+if (args[0] === "init" || args[0] === "remote" || args[0] === "fetch") {
+  process.exit(0);
+}
+
+if (args[0] === "rev-parse" && args[1] === "FETCH_HEAD") {
+  process.stdout.write("${TEST_MAIN_COMMIT_SHA}\\n");
+  process.exit(0);
+}
+
+if (args[0] === "ls-tree") {
+  process.stdout.write([
+    "100644 blob 1111111111111111111111111111111111111111\\tskills/github-browser/SKILL.md",
+    "100644 blob 2222222222222222222222222222222222222222\\tskills/github-browser/scripts/import.sh",
+  ].join("\\n") + "\\n");
+  process.exit(0);
+}
+
+if (args[0] === "show" && args[1] === "FETCH_HEAD:skills/github-browser/SKILL.md") {
+  process.stdout.write([
+    "---",
+    "name: Imported browser",
+    "description: Use the imported browser helpers.",
+    "---",
+    "",
+    "Use the imported browser helpers.",
+  ].join("\\n"));
+  process.exit(0);
+}
+
+console.error("unexpected git invocation: " + args.join(" "));
+process.exit(64);
+`);
+  await chmod(gitPath, 0o755);
+  process.env.PATH = `${tempDirectory}${delimiter}${originalPath ?? ""}`;
+
+  return {
+    async readInvocations() {
+      const content = await readFile(logPath, "utf8");
+      return content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => JSON.parse(line) as string[]);
     },
-    status,
-  });
+    async restore() {
+      if (originalPath === undefined) {
+        delete process.env.PATH;
+      } else {
+        process.env.PATH = originalPath;
+      }
+      await rm(tempDirectory, { force: true, recursive: true });
+    },
+  };
 }
 
 test("GraphQL skills query and create mutation expose the skill catalog and group assignment", async () => {
@@ -455,76 +539,7 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
       };
     },
   };
-  const originalFetch = global.fetch;
-  let repositoryTreeRequestCount = 0;
-  let skillBlobRequestCount = 0;
-  global.fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(String(input), init);
-    const url = request.url;
-    assert.equal(
-      request.headers.get("authorization"),
-      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
-    );
-    if (url.endsWith("/repos/companyhelm/skills")) {
-      return createJsonResponse({
-        default_branch: "main",
-        full_name: "companyhelm/skills",
-        private: false,
-      });
-    }
-    if (url.includes("/repos/companyhelm/skills/branches?")) {
-      return createJsonResponse([{
-        commit: {
-          sha: "commit-sha-main",
-        },
-        name: "main",
-      }, {
-        commit: {
-          sha: "commit-sha-release",
-        },
-        name: "release",
-      }]);
-    }
-    if (url.includes("/repos/companyhelm/skills/branches/main")) {
-      return createJsonResponse({
-        commit: {
-          sha: "commit-sha-main",
-        },
-        name: "main",
-      });
-    }
-    if (url.includes("/repos/companyhelm/skills/git/trees/commit-sha-main")) {
-      repositoryTreeRequestCount += 1;
-      return createJsonResponse({
-        truncated: false,
-        tree: [{
-          path: "skills/github-browser/SKILL.md",
-          sha: "sha-github-browser-skill",
-          type: "blob",
-        }, {
-          path: "skills/github-browser/scripts/import.sh",
-          sha: "sha-github-browser-script",
-          type: "blob",
-        }],
-      });
-    }
-    if (url.includes("/repos/companyhelm/skills/git/blobs/sha-github-browser-skill")) {
-      skillBlobRequestCount += 1;
-      return createJsonResponse({
-        content: Buffer.from([
-          "---",
-          "name: Imported browser",
-          "description: Use the imported browser helpers.",
-          "---",
-          "",
-          "Use the imported browser helpers.",
-        ].join("\n")).toString("base64"),
-        encoding: "base64",
-      });
-    }
-
-    throw new Error(`Unexpected GitHub request: ${url}`);
-  };
+  const fakeGit = await installFakeGit();
 
   try {
     await GraphqlApplication.fromResolvers(
@@ -565,12 +580,12 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
     assert.equal(branchesResponse.statusCode, 200);
     const branchesDocument = branchesResponse.json();
     assert.deepEqual(branchesDocument.data.GithubSkillBranches, [{
-      commitSha: "commit-sha-main",
+      commitSha: TEST_MAIN_COMMIT_SHA,
       isDefault: true,
       name: "main",
       repository: "companyhelm/skills",
     }, {
-      commitSha: "commit-sha-release",
+      commitSha: TEST_RELEASE_COMMIT_SHA,
       isDefault: false,
       name: "release",
       repository: "companyhelm/skills",
@@ -651,7 +666,7 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
       description: "Use the imported browser helpers.",
       fileList: ["skills/github-browser/scripts/import.sh"],
       githubBranchName: "main",
-      githubTrackedCommitSha: "commit-sha-main",
+      githubTrackedCommitSha: TEST_MAIN_COMMIT_SHA,
       id: "skill-new",
       instructions: "Use the imported browser helpers.",
       name: "Imported browser",
@@ -662,19 +677,23 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
 
     const importedSkillInsert = database.insertedValues.at(-1);
     assert.equal(importedSkillInsert?.githubBranchName, "main");
-    assert.equal(importedSkillInsert?.githubTrackedCommitSha, "commit-sha-main");
+    assert.equal(importedSkillInsert?.githubTrackedCommitSha, TEST_MAIN_COMMIT_SHA);
     assert.equal(importedSkillInsert?.repository, "companyhelm/skills");
     assert.equal(importedSkillInsert?.skillDirectory, "skills/github-browser");
     assert.deepEqual(importedSkillInsert?.fileList, ["skills/github-browser/scripts/import.sh"]);
-    assert.equal(repositoryTreeRequestCount, 2);
-    assert.equal(skillBlobRequestCount, 2);
+    const gitInvocations = await fakeGit.readInvocations();
+    assert.equal(gitInvocations.filter((args) => args[0] === "ls-remote").length, 2);
+    assert.equal(gitInvocations.filter((args) => args[0] === "fetch").length, 2);
+    assert.equal(gitInvocations.filter((args) => (
+      args[0] === "show" && args[1] === "FETCH_HEAD:skills/github-browser/SKILL.md"
+    )).length, 2);
   } finally {
-    global.fetch = originalFetch;
+    await fakeGit.restore();
     await app.close();
   }
 });
 
-test("GraphQL GitHub branch discovery returns GitHub quota errors instead of hanging", async () => {
+test("GraphQL GitHub branch discovery returns Git errors instead of hanging", async () => {
   const app = Fastify();
   const config = SkillsGraphqlTestHarness.createConfigMock();
   const database = SkillsGraphqlTestHarness.createDatabaseMock();
@@ -702,22 +721,7 @@ test("GraphQL GitHub branch discovery returns GitHub quota errors instead of han
       };
     },
   };
-  const originalFetch = global.fetch;
-  global.fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(String(input), init);
-    assert.equal(
-      request.headers.get("authorization"),
-      `token ${TEST_GITHUB_PUBLIC_TOKEN}`,
-    );
-    if (request.url.endsWith("/repos/companyhelm/skills")) {
-      return createJsonResponse({
-        documentation_url: "https://docs.github.com/rest/using-the-rest-api/rate-limits-for-the-rest-api",
-        message: "API rate limit exceeded for 127.0.0.1.",
-      }, 403);
-    }
-
-    throw new Error(`Unexpected GitHub request: ${request.url}`);
-  };
+  const fakeGit = await installFakeGit({ failBranchDiscovery: true });
 
   try {
     await GraphqlApplication.fromResolvers(
@@ -758,12 +762,13 @@ test("GraphQL GitHub branch discovery returns GitHub quota errors instead of han
     assert.equal(response.statusCode, 200);
     const document = response.json();
     assert.ok(document.data === null || document.data.GithubSkillBranches === null);
-    assert.equal(
-      document.errors[0]?.message,
-      "GitHub API request quota is exhausted while trying to read the GitHub repository. Please try again later.",
+    assert.match(
+      String(document.errors[0]?.message),
+      /Git request failed while trying to list Git branches:/u,
     );
+    assert.match(String(document.errors[0]?.message), /fatal: remote unavailable/u);
   } finally {
-    global.fetch = originalFetch;
+    await fakeGit.restore();
     await app.close();
   }
 });
