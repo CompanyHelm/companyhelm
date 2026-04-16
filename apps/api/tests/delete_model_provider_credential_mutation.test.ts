@@ -263,6 +263,42 @@ class DeleteModelProviderCredentialMutationTestHarness {
   }
 }
 
+test("DeleteModelProviderCredentialMutation rejects agent create provider option ids", async () => {
+  const harness = new DeleteModelProviderCredentialMutationTestHarness({
+    credentialRows: [],
+    targetCredentialId: "credential-1",
+    targetCredentialModels: [],
+  });
+  const mutation = new DeleteModelProviderCredentialMutation();
+
+  await assert.rejects(
+    mutation.execute(
+      null,
+      {
+        input: {
+          id: "agent-create-provider-option:credential-1",
+        },
+      },
+      harness.getContext(),
+    ),
+    new Error("id must be a model provider credential id, not an agent create provider option id."),
+  );
+  await assert.rejects(
+    mutation.execute(
+      null,
+      {
+        input: {
+          id: "credential-1",
+          replacementCredentialId: "agent-create-provider-option:credential-2",
+        },
+      },
+      harness.getContext(),
+    ),
+    new Error("replacementCredentialId must be a model provider credential id, not an agent create provider option id."),
+  );
+  assert.deepEqual(harness.getDeletedCredentialIds(), []);
+});
+
 test("DeleteModelProviderCredentialMutation deletes an unused default credential and promotes a fallback", async () => {
   const harness = new DeleteModelProviderCredentialMutationTestHarness({
     credentialRows: [{

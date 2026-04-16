@@ -101,6 +101,8 @@ type UpdatableDatabase = {
   };
 };
 
+const AGENT_CREATE_PROVIDER_OPTION_ID_PREFIX = "agent-create-provider-option:";
+
 /**
  * Deletes one company-scoped model credential only after ensuring no agent defaults or persisted
  * sessions would be left pointing at deleted model rows. When a replacement credential is
@@ -126,6 +128,10 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
     const replacementCredentialId = String(arguments_.input.replacementCredentialId || "").trim();
     if (!credentialId) {
       throw new Error("id is required.");
+    }
+    this.assertCredentialId(credentialId, "id");
+    if (replacementCredentialId.length > 0) {
+      this.assertCredentialId(replacementCredentialId, "replacementCredentialId");
     }
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
@@ -241,6 +247,12 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
       updatedAt: credential.updatedAt.toISOString(),
     };
   };
+
+  private assertCredentialId(credentialId: string, fieldName: string): void {
+    if (credentialId.startsWith(AGENT_CREATE_PROVIDER_OPTION_ID_PREFIX)) {
+      throw new Error(`${fieldName} must be a model provider credential id, not an agent create provider option id.`);
+    }
+  }
 
   private async findCredentialUsage(
     selectableDatabase: SelectableDatabase,

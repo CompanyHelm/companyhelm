@@ -37,10 +37,11 @@ const modelProviderCredentialsPageQueryNode = graphql`
     }
     AgentCreateOptions {
       id
+      modelProviderCredentialId
       isDefault
       label
       models {
-        id
+        modelProviderCredentialModelId
       }
     }
     ModelProviders {
@@ -198,16 +199,19 @@ function ModelProviderCredentialsPageContent() {
   }, [data.ModelProviderCredentials]);
   const replacementOptions = useMemo<DeleteCredentialDialogReplacementRecord[]>(() => {
     return data.AgentCreateOptions.map((providerOption) => ({
-      id: providerOption.id,
+      id: providerOption.modelProviderCredentialId,
       isDefault: providerOption.isDefault,
-      label: credentialNameById.get(providerOption.id) ?? providerOption.label,
+      label: credentialNameById.get(providerOption.modelProviderCredentialId) ?? providerOption.label,
     }));
   }, [credentialNameById, data.AgentCreateOptions]);
   const credentialIdByModelId = useMemo(() => {
     const nextCredentialIdByModelId = new Map<string, string>();
     for (const providerOption of data.AgentCreateOptions) {
       for (const model of providerOption.models) {
-        nextCredentialIdByModelId.set(model.id, providerOption.id);
+        nextCredentialIdByModelId.set(
+          model.modelProviderCredentialModelId,
+          providerOption.modelProviderCredentialId,
+        );
       }
     }
 
