@@ -1287,22 +1287,58 @@ test("SessionManagerService deleteSession removes archived chats and notifies th
   }]);
 });
 
-test("SessionManagerService interruptSession publishes the interrupt channel only for running sessions", async () => {
+test("SessionManagerService interruptSession stops running sessions in the database and publishes updates", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const deletedQueuedSessions: Array<{ companyId: string; sessionId: string }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  let selectCallCount = 0;
   const transaction = {
     select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  agentId: "agent-1",
+                  currentModelProviderCredentialModelId: "model-row-1",
+                  currentReasoningLevel: "high",
+                  id: "session-1",
+                  status: "running",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      if (selectCallCount === 2) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [{
+                  id: "message-1",
+                }, {
+                  id: "message-2",
+                }];
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error("Unexpected select call.");
+    },
+    update() {
       return {
-        from() {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
           return {
-            async where() {
-              return [{
-                agentId: "agent-1",
-                currentModelProviderCredentialModelId: "model-row-1",
-                currentReasoningLevel: "high",
-                id: "session-1",
-                status: "running",
-              }];
+            where() {
+              return undefined;
             },
           };
         },
@@ -1329,7 +1365,14 @@ test("SessionManagerService interruptSession publishes the interrupt channel onl
         throw new Error("Wake queue should not be touched while interrupting.");
       },
     },
-    sessionQueuedMessageService: {},
+    sessionQueuedMessageService: {
+      async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
+        deletedQueuedSessions.push({
+          companyId,
+          sessionId,
+        });
+      },
+    },
   });
 
   await service.interruptSession(
@@ -1338,7 +1381,34 @@ test("SessionManagerService interruptSession publishes the interrupt channel onl
     "session-1",
   );
 
+  assert.equal(updatedValues.length, 3);
+  assert.equal(updatedValues[0]?.status, "stopped");
+  assert.equal(updatedValues[0]?.isThinking, false);
+  assert.equal(updatedValues[0]?.thinkingText, null);
+  assert.equal(updatedValues[0]?.isCompacting, false);
+  assert.ok(updatedValues[0]?.updated_at instanceof Date);
+  assert.equal(updatedValues[1]?.status, "completed");
+  assert.equal(updatedValues[1]?.isError, true);
+  assert.equal(updatedValues[1]?.errorMessage, "Session interrupted.");
+  assert.ok(updatedValues[1]?.updatedAt instanceof Date);
+  assert.ok(updatedValues[2]?.endedAt instanceof Date);
+  assert.deepEqual(deletedQueuedSessions, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
   assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:queued:update",
+    message: "",
+  }, {
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }, {
+    channel: "company:company-1:session:session-1:message:message-1:update",
+    message: "",
+  }, {
+    channel: "company:company-1:session:session-1:message:message-2:update",
+    message: "",
+  }, {
     channel: "company:company-1:session:session-1:interrupt",
     message: "",
   }]);

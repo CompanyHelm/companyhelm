@@ -1,7 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import { agentInboxItems, agentSessions, agents } from "../../../db/schema.ts";
+import { agentInboxItems, agentSessions, agents, sessionMessages, sessionTurns } from "../../../db/schema.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { AgentInboxPubSubNames } from "../../inbox/pub_sub_names.ts";
@@ -23,6 +23,15 @@ import type {
   UpdatableDatabase,
 } from "./session_manager_service_types.ts";
 import { agentSessionSelection } from "./session_manager_service_types.ts";
+
+type RunningSessionMessageRow = {
+  id: string;
+};
+
+type InterruptSessionResult = {
+  interruptedMessageIds: string[];
+  shouldInterrupt: boolean;
+};
 
 /**
  * Owns session lifecycle transitions that are broader than a single queued prompt. It creates new
@@ -486,8 +495,9 @@ export class SessionLifecycleService {
     sessionId: string,
     userId?: string | null,
   ): Promise<boolean> {
-    const shouldInterrupt = await transactionProvider.transaction(async (tx) => {
+    const interruptResult = await transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
       const [existingSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
@@ -510,13 +520,85 @@ export class SessionLifecycleService {
         throw new Error("Archived sessions cannot be interrupted.");
       }
 
-      return existingSession.status === "running";
-    });
+      if (existingSession.status !== "running") {
+        return {
+          interruptedMessageIds: [],
+          shouldInterrupt: false,
+        };
+      }
 
-    if (!shouldInterrupt) {
+      const now = new Date();
+      const runningMessageRows = await selectableDatabase
+        .select({
+          id: sessionMessages.id,
+        })
+        .from(sessionMessages)
+        .where(and(
+          eq(sessionMessages.companyId, companyId),
+          eq(sessionMessages.sessionId, sessionId),
+          eq(sessionMessages.status, "running"),
+        )) as RunningSessionMessageRow[];
+
+      await updatableDatabase
+        .update(agentSessions)
+        .set({
+          isCompacting: false,
+          isThinking: false,
+          status: "stopped",
+          thinkingText: null,
+          updated_at: now,
+        })
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        ));
+
+      await updatableDatabase
+        .update(sessionMessages)
+        .set({
+          errorMessage: "Session interrupted.",
+          isError: true,
+          status: "completed",
+          updatedAt: now,
+        })
+        .where(and(
+          eq(sessionMessages.companyId, companyId),
+          eq(sessionMessages.sessionId, sessionId),
+          eq(sessionMessages.status, "running"),
+        ));
+
+      await updatableDatabase
+        .update(sessionTurns)
+        .set({
+          endedAt: now,
+        })
+        .where(and(
+          eq(sessionTurns.companyId, companyId),
+          eq(sessionTurns.sessionId, sessionId),
+          isNull(sessionTurns.endedAt),
+        ));
+
+      await this.sessionPromptService.deleteAllQueuedMessagesForSessionInTransaction(
+        tx as DeletableDatabase,
+        companyId,
+        sessionId,
+      );
+
+      return {
+        interruptedMessageIds: runningMessageRows.map((message) => message.id),
+        shouldInterrupt: true,
+      };
+    }) as InterruptSessionResult;
+
+    if (!interruptResult.shouldInterrupt) {
       return false;
     }
 
+    await this.publishQueuedMessagesUpdate(companyId, sessionId);
+    await this.publishSessionUpdate(companyId, sessionId);
+    for (const messageId of interruptResult.interruptedMessageIds) {
+      await this.publishSessionMessageUpdate(companyId, sessionId, messageId);
+    }
     await this.publishInterrupt(companyId, sessionId);
 
     return true;
@@ -632,6 +714,13 @@ export class SessionLifecycleService {
   private async publishQueuedMessagesUpdate(companyId: string, sessionId: string): Promise<void> {
     const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
     await redisCompanyScopedService.publish(this.sessionProcessPubSubNames.getSessionQueuedMessagesUpdateChannel(sessionId));
+  }
+
+  private async publishSessionMessageUpdate(companyId: string, sessionId: string, messageId: string): Promise<void> {
+    const redisCompanyScopedService = new RedisCompanyScopedService(companyId, this.redisService);
+    await redisCompanyScopedService.publish(
+      this.sessionProcessPubSubNames.getSessionMessageUpdateChannel(sessionId, messageId),
+    );
   }
 
   private async resolveOpenHumanQuestionsForArchivedSessionInTransaction(
