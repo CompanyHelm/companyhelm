@@ -53,7 +53,7 @@ export const skills = pgTable("skills", {
 }, (table) => ({
   skillGroupIdIndex: index("skills_skill_group_id_idx").on(table.skillGroupId),
   companyIdIndex: index("skills_company_id_idx").on(table.companyId),
-  nameUnique: uniqueIndex("skills_name_uidx").on(table.name),
+  nameUnique: uniqueIndex("skills_company_id_name_uidx").on(table.companyId, table.name),
   fileBackedSourceCheck: check(
     "skills_file_backed_source_check",
     sql`coalesce(cardinality(${table.fileList}), 0) = 0 OR (

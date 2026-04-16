@@ -21,6 +21,20 @@ type MockSkillRecord = {
   skillGroupId: string | null;
 };
 
+type MockRepositorySnapshot = {
+  branchName: string;
+  commitSha: string;
+  readFile(path: string): Promise<string>;
+  repository: string;
+  treeEntries: Array<{
+    path: string;
+    sha: string;
+    type: "blob";
+  }>;
+};
+
+type InspectRepositoryCallback = (snapshot: MockRepositorySnapshot) => Promise<unknown>;
+
 class GithubSkillCatalogServiceTestHarness {
   static createTransactionProvider(input: {
     groups: MockSkillGroupRecord[];
@@ -126,8 +140,12 @@ test("SkillGithubCatalog discovers public repository branches", async () => {
 
 test("SkillGithubCatalog discovers SKILL.md files from a public repository tree", async () => {
   const catalog = new SkillGithubCatalog({
-    async getRepositoryTree() {
-      return {
+    async inspectRepository(
+      _repository: string,
+      _branchName: string | undefined,
+      callback: InspectRepositoryCallback,
+    ) {
+      return callback({
         branchName: "main",
         commitSha: "commit-sha-1",
         repository: "openai/skills",
@@ -140,16 +158,16 @@ test("SkillGithubCatalog discovers SKILL.md files from a public repository tree"
           sha: "blob-script",
           type: "blob" as const,
         }],
-      };
-    },
-    async readBlob() {
-      return [
-        "---",
-        "description: Browser automation guidance",
-        "---",
-        "",
-        "Read SKILL.md first.",
-      ].join("\n");
+        async readFile() {
+          return [
+            "---",
+            "description: Browser automation guidance",
+            "---",
+            "",
+            "Read SKILL.md first.",
+          ].join("\n");
+        },
+      });
     },
   } as never);
 
@@ -172,19 +190,23 @@ test("SkillGithubCatalog discovers SKILL.md files from a public repository tree"
   }]);
 });
 
-test("SkillGithubCatalog imports selected GitHub skills by resolving their content server-side", async () => {
+test("SkillGithubCatalog imports selected Git skills by resolving their content server-side", async () => {
   const transactionProvider = GithubSkillCatalogServiceTestHarness.createTransactionProvider({
     groups: [{
       id: "group-1",
     }],
     skills: [],
   });
-  let repositoryTreeReadCount = 0;
-  let blobReadCount = 0;
+  let repositoryInspectCount = 0;
+  let skillFileReadCount = 0;
   const catalog = new SkillGithubCatalog({
-    async getRepositoryTree() {
-      repositoryTreeReadCount += 1;
-      return {
+    async inspectRepository(
+      _repository: string,
+      _branchName: string | undefined,
+      callback: InspectRepositoryCallback,
+    ) {
+      repositoryInspectCount += 1;
+      return callback({
         branchName: "main",
         commitSha: "commit-sha-2",
         repository: "openai/skills",
@@ -197,18 +219,18 @@ test("SkillGithubCatalog imports selected GitHub skills by resolving their conte
           sha: "blob-script",
           type: "blob" as const,
         }],
-      };
-    },
-    async readBlob() {
-      blobReadCount += 1;
-      return [
-        "---",
-        "name: Browser automation",
-        "description: Browser automation guidance",
-        "---",
-        "",
-        "Read SKILL.md first.",
-      ].join("\n");
+        async readFile() {
+          skillFileReadCount += 1;
+          return [
+            "---",
+            "name: Browser automation",
+            "description: Browser automation guidance",
+            "---",
+            "",
+            "Read SKILL.md first.",
+          ].join("\n");
+        },
+      });
     },
   } as never);
 
@@ -228,6 +250,6 @@ test("SkillGithubCatalog imports selected GitHub skills by resolving their conte
   assert.equal(createdSkill.skillDirectory, "skills/browser");
   assert.equal(createdSkill.name, "Browser automation");
   assert.deepEqual(transactionProvider.skillRecords[0]?.fileList, ["skills/browser/scripts/open.sh"]);
-  assert.equal(repositoryTreeReadCount, 1);
-  assert.equal(blobReadCount, 1);
+  assert.equal(repositoryInspectCount, 1);
+  assert.equal(skillFileReadCount, 1);
 });

@@ -394,7 +394,7 @@ test("SkillService creates a GitHub-backed skill with source metadata", async ()
   assert.equal(transactionProvider.skillRecords[0]?.githubTrackedCommitSha, "commit-sha-1");
 });
 
-test("SkillService requires a tracked commit sha for file-backed GitHub skills", async () => {
+test("SkillService requires a tracked commit sha for file-backed Git skills", async () => {
   const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
     groups: [],
     skills: [],
@@ -411,6 +411,6 @@ test("SkillService requires a tracked commit sha for file-backed GitHub skills",
       repository: "companyhelm/skills",
       skillDirectory: "skills/browser",
     }),
-    /GitHub tracked commit sha is required/,
+    /Git tracked commit sha is required/,
   );
 });
