@@ -241,7 +241,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     key_id: "companyhelm-local-key",
   });
   assert.equal(document.companyhelm.e2b.api_key, "e2b-local-api-key");
-  assert.equal(document.companyhelm.llm.openai_api_key, "sk-local-api-key");
+  assert.equal(document.companyhelm.llm?.openai_api_key, "sk-local-api-key");
   assert.deepEqual(document.companyhelm.e2b.desktop_resolution, {
     height: 1080,
     width: 1920,
@@ -252,6 +252,20 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
+});
+
+test("AppConfig allows CompanyHelm LLM settings to be omitted", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+
+  const parsedDocument = ConfigDocument.parse({
+    ...document,
+    companyhelm: {
+      e2b: document.companyhelm.e2b,
+    },
+  });
+
+  assert.equal(parsedDocument.companyhelm.llm, undefined);
 });
 
 test("AppConfig loads Clerk auth settings from local.yaml", () => {

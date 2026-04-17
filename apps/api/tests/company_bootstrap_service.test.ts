@@ -61,31 +61,49 @@ type ModelProviderCredentialModelRow = {
  */
 class CompanyBootstrapServiceTestHarness {
   private readonly baseDefinitions: BaseDefinitionRow[];
+  private readonly companyHelmOpenAiApiKey: string | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
   private readonly taskStageRows: TaskStageRow[];
 
   constructor(params?: {
     baseDefinitions?: BaseDefinitionRow[];
+    companyHelmOpenAiApiKey?: string | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
     taskStageRows?: TaskStageRow[];
   }) {
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
+    this.companyHelmOpenAiApiKey = params?.companyHelmOpenAiApiKey === undefined
+      ? "sk-local-api-key"
+      : params.companyHelmOpenAiApiKey;
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
     this.taskStageRows = [...(params?.taskStageRows ?? [])];
   }
 
   buildService(): CompanyBootstrapService {
+    const companyHelmConfig: {
+      e2b: {
+        api_key: string;
+      };
+      llm?: {
+        openai_api_key: string;
+      };
+    } = {
+      e2b: {
+        api_key: "e2b-local-api-key",
+      },
+    };
+    if (this.companyHelmOpenAiApiKey) {
+      companyHelmConfig.llm = {
+        openai_api_key: this.companyHelmOpenAiApiKey,
+      };
+    }
+
     const config = {
       companyhelm: {
-        e2b: {
-          api_key: "e2b-local-api-key",
-        },
-        llm: {
-          openai_api_key: "sk-local-api-key",
-        },
+        ...companyHelmConfig,
       },
     } as Config;
 
@@ -331,6 +349,22 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.equal(managedCredential?.isManaged, true);
   assert.equal(managedCredential?.isDefault, true);
   assert.ok(harness.listModels().some((model) => model.modelId === "gpt-5.4" && model.isDefault));
+  assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
+});
+
+test("CompanyBootstrapService skips the CompanyHelm model provider when the OpenAI key is not configured", async () => {
+  const harness = new CompanyBootstrapServiceTestHarness({
+    companyHelmOpenAiApiKey: null,
+  });
+
+  await harness.buildService().ensureCompanyDefaults(
+    harness.buildTransaction() as never,
+    "company-1",
+  );
+
+  assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
+  assert.deepEqual(harness.listModelCredentials(), []);
+  assert.deepEqual(harness.listModels(), []);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
 
