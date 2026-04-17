@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { parseExpression } from "cron-parser";
 import { injectable } from "inversify";
 import { agents, routineCronTriggers, routineRuns, routineTriggers, routines } from "../../db/schema.ts";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
@@ -57,6 +57,10 @@ type RoutineRunRow = {
   updatedAt: Date;
 };
 
+type CronParserRuntime = {
+  parseExpression(cronPattern: string, options: { tz: string }): unknown;
+};
+
 /**
  * Owns routine persistence and validation. Its scope is the durable routine catalog, cron trigger
  * definitions, and run history records; worker scheduling and session prompt execution stay in
@@ -64,6 +68,8 @@ type RoutineRunRow = {
  */
 @injectable()
 export class RoutineService {
+  private static readonly cronParser = createRequire(import.meta.url)("cron-parser") as CronParserRuntime;
+
   async listRoutines(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -597,7 +603,7 @@ export class RoutineService {
     this.assertText(cronPattern, "cronPattern is required.");
     this.assertText(timezone, "timezone is required.");
     try {
-      parseExpression(cronPattern, {
+      RoutineService.cronParser.parseExpression(cronPattern, {
         tz: timezone,
       });
     } catch {
