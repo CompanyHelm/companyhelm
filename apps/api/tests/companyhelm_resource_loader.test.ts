@@ -34,8 +34,11 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
   assert.equal(loader.getExtensions().errors.length, 0);
   assert.equal(loader.getExtensions().extensions.length, 0);
   assert.ok(loader.getExtensions().runtime);
-  assert.equal(loader.getSystemPrompt(), new SystemPromptTemplate().render(promptContext));
-  assert.match(loader.getSystemPrompt(), /Company name: My Organization/u);
+  const systemPrompt = loader.getSystemPrompt() ?? "";
+  assert.equal(systemPrompt, new SystemPromptTemplate().render(promptContext));
+  assert.match(systemPrompt, /Company name: My Organization/u);
+  assert.match(systemPrompt, /## Repository Instruction Discovery/u);
+  assert.match(systemPrompt, /AGENTS\.md files are repository-local operating instructions/u);
 });
 
 test("CompanyHelmResourceLoader keeps company and agent prompt overrides as separate append layers", async () => {
