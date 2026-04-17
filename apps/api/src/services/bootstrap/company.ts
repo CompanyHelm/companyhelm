@@ -153,7 +153,9 @@ export class CompanyBootstrapService {
     companyId: string,
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
-    await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
+    if (this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
+      await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
+    }
     await this.ensureDefaultTaskStages(transaction, companyId);
   }
 

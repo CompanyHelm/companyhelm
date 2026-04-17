@@ -55,7 +55,7 @@ companyhelm:
     # must match the E2B team name
     template_prefix: "realequityapps/"
   llm:
-    openai_api_key: "${COMPANYHELM_OPENAI_API_KEY}"
+    openai_api_key: "${?COMPANYHELM_OPENAI_API_KEY}"
 github:
   app_client_id: "${GITHUB_APP_CLIENT_ID}"
   public_repository_token: "${GITHUB_PUBLIC_REPOSITORY_TOKEN}"

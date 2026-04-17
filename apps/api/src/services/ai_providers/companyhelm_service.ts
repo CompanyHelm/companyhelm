@@ -36,9 +36,13 @@ export class CompanyHelmLlmProviderService {
     return CompanyHelmLlmProviderService.ENCRYPTED_API_KEY_SENTINEL;
   }
 
+  hasRuntimeApiKey(): boolean {
+    return Boolean(this.config.companyhelm.llm?.openai_api_key);
+  }
+
   getRuntimeApiKey(): string {
-    const apiKey = this.config.companyhelm.llm.openai_api_key;
-    if (apiKey.length === 0) {
+    const apiKey = this.config.companyhelm.llm?.openai_api_key;
+    if (!apiKey) {
       throw new Error("CompanyHelm OpenAI API key is not configured.");
     }
 
