@@ -60,6 +60,9 @@ type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateGithubInstallationUrl(input: CreateGithubInstallationUrlInput!): CreateGithubInstallationUrlPayload!
+  CreateEnvironmentTerminalConnection(
+    input: CreateEnvironmentTerminalConnectionInput!
+  ): EnvironmentTerminalConnection!
   DeleteEnvironment(input: DeleteEnvironmentInput!): Environment!
   DeleteComputeProviderDefinition(input: DeleteComputeProviderDefinitionInput!): ComputeProviderDefinition!
   GetEnvironmentVncUrl(input: GetEnvironmentVncUrlInput!): EnvironmentVncUrl!
@@ -420,6 +423,13 @@ type Environment {
 type EnvironmentVncUrl {
   environmentId: ID!
   url: String!
+}
+
+type EnvironmentTerminalConnection {
+  environmentId: ID!
+  terminalSessionId: String!
+  websocketUrl: String!
+  expiresAt: String!
 }
 
 type ComputeProviderDefinition {
@@ -851,6 +861,12 @@ input StartEnvironmentInput {
 
 input GetEnvironmentVncUrlInput {
   id: ID!
+}
+
+input CreateEnvironmentTerminalConnectionInput {
+  id: ID!
+  columns: Int
+  rows: Int
 }
 
 input StopEnvironmentInput {

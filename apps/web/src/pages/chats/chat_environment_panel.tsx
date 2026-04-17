@@ -31,6 +31,7 @@ export function ChatEnvironmentPanel({
   onManageEnvironments,
   onDeleteEnvironment,
   onOpenEnvironmentDesktop,
+  onOpenEnvironmentTerminal,
   onRemoveActiveSkill,
   onStartEnvironment,
   onStopEnvironment,
@@ -58,6 +59,7 @@ export function ChatEnvironmentPanel({
   onManageEnvironments: () => void;
   onDeleteEnvironment: (environmentId: string, force: boolean) => Promise<void>;
   onOpenEnvironmentDesktop: (environmentId: string) => Promise<void>;
+  onOpenEnvironmentTerminal: (environmentId: string) => Promise<void>;
   onRemoveActiveSkill: (skillId: string) => Promise<void>;
   onStartEnvironment: (environmentId: string) => Promise<void>;
   onStopEnvironment: (environmentId: string) => Promise<void>;
@@ -272,6 +274,7 @@ export function ChatEnvironmentPanel({
                       environment={currentSessionEnvironment}
                       onDelete={onDeleteEnvironment}
                       onOpenDesktop={onOpenEnvironmentDesktop}
+                      onOpenTerminal={onOpenEnvironmentTerminal}
                       onStart={onStartEnvironment}
                       onStop={onStopEnvironment}
                       size="icon-sm"

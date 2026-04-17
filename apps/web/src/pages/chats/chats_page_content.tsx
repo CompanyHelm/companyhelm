@@ -696,6 +696,17 @@ export function ChatsPageContent() {
     isStopEnvironmentInFlight,
   ]);
 
+  const openSessionEnvironmentTerminal = useCallback(async (environmentId: string) => {
+    window.open(
+      OrganizationPath.href(
+        organizationSlug,
+        `/environments/${encodeURIComponent(environmentId)}/terminal`,
+      ),
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }, [organizationSlug]);
+
   const startSessionEnvironment = useCallback(async (environmentId: string) => {
     if (
       isStartEnvironmentInFlight
@@ -2078,6 +2089,7 @@ export function ChatsPageContent() {
         }}
         onOpenChange={setIsEnvironmentPanelOpen}
         onOpenEnvironmentDesktop={openSessionEnvironmentDesktop}
+        onOpenEnvironmentTerminal={openSessionEnvironmentTerminal}
         onRemoveActiveSkill={async (skillId) => {
           if (!selectedSession) {
             return;

@@ -23,6 +23,7 @@
     "@clerk/backend": "^3.2.2",
     "@e2b/desktop": "^2.2.2",
     "@fastify/cors": "^11.2.0",
+    "@fastify/websocket": "^11.2.0",
     "@mariozechner/pi-agent-core": "^0.67.1",
     "@mariozechner/pi-ai": "^0.67.1",
     "@mariozechner/pi-coding-agent": "^0.67.1",

@@ -1,4 +1,5 @@
 import fastifyCors from "@fastify/cors";
+import fastifyWebsocket from "@fastify/websocket";
 import Fastify, { type FastifyServerOptions } from "fastify";
 import { inject, injectable } from "inversify";
 import { Config } from "../config/schema.ts";
@@ -11,6 +12,7 @@ import { RoutineSchedulerSyncService } from "../services/routines/scheduler_sync
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 import { RoutineTriggerWorker } from "../workers/routine_triggers.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
+import { EnvironmentTerminalWebsocketRoute } from "./environment_terminal_websocket_route.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
@@ -23,6 +25,7 @@ export class ApiServer {
   private readonly graphqlApplication: GraphqlApplication;
   private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
   private readonly logger: ApiLogger;
+  private readonly environmentTerminalWebsocketRoute: EnvironmentTerminalWebsocketRoute;
   private readonly queuePolicyValidator: QueuePolicyValidator;
   private readonly routineSchedulerSyncService: RoutineSchedulerSyncService;
   private readonly routineTriggerWorker: RoutineTriggerWorker;
@@ -40,12 +43,17 @@ export class ApiServer {
     @inject(SessionProcessWorker) sessionProcessWorker: SessionProcessWorker,
     @inject(RoutineSchedulerSyncService) routineSchedulerSyncService: RoutineSchedulerSyncService,
     @inject(RoutineTriggerWorker) routineTriggerWorker: RoutineTriggerWorker,
+    @inject(EnvironmentTerminalWebsocketRoute)
+    environmentTerminalWebsocketRoute: EnvironmentTerminalWebsocketRoute = {
+      register() {},
+    } as never,
   ) {
     this.config = config;
     this.adminDatabase = adminDatabase;
     this.database = database;
     this.graphqlApplication = graphqlApplication;
     this.logger = logger;
+    this.environmentTerminalWebsocketRoute = environmentTerminalWebsocketRoute;
     this.queuePolicyValidator = queuePolicyValidator;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
     this.routineSchedulerSyncService = routineSchedulerSyncService;
@@ -73,12 +81,14 @@ export class ApiServer {
       methods: this.config.cors.methods,
       allowedHeaders: this.config.cors.allowed_headers,
     });
+    await this.app.register(fastifyWebsocket);
 
     this.app.get("/health", async () => {
       return { status: "ok" };
     });
 
     await this.graphqlApplication.register(this.app as never);
+    this.environmentTerminalWebsocketRoute.register(this.app as never);
 
     await this.app.listen({
       host: this.config.host,

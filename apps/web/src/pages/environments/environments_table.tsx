@@ -33,6 +33,7 @@ interface EnvironmentsTableProps {
   isLoading: boolean;
   onDelete: (environmentId: string, force: boolean) => Promise<void>;
   onOpenDesktop: (environmentId: string) => Promise<void>;
+  onOpenTerminal: (environmentId: string) => Promise<void>;
   onStart: (environmentId: string) => Promise<void>;
   onStop: (environmentId: string) => Promise<void>;
 }
@@ -154,6 +155,7 @@ export function EnvironmentsTable(props: EnvironmentsTableProps) {
                 environment={environment}
                 onDelete={props.onDelete}
                 onOpenDesktop={props.onOpenDesktop}
+                onOpenTerminal={props.onOpenTerminal}
                 onStart={props.onStart}
                 onStop={props.onStop}
               />

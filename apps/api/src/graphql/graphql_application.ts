@@ -18,6 +18,7 @@ import { AttachSkillToAgentMutation } from "./mutations/attach_skill_to_agent.ts
 import { AttachSecretToSessionMutation } from "./mutations/attach_secret_to_session.ts";
 import { ArchiveSessionMutation } from "./mutations/archive_session.ts";
 import { CreateExternalLinkArtifactMutation } from "./mutations/create_external_link_artifact.ts";
+import { CreateEnvironmentTerminalConnectionMutation } from "./mutations/create_environment_terminal_connection.ts";
 import { CreateGithubInstallationUrlMutation } from "./mutations/create_github_installation_url.ts";
 import { CreateMarkdownArtifactMutation } from "./mutations/create_markdown_artifact.ts";
 import { CreatePullRequestArtifactMutation } from "./mutations/create_pull_request_artifact.ts";
@@ -140,7 +141,7 @@ import { TaskGraphqlRegistry } from "./registries/task_graphql_registry.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 
 type ResolverExecutorLike = {
-  execute: (...arguments_: unknown[]) => unknown;
+  execute: (...arguments_: never[]) => unknown;
 };
 
 /**
@@ -288,6 +289,7 @@ export class GraphqlApplication {
     updateSkillGroupMutation?: UpdateSkillGroupMutation,
     deleteSessionMutation?: DeleteSessionMutation,
     unarchiveSessionMutation?: UnarchiveSessionMutation,
+    createEnvironmentTerminalConnectionMutation?: CreateEnvironmentTerminalConnectionMutation,
   ): GraphqlApplication {
     const resolvedRedisService = redisService ?? GraphqlApplication.createFallbackRedisService(config);
     const resolvedGraphqlErrorLogger = graphqlErrorLogger ?? new GraphqlErrorLogger();
@@ -380,6 +382,7 @@ export class GraphqlApplication {
       agentEnvironmentTemplateService,
       computeProviderDefinitionTemplatesResolver,
       getEnvironmentVncUrlMutation,
+      createEnvironmentTerminalConnectionMutation,
       setDefaultComputeProviderDefinitionMutation,
       setDefaultModelProviderCredentialMutation,
       refreshModelProviderCredentialTokenMutation,
@@ -567,6 +570,16 @@ export class GraphqlApplication {
     this.graphqlResolverRegistry
       .getEnvironmentGraphqlRegistry()
       .setGetEnvironmentVncUrlMutation(getEnvironmentVncUrlMutation);
+  }
+
+  private get createEnvironmentTerminalConnectionMutation(): ResolverExecutorLike {
+    return this.graphqlResolverRegistry.getEnvironmentGraphqlRegistry().getCreateEnvironmentTerminalConnectionMutation();
+  }
+
+  private set createEnvironmentTerminalConnectionMutation(createEnvironmentTerminalConnectionMutation: ResolverExecutorLike) {
+    this.graphqlResolverRegistry
+      .getEnvironmentGraphqlRegistry()
+      .setCreateEnvironmentTerminalConnectionMutation(createEnvironmentTerminalConnectionMutation);
   }
 
   private get startEnvironmentMutation(): ResolverExecutorLike {

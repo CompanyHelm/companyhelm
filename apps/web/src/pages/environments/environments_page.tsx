@@ -1,6 +1,8 @@
 import { Suspense, useState } from "react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { EnvironmentsTable, type EnvironmentsTableRecord } from "./environments_table";
 import type { environmentsPageDeleteEnvironmentMutation } from "./__generated__/environmentsPageDeleteEnvironmentMutation.graphql";
 import type { environmentsPageGetEnvironmentVncUrlMutation } from "./__generated__/environmentsPageGetEnvironmentVncUrlMutation.graphql";
@@ -82,6 +84,7 @@ function EnvironmentsPageFallback() {
             isLoading
             onDelete={async () => undefined}
             onOpenDesktop={async () => undefined}
+            onOpenTerminal={async () => undefined}
             onStart={async () => undefined}
             onStop={async () => undefined}
           />
@@ -93,6 +96,7 @@ function EnvironmentsPageFallback() {
 
 function EnvironmentsPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const organizationSlug = useCurrentOrganizationSlug();
   const [actingEnvironmentId, setActingEnvironmentId] = useState<string | null>(null);
   const [deletingEnvironmentId, setDeletingEnvironmentId] = useState<string | null>(null);
   const data = useLazyLoadQuery<environmentsPageQuery>(
@@ -266,6 +270,16 @@ function EnvironmentsPageContent() {
               });
 
               setActingEnvironmentId(null);
+            }}
+            onOpenTerminal={async (environmentId) => {
+              window.open(
+                OrganizationPath.href(
+                  organizationSlug,
+                  `/environments/${encodeURIComponent(environmentId)}/terminal`,
+                ),
+                "_blank",
+                "noopener,noreferrer",
+              );
             }}
             onStart={async (environmentId) => {
               if (

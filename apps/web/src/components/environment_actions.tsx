@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MonitorIcon, PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import { MonitorIcon, PlayIcon, SquareIcon, TerminalIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ interface EnvironmentActionsProps {
   environment: EnvironmentActionRecord;
   onDelete: (environmentId: string, force: boolean) => Promise<void>;
   onOpenDesktop: (environmentId: string) => Promise<void>;
+  onOpenTerminal: (environmentId: string) => Promise<void>;
   onStart: (environmentId: string) => Promise<void>;
   onStop: (environmentId: string) => Promise<void>;
   size?: "icon" | "icon-sm";
@@ -52,6 +53,16 @@ function canStopEnvironment(status: string): boolean {
 }
 
 function canOpenDesktop(environment: EnvironmentActionRecord): boolean {
+  if (environment.provider !== "e2b") {
+    return false;
+  }
+
+  return environment.status === "available"
+    || environment.status === "running"
+    || environment.status === "stopped";
+}
+
+function canOpenTerminal(environment: EnvironmentActionRecord): boolean {
   if (environment.provider !== "e2b") {
     return false;
   }
@@ -177,6 +188,26 @@ export function EnvironmentActions(props: EnvironmentActionsProps) {
           variant="ghost"
         >
           <MonitorIcon className="h-4 w-4" />
+        </Button>
+      ) : null}
+      {canOpenTerminal(props.environment) ? (
+        <Button
+          aria-label="Open terminal"
+          disabled={isDisabled}
+          onClick={async () => {
+            AmplitudeAnalytics.trackEnvironmentAction({
+              action: "open_terminal",
+              environmentId: props.environment.id,
+              provider: props.environment.provider,
+              status: props.environment.status,
+            });
+            await props.onOpenTerminal(props.environment.id);
+          }}
+          size={size}
+          title="Open terminal"
+          variant="ghost"
+        >
+          <TerminalIcon className="h-4 w-4" />
         </Button>
       ) : null}
       {canStartEnvironment(props.environment.status) ? (

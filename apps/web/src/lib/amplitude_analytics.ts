@@ -22,7 +22,7 @@ type AmplitudeWindowState = {
 };
 
 type EnvironmentActionProperties = {
-  action: "delete" | "open_desktop" | "start" | "stop";
+  action: "delete" | "open_desktop" | "open_terminal" | "start" | "stop";
   environmentId: string;
   force?: boolean;
   provider: string;

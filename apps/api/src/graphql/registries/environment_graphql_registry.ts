@@ -5,6 +5,7 @@ import { AddModelProviderCredentialMutation } from "../mutations/add_model_provi
 import { DeleteComputeProviderDefinitionMutation } from "../mutations/delete_compute_provider_definition.ts";
 import { DeleteEnvironmentMutation } from "../mutations/delete_environment.ts";
 import { DeleteModelProviderCredentialMutation } from "../mutations/delete_model_provider_credential.ts";
+import { CreateEnvironmentTerminalConnectionMutation } from "../mutations/create_environment_terminal_connection.ts";
 import { GetEnvironmentVncUrlMutation } from "../mutations/get_environment_vnc_url.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../mutations/refresh_model_provider_credential_models.ts";
 import { RefreshModelProviderCredentialTokenMutation } from "../mutations/refresh_model_provider_credential_token.ts";
@@ -24,11 +25,11 @@ import { SessionEnvironmentQueryResolver } from "../resolvers/session_environmen
 import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
 
 type EnvironmentsQueryResolverLike = {
-  execute: (...arguments_: unknown[]) => unknown;
+  execute: (...arguments_: never[]) => unknown;
 };
 
 type MutationLike = {
-  execute: (...arguments_: unknown[]) => unknown;
+  execute: (...arguments_: never[]) => unknown;
 };
 
 /**
@@ -41,6 +42,7 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addModelProviderCredentialMutation: AddModelProviderCredentialMutation;
   private readonly computeProviderDefinitionsQueryResolver: ComputeProviderDefinitionsQueryResolver;
   private readonly computeProviderDefinitionTemplatesResolver: ComputeProviderDefinitionTemplatesResolver;
+  private createEnvironmentTerminalConnectionMutation: MutationLike;
   private readonly deleteComputeProviderDefinitionMutation: DeleteComputeProviderDefinitionMutation;
   private deleteEnvironmentMutation: MutationLike;
   private readonly deleteModelProviderCredentialMutation: DeleteModelProviderCredentialMutation;
@@ -119,6 +121,12 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     computeProviderDefinitionTemplatesResolver?: ComputeProviderDefinitionTemplatesResolver,
     @inject(GetEnvironmentVncUrlMutation)
     getEnvironmentVncUrlMutation: GetEnvironmentVncUrlMutation = new GetEnvironmentVncUrlMutation(),
+    @inject(CreateEnvironmentTerminalConnectionMutation)
+    createEnvironmentTerminalConnectionMutation: CreateEnvironmentTerminalConnectionMutation = {
+      async execute() {
+        throw new Error("CreateEnvironmentTerminalConnection mutation is not configured.");
+      },
+    } as never,
     @inject(SetDefaultComputeProviderDefinitionMutation)
     setDefaultComputeProviderDefinitionMutation: SetDefaultComputeProviderDefinitionMutation = {
       async execute() {
@@ -152,6 +160,7 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     this.computeProviderDefinitionsQueryResolver = computeProviderDefinitionsQueryResolver;
     this.computeProviderDefinitionTemplatesResolver = computeProviderDefinitionTemplatesResolver
       ?? new ComputeProviderDefinitionTemplatesResolver(defaultAgentEnvironmentTemplateService);
+    this.createEnvironmentTerminalConnectionMutation = createEnvironmentTerminalConnectionMutation;
     this.deleteComputeProviderDefinitionMutation = deleteComputeProviderDefinitionMutation;
     this.deleteEnvironmentMutation = deleteEnvironmentMutation;
     this.deleteModelProviderCredentialMutation = deleteModelProviderCredentialMutation;
@@ -179,6 +188,7 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
       Mutation: {
         AddComputeProviderDefinition: this.addComputeProviderDefinitionMutation.execute,
         AddModelProviderCredential: this.addModelProviderCredentialMutation.execute,
+        CreateEnvironmentTerminalConnection: this.createEnvironmentTerminalConnectionMutation.execute,
         DeleteComputeProviderDefinition: this.deleteComputeProviderDefinitionMutation.execute,
         DeleteEnvironment: this.deleteEnvironmentMutation.execute,
         DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
@@ -225,6 +235,14 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
 
   setGetEnvironmentVncUrlMutation(getEnvironmentVncUrlMutation: MutationLike): void {
     this.getEnvironmentVncUrlMutation = getEnvironmentVncUrlMutation;
+  }
+
+  getCreateEnvironmentTerminalConnectionMutation(): MutationLike {
+    return this.createEnvironmentTerminalConnectionMutation;
+  }
+
+  setCreateEnvironmentTerminalConnectionMutation(createEnvironmentTerminalConnectionMutation: MutationLike): void {
+    this.createEnvironmentTerminalConnectionMutation = createEnvironmentTerminalConnectionMutation;
   }
 
   getStartEnvironmentMutation(): MutationLike {

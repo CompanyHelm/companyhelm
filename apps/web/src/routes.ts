@@ -12,6 +12,7 @@ import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
 import { ConversationsPage } from "./pages/conversations/conversations_page";
 import { DashboardPage } from "./pages/dashboard/dashboard_page";
+import { EnvironmentTerminalPage } from "./pages/environments/environment_terminal_page";
 import { EnvironmentsPage } from "./pages/environments/environments_page";
 import { FlagsPage } from "./pages/flags/flags_page";
 import { InboxPage } from "./pages/inbox/inbox_page";
@@ -165,6 +166,12 @@ const pageContainerRoute = createRoute({
   component: PageContainerRoute,
 });
 
+const terminalOrganizationRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  id: "terminal-org",
+  component: OrganizationRoute,
+});
+
 const rootIndexRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/",
@@ -205,6 +212,12 @@ const environmentsRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/environments"),
   component: EnvironmentsPage,
+});
+
+const environmentTerminalRoute = createRoute({
+  getParentRoute: () => terminalOrganizationRoute,
+  path: OrganizationPath.route("/environments/$environmentId/terminal"),
+  component: EnvironmentTerminalPage,
 });
 
 const computeProvidersRoute = createRoute({
@@ -391,6 +404,9 @@ const routeTree = rootRoute.addChildren([
       ]),
       githubInstallRoute,
       mcpOauthCallbackRoute,
+    ]),
+    terminalOrganizationRoute.addChildren([
+      environmentTerminalRoute,
     ]),
   ]),
   signInRoute,
