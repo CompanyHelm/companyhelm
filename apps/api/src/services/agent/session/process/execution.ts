@@ -17,6 +17,7 @@ import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
 import { SessionProcessPubSubNames } from "./pub_sub_names.ts";
 import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
+import { CompanyHelmLlmProviderService } from "../../../ai_providers/companyhelm_service.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
@@ -41,6 +42,7 @@ type ModelRow = {
 
 type CredentialRow = {
   encryptedApiKey: string;
+  isManaged: boolean;
   modelProvider: string;
 };
 
@@ -60,6 +62,7 @@ type SelectableDatabase = {
 @injectable()
 export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
+  private readonly companyHelmLlmProviderService?: CompanyHelmLlmProviderService;
   private readonly companySettingsService: CompanySettingsService;
   private readonly logger: PinoLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
@@ -85,8 +88,11 @@ export class SessionProcessExecutionService {
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(CompanySettingsService)
     companySettingsService: CompanySettingsService = new CompanySettingsService(),
+    @inject(CompanyHelmLlmProviderService)
+    companyHelmLlmProviderService?: CompanyHelmLlmProviderService,
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
+    this.companyHelmLlmProviderService = companyHelmLlmProviderService;
     this.companySettingsService = companySettingsService;
     this.logger = logger.child({
       component: "session_process_execution_service",
@@ -406,6 +412,7 @@ export class SessionProcessExecutionService {
       const [credentialRow] = await selectableDatabase
         .select({
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
         })
         .from(modelProviderCredentials)
@@ -421,7 +428,7 @@ export class SessionProcessExecutionService {
         agentId: sessionRow.agentId,
         agentName: agentRow.name,
         agentSystemPrompt: agentRow.systemPrompt,
-        apiKey: credentialRow.encryptedApiKey,
+        apiKey: this.resolveRuntimeApiKey(credentialRow),
         companyId,
         companyName: companyRow.name,
         modelId: modelRow.modelId,
@@ -429,6 +436,18 @@ export class SessionProcessExecutionService {
         reasoningLevel: sessionRow.currentReasoningLevel,
       };
     });
+  }
+
+  private resolveRuntimeApiKey(credentialRow: CredentialRow): string {
+    if (credentialRow.isManaged) {
+      if (!this.companyHelmLlmProviderService) {
+        throw new Error("CompanyHelm model provider service is not configured.");
+      }
+
+      return this.companyHelmLlmProviderService.getRuntimeApiKey();
+    }
+
+    return credentialRow.encryptedApiKey;
   }
 
   private async clearQueuedMessages(

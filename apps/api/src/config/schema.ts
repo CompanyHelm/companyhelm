@@ -82,6 +82,9 @@ export const ConfigDocument = z.object({
       }),
       template_prefix: NonEmptyStringSchema,
     }),
+    llm: z.object({
+      openai_api_key: NonEmptyStringSchema,
+    }),
   }),
   github: z.object({
     app_client_id: NonEmptyStringSchema,

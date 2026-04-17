@@ -5,9 +5,12 @@ import {
   companies,
   companyMembers,
   computeProviderDefinitions,
+  modelProviderCredentialModels,
+  modelProviderCredentials,
   taskStages,
 } from "../../db/schema.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
+import { CompanyHelmLlmProviderService } from "../ai_providers/companyhelm_service.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
 
 type CompanyRecord = {
@@ -25,9 +28,20 @@ type ComputeProviderDefinitionRecord = {
   provider: ComputeProvider;
 };
 
+type ModelProviderCredentialRecord = {
+  id: string;
+  isManaged: boolean;
+};
+
+type ModelProviderCredentialModelRecord = {
+  id: string;
+  isDefault: boolean;
+  modelId: string;
+};
+
 type BootstrapInsertableDatabase = DatabaseTransactionInterface & {
   insert(table: unknown): {
-    values(value: Record<string, unknown>): {
+    values(value: Record<string, unknown> | Array<Record<string, unknown>>): {
       onConflictDoNothing(): {
         returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
       };
@@ -42,6 +56,14 @@ type BootstrapInsertOperation = {
   };
 };
 
+type BootstrapUpdatableDatabase = DatabaseTransactionInterface & {
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): Promise<unknown>;
+    };
+  };
+};
+
 /**
  * Owns the company-side provisioning steps that must exist before company-scoped API features can
  * run. That includes the company row itself, membership links, and the idempotent default catalog
@@ -51,12 +73,16 @@ type BootstrapInsertOperation = {
 export class CompanyBootstrapService {
   static readonly DEFAULT_TASK_CATEGORY_NAMES = ["Backlog", "TODO", "Archive"] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
+  private readonly companyHelmLlmProviderService: CompanyHelmLlmProviderService;
 
   constructor(
     @inject(CompanyHelmComputeProviderService)
     companyHelmComputeProviderService: CompanyHelmComputeProviderService,
+    @inject(CompanyHelmLlmProviderService)
+    companyHelmLlmProviderService: CompanyHelmLlmProviderService,
   ) {
     this.companyHelmComputeProviderService = companyHelmComputeProviderService;
+    this.companyHelmLlmProviderService = companyHelmLlmProviderService;
   }
 
   async findOrCreateCompany(
@@ -127,6 +153,7 @@ export class CompanyBootstrapService {
     companyId: string,
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
+    await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
     await this.ensureDefaultTaskStages(transaction, companyId);
   }
 
@@ -200,6 +227,176 @@ export class CompanyBootstrapService {
         updatedByUserId: null,
       }) as BootstrapInsertOperation;
     await insertOperation.onConflictDoNothing();
+  }
+
+  private async ensureCompanyHelmLlmProviderCredential(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<void> {
+    const [existingCredential] = await transaction
+      .select({
+        id: modelProviderCredentials.id,
+        isManaged: modelProviderCredentials.isManaged,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.isManaged, true),
+      ))
+      .limit(1) as ModelProviderCredentialRecord[];
+    if (existingCredential) {
+      await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, existingCredential.id);
+      return;
+    }
+
+    const [existingDefaultCredential] = await transaction
+      .select({
+        id: modelProviderCredentials.id,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.isDefault, true),
+      ))
+      .limit(1);
+    const now = new Date();
+    const insertableDatabase = transaction as BootstrapInsertableDatabase;
+    const insertOperation = insertableDatabase
+      .insert(modelProviderCredentials)
+      .values({
+        accessTokenExpiresAt: null,
+        companyId,
+        createdAt: now,
+        encryptedApiKey: this.companyHelmLlmProviderService.getStoredApiKeySentinel(),
+        errorMessage: null,
+        isDefault: !existingDefaultCredential,
+        isManaged: true,
+        modelProvider: this.companyHelmLlmProviderService.getModelProvider(),
+        name: this.companyHelmLlmProviderService.getCredentialName(),
+        refreshedAt: null,
+        refreshToken: null,
+        status: "active",
+        type: "api_key",
+        updatedAt: now,
+      }) as BootstrapInsertOperation;
+    const createdRows = await insertOperation
+      .onConflictDoNothing()
+      .returning?.({
+        id: modelProviderCredentials.id,
+        isManaged: modelProviderCredentials.isManaged,
+      }) as ModelProviderCredentialRecord[] | undefined;
+    const credential = createdRows?.[0]
+      ?? await this.findCompanyHelmLlmProviderCredential(transaction, companyId);
+    if (!credential) {
+      throw new Error("Failed to provision CompanyHelm model provider credential.");
+    }
+
+    await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, credential.id);
+  }
+
+  private async findCompanyHelmLlmProviderCredential(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<ModelProviderCredentialRecord | null> {
+    const [existingCredential] = await transaction
+      .select({
+        id: modelProviderCredentials.id,
+        isManaged: modelProviderCredentials.isManaged,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.isManaged, true),
+      ))
+      .limit(1) as ModelProviderCredentialRecord[];
+
+    return existingCredential ?? null;
+  }
+
+  private async ensureCompanyHelmLlmProviderModels(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+    credentialId: string,
+  ): Promise<void> {
+    const existingModels = await (transaction
+      .select({
+        id: modelProviderCredentialModels.id,
+        isDefault: modelProviderCredentialModels.isDefault,
+        modelId: modelProviderCredentialModels.modelId,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+      )) as unknown as Promise<ModelProviderCredentialModelRecord[]>);
+    const existingModelsByModelId = new Map(existingModels.map((model) => [model.modelId, model]));
+    const seedModels = this.companyHelmLlmProviderService.getSeedModels();
+    const insertableDatabase = transaction as BootstrapInsertableDatabase;
+    const updatableDatabase = transaction as BootstrapUpdatableDatabase;
+
+    for (const seedModel of seedModels) {
+      const existingModel = existingModelsByModelId.get(seedModel.modelId);
+      if (!existingModel) {
+        await insertableDatabase
+          .insert(modelProviderCredentialModels)
+          .values({
+            companyId,
+            description: seedModel.description,
+            isDefault: false,
+            modelId: seedModel.modelId,
+            modelProviderCredentialId: credentialId,
+            name: seedModel.name,
+            reasoningLevels: seedModel.reasoningLevels,
+            reasoningSupported: seedModel.reasoningSupported,
+          });
+        continue;
+      }
+
+      await updatableDatabase
+        .update(modelProviderCredentialModels)
+        .set({
+          description: seedModel.description,
+          name: seedModel.name,
+          reasoningLevels: seedModel.reasoningLevels,
+          reasoningSupported: seedModel.reasoningSupported,
+        })
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, companyId),
+          eq(modelProviderCredentialModels.id, existingModel.id),
+        ));
+    }
+
+    const defaultModelId = this.resolveCompanyHelmDefaultModelId(seedModels.map((model) => model.modelId));
+    await updatableDatabase
+      .update(modelProviderCredentialModels)
+      .set({
+        isDefault: false,
+      })
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+      ));
+    if (defaultModelId) {
+      await updatableDatabase
+        .update(modelProviderCredentialModels)
+        .set({
+          isDefault: true,
+        })
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, companyId),
+          eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+          eq(modelProviderCredentialModels.modelId, defaultModelId),
+        ));
+    }
+  }
+
+  private resolveCompanyHelmDefaultModelId(modelIds: string[]): string | null {
+    const configuredDefaultModelId = this.companyHelmLlmProviderService.getDefaultModelId();
+    if (configuredDefaultModelId && modelIds.includes(configuredDefaultModelId)) {
+      return configuredDefaultModelId;
+    }
+
+    return modelIds[0] ?? null;
   }
 
   private async ensureDefaultTaskStages(

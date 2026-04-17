@@ -666,6 +666,13 @@
       "when": 1776318636000,
       "tag": "0094_google_gemini_cli_model_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1776445487935,
+      "tag": "0095_quiet_gertrude_yorkes",
+      "breakpoints": true
     }
   ]
 }

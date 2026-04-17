@@ -37,6 +37,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -54,9 +55,10 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           updatedAt: modelProviderCredentials.updatedAt,
+          isManaged: modelProviderCredentials.isManaged,
         })
         .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id)) as ModelProviderCredentialRecord[];
+        .where(eq(modelProviderCredentials.companyId, companyId)) as ModelProviderCredentialRecord[];
       const modelRecords = await selectableDatabase
         .select({
           isDefault: modelProviderCredentialModels.isDefault,
@@ -65,7 +67,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
-        .where(eq(modelProviderCredentialModels.companyId, context.authSession.company.id)) as ModelRecord[];
+        .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
       return credentials.map((credential) =>
         serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords)

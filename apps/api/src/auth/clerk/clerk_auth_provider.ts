@@ -6,6 +6,8 @@ import type { DatabaseClientInterface } from "../../db/database_interface.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import { UserBootstrapService } from "../../services/bootstrap/user.ts";
 import { CompanyHelmComputeProviderService } from "../../services/compute_provider_definitions/companyhelm_service.ts";
+import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
+import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
 import {
   AuthProvider,
   type AuthenticateBearerTokenHeaders,
@@ -87,6 +89,7 @@ export class ClerkAuthProvider extends AuthProvider {
       dependencies.userBootstrapService ?? new UserBootstrapService(),
       dependencies.companyBootstrapService ?? new CompanyBootstrapService(
         new CompanyHelmComputeProviderService(config),
+        new CompanyHelmLlmProviderService(config, new ModelRegistry()),
       ),
     );
     provider.clerkClient = dependencies.clerkClient ?? provider.clerkClient;

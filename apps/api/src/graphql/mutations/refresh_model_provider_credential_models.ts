@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentials } from "../../db/schema.ts";
+import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import { ModelService } from "../../services/ai_providers/model_service.js";
 import type { ModelProviderId } from "../../services/ai_providers/model_provider_service.js";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
@@ -17,6 +18,7 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   modelProvider: ModelProviderId;
   encryptedApiKey: string;
+  isManaged: boolean;
 };
 
 type GraphqlModelProviderCredentialModelRecord = {
@@ -48,11 +50,17 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
   RefreshModelProviderCredentialModelsMutationArguments,
   GraphqlModelProviderCredentialModelRecord[]
 > {
+  private readonly companyHelmLlmProviderService?: CompanyHelmLlmProviderService;
   private readonly modelService: ModelService;
 
-  constructor(@inject(ModelService) modelService: ModelService) {
+  constructor(
+    @inject(ModelService) modelService: ModelService,
+    @inject(CompanyHelmLlmProviderService)
+    companyHelmLlmProviderService?: CompanyHelmLlmProviderService,
+  ) {
     super();
     this.modelService = modelService;
+    this.companyHelmLlmProviderService = companyHelmLlmProviderService;
   }
 
   protected resolve = async (
@@ -69,19 +77,21 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       return selectableDatabase
         .select({
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
           modelProvider: modelProviderCredentials.modelProvider,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
+          isManaged: modelProviderCredentials.isManaged,
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, credentialId),
         ))
         .limit(1);
@@ -90,10 +100,13 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
     if (!credential) {
       throw new Error("Credential not found.");
     }
+    const apiKey = credential.isManaged
+      ? this.requireCompanyHelmLlmProviderService().getRuntimeApiKey()
+      : credential.encryptedApiKey;
 
     const updatedModels = await this.modelService.refreshStoredModels({
-      apiKey: credential.encryptedApiKey,
-      companyId: context.authSession.company.id,
+      apiKey,
+      companyId,
       modelProvider: credential.modelProvider,
       modelProviderCredentialId: credential.id,
       transactionProvider: context.app_runtime_transaction_provider,
@@ -105,4 +118,12 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
       reasoningLevels: model.reasoningLevels ?? [],
     }));
   };
+
+  private requireCompanyHelmLlmProviderService(): CompanyHelmLlmProviderService {
+    if (!this.companyHelmLlmProviderService) {
+      throw new Error("CompanyHelm model provider service is not configured.");
+    }
+
+    return this.companyHelmLlmProviderService;
+  }
 }

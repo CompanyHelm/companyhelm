@@ -75,10 +75,11 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       const [credential] = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
@@ -92,13 +93,14 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
           accessTokenExpiresAt: modelProviderCredentials.accessTokenExpiresAt,
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, credentialId),
         ))
         .limit(1) as RefreshableCredentialRecord[];
@@ -128,7 +130,7 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
             updatedAt: new Date(),
           })
           .where(and(
-            eq(modelProviderCredentials.companyId, context.authSession.company.id),
+            eq(modelProviderCredentials.companyId, companyId),
             eq(modelProviderCredentials.id, credential.id),
           ));
         throw error instanceof Error ? error : new Error(nextErrorMessage);
@@ -147,7 +149,7 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           updatedAt: refreshedAt,
         })
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, credential.id),
         ));
 
@@ -164,11 +166,12 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, credential.id),
         ))
         .limit(1) as ModelProviderCredentialRecord[];
@@ -186,7 +189,7 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.modelProviderCredentialId, credential.id),
         ))
         .limit(1000) as ModelProviderCredentialModelRecord[];

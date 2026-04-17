@@ -17,6 +17,7 @@ type ModelProviderCredentialRecord = {
   companyId: string;
   createdAt: Date;
   isDefault: boolean;
+  isManaged: boolean;
   modelProvider: ModelProviderId;
   name: string;
   status: "active" | "error";
@@ -41,6 +42,7 @@ type GraphqlModelProviderCredentialRecord = {
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   isDefault: boolean;
+  isManaged: boolean;
   modelProvider: ModelProviderId;
   name: string;
   status: "active" | "error";
@@ -90,16 +92,18 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
       throw new Error("Authentication required.");
     }
 
+    const companyId = context.authSession.company.id;
     const modelRegistry = new ModelRegistry();
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       const credentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
           status: modelProviderCredentials.status,
@@ -110,7 +114,7 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id)) as ModelProviderCredentialRecord[];
+        .where(eq(modelProviderCredentials.companyId, companyId)) as ModelProviderCredentialRecord[];
       if (!credentials.some((credential) => credential.id === credentialId)) {
         throw new Error("Credential not found.");
       }
@@ -120,14 +124,14 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
         .set({
           isDefault: false,
         })
-        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
+        .where(eq(modelProviderCredentials.companyId, companyId));
       await updatableDatabase
         .update(modelProviderCredentials)
         .set({
           isDefault: true,
         })
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, credentialId),
         ));
 
@@ -137,6 +141,7 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
           companyId: modelProviderCredentials.companyId,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
           status: modelProviderCredentials.status,
@@ -148,7 +153,7 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, credentialId),
         )) as ModelProviderCredentialRecord[];
       if (!credential) {
@@ -164,7 +169,7 @@ export class SetDefaultModelProviderCredentialMutation extends Mutation<
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
         )) as ModelProviderCredentialModelRecord[];
       const defaultModel = models.find((model) => model.isDefault) ?? null;

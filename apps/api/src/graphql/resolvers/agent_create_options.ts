@@ -9,6 +9,7 @@ import { Resolver } from "./resolver.ts";
 type CredentialRecord = {
   id: string;
   isDefault: boolean;
+  isManaged: boolean;
   modelProvider: string;
   name: string;
 };
@@ -78,6 +79,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -85,11 +87,12 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
         .select({
           id: modelProviderCredentials.id,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
           name: modelProviderCredentials.name,
         })
         .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id)) as CredentialRecord[];
+        .where(eq(modelProviderCredentials.companyId, companyId)) as CredentialRecord[];
 
       const modelRecords = await selectableDatabase
         .select({
@@ -103,7 +106,7 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
           reasoningLevels: modelProviderCredentialModels.reasoningLevels,
         })
         .from(modelProviderCredentialModels)
-        .where(eq(modelProviderCredentialModels.companyId, context.authSession.company.id)) as ModelRecord[];
+        .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
 
       return credentialRecords
         .map((credentialRecord) => {
@@ -167,6 +170,10 @@ export class AgentCreateOptionsQueryResolver extends Resolver<GraphqlAgentCreate
   }
 
   private resolveProviderLabel(credentialRecord: CredentialRecord): string {
+    if (credentialRecord.isManaged) {
+      return "CompanyHelm";
+    }
+
     const providerDefinition = this.modelProviderService.get(credentialRecord.modelProvider);
     if (credentialRecord.name === providerDefinition.name) {
       return providerDefinition.name;

@@ -13,6 +13,7 @@ import { ConfigDocument } from "../src/config/schema.ts";
 class AppConfigTestHarness {
   static createFixtureConfigPath(): {
     companyHelmE2bApiKeyVariableName: string;
+    companyHelmOpenAiApiKeyVariableName: string;
     configPath: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
@@ -35,6 +36,7 @@ class AppConfigTestHarness {
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
     const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
     const companyHelmE2bApiKeyVariableName = "COMPANYHELM_TEST_E2B_API_KEY";
+    const companyHelmOpenAiApiKeyVariableName = "COMPANYHELM_TEST_OPENAI_API_KEY";
 
     process.env[clerkSecretKeyVariableName] = "clerk-secret-key";
     process.env[clerkPublishableKeyVariableName] = "clerk-publishable-key";
@@ -45,12 +47,14 @@ class AppConfigTestHarness {
     process.env[githubUrlVariableName] = "https://github.example/app";
     process.env[exaApiKeyVariableName] = "exa-local-api-key";
     process.env[companyHelmE2bApiKeyVariableName] = "e2b-local-api-key";
+    process.env[companyHelmOpenAiApiKeyVariableName] = "sk-local-api-key";
 
     mkdirSync(configDirectoryPath, { recursive: true });
     writeFileSync(
       configPath,
       AppConfigTestHarness.createConfigDocument({
         companyHelmE2bApiKeyVariableName,
+        companyHelmOpenAiApiKeyVariableName,
         githubClientVariableName,
         githubKeyIdVariableName,
         githubKeyVariableName,
@@ -65,6 +69,7 @@ class AppConfigTestHarness {
 
     return {
       companyHelmE2bApiKeyVariableName,
+      companyHelmOpenAiApiKeyVariableName,
       configPath,
       clerkSecretKeyVariableName,
       clerkPublishableKeyVariableName,
@@ -79,6 +84,7 @@ class AppConfigTestHarness {
 
   private static createConfigDocument(params: {
     companyHelmE2bApiKeyVariableName: string;
+    companyHelmOpenAiApiKeyVariableName: string;
     githubClientVariableName: string;
     githubKeyIdVariableName: string;
     githubKeyVariableName: string;
@@ -155,6 +161,8 @@ companyhelm:
       width: 1920
       height: 1080
     template_prefix: "realequityapps/"
+  llm:
+    openai_api_key: "\${${params.companyHelmOpenAiApiKeyVariableName}}"
 github:
   app_client_id: "\${${params.githubClientVariableName}}"
   key_id: "\${${params.githubKeyIdVariableName}}"
@@ -233,6 +241,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     key_id: "companyhelm-local-key",
   });
   assert.equal(document.companyhelm.e2b.api_key, "e2b-local-api-key");
+  assert.equal(document.companyhelm.llm.openai_api_key, "sk-local-api-key");
   assert.deepEqual(document.companyhelm.e2b.desktop_resolution, {
     height: 1080,
     width: 1920,

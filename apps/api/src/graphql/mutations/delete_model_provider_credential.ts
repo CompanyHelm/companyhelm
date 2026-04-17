@@ -24,6 +24,7 @@ type ModelProviderCredentialRecord = {
   name: string;
   modelProvider: ModelProviderId;
   isDefault: boolean;
+  isManaged: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;
@@ -38,6 +39,7 @@ type GraphqlModelProviderCredentialRecord = {
   companyId: string;
   name: string;
   modelProvider: ModelProviderId;
+  isManaged: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;
@@ -144,10 +146,13 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const deletableDatabase = tx as DeletableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       const existingCredential = await this.loadCredentialRecord(selectableDatabase, companyId, credentialId);
       if (!existingCredential) {
         throw new Error("Credential not found.");
+      }
+      if (existingCredential.isManaged) {
+        throw new Error("CompanyHelm model provider is managed by the system.");
       }
 
       const credentialUsage = await this.findCredentialUsage(selectableDatabase, companyId, credentialId);
@@ -172,7 +177,7 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
         );
       }
 
-      const deletedCredentials = await deletableDatabase
+      const deletedCredentials = await (deletableDatabase
         .delete(modelProviderCredentials)
         .where(and(
           eq(modelProviderCredentials.companyId, companyId),
@@ -182,6 +187,7 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
           id: modelProviderCredentials.id,
           companyId: modelProviderCredentials.companyId,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
           type: modelProviderCredentials.type,
@@ -191,7 +197,7 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           updatedAt: modelProviderCredentials.updatedAt,
-        }) as Promise<ModelProviderCredentialRecord[]>;
+        }) ?? Promise.resolve([]));
       const deletedCredential = deletedCredentials[0];
       if (existingCredential.isDefault) {
         const remainingCredentials = await selectableDatabase
@@ -199,6 +205,7 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
             id: modelProviderCredentials.id,
             companyId: modelProviderCredentials.companyId,
             isDefault: modelProviderCredentials.isDefault,
+            isManaged: modelProviderCredentials.isManaged,
             name: modelProviderCredentials.name,
             modelProvider: modelProviderCredentials.modelProvider,
             type: modelProviderCredentials.type,
@@ -348,6 +355,7 @@ export class DeleteModelProviderCredentialMutation extends Mutation<
         id: modelProviderCredentials.id,
         companyId: modelProviderCredentials.companyId,
         isDefault: modelProviderCredentials.isDefault,
+        isManaged: modelProviderCredentials.isManaged,
         name: modelProviderCredentials.name,
         modelProvider: modelProviderCredentials.modelProvider,
         type: modelProviderCredentials.type,

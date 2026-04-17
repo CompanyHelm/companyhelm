@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import {
   ModelProviderAuthorizationType,
@@ -34,6 +35,7 @@ type ModelProviderCredentialRecord = {
   refreshedAt: Date | null;
   createdAt: Date;
   isDefault: boolean;
+  isManaged: boolean;
   updatedAt: Date;
 };
 
@@ -45,6 +47,7 @@ type GraphqlModelProviderCredentialRecord = {
   defaultModelId: string | null;
   defaultReasoningLevel: string | null;
   isDefault: boolean;
+  isManaged: boolean;
   type: "api_key" | "oauth_token";
   status: "active" | "error";
   errorMessage: string | null;
@@ -111,12 +114,16 @@ export class AddModelProviderCredentialMutation extends Mutation<
       arguments_.input.name,
       providerDefinition,
     );
+    if (CompanyHelmLlmProviderService.CREDENTIAL_NAME === credentialName) {
+      throw new Error("CompanyHelm model provider is managed by the system.");
+    }
     if (!context.authSession?.company) {
       throw new Error("Authentication required.");
     }
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     const credentialPayload = AddModelProviderCredentialMutation.resolveCredentialPayload(
       arguments_.input,
@@ -130,9 +137,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
     );
     const now = new Date();
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const insertableDatabase = tx as InsertableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
+      const insertableDatabase = tx as unknown as InsertableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       const existingCredentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
@@ -146,16 +153,17 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
-        .where(eq(modelProviderCredentials.companyId, context.authSession.company.id));
+        .where(eq(modelProviderCredentials.companyId, companyId));
       const shouldSetDefaultCredential = Boolean(arguments_.input.isDefault)
         || !existingCredentials.some((existingCredential) => existingCredential.isDefault);
-      const createdCredentials = await insertableDatabase
+      const createdCredentials = await (insertableDatabase
         .insert(modelProviderCredentials)
         .values({
-          companyId: context.authSession.company.id,
+          companyId,
           name: credentialName,
           modelProvider,
           type: credentialPayload.type,
@@ -164,6 +172,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
           isDefault: false,
+          isManaged: false,
           status: "active",
           errorMessage: null,
           createdAt: now,
@@ -181,8 +190,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
-        }) as Promise<ModelProviderCredentialRecord[]>;
+        }) ?? Promise.resolve([]));
 
       const createdCredential = createdCredentials?.[0];
       if (!createdCredential) {
@@ -194,7 +204,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
           .insert(modelProviderCredentialModels)
           .values(models.map((model) => AddModelProviderCredentialMutation.toModelInsertInput({
             model,
-            companyId: context.authSession.company.id,
+            companyId,
             modelProviderCredentialId: createdCredential.id,
           })));
       }
@@ -202,14 +212,14 @@ export class AddModelProviderCredentialMutation extends Mutation<
       if (shouldSetDefaultCredential) {
         await AddModelProviderCredentialMutation.setDefaultCredential(
           updatableDatabase,
-          context.authSession.company.id,
+          companyId,
           createdCredential.id,
         );
       }
       if (defaultModelId) {
         await AddModelProviderCredentialMutation.setDefaultModel(
           updatableDatabase,
-          context.authSession.company.id,
+          companyId,
           createdCredential.id,
           defaultModelId,
         );
@@ -228,11 +238,12 @@ export class AddModelProviderCredentialMutation extends Mutation<
           refreshedAt: modelProviderCredentials.refreshedAt,
           createdAt: modelProviderCredentials.createdAt,
           isDefault: modelProviderCredentials.isDefault,
+          isManaged: modelProviderCredentials.isManaged,
           updatedAt: modelProviderCredentials.updatedAt,
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, context.authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, createdCredential.id),
         ));
 

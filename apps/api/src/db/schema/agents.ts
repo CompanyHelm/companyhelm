@@ -62,6 +62,7 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
   isDefault: boolean("is_default").notNull().default(false),
+  isManaged: boolean("is_managed").notNull().default(false),
   status: modelProviderCredentialStatusEnum("status").notNull(),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -70,6 +71,9 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   companyDefaultUnique: uniqueIndex("model_provider_credentials_company_default_uidx")
     .on(table.companyId)
     .where(sql`${table.isDefault}`),
+  companyManagedUnique: uniqueIndex("model_provider_credentials_company_managed_uidx")
+    .on(table.companyId)
+    .where(sql`${table.isManaged}`),
 }));
 
 // avaialbe models based on the model provider credential

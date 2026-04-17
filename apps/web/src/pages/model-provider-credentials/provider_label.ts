@@ -1,4 +1,10 @@
-export function formatProviderLabel(value: string): string {
+export function formatProviderLabel(value: string, options: {
+  isManaged?: boolean;
+} = {}): string {
+  if (options.isManaged) {
+    return "CompanyHelm";
+  }
+
   if (value === "openai") {
     return "OpenAI (API key)";
   }

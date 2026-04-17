@@ -53,6 +53,7 @@ const modelProviderCredentialsPageQueryNode = graphql`
     ModelProviderCredentials {
       id
       isDefault
+      isManaged
       name
       modelProvider
       type
@@ -77,6 +78,7 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
     AddModelProviderCredential(input: $input) {
       id
       isDefault
+      isManaged
       name
       modelProvider
       type
@@ -245,6 +247,7 @@ function ModelProviderCredentialsPageContent() {
       errorMessage: credential.errorMessage ?? null,
       id: credential.id,
       isDefault: credential.isDefault,
+      isManaged: credential.isManaged,
       modelProvider: credential.modelProvider,
       name: credential.name,
       refreshedAt: credential.refreshedAt ?? null,

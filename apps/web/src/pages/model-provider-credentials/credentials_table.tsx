@@ -30,6 +30,7 @@ export type CredentialsTableRecord = {
   errorMessage: string | null;
   id: string;
   isDefault: boolean;
+  isManaged: boolean;
   modelProvider: string;
   name: string;
   refreshedAt: string | null;
@@ -135,6 +136,9 @@ export function CredentialsTable(props: CredentialsTableProps) {
                     {credential.isDefault ? (
                       <Badge variant="secondary">Default</Badge>
                     ) : null}
+                    {credential.isManaged ? (
+                      <Badge variant="outline">Managed</Badge>
+                    ) : null}
                     {showRefreshFailure ? (
                       <Badge variant="destructive">Reconnect required</Badge>
                     ) : null}
@@ -150,7 +154,9 @@ export function CredentialsTable(props: CredentialsTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline">{formatProviderLabel(credential.modelProvider)}</Badge>
+                <Badge variant="outline">
+                  {formatProviderLabel(credential.modelProvider, { isManaged: credential.isManaged })}
+                </Badge>
               </TableCell>
               <TableCell>{formatProviderCredentialType(credential.type)}</TableCell>
               <TableCell>
@@ -188,12 +194,14 @@ export function CredentialsTable(props: CredentialsTableProps) {
                   >
                     <StarIcon className={`h-4 w-4 ${credential.isDefault ? "fill-current" : ""}`} />
                   </Button>
-                  <DeleteCredentialDialog
-                    credential={credential}
-                    deletingCredentialId={props.deletingCredentialId}
-                    onDelete={props.onDelete}
-                    replacementOptions={props.replacementOptions}
-                  />
+                  {credential.isManaged ? null : (
+                    <DeleteCredentialDialog
+                      credential={credential}
+                      deletingCredentialId={props.deletingCredentialId}
+                      onDelete={props.onDelete}
+                      replacementOptions={props.replacementOptions}
+                    />
+                  )}
                 </div>
               </TableCell>
             </TableRow>

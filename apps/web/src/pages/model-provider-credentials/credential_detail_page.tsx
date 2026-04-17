@@ -22,6 +22,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
   query credentialDetailPageQuery($credentialId: ID!) {
     ModelProviderCredentials {
       id
+      isManaged
       name
       modelProvider
       type
@@ -162,9 +163,12 @@ function ModelProviderCredentialDetailPageContent() {
       modelProviderCredentialDetailPageSetDefaultModelMutationNode,
     );
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
-  const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim())
+  const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim(), {
+    isManaged: currentCredential?.isManaged ?? false,
+  })
     || "Credential";
   const isOauthCredential = currentCredential?.type === "oauth_token";
+  const isManagedCredential = currentCredential?.isManaged ?? false;
   const showRefreshFailure = currentCredential ? hasCredentialRefreshFailure(currentCredential) : false;
   const credentialStatus = isOauthCredential
     ? (currentCredential?.refreshedAt
@@ -189,6 +193,9 @@ function ModelProviderCredentialDetailPageContent() {
             <Badge variant="secondary">
               {formatProviderCredentialType(String(currentCredential?.type || "api_key"))}
             </Badge>
+            {isManagedCredential ? (
+              <Badge variant="outline">Managed</Badge>
+            ) : null}
             <span className="text-xs text-muted-foreground">{credentialStatus}</span>
           </CardDescription>
           <CardAction>
@@ -232,43 +239,45 @@ function ModelProviderCredentialDetailPageContent() {
                   Refresh token
                 </Button>
               ) : null}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={isRefreshInFlight}
-                onClick={async () => {
-                  if (isRefreshInFlight) {
-                    return;
-                  }
+              {isManagedCredential ? null : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isRefreshInFlight}
+                  onClick={async () => {
+                    if (isRefreshInFlight) {
+                      return;
+                    }
 
-                  setErrorMessage(null);
-                  await new Promise<void>((resolve, reject) => {
-                    commitRefreshModels({
-                      variables: {
-                        input: {
-                          modelProviderCredentialId: normalizedCredentialId,
+                    setErrorMessage(null);
+                    await new Promise<void>((resolve, reject) => {
+                      commitRefreshModels({
+                        variables: {
+                          input: {
+                            modelProviderCredentialId: normalizedCredentialId,
+                          },
                         },
-                      },
-                      onCompleted: (_response, errors) => {
-                        const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-                        if (nextErrorMessage) {
-                          reject(new Error(nextErrorMessage));
-                          return;
-                        }
+                        onCompleted: (_response, errors) => {
+                          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                          if (nextErrorMessage) {
+                            reject(new Error(nextErrorMessage));
+                            return;
+                          }
 
-                        setFetchKey((current) => current + 1);
-                        resolve();
-                      },
-                      onError: reject,
+                          setFetchKey((current) => current + 1);
+                          resolve();
+                        },
+                        onError: reject,
+                      });
+                    }).catch((error: unknown) => {
+                      setErrorMessage(error instanceof Error ? error.message : "Failed to refresh models.");
                     });
-                  }).catch((error: unknown) => {
-                    setErrorMessage(error instanceof Error ? error.message : "Failed to refresh models.");
-                  });
-                }}
-              >
-                <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
-                Refresh models
-              </Button>
+                  }}
+                >
+                  <RefreshCcwIcon className={isRefreshInFlight ? "animate-spin" : ""} />
+                  Refresh models
+                </Button>
+              )}
             </div>
           </CardAction>
         </CardHeader>

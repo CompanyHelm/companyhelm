@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a2119c0bf610ebe2ae2d68ccb46e08e4>>
+ * @generated SignedSource<<cc299761cba7041070a8d1d9c9d677e8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,6 +28,7 @@ export type modelProviderCredentialsPageCreateCredentialMutation$data = {
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isDefault: boolean;
+    readonly isManaged: boolean;
     readonly modelProvider: string;
     readonly name: string;
     readonly refreshedAt: string | null | undefined;
@@ -76,6 +77,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "isDefault",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isManaged",
         "storageKey": null
       },
       {
@@ -163,16 +171,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "d346c3d475cba18c8e7975b24aabdaa0",
+    "cacheID": "a3667831634a4fd49976a97f4b0532de",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageCreateCredentialMutation",
     "operationKind": "mutation",
-    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    isDefault\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "431e708874e31b6cbaf2efad287adfcb";
+(node as any).hash = "cfe9e0fa7e0abf5134c238a59d91fe4f";
 
 export default node;

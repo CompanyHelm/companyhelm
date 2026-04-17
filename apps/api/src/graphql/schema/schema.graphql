@@ -560,6 +560,7 @@ type ModelProviderCredential {
   id: ID!
   companyId: ID!
   isDefault: Boolean!
+  isManaged: Boolean!
   name: String!
   modelProvider: String!
   defaultModelId: String
