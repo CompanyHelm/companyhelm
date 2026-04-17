@@ -65,6 +65,11 @@ test("ApiServer does not expose a default root endpoint", async () => {
   } as never, {
     start: () => {},
     stop: async () => {},
+  } as never, {
+    syncEnabledCronTriggers: async () => {},
+  } as never, {
+    start: () => {},
+    stop: async () => {},
   } as never);
 
   await server.start();
@@ -104,6 +109,11 @@ test("ApiServer exposes a health endpoint", async () => {
   } as never, {
     start: () => {},
     stop: async () => {},
+  } as never, {
+    syncEnabledCronTriggers: async () => {},
+  } as never, {
+    start: () => {},
+    stop: async () => {},
   } as never);
 
   await server.start();
@@ -124,6 +134,13 @@ test("ApiServer fails startup before listening when the Redis queue policy is un
     stop: () => {},
   };
   const sessionProcessWorker = {
+    start: () => {},
+    stop: async () => {},
+  };
+  const routineSchedulerSyncService = {
+    syncEnabledCronTriggers: async () => {},
+  };
+  const routineTriggerWorker = {
     start: () => {},
     stop: async () => {},
   };
@@ -148,7 +165,11 @@ test("ApiServer fails startup before listening when the Redis queue policy is un
     validateNoEvictionPolicy: async () => {
       throw new Error('Redis maxmemory policy must be "noeviction" for BullMQ, got "volatile-lru".');
     },
-  } as never, llmOauthRefreshWorker as never, sessionProcessWorker as never);
+  } as never,
+    llmOauthRefreshWorker as never,
+    sessionProcessWorker as never,
+    routineSchedulerSyncService as never,
+    routineTriggerWorker as never);
 
   await assert.rejects(
     () => server.start(),

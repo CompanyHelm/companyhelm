@@ -54,6 +54,9 @@ export const ConfigDocument = z.object({
     password: z.string(),
   }),
   workers: z.object({
+    routine_triggers: z.object({
+      concurrency: PositiveIntegerSchema,
+    }),
     session_process: z.object({
       concurrency: PositiveIntegerSchema,
     }),

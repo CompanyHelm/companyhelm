@@ -10,6 +10,7 @@ import {
   InboxIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  CalendarClockIcon,
   LockKeyholeIcon,
   MessageSquareIcon,
   MessagesSquareIcon,
@@ -139,6 +140,11 @@ export function ApplicationSidebar() {
       icon: MessagesSquareIcon,
       label: "Agent Conversations",
       to: "/conversations",
+    },
+    {
+      icon: CalendarClockIcon,
+      label: "Routines",
+      to: "/routines",
     },
     {
       icon: WorkflowIcon,

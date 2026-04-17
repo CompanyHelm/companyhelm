@@ -142,6 +142,8 @@ redis:
   username: ""
   password: ""
 workers:
+  routine_triggers:
+    concurrency: 2
   session_process:
     concurrency: 4
 agent_tools:

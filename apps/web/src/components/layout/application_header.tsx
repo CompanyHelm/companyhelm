@@ -46,6 +46,8 @@ export function ApplicationHeader() {
       ? "Chats"
       : normalizedPathname.startsWith("/conversations")
         ? "Agent Conversations"
+      : normalizedPathname.startsWith("/routines")
+        ? "Routines"
       : normalizedPathname.startsWith("/repositories")
         ? "Repositories"
         : normalizedPathname.startsWith("/knowledge-base")

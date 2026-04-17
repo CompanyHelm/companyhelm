@@ -7,7 +7,9 @@ import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { GraphqlApplication } from "../graphql/graphql_application.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import { QueuePolicyValidator } from "../services/redis/queue_policy_validator.ts";
+import { RoutineSchedulerSyncService } from "../services/routines/scheduler_sync.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
+import { RoutineTriggerWorker } from "../workers/routine_triggers.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
 
 /**
@@ -22,6 +24,8 @@ export class ApiServer {
   private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
   private readonly logger: ApiLogger;
   private readonly queuePolicyValidator: QueuePolicyValidator;
+  private readonly routineSchedulerSyncService: RoutineSchedulerSyncService;
+  private readonly routineTriggerWorker: RoutineTriggerWorker;
   private readonly sessionProcessWorker: SessionProcessWorker;
   private readonly app;
 
@@ -34,6 +38,8 @@ export class ApiServer {
     @inject(QueuePolicyValidator) queuePolicyValidator: QueuePolicyValidator,
     @inject(LlmOauthRefreshWorker) llmOauthRefreshWorker: LlmOauthRefreshWorker,
     @inject(SessionProcessWorker) sessionProcessWorker: SessionProcessWorker,
+    @inject(RoutineSchedulerSyncService) routineSchedulerSyncService: RoutineSchedulerSyncService,
+    @inject(RoutineTriggerWorker) routineTriggerWorker: RoutineTriggerWorker,
   ) {
     this.config = config;
     this.adminDatabase = adminDatabase;
@@ -42,6 +48,8 @@ export class ApiServer {
     this.logger = logger;
     this.queuePolicyValidator = queuePolicyValidator;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
+    this.routineSchedulerSyncService = routineSchedulerSyncService;
+    this.routineTriggerWorker = routineTriggerWorker;
     this.sessionProcessWorker = sessionProcessWorker;
     this.app = Fastify({
       loggerInstance: this.logger.getLogger(),
@@ -54,6 +62,7 @@ export class ApiServer {
     this.app.addHook("onClose", async () => {
       this.llmOauthRefreshWorker.stop();
       await this.sessionProcessWorker.stop();
+      await this.routineTriggerWorker.stop();
       await this.database.close();
       await this.adminDatabase.close();
     });
@@ -76,8 +85,10 @@ export class ApiServer {
       port: this.config.port,
     });
 
+    await this.routineSchedulerSyncService.syncEnabledCronTriggers();
     this.llmOauthRefreshWorker.start();
     this.sessionProcessWorker.start();
+    this.routineTriggerWorker.start();
   }
 
   static createLoggerOptions(config: Pick<Config, "log">): FastifyServerOptions["logger"] {

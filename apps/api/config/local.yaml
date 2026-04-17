@@ -34,6 +34,8 @@ redis:
   username: ""
   password: ""
 workers:
+  routine_triggers:
+    concurrency: 10
   session_process:
     concurrency: 100
 agent_tools:
