@@ -13,7 +13,7 @@ test("Clerk bootstrap applies company context before company-scoped inserts", ()
 
   const applyContextIndex = source.indexOf("await database.applyCompanyContext(");
   const ensureCompanyDefaultsIndex = source.indexOf(
-    "await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id);",
+    "await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id, {",
   );
   const ensureMembershipIndex = source.indexOf("await this.companyBootstrapService.ensureMembership(transaction, {");
 

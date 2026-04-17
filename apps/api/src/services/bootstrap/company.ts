@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { DatabaseTransactionInterface } from "../../db/database_interface.ts";
 import {
+  agents,
   companies,
   companyMembers,
   computeProviderDefinitions,
@@ -17,6 +18,7 @@ type CompanyRecord = {
   id: string;
   clerk_organization_id: string | null;
   name: string;
+  wasCreated: boolean;
 };
 
 type ComputeProviderDefinitionRecord = {
@@ -37,6 +39,11 @@ type ModelProviderCredentialModelRecord = {
   id: string;
   isDefault: boolean;
   modelId: string;
+  reasoningLevels: string[] | null;
+};
+
+type AgentRecord = {
+  id: string;
 };
 
 type BootstrapInsertableDatabase = DatabaseTransactionInterface & {
@@ -72,6 +79,8 @@ type BootstrapUpdatableDatabase = DatabaseTransactionInterface & {
 @injectable()
 export class CompanyBootstrapService {
   static readonly DEFAULT_TASK_CATEGORY_NAMES = ["Backlog", "TODO", "Archive"] as const;
+  static readonly SEED_AGENT_NAME = "CEO";
+  private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly companyHelmLlmProviderService: CompanyHelmLlmProviderService;
 
@@ -128,7 +137,10 @@ export class CompanyBootstrapService {
       return concurrentCompany;
     }
 
-    return createdCompany;
+    return {
+      ...createdCompany,
+      wasCreated: true,
+    };
   }
 
   async ensureMembership(
@@ -151,12 +163,29 @@ export class CompanyBootstrapService {
   async ensureCompanyDefaults(
     transaction: DatabaseTransactionInterface,
     companyId: string,
+    options: {
+      seedAgent?: boolean;
+    } = {},
   ): Promise<void> {
     await this.ensureCompanyHelmComputeProviderDefinition(transaction, companyId);
+    let modelProviderCredential: ModelProviderCredentialRecord | null = null;
     if (this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
-      await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
+      modelProviderCredential = await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
     }
     await this.ensureDefaultTaskStages(transaction, companyId);
+    if (options.seedAgent && modelProviderCredential) {
+      const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, companyId);
+      if (!computeProviderDefinition) {
+        throw new Error("Failed to resolve CompanyHelm compute provider definition for the seed agent.");
+      }
+
+      await this.ensureCompanyHelmSeedAgent(
+        transaction,
+        companyId,
+        computeProviderDefinition.id,
+        modelProviderCredential.id,
+      );
+    }
   }
 
   private async findCompanyByClerkOrganizationId(
@@ -173,7 +202,12 @@ export class CompanyBootstrapService {
       .where(eq(companies.clerkOrganizationId, providerSubject))
       .limit(1) as CompanyRecord[];
 
-    return existingCompany ?? null;
+    return existingCompany
+      ? {
+        ...existingCompany,
+        wasCreated: false,
+      }
+      : null;
   }
 
   private async ensureCompanyHelmComputeProviderDefinition(
@@ -234,7 +268,7 @@ export class CompanyBootstrapService {
   private async ensureCompanyHelmLlmProviderCredential(
     transaction: DatabaseTransactionInterface,
     companyId: string,
-  ): Promise<void> {
+  ): Promise<ModelProviderCredentialRecord> {
     const [existingCredential] = await transaction
       .select({
         id: modelProviderCredentials.id,
@@ -248,7 +282,7 @@ export class CompanyBootstrapService {
       .limit(1) as ModelProviderCredentialRecord[];
     if (existingCredential) {
       await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, existingCredential.id);
-      return;
+      return existingCredential;
     }
 
     const [existingDefaultCredential] = await transaction
@@ -294,6 +328,30 @@ export class CompanyBootstrapService {
     }
 
     await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, credential.id);
+    return credential;
+  }
+
+  private async findCompanyHelmComputeProviderDefinition(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<ComputeProviderDefinitionRecord | null> {
+    const [existingDefinition] = await transaction
+      .select({
+        companyId: computeProviderDefinitions.companyId,
+        description: computeProviderDefinitions.description,
+        id: computeProviderDefinitions.id,
+        isDefault: computeProviderDefinitions.isDefault,
+        name: computeProviderDefinitions.name,
+        provider: computeProviderDefinitions.provider,
+      })
+      .from(computeProviderDefinitions)
+      .where(and(
+        eq(computeProviderDefinitions.companyId, companyId),
+        eq(computeProviderDefinitions.name, this.companyHelmComputeProviderService.getDefinitionName()),
+      ))
+      .limit(1) as ComputeProviderDefinitionRecord[];
+
+    return existingDefinition ?? null;
   }
 
   private async findCompanyHelmLlmProviderCredential(
@@ -325,6 +383,7 @@ export class CompanyBootstrapService {
         id: modelProviderCredentialModels.id,
         isDefault: modelProviderCredentialModels.isDefault,
         modelId: modelProviderCredentialModels.modelId,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
       })
       .from(modelProviderCredentialModels)
       .where(and(
@@ -399,6 +458,81 @@ export class CompanyBootstrapService {
     }
 
     return modelIds[0] ?? null;
+  }
+
+  private async ensureCompanyHelmSeedAgent(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+    computeProviderDefinitionId: string,
+    modelProviderCredentialId: string,
+  ): Promise<void> {
+    const [existingAgent] = await transaction
+      .select({
+        id: agents.id,
+      })
+      .from(agents)
+      .where(and(
+        eq(agents.companyId, companyId),
+        eq(agents.name, CompanyBootstrapService.SEED_AGENT_NAME),
+      ))
+      .limit(1) as AgentRecord[];
+    if (existingAgent) {
+      return;
+    }
+
+    const defaultModel = await this.findCompanyHelmDefaultModel(
+      transaction,
+      companyId,
+      modelProviderCredentialId,
+    );
+    if (!defaultModel) {
+      throw new Error("Failed to resolve CompanyHelm default model for the seed agent.");
+    }
+
+    const now = new Date();
+    await (transaction as BootstrapInsertableDatabase)
+      .insert(agents)
+      .values({
+        companyId,
+        created_at: now,
+        defaultComputeProviderDefinitionId: computeProviderDefinitionId,
+        defaultEnvironmentTemplateId: CompanyBootstrapService.SEED_AGENT_ENVIRONMENT_TEMPLATE_ID,
+        defaultModelProviderCredentialModelId: defaultModel.id,
+        default_reasoning_level: this.resolveCompanyHelmDefaultReasoningLevel(defaultModel.reasoningLevels ?? []),
+        name: CompanyBootstrapService.SEED_AGENT_NAME,
+        system_prompt: null,
+        updated_at: now,
+      });
+  }
+
+  private async findCompanyHelmDefaultModel(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+    credentialId: string,
+  ): Promise<ModelProviderCredentialModelRecord | null> {
+    const models = await (transaction
+      .select({
+        id: modelProviderCredentialModels.id,
+        isDefault: modelProviderCredentialModels.isDefault,
+        modelId: modelProviderCredentialModels.modelId,
+        reasoningLevels: modelProviderCredentialModels.reasoningLevels,
+      })
+      .from(modelProviderCredentialModels)
+      .where(and(
+        eq(modelProviderCredentialModels.companyId, companyId),
+        eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
+      )) as unknown as Promise<ModelProviderCredentialModelRecord[]>);
+
+    return models.find((model) => model.isDefault) ?? null;
+  }
+
+  private resolveCompanyHelmDefaultReasoningLevel(reasoningLevels: string[]): string | null {
+    const defaultReasoningLevel = this.companyHelmLlmProviderService.getDefaultReasoningLevel();
+    if (defaultReasoningLevel && reasoningLevels.includes(defaultReasoningLevel)) {
+      return defaultReasoningLevel;
+    }
+
+    return reasoningLevels[0] ?? null;
   }
 
   private async ensureDefaultTaskStages(

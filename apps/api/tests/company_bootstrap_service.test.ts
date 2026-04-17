@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import {
+  agents,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
@@ -55,11 +56,25 @@ type ModelProviderCredentialModelRow = {
   reasoningSupported: boolean;
 };
 
+type AgentRow = {
+  companyId: string;
+  created_at: Date;
+  defaultComputeProviderDefinitionId: string;
+  defaultEnvironmentTemplateId: string;
+  defaultModelProviderCredentialModelId: string;
+  default_reasoning_level: string | null;
+  id: string;
+  name: string;
+  system_prompt: string | null;
+  updated_at: Date;
+};
+
 /**
  * Provides the narrow database surface needed to verify company default seeding without a real
  * database connection.
  */
 class CompanyBootstrapServiceTestHarness {
+  private readonly agentRows: AgentRow[];
   private readonly baseDefinitions: BaseDefinitionRow[];
   private readonly companyHelmOpenAiApiKey: string | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
@@ -67,12 +82,14 @@ class CompanyBootstrapServiceTestHarness {
   private readonly taskStageRows: TaskStageRow[];
 
   constructor(params?: {
+    agentRows?: AgentRow[];
     baseDefinitions?: BaseDefinitionRow[];
     companyHelmOpenAiApiKey?: string | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
     taskStageRows?: TaskStageRow[];
   }) {
+    this.agentRows = [...(params?.agentRows ?? [])];
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
     this.companyHelmOpenAiApiKey = params?.companyHelmOpenAiApiKey === undefined
       ? "sk-local-api-key"
@@ -114,6 +131,7 @@ class CompanyBootstrapServiceTestHarness {
   }
 
   buildTransaction() {
+    const agentRows = this.agentRows;
     const baseDefinitions = this.baseDefinitions;
     const modelCredentialRows = this.modelCredentialRows;
     const modelRows = this.modelRows;
@@ -245,6 +263,27 @@ class CompanyBootstrapServiceTestHarness {
               return {};
             }
 
+            if (table === agents) {
+              if (Array.isArray(value)) {
+                throw new Error("Unexpected agent batch insert.");
+              }
+
+              agentRows.push({
+                companyId: value.companyId as string,
+                created_at: value.created_at as Date,
+                defaultComputeProviderDefinitionId: value.defaultComputeProviderDefinitionId as string,
+                defaultEnvironmentTemplateId: value.defaultEnvironmentTemplateId as string,
+                defaultModelProviderCredentialModelId: value.defaultModelProviderCredentialModelId as string,
+                default_reasoning_level: value.default_reasoning_level as string | null,
+                id: `agent-row-${agentRows.length + 1}`,
+                name: value.name as string,
+                system_prompt: value.system_prompt as string | null,
+                updated_at: value.updated_at as Date,
+              });
+
+              return {};
+            }
+
             if (table === taskStages) {
               if (Array.isArray(value)) {
                 throw new Error("Unexpected task stage batch insert.");
@@ -285,6 +324,9 @@ class CompanyBootstrapServiceTestHarness {
 
                 return {
                   async limit() {
+                    if (table === agents) {
+                      return agentRows.filter((row) => row.name === "CEO").slice(0, 1);
+                    }
                     if (table === computeProviderDefinitions) {
                       return [...baseDefinitions].slice(0, 1);
                     }
@@ -322,6 +364,10 @@ class CompanyBootstrapServiceTestHarness {
 
   listModels(): ModelProviderCredentialModelRow[] {
     return this.modelRows;
+  }
+
+  listAgents(): AgentRow[] {
+    return this.agentRows;
   }
 
   loadDefaultDefinition(): BaseDefinitionRow | null {
@@ -365,7 +411,34 @@ test("CompanyBootstrapService skips the CompanyHelm model provider when the Open
   assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
   assert.deepEqual(harness.listModelCredentials(), []);
   assert.deepEqual(harness.listModels(), []);
+  assert.deepEqual(harness.listAgents(), []);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
+});
+
+test("CompanyBootstrapService seeds the CEO agent for newly created companies", async () => {
+  const harness = new CompanyBootstrapServiceTestHarness();
+
+  await harness.buildService().ensureCompanyDefaults(
+    harness.buildTransaction() as never,
+    "company-1",
+    {
+      seedAgent: true,
+    },
+  );
+
+  const [seedAgent] = harness.listAgents();
+  const defaultDefinition = harness.loadDefaultDefinition();
+  const [managedCredential] = harness.listModelCredentials();
+  const defaultModel = harness.listModels().find((model) => model.isDefault);
+
+  assert.equal(seedAgent?.companyId, "company-1");
+  assert.equal(seedAgent?.name, "CEO");
+  assert.equal(seedAgent?.defaultComputeProviderDefinitionId, defaultDefinition?.id);
+  assert.equal(seedAgent?.defaultEnvironmentTemplateId, "medium");
+  assert.equal(seedAgent?.defaultModelProviderCredentialModelId, defaultModel?.id);
+  assert.equal(defaultModel?.modelProviderCredentialId, managedCredential?.id);
+  assert.equal(seedAgent?.default_reasoning_level, "high");
+  assert.equal(seedAgent?.system_prompt, null);
 });
 
 test("CompanyBootstrapService does not duplicate seeded defaults when rerun", async () => {
@@ -404,6 +477,18 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       reasoningLevels: ["low", "medium", "high", "xhigh"],
       reasoningSupported: true,
     }],
+    agentRows: [{
+      companyId: "company-1",
+      created_at: now,
+      defaultComputeProviderDefinitionId: "companyhelm-definition-1",
+      defaultEnvironmentTemplateId: "medium",
+      defaultModelProviderCredentialModelId: "model-row-1",
+      default_reasoning_level: "high",
+      id: "agent-row-1",
+      name: "CEO",
+      system_prompt: null,
+      updated_at: now,
+    }],
     taskStageRows: [{
       companyId: "company-1",
       createdAt: now,
@@ -426,10 +511,14 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
   await service.ensureCompanyDefaults(
     harness.buildTransaction() as never,
     "company-1",
+    {
+      seedAgent: true,
+    },
   );
 
   assert.deepEqual(harness.listDefinitionNames(), ["CompanyHelm"]);
   assert.equal(harness.listModelCredentials().length, 1);
   assert.equal(harness.listModels().filter((model) => model.modelId === "gpt-5.4").length, 1);
+  assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });

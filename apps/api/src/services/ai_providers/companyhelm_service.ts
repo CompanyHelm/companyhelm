@@ -57,6 +57,10 @@ export class CompanyHelmLlmProviderService {
     return this.modelRegistry.getDefaultModelForProvider(this.getModelProvider());
   }
 
+  getDefaultReasoningLevel(): string | null {
+    return this.modelRegistry.getDefaultReasoningLevelForProvider(this.getModelProvider());
+  }
+
   isReservedName(name: string): boolean {
     return name === CompanyHelmLlmProviderService.CREDENTIAL_NAME;
   }

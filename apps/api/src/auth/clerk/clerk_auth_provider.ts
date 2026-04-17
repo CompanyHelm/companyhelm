@@ -162,7 +162,9 @@ export class ClerkAuthProvider extends AuthProvider {
         companyId: company.id,
         userId: user.id,
       });
-      await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id);
+      await this.companyBootstrapService.ensureCompanyDefaults(transaction, company.id, {
+        seedAgent: company.wasCreated,
+      });
 
       return {
         token,
