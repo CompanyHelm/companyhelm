@@ -3,6 +3,7 @@ import type { ArtifactRecord } from "../services/artifact_service.ts";
 export type GraphqlArtifactRecord = {
   id: string;
   createdBySessionId: string | null;
+  sessionId: string | null;
   taskId: string | null;
   scopeType: string;
   type: string;
@@ -27,6 +28,7 @@ export class GraphqlArtifactPresenter {
     return {
       id: record.id,
       createdBySessionId: record.createdBySessionId,
+      sessionId: record.sessionId,
       taskId: record.taskId,
       scopeType: record.scopeType,
       type: record.type,

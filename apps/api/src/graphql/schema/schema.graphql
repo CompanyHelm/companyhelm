@@ -671,6 +671,7 @@ type ModelProvider {
 type Artifact {
   id: ID!
   createdBySessionId: ID
+  sessionId: ID
   taskId: ID
   scopeType: String!
   type: String!
@@ -1173,6 +1174,7 @@ input SetDefaultModelProviderCredentialModelInput {
 
 input ArtifactsInput {
   scopeType: String!
+  sessionId: ID
   taskId: ID
 }
 
@@ -1190,6 +1192,7 @@ input DeleteAgentConversationInput {
 
 input CreateMarkdownArtifactInput {
   scopeType: String!
+  sessionId: ID
   taskId: ID
   name: String!
   description: String
@@ -1199,6 +1202,7 @@ input CreateMarkdownArtifactInput {
 
 input CreateExternalLinkArtifactInput {
   scopeType: String!
+  sessionId: ID
   taskId: ID
   name: String!
   description: String
@@ -1208,6 +1212,7 @@ input CreateExternalLinkArtifactInput {
 
 input CreatePullRequestArtifactInput {
   scopeType: String!
+  sessionId: ID
   taskId: ID
   name: String!
   description: String

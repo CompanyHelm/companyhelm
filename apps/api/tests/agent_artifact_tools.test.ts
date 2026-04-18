@@ -58,6 +58,7 @@ test("AgentCreateMarkdownArtifactTool returns the persisted markdown artifact", 
       return {
         id: "artifact-1",
         createdBySessionId: "session-1",
+        sessionId: null,
         taskId: "task-1",
         scopeType: "task",
         type: "markdown_document",
@@ -75,13 +76,14 @@ test("AgentCreateMarkdownArtifactTool returns the persisted markdown artifact", 
     },
   } as never);
 
-  const result = await tool.createDefinition().execute("tool-call-1", {
+  const definition = tool.createDefinition();
+  const result = await definition.execute("tool-call-1", {
     contentMarkdown: "# PRD\n\nShip the feature.",
     description: "Initial product requirements",
     name: "PRD",
     scopeType: "task",
     taskId: "task-1",
-  });
+  }, undefined as never, undefined as never, undefined as never);
 
   assert.deepEqual(result, {
     content: [{
@@ -115,6 +117,7 @@ test("AgentArchiveArtifactTool archives one artifact and reports the updated sta
       return {
         id: "artifact-2",
         createdBySessionId: "session-1",
+        sessionId: null,
         taskId: null,
         scopeType: "company",
         type: "external_link",
@@ -132,32 +135,39 @@ test("AgentArchiveArtifactTool archives one artifact and reports the updated sta
     },
   } as never);
 
-  const result = await tool.createDefinition().execute("tool-call-1", {
+  const definition = tool.createDefinition();
+  const result = await definition.execute("tool-call-1", {
     artifactId: "artifact-2",
-  });
+  }, undefined as never, undefined as never, undefined as never);
 
   assert.deepEqual(result.details, {
     artifactId: "artifact-2",
     type: "artifact",
   });
-  assert.match(result.content[0]?.text ?? "", /state: archived/);
+  const content = result.content[0];
+  assert.equal(content?.type, "text");
+  assert.match(content.text, /state: archived/);
 });
 
-test("AgentArtifactToolService records the creating session on pull request artifacts", async () => {
-  let creationInput: { createdBySessionId?: string | null } | null = null;
+test("AgentArtifactToolService records creating and scoped sessions on pull request artifacts", async () => {
+  const creationInputs: Array<{ createdBySessionId?: string | null; sessionId?: string | null }> = [];
   const service = new AgentArtifactToolService(
     {} as never,
     "company-1",
     "agent-1",
     "session-1",
     {
-      async createPullRequestArtifact(_transactionProvider: unknown, input: { createdBySessionId?: string | null }) {
-        creationInput = input;
+      async createPullRequestArtifact(
+        _transactionProvider: unknown,
+        input: { createdBySessionId?: string | null; sessionId?: string | null },
+      ) {
+        creationInputs.push(input);
         return {
           id: "artifact-3",
           createdBySessionId: input.createdBySessionId ?? null,
-          taskId: "task-1",
-          scopeType: "task",
+          sessionId: input.sessionId ?? null,
+          taskId: null,
+          scopeType: "session",
           type: "pull_request",
           state: "active",
           name: "Review PR",
@@ -178,10 +188,10 @@ test("AgentArtifactToolService records the creating session on pull request arti
     name: "Review PR",
     pullRequestNumber: 42,
     repository: "company/repo",
-    scopeType: "task",
-    taskId: "task-1",
+    scopeType: "session",
     url: "https://github.com/company/repo/pull/42",
   });
 
-  assert.equal(creationInput?.createdBySessionId, "session-1");
+  assert.equal(creationInputs[0]?.createdBySessionId, "session-1");
+  assert.equal(creationInputs[0]?.sessionId, "session-1");
 });

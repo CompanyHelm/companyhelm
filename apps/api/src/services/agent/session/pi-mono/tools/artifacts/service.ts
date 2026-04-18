@@ -9,8 +9,8 @@ import type { TransactionProviderInterface } from "../../../../../../db/transact
 
 /**
  * Binds the generic artifact catalog service to the current PI Mono prompt context so artifact
- * tools can act within the company and agent boundary without repeating those identifiers in every
- * call site.
+ * tools can act within the company, agent, and session boundary without repeating those identifiers
+ * in every call site.
  */
 export class AgentArtifactToolService {
   private readonly agentId: string;
@@ -40,6 +40,7 @@ export class AgentArtifactToolService {
     return this.artifactService.listArtifacts(this.transactionProvider, {
       companyId: this.companyId,
       scopeType: input.scopeType,
+      sessionId: input.scopeType === "session" ? this.sessionId : null,
       taskId: input.taskId,
     });
   }
@@ -67,6 +68,7 @@ export class AgentArtifactToolService {
       description: input.description,
       name: input.name,
       scopeType: input.scopeType,
+      sessionId: input.scopeType === "session" ? this.sessionId : null,
       state: input.state,
       taskId: input.taskId,
     });
@@ -87,6 +89,7 @@ export class AgentArtifactToolService {
       description: input.description,
       name: input.name,
       scopeType: input.scopeType,
+      sessionId: input.scopeType === "session" ? this.sessionId : null,
       state: input.state,
       taskId: input.taskId,
       url: input.url,
@@ -114,6 +117,7 @@ export class AgentArtifactToolService {
       pullRequestNumber: input.pullRequestNumber,
       repository: input.repository,
       scopeType: input.scopeType,
+      sessionId: input.scopeType === "session" ? this.sessionId : null,
       state: input.state,
       taskId: input.taskId,
       url: input.url,

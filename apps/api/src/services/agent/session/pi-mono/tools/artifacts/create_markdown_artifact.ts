@@ -22,6 +22,7 @@ export class AgentCreateMarkdownArtifactTool {
     scopeType: Type.Union([
       Type.Literal("company"),
       Type.Literal("task"),
+      Type.Literal("session"),
     ]),
     state: Type.Optional(Type.Union([
       Type.Literal("draft"),
@@ -29,7 +30,7 @@ export class AgentCreateMarkdownArtifactTool {
       Type.Literal("archived"),
     ])),
     taskId: Type.Optional(Type.String({
-      description: "Required when scopeType is task.",
+      description: "Required when scopeType is task. Omit when scopeType is company or session.",
     })),
   });
 
@@ -41,7 +42,7 @@ export class AgentCreateMarkdownArtifactTool {
 
   createDefinition(): ToolDefinition<typeof AgentCreateMarkdownArtifactTool.parameters> {
     return {
-      description: "Create a markdown artifact for a company or task.",
+      description: "Create a markdown artifact for a company, task, or this session.",
       execute: async (_toolCallId, params) => {
         const artifact = await this.artifactToolService.createMarkdownArtifact({
           contentMarkdown: params.contentMarkdown,
@@ -68,6 +69,7 @@ export class AgentCreateMarkdownArtifactTool {
       parameters: AgentCreateMarkdownArtifactTool.parameters,
       promptGuidelines: [
         "Use create_markdown_artifact for PRDs, design docs, notes, and any artifact whose main payload is markdown.",
+        "Use scopeType=session for artifacts that should only belong to the current live session.",
       ],
       promptSnippet: "Create a markdown artifact",
     };

@@ -16,7 +16,7 @@ import { companies, users } from "./company.ts";
 import { agentSessions } from "./conversations.ts";
 import { tasks } from "./tasks.ts";
 
-export const artifactScopeEnum = pgEnum("artifact_scope", ["company", "task"]);
+export const artifactScopeEnum = pgEnum("artifact_scope", ["company", "task", "session"]);
 export const artifactTypeEnum = pgEnum("artifact_type", ["markdown_document", "external_link", "pull_request"]);
 export const artifactStateEnum = pgEnum("artifact_state", ["draft", "active", "archived"]);
 export const artifactPullRequestProviderEnum = pgEnum("artifact_pull_request_provider", ["github"]);
@@ -30,6 +30,8 @@ export const artifacts = pgTable("artifacts", {
     .notNull(),
   taskId: uuid("task_id")
     .references(() => tasks.id, { onDelete: "cascade" }),
+  sessionId: uuid("session_id")
+    .references(() => agentSessions.id, { onDelete: "cascade" }),
   scopeType: artifactScopeEnum("scope_type").notNull(),
   type: artifactTypeEnum("type").notNull(),
   state: artifactStateEnum("state").notNull().default("active"),
@@ -52,10 +54,11 @@ export const artifacts = pgTable("artifacts", {
   companyScopeUpdatedAtIndex: index("artifacts_company_scope_updated_at_idx")
     .on(table.companyId, table.scopeType, table.updatedAt),
   createdBySessionIdIndex: index("artifacts_created_by_session_id_idx").on(table.createdBySessionId),
+  sessionIdIndex: index("artifacts_session_id_idx").on(table.sessionId),
   taskIdIndex: index("artifacts_task_id_idx").on(table.taskId),
-  scopeTaskIdCheck: check(
-    "artifacts_scope_task_id_check",
-    sql`(${table.scopeType} = 'company' AND ${table.taskId} IS NULL) OR (${table.scopeType} = 'task' AND ${table.taskId} IS NOT NULL)`,
+  scopeTargetCheck: check(
+    "artifacts_scope_target_check",
+    sql`(${table.scopeType} = 'company' AND ${table.taskId} IS NULL AND ${table.sessionId} IS NULL) OR (${table.scopeType} = 'task' AND ${table.taskId} IS NOT NULL AND ${table.sessionId} IS NULL) OR (${table.scopeType} = 'session' AND ${table.taskId} IS NULL AND ${table.sessionId} IS NOT NULL)`,
   ),
 }));
 

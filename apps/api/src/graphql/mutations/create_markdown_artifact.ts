@@ -11,14 +11,15 @@ type CreateMarkdownArtifactMutationArguments = {
     description?: string | null;
     name: string;
     scopeType: string;
+    sessionId?: string | null;
     state?: string | null;
     taskId?: string | null;
   };
 };
 
 /**
- * Creates one markdown artifact for company or task scope so PRDs and design docs can be stored as
- * first-class deliverables instead of living only inside task descriptions or transcripts.
+ * Creates one markdown artifact for company, task, or session scope so PRDs and design docs can be
+ * stored as first-class deliverables instead of living only inside task descriptions or transcripts.
  */
 @injectable()
 export class CreateMarkdownArtifactMutation extends Mutation<
@@ -47,6 +48,7 @@ export class CreateMarkdownArtifactMutation extends Mutation<
       description: arguments_.input.description,
       name: arguments_.input.name,
       scopeType: arguments_.input.scopeType as ArtifactScope,
+      sessionId: arguments_.input.sessionId,
       state: arguments_.input.state as ArtifactState | null | undefined,
       taskId: arguments_.input.taskId,
     });

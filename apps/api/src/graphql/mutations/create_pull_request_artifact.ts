@@ -17,6 +17,7 @@ type CreatePullRequestArtifactMutationArguments = {
     pullRequestNumber?: number | null;
     repository?: string | null;
     scopeType: string;
+    sessionId?: string | null;
     state?: string | null;
     taskId?: string | null;
     url: string;
@@ -25,7 +26,7 @@ type CreatePullRequestArtifactMutationArguments = {
 
 /**
  * Creates one pull-request artifact so GitHub review targets can be persisted as typed deliverables
- * attached to the company or a specific task.
+ * attached to the company, a specific task, or the session that produced them.
  */
 @injectable()
 export class CreatePullRequestArtifactMutation extends Mutation<
@@ -56,6 +57,7 @@ export class CreatePullRequestArtifactMutation extends Mutation<
       pullRequestNumber: arguments_.input.pullRequestNumber,
       repository: arguments_.input.repository,
       scopeType: arguments_.input.scopeType as ArtifactScope,
+      sessionId: arguments_.input.sessionId,
       state: arguments_.input.state as ArtifactState | null | undefined,
       taskId: arguments_.input.taskId,
       url: arguments_.input.url,

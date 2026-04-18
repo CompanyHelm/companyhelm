@@ -10,6 +10,7 @@ type CreateExternalLinkArtifactMutationArguments = {
     description?: string | null;
     name: string;
     scopeType: string;
+    sessionId?: string | null;
     state?: string | null;
     taskId?: string | null;
     url: string;
@@ -17,8 +18,8 @@ type CreateExternalLinkArtifactMutationArguments = {
 };
 
 /**
- * Creates one external-link artifact so durable reference links can be attached to company or task
- * scope and rendered in the web UI outside the raw agent transcript.
+ * Creates one external-link artifact so durable reference links can be attached to company, task,
+ * or session scope and rendered in the web UI outside the raw agent transcript.
  */
 @injectable()
 export class CreateExternalLinkArtifactMutation extends Mutation<
@@ -46,6 +47,7 @@ export class CreateExternalLinkArtifactMutation extends Mutation<
       description: arguments_.input.description,
       name: arguments_.input.name,
       scopeType: arguments_.input.scopeType as ArtifactScope,
+      sessionId: arguments_.input.sessionId,
       state: arguments_.input.state as ArtifactState | null | undefined,
       taskId: arguments_.input.taskId,
       url: arguments_.input.url,

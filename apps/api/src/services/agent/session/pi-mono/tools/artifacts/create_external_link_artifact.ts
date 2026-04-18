@@ -19,6 +19,7 @@ export class AgentCreateExternalLinkArtifactTool {
     scopeType: Type.Union([
       Type.Literal("company"),
       Type.Literal("task"),
+      Type.Literal("session"),
     ]),
     state: Type.Optional(Type.Union([
       Type.Literal("draft"),
@@ -26,7 +27,7 @@ export class AgentCreateExternalLinkArtifactTool {
       Type.Literal("archived"),
     ])),
     taskId: Type.Optional(Type.String({
-      description: "Required when scopeType is task.",
+      description: "Required when scopeType is task. Omit when scopeType is company or session.",
     })),
     url: Type.String({
       description: "The absolute URL to persist.",
@@ -41,7 +42,7 @@ export class AgentCreateExternalLinkArtifactTool {
 
   createDefinition(): ToolDefinition<typeof AgentCreateExternalLinkArtifactTool.parameters> {
     return {
-      description: "Create an external-link artifact for a company or task.",
+      description: "Create an external-link artifact for a company, task, or this session.",
       execute: async (_toolCallId, params) => {
         const artifact = await this.artifactToolService.createExternalLinkArtifact({
           description: params.description,
@@ -68,6 +69,7 @@ export class AgentCreateExternalLinkArtifactTool {
       parameters: AgentCreateExternalLinkArtifactTool.parameters,
       promptGuidelines: [
         "Use create_external_link_artifact when you want to preserve a URL with a durable name and description.",
+        "Use scopeType=session for links that should only belong to the current live session.",
       ],
       promptSnippet: "Create an external-link artifact",
     };

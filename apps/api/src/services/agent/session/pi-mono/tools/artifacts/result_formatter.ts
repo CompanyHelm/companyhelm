@@ -9,6 +9,7 @@ export class AgentArtifactResultFormatter {
     const lines = [
       `artifactId: ${artifact.id}`,
       `scopeType: ${artifact.scopeType}`,
+      artifact.sessionId ? `sessionId: ${artifact.sessionId}` : null,
       artifact.taskId ? `taskId: ${artifact.taskId}` : null,
       `type: ${artifact.type}`,
       `state: ${artifact.state}`,
@@ -38,6 +39,7 @@ export class AgentArtifactResultFormatter {
         `  type: ${artifact.type}`,
         `  scopeType: ${artifact.scopeType}`,
         `  state: ${artifact.state}`,
+        artifact.sessionId ? `  sessionId: ${artifact.sessionId}` : null,
         artifact.taskId ? `  taskId: ${artifact.taskId}` : null,
         artifact.url ? `  url: ${artifact.url}` : null,
       ].filter((line): line is string => line !== null).join("\n");

@@ -1,15 +1,16 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { injectable } from "inversify";
 import {
+  agentSessions,
   artifactExternalLinks,
   artifactMarkdownDocuments,
-  artifactPullRequests,
-  artifacts,
-  tasks,
   artifactPullRequestProviderEnum,
+  artifactPullRequests,
   artifactScopeEnum,
   artifactStateEnum,
   artifactTypeEnum,
+  artifacts,
+  tasks,
 } from "../db/schema.ts";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 
@@ -21,6 +22,7 @@ export type ArtifactPullRequestProvider = typeof artifactPullRequestProviderEnum
 export type ArtifactRecord = {
   id: string;
   createdBySessionId: string | null;
+  sessionId: string | null;
   taskId: string | null;
   scopeType: ArtifactScope;
   type: ArtifactType;
@@ -39,6 +41,7 @@ export type ArtifactRecord = {
 type ArtifactBaseRecord = {
   id: string;
   createdBySessionId: string | null;
+  sessionId: string | null;
   taskId: string | null;
   scopeType: ArtifactScope;
   type: ArtifactType;
@@ -68,32 +71,39 @@ type ArtifactPullRequestRecord = {
 };
 
 /**
- * Owns the persisted artifact catalog that hangs off company or task scope. It keeps the shared
- * identity and lifecycle fields in the base artifact row while loading and mutating the
+ * Owns the persisted artifact catalog that hangs off company, task, or session scope. It keeps
+ * the shared identity and lifecycle fields in the base artifact row while loading and mutating the
  * type-specific markdown, external-link, and pull-request payloads in their dedicated tables.
  */
 @injectable()
 export class ArtifactService {
   private static readonly supportedStates: ArtifactState[] = ["draft", "active", "archived"];
-  private static readonly supportedScopes: ArtifactScope[] = ["company", "task"];
+  private static readonly supportedScopes: ArtifactScope[] = ["company", "task", "session"];
 
   async listArtifacts(
     transactionProvider: TransactionProviderInterface,
     input: {
       companyId: string;
       scopeType: ArtifactScope;
+      sessionId?: string | null;
       taskId?: string | null;
     },
   ): Promise<ArtifactRecord[]> {
     return transactionProvider.transaction(async (tx) => {
-      const taskId = await this.resolveTaskIdForScope(tx, input.companyId, input.scopeType, input.taskId);
+      const scopeIds = await this.resolveIdsForScope(tx, {
+        companyId: input.companyId,
+        scopeType: input.scopeType,
+        sessionId: input.sessionId,
+        taskId: input.taskId,
+      });
       const baseRecords = await tx
         .select(this.baseSelection())
         .from(artifacts)
         .where(and(
           eq(artifacts.companyId, input.companyId),
           eq(artifacts.scopeType, input.scopeType),
-          taskId === null ? isNull(artifacts.taskId) : eq(artifacts.taskId, taskId),
+          scopeIds.taskId === null ? isNull(artifacts.taskId) : eq(artifacts.taskId, scopeIds.taskId),
+          scopeIds.sessionId === null ? isNull(artifacts.sessionId) : eq(artifacts.sessionId, scopeIds.sessionId),
         )) as ArtifactBaseRecord[];
 
       return (await this.hydrateArtifacts(tx, baseRecords))
@@ -129,13 +139,19 @@ export class ArtifactService {
       description?: string | null;
       name: string;
       scopeType: ArtifactScope;
+      sessionId?: string | null;
       state?: ArtifactState | null;
       taskId?: string | null;
       contentMarkdown: string;
     },
   ): Promise<ArtifactRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const taskId = await this.resolveTaskIdForScope(tx, input.companyId, input.scopeType, input.taskId);
+      const scopeIds = await this.resolveIdsForScope(tx, {
+        companyId: input.companyId,
+        scopeType: input.scopeType,
+        sessionId: input.sessionId,
+        taskId: input.taskId,
+      });
       const artifact = await this.insertBaseArtifact(tx, {
         companyId: input.companyId,
         createdByAgentId: input.createdByAgentId,
@@ -144,8 +160,9 @@ export class ArtifactService {
         description: input.description ?? null,
         name: input.name,
         scopeType: input.scopeType,
+        sessionId: scopeIds.sessionId,
         state: input.state ?? "active",
-        taskId,
+        taskId: scopeIds.taskId,
         type: "markdown_document",
       });
 
@@ -168,13 +185,19 @@ export class ArtifactService {
       description?: string | null;
       name: string;
       scopeType: ArtifactScope;
+      sessionId?: string | null;
       state?: ArtifactState | null;
       taskId?: string | null;
       url: string;
     },
   ): Promise<ArtifactRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const taskId = await this.resolveTaskIdForScope(tx, input.companyId, input.scopeType, input.taskId);
+      const scopeIds = await this.resolveIdsForScope(tx, {
+        companyId: input.companyId,
+        scopeType: input.scopeType,
+        sessionId: input.sessionId,
+        taskId: input.taskId,
+      });
       const artifact = await this.insertBaseArtifact(tx, {
         companyId: input.companyId,
         createdByAgentId: input.createdByAgentId,
@@ -183,8 +206,9 @@ export class ArtifactService {
         description: input.description ?? null,
         name: input.name,
         scopeType: input.scopeType,
+        sessionId: scopeIds.sessionId,
         state: input.state ?? "active",
-        taskId,
+        taskId: scopeIds.taskId,
         type: "external_link",
       });
 
@@ -210,13 +234,19 @@ export class ArtifactService {
       pullRequestNumber?: number | null;
       repository?: string | null;
       scopeType: ArtifactScope;
+      sessionId?: string | null;
       state?: ArtifactState | null;
       taskId?: string | null;
       url: string;
     },
   ): Promise<ArtifactRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const taskId = await this.resolveTaskIdForScope(tx, input.companyId, input.scopeType, input.taskId);
+      const scopeIds = await this.resolveIdsForScope(tx, {
+        companyId: input.companyId,
+        scopeType: input.scopeType,
+        sessionId: input.sessionId,
+        taskId: input.taskId,
+      });
       const artifact = await this.insertBaseArtifact(tx, {
         companyId: input.companyId,
         createdByAgentId: input.createdByAgentId,
@@ -225,8 +255,9 @@ export class ArtifactService {
         description: input.description ?? null,
         name: input.name,
         scopeType: input.scopeType,
+        sessionId: scopeIds.sessionId,
         state: input.state ?? "active",
-        taskId,
+        taskId: scopeIds.taskId,
         type: "pull_request",
       });
 
@@ -261,7 +292,7 @@ export class ArtifactService {
         .set({
           description: input.description === undefined ? existingArtifact.description : input.description,
           name: input.name === undefined ? existingArtifact.name : this.requireNonEmptyText(input.name, "Artifact name"),
-          state: input.state === undefined ? existingArtifact.state : this.requireState(input.state),
+          state: input.state === undefined || input.state === null ? existingArtifact.state : this.requireState(input.state),
           updatedAt: new Date(),
           updatedByAgentId: input.updatedByAgentId ?? undefined,
           updatedByUserId: input.updatedByUserId ?? undefined,
@@ -455,6 +486,7 @@ export class ArtifactService {
       return {
         id: artifact.id,
         createdBySessionId: artifact.createdBySessionId,
+        sessionId: artifact.sessionId,
         taskId: artifact.taskId,
         scopeType: artifact.scopeType,
         type: artifact.type,
@@ -482,6 +514,7 @@ export class ArtifactService {
       description: string | null;
       name: string;
       scopeType: ArtifactScope;
+      sessionId: string | null;
       state: ArtifactState;
       taskId: string | null;
       type: ArtifactType;
@@ -499,6 +532,7 @@ export class ArtifactService {
         description: input.description,
         name: this.requireNonEmptyText(input.name, "Artifact name"),
         scopeType: input.scopeType,
+        sessionId: input.sessionId,
         state: this.requireState(input.state),
         taskId: input.taskId,
         type: input.type,
@@ -569,31 +603,53 @@ export class ArtifactService {
     return artifact;
   }
 
-  private async resolveTaskIdForScope(
+  private async resolveIdsForScope(
     tx: AppRuntimeTransaction,
-    companyId: string,
-    scopeType: ArtifactScope,
-    taskId?: string | null,
-  ): Promise<string | null> {
-    if (!ArtifactService.supportedScopes.includes(scopeType)) {
+    input: {
+      companyId: string;
+      scopeType: ArtifactScope;
+      sessionId?: string | null;
+      taskId?: string | null;
+    },
+  ): Promise<{ sessionId: string | null; taskId: string | null }> {
+    if (!ArtifactService.supportedScopes.includes(input.scopeType)) {
       throw new Error("Unsupported artifact scope.");
     }
 
-    if (scopeType === "company") {
-      if (taskId) {
+    if (input.scopeType === "company") {
+      if (input.taskId) {
         throw new Error("taskId is not allowed for company-scoped artifacts.");
       }
+      if (input.sessionId) {
+        throw new Error("sessionId is not allowed for company-scoped artifacts.");
+      }
 
-      return null;
+      return { sessionId: null, taskId: null };
     }
 
-    if (!taskId) {
+    if (input.scopeType === "session") {
+      if (input.taskId) {
+        throw new Error("taskId is not allowed for session-scoped artifacts.");
+      }
+      if (!input.sessionId) {
+        throw new Error("sessionId is required for session-scoped artifacts.");
+      }
+
+      await this.requireSession(tx, input.companyId, input.sessionId);
+
+      return { sessionId: input.sessionId, taskId: null };
+    }
+
+    if (input.sessionId) {
+      throw new Error("sessionId is not allowed for task-scoped artifacts.");
+    }
+    if (!input.taskId) {
       throw new Error("taskId is required for task-scoped artifacts.");
     }
 
-    await this.requireTask(tx, companyId, taskId);
+    await this.requireTask(tx, input.companyId, input.taskId);
 
-    return taskId;
+    return { sessionId: null, taskId: input.taskId };
   }
 
   private async requireTask(
@@ -612,6 +668,25 @@ export class ArtifactService {
       )) as Array<{ id: string }>;
     if (existingTasks.length === 0) {
       throw new Error("Task not found.");
+    }
+  }
+
+  private async requireSession(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const existingSessions = await tx
+      .select({
+        id: agentSessions.id,
+      })
+      .from(agentSessions)
+      .where(and(
+        eq(agentSessions.companyId, companyId),
+        eq(agentSessions.id, sessionId),
+      )) as Array<{ id: string }>;
+    if (existingSessions.length === 0) {
+      throw new Error("Session not found.");
     }
   }
 
@@ -659,6 +734,7 @@ export class ArtifactService {
   private baseSelection(): {
     id: typeof artifacts.id;
     createdBySessionId: typeof artifacts.createdBySessionId;
+    sessionId: typeof artifacts.sessionId;
     taskId: typeof artifacts.taskId;
     scopeType: typeof artifacts.scopeType;
     type: typeof artifacts.type;
@@ -671,6 +747,7 @@ export class ArtifactService {
     return {
       id: artifacts.id,
       createdBySessionId: artifacts.createdBySessionId,
+      sessionId: artifacts.sessionId,
       taskId: artifacts.taskId,
       scopeType: artifacts.scopeType,
       type: artifacts.type,

@@ -5,14 +5,15 @@ import { ArtifactService } from "../../services/artifact_service.ts";
 
 type ArtifactsQueryArguments = {
   input: {
+    sessionId?: string | null;
     scopeType: string;
     taskId?: string | null;
   };
 };
 
 /**
- * Lists artifacts for one scope so the UI can show company-wide docs or the artifact stack for a
- * specific task without duplicating list logic per artifact subtype.
+ * Lists artifacts for one scope so the UI can show company-wide docs, session-local outputs, or
+ * the artifact stack for a specific task without duplicating list logic per artifact subtype.
  */
 @injectable()
 export class ArtifactsQueryResolver {
@@ -36,7 +37,8 @@ export class ArtifactsQueryResolver {
 
     const artifacts = await this.artifactService.listArtifacts(context.app_runtime_transaction_provider, {
       companyId: context.authSession.company.id,
-      scopeType: arguments_.input.scopeType as "company" | "task",
+      scopeType: arguments_.input.scopeType as "company" | "task" | "session",
+      sessionId: arguments_.input.sessionId,
       taskId: arguments_.input.taskId,
     });
 

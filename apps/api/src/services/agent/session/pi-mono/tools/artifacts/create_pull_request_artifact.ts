@@ -28,6 +28,7 @@ export class AgentCreatePullRequestArtifactTool {
     scopeType: Type.Union([
       Type.Literal("company"),
       Type.Literal("task"),
+      Type.Literal("session"),
     ]),
     state: Type.Optional(Type.Union([
       Type.Literal("draft"),
@@ -35,7 +36,7 @@ export class AgentCreatePullRequestArtifactTool {
       Type.Literal("archived"),
     ])),
     taskId: Type.Optional(Type.String({
-      description: "Required when scopeType is task.",
+      description: "Required when scopeType is task. Omit when scopeType is company or session.",
     })),
     url: Type.String({
       description: "The absolute pull request URL to persist.",
@@ -50,7 +51,7 @@ export class AgentCreatePullRequestArtifactTool {
 
   createDefinition(): ToolDefinition<typeof AgentCreatePullRequestArtifactTool.parameters> {
     return {
-      description: "Create a pull-request artifact for a company or task.",
+      description: "Create a pull-request artifact for a company, task, or this session.",
       execute: async (_toolCallId, params) => {
         const artifact = await this.artifactToolService.createPullRequestArtifact({
           description: params.description,
@@ -80,6 +81,7 @@ export class AgentCreatePullRequestArtifactTool {
       parameters: AgentCreatePullRequestArtifactTool.parameters,
       promptGuidelines: [
         "Use create_pull_request_artifact for GitHub pull requests that should stay attached to a company or task.",
+        "Use scopeType=session for pull requests that should only belong to the current live session.",
       ],
       promptSnippet: "Create a pull-request artifact",
     };
