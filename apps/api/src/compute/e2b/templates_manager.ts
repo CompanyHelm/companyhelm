@@ -1,4 +1,4 @@
-import { Template, type TemplateClass } from "e2b";
+import { Template, type TemplateBuilder } from "e2b";
 import { E2bTemplateBuild } from "./template_build.ts";
 
 /**
@@ -10,6 +10,7 @@ export class E2bTemplatesManager {
   private static readonly DEFAULT_GIT_USER_NAME = "CompanyHelm Agent";
   private static readonly NVM_INSTALL_VERSION = "v0.40.3";
   private static readonly NVM_DIRECTORY = "/usr/local/nvm";
+  private static readonly PLAYWRIGHT_CLI_PACKAGE = "@playwright/cli@latest";
 
   builds(): E2bTemplateBuild[] {
     const desktopTemplate = this.installCommonRuntimeTools(
@@ -50,10 +51,11 @@ export class E2bTemplatesManager {
 
   /**
    * Applies the shared CLI/runtime dependencies that every CompanyHelm sandbox expects. Node is
-   * installed through nvm, but the default binaries are also linked into /usr/local/bin because
-   * the PTY bootstrap starts a plain sh process rather than an nvm-aware login shell.
+   * installed through nvm, but the default binaries and Playwright CLI are also linked into
+   * /usr/local/bin because the PTY bootstrap starts a plain sh process rather than an nvm-aware
+   * login shell.
    */
-  private installCommonRuntimeTools(template: TemplateClass): TemplateClass {
+  private installCommonRuntimeTools(template: TemplateBuilder): TemplateBuilder {
     return template
       .aptInstall("gh")
       .aptInstall("ripgrep")
@@ -81,9 +83,11 @@ curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${E2bTemplatesManager.NV
 nvm install ${E2bTemplatesManager.DEFAULT_NODE_MAJOR_VERSION}
 nvm alias default ${E2bTemplatesManager.DEFAULT_NODE_MAJOR_VERSION}
 DEFAULT_NODE_VERSION="$(nvm version default)"
+npm install -g ${E2bTemplatesManager.PLAYWRIGHT_CLI_PACKAGE}
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/node" /usr/local/bin/node
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/npm" /usr/local/bin/npm
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/npx" /usr/local/bin/npx
+sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/playwright" /usr/local/bin/playwright
 printf "%s\\n" "export NVM_DIR=\\"${E2bTemplatesManager.NVM_DIRECTORY}\\"" "[ -s \\"\\$NVM_DIR/nvm.sh\\" ] && . \\"\\$NVM_DIR/nvm.sh\\"" | sudo tee /etc/profile.d/companyhelm-nvm.sh >/dev/null
 '`;
   }
