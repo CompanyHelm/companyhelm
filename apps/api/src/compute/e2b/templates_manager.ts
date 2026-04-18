@@ -65,8 +65,8 @@ export class E2bTemplatesManager {
 
   private buildGitIdentityCommand(): string {
     return [
-      `git config --system user.name ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_NAME)}`,
-      `git config --system user.email ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_EMAIL)}`,
+      `git config --global user.name ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_NAME)}`,
+      `git config --global user.email ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_EMAIL)}`,
     ].join(" && ");
   }
 

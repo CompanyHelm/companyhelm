@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import { Template, type BuildInfo } from "e2b";
 import { test, vi } from "vitest";
 import { E2bTemplateBuild } from "../src/compute/e2b/template_build.ts";
+import { E2bTemplatesManager } from "../src/compute/e2b/templates_manager.ts";
+
+type TemplateInstruction = {
+  args: string[];
+  type: string;
+};
+
+type TemplateWithInstructions = {
+  instructions: TemplateInstruction[];
+};
 
 test("E2bTemplateBuild forwards the configured API key to Template.build", async () => {
   const buildInfo = {
@@ -137,4 +147,35 @@ test("E2bTemplateBuild exposes provider-specific computer-use tools only for com
     ],
   );
   assert.deepEqual(smallProviders, []);
+});
+
+test("E2bTemplatesManager configures git identity for the runtime user", async () => {
+  const buildInfo = {
+    alias: "small",
+    buildId: "build-1",
+    name: "small",
+    tags: [],
+    templateId: "small",
+  } satisfies BuildInfo;
+  const templateBuildSpy = vi.spyOn(Template, "build").mockResolvedValue(buildInfo);
+
+  await new E2bTemplatesManager()
+    .findBuild("small")
+    ?.build("configured-e2b-api-key", "realequityapps/");
+
+  const buildCall = templateBuildSpy.mock.calls[0] as unknown as [
+    TemplateWithInstructions,
+    string,
+    unknown,
+  ];
+  const gitIdentityInstruction = buildCall[0].instructions.find((instruction) =>
+    instruction.args[0]?.includes("git config"),
+  );
+
+  assert.equal(
+    gitIdentityInstruction?.args[0],
+    "git config --global user.name 'CompanyHelm Agent' && git config --global user.email 'agent@companyhelm.internal'",
+  );
+  assert.equal(gitIdentityInstruction.args.length, 1);
+  templateBuildSpy.mockRestore();
 });
