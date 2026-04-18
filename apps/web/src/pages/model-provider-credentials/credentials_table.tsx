@@ -25,6 +25,7 @@ import {
 import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 export type CredentialsTableRecord = {
+  baseUrl: string | null;
   createdAt: string;
   defaultModelId: string | null;
   errorMessage: string | null;
@@ -155,7 +156,10 @@ export function CredentialsTable(props: CredentialsTableProps) {
               </TableCell>
               <TableCell>
                 <Badge variant="outline">
-                  {formatProviderLabel(credential.modelProvider, { isManaged: credential.isManaged })}
+                  {formatProviderLabel(credential.modelProvider, {
+                    baseUrl: credential.baseUrl,
+                    isManaged: credential.isManaged,
+                  })}
                 </Badge>
               </TableCell>
               <TableCell>{formatProviderCredentialType(credential.type)}</TableCell>

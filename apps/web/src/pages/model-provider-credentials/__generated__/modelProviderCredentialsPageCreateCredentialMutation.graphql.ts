@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3229d8f4b7e14803a27f1b4c8aed0936>>
+ * @generated SignedSource<<10eaa40e632fd1a83cbf65f6aa604c0c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type modelProviderCredentialsPageCreateCredentialMutation$variables = {
 };
 export type modelProviderCredentialsPageCreateCredentialMutation$data = {
   readonly AddModelProviderCredential: {
+    readonly baseUrl: string | null | undefined;
     readonly createdAt: string;
     readonly defaultModelId: string | null | undefined;
     readonly errorMessage: string | null | undefined;
@@ -71,6 +72,13 @@ v1 = [
         "args": null,
         "kind": "ScalarField",
         "name": "id",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "baseUrl",
         "storageKey": null
       },
       {
@@ -172,16 +180,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "a3667831634a4fd49976a97f4b0532de",
+    "cacheID": "5fce4e44e55f03f74231b2590310cf19",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageCreateCredentialMutation",
     "operationKind": "mutation",
-    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation modelProviderCredentialsPageCreateCredentialMutation(\n  $input: AddModelProviderCredentialInput!\n) {\n  AddModelProviderCredential(input: $input) {\n    id\n    baseUrl\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cfe9e0fa7e0abf5134c238a59d91fe4f";
+(node as any).hash = "c23c68f74562a20748c34b1bb84d8fe1";
 
 export default node;

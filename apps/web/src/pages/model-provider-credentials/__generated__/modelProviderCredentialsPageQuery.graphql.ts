@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fd7692714cd7b17842c3f6a1ef6c6b36>>
+ * @generated SignedSource<<dd7df818dfc4cecd68cd8f7d64f50076>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,6 +26,7 @@ export type modelProviderCredentialsPageQuery$data = {
     readonly name: string;
   }>;
   readonly ModelProviderCredentials: ReadonlyArray<{
+    readonly baseUrl: string | null | undefined;
     readonly createdAt: string;
     readonly defaultModelId: string | null | undefined;
     readonly errorMessage: string | null | undefined;
@@ -149,6 +150,13 @@ v9 = {
   "plural": true,
   "selections": [
     (v0/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "baseUrl",
+      "storageKey": null
+    },
     (v4/*: any*/),
     {
       "alias": null,
@@ -307,16 +315,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "f8eb4462454ff2b27b58054749115ba1",
+    "cacheID": "08194d02243d6886ebf4be1932459866",
     "id": null,
     "metadata": {},
     "name": "modelProviderCredentialsPageQuery",
     "operationKind": "query",
-    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    models {\n      modelProviderCredentialModelId\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelProviderCredentialModelId\n  }\n}\n"
+    "text": "query modelProviderCredentialsPageQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    models {\n      modelProviderCredentialModelId\n      id\n    }\n  }\n  ModelProviders {\n    id\n    name\n    type\n    authorizationInstructionsMarkdown\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isDefault\n    isManaged\n    name\n    modelProvider\n    type\n    defaultModelId\n    status\n    errorMessage\n    refreshedAt\n    createdAt\n    updatedAt\n  }\n  Sessions {\n    id\n    modelProviderCredentialModelId\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6425b9c56294810f383240d8265ef264";
+(node as any).hash = "e416908e82aff5bee392823dd86c9fc5";
 
 export default node;

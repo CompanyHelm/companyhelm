@@ -1,8 +1,15 @@
+import { ModelProviderCredentialCatalog } from "./provider_catalog";
+
 export function formatProviderLabel(value: string, options: {
+  baseUrl?: string | null;
   isManaged?: boolean;
 } = {}): string {
   if (options.isManaged) {
     return "CompanyHelm";
+  }
+
+  if (ModelProviderCredentialCatalog.isNvidiaCredential({ baseUrl: options.baseUrl, modelProvider: value })) {
+    return "NVIDIA (API key)";
   }
 
   if (value === "openai") {

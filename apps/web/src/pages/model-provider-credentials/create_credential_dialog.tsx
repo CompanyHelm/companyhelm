@@ -19,17 +19,16 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OauthCredentialFileParser } from "./oauth_credential_file_parser";
+import {
+  ModelProviderCredentialCatalog,
+  type ModelProviderCredentialDialogProvider,
+} from "./provider_catalog";
 
 interface CreateCredentialDialogProps {
   errorMessage: string | null;
   isOpen: boolean;
   isSaving: boolean;
-  providers: Array<{
-    authorizationInstructionsMarkdown: string | null;
-    id: string;
-    name: string;
-    type: "api_key" | "oauth";
-  }>;
+  providers: ModelProviderCredentialDialogProvider[];
   onCreate(input: {
     accessToken?: string;
     accessTokenExpiresAtMilliseconds?: string;
@@ -53,12 +52,15 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const [name, setName] = useState("");
   const [modelProvider, setModelProvider] = useState(props.providers[0]?.id ?? "");
   const selectedProvider = props.providers.find((provider) => provider.id === modelProvider) ?? null;
+  const usesEditableBaseUrl = selectedProvider
+    ? ModelProviderCredentialCatalog.usesEditableBaseUrl(selectedProvider)
+    : false;
 
   useEffect(() => {
     if (!props.isOpen) {
       setAuthFileContents("");
       setApiKey("");
-      setBaseUrl("");
+      setBaseUrl(props.providers[0]?.baseUrl ?? "");
       setIsDefault(props.suggestDefault);
       setLocalErrorMessage(null);
       setName("");
@@ -87,9 +89,10 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                 value: provider.id,
               }))}
               onValueChange={(value) => {
+                const nextProvider = props.providers.find((provider) => provider.id === value) ?? null;
                 setAuthFileContents("");
                 setApiKey("");
-                setBaseUrl("");
+                setBaseUrl(nextProvider?.baseUrl ?? "");
                 setLocalErrorMessage(null);
                 setModelProvider(value ?? "");
               }}
@@ -179,7 +182,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             </div>
           ) : (
             <div className="grid gap-4">
-              {selectedProvider?.id === "openai-compatible" ? (
+              {selectedProvider && ModelProviderCredentialCatalog.requiresBaseUrl(selectedProvider) ? (
                 <div className="grid gap-2">
                   <label className="text-xs font-medium text-foreground" htmlFor="provider-base-url">
                     Base URL
@@ -191,6 +194,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                       setBaseUrl(event.target.value);
                     }}
                     placeholder="http://localhost:11434/v1"
+                    readOnly={!usesEditableBaseUrl}
                     value={baseUrl}
                   />
                 </div>
@@ -205,7 +209,9 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                   onChange={(event) => {
                     setApiKey(event.target.value);
                   }}
-                  placeholder={selectedProvider?.id === "openai-compatible" ? "ollama" : "sk-..."}
+                  placeholder={selectedProvider?.id === ModelProviderCredentialCatalog.NVIDIA_PROVIDER_ID
+                    ? "nvapi-..."
+                    : (selectedProvider?.submittedProviderId === "openai-compatible" ? "ollama" : "sk-...")}
                   type="password"
                   value={apiKey}
                 />
@@ -234,7 +240,9 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             data-primary-cta=""
             disabled={props.isSaving || !selectedProvider || (
               selectedProvider.type === "oauth" ? !authFileContents.trim() : !apiKey.trim()
-            ) || (selectedProvider?.id === "openai-compatible" && !baseUrl.trim())}
+            ) || (selectedProvider ? (
+              ModelProviderCredentialCatalog.requiresBaseUrl(selectedProvider) && !baseUrl.trim()
+            ) : false)}
             onClick={async () => {
               setLocalErrorMessage(null);
               if (!selectedProvider) {
@@ -254,18 +262,25 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                     accessTokenExpiresAtMilliseconds: oauthCredential.accessTokenExpiresAtMilliseconds,
                     ...(isDefault ? { isDefault: true } : {}),
                     name,
-                    modelProvider: selectedProvider.id,
+                    modelProvider: selectedProvider.submittedProviderId,
                     refreshToken: oauthCredential.refreshToken,
                   });
                   return;
                 }
 
+                const resolvedBaseUrl = ModelProviderCredentialCatalog.resolveBaseUrl({
+                  baseUrl,
+                  provider: selectedProvider,
+                });
                 await props.onCreate({
                   apiKey,
-                  ...(selectedProvider.id === "openai-compatible" ? { baseUrl } : {}),
+                  ...(resolvedBaseUrl ? { baseUrl: resolvedBaseUrl } : {}),
                   ...(isDefault ? { isDefault: true } : {}),
-                  name,
-                  modelProvider: selectedProvider.id,
+                  name: ModelProviderCredentialCatalog.resolveCredentialName({
+                    name,
+                    provider: selectedProvider,
+                  }),
+                  modelProvider: selectedProvider.submittedProviderId,
                 });
               } catch (error) {
                 setLocalErrorMessage(

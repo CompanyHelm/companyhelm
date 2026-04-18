@@ -22,6 +22,7 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
   query credentialDetailPageQuery($credentialId: ID!) {
     ModelProviderCredentials {
       id
+      baseUrl
       isManaged
       name
       modelProvider
@@ -164,6 +165,7 @@ function ModelProviderCredentialDetailPageContent() {
     );
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
   const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim(), {
+    baseUrl: currentCredential?.baseUrl ?? null,
     isManaged: currentCredential?.isManaged ?? false,
   })
     || "Credential";

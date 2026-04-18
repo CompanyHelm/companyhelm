@@ -6,6 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/co
 import { CreateCredentialDialog } from "./create_credential_dialog";
 import { type DeleteCredentialDialogReplacementRecord } from "./delete_credential_dialog";
 import { CredentialsTable, type CredentialsTableRecord } from "./credentials_table";
+import { ModelProviderCredentialCatalog } from "./provider_catalog";
 import { formatProviderLabel } from "./provider_label";
 import type { modelProviderCredentialsPageCreateCredentialMutation } from "./__generated__/modelProviderCredentialsPageCreateCredentialMutation.graphql";
 import type { modelProviderCredentialsPageDeleteCredentialMutation } from "./__generated__/modelProviderCredentialsPageDeleteCredentialMutation.graphql";
@@ -52,6 +53,7 @@ const modelProviderCredentialsPageQueryNode = graphql`
     }
     ModelProviderCredentials {
       id
+      baseUrl
       isDefault
       isManaged
       name
@@ -77,6 +79,7 @@ const modelProviderCredentialsPageCreateCredentialMutationNode = graphql`
   ) {
     AddModelProviderCredential(input: $input) {
       id
+      baseUrl
       isDefault
       isManaged
       name
@@ -242,6 +245,7 @@ function ModelProviderCredentialsPageContent() {
   }, [credentialIdByModelId, data.Sessions]);
   const credentials = useMemo<CredentialsTableRecord[]>(() => {
     return data.ModelProviderCredentials.map((credential) => ({
+      baseUrl: credential.baseUrl ?? null,
       createdAt: credential.createdAt,
       defaultModelId: credential.defaultModelId ?? null,
       errorMessage: credential.errorMessage ?? null,
@@ -263,12 +267,14 @@ function ModelProviderCredentialsPageContent() {
         })),
     }));
   }, [data.Agents, data.ModelProviderCredentials, sessionCountByCredentialId]);
-  const providers = data.ModelProviders.map((provider) => ({
-    authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown ?? null,
-    id: provider.id,
-    name: formatProviderLabel(provider.id),
-    type: provider.type as "api_key" | "oauth",
-  }));
+  const providers = ModelProviderCredentialCatalog.toDialogProviders(
+    data.ModelProviders.map((provider) => ({
+      authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown ?? null,
+      id: provider.id,
+      name: formatProviderLabel(provider.id),
+      type: provider.type as "api_key" | "oauth",
+    })),
+  );
 
   return (
     <main className="flex flex-1 flex-col gap-6">

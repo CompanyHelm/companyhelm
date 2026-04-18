@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b976adaac1e4cd75fce8b369c7076085>>
+ * @generated SignedSource<<c4ad5a1d92c3107a72ce547b3a49faed>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type credentialDetailPageQuery$data = {
     readonly reasoningSupported: boolean;
   }>;
   readonly ModelProviderCredentials: ReadonlyArray<{
+    readonly baseUrl: string | null | undefined;
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isManaged: boolean;
@@ -70,6 +71,13 @@ v3 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "baseUrl",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -189,16 +197,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "b662c59c6ee5df537900388de9f4a072",
+    "cacheID": "16c9537afcb2889cee7c008e11ec1370",
     "id": null,
     "metadata": {},
     "name": "credentialDetailPageQuery",
     "operationKind": "query",
-    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    isManaged\n    name\n    modelProvider\n    type\n    status\n    errorMessage\n    refreshedAt\n    updatedAt\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
+    "text": "query credentialDetailPageQuery(\n  $credentialId: ID!\n) {\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isManaged\n    name\n    modelProvider\n    type\n    status\n    errorMessage\n    refreshedAt\n    updatedAt\n  }\n  ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {\n    id\n    isDefault\n    name\n    description\n    reasoningSupported\n    reasoningLevels\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7b9f7477168a03f2b48a2bf2acda6199";
+(node as any).hash = "d218f3f45e0b96fd999aee95d9ef6815";
 
 export default node;
