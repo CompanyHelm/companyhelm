@@ -54,6 +54,7 @@ export function useChatTranscript({
   setErrorMessage: (message: string | null | ((currentMessage: string | null) => string | null)) => void;
   updateSessionTitleOverride: (sessionId: string, messages: ReadonlyArray<SessionMessageRecord>) => void;
 }) {
+  const liveTranscriptFlushAnimationFrameRef = useRef<number | null>(null);
   const transcriptScrollRef = useRef<HTMLDivElement | null>(null);
   const transcriptScrollRestoreAnimationFrameRef = useRef<number | null>(null);
   const pendingTranscriptScrollRestoreRef = useRef<TranscriptScrollRestoreRecord | null>(null);
@@ -65,6 +66,7 @@ export function useChatTranscript({
   const transcriptMessagesRef = useRef<SessionMessageRecord[]>([]);
   const transcriptHasNextPageRef = useRef(false);
   const transcriptEndCursorRef = useRef<string | null>(null);
+  const queuedLiveTranscriptMessagesRef = useRef<SessionMessageRecord[]>([]);
   const bufferedTranscriptMessagesRef = useRef<SessionMessageRecord[]>([]);
   const deferredTranscriptRefreshUpdatedAtRef = useRef<string | null>(null);
   const [transcriptMessages, setTranscriptMessages] = useState<SessionMessageRecord[]>([]);
@@ -78,7 +80,17 @@ export function useChatTranscript({
     selectedSessionUpdatedAtRef.current = selectedSession?.updatedAt ?? null;
   }, [selectedSession?.id, selectedSession?.updatedAt]);
 
+  const cancelLiveTranscriptFlush = useCallback(() => {
+    if (liveTranscriptFlushAnimationFrameRef.current === null) {
+      return;
+    }
+
+    cancelAnimationFrame(liveTranscriptFlushAnimationFrameRef.current);
+    liveTranscriptFlushAnimationFrameRef.current = null;
+  }, []);
+
   const clearTranscriptState = useCallback(() => {
+    queuedLiveTranscriptMessagesRef.current = [];
     bufferedTranscriptMessagesRef.current = [];
     deferredTranscriptRefreshUpdatedAtRef.current = null;
     transcriptMessagesRef.current = [];
@@ -142,6 +154,50 @@ export function useChatTranscript({
       messages: nextMessages,
     });
   }, [applyTranscriptState]);
+
+  const flushQueuedLiveTranscriptMessages = useCallback((sessionId: string) => {
+    if (queuedLiveTranscriptMessagesRef.current.length === 0) {
+      return;
+    }
+
+    // Preserve the existing deferred-tail behavior when the operator has scrolled away, but batch
+    // the "stuck to bottom" path through requestAnimationFrame so bursty token updates do not force
+    // a full React render for every subscription payload.
+    if (!shouldStickTranscriptToBottomRef.current) {
+      bufferedTranscriptMessagesRef.current = mergeTranscriptMessages(
+        bufferedTranscriptMessagesRef.current,
+        queuedLiveTranscriptMessagesRef.current,
+      );
+      queuedLiveTranscriptMessagesRef.current = [];
+      return;
+    }
+
+    const nextMessages = mergeTranscriptMessages(
+      transcriptMessagesRef.current,
+      queuedLiveTranscriptMessagesRef.current,
+    );
+    queuedLiveTranscriptMessagesRef.current = [];
+    applyTranscriptState(sessionId, {
+      endCursor: transcriptEndCursorRef.current,
+      hasNextPage: transcriptHasNextPageRef.current,
+      messages: nextMessages,
+    });
+  }, [applyTranscriptState]);
+
+  const scheduleQueuedLiveTranscriptFlush = useCallback((sessionId: string) => {
+    if (liveTranscriptFlushAnimationFrameRef.current !== null) {
+      return;
+    }
+
+    liveTranscriptFlushAnimationFrameRef.current = requestAnimationFrame(() => {
+      liveTranscriptFlushAnimationFrameRef.current = null;
+      if (activeTranscriptSessionIdRef.current !== sessionId) {
+        return;
+      }
+
+      flushQueuedLiveTranscriptMessages(sessionId);
+    });
+  }, [flushQueuedLiveTranscriptMessages]);
 
   const loadTranscriptPage = useCallback(async ({
     after = null,
@@ -292,6 +348,8 @@ export function useChatTranscript({
   ]);
 
   const reconcileLiveTailState = useCallback((sessionId: string) => {
+    cancelLiveTranscriptFlush();
+    flushQueuedLiveTranscriptMessages(sessionId);
     flushBufferedTranscriptMessages(sessionId);
     const deferredTranscriptRefreshUpdatedAt = deferredTranscriptRefreshUpdatedAtRef.current;
     if (!deferredTranscriptRefreshUpdatedAt) {
@@ -327,6 +385,7 @@ export function useChatTranscript({
         cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
         transcriptScrollRestoreAnimationFrameRef.current = null;
       }
+      cancelLiveTranscriptFlush();
       transcriptRequestIdRef.current += 1;
       activeTranscriptSessionIdRef.current = null;
       pendingTranscriptScrollRestoreRef.current = null;
@@ -351,6 +410,7 @@ export function useChatTranscript({
         cancelAnimationFrame(transcriptScrollRestoreAnimationFrameRef.current);
         transcriptScrollRestoreAnimationFrameRef.current = null;
       }
+      cancelLiveTranscriptFlush();
     }
 
     const retainedTranscript = sessionTranscriptRetentionStore.read<ChatsPageTranscriptQuery["response"]>(selectedSession.id);
@@ -395,7 +455,7 @@ export function useChatTranscript({
       sessionId: selectedSession.id,
       sessionUpdatedAt: selectedSession.updatedAt,
     });
-  }, [applyTranscriptState, clearTranscriptState, loadTranscriptPage, selectedSession, sessionTranscriptRetentionStore]);
+  }, [applyTranscriptState, cancelLiveTranscriptFlush, clearTranscriptState, loadTranscriptPage, selectedSession, sessionTranscriptRetentionStore]);
 
   useLayoutEffect(() => {
     const transcriptNode = transcriptScrollRef.current;
@@ -487,13 +547,11 @@ export function useChatTranscript({
           return;
         }
 
-        captureViewportAnchorForTranscriptUpdate();
-        const mergedMessages = mergeTranscriptMessages(transcriptMessagesRef.current, [nextMessage]);
-        applyTranscriptState(selectedSession.id, {
-          endCursor: transcriptEndCursorRef.current,
-          hasNextPage: transcriptHasNextPageRef.current,
-          messages: mergedMessages,
-        });
+        queuedLiveTranscriptMessagesRef.current = mergeTranscriptMessages(
+          queuedLiveTranscriptMessagesRef.current,
+          [nextMessage],
+        );
+        scheduleQueuedLiveTranscriptFlush(selectedSession.id);
       },
       onError: (error) => {
         setErrorMessage((currentMessage) => currentMessage ?? error.message);
@@ -503,7 +561,7 @@ export function useChatTranscript({
     return () => {
       disposable.dispose();
     };
-  }, [applyTranscriptState, captureViewportAnchorForTranscriptUpdate, environment, selectedSession, setErrorMessage]);
+  }, [environment, scheduleQueuedLiveTranscriptFlush, selectedSession, setErrorMessage]);
 
   const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     const transcriptNode = event.currentTarget;
