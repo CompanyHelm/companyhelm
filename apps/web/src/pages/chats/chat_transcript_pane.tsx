@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { MutableRefObject, UIEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction, UIEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowDownIcon,
@@ -12,6 +12,7 @@ import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import type { SessionMessageRecord, SessionRecord } from "./chats_page_data";
+import { SmoothStreamingTextController } from "./smooth_streaming_text_controller";
 import {
   type AssistantContentMode,
   type ToolCallSummaryRecord,
@@ -31,9 +32,63 @@ import {
   sanitizeCommandOutput,
 } from "./chats_page_helpers";
 
-function AssistantTranscriptMessage({ text }: { text: string }) {
+function AssistantTranscriptMessage({ isStreaming, text }: { isStreaming: boolean; text: string }) {
+  const animationFrameRef = useRef<number | null>(null);
+  const controllerRef = useRef(new SmoothStreamingTextController());
+  const [displayText, setDisplayText] = useState(text);
+
+  useEffect(() => {
+    const controller = controllerRef.current;
+    const nextState = controller.setTargetText(text, {
+      isComplete: !isStreaming,
+    });
+    setDisplayText((currentDisplayText) => currentDisplayText === nextState.displayText ? currentDisplayText : nextState.displayText);
+
+    if (!nextState.shouldContinue) {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      return;
+    }
+
+    const runAnimationFrame = (timestamp: number) => {
+      const frameState = controller.advanceTo(timestamp);
+      setDisplayText((currentDisplayText) => currentDisplayText === frameState.displayText ? currentDisplayText : frameState.displayText);
+      if (!frameState.shouldContinue) {
+        animationFrameRef.current = null;
+        return;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(runAnimationFrame);
+    };
+
+    if (animationFrameRef.current === null) {
+      animationFrameRef.current = requestAnimationFrame(runAnimationFrame);
+    }
+  }, [isStreaming, text]);
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      controllerRef.current.reset();
+    };
+  }, []);
+
+  if (isStreaming) {
+    return (
+      <div className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
+        {displayText}
+      </div>
+    );
+  }
+
   return <MarkdownContent content={text} />;
 }
+
+const MemoizedAssistantTranscriptMessage = memo(AssistantTranscriptMessage);
 
 function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
@@ -241,6 +296,7 @@ function TranscriptMessageRow({
   const assistantDisplayContents = !isUserMessage && !isToolMessage
     ? resolveAssistantContentDisplay(message, { contentMode: assistantContentMode })
     : [];
+  const isStreamingAssistantMessage = message.role === "assistant" && message.status.trim().toLowerCase() === "running";
 
   return (
     <div
@@ -288,7 +344,7 @@ function TranscriptMessageRow({
                 key={`${message.id}-assistant-content-${contentIndex}`}
                 className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
               >
-                <AssistantTranscriptMessage text={content.text} />
+                <MemoizedAssistantTranscriptMessage isStreaming={isStreamingAssistantMessage} text={content.text} />
               </div>
             ))}
           </div>
@@ -297,6 +353,13 @@ function TranscriptMessageRow({
     </div>
   );
 }
+
+const MemoizedTranscriptMessageRow = memo(TranscriptMessageRow, (previousProps, nextProps) => {
+  return previousProps.assistantContentMode === nextProps.assistantContentMode
+    && previousProps.message === nextProps.message
+    && previousProps.toolCallSummary === nextProps.toolCallSummary
+    && previousProps.useLeftGutter === nextProps.useLeftGutter;
+});
 
 function TranscriptTurnSummaryRow({
   durationLabel,
@@ -397,6 +460,121 @@ function ForkedSessionBanner({
   );
 }
 
+type TranscriptTurnBlockProps = {
+  expandedTurnIds: Readonly<Record<string, boolean>>;
+  forkingTurnId: string | null;
+  onForkTurn: (turnId: string) => void;
+  setExpandedTurnIds: Dispatch<SetStateAction<Record<string, boolean>>>;
+  toolCallSummaryById: ReadonlyMap<string, ToolCallSummaryRecord>;
+  turn: ReturnType<typeof buildTranscriptTurns>[number];
+};
+
+function TranscriptTurnBlock({
+  expandedTurnIds,
+  forkingTurnId,
+  onForkTurn,
+  setExpandedTurnIds,
+  toolCallSummaryById,
+  turn,
+}: TranscriptTurnBlockProps) {
+  if (turn.isRunning) {
+    return (
+      <div className="grid gap-3">
+        {turn.inlineMessages.map((message) => (
+          <MemoizedTranscriptMessageRow
+            assistantContentMode="all"
+            key={message.id}
+            message={message}
+            toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
+  const isExpanded = expandedTurnIds[turn.turnId] === true;
+  const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
+  const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
+  const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
+  const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
+
+  return (
+    <div className="grid gap-3">
+      {inlineMessagesBeforeWorkedFor.map((message) => (
+        <MemoizedTranscriptMessageRow
+          assistantContentMode="text-only"
+          key={message.id}
+          message={message}
+          toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+        />
+      ))}
+      <TranscriptTurnSummaryRow
+        durationLabel={turn.durationLabel}
+        hasHiddenMessages={hasHiddenMessages}
+        isExpanded={isExpanded}
+        isForkDisabled={forkingTurnId !== null}
+        isForking={forkingTurnId === turn.turnId}
+        onFork={() => {
+          onForkTurn(turn.turnId);
+        }}
+        onToggleHiddenMessages={() => {
+          setExpandedTurnIds((currentExpandedTurnIds) => ({
+            ...currentExpandedTurnIds,
+            [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
+          }));
+        }}
+      />
+      {hasHiddenMessages && isExpanded ? (
+        <>
+          {turn.hiddenMessages.map((message) => (
+            <MemoizedTranscriptMessageRow
+              assistantContentMode="all"
+              key={message.id}
+              message={message}
+              toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+            />
+          ))}
+          {turn.hiddenThinkingMessages.map((message) => (
+            <MemoizedTranscriptMessageRow
+              assistantContentMode="thinking-only"
+              key={`${message.id}-thinking`}
+              message={message}
+              toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+            />
+          ))}
+        </>
+      ) : null}
+      {inlineMessagesAfterWorkedFor.map((message) => (
+        <MemoizedTranscriptMessageRow
+          assistantContentMode="text-only"
+          key={message.id}
+          message={message}
+          toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+        />
+      ))}
+    </div>
+  );
+}
+
+const MemoizedTranscriptTurnBlock = memo(TranscriptTurnBlock, (previousProps, nextProps) => {
+  const previousTurn = previousProps.turn;
+  const nextTurn = nextProps.turn;
+  return previousProps.forkingTurnId === nextProps.forkingTurnId
+    && previousProps.expandedTurnIds[previousTurn.turnId] === nextProps.expandedTurnIds[nextTurn.turnId]
+    && previousTurn.turnId === nextTurn.turnId
+    && previousTurn.durationLabel === nextTurn.durationLabel
+    && previousTurn.isRunning === nextTurn.isRunning
+    && previousTurn.inlineMessages.length === nextTurn.inlineMessages.length
+    && previousTurn.hiddenMessages.length === nextTurn.hiddenMessages.length
+    && previousTurn.hiddenThinkingMessages.length === nextTurn.hiddenThinkingMessages.length
+    && previousTurn.inlineMessages.every((message, messageIndex) => message === nextTurn.inlineMessages[messageIndex])
+    && previousTurn.hiddenMessages.every((message, messageIndex) => message === nextTurn.hiddenMessages[messageIndex])
+    && previousTurn.hiddenThinkingMessages.every((message, messageIndex) => {
+      return message === nextTurn.hiddenThinkingMessages[messageIndex];
+    });
+});
+
 export function ChatTranscriptPane({
   forkingTurnId,
   isTranscriptStuckToBottom,
@@ -469,83 +647,16 @@ export function ChatTranscriptPane({
           </div>
         ) : null}
         {transcriptTurns.map((turn) => {
-          if (turn.isRunning) {
-            return (
-              <div key={turn.turnId} className="grid gap-3">
-                {turn.inlineMessages.map((message) => (
-                  <TranscriptMessageRow
-                    assistantContentMode="all"
-                    key={message.id}
-                    message={message}
-                    toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                  />
-                ))}
-              </div>
-            );
-          }
-
-          const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
-          const isExpanded = expandedTurnIds[turn.turnId] === true;
-          const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
-          const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
-          const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
-          const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
-
           return (
-            <div key={turn.turnId} className="grid gap-3">
-              {inlineMessagesBeforeWorkedFor.map((message) => (
-                <TranscriptMessageRow
-                  assistantContentMode="text-only"
-                  key={message.id}
-                  message={message}
-                  toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                />
-              ))}
-              <TranscriptTurnSummaryRow
-                durationLabel={turn.durationLabel}
-                hasHiddenMessages={hasHiddenMessages}
-                isExpanded={isExpanded}
-                isForkDisabled={forkingTurnId !== null}
-                isForking={forkingTurnId === turn.turnId}
-                onFork={() => {
-                  onForkTurn(turn.turnId);
-                }}
-                onToggleHiddenMessages={() => {
-                  setExpandedTurnIds((currentExpandedTurnIds) => ({
-                    ...currentExpandedTurnIds,
-                    [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
-                  }));
-                }}
-              />
-              {hasHiddenMessages && isExpanded ? (
-                <>
-                  {turn.hiddenMessages.map((message) => (
-                    <TranscriptMessageRow
-                      assistantContentMode="all"
-                      key={message.id}
-                      message={message}
-                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                    />
-                  ))}
-                  {turn.hiddenThinkingMessages.map((message) => (
-                    <TranscriptMessageRow
-                      assistantContentMode="thinking-only"
-                      key={`${message.id}-thinking`}
-                      message={message}
-                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                    />
-                  ))}
-                </>
-              ) : null}
-              {inlineMessagesAfterWorkedFor.map((message) => (
-                <TranscriptMessageRow
-                  assistantContentMode="text-only"
-                  key={message.id}
-                  message={message}
-                  toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                />
-              ))}
-            </div>
+            <MemoizedTranscriptTurnBlock
+              expandedTurnIds={expandedTurnIds}
+              forkingTurnId={forkingTurnId}
+              key={turn.turnId}
+              onForkTurn={onForkTurn}
+              setExpandedTurnIds={setExpandedTurnIds}
+              toolCallSummaryById={toolCallSummaryById}
+              turn={turn}
+            />
           );
         })}
       </div>
