@@ -20,11 +20,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RoutineDialog, type RoutineDialogRecord } from "./routine_dialog";
-import { RoutineTriggerDialog, type RoutineTriggerDialogRecord } from "./routine_trigger_dialog";
 import type { routinesPageCreateRoutineCronTriggerMutation } from "./__generated__/routinesPageCreateRoutineCronTriggerMutation.graphql";
 import type { routinesPageCreateRoutineMutation } from "./__generated__/routinesPageCreateRoutineMutation.graphql";
 import type { routinesPageDeleteRoutineMutation } from "./__generated__/routinesPageDeleteRoutineMutation.graphql";
-import type { routinesPageDeleteRoutineTriggerMutation } from "./__generated__/routinesPageDeleteRoutineTriggerMutation.graphql";
 import type { routinesPageQuery } from "./__generated__/routinesPageQuery.graphql";
 import type { routinesPageTriggerRoutineMutation } from "./__generated__/routinesPageTriggerRoutineMutation.graphql";
 import type { routinesPageUpdateRoutineCronTriggerMutation } from "./__generated__/routinesPageUpdateRoutineCronTriggerMutation.graphql";
@@ -193,15 +191,6 @@ const routinesPageUpdateRoutineCronTriggerMutationNode = graphql`
   }
 `;
 
-const routinesPageDeleteRoutineTriggerMutationNode = graphql`
-  mutation routinesPageDeleteRoutineTriggerMutation($input: DeleteRoutineTriggerInput!) {
-    DeleteRoutineTrigger(input: $input) {
-      id
-      routineId
-    }
-  }
-`;
-
 const routinesPageTriggerRoutineMutationNode = graphql`
   mutation routinesPageTriggerRoutineMutation($input: TriggerRoutineInput!) {
     TriggerRoutine(input: $input) {
@@ -303,13 +292,9 @@ function RoutinesPageFallback() {
 function RoutinesPageContent() {
   const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<RoutineDialogRecord | null>(null);
-  const [editingTrigger, setEditingTrigger] = useState<RoutineTriggerDialogRecord | null>(null);
   const [isRoutineDialogOpen, setRoutineDialogOpen] = useState(false);
-  const [isTriggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [pageErrorMessage, setPageErrorMessage] = useState<string | null>(null);
-  const [routineIdForTriggerDialog, setRoutineIdForTriggerDialog] = useState<string | null>(null);
   const [runningRoutineId, setRunningRoutineId] = useState<string | null>(null);
-  const [triggerDialogErrorMessage, setTriggerDialogErrorMessage] = useState<string | null>(null);
   const data = useLazyLoadQuery<routinesPageQuery>(
     routinesPageQueryNode,
     {},
@@ -334,10 +319,6 @@ function RoutinesPageContent() {
     useMutation<routinesPageUpdateRoutineCronTriggerMutation>(
       routinesPageUpdateRoutineCronTriggerMutationNode,
     );
-  const [commitDeleteRoutineTrigger, isDeleteRoutineTriggerInFlight] =
-    useMutation<routinesPageDeleteRoutineTriggerMutation>(
-      routinesPageDeleteRoutineTriggerMutationNode,
-    );
   const [commitTriggerRoutine, isTriggerRoutineInFlight] = useMutation<routinesPageTriggerRoutineMutation>(
     routinesPageTriggerRoutineMutationNode,
   );
@@ -345,11 +326,16 @@ function RoutinesPageContent() {
     id: agent.id,
     name: agent.name,
   }));
-  const isRoutineSaving = isCreateRoutineInFlight || isUpdateRoutineInFlight;
-  const isTriggerSaving = isCreateRoutineCronTriggerInFlight || isUpdateRoutineCronTriggerInFlight;
+  const isRoutineSaving = isCreateRoutineInFlight
+    || isUpdateRoutineInFlight
+    || isCreateRoutineCronTriggerInFlight
+    || isUpdateRoutineCronTriggerInFlight;
 
   async function saveRoutine(input: {
     assignedAgentId: string;
+    cronPattern: string;
+    cronTriggerEnabled: boolean;
+    cronTriggerId?: string;
     enabled: boolean;
     id?: string;
     instructions: string;
@@ -357,7 +343,29 @@ function RoutinesPageContent() {
   }): Promise<void> {
     setDialogErrorMessage(null);
 
-    await new Promise<void>((resolve, reject) => {
+    try {
+      const routineId = await saveRoutineRecord(input);
+      await saveRoutineCronTrigger({
+        cronPattern: input.cronPattern,
+        enabled: input.cronTriggerEnabled,
+        id: input.cronTriggerId,
+        routineId,
+      });
+      setRoutineDialogOpen(false);
+      setEditingRoutine(null);
+    } catch (error: unknown) {
+      setDialogErrorMessage(getErrorMessage(error, "Failed to save routine."));
+    }
+  }
+
+  async function saveRoutineRecord(input: {
+    assignedAgentId: string;
+    enabled: boolean;
+    id?: string;
+    instructions: string;
+    name: string;
+  }): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
       const variables = {
         input: {
           assignedAgentId: input.assignedAgentId,
@@ -374,13 +382,13 @@ function RoutinesPageContent() {
               id: input.id,
             },
           },
-          onCompleted: (_response, errors) => {
+          onCompleted: (response, errors) => {
             const nextErrorMessage = errors?.[0]?.message;
             if (nextErrorMessage) {
               reject(new Error(nextErrorMessage));
               return;
             }
-            resolve();
+            resolve(response.UpdateRoutine.id);
           },
           onError: reject,
         });
@@ -399,33 +407,26 @@ function RoutinesPageContent() {
           const currentRoutines = filterStoreRecords(rootRecord.getLinkedRecords("Routines") || []);
           rootRecord.setLinkedRecords([createdRoutine, ...currentRoutines], "Routines");
         },
-        onCompleted: (_response, errors) => {
+        onCompleted: (response, errors) => {
           const nextErrorMessage = errors?.[0]?.message;
           if (nextErrorMessage) {
             reject(new Error(nextErrorMessage));
             return;
           }
-          resolve();
+          resolve(response.CreateRoutine.id);
         },
         onError: reject,
       });
-    }).then(() => {
-      setRoutineDialogOpen(false);
-      setEditingRoutine(null);
-    }).catch((error: unknown) => {
-      setDialogErrorMessage(getErrorMessage(error, "Failed to save routine."));
     });
   }
 
-  async function saveTrigger(input: {
+  async function saveRoutineCronTrigger(input: {
     cronPattern: string;
     enabled: boolean;
     id?: string;
-    routineId?: string;
+    routineId: string;
   }): Promise<void> {
-    setTriggerDialogErrorMessage(null);
-
-    await new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       if (input.id) {
         commitUpdateRoutineCronTrigger({
           variables: {
@@ -445,10 +446,6 @@ function RoutinesPageContent() {
           },
           onError: reject,
         });
-        return;
-      }
-      if (!input.routineId) {
-        reject(new Error("Routine id is required."));
         return;
       }
 
@@ -490,12 +487,6 @@ function RoutinesPageContent() {
         },
         onError: reject,
       });
-    }).then(() => {
-      setTriggerDialogOpen(false);
-      setEditingTrigger(null);
-      setRoutineIdForTriggerDialog(null);
-    }).catch((error: unknown) => {
-      setTriggerDialogErrorMessage(getErrorMessage(error, "Failed to save trigger."));
     });
   }
 
@@ -538,57 +529,6 @@ function RoutinesPageContent() {
       });
     }).catch((error: unknown) => {
       setPageErrorMessage(getErrorMessage(error, "Failed to delete routine."));
-    });
-  }
-
-  async function deleteTrigger(triggerId: string): Promise<void> {
-    if (isDeleteRoutineTriggerInFlight) {
-      return;
-    }
-
-    setPageErrorMessage(null);
-    await new Promise<void>((resolve, reject) => {
-      commitDeleteRoutineTrigger({
-        variables: {
-          input: {
-            id: triggerId,
-          },
-        },
-        updater: (store) => {
-          const deletedTrigger = store.getRootField("DeleteRoutineTrigger");
-          if (!deletedTrigger) {
-            return;
-          }
-
-          const routineId = deletedTrigger.getValue("routineId");
-          if (typeof routineId !== "string") {
-            return;
-          }
-
-          const routineRecord = findRoutineRecord(store, routineId);
-          if (!routineRecord) {
-            return;
-          }
-
-          const deletedTriggerId = deletedTrigger.getDataID();
-          const currentTriggers = filterStoreRecords(routineRecord.getLinkedRecords("triggers") || []);
-          routineRecord.setLinkedRecords(
-            currentTriggers.filter((record) => record.getDataID() !== deletedTriggerId),
-            "triggers",
-          );
-        },
-        onCompleted: (_response, errors) => {
-          const nextErrorMessage = errors?.[0]?.message;
-          if (nextErrorMessage) {
-            reject(new Error(nextErrorMessage));
-            return;
-          }
-          resolve();
-        },
-        onError: reject,
-      });
-    }).catch((error: unknown) => {
-      setPageErrorMessage(getErrorMessage(error, "Failed to delete trigger."));
     });
   }
 
@@ -671,7 +611,7 @@ function RoutinesPageContent() {
               <div className="grid gap-1">
                 <p className="text-sm font-medium text-foreground">No routines yet</p>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Create a routine to save a prompt, assign it to an agent, and attach one or more cron triggers.
+                  Create a routine to save a prompt, assign it to an agent, and schedule its cron trigger.
                 </p>
               </div>
             </div>
@@ -681,7 +621,7 @@ function RoutinesPageContent() {
                 <TableRow>
                   <TableHead>Routine</TableHead>
                   <TableHead>Agent</TableHead>
-                  <TableHead>Triggers</TableHead>
+                  <TableHead>Cron</TableHead>
                   <TableHead>Last run</TableHead>
                   <TableHead className="w-52 text-right">Actions</TableHead>
                 </TableRow>
@@ -722,50 +662,9 @@ function RoutinesPageContent() {
                                 {trigger.enabled ? "cron" : "off"}
                               </Badge>
                               <code className="text-xs text-foreground">{trigger.cronPattern}</code>
-                              <Button
-                                aria-label="Edit trigger"
-                                onClick={() => {
-                                  setTriggerDialogErrorMessage(null);
-                                  setRoutineIdForTriggerDialog(routine.id);
-                                  setEditingTrigger({
-                                    cronPattern: trigger.cronPattern,
-                                    enabled: trigger.enabled,
-                                    id: trigger.id,
-                                  });
-                                  setTriggerDialogOpen(true);
-                                }}
-                                size="icon-sm"
-                                variant="ghost"
-                              >
-                                <PencilIcon />
-                              </Button>
-                              <Button
-                                aria-label="Delete trigger"
-                                onClick={() => {
-                                  void deleteTrigger(trigger.id);
-                                }}
-                                size="icon-sm"
-                                variant="ghost"
-                              >
-                                <Trash2Icon />
-                              </Button>
                             </div>
                           ))
                         )}
-                        <Button
-                          className="w-fit"
-                          onClick={() => {
-                            setTriggerDialogErrorMessage(null);
-                            setRoutineIdForTriggerDialog(routine.id);
-                            setEditingTrigger(null);
-                            setTriggerDialogOpen(true);
-                          }}
-                          size="sm"
-                          variant="outline"
-                        >
-                          <PlusIcon />
-                          Add cron
-                        </Button>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -837,22 +736,6 @@ function RoutinesPageContent() {
         }}
         onSave={saveRoutine}
         routine={editingRoutine}
-      />
-      <RoutineTriggerDialog
-        errorMessage={triggerDialogErrorMessage}
-        isOpen={isTriggerDialogOpen}
-        isSaving={isTriggerSaving}
-        onOpenChange={(open) => {
-          setTriggerDialogOpen(open);
-          if (!open) {
-            setEditingTrigger(null);
-            setRoutineIdForTriggerDialog(null);
-            setTriggerDialogErrorMessage(null);
-          }
-        }}
-        onSave={saveTrigger}
-        routineId={routineIdForTriggerDialog}
-        trigger={editingTrigger}
       />
     </main>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BotIcon } from "lucide-react";
+import { BotIcon, ClockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +29,13 @@ export type RoutineDialogRecord = {
   id: string;
   instructions: string;
   name: string;
+  triggers: ReadonlyArray<RoutineDialogTriggerRecord>;
+};
+
+export type RoutineDialogTriggerRecord = {
+  cronPattern: string;
+  enabled: boolean;
+  id: string;
 };
 
 interface RoutineDialogProps {
@@ -40,6 +47,9 @@ interface RoutineDialogProps {
   onOpenChange(open: boolean): void;
   onSave(input: {
     assignedAgentId: string;
+    cronPattern: string;
+    cronTriggerEnabled: boolean;
+    cronTriggerId?: string;
     enabled: boolean;
     id?: string;
     instructions: string;
@@ -47,20 +57,28 @@ interface RoutineDialogProps {
   }): Promise<void>;
 }
 
+const defaultCronPattern = "0 9 * * 1-5";
+const triggerTypeItems = [{ label: "Cron", value: "cron" }];
+
 /**
- * Collects the durable routine prompt and its owning agent. Sessions are intentionally omitted here
- * because the backend creates or reuses the sticky session when the routine actually runs.
+ * Collects the durable routine prompt, owning agent, and scheduler trigger in one modal. Sessions
+ * stay omitted here because the backend creates or reuses the sticky session when the routine runs.
  */
 export function RoutineDialog(props: RoutineDialogProps) {
   const [assignedAgentId, setAssignedAgentId] = useState("");
+  const [cronPattern, setCronPattern] = useState(defaultCronPattern);
+  const [cronTriggerEnabled, setCronTriggerEnabled] = useState(true);
   const [enabled, setEnabled] = useState(true);
   const [instructions, setInstructions] = useState("");
   const [name, setName] = useState("");
+  const cronTrigger = props.routine?.triggers[0] ?? null;
   const isEditing = props.routine !== null;
 
   useEffect(() => {
     if (!props.isOpen) {
       setAssignedAgentId("");
+      setCronPattern(defaultCronPattern);
+      setCronTriggerEnabled(true);
       setEnabled(true);
       setInstructions("");
       setName("");
@@ -68,6 +86,8 @@ export function RoutineDialog(props: RoutineDialogProps) {
     }
 
     setAssignedAgentId(props.routine?.assignedAgentId ?? props.agents[0]?.id ?? "");
+    setCronPattern(props.routine?.triggers[0]?.cronPattern ?? defaultCronPattern);
+    setCronTriggerEnabled(props.routine?.triggers[0]?.enabled ?? true);
     setEnabled(props.routine?.enabled ?? true);
     setInstructions(props.routine?.instructions ?? "");
     setName(props.routine?.name ?? "");
@@ -76,6 +96,7 @@ export function RoutineDialog(props: RoutineDialogProps) {
   const isSaveDisabled = props.isSaving
     || name.length === 0
     || instructions.length === 0
+    || cronPattern.length === 0
     || assignedAgentId.length === 0;
 
   return (
@@ -134,6 +155,38 @@ export function RoutineDialog(props: RoutineDialogProps) {
           </div>
 
           <div className="grid gap-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="routine-trigger-type">
+              Trigger
+            </label>
+            <Select items={triggerTypeItems} value="cron">
+              <SelectTrigger id="routine-trigger-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cron">Cron</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="routine-cron-pattern">
+              Cron pattern
+            </label>
+            <Input
+              id="routine-cron-pattern"
+              onChange={(event) => {
+                setCronPattern(event.target.value);
+              }}
+              placeholder={defaultCronPattern}
+              value={cronPattern}
+            />
+            <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ClockIcon className="size-3.5" />
+              Uses standard five-field cron syntax.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
             <label className="text-sm font-medium text-foreground" htmlFor="routine-instructions">
               Instructions
             </label>
@@ -159,9 +212,26 @@ export function RoutineDialog(props: RoutineDialogProps) {
               type="checkbox"
             />
             <span className="grid gap-1">
-              <span className="text-xs font-medium text-foreground">Enabled</span>
+              <span className="text-xs font-medium text-foreground">Routine enabled</span>
               <span className="text-xs text-muted-foreground">
                 Disabled routines keep their definitions but do not run from cron triggers.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+            <input
+              checked={cronTriggerEnabled}
+              className="mt-0.5 size-4 rounded border border-input bg-background"
+              onChange={(event) => {
+                setCronTriggerEnabled(event.target.checked);
+              }}
+              type="checkbox"
+            />
+            <span className="grid gap-1">
+              <span className="text-xs font-medium text-foreground">Cron enabled</span>
+              <span className="text-xs text-muted-foreground">
+                Disabled cron triggers stay saved but are removed from the BullMQ scheduler.
               </span>
             </span>
           </label>
@@ -189,6 +259,9 @@ export function RoutineDialog(props: RoutineDialogProps) {
             onClick={async () => {
               await props.onSave({
                 assignedAgentId,
+                cronPattern,
+                cronTriggerEnabled,
+                cronTriggerId: cronTrigger?.id,
                 enabled,
                 id: props.routine?.id,
                 instructions,
