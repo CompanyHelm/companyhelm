@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f5270de5dfc44b2d3bd842f076b779b3>>
+ * @generated SignedSource<<d842ba50afa862f39391b701decb05d2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type settingsPageDeleteTaskStageMutation$data = {
   readonly DeleteTaskStage: {
     readonly createdAt: string;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly taskCount: number;
     readonly updatedAt: string;
@@ -70,6 +71,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isDefault",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "taskCount",
         "storageKey": null
       },
@@ -109,16 +117,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "d9f250f69f1a5e3fef97910f727c9857",
+    "cacheID": "2560173d1e8f128aad465b3039c3117d",
     "id": null,
     "metadata": {},
     "name": "settingsPageDeleteTaskStageMutation",
     "operationKind": "mutation",
-    "text": "mutation settingsPageDeleteTaskStageMutation(\n  $input: DeleteTaskStageInput!\n) {\n  DeleteTaskStage(input: $input) {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation settingsPageDeleteTaskStageMutation(\n  $input: DeleteTaskStageInput!\n) {\n  DeleteTaskStage(input: $input) {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "344a76ed2e0b5ff62090825b5058b1fe";
+(node as any).hash = "e08dc9c206b3e690e3e480c6e6d356f9";
 
 export default node;

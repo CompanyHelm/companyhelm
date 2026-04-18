@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3c1ca712f46ec79fba8cbd1c62d50ec2>>
+ * @generated SignedSource<<e513515fc7c4955d6081ce5601dc54d5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,7 @@ export type tasksPageQuery$data = {
   readonly TaskStages: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly taskCount: number;
     readonly updatedAt: string;
@@ -40,8 +41,8 @@ export type tasksPageQuery$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskStageId: string | null | undefined;
-    readonly taskStageName: string | null | undefined;
+    readonly taskStageId: string;
+    readonly taskStageName: string;
     readonly updatedAt: string;
   }>;
 };
@@ -130,6 +131,13 @@ v5 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isDefault",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -232,16 +240,16 @@ return {
     "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "d514271da89f03c319db7134b5e10c2d",
+    "cacheID": "0e0906c22acf189a56d84e34a9c7ede9",
     "id": null,
     "metadata": {},
     "name": "tasksPageQuery",
     "operationKind": "query",
-    "text": "query tasksPageQuery {\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskStages {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n  Tasks {\n    id\n    name\n    description\n    status\n    taskStageId\n    taskStageName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query tasksPageQuery {\n  Agents {\n    id\n    name\n  }\n  TaskAssignableUsers {\n    id\n    displayName\n    email\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n  Tasks {\n    id\n    name\n    description\n    status\n    taskStageId\n    taskStageName\n    assignedAt\n    assignee {\n      kind\n      id\n      name\n      email\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "81775b598b445b7ca7a8b4777219daea";
+(node as any).hash = "d7cffcf3877d4df3056cb570b245f872";
 
 export default node;

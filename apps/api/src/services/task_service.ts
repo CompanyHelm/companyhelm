@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
 import { agents, companyMembers, taskStages, taskRuns, tasks, users } from "../db/schema.ts";
+import { TaskStageService } from "./task_stage_service.ts";
 
 export type TaskStatus = "draft" | "in_progress" | "completed";
 
@@ -22,8 +23,8 @@ export type TaskServiceTask = {
   id: string;
   name: string;
   status: TaskStatus;
-  taskStageId: string | null;
-  taskStageName: string | null;
+  taskStageId: string;
+  taskStageName: string;
   updatedAt: Date;
 };
 
@@ -93,7 +94,7 @@ type TaskRow = {
   id: string;
   name: string;
   status: TaskStatus;
-  taskStageId: string | null;
+  taskStageId: string;
   updatedAt: Date;
 };
 
@@ -128,6 +129,10 @@ type UserRow = {
 export class TaskService {
   private static readonly supportedStatuses: TaskStatus[] = ["draft", "in_progress", "completed"];
 
+  constructor(
+    @inject(TaskStageService) private readonly taskStageService: TaskStageService = new TaskStageService(),
+  ) {}
+
   async createTask(
     transactionProvider: TransactionProviderInterface,
     input: TaskServiceCreateTaskInput,
@@ -140,7 +145,11 @@ export class TaskService {
     }
 
     return transactionProvider.transaction(async (tx) => {
-      const taskStageRecord = await this.resolveTaskStageRecord(tx, input.companyId, input.taskStageId ?? null);
+      const taskStageRecord = await this.taskStageService.resolveTaskStageRecord(
+        tx,
+        input.companyId,
+        input.taskStageId,
+      );
       const assignee = await this.resolveAssignee(tx, {
         assignedAgentId: input.assignedAgentId ?? null,
         assignedUserId: input.assignedUserId ?? null,
@@ -164,7 +173,7 @@ export class TaskService {
           parentTaskId: null,
           rootTaskId: taskId,
           status: this.resolveStatus(input.status),
-          taskStageId: taskStageRecord?.id ?? null,
+          taskStageId: taskStageRecord.id,
           updatedAt: now,
         })
         .returning({
@@ -192,7 +201,7 @@ export class TaskService {
         name: taskRecord.name,
         status: taskRecord.status,
         taskStageId: taskRecord.taskStageId,
-        taskStageName: taskStageRecord?.name ?? null,
+        taskStageName: taskStageRecord.name,
         updatedAt: taskRecord.updatedAt,
       };
     });
@@ -290,10 +299,10 @@ export class TaskService {
         : this.resolveStatus(input.status);
       const taskStageRecord = input.taskStageId === undefined
         ? null
-        : await this.resolveTaskStageRecord(tx, input.companyId, input.taskStageId ?? null);
+        : await this.taskStageService.resolveTaskStageRecord(tx, input.companyId, input.taskStageId);
       const nextTaskStageId = input.taskStageId === undefined
         ? existingTaskRow.taskStageId
-        : taskStageRecord?.id ?? null;
+        : taskStageRecord.id;
       const assignee = input.assignedAgentId === undefined && input.assignedUserId === undefined
         ? null
         : await this.resolveAssignee(tx, {
@@ -437,9 +446,7 @@ export class TaskService {
     taskRows: TaskRow[],
   ): Promise<Map<string, string>> {
     const taskStageIds = [...new Set(
-      taskRows
-        .map((taskRow) => taskRow.taskStageId)
-        .filter((taskStageId): taskStageId is string => taskStageId !== null),
+      taskRows.map((taskRow) => taskRow.taskStageId),
     )];
     if (taskStageIds.length === 0) {
       return new Map();
@@ -506,32 +513,6 @@ export class TaskService {
     }
 
     return name;
-  }
-
-  private async resolveTaskStageRecord(
-    tx: AppRuntimeTransaction,
-    companyId: string,
-    taskStageId: string | null,
-  ): Promise<TaskStageRow | null> {
-    if (!taskStageId) {
-      return null;
-    }
-
-    const [taskStageRecord] = await tx
-      .select({
-        id: taskStages.id,
-        name: taskStages.name,
-      })
-      .from(taskStages)
-      .where(and(
-        eq(taskStages.companyId, companyId),
-        eq(taskStages.id, taskStageId),
-      )) as TaskStageRow[];
-    if (!taskStageRecord) {
-      throw new Error("Task stage not found.");
-    }
-
-    return taskStageRecord;
   }
 
   private async resolveAssignee(
@@ -801,7 +782,7 @@ export class TaskService {
       name: taskRow.name,
       status: taskRow.status,
       taskStageId: taskRow.taskStageId,
-      taskStageName: taskRow.taskStageId ? taskStageNameById.get(taskRow.taskStageId) ?? null : null,
+      taskStageName: taskStageNameById.get(taskRow.taskStageId) ?? "",
       updatedAt: taskRow.updatedAt,
     };
   }

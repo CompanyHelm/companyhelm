@@ -18,8 +18,8 @@ type GraphqlTaskRecord = {
   id: string;
   name: string;
   status: "draft" | "in_progress" | "completed";
-  taskStageId: string | null;
-  taskStageName: string | null;
+  taskStageId: string;
+  taskStageName: string;
   updatedAt: string;
 };
 

@@ -41,6 +41,7 @@ const tasksPageQueryNode = graphql`
     TaskStages {
       id
       name
+      isDefault
       taskCount
       createdAt
       updatedAt
@@ -253,21 +254,14 @@ function TasksPageContent() {
   const selectedViewType: TaskViewType = search.viewType === "list" ? "list" : "board";
   const allStages: TaskStageRecord[] = data.TaskStages.map((stage: TasksPageStage) => ({
     id: stage.id,
+    isDefault: stage.isDefault,
     name: stage.name,
   }));
-  const noStageTaskCount = data.Tasks.filter((task: TasksPageTask) => task.taskStageId === null).length;
-  const stageFilterOptions = [
-    ...allStages.map((stage: TaskStageRecord) => ({
-      key: stage.id,
-      label: stage.name,
-      count: data.Tasks.filter((task: TasksPageTask) => task.taskStageId === stage.id).length,
-    })),
-    {
-      key: "noStage",
-      label: "No stage",
-      count: noStageTaskCount,
-    },
-  ];
+  const stageFilterOptions = allStages.map((stage: TaskStageRecord) => ({
+    key: stage.id,
+    label: stage.name,
+    count: data.Tasks.filter((task: TasksPageTask) => task.taskStageId === stage.id).length,
+  }));
   const allStageKeys = stageFilterOptions.map((filterOption) => filterOption.key);
   const validStageKeys = new Set(allStageKeys);
   const parsedSelectedStageKeys = parseSelectedTaskStageKeys(search.stage, validStageKeys);
@@ -278,14 +272,13 @@ function TasksPageContent() {
     ? selectedStageKeys
     : allStageKeys;
   const hasSelectedStageFilters = selectedStageKeys.length > 0;
-  const includeNoStageGroup = effectiveSelectedStageKeys.includes("noStage");
   const visibleStages = allStages.filter((stage: TaskStageRecord) => {
     return effectiveSelectedStageKeys.includes(stage.id);
   });
   const visibleTasks: TaskRecord[] = (!hasSelectedStageFilters
     ? data.Tasks
     : data.Tasks.filter((task: TasksPageTask) => {
-      return effectiveSelectedStageKeys.includes(task.taskStageId ?? "noStage");
+      return effectiveSelectedStageKeys.includes(task.taskStageId);
     }))
     .map((task: TasksPageTask) => ({
       assignedAt: task.assignedAt,
@@ -356,7 +349,7 @@ function TasksPageContent() {
     });
   }
 
-  function openCreateTaskDialog(taskStageId: string | null) {
+  function openCreateTaskDialog(taskStageId: string) {
     setCreateTaskStageId(taskStageId);
     setCreateDialogOpen(true);
   }
@@ -543,7 +536,7 @@ function TasksPageContent() {
     }
   }
 
-  async function moveTask(taskId: string, taskStageId: string | null) {
+  async function moveTask(taskId: string, taskStageId: string) {
     setErrorMessage(null);
 
     await new Promise<void>((resolve, reject) => {
@@ -694,7 +687,6 @@ function TasksPageContent() {
             stages={visibleStages}
             deletingTaskId={deletingTaskId}
             executingTaskId={executingTaskId}
-            includeNoStageColumn={includeNoStageGroup}
             onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
@@ -708,7 +700,6 @@ function TasksPageContent() {
             deletingTaskId={deletingTaskId}
             executingTaskId={executingTaskId}
             hasActiveFilters={hasSelectedStageFilters}
-            includeNoStageGroup={includeNoStageGroup}
             onCreateTask={openCreateTaskDialog}
             onDeleteTask={deleteTask}
             onExecuteTask={executeTask}
@@ -732,10 +723,11 @@ function TasksPageContent() {
         ]}
         stages={data.TaskStages.map((stage: TasksPageStage) => ({
           id: stage.id,
+          isDefault: stage.isDefault,
           name: stage.name,
         }))}
         errorMessage={isCreateDialogOpen ? errorMessage : null}
-        initialStageId={createTaskStageId}
+        initialStageId={createTaskStageId ?? undefined}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateTaskInFlight}
         onCreate={async (input) => {

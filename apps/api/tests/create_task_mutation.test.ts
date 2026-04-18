@@ -44,6 +44,7 @@ class CreateTaskMutationTestHarness {
                     async where() {
                       return [{
                         id: "stage-1",
+                        isDefault: true,
                         name: "Backlog",
                       }];
                     },
@@ -65,7 +66,7 @@ class CreateTaskMutationTestHarness {
                       name: String(value.name),
                       description: value.description ?? null,
                       status: value.status,
-                      taskStageId: value.taskStageId ?? null,
+                      taskStageId: value.taskStageId,
                       createdAt: new Date("2026-03-25T10:15:00.000Z"),
                       updatedAt: new Date("2026-03-25T10:15:00.000Z"),
                     }];
@@ -83,7 +84,7 @@ class CreateTaskMutationTestHarness {
   }
 }
 
-test("GraphQL CreateTask mutation creates one task in the selected stage", async () => {
+test("GraphQL CreateTask mutation creates one task in Backlog when no stage is specified", async () => {
   const app = Fastify();
   const config = CreateTaskMutationTestHarness.createConfigMock();
   const database = CreateTaskMutationTestHarness.createDatabaseMock();
@@ -155,7 +156,6 @@ test("GraphQL CreateTask mutation creates one task in the selected stage", async
           name: "Write landing page copy",
           description: "Keep the first pass short.",
           status: "draft",
-          taskStageId: "stage-1",
         },
       },
     },

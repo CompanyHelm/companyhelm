@@ -44,6 +44,7 @@ class TaskStagesQueryTestHarness {
                     async where() {
                       return [{
                         id: "stage-1",
+                        isDefault: true,
                         name: "Backlog",
                         createdAt: new Date("2026-03-24T09:00:00.000Z"),
                         updatedAt: new Date("2026-03-24T09:00:00.000Z"),
@@ -62,7 +63,6 @@ class TaskStagesQueryTestHarness {
                       return [
                         { taskStageId: "stage-1" },
                         { taskStageId: "stage-1" },
-                        { taskStageId: null },
                       ];
                     },
                   };
@@ -135,6 +135,7 @@ test("GraphQL TaskStages query lists persisted stages with task counts", async (
           TaskStages {
             id
             name
+            isDefault
             taskCount
             createdAt
             updatedAt
@@ -149,6 +150,7 @@ test("GraphQL TaskStages query lists persisted stages with task counts", async (
   assert.deepEqual(document.data.TaskStages, [{
     id: "stage-1",
     name: "Backlog",
+    isDefault: true,
     taskCount: 2,
     createdAt: "2026-03-24T09:00:00.000Z",
     updatedAt: "2026-03-24T09:00:00.000Z",

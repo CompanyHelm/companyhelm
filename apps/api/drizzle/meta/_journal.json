@@ -701,6 +701,13 @@
       "when": 1776486049632,
       "tag": "0099_handy_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1776492344211,
+      "tag": "0100_glorious_garia",
+      "breakpoints": true
     }
   ]
 }

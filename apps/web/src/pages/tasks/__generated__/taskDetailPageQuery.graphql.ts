@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bf57c740ea8da5d293e2bc80c0ae35e3>>
+ * @generated SignedSource<<fcefec40c4e886e27347672b6e28cc2f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -44,8 +44,8 @@ export type taskDetailPageQuery$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskStageId: string | null | undefined;
-    readonly taskStageName: string | null | undefined;
+    readonly taskStageId: string;
+    readonly taskStageName: string;
     readonly updatedAt: string;
   };
   readonly TaskAssignableUsers: ReadonlyArray<{

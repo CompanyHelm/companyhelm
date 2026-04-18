@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a932b0dd3b497c11dc461cb4c7023666>>
+ * @generated SignedSource<<1e52533743954dbef797eaece9ba220a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type SetTaskStageInput = {
   taskId: string;
-  taskStageId?: string | null | undefined;
+  taskStageId: string;
 };
 export type tasksPageSetTaskStageMutation$variables = {
   input: SetTaskStageInput;
@@ -23,8 +23,8 @@ export type tasksPageSetTaskStageMutation$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskStageId: string | null | undefined;
-    readonly taskStageName: string | null | undefined;
+    readonly taskStageId: string;
+    readonly taskStageName: string;
     readonly updatedAt: string;
   };
 };

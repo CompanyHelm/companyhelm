@@ -31,8 +31,8 @@ export type TaskBoardTask = {
   name: string;
   description: string | null | undefined;
   status: TaskStatus;
-  taskStageId: string | null | undefined;
-  taskStageName: string | null | undefined;
+  taskStageId: string;
+  taskStageName: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -46,44 +46,31 @@ interface TaskBoardProps {
   stages: TaskBoardStage[];
   deletingTaskId?: string | null;
   executingTaskId?: string | null;
-  onCreateTask(taskStageId: string | null): void;
+  onCreateTask(taskStageId: string): void;
   onDeleteTask(taskId: string): Promise<void>;
   onExecuteTask(taskId: string): Promise<void>;
   tasks: TaskBoardTask[];
-  includeNoStageColumn?: boolean;
-  onMoveTask(taskId: string, taskStageId: string | null): Promise<void>;
+  onMoveTask(taskId: string, taskStageId: string): Promise<void>;
   onOpenTask(taskId: string): void;
 }
 
 type TaskBoardColumn = {
   key: string;
   label: string;
-  taskStageId: string | null;
+  taskStageId: string;
   tasks: TaskBoardTask[];
 };
 
 function buildTaskBoardColumns(
   stages: TaskBoardStage[],
   tasks: TaskBoardTask[],
-  includeNoStageColumn: boolean,
 ): TaskBoardColumn[] {
-  const stageColumns = stages.map((stage) => ({
+  return stages.map((stage) => ({
     key: stage.id,
     label: stage.name,
     taskStageId: stage.id,
     tasks: tasks.filter((task) => task.taskStageId === stage.id),
   }));
-
-  if (!includeNoStageColumn) {
-    return stageColumns;
-  }
-
-  return [...stageColumns, {
-      key: "noStage",
-      label: "No stage",
-      taskStageId: null,
-      tasks: tasks.filter((task) => task.taskStageId === null),
-    }];
 }
 
 function formatTaskStatus(status: TaskStatus): string {
@@ -117,15 +104,15 @@ function stopTaskCardPropagation(event: {
 }
 
 /**
- * Renders the minimal kanban experience for the first `-ng` tasks slice, with persisted lanes and
+ * Renders the minimal kanban experience for the first `-ng` tasks slice, with required lanes and
  * drag-and-drop moves backed by the `SetTaskStage` mutation.
  */
 export function TaskBoard(props: TaskBoardProps) {
   const [dropTargetKey, setDropTargetKey] = useState("");
   const suppressOpenTaskIdRef = useRef<string | null>(null);
-  const columns = buildTaskBoardColumns(props.stages, props.tasks, props.includeNoStageColumn ?? true);
+  const columns = buildTaskBoardColumns(props.stages, props.tasks);
 
-  async function handleDrop(event: DragEvent<HTMLDivElement>, taskStageId: string | null, columnKey: string) {
+  async function handleDrop(event: DragEvent<HTMLDivElement>, taskStageId: string, columnKey: string) {
     event.preventDefault();
     setDropTargetKey("");
     const taskId = event.dataTransfer.getData("text/task-id");

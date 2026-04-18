@@ -13,8 +13,8 @@ test("DeleteTaskMutation returns the deleted task snapshot", async () => {
         id: "task-1",
         name: "Delete task",
         status: "draft",
-        taskStageId: null,
-        taskStageName: null,
+        taskStageId: "stage-backlog",
+        taskStageName: "Backlog",
         updatedAt: new Date("2026-04-03T18:00:00.000Z"),
       };
     },
@@ -55,8 +55,8 @@ test("DeleteTaskMutation returns the deleted task snapshot", async () => {
     id: "task-1",
     name: "Delete task",
     status: "draft",
-    taskStageId: null,
-    taskStageName: null,
+    taskStageId: "stage-backlog",
+    taskStageName: "Backlog",
     updatedAt: "2026-04-03T18:00:00.000Z",
   });
 });

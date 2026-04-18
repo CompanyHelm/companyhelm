@@ -43,7 +43,7 @@ type TaskExecutionRow = {
   description: string | null;
   id: string;
   name: string;
-  taskStageId: string | null;
+  taskStageId: string;
 };
 
 type AgentRow = {
@@ -277,12 +277,8 @@ export class TaskRunService {
   private async loadTaskStageName(
     tx: AppRuntimeTransaction,
     companyId: string,
-    taskStageId: string | null,
-  ): Promise<string | null> {
-    if (!taskStageId) {
-      return null;
-    }
-
+    taskStageId: string,
+  ): Promise<string> {
     const [taskStageRow] = await tx
       .select({
         id: taskStages.id,
@@ -294,7 +290,7 @@ export class TaskRunService {
         eq(taskStages.id, taskStageId),
       )) as Array<{ id: string; name: string }>;
 
-    return taskStageRow?.name ?? null;
+    return taskStageRow?.name ?? "";
   }
 
   private async requireTaskRow(

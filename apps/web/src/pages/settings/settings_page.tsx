@@ -27,6 +27,7 @@ const settingsPageQueryNode = graphql`
     TaskStages {
       id
       name
+      isDefault
       taskCount
       createdAt
       updatedAt
@@ -39,6 +40,7 @@ const settingsPageCreateTaskStageMutationNode = graphql`
     CreateTaskStage(input: $input) {
       id
       name
+      isDefault
       taskCount
       createdAt
       updatedAt
@@ -51,6 +53,7 @@ const settingsPageDeleteTaskStageMutationNode = graphql`
     DeleteTaskStage(input: $input) {
       id
       name
+      isDefault
       taskCount
       createdAt
       updatedAt
@@ -197,8 +200,7 @@ function SettingsPageContent() {
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
                 <p className="text-sm font-medium text-foreground">No stages yet</p>
                 <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                  Create your first stage here, or keep using the built-in no-stage column on the
-                  tasks page.
+                  Create your first stage here. New companies receive Backlog automatically.
                 </p>
               </div>
             ) : null}
@@ -209,7 +211,14 @@ function SettingsPageContent() {
                 className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-background/90 px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{stage.name}</p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{stage.name}</p>
+                    {stage.isDefault ? (
+                      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] font-medium text-muted-foreground">
+                        Default
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {stage.taskCount} {stage.taskCount === 1 ? "task" : "tasks"} in this lane
                   </p>
@@ -221,7 +230,7 @@ function SettingsPageContent() {
                   <Button
                     aria-label={`Delete ${stage.name}`}
                     className="text-muted-foreground hover:text-destructive"
-                    disabled={deletingTaskStageId === stage.id}
+                    disabled={stage.isDefault || deletingTaskStageId === stage.id}
                     onClick={() => {
                       setTaskErrorMessage(null);
                       setDeletingTaskStageId(stage.id);

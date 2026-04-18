@@ -134,7 +134,6 @@ const taskDetailPageExecuteTaskMutationNode = graphql`
   }
 `;
 
-const noStageValue = "__no_stage__";
 const unassignedValue = "__unassigned__";
 
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
@@ -319,13 +318,10 @@ function TaskDetailPageContent() {
   }, [setDetailLabel, task.name]);
 
   const stageOptions = useMemo(() => {
-    return [{
-      label: "No stage",
-      value: noStageValue,
-    }, ...data.TaskStages.map((stage: TaskDetailPageTaskStage) => ({
+    return data.TaskStages.map((stage: TaskDetailPageTaskStage) => ({
       label: stage.name,
       value: stage.id,
-    }))];
+    }));
   }, [data.TaskStages]);
   const assigneeOptions = useMemo(() => {
     const nextOptions = [{
@@ -355,7 +351,7 @@ function TaskDetailPageContent() {
     description?: string | null;
     name?: string | null;
     status?: TaskStatus;
-    taskStageId?: string | null;
+    taskStageId?: string;
   }) => {
     await new Promise<void>((resolve, reject) => {
       commitUpdateTask({
@@ -602,17 +598,17 @@ function TaskDetailPageContent() {
               />
 
               <EditableField
-                displayValue={task.taskStageName ?? "No stage"}
-                emptyValueLabel="No stage"
+                displayValue={task.taskStageName}
+                emptyValueLabel="Backlog"
                 fieldType="select"
                 label="Stage"
                 onSave={async (value) => {
                   await saveTask({
-                    taskStageId: value === noStageValue ? null : value,
+                    taskStageId: value,
                   });
                 }}
                 options={stageOptions}
-                value={task.taskStageId ?? noStageValue}
+                value={task.taskStageId}
               />
 
               <EditableField

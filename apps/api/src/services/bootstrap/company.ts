@@ -13,6 +13,7 @@ import {
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { CompanyHelmLlmProviderService } from "../ai_providers/companyhelm_service.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
+import { TaskStageService } from "../task_stage_service.ts";
 
 type CompanyRecord = {
   id: string;
@@ -78,7 +79,8 @@ type BootstrapUpdatableDatabase = DatabaseTransactionInterface & {
  */
 @injectable()
 export class CompanyBootstrapService {
-  static readonly DEFAULT_TASK_CATEGORY_NAMES = ["Backlog", "TODO", "Archive"] as const;
+  static readonly DEFAULT_TASK_STAGE_NAME = TaskStageService.DEFAULT_TASK_STAGE_NAME;
+  static readonly SEEDED_TASK_STAGE_NAMES = [CompanyBootstrapService.DEFAULT_TASK_STAGE_NAME, "TODO", "Archive"] as const;
   static readonly SEED_AGENT_NAME = "CEO";
   private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
@@ -540,17 +542,37 @@ export class CompanyBootstrapService {
     companyId: string,
   ): Promise<void> {
     const insertableDatabase = transaction as BootstrapInsertableDatabase;
-    for (const stageName of CompanyBootstrapService.DEFAULT_TASK_CATEGORY_NAMES) {
+    const updatableDatabase = transaction as BootstrapUpdatableDatabase;
+    for (const stageName of CompanyBootstrapService.SEEDED_TASK_STAGE_NAMES) {
       const now = new Date();
       const insertOperation = insertableDatabase
         .insert(taskStages)
         .values({
           companyId,
           createdAt: now,
+          isDefault: false,
           name: stageName,
           updatedAt: now,
         }) as BootstrapInsertOperation;
       await insertOperation.onConflictDoNothing();
     }
+
+    // Backlog is the durable intake lane for tasks created without an explicit stage. Resetting
+    // before marking it default keeps repeated bootstrap calls valid even after manual data edits.
+    await updatableDatabase
+      .update(taskStages)
+      .set({
+        isDefault: false,
+      })
+      .where(eq(taskStages.companyId, companyId));
+    await updatableDatabase
+      .update(taskStages)
+      .set({
+        isDefault: true,
+      })
+      .where(and(
+        eq(taskStages.companyId, companyId),
+        eq(taskStages.name, CompanyBootstrapService.DEFAULT_TASK_STAGE_NAME),
+      ));
   }
 }

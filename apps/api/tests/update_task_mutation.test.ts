@@ -51,7 +51,7 @@ class UpdateTaskMutationTestHarness {
                         id: "task-1",
                         name: "Draft GTM checklist",
                         status: "draft",
-                        taskStageId: null,
+                        taskStageId: "stage-backlog",
                         updatedAt: new Date("2026-04-01T10:00:00.000Z"),
                       }];
                     },

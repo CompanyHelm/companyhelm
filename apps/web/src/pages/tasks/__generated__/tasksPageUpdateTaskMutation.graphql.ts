@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7d6ec568ad4196a598cfd426e0ef0ec1>>
+ * @generated SignedSource<<f5e66a343265b277f4cacf2ca888b838>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,8 +35,8 @@ export type tasksPageUpdateTaskMutation$data = {
     readonly id: string;
     readonly name: string;
     readonly status: string;
-    readonly taskStageId: string | null | undefined;
-    readonly taskStageName: string | null | undefined;
+    readonly taskStageId: string;
+    readonly taskStageName: string;
     readonly updatedAt: string;
   };
 };

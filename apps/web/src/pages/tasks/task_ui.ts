@@ -15,13 +15,14 @@ export type TaskRecord = {
   id: string;
   name: string;
   status: TaskStatus;
-  taskStageId: string | null | undefined;
-  taskStageName: string | null | undefined;
+  taskStageId: string;
+  taskStageName: string;
   updatedAt: string;
 };
 
 export type TaskStageRecord = {
   id: string;
+  isDefault: boolean;
   name: string;
 };
 

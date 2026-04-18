@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9ce61487cc4940e78456459b009c58c1>>
+ * @generated SignedSource<<4d95b3544487f942af3e4a1bfd44cff2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type settingsPageCreateTaskStageMutation$data = {
   readonly CreateTaskStage: {
     readonly createdAt: string;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly taskCount: number;
     readonly updatedAt: string;
@@ -70,6 +71,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isDefault",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "taskCount",
         "storageKey": null
       },
@@ -109,16 +117,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "c5d6cadcc1f078d7778b820026a6d2a5",
+    "cacheID": "0c8e271c088a1f15df9ad7f6929bfa0c",
     "id": null,
     "metadata": {},
     "name": "settingsPageCreateTaskStageMutation",
     "operationKind": "mutation",
-    "text": "mutation settingsPageCreateTaskStageMutation(\n  $input: CreateTaskStageInput!\n) {\n  CreateTaskStage(input: $input) {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation settingsPageCreateTaskStageMutation(\n  $input: CreateTaskStageInput!\n) {\n  CreateTaskStage(input: $input) {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "1d847b1e6eeadab1274bb9dcaaddbac2";
+(node as any).hash = "3f40958ba94f0024eb869bbbe23ad173";
 
 export default node;

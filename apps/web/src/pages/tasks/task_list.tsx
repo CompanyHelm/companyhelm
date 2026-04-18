@@ -25,7 +25,7 @@ import {
 type TaskListGroup = {
   key: string;
   label: string;
-  taskStageId: string | null;
+  taskStageId: string;
   tasks: TaskRecord[];
 };
 
@@ -34,11 +34,10 @@ interface TaskListProps {
   deletingTaskId?: string | null;
   executingTaskId?: string | null;
   hasActiveFilters: boolean;
-  includeNoStageGroup?: boolean;
-  onCreateTask(taskStageId: string | null): void;
+  onCreateTask(taskStageId: string): void;
   onDeleteTask(taskId: string): Promise<void>;
   onExecuteTask(taskId: string): Promise<void>;
-  onMoveTask(taskId: string, taskStageId: string | null): Promise<void>;
+  onMoveTask(taskId: string, taskStageId: string): Promise<void>;
   onOpenTask(taskId: string): void;
   tasks: TaskRecord[];
 }
@@ -46,26 +45,13 @@ interface TaskListProps {
 function buildTaskListGroups(
   stages: TaskStageRecord[],
   tasks: TaskRecord[],
-  includeNoStageGroup: boolean,
 ): TaskListGroup[] {
-  const stageGroups = stages.map((stage) => ({
+  return stages.map((stage) => ({
     key: stage.id,
     label: stage.name,
     taskStageId: stage.id,
     tasks: tasks.filter((task) => task.taskStageId === stage.id),
   }));
-
-  if (!includeNoStageGroup) {
-    return stageGroups;
-  }
-
-  const noStageTasks = tasks.filter((task) => task.taskStageId === null);
-  return [...stageGroups, {
-    key: "noStage",
-    label: "No stage",
-    taskStageId: null,
-    tasks: noStageTasks,
-  }];
 }
 
 function stopRowNavigation(event: {
@@ -79,9 +65,8 @@ export function TaskList(props: TaskListProps) {
     return buildTaskListGroups(
       props.stages,
       props.tasks,
-      props.includeNoStageGroup ?? true,
     );
-  }, [props.stages, props.includeNoStageGroup, props.tasks]);
+  }, [props.stages, props.tasks]);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [dropTargetKey, setDropTargetKey] = useState("");
   const suppressOpenTaskIdRef = useRef<string | null>(null);
@@ -105,7 +90,7 @@ export function TaskList(props: TaskListProps) {
     });
   }, [groups]);
 
-  async function handleDrop(event: DragEvent<HTMLElement>, taskStageId: string | null, groupKey: string) {
+  async function handleDrop(event: DragEvent<HTMLElement>, taskStageId: string, groupKey: string) {
     event.preventDefault();
     setDropTargetKey("");
     const taskId = event.dataTransfer.getData("text/task-id");

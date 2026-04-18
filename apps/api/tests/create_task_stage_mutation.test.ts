@@ -42,6 +42,7 @@ class CreateTaskStageMutationTestHarness {
                   async returning() {
                     return [{
                       id: "stage-1",
+                      isDefault: false,
                       name: String(value.name),
                       createdAt: new Date("2026-03-25T10:00:00.000Z"),
                       updatedAt: new Date("2026-03-25T10:00:00.000Z"),
@@ -113,6 +114,7 @@ test("GraphQL CreateTaskStage mutation creates one persisted task stage", async 
           CreateTaskStage(input: $input) {
             id
             name
+            isDefault
             taskCount
           }
         }
@@ -130,6 +132,7 @@ test("GraphQL CreateTaskStage mutation creates one persisted task stage", async 
   assert.deepEqual(document.data.CreateTaskStage, {
     id: "stage-1",
     name: "Backlog",
+    isDefault: false,
     taskCount: 0,
   });
   assert.equal(database.insertedValues.length, 1);

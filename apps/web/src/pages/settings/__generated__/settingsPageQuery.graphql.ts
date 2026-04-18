@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<05bf1e4685cca3945f5ae5c6e5beca5b>>
+ * @generated SignedSource<<d4e35f1fe933048d5ca32efc6f395dff>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type settingsPageQuery$data = {
   readonly TaskStages: ReadonlyArray<{
     readonly createdAt: string;
     readonly id: string;
+    readonly isDefault: boolean;
     readonly name: string;
     readonly taskCount: number;
     readonly updatedAt: string;
@@ -81,6 +82,13 @@ var v0 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "isDefault",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "taskCount",
         "storageKey": null
       },
@@ -120,16 +128,16 @@ return {
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "c6dae18e6da698ed9c427de308f178e8",
+    "cacheID": "0c5e3313c3e8718baf3fb5fb5e6102c4",
     "id": null,
     "metadata": {},
     "name": "settingsPageQuery",
     "operationKind": "query",
-    "text": "query settingsPageQuery {\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query settingsPageQuery {\n  CompanySettings {\n    companyId\n    baseSystemPrompt\n  }\n  TaskStages {\n    id\n    name\n    isDefault\n    taskCount\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "da4865c4f1b4c0956b4893f0b4cc63df";
+(node as any).hash = "4e677291f61bbbeff7decec6d658394c";
 
 export default node;

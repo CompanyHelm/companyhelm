@@ -691,6 +691,7 @@ type Artifact {
 type TaskStage {
   id: ID!
   name: String!
+  isDefault: Boolean!
   taskCount: Int!
   createdAt: String!
   updatedAt: String!
@@ -742,8 +743,8 @@ type Task {
   name: String!
   description: String
   status: String!
-  taskStageId: ID
-  taskStageName: String
+  taskStageId: ID!
+  taskStageName: String!
   assignee: TaskAssignee
   assignedAt: String
   createdAt: String!
@@ -1306,7 +1307,7 @@ input DeleteTaskInput {
 
 input SetTaskStageInput {
   taskId: ID!
-  taskStageId: ID
+  taskStageId: ID!
 }
 
 input UpdateTaskInput {

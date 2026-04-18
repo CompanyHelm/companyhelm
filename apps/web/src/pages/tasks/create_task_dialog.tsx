@@ -21,6 +21,7 @@ type TaskStatus = "draft" | "in_progress" | "completed";
 
 export type CreateTaskDialogStage = {
   id: string;
+  isDefault: boolean;
   name: string;
 };
 
@@ -32,7 +33,7 @@ export type CreateTaskDialogAssignee = {
 interface CreateTaskDialogProps {
   assignees: CreateTaskDialogAssignee[];
   errorMessage: string | null;
-  initialStageId?: string | null;
+  initialStageId?: string;
   isOpen: boolean;
   isSaving: boolean;
   stages: CreateTaskDialogStage[];
@@ -42,23 +43,29 @@ interface CreateTaskDialogProps {
     name: string;
     description?: string;
     status: TaskStatus;
-    taskStageId?: string;
+    taskStageId: string;
   }): Promise<void>;
   onOpenChange(open: boolean): void;
 }
 
-const noStageValue = "__no_stage__";
 const unassignedValue = "__unassigned__";
+
+function resolveInitialTaskStageId(
+  stages: CreateTaskDialogStage[],
+  initialStageId: string | undefined,
+): string {
+  return initialStageId ?? stages.find((stage) => stage.isDefault)?.id ?? stages[0]?.id ?? "";
+}
 
 /**
  * Collects the minimal task fields needed for the first `-ng` task-management slice: title,
- * optional description, status, and optional kanban stage.
+ * optional description, status, and required kanban stage.
  */
 export function CreateTaskDialog(props: CreateTaskDialogProps) {
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskStatus, setTaskStatus] = useState<TaskStatus>("draft");
-  const [taskStageId, setTaskStageId] = useState(noStageValue);
+  const [taskStageId, setTaskStageId] = useState("");
   const [taskAssigneeValue, setTaskAssigneeValue] = useState(unassignedValue);
 
   useEffect(() => {
@@ -66,7 +73,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
       setTaskName("");
       setTaskDescription("");
       setTaskStatus("draft");
-      setTaskStageId(noStageValue);
+      setTaskStageId("");
       setTaskAssigneeValue(unassignedValue);
     }
   }, [props.isOpen]);
@@ -76,8 +83,8 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
       return;
     }
 
-    setTaskStageId(props.initialStageId ?? noStageValue);
-  }, [props.initialStageId, props.isOpen]);
+    setTaskStageId(resolveInitialTaskStageId(props.stages, props.initialStageId));
+  }, [props.initialStageId, props.isOpen, props.stages]);
 
   return (
     <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
@@ -85,7 +92,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
         <DialogHeader>
           <DialogTitle>Create task</DialogTitle>
           <DialogDescription>
-            Add a new task and optionally place it into one of the configured stages.
+            Add a new task and place it into one of the configured stages.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,18 +113,15 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
 
           <div className="grid gap-2">
             <label className="text-sm font-medium text-foreground" htmlFor="task-stage">
-              Stage (optional)
+              Stage
             </label>
             <Select
-              items={[
-                { label: "No stage", value: noStageValue },
-                ...props.stages.map((stage) => ({
-                  label: stage.name,
-                  value: stage.id,
-                })),
-              ]}
+              items={props.stages.map((stage) => ({
+                label: stage.name,
+                value: stage.id,
+              }))}
               onValueChange={(value) => {
-                setTaskStageId(value ?? noStageValue);
+                setTaskStageId(value ?? "");
               }}
               value={taskStageId}
             >
@@ -125,7 +129,6 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
                 <SelectValue placeholder="Select a stage" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={noStageValue}>No stage</SelectItem>
                 {props.stages.map((stage) => (
                   <SelectItem key={stage.id} value={stage.id}>
                     {stage.name}
@@ -227,7 +230,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
           </Button>
           <Button
             data-primary-cta=""
-            disabled={props.isSaving || taskName.length === 0}
+            disabled={props.isSaving || taskName.length === 0 || taskStageId.length === 0}
             onClick={async () => {
               const assignedUserId = taskAssigneeValue.startsWith("user:")
                 ? taskAssigneeValue.slice("user:".length)
@@ -242,7 +245,7 @@ export function CreateTaskDialog(props: CreateTaskDialogProps) {
                 name: taskName,
                 description: taskDescription.length > 0 ? taskDescription : undefined,
                 status: taskStatus,
-                taskStageId: taskStageId === noStageValue ? undefined : taskStageId,
+                taskStageId,
               });
             }}
             type="button"

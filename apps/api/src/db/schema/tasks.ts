@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   type AnyPgColumn,
+  boolean,
   check,
   index,
   pgEnum,
@@ -27,6 +28,7 @@ export const taskStages = pgTable("task_stages", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -34,6 +36,9 @@ export const taskStages = pgTable("task_stages", {
   companyCreatedAtIndex: index("task_stages_company_created_at_idx").on(table.companyId, table.createdAt),
   companyNameLowerUnique: uniqueIndex("task_stages_company_id_name_lower_uidx")
     .on(table.companyId, sql`lower(${table.name})`),
+  companyDefaultUnique: uniqueIndex("task_stages_company_default_uidx")
+    .on(table.companyId)
+    .where(sql`${table.isDefault}`),
 }));
 
 export const tasks = pgTable("tasks", {
@@ -49,7 +54,8 @@ export const tasks = pgTable("tasks", {
   parentTaskId: uuid("parent_task_id")
     .references((): AnyPgColumn => tasks.id, { onDelete: "cascade" }),
   taskStageId: uuid("task_stage_id")
-    .references(() => taskStages.id, { onDelete: "set null" }),
+    .references(() => taskStages.id, { onDelete: "restrict" })
+    .notNull(),
   name: text("name").notNull(),
   description: text("description"),
   status: taskStatusEnum("status").notNull().default("draft"),

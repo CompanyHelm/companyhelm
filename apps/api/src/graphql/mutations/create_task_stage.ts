@@ -12,6 +12,7 @@ type CreateTaskStageMutationArguments = {
 type TaskStageRecord = {
   id: string;
   name: string;
+  isDefault: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -19,6 +20,7 @@ type TaskStageRecord = {
 type GraphqlTaskStageRecord = {
   id: string;
   name: string;
+  isDefault: boolean;
   taskCount: number;
   createdAt: string;
   updatedAt: string;
@@ -27,7 +29,7 @@ type GraphqlTaskStageRecord = {
 type DatabaseTransaction = {
   insert(table: unknown): {
     values(value: Record<string, unknown>): {
-      returning?(selection?: Record<string, unknown>): Promise<TaskStageRecord[]>;
+      returning(selection?: Record<string, unknown>): Promise<TaskStageRecord[]>;
     };
   };
 };
@@ -54,30 +56,35 @@ export class CreateTaskStageMutation extends Mutation<
     if (!/\S/.test(arguments_.input.name)) {
       throw new Error("name is required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
       const databaseTransaction = tx as DatabaseTransaction;
       const now = new Date();
-      const [taskStageRecord] = await databaseTransaction
+      const taskStageRecords = await databaseTransaction
         .insert(taskStages)
         .values({
-          companyId: context.authSession.company.id,
+          companyId,
           name: arguments_.input.name,
+          isDefault: false,
           createdAt: now,
           updatedAt: now,
         })
-        .returning?.({
+        .returning({
           id: taskStages.id,
+          isDefault: taskStages.isDefault,
           name: taskStages.name,
           createdAt: taskStages.createdAt,
           updatedAt: taskStages.updatedAt,
-        }) as Promise<TaskStageRecord[]>;
+        });
+      const [taskStageRecord] = taskStageRecords;
       if (!taskStageRecord) {
         throw new Error("Failed to create task stage.");
       }
 
       return {
         id: taskStageRecord.id,
+        isDefault: taskStageRecord.isDefault,
         name: taskStageRecord.name,
         taskCount: 0,
         createdAt: taskStageRecord.createdAt.toISOString(),
