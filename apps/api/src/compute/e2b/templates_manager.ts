@@ -84,6 +84,7 @@ nvm install ${E2bTemplatesManager.DEFAULT_NODE_MAJOR_VERSION}
 nvm alias default ${E2bTemplatesManager.DEFAULT_NODE_MAJOR_VERSION}
 DEFAULT_NODE_VERSION="$(nvm version default)"
 npm install -g ${E2bTemplatesManager.PLAYWRIGHT_CLI_PACKAGE}
+npx playwright install ffmpeg
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/node" /usr/local/bin/node
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/npm" /usr/local/bin/npm
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/npx" /usr/local/bin/npx

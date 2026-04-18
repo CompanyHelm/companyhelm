@@ -35,6 +35,7 @@ test("E2bTemplatesManager adds nvm-backed Node 25 setup to every template", () =
     assert.ok(runCommands.some((command) => command.includes("nvm install 25")));
     assert.ok(runCommands.some((command) => command.includes("nvm alias default 25")));
     assert.ok(runCommands.some((command) => command.includes("npm install -g @playwright/cli@latest")));
+    assert.ok(runCommands.some((command) => command.includes("npx playwright install ffmpeg")));
     assert.ok(runCommands.some((command) => command.includes("/usr/local/bin/node")));
     assert.ok(runCommands.some((command) => command.includes("/usr/local/bin/playwright")));
     assert.ok(runCommands.some((command) => command.includes("/etc/profile.d/companyhelm-nvm.sh")));
