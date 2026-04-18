@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import {
   boolean,
   index,
-  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -85,9 +84,6 @@ export const routineCronTriggers = pgTable("routine_cron_triggers", {
     .notNull(),
   cronPattern: text("cron_pattern").notNull(),
   timezone: text("timezone").notNull(),
-  startAt: timestamp("start_at", { withTimezone: true }),
-  endAt: timestamp("end_at", { withTimezone: true }),
-  limit: integer("limit"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({

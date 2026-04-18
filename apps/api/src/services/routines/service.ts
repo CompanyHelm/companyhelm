@@ -32,11 +32,8 @@ type RoutineCronTriggerRow = {
   createdAt: Date;
   cronPattern: string;
   enabled: boolean;
-  endAt: Date | null;
   id: string;
-  limit: number | null;
   routineId: string;
-  startAt: Date | null;
   timezone: string;
   type: "cron";
   updatedAt: Date;
@@ -189,7 +186,6 @@ export class RoutineService {
     input: RoutineCronTriggerCreateInput,
   ): Promise<RoutineCronTriggerRecord> {
     this.assertCron(input.cronPattern, input.timezone);
-    this.assertLimit(input.limit ?? null);
 
     return transactionProvider.transaction(async (tx) => {
       await this.requireRoutineRow(tx, input.companyId, input.routineId);
@@ -212,9 +208,6 @@ export class RoutineService {
           companyId: input.companyId,
           createdAt: now,
           cronPattern: input.cronPattern,
-          endAt: input.endAt ?? null,
-          limit: input.limit ?? null,
-          startAt: input.startAt ?? null,
           timezone: input.timezone,
           triggerId,
           updatedAt: now,
@@ -233,7 +226,6 @@ export class RoutineService {
       const nextCronPattern = input.cronPattern ?? existingTrigger.cronPattern;
       const nextTimezone = input.timezone ?? existingTrigger.timezone;
       this.assertCron(nextCronPattern, nextTimezone);
-      this.assertLimit(input.limit ?? existingTrigger.limit);
 
       const now = new Date();
       const triggerValues: Record<string, unknown> = {
@@ -254,9 +246,6 @@ export class RoutineService {
         .update(routineCronTriggers)
         .set({
           cronPattern: nextCronPattern,
-          endAt: input.endAt === undefined ? existingTrigger.endAt : input.endAt,
-          limit: input.limit === undefined ? existingTrigger.limit : input.limit,
-          startAt: input.startAt === undefined ? existingTrigger.startAt : input.startAt,
           timezone: nextTimezone,
           updatedAt: now,
         })
@@ -313,11 +302,8 @@ export class RoutineService {
       .select({
         companyId: routineTriggers.companyId,
         cronPattern: routineCronTriggers.cronPattern,
-        endAt: routineCronTriggers.endAt,
         id: routineTriggers.id,
-        limit: routineCronTriggers.limit,
         routineId: routineTriggers.routineId,
-        startAt: routineCronTriggers.startAt,
         timezone: routineCronTriggers.timezone,
       })
       .from(routineTriggers)
@@ -341,11 +327,8 @@ export class RoutineService {
         .select({
           companyId: routineTriggers.companyId,
           cronPattern: routineCronTriggers.cronPattern,
-          endAt: routineCronTriggers.endAt,
           id: routineTriggers.id,
-          limit: routineCronTriggers.limit,
           routineId: routineTriggers.routineId,
-          startAt: routineCronTriggers.startAt,
           timezone: routineCronTriggers.timezone,
         })
         .from(routineTriggers)
@@ -532,11 +515,8 @@ export class RoutineService {
       createdAt: routineTriggers.createdAt,
       cronPattern: routineCronTriggers.cronPattern,
       enabled: routineTriggers.enabled,
-      endAt: routineCronTriggers.endAt,
       id: routineTriggers.id,
-      limit: routineCronTriggers.limit,
       routineId: routineTriggers.routineId,
-      startAt: routineCronTriggers.startAt,
       timezone: routineCronTriggers.timezone,
       type: routineTriggers.type,
       updatedAt: routineTriggers.updatedAt,
@@ -565,11 +545,8 @@ export class RoutineService {
       createdAt: triggerRow.createdAt,
       cronPattern: triggerRow.cronPattern,
       enabled: triggerRow.enabled,
-      endAt: triggerRow.endAt,
       id: triggerRow.id,
-      limit: triggerRow.limit,
       routineId: triggerRow.routineId,
-      startAt: triggerRow.startAt,
       timezone: triggerRow.timezone,
       type: triggerRow.type,
       updatedAt: triggerRow.updatedAt,
@@ -611,9 +588,4 @@ export class RoutineService {
     }
   }
 
-  private assertLimit(limit: number | null): void {
-    if (limit !== null && (!Number.isInteger(limit) || limit <= 0)) {
-      throw new Error("limit must be a positive integer.");
-    }
-  }
 }

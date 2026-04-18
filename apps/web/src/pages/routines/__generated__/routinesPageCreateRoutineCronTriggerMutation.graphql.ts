@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<db4110d371d7a1824b48f15feab55c90>>
+ * @generated SignedSource<<82ab7dff1538d6de04e472d88f1a1f41>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,10 +12,7 @@ import { ConcreteRequest } from 'relay-runtime';
 export type CreateRoutineCronTriggerInput = {
   cronPattern: string;
   enabled?: boolean | null | undefined;
-  endAt?: string | null | undefined;
-  limit?: number | null | undefined;
   routineId: string;
-  startAt?: string | null | undefined;
   timezone: string;
 };
 export type routinesPageCreateRoutineCronTriggerMutation$variables = {
@@ -26,12 +23,8 @@ export type routinesPageCreateRoutineCronTriggerMutation$data = {
     readonly createdAt: string;
     readonly cronPattern: string;
     readonly enabled: boolean;
-    readonly endAt: string | null | undefined;
     readonly id: string;
-    readonly limit: number | null | undefined;
     readonly routineId: string;
-    readonly startAt: string | null | undefined;
-    readonly timezone: string;
     readonly type: string;
     readonly updatedAt: string;
   };
@@ -103,34 +96,6 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "timezone",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "startAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "endAt",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "limit",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "createdAt",
         "storageKey": null
       },
@@ -163,16 +128,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "47895397f976569b0df9ca5e1c2d5d32",
+    "cacheID": "5ecf5b7d9858b97848908bf9ebfb9c8d",
     "id": null,
     "metadata": {},
     "name": "routinesPageCreateRoutineCronTriggerMutation",
     "operationKind": "mutation",
-    "text": "mutation routinesPageCreateRoutineCronTriggerMutation(\n  $input: CreateRoutineCronTriggerInput!\n) {\n  CreateRoutineCronTrigger(input: $input) {\n    id\n    routineId\n    type\n    enabled\n    cronPattern\n    timezone\n    startAt\n    endAt\n    limit\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation routinesPageCreateRoutineCronTriggerMutation(\n  $input: CreateRoutineCronTriggerInput!\n) {\n  CreateRoutineCronTrigger(input: $input) {\n    id\n    routineId\n    type\n    enabled\n    cronPattern\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "350508f6fb221e12a8530b644849bdfa";
+(node as any).hash = "874bd1223ff19a012cba1f09663ca70b";
 
 export default node;

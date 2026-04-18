@@ -12,10 +12,7 @@ type CreateRoutineCronTriggerMutationArguments = {
   input: {
     cronPattern: string;
     enabled?: boolean | null;
-    endAt?: string | null;
-    limit?: number | null;
     routineId: string;
-    startAt?: string | null;
     timezone: string;
   };
 };
@@ -58,10 +55,7 @@ export class CreateRoutineCronTriggerMutation
       companyId: context.authSession.company.id,
       cronPattern: arguments_.input.cronPattern,
       enabled: arguments_.input.enabled,
-      endAt: this.parseOptionalDate(arguments_.input.endAt),
-      limit: arguments_.input.limit,
       routineId: arguments_.input.routineId,
-      startAt: this.parseOptionalDate(arguments_.input.startAt),
       timezone: arguments_.input.timezone,
     });
     const schedule = await this.routineService.getCronTriggerSchedule(
@@ -73,16 +67,4 @@ export class CreateRoutineCronTriggerMutation
 
     return this.presenter.serializeCronTrigger(trigger);
   };
-
-  private parseOptionalDate(value: string | null | undefined): Date | null {
-    if (!value) {
-      return null;
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      throw new Error("Invalid trigger date.");
-    }
-    return date;
-  }
 }

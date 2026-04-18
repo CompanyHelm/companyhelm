@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dba3e671abb7ae0e91e6785282f44124>>
+ * @generated SignedSource<<243f4bada18115b39382601d8679eca3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -47,12 +47,8 @@ export type routinesPageCreateRoutineMutation$data = {
       readonly createdAt: string;
       readonly cronPattern: string;
       readonly enabled: boolean;
-      readonly endAt: string | null | undefined;
       readonly id: string;
-      readonly limit: number | null | undefined;
       readonly routineId: string;
-      readonly startAt: string | null | undefined;
-      readonly timezone: string;
       readonly type: string;
       readonly updatedAt: string;
     }>;
@@ -192,34 +188,6 @@ v7 = [
             "name": "cronPattern",
             "storageKey": null
           },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "timezone",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "startAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "endAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "limit",
-            "storageKey": null
-          },
           (v5/*: any*/),
           (v6/*: any*/)
         ],
@@ -314,16 +282,16 @@ return {
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "e1e0e19c4d5e36e6207838f896c2fde4",
+    "cacheID": "b0d10da6650c6221a9079479167204a6",
     "id": null,
     "metadata": {},
     "name": "routinesPageCreateRoutineMutation",
     "operationKind": "mutation",
-    "text": "mutation routinesPageCreateRoutineMutation(\n  $input: CreateRoutineInput!\n) {\n  CreateRoutine(input: $input) {\n    id\n    name\n    instructions\n    assignedAgentId\n    assignedAgentName\n    sessionId\n    enabled\n    overlapPolicy\n    triggers {\n      id\n      routineId\n      type\n      enabled\n      cronPattern\n      timezone\n      startAt\n      endAt\n      limit\n      createdAt\n      updatedAt\n    }\n    lastRun {\n      id\n      routineId\n      triggerId\n      source\n      status\n      sessionId\n      bullmqJobId\n      errorMessage\n      startedAt\n      finishedAt\n      createdAt\n      updatedAt\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation routinesPageCreateRoutineMutation(\n  $input: CreateRoutineInput!\n) {\n  CreateRoutine(input: $input) {\n    id\n    name\n    instructions\n    assignedAgentId\n    assignedAgentName\n    sessionId\n    enabled\n    overlapPolicy\n    triggers {\n      id\n      routineId\n      type\n      enabled\n      cronPattern\n      createdAt\n      updatedAt\n    }\n    lastRun {\n      id\n      routineId\n      triggerId\n      source\n      status\n      sessionId\n      bullmqJobId\n      errorMessage\n      startedAt\n      finishedAt\n      createdAt\n      updatedAt\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "200ddc42a5e7251c68bbcc81089f5053";
+(node as any).hash = "75420803edd28b00784f8a41742f3c09";
 
 export default node;

@@ -9,11 +9,8 @@ export type GraphqlRoutineCronTriggerRecord = {
   createdAt: string;
   cronPattern: string;
   enabled: boolean;
-  endAt: string | null;
   id: string;
-  limit: number | null;
   routineId: string;
-  startAt: string | null;
   timezone: string;
   type: string;
   updatedAt: string;
@@ -77,11 +74,8 @@ export class RoutineGraphqlPresenter {
       createdAt: trigger.createdAt.toISOString(),
       cronPattern: trigger.cronPattern,
       enabled: trigger.enabled,
-      endAt: trigger.endAt?.toISOString() ?? null,
       id: trigger.id,
-      limit: trigger.limit,
       routineId: trigger.routineId,
-      startAt: trigger.startAt?.toISOString() ?? null,
       timezone: trigger.timezone,
       type: trigger.type,
       updatedAt: trigger.updatedAt.toISOString(),

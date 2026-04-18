@@ -37,9 +37,6 @@ export class RoutineTriggerQueueService {
     await this.queue.upsertJobScheduler(
       trigger.id,
       {
-        ...(trigger.endAt ? { endDate: trigger.endAt } : {}),
-        ...(trigger.limit ? { limit: trigger.limit } : {}),
-        ...(trigger.startAt ? { startDate: trigger.startAt } : {}),
         immediately: false,
         pattern: trigger.cronPattern,
         tz: trigger.timezone,

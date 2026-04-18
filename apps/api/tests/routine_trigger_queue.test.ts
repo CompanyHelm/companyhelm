@@ -69,11 +69,8 @@ test("RoutineTriggerQueueService upserts cron triggers as BullMQ job schedulers"
   await service.upsertCronTrigger({
     companyId: "company-1",
     cronPattern: "0 9 * * 1-5",
-    endAt: new Date("2026-05-01T00:00:00.000Z"),
     id: "trigger-1",
-    limit: 4,
     routineId: "routine-1",
-    startAt: new Date("2026-04-20T00:00:00.000Z"),
     timezone: "America/Los_Angeles",
   });
 
@@ -81,11 +78,8 @@ test("RoutineTriggerQueueService upserts cron triggers as BullMQ job schedulers"
   assert.deepEqual(bullMqMocks.upsertJobSchedulerMock.mock.calls[0], [
     "trigger-1",
     {
-      endDate: new Date("2026-05-01T00:00:00.000Z"),
       immediately: false,
-      limit: 4,
       pattern: "0 9 * * 1-5",
-      startDate: new Date("2026-04-20T00:00:00.000Z"),
       tz: "America/Los_Angeles",
     },
     {

@@ -716,9 +716,6 @@ type RoutineCronTrigger {
   enabled: Boolean!
   cronPattern: String!
   timezone: String!
-  startAt: String
-  endAt: String
-  limit: Int
   createdAt: String!
   updatedAt: String!
 }
@@ -1254,9 +1251,6 @@ input CreateRoutineCronTriggerInput {
   cronPattern: String!
   timezone: String!
   enabled: Boolean
-  startAt: String
-  endAt: String
-  limit: Int
 }
 
 input UpdateRoutineCronTriggerInput {
@@ -1264,9 +1258,6 @@ input UpdateRoutineCronTriggerInput {
   cronPattern: String
   timezone: String
   enabled: Boolean
-  startAt: String
-  endAt: String
-  limit: Int
 }
 
 input DeleteRoutineTriggerInput {

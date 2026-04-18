@@ -7,11 +7,8 @@ export type RoutineCronTriggerRecord = {
   createdAt: Date;
   cronPattern: string;
   enabled: boolean;
-  endAt: Date | null;
   id: string;
-  limit: number | null;
   routineId: string;
-  startAt: Date | null;
   timezone: string;
   type: RoutineTriggerType;
   updatedAt: Date;
@@ -70,10 +67,7 @@ export type RoutineCronTriggerCreateInput = {
   companyId: string;
   cronPattern: string;
   enabled?: boolean | null;
-  endAt?: Date | null;
-  limit?: number | null;
   routineId: string;
-  startAt?: Date | null;
   timezone: string;
 };
 
@@ -81,9 +75,6 @@ export type RoutineCronTriggerUpdateInput = {
   companyId: string;
   cronPattern?: string | null;
   enabled?: boolean | null;
-  endAt?: Date | null;
-  limit?: number | null;
-  startAt?: Date | null;
   timezone?: string | null;
   triggerId: string;
 };
@@ -105,10 +96,7 @@ export type RoutineTriggerJobPayload = {
 export type RoutineCronTriggerScheduleRecord = {
   companyId: string;
   cronPattern: string;
-  endAt: Date | null;
   id: string;
-  limit: number | null;
   routineId: string;
-  startAt: Date | null;
   timezone: string;
 };

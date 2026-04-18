@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ea84c714856978ab23d49e3070488485>>
+ * @generated SignedSource<<80ae759941333f92a3db276f2a14821b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -43,12 +43,8 @@ export type routinesPageQuery$data = {
       readonly createdAt: string;
       readonly cronPattern: string;
       readonly enabled: boolean;
-      readonly endAt: string | null | undefined;
       readonly id: string;
-      readonly limit: number | null | undefined;
       readonly routineId: string;
-      readonly startAt: string | null | undefined;
-      readonly timezone: string;
       readonly type: string;
       readonly updatedAt: string;
     }>;
@@ -189,34 +185,6 @@ v7 = [
             "name": "cronPattern",
             "storageKey": null
           },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "timezone",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "startAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "endAt",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "limit",
-            "storageKey": null
-          },
           (v5/*: any*/),
           (v6/*: any*/)
         ],
@@ -311,16 +279,16 @@ return {
     "selections": (v7/*: any*/)
   },
   "params": {
-    "cacheID": "42d4e44f1f35143169e346f0ebb481e5",
+    "cacheID": "b4e976273f6bb866eb20a774dd15d3d2",
     "id": null,
     "metadata": {},
     "name": "routinesPageQuery",
     "operationKind": "query",
-    "text": "query routinesPageQuery {\n  Agents {\n    id\n    name\n  }\n  Routines {\n    id\n    name\n    instructions\n    assignedAgentId\n    assignedAgentName\n    sessionId\n    enabled\n    overlapPolicy\n    triggers {\n      id\n      routineId\n      type\n      enabled\n      cronPattern\n      timezone\n      startAt\n      endAt\n      limit\n      createdAt\n      updatedAt\n    }\n    lastRun {\n      id\n      routineId\n      triggerId\n      source\n      status\n      sessionId\n      bullmqJobId\n      errorMessage\n      startedAt\n      finishedAt\n      createdAt\n      updatedAt\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query routinesPageQuery {\n  Agents {\n    id\n    name\n  }\n  Routines {\n    id\n    name\n    instructions\n    assignedAgentId\n    assignedAgentName\n    sessionId\n    enabled\n    overlapPolicy\n    triggers {\n      id\n      routineId\n      type\n      enabled\n      cronPattern\n      createdAt\n      updatedAt\n    }\n    lastRun {\n      id\n      routineId\n      triggerId\n      source\n      status\n      sessionId\n      bullmqJobId\n      errorMessage\n      startedAt\n      finishedAt\n      createdAt\n      updatedAt\n    }\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "76c76bcdc838ae5e80f08b6383342350";
+(node as any).hash = "6cec9dd2cdb8730f8a98deee04ea5267";
 
 export default node;

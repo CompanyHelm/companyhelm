@@ -54,10 +54,6 @@ const routinesPageQueryNode = graphql`
         type
         enabled
         cronPattern
-        timezone
-        startAt
-        endAt
-        limit
         createdAt
         updatedAt
       }
@@ -98,10 +94,6 @@ const routinesPageCreateRoutineMutationNode = graphql`
         type
         enabled
         cronPattern
-        timezone
-        startAt
-        endAt
-        limit
         createdAt
         updatedAt
       }
@@ -142,10 +134,6 @@ const routinesPageUpdateRoutineMutationNode = graphql`
         type
         enabled
         cronPattern
-        timezone
-        startAt
-        endAt
-        limit
         createdAt
         updatedAt
       }
@@ -185,10 +173,6 @@ const routinesPageCreateRoutineCronTriggerMutationNode = graphql`
       type
       enabled
       cronPattern
-      timezone
-      startAt
-      endAt
-      limit
       createdAt
       updatedAt
     }
@@ -203,10 +187,6 @@ const routinesPageUpdateRoutineCronTriggerMutationNode = graphql`
       type
       enabled
       cronPattern
-      timezone
-      startAt
-      endAt
-      limit
       createdAt
       updatedAt
     }
@@ -295,6 +275,10 @@ function getRunBadgeVariant(status: string | null): "default" | "destructive" | 
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function getBrowserTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 function RoutinesPageFallback() {
@@ -436,12 +420,8 @@ function RoutinesPageContent() {
   async function saveTrigger(input: {
     cronPattern: string;
     enabled: boolean;
-    endAt?: string | null;
     id?: string;
-    limit?: number | null;
     routineId?: string;
-    startAt?: string | null;
-    timezone: string;
   }): Promise<void> {
     setTriggerDialogErrorMessage(null);
 
@@ -452,11 +432,7 @@ function RoutinesPageContent() {
             input: {
               cronPattern: input.cronPattern,
               enabled: input.enabled,
-              endAt: input.endAt,
               id: input.id,
-              limit: input.limit,
-              startAt: input.startAt,
-              timezone: input.timezone,
             },
           },
           onCompleted: (_response, errors) => {
@@ -481,11 +457,8 @@ function RoutinesPageContent() {
           input: {
             cronPattern: input.cronPattern,
             enabled: input.enabled,
-            endAt: input.endAt,
-            limit: input.limit,
             routineId: input.routineId,
-            startAt: input.startAt,
-            timezone: input.timezone,
+            timezone: getBrowserTimezone(),
           },
         },
         updater: (store) => {
@@ -749,7 +722,6 @@ function RoutinesPageContent() {
                                 {trigger.enabled ? "cron" : "off"}
                               </Badge>
                               <code className="text-xs text-foreground">{trigger.cronPattern}</code>
-                              <span className="text-xs text-muted-foreground">{trigger.timezone}</span>
                               <Button
                                 aria-label="Edit trigger"
                                 onClick={() => {
@@ -758,11 +730,7 @@ function RoutinesPageContent() {
                                   setEditingTrigger({
                                     cronPattern: trigger.cronPattern,
                                     enabled: trigger.enabled,
-                                    endAt: trigger.endAt ?? null,
                                     id: trigger.id,
-                                    limit: trigger.limit ?? null,
-                                    startAt: trigger.startAt ?? null,
-                                    timezone: trigger.timezone,
                                   });
                                   setTriggerDialogOpen(true);
                                 }}

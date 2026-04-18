@@ -7,9 +7,6 @@ CREATE TABLE "routine_cron_triggers" (
 	"company_id" uuid NOT NULL,
 	"cron_pattern" text NOT NULL,
 	"timezone" text NOT NULL,
-	"start_at" timestamp with time zone,
-	"end_at" timestamp with time zone,
-	"limit" integer,
 	"created_at" timestamp with time zone NOT NULL,
 	"updated_at" timestamp with time zone NOT NULL,
 	CONSTRAINT "routine_cron_triggers_trigger_id_pk" PRIMARY KEY("trigger_id")

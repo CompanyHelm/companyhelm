@@ -69,10 +69,7 @@ export class RoutineSchedulerSyncService {
         routine_triggers.enabled AS "triggerEnabled",
         routines.enabled AS "routineEnabled",
         routine_cron_triggers.cron_pattern AS "cronPattern",
-        routine_cron_triggers.timezone AS "timezone",
-        routine_cron_triggers.start_at AS "startAt",
-        routine_cron_triggers.end_at AS "endAt",
-        routine_cron_triggers.limit AS "limit"
+        routine_cron_triggers.timezone AS "timezone"
       FROM routine_triggers
       INNER JOIN routines
         ON routines.id = routine_triggers.routine_id
@@ -94,11 +91,8 @@ export class RoutineSchedulerSyncService {
         schedule: {
           companyId: row.companyId,
           cronPattern: row.cronPattern,
-          endAt: row.endAt,
           id: row.id,
-          limit: row.limit,
           routineId: row.routineId,
-          startAt: row.startAt,
           timezone: row.timezone,
         },
         triggerId: row.id,

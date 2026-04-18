@@ -11,10 +11,7 @@ import { Mutation } from "./mutation.ts";
 type UpdateRoutineCronTriggerInput = {
   cronPattern?: string | null;
   enabled?: boolean | null;
-  endAt?: string | null;
   id: string;
-  limit?: number | null;
-  startAt?: string | null;
   timezone?: string | null;
 };
 
@@ -23,7 +20,7 @@ type UpdateRoutineCronTriggerMutationArguments = {
 };
 
 /**
- * Updates a routine cron trigger and re-syncs BullMQ so toggles, cron edits, and date windows take
+ * Updates a routine cron trigger and re-syncs BullMQ so toggles and cron edits take
  * effect immediately without waiting for the next startup reconciliation.
  */
 @injectable()
@@ -60,9 +57,6 @@ export class UpdateRoutineCronTriggerMutation
       companyId: context.authSession.company.id,
       cronPattern: arguments_.input.cronPattern,
       enabled: arguments_.input.enabled,
-      endAt: this.parseOptionalDate(arguments_.input, "endAt"),
-      limit: arguments_.input.limit,
-      startAt: this.parseOptionalDate(arguments_.input, "startAt"),
       timezone: arguments_.input.timezone,
       triggerId: arguments_.input.id,
     });
@@ -75,24 +69,4 @@ export class UpdateRoutineCronTriggerMutation
 
     return this.presenter.serializeCronTrigger(trigger);
   };
-
-  private parseOptionalDate(
-    input: UpdateRoutineCronTriggerInput,
-    field: "endAt" | "startAt",
-  ): Date | null | undefined {
-    if (!(field in input)) {
-      return undefined;
-    }
-
-    const value = input[field];
-    if (!value) {
-      return null;
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      throw new Error("Invalid trigger date.");
-    }
-    return date;
-  }
 }
