@@ -58,7 +58,7 @@ export const artifacts = pgTable("artifacts", {
   taskIdIndex: index("artifacts_task_id_idx").on(table.taskId),
   scopeTargetCheck: check(
     "artifacts_scope_target_check",
-    sql`(${table.scopeType} = 'company' AND ${table.taskId} IS NULL AND ${table.sessionId} IS NULL) OR (${table.scopeType} = 'task' AND ${table.taskId} IS NOT NULL AND ${table.sessionId} IS NULL) OR (${table.scopeType} = 'session' AND ${table.taskId} IS NULL AND ${table.sessionId} IS NOT NULL)`,
+    sql`(${table.scopeType}::text = 'company' AND ${table.taskId} IS NULL AND ${table.sessionId} IS NULL) OR (${table.scopeType}::text = 'task' AND ${table.taskId} IS NOT NULL AND ${table.sessionId} IS NULL) OR (${table.scopeType}::text = 'session' AND ${table.taskId} IS NULL AND ${table.sessionId} IS NOT NULL)`,
   ),
 }));
 

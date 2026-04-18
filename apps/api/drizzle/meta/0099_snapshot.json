@@ -5114,7 +5114,7 @@
       "checkConstraints": {
         "artifacts_scope_target_check": {
           "name": "artifacts_scope_target_check",
-          "value": "(\"artifacts\".\"scope_type\" = 'company' AND \"artifacts\".\"task_id\" IS NULL AND \"artifacts\".\"session_id\" IS NULL) OR (\"artifacts\".\"scope_type\" = 'task' AND \"artifacts\".\"task_id\" IS NOT NULL AND \"artifacts\".\"session_id\" IS NULL) OR (\"artifacts\".\"scope_type\" = 'session' AND \"artifacts\".\"task_id\" IS NULL AND \"artifacts\".\"session_id\" IS NOT NULL)"
+          "value": "((\"artifacts\".\"scope_type\")::text = 'company' AND \"artifacts\".\"task_id\" IS NULL AND \"artifacts\".\"session_id\" IS NULL) OR ((\"artifacts\".\"scope_type\")::text = 'task' AND \"artifacts\".\"task_id\" IS NOT NULL AND \"artifacts\".\"session_id\" IS NULL) OR ((\"artifacts\".\"scope_type\")::text = 'session' AND \"artifacts\".\"task_id\" IS NULL AND \"artifacts\".\"session_id\" IS NOT NULL)"
         }
       },
       "isRLSEnabled": false
