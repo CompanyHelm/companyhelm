@@ -9,6 +9,8 @@ type SmoothStreamingTextState = {
  * subscription updates still appear continuous instead of jumping in visible chunks.
  */
 export class SmoothStreamingTextController {
+  private readonly minimumInitialRevealSegmentCount = 12;
+  private readonly initialRevealSegmentCount = 6;
   private readonly segmenter: Intl.Segmenter | null;
   private displayText = "";
   private displayedSegmentCount = 0;
@@ -57,14 +59,30 @@ export class SmoothStreamingTextController {
     }
 
     if (this.displayedSegmentCount === 0 && this.targetSegments.length > 0) {
-      this.displayedSegmentCount = 1;
-      this.displayText = this.targetSegments[0] ?? "";
+      if (!this.canBeginReveal()) {
+        return {
+          displayText: this.displayText,
+          shouldContinue: false,
+        };
+      }
+
+      this.displayedSegmentCount = Math.min(this.targetSegments.length, this.initialRevealSegmentCount);
+      this.displayText = this.targetSegments.slice(0, this.displayedSegmentCount).join("");
     }
 
     return {
       displayText: this.displayText,
       shouldContinue: this.displayedSegmentCount < this.targetSegments.length,
     };
+  }
+
+  /**
+   * Small early chunks often arrive while the model is still reasoning, which can leave the UI
+   * showing only a lone markdown marker or first character for several seconds. Hold those tiny
+   * prefixes back until the buffer is large enough to look like real streaming.
+   */
+  private canBeginReveal(): boolean {
+    return this.targetSegments.length >= this.minimumInitialRevealSegmentCount;
   }
 
   /**
