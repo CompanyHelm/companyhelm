@@ -14,7 +14,7 @@ A few things it can do today:
 - **Multi-repo workflows**: agents can operate across multiple repos in the same session
 - **Collaboration**: you can invite other users into the same company workspace
 
-[Website](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
+[CompanyHelm Cloud](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
 
 <img width="1695" height="874" alt="companyHelm-screenshot" src="https://github.com/user-attachments/assets/9f3c6f3f-5e1f-4065-989d-44cfad587e5f" />
 
