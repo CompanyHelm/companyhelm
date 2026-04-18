@@ -680,6 +680,13 @@
       "when": 1776448887853,
       "tag": "0096_aberrant_mister_fear",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1776477199766,
+      "tag": "0097_lush_black_knight",
+      "breakpoints": true
     }
   ]
 }

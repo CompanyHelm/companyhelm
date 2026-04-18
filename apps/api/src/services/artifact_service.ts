@@ -20,6 +20,7 @@ export type ArtifactPullRequestProvider = typeof artifactPullRequestProviderEnum
 
 export type ArtifactRecord = {
   id: string;
+  createdBySessionId: string | null;
   taskId: string | null;
   scopeType: ArtifactScope;
   type: ArtifactType;
@@ -37,6 +38,7 @@ export type ArtifactRecord = {
 
 type ArtifactBaseRecord = {
   id: string;
+  createdBySessionId: string | null;
   taskId: string | null;
   scopeType: ArtifactScope;
   type: ArtifactType;
@@ -122,6 +124,7 @@ export class ArtifactService {
     input: {
       companyId: string;
       createdByAgentId?: string | null;
+      createdBySessionId?: string | null;
       createdByUserId?: string | null;
       description?: string | null;
       name: string;
@@ -136,6 +139,7 @@ export class ArtifactService {
       const artifact = await this.insertBaseArtifact(tx, {
         companyId: input.companyId,
         createdByAgentId: input.createdByAgentId,
+        createdBySessionId: input.createdBySessionId,
         createdByUserId: input.createdByUserId,
         description: input.description ?? null,
         name: input.name,
@@ -159,6 +163,7 @@ export class ArtifactService {
     input: {
       companyId: string;
       createdByAgentId?: string | null;
+      createdBySessionId?: string | null;
       createdByUserId?: string | null;
       description?: string | null;
       name: string;
@@ -173,6 +178,7 @@ export class ArtifactService {
       const artifact = await this.insertBaseArtifact(tx, {
         companyId: input.companyId,
         createdByAgentId: input.createdByAgentId,
+        createdBySessionId: input.createdBySessionId,
         createdByUserId: input.createdByUserId,
         description: input.description ?? null,
         name: input.name,
@@ -196,6 +202,7 @@ export class ArtifactService {
     input: {
       companyId: string;
       createdByAgentId?: string | null;
+      createdBySessionId?: string | null;
       createdByUserId?: string | null;
       description?: string | null;
       name: string;
@@ -213,6 +220,7 @@ export class ArtifactService {
       const artifact = await this.insertBaseArtifact(tx, {
         companyId: input.companyId,
         createdByAgentId: input.createdByAgentId,
+        createdBySessionId: input.createdBySessionId,
         createdByUserId: input.createdByUserId,
         description: input.description ?? null,
         name: input.name,
@@ -446,6 +454,7 @@ export class ArtifactService {
 
       return {
         id: artifact.id,
+        createdBySessionId: artifact.createdBySessionId,
         taskId: artifact.taskId,
         scopeType: artifact.scopeType,
         type: artifact.type,
@@ -468,6 +477,7 @@ export class ArtifactService {
     input: {
       companyId: string;
       createdByAgentId?: string | null;
+      createdBySessionId?: string | null;
       createdByUserId?: string | null;
       description: string | null;
       name: string;
@@ -484,6 +494,7 @@ export class ArtifactService {
         companyId: input.companyId,
         createdAt: now,
         createdByAgentId: input.createdByAgentId ?? null,
+        createdBySessionId: input.createdBySessionId ?? null,
         createdByUserId: input.createdByUserId ?? null,
         description: input.description,
         name: this.requireNonEmptyText(input.name, "Artifact name"),
@@ -647,6 +658,7 @@ export class ArtifactService {
 
   private baseSelection(): {
     id: typeof artifacts.id;
+    createdBySessionId: typeof artifacts.createdBySessionId;
     taskId: typeof artifacts.taskId;
     scopeType: typeof artifacts.scopeType;
     type: typeof artifacts.type;
@@ -658,6 +670,7 @@ export class ArtifactService {
   } {
     return {
       id: artifacts.id,
+      createdBySessionId: artifacts.createdBySessionId,
       taskId: artifacts.taskId,
       scopeType: artifacts.scopeType,
       type: artifacts.type,

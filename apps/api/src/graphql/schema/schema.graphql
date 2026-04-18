@@ -670,6 +670,7 @@ type ModelProvider {
 
 type Artifact {
   id: ID!
+  createdBySessionId: ID
   taskId: ID
   scopeType: String!
   type: String!

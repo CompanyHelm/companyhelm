@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
+import { agentSessions } from "./conversations.ts";
 import { tasks } from "./tasks.ts";
 
 export const artifactScopeEnum = pgEnum("artifact_scope", ["company", "task"]);
@@ -38,6 +39,8 @@ export const artifacts = pgTable("artifacts", {
     .references(() => users.id, { onDelete: "set null" }),
   createdByAgentId: uuid("created_by_agent_id")
     .references(() => agents.id, { onDelete: "set null" }),
+  createdBySessionId: uuid("created_by_session_id")
+    .references(() => agentSessions.id, { onDelete: "set null" }),
   updatedByUserId: uuid("updated_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   updatedByAgentId: uuid("updated_by_agent_id")
@@ -48,6 +51,7 @@ export const artifacts = pgTable("artifacts", {
   companyIdIndex: index("artifacts_company_id_idx").on(table.companyId),
   companyScopeUpdatedAtIndex: index("artifacts_company_scope_updated_at_idx")
     .on(table.companyId, table.scopeType, table.updatedAt),
+  createdBySessionIdIndex: index("artifacts_created_by_session_id_idx").on(table.createdBySessionId),
   taskIdIndex: index("artifacts_task_id_idx").on(table.taskId),
   scopeTaskIdCheck: check(
     "artifacts_scope_task_id_check",

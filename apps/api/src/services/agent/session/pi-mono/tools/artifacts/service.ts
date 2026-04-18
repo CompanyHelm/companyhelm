@@ -16,17 +16,20 @@ export class AgentArtifactToolService {
   private readonly agentId: string;
   private readonly artifactService: ArtifactService;
   private readonly companyId: string;
+  private readonly sessionId: string;
   private readonly transactionProvider: TransactionProviderInterface;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     agentId: string,
+    sessionId: string,
     artifactService: ArtifactService,
   ) {
     this.transactionProvider = transactionProvider;
     this.companyId = companyId;
     this.agentId = agentId;
+    this.sessionId = sessionId;
     this.artifactService = artifactService;
   }
 
@@ -60,6 +63,7 @@ export class AgentArtifactToolService {
       companyId: this.companyId,
       contentMarkdown: input.contentMarkdown,
       createdByAgentId: this.agentId,
+      createdBySessionId: this.sessionId,
       description: input.description,
       name: input.name,
       scopeType: input.scopeType,
@@ -79,6 +83,7 @@ export class AgentArtifactToolService {
     return this.artifactService.createExternalLinkArtifact(this.transactionProvider, {
       companyId: this.companyId,
       createdByAgentId: this.agentId,
+      createdBySessionId: this.sessionId,
       description: input.description,
       name: input.name,
       scopeType: input.scopeType,
@@ -102,6 +107,7 @@ export class AgentArtifactToolService {
     return this.artifactService.createPullRequestArtifact(this.transactionProvider, {
       companyId: this.companyId,
       createdByAgentId: this.agentId,
+      createdBySessionId: this.sessionId,
       description: input.description,
       name: input.name,
       provider: input.provider,

@@ -28,6 +28,7 @@ export class ArtifactsSessionModule extends AgentSessionModuleInterface {
           context.transactionProvider,
           context.companyId,
           context.agentId,
+          context.sessionId,
           this.artifactService,
         ),
       ),
