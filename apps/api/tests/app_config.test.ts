@@ -178,7 +178,7 @@ github:
   key_id: "\${${params.githubKeyIdVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
   app_link: "\${${params.githubUrlVariableName}}"
-  webhook_secret: "\${${params.githubWebhookSecretVariableName}}"
+  webhook_secret: "\${?${params.githubWebhookSecretVariableName}}"
 ${authDocument}
 security:
   encryption:
@@ -283,6 +283,22 @@ test("AppConfig allows CompanyHelm LLM settings to be omitted", () => {
   });
 
   assert.equal(parsedDocument.companyhelm.llm, undefined);
+});
+
+test("AppConfig allows GitHub webhook secret to be omitted", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const originalWebhookSecret = process.env[fixture.githubWebhookSecretVariableName];
+
+  delete process.env[fixture.githubWebhookSecretVariableName];
+
+  try {
+    const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+    assert.equal(document.github.webhook_secret, undefined);
+  } finally {
+    if (originalWebhookSecret) {
+      process.env[fixture.githubWebhookSecretVariableName] = originalWebhookSecret;
+    }
+  }
 });
 
 test("AppConfig loads Clerk auth settings from local.yaml", () => {

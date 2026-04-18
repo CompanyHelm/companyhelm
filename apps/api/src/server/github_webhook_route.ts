@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { inject, injectable } from "inversify";
+import { Config } from "../config/schema.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import { GithubWebhookQueueService } from "../github/webhooks/queue.ts";
 import { GithubWebhookSignatureVerifier } from "../github/webhooks/signature_verifier.ts";
@@ -16,21 +17,31 @@ type GithubWebhookRequest = FastifyRequest<{
 @injectable()
 export class GithubWebhookRoute {
   private static readonly ROUTE_PATH = "/webhooks/github";
+  private readonly config: Config;
   private readonly logger: ApiLogger;
   private readonly queueService: GithubWebhookQueueService;
   private readonly signatureVerifier: GithubWebhookSignatureVerifier;
 
   constructor(
+    @inject(Config) config: Config,
     @inject(GithubWebhookQueueService) queueService: GithubWebhookQueueService,
     @inject(GithubWebhookSignatureVerifier) signatureVerifier: GithubWebhookSignatureVerifier,
     @inject(ApiLogger) logger: ApiLogger,
   ) {
+    this.config = config;
     this.queueService = queueService;
     this.signatureVerifier = signatureVerifier;
     this.logger = logger;
   }
 
   register(app: FastifyInstance): void {
+    if (!this.config.github.webhook_secret) {
+      this.logger.child({
+        route: GithubWebhookRoute.ROUTE_PATH,
+      }).info("Skipping GitHub webhook route because webhook secret is not configured.");
+      return;
+    }
+
     app.register(async (githubWebhookApp) => {
       githubWebhookApp.addContentTypeParser(
         "application/json",

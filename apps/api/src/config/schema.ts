@@ -96,7 +96,7 @@ export const ConfigDocument = z.object({
     app_client_id: NonEmptyStringSchema,
     app_private_key_pem: NonEmptyStringSchema,
     app_link: NonEmptyStringSchema,
-    webhook_secret: NonEmptyStringSchema,
+    webhook_secret: NonEmptyStringSchema.optional(),
     key_id: NonEmptyStringSchema.optional(),
   }),
   auth: z.discriminatedUnion("provider", [

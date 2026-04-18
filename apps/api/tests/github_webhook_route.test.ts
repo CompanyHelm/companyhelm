@@ -13,13 +13,14 @@ class GithubWebhookRouteTestHarness {
     return {
       child() {
         return {
+          info() {},
           warn() {},
         };
       },
     };
   }
 
-  static createConfig(secret: string): Config {
+  static createConfig(secret?: string): Config {
     return {
       github: {
         webhook_secret: secret,
@@ -39,13 +40,15 @@ test("GithubWebhookRoute verifies the raw payload and enqueues accepted deliveri
   });
   const signature = await new Webhooks({ secret }).sign(payload);
   const enqueuedDeliveries: GithubWebhookJobPayload[] = [];
+  const config = GithubWebhookRouteTestHarness.createConfig(secret);
   const route = new GithubWebhookRoute(
+    config,
     {
       async enqueueDelivery(delivery: GithubWebhookJobPayload) {
         enqueuedDeliveries.push(delivery);
       },
     } as never,
-    new GithubWebhookSignatureVerifier(GithubWebhookRouteTestHarness.createConfig(secret)),
+    new GithubWebhookSignatureVerifier(config),
     GithubWebhookRouteTestHarness.createLoggerMock() as never,
   );
   route.register(app);
@@ -79,13 +82,15 @@ test("GithubWebhookRoute verifies the raw payload and enqueues accepted deliveri
 test("GithubWebhookRoute rejects deliveries with invalid signatures", async () => {
   const app = Fastify();
   const enqueuedDeliveries: GithubWebhookJobPayload[] = [];
+  const config = GithubWebhookRouteTestHarness.createConfig("github-webhook-secret");
   const route = new GithubWebhookRoute(
+    config,
     {
       async enqueueDelivery(delivery: GithubWebhookJobPayload) {
         enqueuedDeliveries.push(delivery);
       },
     } as never,
-    new GithubWebhookSignatureVerifier(GithubWebhookRouteTestHarness.createConfig("github-webhook-secret")),
+    new GithubWebhookSignatureVerifier(config),
     GithubWebhookRouteTestHarness.createLoggerMock() as never,
   );
   route.register(app);
@@ -115,13 +120,15 @@ test("GithubWebhookRoute rejects deliveries with invalid signatures", async () =
 
 test("GithubWebhookRoute rejects requests missing GitHub delivery metadata", async () => {
   const app = Fastify();
+  const config = GithubWebhookRouteTestHarness.createConfig("github-webhook-secret");
   const route = new GithubWebhookRoute(
+    config,
     {
       async enqueueDelivery() {
         throw new Error("Delivery should not be enqueued.");
       },
     } as never,
-    new GithubWebhookSignatureVerifier(GithubWebhookRouteTestHarness.createConfig("github-webhook-secret")),
+    new GithubWebhookSignatureVerifier(config),
     GithubWebhookRouteTestHarness.createLoggerMock() as never,
   );
   route.register(app);
@@ -136,6 +143,35 @@ test("GithubWebhookRoute rejects requests missing GitHub delivery metadata", asy
   });
 
   assert.equal(response.statusCode, 400);
+
+  await app.close();
+});
+
+test("GithubWebhookRoute skips registration when webhook secret is not configured", async () => {
+  const app = Fastify();
+  const config = GithubWebhookRouteTestHarness.createConfig();
+  const route = new GithubWebhookRoute(
+    config,
+    {
+      async enqueueDelivery() {
+        throw new Error("Delivery should not be enqueued.");
+      },
+    } as never,
+    new GithubWebhookSignatureVerifier(config),
+    GithubWebhookRouteTestHarness.createLoggerMock() as never,
+  );
+  route.register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/webhooks/github",
+    headers: {
+      "content-type": "application/json",
+    },
+    payload: "{}",
+  });
+
+  assert.equal(response.statusCode, 404);
 
   await app.close();
 });

@@ -9,15 +9,21 @@ import { Config } from "../../config/schema.ts";
  */
 @injectable()
 export class GithubWebhookSignatureVerifier {
-  private readonly webhooks: Webhooks;
+  private readonly webhooks: Webhooks | null;
 
   constructor(@inject(Config) config: Config) {
-    this.webhooks = new Webhooks({
-      secret: config.github.webhook_secret,
-    });
+    this.webhooks = config.github.webhook_secret
+      ? new Webhooks({
+        secret: config.github.webhook_secret,
+      })
+      : null;
   }
 
   async verify(payload: string, signature: string): Promise<void> {
+    if (!this.webhooks) {
+      throw new Error("GitHub webhook secret is not configured.");
+    }
+
     const isValid = await this.webhooks.verify(payload, signature);
     if (!isValid) {
       throw new Error("GitHub webhook signature is invalid.");
