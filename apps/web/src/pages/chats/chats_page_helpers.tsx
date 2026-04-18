@@ -662,16 +662,38 @@ export function mergeTranscriptMessages(
   existingMessages: ReadonlyArray<SessionMessageRecord>,
   incomingMessages: ReadonlyArray<SessionMessageRecord>,
 ): SessionMessageRecord[] {
-  const nextMessagesById = new Map<string, SessionMessageRecord>();
-
-  for (const message of existingMessages) {
-    nextMessagesById.set(message.id, message);
-  }
-  for (const message of incomingMessages) {
-    nextMessagesById.set(message.id, message);
+  if (incomingMessages.length === 0) {
+    return [...existingMessages];
   }
 
-  return [...nextMessagesById.values()].sort(compareSessionMessagesByTimestamp);
+  const nextMessages = [...existingMessages];
+  const existingMessageIndexById = new Map<string, number>();
+  for (const [messageIndex, message] of existingMessages.entries()) {
+    existingMessageIndexById.set(message.id, messageIndex);
+  }
+
+  let shouldResortMessages = false;
+  for (const incomingMessage of incomingMessages) {
+    const existingMessageIndex = existingMessageIndexById.get(incomingMessage.id);
+    if (typeof existingMessageIndex === "number") {
+      nextMessages[existingMessageIndex] = incomingMessage;
+      continue;
+    }
+
+    const previousLastMessage = nextMessages.at(-1) ?? null;
+    nextMessages.push(incomingMessage);
+    existingMessageIndexById.set(incomingMessage.id, nextMessages.length - 1);
+
+    if (previousLastMessage && compareSessionMessagesByTimestamp(previousLastMessage, incomingMessage) > 0) {
+      shouldResortMessages = true;
+    }
+  }
+
+  if (shouldResortMessages) {
+    nextMessages.sort(compareSessionMessagesByTimestamp);
+  }
+
+  return nextMessages;
 }
 
 /**
