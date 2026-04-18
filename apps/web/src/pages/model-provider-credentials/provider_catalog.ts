@@ -79,10 +79,8 @@ export class ModelProviderCredentialCatalog {
 
   private static createNvidiaProvider(): ModelProviderCredentialDialogProvider {
     return {
-      authorizationInstructionsMarkdown: [
+      authorizationInstructionsMarkdown:
         "Create an API key in the [NVIDIA API keys settings](https://build.nvidia.com/settings/api-keys).",
-        `This uses NVIDIA's OpenAI-compatible endpoint: \`${ModelProviderCredentialCatalog.NVIDIA_BASE_URL}\`.`,
-      ].join("\n\n"),
       baseUrl: ModelProviderCredentialCatalog.NVIDIA_BASE_URL,
       defaultCredentialName: "NVIDIA",
       id: ModelProviderCredentialCatalog.NVIDIA_PROVIDER_ID,
