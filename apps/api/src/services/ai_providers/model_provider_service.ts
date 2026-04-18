@@ -1,6 +1,12 @@
 import { injectable } from "inversify";
 
-export type ModelProviderId = "anthropic" | "google-gemini-cli" | "openai" | "openai-codex" | "openrouter";
+export type ModelProviderId =
+  | "anthropic"
+  | "google-gemini-cli"
+  | "openai"
+  | "openai-codex"
+  | "openai-compatible"
+  | "openrouter";
 
 export enum ModelProviderAuthorizationType {
   ApiKey = "api_key",
@@ -50,6 +56,16 @@ export class ModelProviderService {
         type: ModelProviderAuthorizationType.ApiKey,
         authorizationInstructionsMarkdown:
           "Create an API key in the [OpenRouter keys settings](https://openrouter.ai/settings/keys).",
+      },
+    ],
+    [
+      "openai-compatible",
+      {
+        id: "openai-compatible",
+        name: "OpenAI-compatible API",
+        type: ModelProviderAuthorizationType.ApiKey,
+        authorizationInstructionsMarkdown:
+          "Use an OpenAI-compatible `/v1` endpoint such as Ollama, vLLM, LM Studio, or a compatible proxy.",
       },
     ],
     [

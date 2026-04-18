@@ -34,6 +34,7 @@ interface CreateCredentialDialogProps {
     accessToken?: string;
     accessTokenExpiresAtMilliseconds?: string;
     apiKey?: string;
+    baseUrl?: string;
     isDefault?: boolean;
     name?: string;
     modelProvider: string;
@@ -46,6 +47,7 @@ interface CreateCredentialDialogProps {
 export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
   const [authFileContents, setAuthFileContents] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [localErrorMessage, setLocalErrorMessage] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -56,6 +58,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
     if (!props.isOpen) {
       setAuthFileContents("");
       setApiKey("");
+      setBaseUrl("");
       setIsDefault(props.suggestDefault);
       setLocalErrorMessage(null);
       setName("");
@@ -86,6 +89,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               onValueChange={(value) => {
                 setAuthFileContents("");
                 setApiKey("");
+                setBaseUrl("");
                 setLocalErrorMessage(null);
                 setModelProvider(value ?? "");
               }}
@@ -174,20 +178,38 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
               </p>
             </div>
           ) : (
-            <div className="grid gap-2">
-              <label className="text-xs font-medium text-foreground" htmlFor="provider-api-key">
-                API key
-              </label>
-              <Input
-                autoComplete="off"
-                id="provider-api-key"
-                onChange={(event) => {
-                  setApiKey(event.target.value);
-                }}
-                placeholder="sk-..."
-                type="password"
-                value={apiKey}
-              />
+            <div className="grid gap-4">
+              {selectedProvider?.id === "openai-compatible" ? (
+                <div className="grid gap-2">
+                  <label className="text-xs font-medium text-foreground" htmlFor="provider-base-url">
+                    Base URL
+                  </label>
+                  <Input
+                    autoComplete="off"
+                    id="provider-base-url"
+                    onChange={(event) => {
+                      setBaseUrl(event.target.value);
+                    }}
+                    placeholder="http://localhost:11434/v1"
+                    value={baseUrl}
+                  />
+                </div>
+              ) : null}
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-foreground" htmlFor="provider-api-key">
+                  API key
+                </label>
+                <Input
+                  autoComplete="off"
+                  id="provider-api-key"
+                  onChange={(event) => {
+                    setApiKey(event.target.value);
+                  }}
+                  placeholder={selectedProvider?.id === "openai-compatible" ? "ollama" : "sk-..."}
+                  type="password"
+                  value={apiKey}
+                />
+              </div>
             </div>
           )}
 
@@ -212,7 +234,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             data-primary-cta=""
             disabled={props.isSaving || !selectedProvider || (
               selectedProvider.type === "oauth" ? !authFileContents.trim() : !apiKey.trim()
-            )}
+            ) || (selectedProvider?.id === "openai-compatible" && !baseUrl.trim())}
             onClick={async () => {
               setLocalErrorMessage(null);
               if (!selectedProvider) {
@@ -240,6 +262,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
 
                 await props.onCreate({
                   apiKey,
+                  ...(selectedProvider.id === "openai-compatible" ? { baseUrl } : {}),
                   ...(isDefault ? { isDefault: true } : {}),
                   name,
                   modelProvider: selectedProvider.id,

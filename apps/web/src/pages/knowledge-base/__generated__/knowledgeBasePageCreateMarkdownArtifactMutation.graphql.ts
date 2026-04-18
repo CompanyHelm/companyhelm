@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<45afe6673677614c03900f5786423559>>
+ * @generated SignedSource<<7f9ea92e630cd85415465dc3e9146dd5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type CreateMarkdownArtifactInput = {
   description?: string | null | undefined;
   name: string;
   scopeType: string;
+  sessionId?: string | null | undefined;
   state?: string | null | undefined;
   taskId?: string | null | undefined;
 };

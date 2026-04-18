@@ -44,6 +44,7 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
       const credentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           isDefault: modelProviderCredentials.isDefault,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,

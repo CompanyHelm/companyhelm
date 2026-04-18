@@ -15,6 +15,7 @@ type RefreshModelProviderCredentialModelsMutationArguments = {
 
 type ModelProviderCredentialRecord = {
   id: string;
+  baseUrl: string | null;
   companyId: string;
   modelProvider: ModelProviderId;
   encryptedApiKey: string;
@@ -84,6 +85,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
       return selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           companyId: modelProviderCredentials.companyId,
           modelProvider: modelProviderCredentials.modelProvider,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
@@ -106,6 +108,7 @@ export class RefreshModelProviderCredentialModelsMutation extends Mutation<
 
     const updatedModels = await this.modelService.refreshStoredModels({
       apiKey,
+      baseUrl: credential.baseUrl,
       companyId,
       modelProvider: credential.modelProvider,
       modelProviderCredentialId: credential.id,

@@ -315,3 +315,56 @@ test("ModelService fetchModels uses the dedicated openrouter adapter", async () 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("ModelService fetchModels uses the configured OpenAI-compatible base URL", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{
+    authorization: string | null;
+    url: string;
+  }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({
+      authorization: new Headers(init?.headers).get("authorization"),
+      url,
+    });
+
+    return new Response(JSON.stringify({
+      data: [
+        {
+          id: "llama3.1:8b",
+        },
+      ],
+    }), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const modelService = new ModelService(new ModelRegistry());
+
+    const models = await modelService.fetchModels("openai-compatible", "ollama", {
+      baseUrl: "http://localhost:11434/v1",
+    });
+
+    assert.deepEqual(calls, [{
+      authorization: "Bearer ollama",
+      url: "http://localhost:11434/v1/models",
+    }]);
+    assert.deepEqual(models, [
+      new ModelProviderModel({
+        provider: "openai-compatible",
+        modelId: "llama3.1:8b",
+        name: "llama3.1:8b",
+        description: "OpenAI-compatible model: llama3.1:8b",
+        reasoningSupported: false,
+        reasoningLevels: null,
+      }),
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

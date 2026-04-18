@@ -20,6 +20,7 @@ export const modelProviderEnum = pgEnum("model_provider", [
   "anthropic",
   "openai-codex",
   "openrouter",
+  "openai-compatible",
   "google-gemini-cli",
 ]);
 export const modelProviderCredentialTypeEnum = pgEnum("model_provider_credential_type", ["api_key", "oauth_token"]);
@@ -58,6 +59,7 @@ export const modelProviderCredentials = pgTable("model_provider_credentials", {
   type: modelProviderCredentialTypeEnum("model_provider_credential_type").notNull(),
   // this can also be an access token
   encryptedApiKey: text("encrypted_api_key").notNull(),
+  baseUrl: text("base_url"),
   refreshToken: text("refresh_token"),
   accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
   refreshedAt: timestamp("refreshed_at", { withTimezone: true }),

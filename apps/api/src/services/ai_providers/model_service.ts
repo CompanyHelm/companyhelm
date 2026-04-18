@@ -6,8 +6,12 @@ import { ModelRegistry } from "./model_registry.js";
 import { ModelProviderModel } from "./model_provider_model.js";
 import { AnthropicModelAdapter } from "../providers/models-adapters/anthropic_model_adapter.js";
 import { GoogleGeminiCliModelAdapter } from "../providers/models-adapters/google_gemini_cli_model_adapter.js";
-import type { ModelAdapterInterface } from "../providers/models-adapters/model_adapter_interface.js";
+import type {
+  ModelAdapterFetchOptions,
+  ModelAdapterInterface,
+} from "../providers/models-adapters/model_adapter_interface.js";
 import { OpenAiCodexModelAdapter } from "../providers/models-adapters/openai_codex_model_adapter.js";
+import { OpenAiCompatibleModelAdapter } from "../providers/models-adapters/openai_compatible_model_adapter.js";
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
 import { OpenRouterModelAdapter } from "../providers/models-adapters/openrouter_model_adapter.js";
 
@@ -65,13 +69,18 @@ export class ModelService {
     this.providerAdapters = new Map<string, ModelAdapterInterface>([
       ["openai", new OpenAiModelAdapter(modelRegistry)],
       ["openai-codex", new OpenAiCodexModelAdapter(modelRegistry)],
+      ["openai-compatible", new OpenAiCompatibleModelAdapter()],
       ["anthropic", new AnthropicModelAdapter(modelRegistry)],
       ["openrouter", new OpenRouterModelAdapter()],
       ["google-gemini-cli", new GoogleGeminiCliModelAdapter()],
     ]);
   }
 
-  async fetchModels(modelProvider: string, apiKey: string): Promise<ModelProviderModel[]> {
+  async fetchModels(
+    modelProvider: string,
+    apiKey: string,
+    options: ModelAdapterFetchOptions = {},
+  ): Promise<ModelProviderModel[]> {
     const normalizedProvider = String(modelProvider || "").trim();
     if (!normalizedProvider) {
       throw new Error("Model provider is required.");
@@ -87,17 +96,20 @@ export class ModelService {
       throw new Error(`Unsupported model provider: ${normalizedProvider}`);
     }
 
-    return adapter.fetchModels(normalizedApiKey);
+    return adapter.fetchModels(normalizedApiKey, options);
   }
 
   async refreshStoredModels(input: {
     apiKey: string;
+    baseUrl?: string | null;
     companyId: string;
     modelProvider: string;
     modelProviderCredentialId: string;
     transactionProvider: TransactionProviderInterface;
   }): Promise<StoredModelRecord[]> {
-    const fetchedModels = await this.fetchModels(input.modelProvider, input.apiKey);
+    const fetchedModels = await this.fetchModels(input.modelProvider, input.apiKey, {
+      baseUrl: input.baseUrl,
+    });
 
     return input.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;

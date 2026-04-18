@@ -122,6 +122,13 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
         "Create an API key in the [OpenRouter keys settings](https://openrouter.ai/settings/keys).",
     },
     {
+      id: "openai-compatible",
+      name: "OpenAI-compatible API",
+      type: "api_key",
+      authorizationInstructionsMarkdown:
+        "Use an OpenAI-compatible `/v1` endpoint such as Ollama, vLLM, LM Studio, or a compatible proxy.",
+    },
+    {
       id: "openai-codex",
       name: "OpenAI Codex",
       type: "oauth",
@@ -129,6 +136,17 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
         "run this command",
         "```",
         "npx @mariozechner/pi-ai login openai-codex && cat auth.json | pbcopy && rm auth.json and paste below",
+        "```",
+      ].join("\n"),
+    },
+    {
+      id: "google-gemini-cli",
+      name: "Google Gemini CLI",
+      type: "oauth",
+      authorizationInstructionsMarkdown: [
+        "run this command",
+        "```",
+        "npx @mariozechner/pi-ai login google-gemini-cli && cat auth.json | pbcopy && rm auth.json and paste below",
         "```",
       ].join("\n"),
     },

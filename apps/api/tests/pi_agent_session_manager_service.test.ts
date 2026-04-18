@@ -13,12 +13,17 @@ const piAgentMocks = vi.hoisted(() => {
     findModelMock: vi.fn<(providerId: string, modelId: string) => unknown>(),
     newSessionMock: vi.fn<(options: { id?: string }) => void>(),
     promptMock: vi.fn(async () => undefined),
+    registerProviderMock: vi.fn<(providerId: string, config: unknown) => void>(),
     setActiveToolsByNameMock: vi.fn<(toolNames: string[]) => void>(),
     setRuntimeApiKeyMock: vi.fn<(providerId: string, apiKey: string) => void>(),
     steerMock: vi.fn(async () => undefined),
     subscribeMock: vi.fn(),
     authStorageInstances: [] as Array<{ setRuntimeApiKey: ReturnType<typeof vi.fn> }>,
-    modelRegistryInstances: [] as Array<{ authStorage: unknown; find: ReturnType<typeof vi.fn> }>,
+    modelRegistryInstances: [] as Array<{
+      authStorage: unknown;
+      find: ReturnType<typeof vi.fn>;
+      registerProvider: ReturnType<typeof vi.fn>;
+    }>,
     sessionManagerInstances: [] as Array<{
       appendMessage: ReturnType<typeof vi.fn>;
       newSession: ReturnType<typeof vi.fn>;
@@ -47,6 +52,7 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
   class MockModelRegistry {
     readonly authStorage: unknown;
     find = piAgentMocks.findModelMock;
+    registerProvider = piAgentMocks.registerProviderMock;
 
     constructor(authStorage: unknown) {
       this.authStorage = authStorage;
@@ -95,6 +101,7 @@ beforeEach(() => {
   piAgentMocks.findModelMock.mockReset();
   piAgentMocks.newSessionMock.mockReset();
   piAgentMocks.promptMock.mockReset();
+  piAgentMocks.registerProviderMock.mockReset();
   piAgentMocks.setActiveToolsByNameMock.mockReset();
   piAgentMocks.setRuntimeApiKeyMock.mockReset();
   piAgentMocks.steerMock.mockReset();
@@ -113,6 +120,27 @@ const logger = {
   },
 } as never;
 
+const piMonoTestConfig = {
+  agent_tools: {
+    read_image: {
+      default_resolution: {
+        height: 768,
+        width: 1024,
+      },
+      max_return_bytes: 4194304,
+      max_source_bytes: 10485760,
+    },
+  },
+  companyhelm: {
+    e2b: {
+      desktop_resolution: {
+        height: 1080,
+        width: 1920,
+      },
+    },
+  },
+} as const;
+
 const emptyMcpService = {
   async listAgentMcpServers() {
     return [];
@@ -129,6 +157,7 @@ const baseToolNames = [
   "pty_read_output",
   "pty_resize",
   "pty_kill",
+  "read_image",
   "list_assigned_secrets",
   "read_secret",
   "list_available_secrets",
@@ -255,16 +284,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
-    {
-      companyhelm: {
-        e2b: {
-          desktop_resolution: {
-            height: 1080,
-            width: 1920,
-          },
-        },
-      },
-    } as never,
+    piMonoTestConfig as never,
     logger,
     {
       async getClient() {
@@ -481,7 +501,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
-    [...baseToolNames.slice(0, 9), ...computerUseToolNames, ...baseToolNames.slice(9)],
+    [...baseToolNames.slice(0, 10), ...computerUseToolNames, ...baseToolNames.slice(10)],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
     agentsFiles: [],
@@ -521,9 +541,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
     [[[
-      ...baseToolNames.slice(0, 9),
+      ...baseToolNames.slice(0, 10),
       ...computerUseToolNames,
-      ...baseToolNames.slice(9),
+      ...baseToolNames.slice(10),
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
@@ -544,6 +564,186 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.equal(persistedCheckpointInserts[0]?.currentContextTokens, null);
   assert.equal(persistedCheckpointInserts[0]?.maxContextTokens, null);
   assert.ok(typeof persistedCheckpointInserts[0]?.turnId === "string");
+});
+
+test("PiMonoSessionManagerService registers OpenAI-compatible runtime providers with the credential base URL", async () => {
+  const createdSession = {
+    abort: piAgentMocks.abortMock,
+    agent: {
+      continue: piAgentMocks.continueMock,
+      state: {
+        messages: [],
+      },
+    },
+    dispose: piAgentMocks.disposeMock,
+    getContextUsage() {
+      return null;
+    },
+    isCompacting: false,
+    model: null,
+    prompt: piAgentMocks.promptMock,
+    setActiveToolsByName: piAgentMocks.setActiveToolsByNameMock,
+    steer: piAgentMocks.steerMock,
+    subscribe: piAgentMocks.subscribeMock,
+  };
+  Object.defineProperty(createdSession, "pendingMessageCount", {
+    get() {
+      return 0;
+    },
+  });
+  piAgentMocks.findModelMock.mockReturnValue({
+    id: "llama3.1:8b",
+    provider: "openai-compatible",
+  });
+  piAgentMocks.createAgentSessionMock.mockResolvedValue({
+    session: createdSession,
+  });
+  const service = new PiMonoSessionManagerService(
+    piMonoTestConfig as never,
+    logger,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+    } as never,
+    {
+      async getEnvironmentForSession() {
+        throw new Error("tools should not acquire an environment during ensureSession");
+      },
+    } as never,
+    {
+      async getInstallationAccessToken() {
+        throw new Error("github installation tokens should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async createHumanQuestion() {
+        throw new Error("inbox questions should not be created during ensureSession");
+      },
+    } as never,
+    {
+      async listSecrets() {
+        throw new Error("company secrets should not be loaded during ensureSession");
+      },
+      async listSessionSecrets() {
+        throw new Error("session secrets should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      async sendMessage() {
+        throw new Error("agent conversations should not be sent during ensureSession");
+      },
+    } as never,
+    {
+      async fetchHtmlContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async fetchMarkdownContents() {
+        throw new Error("web pages should not be fetched during ensureSession");
+      },
+      async search() {
+        throw new Error("web searches should not run during ensureSession");
+      },
+    } as never,
+    {
+      async getAgentTemplateSelection() {
+        return smallTemplateSelection;
+      },
+    } as never,
+    {
+      async listDefinitions() {
+        throw new Error("compute provider definitions should not be loaded during ensureSession");
+      },
+    } as never,
+    {
+      get() {
+        throw new Error("model provider services should not be loaded during ensureSession");
+      },
+    } as never,
+    undefined,
+    {
+      getDefaultModelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+      getDefaultReasoningLevelForProvider() {
+        throw new Error("app model registry should not be loaded during ensureSession");
+      },
+    } as never,
+    undefined,
+    emptyMcpService,
+  );
+
+  await service.ensureSession(
+    {
+      async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+        return callback({
+          select() {
+            return {
+              from() {
+                return {
+                  async where() {
+                    return [{
+                      contextMessagesSnapshot: [],
+                      contextMessagesSnapshotAt: null,
+                    }];
+                  },
+                };
+              },
+            };
+          },
+        });
+      },
+    } as never,
+    "session-1",
+    {
+      agentId: "agent-1",
+      agentName: "Local Agent",
+      apiKey: "ollama",
+      baseUrl: "http://localhost:11434/v1",
+      companyId: "company-1",
+      companyName: "My Organization",
+      modelId: "llama3.1:8b",
+      modelName: "Llama 3.1 8B",
+      providerId: "openai-compatible",
+      reasoningSupported: false,
+    },
+  );
+
+  assert.deepEqual(piAgentMocks.setRuntimeApiKeyMock.mock.calls, [["openai-compatible", "ollama"]]);
+  assert.deepEqual(piAgentMocks.registerProviderMock.mock.calls, [[
+    "openai-compatible",
+    {
+      api: "openai-completions",
+      apiKey: "ollama",
+      baseUrl: "http://localhost:11434/v1",
+      models: [{
+        compat: {
+          maxTokensField: "max_tokens",
+          supportsDeveloperRole: false,
+          supportsReasoningEffort: false,
+          supportsStore: false,
+          supportsUsageInStreaming: false,
+        },
+        contextWindow: 128000,
+        cost: {
+          cacheRead: 0,
+          cacheWrite: 0,
+          input: 0,
+          output: 0,
+        },
+        id: "llama3.1:8b",
+        input: ["text"],
+        maxTokens: 16384,
+        name: "Llama 3.1 8B",
+        reasoning: false,
+      }],
+    },
+  ]]);
+  assert.deepEqual(piAgentMocks.findModelMock.mock.calls, [["openai-compatible", "llama3.1:8b"]]);
 });
 
 test("PiMonoSessionManagerService prompt drains pending queued messages before closing the turn", async () => {
@@ -594,16 +794,7 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
-    {
-      companyhelm: {
-        e2b: {
-          desktop_resolution: {
-            height: 1080,
-            width: 1920,
-          },
-        },
-      },
-    } as never,
+    piMonoTestConfig as never,
     logger,
     {
       async getClient() {
@@ -807,16 +998,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
-    {
-      companyhelm: {
-        e2b: {
-          desktop_resolution: {
-            height: 1080,
-            width: 1920,
-          },
-        },
-      },
-    } as never,
+    piMonoTestConfig as never,
     logger,
     {
       async getClient() {
@@ -1026,16 +1208,7 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
     session: createdSession,
   });
   const service = new PiMonoSessionManagerService(
-    {
-      companyhelm: {
-        e2b: {
-          desktop_resolution: {
-            height: 1080,
-            width: 1920,
-          },
-        },
-      },
-    } as never,
+    piMonoTestConfig as never,
     logger,
     {
       async getClient() {

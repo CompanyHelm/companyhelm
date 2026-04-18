@@ -83,6 +83,7 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
       const [credential] = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -156,6 +157,7 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
       const [updatedCredential] = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,

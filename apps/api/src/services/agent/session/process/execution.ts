@@ -38,9 +38,12 @@ type CompanyRow = {
 type ModelRow = {
   modelId: string;
   modelProviderCredentialId: string;
+  name?: string;
+  reasoningSupported?: boolean;
 };
 
 type CredentialRow = {
+  baseUrl: string | null;
   encryptedApiKey: string;
   isManaged: boolean;
   modelProvider: string;
@@ -344,10 +347,13 @@ export class SessionProcessExecutionService {
     agentName: string;
     agentSystemPrompt: string | null;
     apiKey: string;
+    baseUrl?: string | null;
     companyId: string;
     companyName: string;
     modelId: string;
+    modelName?: string | null;
     providerId: string;
+    reasoningSupported?: boolean | null;
     reasoningLevel: string;
   } | null> {
     return transactionProvider.transaction(async (tx) => {
@@ -399,6 +405,8 @@ export class SessionProcessExecutionService {
         .select({
           modelId: modelProviderCredentialModels.modelId,
           modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+          name: modelProviderCredentialModels.name,
+          reasoningSupported: modelProviderCredentialModels.reasoningSupported,
         })
         .from(modelProviderCredentialModels)
         .where(and(
@@ -411,6 +419,7 @@ export class SessionProcessExecutionService {
 
       const [credentialRow] = await selectableDatabase
         .select({
+          baseUrl: modelProviderCredentials.baseUrl,
           encryptedApiKey: modelProviderCredentials.encryptedApiKey,
           isManaged: modelProviderCredentials.isManaged,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -429,10 +438,13 @@ export class SessionProcessExecutionService {
         agentName: agentRow.name,
         agentSystemPrompt: agentRow.systemPrompt,
         apiKey: this.resolveRuntimeApiKey(credentialRow),
+        ...(credentialRow.baseUrl ? { baseUrl: credentialRow.baseUrl } : {}),
         companyId,
         companyName: companyRow.name,
         modelId: modelRow.modelId,
+        ...(modelRow.name ? { modelName: modelRow.name } : {}),
         providerId: credentialRow.modelProvider,
+        ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
         reasoningLevel: sessionRow.currentReasoningLevel,
       };
     });

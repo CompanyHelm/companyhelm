@@ -578,6 +578,7 @@ type SessionTranscriptMessageConnection {
 
 type ModelProviderCredential {
   id: ID!
+  baseUrl: String
   companyId: ID!
   isDefault: Boolean!
   isManaged: Boolean!
@@ -783,6 +784,7 @@ input AddModelProviderCredentialInput {
   accessToken: String
   accessTokenExpiresAtMilliseconds: String
   apiKey: String
+  baseUrl: String
   isDefault: Boolean
   name: String
   modelProvider: String!

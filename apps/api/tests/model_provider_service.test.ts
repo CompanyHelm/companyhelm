@@ -30,6 +30,13 @@ test("ModelProviderService returns provider metadata for API key providers", () 
     authorizationInstructionsMarkdown:
       "Create an API key in the [OpenRouter keys settings](https://openrouter.ai/settings/keys).",
   });
+  assert.deepEqual(service.get("openai-compatible"), {
+    id: "openai-compatible",
+    name: "OpenAI-compatible API",
+    type: ModelProviderAuthorizationType.ApiKey,
+    authorizationInstructionsMarkdown:
+      "Use an OpenAI-compatible `/v1` endpoint such as Ollama, vLLM, LM Studio, or a compatible proxy.",
+  });
 });
 
 test("ModelProviderService returns oauth instructions for openai-codex", () => {
@@ -69,7 +76,7 @@ test("ModelProviderService lists supported providers in modal order", () => {
 
   assert.deepEqual(
     service.list().map((provider) => provider.id),
-    ["openai", "anthropic", "openrouter", "openai-codex", "google-gemini-cli"],
+    ["openai", "anthropic", "openrouter", "openai-compatible", "openai-codex", "google-gemini-cli"],
   );
 });
 

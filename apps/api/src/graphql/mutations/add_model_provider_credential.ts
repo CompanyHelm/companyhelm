@@ -16,6 +16,7 @@ type AddModelProviderCredentialMutationArguments = {
     accessToken?: string | null;
     accessTokenExpiresAtMilliseconds?: string | null;
     apiKey?: string | null;
+    baseUrl?: string | null;
     isDefault?: boolean | null;
     name?: string | null;
     modelProvider: string;
@@ -26,6 +27,7 @@ type AddModelProviderCredentialMutationArguments = {
 type ModelProviderCredentialRecord = {
   id: string;
   companyId: string;
+  baseUrl: string | null;
   name: string;
   modelProvider: string;
   type: "api_key" | "oauth_token";
@@ -42,6 +44,7 @@ type ModelProviderCredentialRecord = {
 type GraphqlModelProviderCredentialRecord = {
   id: string;
   companyId: string;
+  baseUrl: string | null;
   name: string;
   modelProvider: string;
   defaultModelId: string | null;
@@ -129,7 +132,13 @@ export class AddModelProviderCredentialMutation extends Mutation<
       arguments_.input,
       providerDefinition.type,
     );
-    const models = await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken);
+    const baseUrl = AddModelProviderCredentialMutation.resolveBaseUrl(
+      arguments_.input.baseUrl,
+      modelProvider,
+    );
+    const models = await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken, {
+      baseUrl,
+    });
     const defaultModelId = AddModelProviderCredentialMutation.resolveDefaultModelId(
       this.modelRegistry,
       modelProvider,
@@ -143,6 +152,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
       const existingCredentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -168,6 +178,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
           modelProvider,
           type: credentialPayload.type,
           encryptedApiKey: credentialPayload.accessToken,
+          baseUrl,
           refreshToken: credentialPayload.refreshToken,
           accessTokenExpiresAt: credentialPayload.accessTokenExpiresAt,
           refreshedAt: credentialPayload.type === "oauth_token" ? now : null,
@@ -180,6 +191,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
         })
         .returning?.({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -228,6 +240,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
       const reloadedCredentials = await selectableDatabase
         .select({
           id: modelProviderCredentials.id,
+          baseUrl: modelProviderCredentials.baseUrl,
           companyId: modelProviderCredentials.companyId,
           name: modelProviderCredentials.name,
           modelProvider: modelProviderCredentials.modelProvider,
@@ -415,6 +428,32 @@ export class AddModelProviderCredentialMutation extends Mutation<
     }
 
     throw new Error("Unsupported authorization type.");
+  }
+
+  private static resolveBaseUrl(
+    rawBaseUrl: string | null | undefined,
+    modelProvider: string,
+  ): string | null {
+    if (modelProvider !== "openai-compatible") {
+      return null;
+    }
+
+    const normalizedBaseUrl = String(rawBaseUrl || "").trim();
+    if (!normalizedBaseUrl) {
+      throw new Error("baseUrl is required for OpenAI-compatible providers.");
+    }
+
+    let parsedBaseUrl: URL;
+    try {
+      parsedBaseUrl = new URL(normalizedBaseUrl);
+    } catch {
+      throw new Error("baseUrl must be a valid HTTP(S) URL.");
+    }
+    if (parsedBaseUrl.protocol !== "http:" && parsedBaseUrl.protocol !== "https:") {
+      throw new Error("baseUrl must be a valid HTTP(S) URL.");
+    }
+
+    return normalizedBaseUrl;
   }
 
   private static resolveCredentialName(

@@ -11,6 +11,7 @@ import type { ModelProviderModel } from "../src/services/ai_providers/model_serv
 test("RefreshModelProviderCredentialModelsMutation resolves managed credentials from CompanyHelm config", async () => {
   const calls: Array<{
     apiKey: string;
+    baseUrl?: string | null;
     companyId: string;
     modelProvider: string;
     modelProviderCredentialId: string;
@@ -18,6 +19,7 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
   const modelService = {
     async refreshStoredModels(input: {
       apiKey: string;
+      baseUrl?: string | null;
       companyId: string;
       modelProvider: string;
       modelProviderCredentialId: string;
@@ -72,6 +74,7 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
                       async limit() {
                         return [{
                           companyId: "company-123",
+                          baseUrl: null,
                           encryptedApiKey: CompanyHelmLlmProviderService.ENCRYPTED_API_KEY_SENTINEL,
                           id: "credential-123",
                           isManaged: true,
@@ -100,11 +103,13 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
   assert.ok(call);
   assert.deepEqual({
     apiKey: call.apiKey,
+    baseUrl: call.baseUrl,
     companyId: call.companyId,
     modelProvider: call.modelProvider,
     modelProviderCredentialId: call.modelProviderCredentialId,
   }, {
     apiKey: "sk-companyhelm-managed",
+    baseUrl: null,
     companyId: "company-123",
     modelProvider: "openai",
     modelProviderCredentialId: "credential-123",

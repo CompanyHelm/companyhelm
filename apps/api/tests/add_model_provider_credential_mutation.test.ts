@@ -158,6 +158,7 @@ class AddModelProviderCredentialMutationTestHarness {
                     const credentialValue = values[0] ?? {};
                     return [{
                       id: "credential-1",
+                      baseUrl: credentialValue.baseUrl ?? null,
                       companyId: String(credentialValue.companyId),
                       name: String(credentialValue.name),
                       modelProvider: credentialValue.modelProvider,
@@ -223,6 +224,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
         modelId: "gpt-5.4",
         name: "GPT-5.4",
         description: "Latest frontier agentic coding model.",
+        reasoningSupported: true,
         reasoningLevels: ["low", "medium"],
       }];
     },
@@ -486,6 +488,110 @@ test("GraphQL AddModelProviderCredential mutation supports anthropic credentials
   assert.deepEqual(modelManager.calls, [{
     provider: "anthropic",
     apiKey: "anthropic-secret",
+  }]);
+
+  await app.close();
+});
+
+test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base URLs", async () => {
+  const app = Fastify();
+  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
+  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    calls: [] as Array<{ provider: string; apiKey: string; baseUrl: string | null | undefined }>,
+    async fetchModels(
+      provider: string,
+      apiKey: string,
+      options?: { baseUrl?: string | null },
+    ): Promise<ModelProviderModel[]> {
+      this.calls.push({
+        provider,
+        apiKey,
+        baseUrl: options?.baseUrl,
+      });
+      return [{
+        provider: "openai-compatible",
+        modelId: "llama3.1:8b",
+        name: "llama3.1:8b",
+        description: "OpenAI-compatible model: llama3.1:8b",
+        reasoningSupported: false,
+        reasoningLevels: null,
+      }];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await GraphqlApplication.fromResolvers(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
+          AddModelProviderCredential(input: $input) {
+            id
+            baseUrl
+            name
+            modelProvider
+          }
+        }
+      `,
+      variables: {
+        input: {
+          modelProvider: "openai-compatible",
+          apiKey: "ollama",
+          baseUrl: "http://localhost:11434/v1",
+        },
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.AddModelProviderCredential, {
+    id: "credential-1",
+    baseUrl: "http://localhost:11434/v1",
+    name: "OpenAI-compatible API",
+    modelProvider: "openai-compatible",
+  });
+  assert.equal(database.insertedValues[0]?.baseUrl, "http://localhost:11434/v1");
+  assert.equal(database.insertedValues[1]?.modelId, "llama3.1:8b");
+  assert.deepEqual(modelManager.calls, [{
+    provider: "openai-compatible",
+    apiKey: "ollama",
+    baseUrl: "http://localhost:11434/v1",
   }]);
 
   await app.close();

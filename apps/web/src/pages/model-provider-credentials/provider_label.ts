@@ -13,6 +13,10 @@ export function formatProviderLabel(value: string, options: {
     return "OpenRouter (API key)";
   }
 
+  if (value === "openai-compatible") {
+    return "OpenAI-compatible API";
+  }
+
   if (value === "openai-codex") {
     return "OpenAI (Subscription)";
   }

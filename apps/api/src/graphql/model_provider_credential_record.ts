@@ -3,6 +3,7 @@ import type { ModelProviderId } from "../services/ai_providers/model_provider_se
 
 export type ModelProviderCredentialRecord = {
   id: string;
+  baseUrl: string | null;
   companyId: string;
   name: string;
   modelProvider: ModelProviderId;
@@ -26,6 +27,7 @@ export type ModelProviderCredentialModelRecord = {
 
 export type GraphqlModelProviderCredentialRecord = {
   id: string;
+  baseUrl: string | null;
   companyId: string;
   name: string;
   modelProvider: ModelProviderId;

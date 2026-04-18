@@ -42,11 +42,14 @@ type SessionRuntimeConfig = {
   agentName: string;
   agentSystemPrompt?: string | null;
   apiKey: string;
+  baseUrl?: string | null;
   companyBaseSystemPrompt?: string | null;
   companyId: string;
   companyName: string;
   modelId: string;
+  modelName?: string | null;
   providerId: string;
+  reasoningSupported?: boolean | null;
   reasoningLevel?: string | null;
 };
 
@@ -174,6 +177,9 @@ export class PiMonoSessionManagerService {
     const modelRegistry = new PiMonoModelRegistry(authStorage);
     if (bootstrapContext.modelProviderId === "openrouter") {
       await this.configureOpenRouterProvider(bootstrapContext.modelApiKey, modelRegistry);
+    }
+    if (bootstrapContext.modelProviderId === "openai-compatible") {
+      this.configureOpenAiCompatibleProvider(runtimeConfig, modelRegistry);
     }
     const sessionModuleResolution = await this.sessionModuleRegistry.resolve(bootstrapContext);
     const agentToolsService = new AgentToolsService(
@@ -410,6 +416,60 @@ export class PiMonoSessionManagerService {
         reasoning: model.reasoningSupported,
       })),
     });
+  }
+
+  private configureOpenAiCompatibleProvider(
+    runtimeConfig: SessionRuntimeConfig,
+    modelRegistry: PiMonoModelRegistry,
+  ): void {
+    const baseUrl = this.resolveOpenAiCompatibleBaseUrl(runtimeConfig.baseUrl);
+    const modelName = String(runtimeConfig.modelName || "").trim() || runtimeConfig.modelId;
+
+    modelRegistry.registerProvider("openai-compatible", {
+      api: "openai-completions",
+      apiKey: runtimeConfig.apiKey,
+      baseUrl,
+      models: [{
+        compat: {
+          maxTokensField: "max_tokens",
+          supportsDeveloperRole: false,
+          supportsReasoningEffort: false,
+          supportsStore: false,
+          supportsUsageInStreaming: false,
+        },
+        contextWindow: 128000,
+        cost: {
+          cacheRead: 0,
+          cacheWrite: 0,
+          input: 0,
+          output: 0,
+        },
+        id: runtimeConfig.modelId,
+        input: ["text"],
+        maxTokens: 16384,
+        name: modelName,
+        reasoning: Boolean(runtimeConfig.reasoningSupported),
+      }],
+    });
+  }
+
+  private resolveOpenAiCompatibleBaseUrl(rawBaseUrl: string | null | undefined): string {
+    const normalizedBaseUrl = String(rawBaseUrl || "").trim();
+    if (!normalizedBaseUrl) {
+      throw new Error("baseUrl is required for OpenAI-compatible providers.");
+    }
+
+    let parsedBaseUrl: URL;
+    try {
+      parsedBaseUrl = new URL(normalizedBaseUrl);
+    } catch {
+      throw new Error("baseUrl must be a valid HTTP(S) URL.");
+    }
+    if (parsedBaseUrl.protocol !== "http:" && parsedBaseUrl.protocol !== "https:") {
+      throw new Error("baseUrl must be a valid HTTP(S) URL.");
+    }
+
+    return normalizedBaseUrl;
   }
 
   private async loadStoredContextMessagesSnapshot(
