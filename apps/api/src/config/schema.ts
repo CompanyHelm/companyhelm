@@ -54,6 +54,9 @@ export const ConfigDocument = z.object({
     password: z.string(),
   }),
   workers: z.object({
+    github_webhooks: z.object({
+      concurrency: PositiveIntegerSchema,
+    }),
     routine_triggers: z.object({
       concurrency: PositiveIntegerSchema,
     }),
@@ -94,6 +97,7 @@ export const ConfigDocument = z.object({
     public_repository_token: NonEmptyStringSchema.optional(),
     app_private_key_pem: NonEmptyStringSchema,
     app_link: NonEmptyStringSchema,
+    webhook_secret: NonEmptyStringSchema,
     key_id: NonEmptyStringSchema.optional(),
   }),
   auth: z.discriminatedUnion("provider", [

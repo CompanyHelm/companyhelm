@@ -34,6 +34,8 @@ redis:
   username: ""
   password: ""
 workers:
+  github_webhooks:
+    concurrency: 10
   routine_triggers:
     concurrency: 10
   session_process:
@@ -65,6 +67,7 @@ github:
   public_repository_token: "${GITHUB_PUBLIC_REPOSITORY_TOKEN}"
   app_private_key_pem: "${GITHUB_APP_PRIVATE_KEY_PEM}"
   app_link: "${GITHUB_APP_URL}"
+  webhook_secret: "${GITHUB_WEBHOOK_SECRET}"
   key_id: "companyhelm-local-github-state-key"
 auth:
   provider: "clerk"

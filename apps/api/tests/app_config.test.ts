@@ -23,6 +23,7 @@ class AppConfigTestHarness {
     githubKeyIdVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
+    githubWebhookSecretVariableName: string;
   } {
     const fixturePath = mkdtempSync(join(tmpdir(), "companyhelm-config-"));
     const configDirectoryPath = join(fixturePath, "config");
@@ -34,6 +35,7 @@ class AppConfigTestHarness {
     const githubKeyIdVariableName = "COMPANYHELM_TEST_GITHUB_KEY_ID";
     const githubKeyVariableName = "COMPANYHELM_TEST_GITHUB_KEY";
     const githubUrlVariableName = "COMPANYHELM_TEST_GITHUB_URL";
+    const githubWebhookSecretVariableName = "COMPANYHELM_TEST_GITHUB_WEBHOOK_SECRET";
     const exaApiKeyVariableName = "COMPANYHELM_TEST_EXA_API_KEY";
     const companyHelmE2bApiKeyVariableName = "COMPANYHELM_TEST_E2B_API_KEY";
     const companyHelmOpenAiApiKeyVariableName = "COMPANYHELM_TEST_OPENAI_API_KEY";
@@ -45,6 +47,7 @@ class AppConfigTestHarness {
     process.env[githubKeyIdVariableName] = "github-state-key";
     process.env[githubKeyVariableName] = "private-key-pem";
     process.env[githubUrlVariableName] = "https://github.example/app";
+    process.env[githubWebhookSecretVariableName] = "github-webhook-secret";
     process.env[exaApiKeyVariableName] = "exa-local-api-key";
     process.env[companyHelmE2bApiKeyVariableName] = "e2b-local-api-key";
     process.env[companyHelmOpenAiApiKeyVariableName] = "sk-local-api-key";
@@ -59,6 +62,7 @@ class AppConfigTestHarness {
         githubKeyIdVariableName,
         githubKeyVariableName,
         githubUrlVariableName,
+        githubWebhookSecretVariableName,
         exaApiKeyVariableName,
         clerkSecretKeyVariableName,
         clerkPublishableKeyVariableName,
@@ -78,6 +82,7 @@ class AppConfigTestHarness {
       githubKeyIdVariableName,
       githubKeyVariableName,
       githubUrlVariableName,
+      githubWebhookSecretVariableName,
       exaApiKeyVariableName,
     };
   }
@@ -89,6 +94,7 @@ class AppConfigTestHarness {
     githubKeyIdVariableName: string;
     githubKeyVariableName: string;
     githubUrlVariableName: string;
+    githubWebhookSecretVariableName: string;
     exaApiKeyVariableName: string;
     clerkSecretKeyVariableName: string;
     clerkPublishableKeyVariableName: string;
@@ -142,6 +148,8 @@ redis:
   username: ""
   password: ""
 workers:
+  github_webhooks:
+    concurrency: 3
   routine_triggers:
     concurrency: 2
   session_process:
@@ -170,6 +178,7 @@ github:
   key_id: "\${${params.githubKeyIdVariableName}}"
   app_private_key_pem: "\${${params.githubKeyVariableName}}"
   app_link: "\${${params.githubUrlVariableName}}"
+  webhook_secret: "\${${params.githubWebhookSecretVariableName}}"
 ${authDocument}
 security:
   encryption:
@@ -226,6 +235,12 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     password: "",
   });
   assert.deepEqual(document.workers, {
+    github_webhooks: {
+      concurrency: 3,
+    },
+    routine_triggers: {
+      concurrency: 2,
+    },
     session_process: {
       concurrency: 4,
     },
@@ -251,6 +266,7 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   assert.equal(document.github.app_client_id, "client-id");
   assert.equal(document.github.public_repository_token, undefined);
   assert.equal(document.github.key_id, "github-state-key");
+  assert.equal(document.github.webhook_secret, "github-webhook-secret");
   assert.equal(document.web_search.exa.api_key, "exa-local-api-key");
   assert.equal(document.auth.provider, "clerk");
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
