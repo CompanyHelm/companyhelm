@@ -722,6 +722,13 @@
       "when": 1776537102761,
       "tag": "0102_rich_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1776537708459,
+      "tag": "0103_stale_tarantula",
+      "breakpoints": true
     }
   ]
 }

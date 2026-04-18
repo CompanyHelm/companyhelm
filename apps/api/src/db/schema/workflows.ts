@@ -50,7 +50,6 @@ export const workflowDefinitions = pgTable("workflow_definitions", {
 }, (table) => ({
   companyIdIndex: index("workflow_definitions_company_id_idx").on(table.companyId),
   companyIsEnabledIndex: index("workflow_definitions_company_is_enabled_idx").on(table.companyId, table.isEnabled),
-  companyStatusIndex: index("workflow_definitions_company_status_idx").on(table.companyId, table.status),
   oneCreatorCheck: check(
     "workflow_definitions_one_creator_check",
     sql`num_nonnulls(${table.createdByUserId}, ${table.createdByAgentId}) <= 1`,
@@ -77,33 +76,7 @@ export const workflowDefinitionInputs = pgTable("workflow_definition_inputs", {
   companyIdIndex: index("workflow_definition_inputs_company_id_idx").on(table.companyId),
   workflowDefinitionIdIndex: index("workflow_definition_inputs_definition_id_idx").on(table.workflowDefinitionId),
   definitionInputUnique: uniqueIndex("workflow_definition_inputs_definition_input_uidx")
-    .on(table.workflowDefinitionId, table.inputKey),
-  definitionOrdinalUnique: uniqueIndex("workflow_definition_inputs_definition_ordinal_uidx")
-    .on(table.workflowDefinitionId, table.ordinal),
-  defaultValueTypeCheck: check(
-    "workflow_definition_inputs_default_value_type_check",
-    sql`(
-      ${table.defaultTextValue} IS NULL
-      AND ${table.defaultIntegerValue} IS NULL
-      AND ${table.defaultBooleanValue} IS NULL
-    ) OR (
-      ${table.valueType} = 'text'
-      AND ${table.defaultTextValue} IS NOT NULL
-      AND ${table.defaultIntegerValue} IS NULL
-      AND ${table.defaultBooleanValue} IS NULL
-    ) OR (
-      ${table.valueType} = 'integer'
-      AND ${table.defaultTextValue} IS NULL
-      AND ${table.defaultIntegerValue} IS NOT NULL
-      AND ${table.defaultBooleanValue} IS NULL
-    ) OR (
-      ${table.valueType} = 'boolean'
-      AND ${table.defaultTextValue} IS NULL
-      AND ${table.defaultIntegerValue} IS NULL
-      AND ${table.defaultBooleanValue} IS NOT NULL
-    )`,
-  ),
-  ordinalCheck: check("workflow_definition_inputs_ordinal_check", sql`${table.ordinal} > 0`),
+    .on(table.workflowDefinitionId, table.name),
 }));
 
 export const workflowStepDefinitions = pgTable("workflow_step_definitions", {
@@ -138,6 +111,7 @@ export const workflowRuns = pgTable("workflow_runs", {
   workflowDefinitionId: uuid("workflow_definition_id")
     .references(() => workflowDefinitions.id, { onDelete: "restrict" })
     .notNull(),
+  instructions: text("instructions"),
   status: workflowRunStatusEnum("status").notNull().default("running"),
   agentId: uuid("agent_id")
     .references(() => agents.id, { onDelete: "cascade" })
@@ -199,10 +173,5 @@ export const workflowStepRuns = pgTable("workflow_step_runs", {
 }, (table) => ({
   companyIdIndex: index("workflow_step_runs_company_id_idx").on(table.companyId),
   workflowRunStatusIndex: index("workflow_step_runs_workflow_run_status_idx").on(table.workflowRunId, table.status),
-  sessionIdIndex: index("workflow_step_runs_session_id_idx").on(table.sessionId),
-  childWorkflowRunIdIndex: index("workflow_step_runs_child_workflow_run_id_idx").on(table.childWorkflowRunId),
-  workflowStepAttemptUnique: uniqueIndex("workflow_step_runs_workflow_step_attempt_uidx")
-    .on(table.workflowRunId, table.stepId, table.attemptNo),
-  attemptNoCheck: check("workflow_step_runs_attempt_no_check", sql`${table.attemptNo} > 0`),
   ordinalCheck: check("workflow_step_runs_ordinal_check", sql`${table.ordinal} > 0`),
 }));
