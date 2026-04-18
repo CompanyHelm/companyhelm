@@ -715,6 +715,13 @@
       "when": 1776534228000,
       "tag": "0101_routine_cron_trigger_schedule_bounds",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1776537102761,
+      "tag": "0102_rich_chat",
+      "breakpoints": true
     }
   ]
 }
