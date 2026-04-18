@@ -18,43 +18,16 @@ import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
 import { agentSessions } from "./conversations.ts";
 
-export const workflowDefinitionStatusEnum = pgEnum("workflow_definition_status", [
-  "draft",
-  "active",
-  "inactive",
-  "archived",
-]);
-
-export const workflowDefinitionInputTypeEnum = pgEnum("workflow_definition_input_type", [
-  "text",
-  "integer",
-  "boolean",
-]);
-
 export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
-  "queued",
   "running",
-  "waiting",
   "completed",
-  "failed",
   "canceled",
 ]);
 
 export const workflowStepStatusEnum = pgEnum("workflow_step_status", [
   "pending",
   "running",
-  "waiting",
   "completed",
-  "failed",
-  "skipped",
-  "canceled",
-]);
-
-export const workflowActorTypeEnum = pgEnum("workflow_actor_type", [
-  "user",
-  "agent",
-  "system",
-  "workflow",
 ]);
 
 export const workflowDefinitions = pgTable("workflow_definitions", {
@@ -66,8 +39,7 @@ export const workflowDefinitions = pgTable("workflow_definitions", {
     .notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  status: workflowDefinitionStatusEnum("status").notNull().default("draft"),
-  initialStepId: text("initial_step_id").notNull(),
+  instructions: text("instructions"),
   isEnabled: boolean("is_enabled").notNull().default(true),
   createdByUserId: uuid("created_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
@@ -95,15 +67,11 @@ export const workflowDefinitionInputs = pgTable("workflow_definition_inputs", {
   workflowDefinitionId: uuid("workflow_definition_id")
     .references(() => workflowDefinitions.id, { onDelete: "cascade" })
     .notNull(),
-  inputKey: text("input_key").notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  valueType: workflowDefinitionInputTypeEnum("value_type").notNull(),
   isRequired: boolean("is_required").notNull().default(true),
-  defaultTextValue: text("default_text_value"),
-  defaultIntegerValue: integer("default_integer_value"),
-  defaultBooleanValue: boolean("default_boolean_value"),
-  ordinal: integer("ordinal").notNull(),
+  // all inputs are text, other types are converted to text
+  defaultValue: text("default_value"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   companyIdIndex: index("workflow_definition_inputs_company_id_idx").on(table.companyId),
@@ -147,9 +115,8 @@ export const workflowStepDefinitions = pgTable("workflow_step_definitions", {
     .notNull(),
   stepId: text("step_id").notNull(),
   name: text("name").notNull(),
-  stepType: text("step_type").notNull(),
+  description: text("description"),
   ordinal: integer("ordinal").notNull(),
-  nextStepId: text("next_step_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   workflowDefinitionIdIndex: index("workflow_step_definitions_definition_id_idx")
@@ -171,15 +138,14 @@ export const workflowRuns = pgTable("workflow_runs", {
   workflowDefinitionId: uuid("workflow_definition_id")
     .references(() => workflowDefinitions.id, { onDelete: "restrict" })
     .notNull(),
-  status: workflowRunStatusEnum("status").notNull().default("queued"),
+  status: workflowRunStatusEnum("status").notNull().default("running"),
   agentId: uuid("agent_id")
-    .references(() => agents.id, { onDelete: "restrict" })
+    .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
   sessionId: uuid("session_id")
-    .references(() => agentSessions.id, { onDelete: "restrict" })
+    .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
   currentStepId: text("current_step_id"),
-  startedByActorType: workflowActorTypeEnum("started_by_actor_type").notNull(),
   startedByUserId: uuid("started_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   startedByAgentId: uuid("started_by_agent_id")
@@ -190,9 +156,6 @@ export const workflowRuns = pgTable("workflow_runs", {
     .references((): AnyPgColumn => workflowRuns.id, { onDelete: "set null" }),
   parentStepRunId: uuid("parent_step_run_id")
     .references((): AnyPgColumn => workflowStepRuns.id, { onDelete: "set null" }),
-  waitingReason: text("waiting_reason"),
-  errorCode: text("error_code"),
-  errorMessage: text("error_message"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -226,21 +189,9 @@ export const workflowStepRuns = pgTable("workflow_step_runs", {
     .references(() => workflowStepDefinitions.id, { onDelete: "set null" }),
   stepId: text("step_id").notNull(),
   name: text("name").notNull(),
-  stepType: text("step_type").notNull(),
+  description: text("description"),
   ordinal: integer("ordinal").notNull(),
   status: workflowStepStatusEnum("status").notNull().default("pending"),
-  agentId: uuid("agent_id")
-    .references(() => agents.id, { onDelete: "restrict" })
-    .notNull(),
-  sessionId: uuid("session_id")
-    .references(() => agentSessions.id, { onDelete: "restrict" })
-    .notNull(),
-  attemptNo: integer("attempt_no").notNull().default(1),
-  childWorkflowRunId: uuid("child_workflow_run_id")
-    .references(() => workflowRuns.id, { onDelete: "set null" }),
-  waitingReason: text("waiting_reason"),
-  errorCode: text("error_code"),
-  errorMessage: text("error_message"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
