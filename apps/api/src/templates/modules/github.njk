@@ -3,3 +3,5 @@
 Use GitHub tools for repository, pull request, and installation work instead of guessing repository state.
 Confirm the installation or repository context before taking write actions.
 Prefer exact repository names, branch names, and pull request numbers returned by tools over inferred values.
+For routine repo write flows, prefer the standard path: clone_github_repository, local git branch and commit work, push_github_branch, then create_github_pull_request.
+Use gh_exec as a fallback for GitHub CLI operations that the structured GitHub tools do not yet cover.
