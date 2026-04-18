@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ExternalLinkIcon, FileTextIcon, GitPullRequestIcon, PlayIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { AssignTaskExecutionDialog } from "./assign_task_execution_dialog";
 import type { TaskViewType } from "./task_ui";
 import type { taskDetailPageExecuteTaskMutation } from "./__generated__/taskDetailPageExecuteTaskMutation.graphql";
 import type { taskDetailPageQuery } from "./__generated__/taskDetailPageQuery.graphql";
@@ -273,6 +274,9 @@ function TaskDetailPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
   const normalizedTaskId = String(taskId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
+  const [isAssignExecutionDialogOpen, setAssignExecutionDialogOpen] = useState(false);
+  const [assignExecutionErrorMessage, setAssignExecutionErrorMessage] = useState<string | null>(null);
+  const [isAssigningExecutionAgent, setAssigningExecutionAgent] = useState(false);
   if (!normalizedTaskId) {
     throw new Error("Task ID is required.");
   }
@@ -441,6 +445,34 @@ function TaskDetailPageContent() {
     });
   };
 
+  const assignAgentAndExecuteTask = async (agentId: string) => {
+    setAssigningExecutionAgent(true);
+    setAssignExecutionErrorMessage(null);
+
+    try {
+      await saveTask({
+        assignedAgentId: agentId,
+        assignedUserId: null,
+      });
+      await executeTask();
+      setAssignExecutionDialogOpen(false);
+    } catch (error: unknown) {
+      setAssignExecutionErrorMessage(error instanceof Error ? error.message : "Failed to assign and execute task.");
+    } finally {
+      setAssigningExecutionAgent(false);
+    }
+  };
+
+  const startTaskExecution = () => {
+    setAssignExecutionErrorMessage(null);
+    if (currentAssignedAgentId) {
+      void executeTask();
+      return;
+    }
+
+    setAssignExecutionDialogOpen(true);
+  };
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <div className="flex flex-col gap-4">
@@ -514,15 +546,15 @@ function TaskDetailPageContent() {
               </div>
               <CardAction>
                 <Button
-                  disabled={isExecuteTaskInFlight || currentAssignedAgentId === null}
+                  disabled={isExecuteTaskInFlight || isAssigningExecutionAgent}
                   onClick={() => {
-                    void executeTask();
+                    startTaskExecution();
                   }}
                   size="sm"
                   type="button"
                 >
-                  <PlayIcon />
-                  {isExecuteTaskInFlight ? "Starting..." : "Execute Task"}
+                  <PlayIcon data-icon="inline-start" />
+                  {isExecuteTaskInFlight || isAssigningExecutionAgent ? "Starting..." : "Execute Task"}
                 </Button>
               </CardAction>
             </CardHeader>
@@ -615,11 +647,6 @@ function TaskDetailPageContent() {
                 value={currentAssigneeValue}
               />
 
-              {currentAssignedAgentId === null ? (
-                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                  Assign this task to an agent to enable execution.
-                </div>
-              ) : null}
             </CardContent>
           </Card>
 
@@ -816,6 +843,24 @@ function TaskDetailPageContent() {
           </CardContent>
         </Card>
       ) : null}
+
+      <AssignTaskExecutionDialog
+        agents={data.Agents.map((agent: TaskDetailPageAgent) => ({
+          id: agent.id,
+          name: agent.name,
+        }))}
+        errorMessage={assignExecutionErrorMessage}
+        isOpen={isAssignExecutionDialogOpen}
+        isSaving={isAssigningExecutionAgent || isExecuteTaskInFlight}
+        onAssignAndExecute={assignAgentAndExecuteTask}
+        onOpenChange={(open) => {
+          setAssignExecutionDialogOpen(open);
+          if (!open) {
+            setAssignExecutionErrorMessage(null);
+          }
+        }}
+        taskName={task.name}
+      />
     </main>
   );
 }

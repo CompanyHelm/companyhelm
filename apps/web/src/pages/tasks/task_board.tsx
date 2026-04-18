@@ -242,11 +242,7 @@ export function TaskBoard(props: TaskBoardProps) {
                         >
                           <Button
                             aria-label={`Execute ${task.name}`}
-                            disabled={
-                              props.executingTaskId === task.id
-                              || !task.assignee
-                              || task.assignee.kind !== "agent"
-                            }
+                            disabled={props.executingTaskId === task.id}
                             onClick={(event) => {
                               stopTaskCardPropagation(event);
                               void props.onExecuteTask(task.id);

@@ -265,11 +265,7 @@ export function TaskList(props: TaskListProps) {
                     >
                       <Button
                         aria-label={`Execute ${task.name}`}
-                        disabled={
-                          props.executingTaskId === task.id
-                          || !task.assignee
-                          || task.assignee.kind !== "agent"
-                        }
+                        disabled={props.executingTaskId === task.id}
                         onClick={(event) => {
                           stopRowNavigation(event);
                           void props.onExecuteTask(task.id);

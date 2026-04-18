@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
+import { AssignTaskExecutionDialog } from "./assign_task_execution_dialog";
 import { CreateTaskDialog } from "./create_task_dialog";
 import { TaskBoard } from "./task_board";
 import { TaskList } from "./task_list";
@@ -19,6 +20,7 @@ import type { tasksPageDeleteTaskMutation } from "./__generated__/tasksPageDelet
 import type { tasksPageExecuteTaskMutation } from "./__generated__/tasksPageExecuteTaskMutation.graphql";
 import type { tasksPageQuery } from "./__generated__/tasksPageQuery.graphql";
 import type { tasksPageSetTaskStageMutation } from "./__generated__/tasksPageSetTaskStageMutation.graphql";
+import type { tasksPageUpdateTaskMutation } from "./__generated__/tasksPageUpdateTaskMutation.graphql";
 
 type TasksPageStage = tasksPageQuery["response"]["TaskStages"][number];
 type TasksPageTask = tasksPageQuery["response"]["Tasks"][number];
@@ -119,6 +121,28 @@ const tasksPageExecuteTaskMutationNode = graphql`
   }
 `;
 
+const tasksPageUpdateTaskMutationNode = graphql`
+  mutation tasksPageUpdateTaskMutation($input: UpdateTaskInput!) {
+    UpdateTask(input: $input) {
+      id
+      name
+      description
+      status
+      taskStageId
+      taskStageName
+      assignedAt
+      assignee {
+        kind
+        id
+        name
+        email
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 type TasksPageSearch = {
   stage?: string;
   viewType?: TaskViewType;
@@ -200,6 +224,8 @@ function TasksPageContent() {
   const [createTaskStageId, setCreateTaskStageId] = useState<string | null>(null);
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [executingTaskId, setExecutingTaskId] = useState<string | null>(null);
+  const [assignExecutionTaskId, setAssignExecutionTaskId] = useState<string | null>(null);
+  const [assignExecutionErrorMessage, setAssignExecutionErrorMessage] = useState<string | null>(null);
   const [isViewMenuOpen, setViewMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement | null>(null);
   const data = useLazyLoadQuery<tasksPageQuery>(
@@ -220,6 +246,9 @@ function TasksPageContent() {
   );
   const [commitExecuteTask] = useMutation<tasksPageExecuteTaskMutation>(
     tasksPageExecuteTaskMutationNode,
+  );
+  const [commitUpdateTask, isUpdateTaskInFlight] = useMutation<tasksPageUpdateTaskMutation>(
+    tasksPageUpdateTaskMutationNode,
   );
   const selectedViewType: TaskViewType = search.viewType === "list" ? "list" : "board";
   const allStages: TaskStageRecord[] = data.TaskStages.map((stage: TasksPageStage) => ({
@@ -280,6 +309,9 @@ function TasksPageContent() {
   const currentStageSearchValue = selectedStageKeys.length > 0
     ? selectedStageKeys.join(",")
     : undefined;
+  const assignExecutionTask = assignExecutionTaskId
+    ? data.Tasks.find((task: TasksPageTask) => task.id === assignExecutionTaskId) ?? null
+    : null;
 
   useEffect(() => {
     if (!isViewMenuOpen) {
@@ -410,40 +442,102 @@ function TasksPageContent() {
     }
   }
 
-  async function executeTask(taskId: string) {
+  async function commitTaskExecution(taskId: string) {
+    await new Promise<void>((resolve, reject) => {
+      commitExecuteTask({
+        variables: {
+          input: {
+            taskId,
+          },
+        },
+        updater: (store: {
+          get(taskRecordId: string): { setValue(value: unknown, fieldName: string): void } | null | undefined;
+        }) => {
+          store.get(taskId)?.setValue("in_progress", "status");
+        },
+        onCompleted: (
+          _response: tasksPageExecuteTaskMutation["response"],
+          errors: ReadonlyArray<{ message: string }> | null | undefined,
+        ) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  }
+
+  async function assignAgentToTask(taskId: string, agentId: string) {
+    await new Promise<void>((resolve, reject) => {
+      commitUpdateTask({
+        variables: {
+          input: {
+            taskId,
+            assignedAgentId: agentId,
+            assignedUserId: null,
+          },
+        },
+        onCompleted: (
+          _response: tasksPageUpdateTaskMutation["response"],
+          errors: ReadonlyArray<{ message: string }> | null | undefined,
+        ) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  }
+
+  async function executeAssignedTask(taskId: string) {
     setExecutingTaskId(taskId);
     setErrorMessage(null);
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        commitExecuteTask({
-          variables: {
-            input: {
-              taskId,
-            },
-          },
-          updater: (store: {
-            get(taskRecordId: string): { setValue(value: unknown, fieldName: string): void } | null | undefined;
-          }) => {
-            store.get(taskId)?.setValue("in_progress", "status");
-          },
-          onCompleted: (
-            _response: tasksPageExecuteTaskMutation["response"],
-            errors: ReadonlyArray<{ message: string }> | null | undefined,
-          ) => {
-            const nextErrorMessage = errors?.[0]?.message;
-            if (nextErrorMessage) {
-              reject(new Error(nextErrorMessage));
-              return;
-            }
-
-            resolve();
-          },
-          onError: reject,
-        });
-      });
+      await commitTaskExecution(taskId);
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to execute task.");
+    } finally {
+      setExecutingTaskId(null);
+    }
+  }
+
+  async function executeTask(taskId: string) {
+    const task = data.Tasks.find((candidateTask: TasksPageTask) => candidateTask.id === taskId);
+    const assignedAgentId = task?.assignee?.kind === "agent" ? task.assignee.id : null;
+    if (!assignedAgentId) {
+      setAssignExecutionTaskId(taskId);
+      setAssignExecutionErrorMessage(null);
+      return;
+    }
+
+    await executeAssignedTask(taskId);
+  }
+
+  async function assignAgentAndExecuteTask(agentId: string) {
+    if (!assignExecutionTaskId) {
+      return;
+    }
+
+    setExecutingTaskId(assignExecutionTaskId);
+    setAssignExecutionErrorMessage(null);
+
+    try {
+      await assignAgentToTask(assignExecutionTaskId, agentId);
+      await commitTaskExecution(assignExecutionTaskId);
+      setAssignExecutionTaskId(null);
+    } catch (error: unknown) {
+      setAssignExecutionErrorMessage(error instanceof Error ? error.message : "Failed to assign and execute task.");
     } finally {
       setExecutingTaskId(null);
     }
@@ -694,6 +788,26 @@ function TasksPageContent() {
             setCreateTaskStageId(null);
           }
         }}
+      />
+
+      <AssignTaskExecutionDialog
+        agents={data.Agents.map((agent: TasksPageAgent) => ({
+          id: agent.id,
+          name: agent.name,
+        }))}
+        errorMessage={assignExecutionErrorMessage}
+        isOpen={assignExecutionTask !== null}
+        isSaving={isUpdateTaskInFlight || (assignExecutionTaskId !== null && executingTaskId === assignExecutionTaskId)}
+        onAssignAndExecute={assignAgentAndExecuteTask}
+        onOpenChange={(open) => {
+          if (open) {
+            return;
+          }
+
+          setAssignExecutionTaskId(null);
+          setAssignExecutionErrorMessage(null);
+        }}
+        taskName={assignExecutionTask?.name ?? "this task"}
       />
     </main>
   );
