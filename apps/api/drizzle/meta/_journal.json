@@ -729,6 +729,13 @@
       "when": 1776537708459,
       "tag": "0103_stale_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1776541502783,
+      "tag": "0104_dry_rocket_racer",
+      "breakpoints": true
     }
   ]
 }
