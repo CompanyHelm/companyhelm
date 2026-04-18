@@ -708,6 +708,13 @@
       "when": 1776492344211,
       "tag": "0100_glorious_garia",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1776534228000,
+      "tag": "0101_routine_cron_trigger_schedule_bounds",
+      "breakpoints": true
     }
   ]
 }
