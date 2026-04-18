@@ -6,12 +6,16 @@ test("SmoothStreamingTextController reveals appended text over multiple animatio
   const controller = new SmoothStreamingTextController();
 
   const initialState = controller.setTargetText("Hello world", { isComplete: false });
-  assert.equal(initialState.displayText, "H");
-  assert.equal(initialState.shouldContinue, true);
+  assert.equal(initialState.displayText, "");
+  assert.equal(initialState.shouldContinue, false);
+
+  const bufferedState = controller.setTargetText("Hello world again", { isComplete: false });
+  assert.equal(bufferedState.displayText, "Hello ");
+  assert.equal(bufferedState.shouldContinue, true);
 
   const firstFrameState = controller.advanceTo(16);
-  assert.ok(firstFrameState.displayText.length > initialState.displayText.length);
-  assert.ok(firstFrameState.displayText.length < "Hello world".length);
+  assert.ok(firstFrameState.displayText.length > bufferedState.displayText.length);
+  assert.ok(firstFrameState.displayText.length < "Hello world again".length);
   assert.equal(firstFrameState.shouldContinue, true);
 
   let nextState = firstFrameState;
@@ -19,8 +23,29 @@ test("SmoothStreamingTextController reveals appended text over multiple animatio
     nextState = controller.advanceTo(timestamp);
   }
 
-  assert.equal(nextState.displayText, "Hello world");
+  assert.equal(nextState.displayText, "Hello world again");
   assert.equal(nextState.shouldContinue, false);
+});
+
+test("SmoothStreamingTextController keeps tiny prefixes hidden until enough text arrives", () => {
+  const controller = new SmoothStreamingTextController();
+
+  const shortWordState = controller.setTargetText("Absolutel", { isComplete: false });
+  assert.equal(shortWordState.displayText, "");
+  assert.equal(shortWordState.shouldContinue, false);
+
+  const sentenceState = controller.setTargetText("Absolutely, here is the plan.", { isComplete: false });
+  assert.equal(sentenceState.displayText, "Absolu");
+  assert.equal(sentenceState.shouldContinue, true);
+
+  const markdownPrefixController = new SmoothStreamingTextController();
+  const starState = markdownPrefixController.setTargetText("*", { isComplete: false });
+  assert.equal(starState.displayText, "");
+  assert.equal(starState.shouldContinue, false);
+
+  const bulletState = markdownPrefixController.setTargetText("* concrete next steps", { isComplete: false });
+  assert.equal(bulletState.displayText, "* conc");
+  assert.equal(bulletState.shouldContinue, true);
 });
 
 test("SmoothStreamingTextController snaps immediately when the server marks the message complete", () => {
