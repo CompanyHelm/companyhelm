@@ -6,6 +6,8 @@ import { E2bTemplateBuild } from "./template_build.ts";
  */
 export class E2bTemplatesManager {
   private static readonly DEFAULT_NODE_MAJOR_VERSION = "25";
+  private static readonly DEFAULT_GIT_USER_EMAIL = "agent@companyhelm.internal";
+  private static readonly DEFAULT_GIT_USER_NAME = "CompanyHelm Agent";
   private static readonly NVM_INSTALL_VERSION = "v0.40.3";
   private static readonly NVM_DIRECTORY = "/usr/local/nvm";
 
@@ -56,8 +58,16 @@ export class E2bTemplatesManager {
       .aptInstall("gh")
       .aptInstall("ripgrep")
       .aptInstall("tmux")
+      .runCmd(this.buildGitIdentityCommand())
       .runCmd("curl -fsSL https://get.docker.com | sudo sh")
       .runCmd(this.buildNvmInstallCommand());
+  }
+
+  private buildGitIdentityCommand(): string {
+    return [
+      `git config --system user.name ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_NAME)}`,
+      `git config --system user.email ${E2bTemplatesManager.shellQuote(E2bTemplatesManager.DEFAULT_GIT_USER_EMAIL)}`,
+    ].join(" && ");
   }
 
   private buildNvmInstallCommand(): string {
@@ -76,5 +86,9 @@ sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/npm" /usr/local/bi
 sudo ln -sf "$NVM_DIR/versions/node/$DEFAULT_NODE_VERSION/bin/npx" /usr/local/bin/npx
 printf "%s\\n" "export NVM_DIR=\\"${E2bTemplatesManager.NVM_DIRECTORY}\\"" "[ -s \\"\\$NVM_DIR/nvm.sh\\" ] && . \\"\\$NVM_DIR/nvm.sh\\"" | sudo tee /etc/profile.d/companyhelm-nvm.sh >/dev/null
 '`;
+  }
+
+  private static shellQuote(value: string): string {
+    return `'${value.replaceAll("'", `"'"'`)}'`;
   }
 }

@@ -29,6 +29,8 @@ test("E2bTemplatesManager adds nvm-backed Node 25 setup to every template", () =
     .map((instruction) => instruction.args[0] ?? "");
 
   for (const runCommands of [mediumRunCommands, smallRunCommands]) {
+    assert.ok(runCommands.some((command) => command.includes("git config --system user.name 'CompanyHelm Agent'")));
+    assert.ok(runCommands.some((command) => command.includes("git config --system user.email 'agent@companyhelm.internal'")));
     assert.ok(runCommands.includes("curl -fsSL https://get.docker.com | sudo sh"));
     assert.ok(runCommands.some((command) => command.includes("nvm install 25")));
     assert.ok(runCommands.some((command) => command.includes("nvm alias default 25")));

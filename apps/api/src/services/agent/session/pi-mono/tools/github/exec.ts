@@ -92,9 +92,10 @@ export class AgentGithubExecTool {
       name: "gh_exec",
       parameters: AgentGithubExecTool.parameters,
       promptGuidelines: [
-        "Use gh_exec when you need the flexibility of the gh CLI against a linked installation.",
+        "Use gh_exec when you need the flexibility of the gh CLI against a linked installation for operations that the structured GitHub tools do not cover.",
         "Call list_github_installations first if you do not already know the installation id to target.",
         "Do not use gh auth commands because the installation token is injected automatically for the command.",
+        "Prefer clone_github_repository, push_github_branch, and create_github_pull_request for the standard repository write workflow.",
         "If the command is still running when the tool returns after yield_time_ms, the session remains open regardless of keepSession.",
         "Set keepSession to true when you want a newly created shell session to stay alive after the command finishes.",
       ],

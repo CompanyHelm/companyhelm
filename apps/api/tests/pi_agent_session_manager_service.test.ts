@@ -140,6 +140,8 @@ const baseToolNames = [
   "update_agent",
   "list_github_installations",
   "clone_github_repository",
+  "push_github_branch",
+  "create_github_pull_request",
   "gh_exec",
   "web_search",
   "web_fetch",
