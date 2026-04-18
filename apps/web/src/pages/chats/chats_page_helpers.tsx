@@ -731,9 +731,13 @@ export function restoreTranscriptScrollPosition(
 }
 
 export function resolveSessionTitleOverride(
-  session: Pick<SessionRecord, "id" | "inferredTitle" | "userSetTitle">,
+  session: Pick<SessionRecord, "associatedTask" | "id" | "inferredTitle" | "userSetTitle">,
   titleOverridesBySessionId: Readonly<Record<string, string>>,
 ): string {
+  if (session.associatedTask) {
+    return session.associatedTask.name;
+  }
+
   return resolvePersistedSessionTitle(session) ?? titleOverridesBySessionId[session.id] ?? "Untitled chat";
 }
 

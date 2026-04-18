@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArchiveIcon, ChevronRightIcon, PlusIcon, XIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -159,6 +160,8 @@ export function ChatListPanel({
                   const isSessionArchiving = isArchiveSessionInFlight && archivingSessionId === session.id;
                   const hasOpenHumanQuestion = sessionIdsWithOpenHumanQuestions.has(session.id);
                   const isSessionRunning = isRunningSession(session);
+                  const sessionListTitle = resolveSessionTitleOverride(session, sessionTitleOverridesById);
+                  const hasAssociatedTask = Boolean(session.associatedTask);
 
                   return (
                     <li key={session.id}>
@@ -188,13 +191,25 @@ export function ChatListPanel({
                               isSessionRunning,
                             })}
                           </span>
-                          <p className={`block min-w-0 truncate text-xs font-medium ${isMobilePanel ? "text-sidebar-foreground" : "text-foreground"}`}>
-                            {resolveSessionTitleOverride(session, sessionTitleOverridesById)}
-                          </p>
+                          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <span className={`block min-w-0 flex-1 truncate text-xs font-medium ${isMobilePanel ? "text-sidebar-foreground" : "text-foreground"}`}>
+                              {sessionListTitle}
+                            </span>
+                            {hasAssociatedTask ? (
+                              <Badge
+                                aria-label="Task-linked chat"
+                                className="h-4 px-1 text-[0.55rem] leading-none"
+                                title="Task-linked chat"
+                                variant="outline"
+                              >
+                                Task
+                              </Badge>
+                            ) : null}
+                          </span>
                         </button>
                         <div className="flex shrink-0 items-start gap-2">
                           <button
-                            aria-label={`Archive ${resolveSessionTitleOverride(session, sessionTitleOverridesById)}`}
+                            aria-label={`Archive ${sessionListTitle}`}
                             className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-transparent transition disabled:cursor-not-allowed disabled:opacity-60 ${
                               isMobilePanel
                                 ? "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
