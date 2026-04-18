@@ -48,9 +48,7 @@ interface RoutineDialogProps {
   onSave(input: {
     assignedAgentId: string;
     cronPattern: string;
-    cronTriggerEnabled: boolean;
     cronTriggerId?: string;
-    enabled: boolean;
     id?: string;
     instructions: string;
     name: string;
@@ -67,8 +65,6 @@ const triggerTypeItems = [{ label: "Cron", value: "cron" }];
 export function RoutineDialog(props: RoutineDialogProps) {
   const [assignedAgentId, setAssignedAgentId] = useState("");
   const [cronPattern, setCronPattern] = useState(defaultCronPattern);
-  const [cronTriggerEnabled, setCronTriggerEnabled] = useState(true);
-  const [enabled, setEnabled] = useState(true);
   const [instructions, setInstructions] = useState("");
   const [name, setName] = useState("");
   const cronTrigger = props.routine?.triggers[0] ?? null;
@@ -78,8 +74,6 @@ export function RoutineDialog(props: RoutineDialogProps) {
     if (!props.isOpen) {
       setAssignedAgentId("");
       setCronPattern(defaultCronPattern);
-      setCronTriggerEnabled(true);
-      setEnabled(true);
       setInstructions("");
       setName("");
       return;
@@ -87,8 +81,6 @@ export function RoutineDialog(props: RoutineDialogProps) {
 
     setAssignedAgentId(props.routine?.assignedAgentId ?? props.agents[0]?.id ?? "");
     setCronPattern(props.routine?.triggers[0]?.cronPattern ?? defaultCronPattern);
-    setCronTriggerEnabled(props.routine?.triggers[0]?.enabled ?? true);
-    setEnabled(props.routine?.enabled ?? true);
     setInstructions(props.routine?.instructions ?? "");
     setName(props.routine?.name ?? "");
   }, [props.agents, props.isOpen, props.routine]);
@@ -202,40 +194,6 @@ export function RoutineDialog(props: RoutineDialogProps) {
             />
           </div>
 
-          <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
-            <input
-              checked={enabled}
-              className="mt-0.5 size-4 rounded border border-input bg-background"
-              onChange={(event) => {
-                setEnabled(event.target.checked);
-              }}
-              type="checkbox"
-            />
-            <span className="grid gap-1">
-              <span className="text-xs font-medium text-foreground">Routine enabled</span>
-              <span className="text-xs text-muted-foreground">
-                Disabled routines keep their definitions but do not run from cron triggers.
-              </span>
-            </span>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
-            <input
-              checked={cronTriggerEnabled}
-              className="mt-0.5 size-4 rounded border border-input bg-background"
-              onChange={(event) => {
-                setCronTriggerEnabled(event.target.checked);
-              }}
-              type="checkbox"
-            />
-            <span className="grid gap-1">
-              <span className="text-xs font-medium text-foreground">Cron enabled</span>
-              <span className="text-xs text-muted-foreground">
-                Disabled cron triggers stay saved but are removed from the BullMQ scheduler.
-              </span>
-            </span>
-          </label>
-
           {props.errorMessage ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {props.errorMessage}
@@ -260,9 +218,7 @@ export function RoutineDialog(props: RoutineDialogProps) {
               await props.onSave({
                 assignedAgentId,
                 cronPattern,
-                cronTriggerEnabled,
                 cronTriggerId: cronTrigger?.id,
-                enabled,
                 id: props.routine?.id,
                 instructions,
                 name,

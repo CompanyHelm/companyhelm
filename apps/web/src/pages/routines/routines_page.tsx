@@ -334,9 +334,7 @@ function RoutinesPageContent() {
   async function saveRoutine(input: {
     assignedAgentId: string;
     cronPattern: string;
-    cronTriggerEnabled: boolean;
     cronTriggerId?: string;
-    enabled: boolean;
     id?: string;
     instructions: string;
     name: string;
@@ -347,7 +345,6 @@ function RoutinesPageContent() {
       const routineId = await saveRoutineRecord(input);
       await saveRoutineCronTrigger({
         cronPattern: input.cronPattern,
-        enabled: input.cronTriggerEnabled,
         id: input.cronTriggerId,
         routineId,
       });
@@ -360,7 +357,6 @@ function RoutinesPageContent() {
 
   async function saveRoutineRecord(input: {
     assignedAgentId: string;
-    enabled: boolean;
     id?: string;
     instructions: string;
     name: string;
@@ -369,7 +365,7 @@ function RoutinesPageContent() {
       const variables = {
         input: {
           assignedAgentId: input.assignedAgentId,
-          enabled: input.enabled,
+          enabled: true,
           instructions: input.instructions,
           name: input.name,
         },
@@ -422,7 +418,6 @@ function RoutinesPageContent() {
 
   async function saveRoutineCronTrigger(input: {
     cronPattern: string;
-    enabled: boolean;
     id?: string;
     routineId: string;
   }): Promise<void> {
@@ -432,7 +427,7 @@ function RoutinesPageContent() {
           variables: {
             input: {
               cronPattern: input.cronPattern,
-              enabled: input.enabled,
+              enabled: true,
               id: input.id,
             },
           },
@@ -453,7 +448,7 @@ function RoutinesPageContent() {
         variables: {
           input: {
             cronPattern: input.cronPattern,
-            enabled: input.enabled,
+            enabled: true,
             routineId: input.routineId,
             timezone: getBrowserTimezone(),
           },
