@@ -8,4 +8,5 @@ test("allows E2B preview hosts in the Vite dev server", () => {
 
   assert.ok(Array.isArray(allowedHosts));
   assert.ok(allowedHosts.includes(".e2b.app"));
+  assert.equal(serverConfig?.host, "0.0.0.0");
 });
