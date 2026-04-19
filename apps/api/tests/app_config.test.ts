@@ -301,6 +301,30 @@ test("AppConfig allows GitHub webhook secret to be omitted", () => {
   }
 });
 
+test("AppConfig defaults newer worker queue concurrency when deployment config lags the schema", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+
+  const parsedDocument = ConfigDocument.parse({
+    ...document,
+    workers: {
+      session_process: document.workers.session_process,
+    },
+  });
+
+  assert.deepEqual(parsedDocument.workers, {
+    github_webhooks: {
+      concurrency: 10,
+    },
+    routine_triggers: {
+      concurrency: 10,
+    },
+    session_process: {
+      concurrency: 4,
+    },
+  });
+});
+
 test("AppConfig loads Clerk auth settings from local.yaml", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const document = ConfigLoader.load(fixture.configPath, ConfigDocument);

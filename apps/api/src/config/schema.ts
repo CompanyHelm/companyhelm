@@ -4,6 +4,11 @@ import { z } from "zod";
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PositiveIntegerSchema = z.number().int().positive();
+const DefaultWorkerConcurrencySchema = z.object({
+  concurrency: PositiveIntegerSchema,
+}).default({
+  concurrency: 10,
+});
 
 const DatabaseRoleSchema = z.object({
   username: NonEmptyStringSchema,
@@ -54,12 +59,8 @@ export const ConfigDocument = z.object({
     password: z.string(),
   }),
   workers: z.object({
-    github_webhooks: z.object({
-      concurrency: PositiveIntegerSchema,
-    }),
-    routine_triggers: z.object({
-      concurrency: PositiveIntegerSchema,
-    }),
+    github_webhooks: DefaultWorkerConcurrencySchema,
+    routine_triggers: DefaultWorkerConcurrencySchema,
     session_process: z.object({
       concurrency: PositiveIntegerSchema,
     }),
