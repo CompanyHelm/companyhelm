@@ -41,21 +41,47 @@ export class ApplicationNavigationCatalog {
   public static buildMainGroups(input: {
     isComputeProvidersEnabled: boolean;
   }): readonly ApplicationNavigationGroupRecord[] {
-    const infrastructureItems: ApplicationNavigationItemRecord[] = [
+    const agentItems: ApplicationNavigationItemRecord[] = [
+      {
+        icon: BotIcon,
+        label: "Agents",
+        to: "/agents",
+      },
+      {
+        icon: SparklesIcon,
+        label: "Skills",
+        to: "/skills",
+      },
+      {
+        icon: KeyRoundIcon,
+        label: "Model Credentials",
+        to: "/model-provider-credentials",
+      },
+      {
+        icon: LockKeyholeIcon,
+        label: "Secrets",
+        to: "/secrets",
+      },
+      {
+        icon: PlugIcon,
+        label: "MCP Servers",
+        to: "/mcp-servers",
+      },
       {
         icon: ServerIcon,
         label: "Environments",
         to: "/environments",
       },
-    ];
-
-    if (input.isComputeProvidersEnabled) {
-      infrastructureItems.push({
+      {
         icon: WrenchIcon,
         label: "Compute Providers",
         to: "/compute-providers",
-      });
-    }
+      },
+    ];
+
+    const visibleAgentItems = input.isComputeProvidersEnabled
+      ? agentItems
+      : agentItems.filter((item) => item.to !== "/compute-providers");
 
     return [
       {
@@ -104,38 +130,8 @@ export class ApplicationNavigationCatalog {
         label: "Automation",
       },
       {
-        items: [
-          {
-            icon: BotIcon,
-            label: "Agents",
-            to: "/agents",
-          },
-          {
-            icon: SparklesIcon,
-            label: "Skills",
-            to: "/skills",
-          },
-          {
-            icon: KeyRoundIcon,
-            label: "Model Credentials",
-            to: "/model-provider-credentials",
-          },
-          {
-            icon: LockKeyholeIcon,
-            label: "Secrets",
-            to: "/secrets",
-          },
-          {
-            icon: PlugIcon,
-            label: "MCP Servers",
-            to: "/mcp-servers",
-          },
-        ],
+        items: visibleAgentItems,
         label: "Agent",
-      },
-      {
-        items: infrastructureItems,
-        label: "Infrastructure",
       },
       {
         items: [

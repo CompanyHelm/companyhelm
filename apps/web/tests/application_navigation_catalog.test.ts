@@ -22,12 +22,16 @@ test("builds the approved sidebar group structure when compute providers are ena
         label: "Automation",
       },
       {
-        items: ["Agents", "Skills", "Model Credentials", "Secrets", "MCP Servers"],
+        items: [
+          "Agents",
+          "Skills",
+          "Model Credentials",
+          "Secrets",
+          "MCP Servers",
+          "Environments",
+          "Compute Providers",
+        ],
         label: "Agent",
-      },
-      {
-        items: ["Environments", "Compute Providers"],
-        label: "Infrastructure",
       },
       {
         items: ["Repositories", "Knowledge Base"],
@@ -43,8 +47,8 @@ test("omits compute providers when the feature flag is disabled", () => {
   });
 
   assert.deepEqual(
-    groups.find((group) => group.label === "Infrastructure")?.items.map((item) => item.label),
-    ["Environments"],
+    groups.find((group) => group.label === "Agent")?.items.map((item) => item.label),
+    ["Agents", "Skills", "Model Credentials", "Secrets", "MCP Servers", "Environments"],
   );
 });
 
