@@ -177,6 +177,7 @@ const baseToolNames = [
   "web_fetch",
   "ask_human_question",
   "send_agent_message",
+  "update_workflow_run_step_status",
   "list_tasks",
   "list_assigned_tasks",
   "create_task",
