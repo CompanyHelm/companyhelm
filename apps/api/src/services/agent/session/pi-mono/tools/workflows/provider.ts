@@ -1,10 +1,12 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
+import { AgentListWorkflowsTool } from "./list_workflows.ts";
 import { AgentWorkflowToolService } from "./service.ts";
-import { AgentUpdateWorkflowRunStepStatusTool } from "./update_step_status.ts";
+import { AgentStartWorkflowTool } from "./start_workflow.ts";
 
 /**
- * Exposes workflow-run tools only for PI Mono sessions currently executing a workflow run.
+ * Groups the workflow discovery and kickoff tools behind one provider so every PI Mono session can
+ * inspect startable workflows and create new workflow runs without bespoke bootstrap wiring.
  */
 export class AgentWorkflowToolProvider extends AgentToolProviderInterface {
   private readonly workflowToolService: AgentWorkflowToolService;
@@ -15,11 +17,9 @@ export class AgentWorkflowToolProvider extends AgentToolProviderInterface {
   }
 
   createToolDefinitions(): ToolDefinition[] {
-    const updateStepStatusTool = new AgentUpdateWorkflowRunStepStatusTool(this.workflowToolService)
-      .createDefinition() as unknown as ToolDefinition;
-
     return [
-      updateStepStatusTool,
+      new AgentListWorkflowsTool(this.workflowToolService).createDefinition() as unknown as ToolDefinition,
+      new AgentStartWorkflowTool(this.workflowToolService).createDefinition() as unknown as ToolDefinition,
     ];
   }
 }

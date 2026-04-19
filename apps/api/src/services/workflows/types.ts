@@ -100,6 +100,9 @@ export type WorkflowRunCreateInput = {
   agentId: string;
   companyId: string;
   inputValues: WorkflowRunInputValue[];
+  parentWorkflowRunId?: string | null;
+  startedByAgentId?: string | null;
+  startedBySessionId?: string | null;
   startedByUserId?: string | null;
   workflowDefinitionId: string;
 };

@@ -36,6 +36,7 @@ import { DefaultAgentSessionModuleRegistry } from "./modules/default_registry.ts
 import { AgentSessionRuntimeContext } from "./runtime_context.ts";
 import { Config } from "../../../../config/schema.ts";
 import { McpService } from "../../../mcp/service.ts";
+import { WorkflowService } from "../../../workflows/service.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -123,6 +124,15 @@ export class PiMonoSessionManagerService {
     sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
     @inject(McpService)
     mcpService: McpService = new McpService(),
+    @inject(WorkflowService)
+    workflowService: WorkflowService = {
+      async listWorkflows() {
+        throw new Error("workflow definitions should not be loaded during ensureSession");
+      },
+      async startWorkflowRun() {
+        throw new Error("workflow runs should not be started during ensureSession");
+      },
+    } as never,
   ) {
     this.logger = logger.child({
       component: "pi_mono_session_manager_service",
@@ -154,6 +164,7 @@ export class PiMonoSessionManagerService {
       modelRegistry: this.appModelRegistry,
       secretService: this.secretService,
       templateService: this.templateService,
+      workflowService,
     });
   }
 

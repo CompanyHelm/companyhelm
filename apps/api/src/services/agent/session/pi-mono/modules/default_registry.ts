@@ -7,6 +7,7 @@ import { ModelProviderService } from "../../../../ai_providers/model_provider_se
 import { ComputeProviderDefinitionService } from "../../../../compute_provider_definitions/service.ts";
 import { SecretService } from "../../../../secrets/service.ts";
 import { TaskService } from "../../../../task_service.ts";
+import { WorkflowService } from "../../../../workflows/service.ts";
 import { ExaWebClient } from "../../../../web_search/exa_client.ts";
 import { AgentConversationService } from "../../../../conversations/service.ts";
 import { AgentEnvironmentTemplateService } from "../../../../environments/template_service.ts";
@@ -32,6 +33,7 @@ import { SkillsSessionModule } from "./skills.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
+import { WorkflowManagementSessionModule } from "./workflow_management.ts";
 import { WorkflowsSessionModule } from "./workflows.ts";
 
 type DefaultAgentSessionModuleRegistryInput = {
@@ -47,6 +49,7 @@ type DefaultAgentSessionModuleRegistryInput = {
   modelRegistry: ModelRegistry;
   secretService: SecretService;
   templateService: AgentEnvironmentTemplateService;
+  workflowService: WorkflowService;
 };
 
 /**
@@ -78,6 +81,7 @@ export class DefaultAgentSessionModuleRegistry {
       new McpSessionModule(input.logger, input.mcpService),
       new InboxSessionModule(input.inboxService),
       new ConversationSessionModule(input.agentConversationService),
+      new WorkflowManagementSessionModule(input.workflowService),
       new WorkflowsSessionModule(),
       new TasksSessionModule(new TaskService()),
       new ArtifactsSessionModule(new ArtifactService()),
