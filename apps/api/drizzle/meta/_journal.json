@@ -736,6 +736,13 @@
       "when": 1776541502783,
       "tag": "0104_dry_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1776563016885,
+      "tag": "0105_harsh_deathstrike",
+      "breakpoints": true
     }
   ]
 }

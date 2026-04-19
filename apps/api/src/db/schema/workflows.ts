@@ -33,7 +33,7 @@ export const workflowDefinitions = pgTable("workflow_definitions", {
     .notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  instructions: text("instructions"),
+  instructions_template: text("instructions_template"),
   isEnabled: boolean("is_enabled").notNull().default(true),
   createdByUserId: uuid("created_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
@@ -82,7 +82,7 @@ export const workflowStepDefinitions = pgTable("workflow_step_definitions", {
     .notNull(),
   stepId: text("step_id").notNull(),
   name: text("name").notNull(),
-  instructions: text("instructions"),
+  instructions_template: text("instructions_template"),
   ordinal: integer("ordinal").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -115,7 +115,7 @@ export const workflowRuns = pgTable("workflow_runs", {
     .notNull(),
   // Steps with an ordinal before the running step are considered completed.
   runningStepRunId: uuid("running_step_run_id")
-    .references(() => workflowStepRuns.id, { onDelete: "set null" }),
+    .references((): AnyPgColumn => workflowStepRuns.id, { onDelete: "set null" }),
   startedByUserId: uuid("started_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   startedByAgentId: uuid("started_by_agent_id")
@@ -134,7 +134,7 @@ export const workflowRuns = pgTable("workflow_runs", {
   workflowDefinitionIdIndex: index("workflow_runs_definition_id_idx")
     .on(table.workflowDefinitionId),
   parentWorkflowRunIdIndex: index("workflow_runs_parent_workflow_run_id_idx").on(table.parentWorkflowRunId),
-  parentStepRunIdIndex: index("workflow_runs_parent_step_run_id_idx").on(table.parentStepRunId),
+  runningStepRunIdIndex: index("workflow_runs_running_step_run_id_idx").on(table.runningStepRunId),
   startedBySessionIdIndex: index("workflow_runs_started_by_session_id_idx").on(table.startedBySessionId),
   sessionIdUnique: uniqueIndex("workflow_runs_session_id_uidx").on(table.sessionId),
   oneStarterCheck: check(
@@ -151,7 +151,7 @@ export const workflowStepRuns = pgTable("workflow_step_runs", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   workflowRunId: uuid("workflow_run_id")
-    .references(() => workflowRuns.id, { onDelete: "cascade" })
+    .references((): AnyPgColumn => workflowRuns.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull(),
   instructions: text("instructions"),
