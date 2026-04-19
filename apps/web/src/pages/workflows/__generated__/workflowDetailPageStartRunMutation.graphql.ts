@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<449225c04b2fccae0ad47148cd1077b2>>
+ * @generated SignedSource<<b4fd234f408849db3b245876e2d9d033>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -27,7 +27,6 @@ export type workflowDetailPageStartRunMutation$data = {
     readonly completedAt: string | null | undefined;
     readonly createdAt: string;
     readonly id: string;
-    readonly runningStepRunId: string | null | undefined;
     readonly sessionId: string;
     readonly startedAt: string | null | undefined;
     readonly status: string;
@@ -102,13 +101,6 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "runningStepRunId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
         "name": "startedAt",
         "storageKey": null
       },
@@ -155,16 +147,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "ed5dedc6f83198e873028c1b419894db",
+    "cacheID": "ea8d167512166ac71b649a07a96e3e64",
     "id": null,
     "metadata": {},
     "name": "workflowDetailPageStartRunMutation",
     "operationKind": "mutation",
-    "text": "mutation workflowDetailPageStartRunMutation(\n  $input: StartWorkflowRunInput!\n) {\n  StartWorkflowRun(input: $input) {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    runningStepRunId\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation workflowDetailPageStartRunMutation(\n  $input: StartWorkflowRunInput!\n) {\n  StartWorkflowRun(input: $input) {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "13c3fe67107cfa212fc183e7c53ad60f";
+(node as any).hash = "9d988de64b646e150cbbb3d3ab908dbb";
 
 export default node;

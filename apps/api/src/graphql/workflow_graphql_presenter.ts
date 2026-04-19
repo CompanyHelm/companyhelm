@@ -42,6 +42,7 @@ export type GraphqlWorkflowRunStepRecord = {
   instructions: string | null;
   name: string;
   ordinal: number;
+  status: string;
   workflowRunId: string;
 };
 
@@ -51,7 +52,6 @@ export type GraphqlWorkflowRunRecord = {
   createdAt: string;
   id: string;
   instructions: string | null;
-  runningStepRunId: string | null;
   sessionId: string;
   startedAt: string | null;
   status: string;
@@ -88,7 +88,6 @@ export class WorkflowGraphqlPresenter {
       createdAt: run.createdAt.toISOString(),
       id: run.id,
       instructions: run.instructions,
-      runningStepRunId: run.runningStepRunId,
       sessionId: run.sessionId,
       startedAt: run.startedAt?.toISOString() ?? null,
       status: run.status,
@@ -126,6 +125,7 @@ export class WorkflowGraphqlPresenter {
       instructions: step.instructions,
       name: step.name,
       ordinal: step.ordinal,
+      status: step.status,
       workflowRunId: step.workflowRunId,
     };
   }

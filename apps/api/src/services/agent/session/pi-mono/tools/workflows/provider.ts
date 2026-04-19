@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentWorkflowToolService } from "./service.ts";
-import { AgentUpdateWorkflowRunningStepTool } from "./update_running_step.ts";
+import { AgentUpdateWorkflowRunStepStatusTool } from "./update_step_status.ts";
 
 /**
  * Exposes workflow-run tools only for PI Mono sessions currently executing a workflow run.
@@ -16,7 +16,7 @@ export class AgentWorkflowToolProvider extends AgentToolProviderInterface {
 
   createToolDefinitions(): ToolDefinition[] {
     return [
-      new AgentUpdateWorkflowRunningStepTool(this.workflowToolService).createDefinition(),
+      new AgentUpdateWorkflowRunStepStatusTool(this.workflowToolService).createDefinition(),
     ];
   }
 }

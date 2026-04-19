@@ -69,11 +69,16 @@ export type WorkflowRunInputValue = {
   value: string;
 };
 
+export type WorkflowRunStatus = "running" | "done" | "canceled";
+
+export type WorkflowRunStepStatus = "pending" | "running" | "done";
+
 export type WorkflowRunStepRecord = {
   id: string;
   instructions: string | null;
   name: string;
   ordinal: number;
+  status: WorkflowRunStepStatus;
   workflowRunId: string;
 };
 
@@ -83,10 +88,9 @@ export type WorkflowRunRecord = {
   createdAt: Date;
   id: string;
   instructions: string | null;
-  runningStepRunId: string | null;
   sessionId: string;
   startedAt: Date | null;
-  status: "running" | "completed" | "canceled";
+  status: WorkflowRunStatus;
   steps: WorkflowRunStepRecord[];
   updatedAt: Date;
   workflowDefinitionId: string | null;

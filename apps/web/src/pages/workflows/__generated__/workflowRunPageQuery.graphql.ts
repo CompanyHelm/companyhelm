@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<d0bb92bb0c2e3a0d75e624bb03427ea2>>
+ * @generated SignedSource<<9fc9018cf9f7099f780ba17a01eb23ca>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,7 +25,6 @@ export type workflowRunPageQuery$data = {
     readonly createdAt: string;
     readonly id: string;
     readonly instructions: string | null | undefined;
-    readonly runningStepRunId: string | null | undefined;
     readonly sessionId: string;
     readonly startedAt: string | null | undefined;
     readonly status: string;
@@ -34,6 +33,7 @@ export type workflowRunPageQuery$data = {
       readonly instructions: string | null | undefined;
       readonly name: string;
       readonly ordinal: number;
+      readonly status: string;
       readonly workflowRunId: string;
     }>;
     readonly updatedAt: string;
@@ -77,7 +77,14 @@ v4 = {
   "name": "instructions",
   "storageKey": null
 },
-v5 = [
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v6 = [
   {
     "alias": null,
     "args": [
@@ -127,13 +134,7 @@ v5 = [
         "storageKey": null
       },
       (v4/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
+      (v5/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -146,13 +147,6 @@ v5 = [
         "args": null,
         "kind": "ScalarField",
         "name": "sessionId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "runningStepRunId",
         "storageKey": null
       },
       {
@@ -179,7 +173,8 @@ v5 = [
             "kind": "ScalarField",
             "name": "ordinal",
             "storageKey": null
-          }
+          },
+          (v5/*: any*/)
         ],
         "storageKey": null
       },
@@ -224,7 +219,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "workflowRunPageQuery",
-    "selections": (v5/*: any*/),
+    "selections": (v6/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -236,19 +231,19 @@ return {
     ],
     "kind": "Operation",
     "name": "workflowRunPageQuery",
-    "selections": (v5/*: any*/)
+    "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "d82b5e22bc76d23af7c41930b9caeb3b",
+    "cacheID": "60c866fb8b654cf20b7e5038f7588b62",
     "id": null,
     "metadata": {},
     "name": "workflowRunPageQuery",
     "operationKind": "query",
-    "text": "query workflowRunPageQuery(\n  $workflowId: ID!\n  $runId: ID!\n) {\n  Workflow(id: $workflowId) {\n    id\n    name\n    description\n  }\n  WorkflowRun(id: $runId) {\n    id\n    workflowDefinitionId\n    instructions\n    status\n    agentId\n    sessionId\n    runningStepRunId\n    steps {\n      id\n      workflowRunId\n      name\n      instructions\n      ordinal\n    }\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query workflowRunPageQuery(\n  $workflowId: ID!\n  $runId: ID!\n) {\n  Workflow(id: $workflowId) {\n    id\n    name\n    description\n  }\n  WorkflowRun(id: $runId) {\n    id\n    workflowDefinitionId\n    instructions\n    status\n    agentId\n    sessionId\n    steps {\n      id\n      workflowRunId\n      name\n      instructions\n      ordinal\n      status\n    }\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "aec077a25f53605bfd6a62b7ba5cf73d";
+(node as any).hash = "95651c9f372351eb70c541c7aedae114";
 
 export default node;

@@ -782,7 +782,6 @@ type WorkflowRun {
   status: String!
   agentId: ID!
   sessionId: ID!
-  runningStepRunId: ID
   steps: [WorkflowRunStep!]!
   startedAt: String
   completedAt: String
@@ -796,6 +795,7 @@ type WorkflowRunStep {
   name: String!
   instructions: String
   ordinal: Int!
+  status: String!
 }
 
 type Task {

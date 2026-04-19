@@ -1,16 +1,19 @@
 import type { AgentWorkflowToolRunState } from "./service.ts";
 
 /**
- * Formats workflow tool responses as compact status text so the agent can confirm which runtime
- * step became active without reading raw database fields.
+ * Formats workflow tool responses as compact status text so the agent can confirm the updated
+ * runtime step and whether the workflow run has been completed.
  */
 export class AgentWorkflowResultFormatter {
-  static formatRunningStepUpdate(runState: AgentWorkflowToolRunState): string {
+  static formatStepStatusUpdate(runState: AgentWorkflowToolRunState): string {
     return [
       `workflowRunId: ${runState.workflowRunId}`,
-      `runningStepRunId: ${runState.runningStep.id}`,
-      `runningStepOrdinal: ${runState.runningStep.ordinal}`,
-      `runningStepName: ${runState.runningStep.name}`,
+      `workflowRunStatus: ${runState.workflowRunStatus}`,
+      `workflowRunStepId: ${runState.step.id}`,
+      `workflowRunStepOrdinal: ${runState.step.ordinal}`,
+      `workflowRunStepName: ${runState.step.name}`,
+      `workflowRunStepStatus: ${runState.step.status}`,
+      `allStepsDone: ${String(runState.allStepsDone)}`,
     ].join("\n");
   }
 }

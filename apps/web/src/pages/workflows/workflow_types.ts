@@ -33,5 +33,6 @@ export type WorkflowRunStepRecord = {
   instructions: string | null;
   name: string;
   ordinal: number;
+  status: "done" | "pending" | "running";
   workflowRunId: string;
 };

@@ -19,8 +19,8 @@ Instructions:
 {{ step.instructions if step.instructions else "(no step instructions provided)" }}
 {% endfor %}
 
-Execute the workflow run steps one by one in order.
-Start with the first workflow run step.
-After completing a step and before starting the next step, call update_workflow_running_step with the next workflow run step ID.
-Do not skip steps.
+Work through the workflow run steps in order unless the workflow instructions require otherwise.
+Before working on a step, call update_workflow_run_step_status with that workflow run step ID and status running.
+After completing a step, call update_workflow_run_step_status with that workflow run step ID and status done.
+The workflow run is marked done automatically when all workflow run steps are done.
 When referring to a step, use the workflow run step ID, not the definition step ID.

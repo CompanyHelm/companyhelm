@@ -5,28 +5,32 @@ import {
   workflowRunSteps,
 } from "../../../../../../db/schema.ts";
 
+export type AgentWorkflowRunStepStatus = "pending" | "running" | "done";
+
 export type AgentWorkflowToolRunStep = {
   id: string;
   instructions: string | null;
   name: string;
   ordinal: number;
+  status: AgentWorkflowRunStepStatus;
 };
 
 export type AgentWorkflowToolRunState = {
-  runningStep: AgentWorkflowToolRunStep;
+  allStepsDone: boolean;
+  step: AgentWorkflowToolRunStep;
+  workflowRunStatus: "running" | "done";
   workflowRunId: string;
 };
 
 type WorkflowRunRow = {
   id: string;
-  runningStepRunId: string | null;
 };
 
 type WorkflowRunStepRow = AgentWorkflowToolRunStep;
 
 /**
- * Binds workflow-run step advancement to the current PI Mono session. It only mutates a running
- * workflow run owned by this session and rejects skipped or backward step movement.
+ * Binds workflow-run step status updates to the current PI Mono session. It only mutates a running
+ * workflow run owned by this session, so agents cannot affect unrelated workflow executions.
  */
 export class AgentWorkflowToolService {
   private readonly transactionProvider: TransactionProviderInterface;
@@ -50,7 +54,10 @@ export class AgentWorkflowToolService {
     });
   }
 
-  async updateRunningStep(input: { workflowRunStepId: string }): Promise<AgentWorkflowToolRunState> {
+  async updateStepStatus(input: {
+    status: AgentWorkflowRunStepStatus;
+    workflowRunStepId: string;
+  }): Promise<AgentWorkflowToolRunState> {
     return this.transactionProvider.transaction(async (tx) => {
       const runRow = await this.requireRunningWorkflowRun(tx);
       const steps = await this.loadRunSteps(tx, runRow.id);
@@ -59,28 +66,72 @@ export class AgentWorkflowToolService {
         throw new Error("Workflow run step not found for this session.");
       }
 
-      const currentStep = steps.find((step) => step.id === runRow.runningStepRunId) ?? null;
-      const currentOrdinal = currentStep?.ordinal ?? 0;
-      if (targetStep.ordinal < currentOrdinal) {
-        throw new Error("Workflow running step cannot move backwards.");
+      const now = new Date();
+      if (input.status === "running") {
+        await tx
+          .update(workflowRunSteps)
+          .set({ status: "pending" })
+          .where(and(
+            eq(workflowRunSteps.companyId, this.companyId),
+            eq(workflowRunSteps.workflowRunId, runRow.id),
+            eq(workflowRunSteps.status, "running"),
+          ));
       }
-      if (targetStep.ordinal > currentOrdinal + 1) {
-        throw new Error("Workflow running step can only advance one step at a time.");
+
+      await tx
+        .update(workflowRunSteps)
+        .set({
+          status: input.status,
+        })
+        .where(and(
+          eq(workflowRunSteps.companyId, this.companyId),
+          eq(workflowRunSteps.id, targetStep.id),
+          eq(workflowRunSteps.workflowRunId, runRow.id),
+        ));
+
+      const nextSteps = steps.map((step) => {
+        if (step.id === targetStep.id) {
+          return {
+            ...step,
+            status: input.status,
+          };
+        }
+        if (input.status === "running" && step.status === "running") {
+          return {
+            ...step,
+            status: "pending" as const,
+          };
+        }
+
+        return step;
+      });
+      const allStepsDone = nextSteps.every((step) => step.status === "done");
+      const workflowRunStatus = allStepsDone ? "done" : "running";
+      const updatedStep = nextSteps.find((step) => step.id === targetStep.id);
+      if (!updatedStep) {
+        throw new Error("Workflow run step update failed.");
       }
 
       await tx
         .update(workflowRuns)
-        .set({
-          runningStepRunId: targetStep.id,
-          updatedAt: new Date(),
-        })
+        .set(allStepsDone
+          ? {
+              completedAt: now,
+              status: workflowRunStatus,
+              updatedAt: now,
+            }
+          : {
+              updatedAt: now,
+            })
         .where(and(
           eq(workflowRuns.companyId, this.companyId),
           eq(workflowRuns.id, runRow.id),
         ));
 
       return {
-        runningStep: targetStep,
+        allStepsDone,
+        step: updatedStep,
+        workflowRunStatus,
         workflowRunId: runRow.id,
       };
     });
@@ -100,7 +151,6 @@ export class AgentWorkflowToolService {
     return await tx
       .select({
         id: workflowRuns.id,
-        runningStepRunId: workflowRuns.runningStepRunId,
       })
       .from(workflowRuns)
       .where(and(
@@ -117,6 +167,7 @@ export class AgentWorkflowToolService {
         instructions: workflowRunSteps.instructions,
         name: workflowRunSteps.name,
         ordinal: workflowRunSteps.ordinal,
+        status: workflowRunSteps.status,
       })
       .from(workflowRunSteps)
       .where(and(

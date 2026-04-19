@@ -1,8 +1,8 @@
 import { Suspense, useState } from "react";
-import { PencilIcon, PlayIcon, PlusIcon, WorkflowIcon } from "lucide-react";
+import { PlayIcon, PlusIcon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import type { RecordProxy } from "relay-runtime";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -22,7 +22,6 @@ import type { WorkflowRecord } from "./workflow_types";
 import type { workflowsPageCreateMutation } from "./__generated__/workflowsPageCreateMutation.graphql";
 import type { workflowsPageQuery } from "./__generated__/workflowsPageQuery.graphql";
 import type { workflowsPageStartRunMutation } from "./__generated__/workflowsPageStartRunMutation.graphql";
-import type { workflowsPageUpdateMutation } from "./__generated__/workflowsPageUpdateMutation.graphql";
 
 type WorkflowQueryRecord = workflowsPageQuery["response"]["Workflows"][number];
 type WorkflowDialogDraft = {
@@ -97,36 +96,6 @@ const workflowsPageCreateMutationNode = graphql`
   }
 `;
 
-const workflowsPageUpdateMutationNode = graphql`
-  mutation workflowsPageUpdateMutation($input: UpdateWorkflowInput!) {
-    UpdateWorkflow(input: $input) {
-      id
-      name
-      description
-      instructions
-      isEnabled
-      inputs {
-        id
-        name
-        description
-        isRequired
-        defaultValue
-        createdAt
-      }
-      steps {
-        id
-        stepId
-        name
-        instructions
-        ordinal
-        createdAt
-      }
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
 const workflowsPageStartRunMutationNode = graphql`
   mutation workflowsPageStartRunMutation($input: StartWorkflowRunInput!) {
     StartWorkflowRun(input: $input) {
@@ -135,7 +104,6 @@ const workflowsPageStartRunMutationNode = graphql`
       status
       agentId
       sessionId
-      runningStepRunId
       startedAt
       createdAt
       updatedAt
@@ -238,7 +206,6 @@ function WorkflowsPageContent() {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
   const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null);
-  const [editingWorkflow, setEditingWorkflow] = useState<WorkflowRecord | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [isRunDialogOpen, setRunDialogOpen] = useState(false);
   const [runDialogErrorMessage, setRunDialogErrorMessage] = useState<string | null>(null);
@@ -253,9 +220,6 @@ function WorkflowsPageContent() {
   const [commitCreateWorkflow, isCreateWorkflowInFlight] = useMutation<workflowsPageCreateMutation>(
     workflowsPageCreateMutationNode,
   );
-  const [commitUpdateWorkflow, isUpdateWorkflowInFlight] = useMutation<workflowsPageUpdateMutation>(
-    workflowsPageUpdateMutationNode,
-  );
   const [commitStartWorkflowRun, isStartWorkflowRunInFlight] = useMutation<workflowsPageStartRunMutation>(
     workflowsPageStartRunMutationNode,
   );
@@ -264,12 +228,23 @@ function WorkflowsPageContent() {
     id: agent.id,
     name: agent.name,
   }));
-  const isWorkflowSaving = isCreateWorkflowInFlight || isUpdateWorkflowInFlight;
 
   function openCreateDialog(): void {
     setDialogErrorMessage(null);
-    setEditingWorkflow(null);
     setDialogOpen(true);
+  }
+
+  function openWorkflowDetail(workflowId: string): void {
+    void navigate({
+      params: {
+        organizationSlug,
+        workflowId,
+      },
+      search: {
+        tab: "overview",
+      },
+      to: OrganizationPath.route("/workflows/$workflowId"),
+    });
   }
 
   async function saveWorkflow(draft: WorkflowDialogDraft): Promise<void> {
@@ -277,32 +252,9 @@ function WorkflowsPageContent() {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        const baseInput = createWorkflowInput(draft);
-        if (editingWorkflow) {
-          commitUpdateWorkflow({
-            variables: {
-              input: {
-                ...baseInput,
-                id: editingWorkflow.id,
-                isEnabled: editingWorkflow.isEnabled,
-              },
-            },
-            onCompleted: (_response, errors) => {
-              const nextErrorMessage = errors?.[0]?.message;
-              if (nextErrorMessage) {
-                reject(new Error(nextErrorMessage));
-                return;
-              }
-              resolve();
-            },
-            onError: reject,
-          });
-          return;
-        }
-
         commitCreateWorkflow({
           variables: {
-            input: baseInput,
+            input: createWorkflowInput(draft),
           },
           updater: (store) => {
             const createdWorkflow = store.getRootField("CreateWorkflow");
@@ -325,7 +277,6 @@ function WorkflowsPageContent() {
           onError: reject,
         });
       });
-      setEditingWorkflow(null);
       setDialogOpen(false);
     } catch (error: unknown) {
       setDialogErrorMessage(getErrorMessage(error, "Failed to save workflow."));
@@ -410,22 +361,28 @@ function WorkflowsPageContent() {
               </TableHeader>
               <TableBody>
                 {workflows.map((workflow) => (
-                  <TableRow key={workflow.id}>
+                  <TableRow
+                    className="cursor-pointer"
+                    key={workflow.id}
+                    onClick={() => {
+                      openWorkflowDetail(workflow.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) {
+                        return;
+                      }
+
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openWorkflowDetail(workflow.id);
+                      }
+                    }}
+                    role="link"
+                    tabIndex={0}
+                  >
                     <TableCell>
                       <div className="grid gap-1">
-                        <Link
-                          className="font-medium text-foreground hover:underline"
-                          params={{
-                            organizationSlug,
-                            workflowId: workflow.id,
-                          }}
-                          search={{
-                            tab: "overview",
-                          }}
-                          to={OrganizationPath.route("/workflows/$workflowId")}
-                        >
-                          {workflow.name}
-                        </Link>
+                        <span className="font-medium text-foreground">{workflow.name}</span>
                         {workflow.description.length > 0 ? (
                           <span className="line-clamp-2 max-w-xl text-xs text-muted-foreground">
                             {workflow.description}
@@ -447,23 +404,10 @@ function WorkflowsPageContent() {
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
-                          aria-label={`Edit ${workflow.name}`}
-                          onClick={() => {
-                            setDialogErrorMessage(null);
-                            setEditingWorkflow(workflow);
-                            setDialogOpen(true);
-                          }}
-                          size="icon-sm"
-                          title={`Edit ${workflow.name}`}
-                          type="button"
-                          variant="ghost"
-                        >
-                          <PencilIcon />
-                        </Button>
-                        <Button
                           aria-label={`Run ${workflow.name}`}
                           disabled={agents.length === 0}
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation();
                             setRunDialogErrorMessage(null);
                             setRunningWorkflow(workflow);
                             setRunDialogOpen(true);
@@ -488,16 +432,15 @@ function WorkflowsPageContent() {
       <WorkflowDialog
         errorMessage={dialogErrorMessage}
         isOpen={isDialogOpen}
-        isSaving={isWorkflowSaving}
+        isSaving={isCreateWorkflowInFlight}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
-            setEditingWorkflow(null);
             setDialogErrorMessage(null);
           }
         }}
         onSave={saveWorkflow}
-        workflow={editingWorkflow}
+        workflow={null}
       />
 
       <RunWorkflowDialog

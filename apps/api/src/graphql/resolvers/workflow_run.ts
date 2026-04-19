@@ -11,8 +11,8 @@ type WorkflowRunQueryResolverArguments = {
 };
 
 /**
- * Reads one workflow run and its runtime step snapshots. UI progress is derived from the run's
- * `runningStepRunId` plus each step ordinal rather than a separate step status column.
+ * Reads one workflow run and its runtime step snapshots so the UI can show agent-controlled
+ * per-step progress without reconstructing it from definition data.
  */
 @injectable()
 export class WorkflowRunQueryResolver {

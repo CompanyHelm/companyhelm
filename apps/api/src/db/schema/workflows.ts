@@ -20,8 +20,14 @@ import { agentSessions } from "./conversations.ts";
 
 export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
   "running",
-  "completed",
+  "done",
   "canceled",
+]);
+
+export const workflowRunStepStatusEnum = pgEnum("workflow_run_step_status", [
+  "pending",
+  "running",
+  "done",
 ]);
 
 export const workflowDefinitions = pgTable("workflow_definitions", {
@@ -112,9 +118,6 @@ export const workflowRuns = pgTable("workflow_runs", {
   sessionId: uuid("session_id")
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
-  // Steps with an ordinal before the running step are considered completed.
-  runningStepRunId: uuid("running_step_run_id")
-    .references((): AnyPgColumn => workflowRunSteps.id, { onDelete: "set null" }),
   startedByUserId: uuid("started_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   startedByAgentId: uuid("started_by_agent_id")
@@ -133,7 +136,6 @@ export const workflowRuns = pgTable("workflow_runs", {
   workflowDefinitionIdIndex: index("workflow_runs_definition_id_idx")
     .on(table.workflowDefinitionId),
   parentWorkflowRunIdIndex: index("workflow_runs_parent_workflow_run_id_idx").on(table.parentWorkflowRunId),
-  runningStepRunIdIndex: index("workflow_runs_running_step_run_id_idx").on(table.runningStepRunId),
   startedBySessionIdIndex: index("workflow_runs_started_by_session_id_idx").on(table.startedBySessionId),
   sessionIdUnique: uniqueIndex("workflow_runs_session_id_uidx").on(table.sessionId),
   oneStarterCheck: check(
@@ -155,6 +157,7 @@ export const workflowRunSteps = pgTable("workflow_run_steps", {
   name: text("name").notNull(),
   instructions: text("instructions"),
   ordinal: integer("ordinal").notNull(),
+  status: workflowRunStepStatusEnum("status").notNull().default("pending"),
 }, (table) => ({
   companyIdIndex: index("workflow_run_steps_company_id_idx").on(table.companyId),
   workflowRunIdIndex: index("workflow_run_steps_workflow_run_id_idx").on(table.workflowRunId),

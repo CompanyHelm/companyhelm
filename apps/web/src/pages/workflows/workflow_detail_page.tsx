@@ -1,7 +1,8 @@
 import { Suspense, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ArrowLeftIcon, MessageSquareIcon, PencilIcon, PlayIcon, WorkflowIcon } from "lucide-react";
+import { ArrowLeftIcon, MessageSquareIcon, PlayIcon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import { EditableField } from "@/components/editable_field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,6 @@ import {
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { RunWorkflowDialog } from "./run_workflow_dialog";
-import { WorkflowDialog } from "./workflow_dialog";
 import type { WorkflowRecord } from "./workflow_types";
 import type { workflowDetailPageQuery } from "./__generated__/workflowDetailPageQuery.graphql";
 import type { workflowDetailPageStartRunMutation } from "./__generated__/workflowDetailPageStartRunMutation.graphql";
@@ -26,13 +26,7 @@ import type { workflowDetailPageUpdateMutation } from "./__generated__/workflowD
 type WorkflowQueryRecord = workflowDetailPageQuery["response"]["Workflow"];
 type WorkflowRunRecord = workflowDetailPageQuery["response"]["WorkflowRuns"][number];
 type WorkflowDetailTab = "overview" | "runs";
-type WorkflowDialogDraft = {
-  description: string;
-  inputs: WorkflowRecord["inputs"];
-  instructions: string;
-  name: string;
-  steps: WorkflowRecord["steps"];
-};
+type WorkflowPatch = Pick<Partial<WorkflowRecord>, "description" | "instructions" | "name">;
 
 const workflowDetailPageQueryNode = graphql`
   query workflowDetailPageQuery($workflowId: ID!) {
@@ -71,13 +65,13 @@ const workflowDetailPageQueryNode = graphql`
       status
       agentId
       sessionId
-      runningStepRunId
       steps {
         id
         workflowRunId
         name
         instructions
         ordinal
+        status
       }
       startedAt
       completedAt
@@ -125,7 +119,6 @@ const workflowDetailPageStartRunMutationNode = graphql`
       status
       agentId
       sessionId
-      runningStepRunId
       startedAt
       completedAt
       createdAt
@@ -155,7 +148,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function resolveRunBadgeVariant(status: string): "destructive" | "outline" | "positive" | "warning" {
-  if (status === "completed") {
+  if (status === "done") {
     return "positive";
   }
   if (status === "running") {
@@ -166,6 +159,15 @@ function resolveRunBadgeVariant(status: string): "destructive" | "outline" | "po
   }
 
   return "outline";
+}
+
+function getRunStepSummary(steps: WorkflowRunRecord["steps"]): string {
+  const counts = steps.reduce<Record<string, number>>((nextCounts, step) => {
+    nextCounts[step.status] = (nextCounts[step.status] ?? 0) + 1;
+    return nextCounts;
+  }, {});
+
+  return `${counts.done ?? 0} done / ${counts.running ?? 0} running / ${counts.pending ?? 0} pending`;
 }
 
 function toWorkflowRecord(workflow: WorkflowQueryRecord): WorkflowRecord {
@@ -196,24 +198,6 @@ function toWorkflowRecord(workflow: WorkflowQueryRecord): WorkflowRecord {
   };
 }
 
-function createWorkflowInput(draft: WorkflowDialogDraft) {
-  return {
-    description: draft.description,
-    inputs: draft.inputs.map((input) => ({
-      defaultValue: input.defaultValue,
-      description: input.description,
-      isRequired: input.isRequired,
-      name: input.name,
-    })),
-    instructions: draft.instructions,
-    name: draft.name,
-    steps: draft.steps.map((step) => ({
-      instructions: step.instructions,
-      name: step.name,
-    })),
-  };
-}
-
 function WorkflowDetailPageFallback() {
   return (
     <main className="flex flex-1 flex-col gap-6">
@@ -234,6 +218,7 @@ function WorkflowDetailPageFallback() {
 }
 
 function WorkflowOverviewTab(props: {
+  onSave(patch: WorkflowPatch): Promise<void>;
   workflow: WorkflowRecord;
 }) {
   return (
@@ -261,17 +246,53 @@ function WorkflowOverviewTab(props: {
         </div>
       </div>
 
-      <section className="grid gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Instructions</h2>
-        {props.workflow.instructions.length > 0 ? (
-          <pre className="max-h-72 overflow-auto rounded-lg border border-border/60 bg-muted/15 p-3 text-xs leading-5 text-foreground">
-            {props.workflow.instructions}
-          </pre>
-        ) : (
-          <p className="rounded-lg border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
-            No instructions configured.
+      <section className="grid gap-4">
+        <div className="grid gap-1">
+          <h2 className="text-sm font-semibold text-foreground">General</h2>
+          <p className="text-sm text-muted-foreground">
+            Edit the workflow identity and launch instructions without leaving this page.
           </p>
-        )}
+        </div>
+        <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+          <EditableField
+            emptyValueLabel="Unnamed workflow"
+            fieldType="text"
+            label="Name"
+            onSave={async (value) => {
+              await props.onSave({
+                name: value,
+              });
+            }}
+            value={props.workflow.name}
+            variant="plain"
+          />
+
+          <EditableField
+            emptyValueLabel="No description"
+            fieldType="text"
+            label="Description"
+            onSave={async (value) => {
+              await props.onSave({
+                description: value,
+              });
+            }}
+            value={props.workflow.description}
+            variant="plain"
+          />
+        </div>
+        <EditableField
+          emptyValueLabel="No instructions configured."
+          fieldType="textarea"
+          label="Instructions"
+          onSave={async (value) => {
+            await props.onSave({
+              instructions: value,
+            });
+          }}
+          readOnlyFormat="markdown"
+          value={props.workflow.instructions}
+          variant="plain"
+        />
       </section>
 
       <section className="grid gap-2">
@@ -393,7 +414,7 @@ function WorkflowRunsTab(props: {
             <TableCell className="text-muted-foreground">{formatDateTime(run.startedAt)}</TableCell>
             <TableCell className="text-muted-foreground">{formatDateTime(run.completedAt)}</TableCell>
             <TableCell>
-              <Badge variant="secondary">{run.steps.length} steps</Badge>
+              <Badge variant="secondary">{getRunStepSummary(run.steps)}</Badge>
             </TableCell>
             <TableCell>
               <div className="flex justify-end gap-2">
@@ -448,45 +469,35 @@ function WorkflowDetailPageContent() {
     id: agent.id,
     name: agent.name,
   }));
-  const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null);
-  const [isDialogOpen, setDialogOpen] = useState(false);
   const [isRunDialogOpen, setRunDialogOpen] = useState(false);
   const [runDialogErrorMessage, setRunDialogErrorMessage] = useState<string | null>(null);
-  const [commitUpdateWorkflow, isUpdateWorkflowInFlight] = useMutation<workflowDetailPageUpdateMutation>(
+  const [commitUpdateWorkflow] = useMutation<workflowDetailPageUpdateMutation>(
     workflowDetailPageUpdateMutationNode,
   );
   const [commitStartWorkflowRun, isStartWorkflowRunInFlight] = useMutation<workflowDetailPageStartRunMutation>(
     workflowDetailPageStartRunMutationNode,
   );
 
-  async function saveWorkflow(draft: WorkflowDialogDraft): Promise<void> {
-    setDialogErrorMessage(null);
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        commitUpdateWorkflow({
-          variables: {
-            input: {
-              ...createWorkflowInput(draft),
-              id: workflow.id,
-              isEnabled: workflow.isEnabled,
-            },
+  async function saveWorkflow(patch: WorkflowPatch): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      commitUpdateWorkflow({
+        variables: {
+          input: {
+            id: workflow.id,
+            ...patch,
           },
-          onCompleted: (_response, errors) => {
-            const nextErrorMessage = errors?.[0]?.message;
-            if (nextErrorMessage) {
-              reject(new Error(nextErrorMessage));
-              return;
-            }
-            resolve();
-          },
-          onError: reject,
-        });
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+          resolve();
+        },
+        onError: reject,
       });
-      setDialogOpen(false);
-    } catch (error: unknown) {
-      setDialogErrorMessage(getErrorMessage(error, "Failed to save workflow."));
-    }
+    });
   }
 
   async function runWorkflow(input: {
@@ -556,17 +567,6 @@ function WorkflowDetailPageContent() {
           </div>
           <CardAction className="flex flex-wrap items-center justify-end gap-2">
             <Button
-              onClick={() => {
-                setDialogErrorMessage(null);
-                setDialogOpen(true);
-              }}
-              type="button"
-              variant="outline"
-            >
-              <PencilIcon data-icon="inline-start" />
-              Edit workflow
-            </Button>
-            <Button
               data-primary-cta=""
               disabled={agents.length === 0}
               onClick={() => {
@@ -603,7 +603,7 @@ function WorkflowDetailPageContent() {
           />
 
           {selectedTab === "overview" ? (
-            <WorkflowOverviewTab workflow={workflow} />
+            <WorkflowOverviewTab onSave={saveWorkflow} workflow={workflow} />
           ) : (
             <WorkflowRunsTab
               organizationSlug={organizationSlug}
@@ -613,20 +613,6 @@ function WorkflowDetailPageContent() {
           )}
         </CardContent>
       </Card>
-
-      <WorkflowDialog
-        errorMessage={dialogErrorMessage}
-        isOpen={isDialogOpen}
-        isSaving={isUpdateWorkflowInFlight}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            setDialogErrorMessage(null);
-          }
-        }}
-        onSave={saveWorkflow}
-        workflow={workflow}
-      />
 
       <RunWorkflowDialog
         agents={agents}

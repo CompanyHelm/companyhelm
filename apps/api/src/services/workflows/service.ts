@@ -21,6 +21,7 @@ import type {
   WorkflowRunCreateInput,
   WorkflowRunInputValue,
   WorkflowRunRecord,
+  WorkflowRunStatus,
   WorkflowRunStepRecord,
   WorkflowStepDefinitionRecord,
   WorkflowStepDraft,
@@ -47,10 +48,9 @@ type WorkflowRunRow = {
   createdAt: Date;
   id: string;
   instructions: string | null;
-  runningStepRunId: string | null;
   sessionId: string;
   startedAt: Date | null;
-  status: "running" | "completed" | "canceled";
+  status: WorkflowRunStatus;
   updatedAt: Date;
   workflowDefinitionId: string | null;
 };
@@ -244,9 +244,9 @@ export class WorkflowService {
         instructions: this.renderDefinitionTemplate(step.instructions, templateValues),
         name: step.name,
         ordinal: step.ordinal,
+        status: "pending" as const,
         workflowRunId,
       }));
-      const runningStepRunId = stepSnapshots[0]!.id;
       const instructions = this.renderDefinitionTemplate(workflowRow.instructions, templateValues);
       const prompt = this.workflowRunTemplate.render({
         instructions,
@@ -293,19 +293,9 @@ export class WorkflowService {
           instructions: step.instructions,
           name: step.name,
           ordinal: step.ordinal,
+          status: step.status,
           workflowRunId,
         })));
-
-      await tx
-        .update(workflowRuns)
-        .set({
-          runningStepRunId,
-          updatedAt: now,
-        })
-        .where(and(
-          eq(workflowRuns.companyId, input.companyId),
-          eq(workflowRuns.id, workflowRunId),
-        ));
 
       return this.requireWorkflowRun(tx, input.companyId, workflowRunId);
     });
@@ -355,6 +345,7 @@ export class WorkflowService {
         instructions: workflowRunSteps.instructions,
         name: workflowRunSteps.name,
         ordinal: workflowRunSteps.ordinal,
+        status: workflowRunSteps.status,
         workflowRunId: workflowRunSteps.workflowRunId,
       })
       .from(workflowRunSteps)
@@ -504,6 +495,7 @@ export class WorkflowService {
         instructions: workflowRunSteps.instructions,
         name: workflowRunSteps.name,
         ordinal: workflowRunSteps.ordinal,
+        status: workflowRunSteps.status,
         workflowRunId: workflowRunSteps.workflowRunId,
       })
       .from(workflowRunSteps)
@@ -649,7 +641,6 @@ export class WorkflowService {
       createdAt: workflowRuns.createdAt,
       id: workflowRuns.id,
       instructions: workflowRuns.instructions,
-      runningStepRunId: workflowRuns.runningStepRunId,
       sessionId: workflowRuns.sessionId,
       startedAt: workflowRuns.startedAt,
       status: workflowRuns.status,

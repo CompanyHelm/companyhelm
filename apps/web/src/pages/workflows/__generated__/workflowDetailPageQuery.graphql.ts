@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0e4a1f5f89dbcc3ce63e73f4a9fdf777>>
+ * @generated SignedSource<<08e24a6e380f6401f04787f6b96831f3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -47,7 +47,6 @@ export type workflowDetailPageQuery$data = {
     readonly completedAt: string | null | undefined;
     readonly createdAt: string;
     readonly id: string;
-    readonly runningStepRunId: string | null | undefined;
     readonly sessionId: string;
     readonly startedAt: string | null | undefined;
     readonly status: string;
@@ -56,6 +55,7 @@ export type workflowDetailPageQuery$data = {
       readonly instructions: string | null | undefined;
       readonly name: string;
       readonly ordinal: number;
+      readonly status: string;
       readonly workflowRunId: string;
     }>;
     readonly updatedAt: string;
@@ -124,7 +124,14 @@ v7 = {
   "name": "updatedAt",
   "storageKey": null
 },
-v8 = [
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v9 = [
   {
     "alias": null,
     "args": null,
@@ -242,13 +249,7 @@ v8 = [
         "name": "workflowDefinitionId",
         "storageKey": null
       },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "status",
-        "storageKey": null
-      },
+      (v8/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -261,13 +262,6 @@ v8 = [
         "args": null,
         "kind": "ScalarField",
         "name": "sessionId",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "runningStepRunId",
         "storageKey": null
       },
       {
@@ -288,7 +282,8 @@ v8 = [
           },
           (v2/*: any*/),
           (v4/*: any*/),
-          (v6/*: any*/)
+          (v6/*: any*/),
+          (v8/*: any*/)
         ],
         "storageKey": null
       },
@@ -318,7 +313,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "workflowDetailPageQuery",
-    "selections": (v8/*: any*/),
+    "selections": (v9/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -327,19 +322,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "workflowDetailPageQuery",
-    "selections": (v8/*: any*/)
+    "selections": (v9/*: any*/)
   },
   "params": {
-    "cacheID": "b9a13432f0b32d145fd178a7a206231c",
+    "cacheID": "fc11b448337d0d1739c906be7240f586",
     "id": null,
     "metadata": {},
     "name": "workflowDetailPageQuery",
     "operationKind": "query",
-    "text": "query workflowDetailPageQuery(\n  $workflowId: ID!\n) {\n  Agents {\n    id\n    name\n  }\n  Workflow(id: $workflowId) {\n    id\n    name\n    description\n    instructions\n    isEnabled\n    inputs {\n      id\n      name\n      description\n      isRequired\n      defaultValue\n      createdAt\n    }\n    steps {\n      id\n      stepId\n      name\n      instructions\n      ordinal\n      createdAt\n    }\n    createdAt\n    updatedAt\n  }\n  WorkflowRuns(workflowDefinitionId: $workflowId) {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    runningStepRunId\n    steps {\n      id\n      workflowRunId\n      name\n      instructions\n      ordinal\n    }\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query workflowDetailPageQuery(\n  $workflowId: ID!\n) {\n  Agents {\n    id\n    name\n  }\n  Workflow(id: $workflowId) {\n    id\n    name\n    description\n    instructions\n    isEnabled\n    inputs {\n      id\n      name\n      description\n      isRequired\n      defaultValue\n      createdAt\n    }\n    steps {\n      id\n      stepId\n      name\n      instructions\n      ordinal\n      createdAt\n    }\n    createdAt\n    updatedAt\n  }\n  WorkflowRuns(workflowDefinitionId: $workflowId) {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    steps {\n      id\n      workflowRunId\n      name\n      instructions\n      ordinal\n      status\n    }\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "da36457b0333d24b413606f89fbad278";
+(node as any).hash = "d91dfd8d259a8ffb682212bb44b096f6";
 
 export default node;

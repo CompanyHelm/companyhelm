@@ -19,7 +19,6 @@ import type { workflowRunPageQuery } from "./__generated__/workflowRunPageQuery.
 
 type WorkflowRunRecord = workflowRunPageQuery["response"]["WorkflowRun"];
 type WorkflowRunStepRecord = WorkflowRunRecord["steps"][number];
-type WorkflowRunStepStatus = "done" | "pending" | "running";
 
 const workflowRunPageQueryNode = graphql`
   query workflowRunPageQuery($workflowId: ID!, $runId: ID!) {
@@ -35,13 +34,13 @@ const workflowRunPageQueryNode = graphql`
       status
       agentId
       sessionId
-      runningStepRunId
       steps {
         id
         workflowRunId
         name
         instructions
         ordinal
+        status
       }
       startedAt
       completedAt
@@ -68,7 +67,7 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 function resolveRunBadgeVariant(status: string): "destructive" | "outline" | "positive" | "warning" {
-  if (status === "completed") {
+  if (status === "done") {
     return "positive";
   }
   if (status === "running") {
@@ -81,23 +80,7 @@ function resolveRunBadgeVariant(status: string): "destructive" | "outline" | "po
   return "outline";
 }
 
-function resolveStepStatus(run: WorkflowRunRecord, step: WorkflowRunStepRecord): WorkflowRunStepStatus {
-  if (run.status === "completed") {
-    return "done";
-  }
-
-  const runningStep = run.steps.find((candidateStep) => candidateStep.id === run.runningStepRunId);
-  if (step.id === run.runningStepRunId) {
-    return "running";
-  }
-  if (runningStep && step.ordinal < runningStep.ordinal) {
-    return "done";
-  }
-
-  return "pending";
-}
-
-function resolveStepBadgeVariant(status: WorkflowRunStepStatus): "outline" | "positive" | "secondary" | "warning" {
+function resolveStepBadgeVariant(status: string): "outline" | "positive" | "secondary" | "warning" {
   if (status === "done") {
     return "positive";
   }
@@ -106,6 +89,15 @@ function resolveStepBadgeVariant(status: WorkflowRunStepStatus): "outline" | "po
   }
 
   return "outline";
+}
+
+function getStepSummary(steps: ReadonlyArray<WorkflowRunStepRecord>): string {
+  const counts = steps.reduce<Record<string, number>>((nextCounts, step) => {
+    nextCounts[step.status] = (nextCounts[step.status] ?? 0) + 1;
+    return nextCounts;
+  }, {});
+
+  return `${counts.done ?? 0} done / ${counts.running ?? 0} running / ${counts.pending ?? 0} pending`;
 }
 
 function WorkflowRunPageFallback() {
@@ -210,8 +202,8 @@ function WorkflowRunPageContent() {
               <p className="mt-1 text-sm font-medium text-foreground">{formatDateTime(run.startedAt)}</p>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/15 p-3">
-              <p className="text-xs text-muted-foreground">Running step</p>
-              <p className="mt-1 text-sm font-medium text-foreground">{run.runningStepRunId ?? "None"}</p>
+              <p className="text-xs text-muted-foreground">Steps</p>
+              <p className="mt-1 text-sm font-medium text-foreground">{getStepSummary(run.steps)}</p>
             </div>
             <div className="rounded-lg border border-border/60 bg-muted/15 p-3">
               <p className="text-xs text-muted-foreground">Session</p>
@@ -239,28 +231,24 @@ function WorkflowRunPageContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {run.steps.map((step) => {
-                  const stepStatus = resolveStepStatus(run, step);
-
-                  return (
-                    <TableRow key={step.id}>
-                      <TableCell>{step.ordinal}</TableCell>
-                      <TableCell>
-                        <div className="grid gap-1">
-                          <span className="font-medium text-foreground">{step.name}</span>
-                          {step.instructions ? (
-                            <span className="line-clamp-2 max-w-2xl text-xs text-muted-foreground">
-                              {step.instructions}
-                            </span>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={resolveStepBadgeVariant(stepStatus)}>{stepStatus}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {run.steps.map((step) => (
+                  <TableRow key={step.id}>
+                    <TableCell>{step.ordinal}</TableCell>
+                    <TableCell>
+                      <div className="grid gap-1">
+                        <span className="font-medium text-foreground">{step.name}</span>
+                        {step.instructions ? (
+                          <span className="line-clamp-2 max-w-2xl text-xs text-muted-foreground">
+                            {step.instructions}
+                          </span>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={resolveStepBadgeVariant(step.status)}>{step.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </section>
