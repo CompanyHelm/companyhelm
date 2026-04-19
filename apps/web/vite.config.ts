@@ -11,6 +11,10 @@ export default defineConfig({
     react({ babel: { plugins: ["babel-plugin-relay"] } }),
     tailwindcss(),
   ],
+  server: {
+    allowedHosts: [".e2b.app"],
+    host: "0.0.0.0",
+  },
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,

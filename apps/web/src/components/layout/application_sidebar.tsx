@@ -3,28 +3,12 @@ import { Suspense } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import {
-  BotIcon,
-  BookOpenIcon,
-  WrenchIcon,
-  FolderGit2Icon,
-  InboxIcon,
-  KeyRoundIcon,
-  LayoutDashboardIcon,
-  ListTodoIcon,
-  CalendarClockIcon,
-  LockKeyholeIcon,
-  MessageSquareIcon,
-  MessagesSquareIcon,
   MoonIcon,
-  ServerIcon,
   Settings2Icon,
-  SparklesIcon,
   SunIcon,
-  PlugIcon,
-  WorkflowIcon,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { config } from "@/config";
+import { ApplicationNavigationCatalog } from "@/components/layout/application_navigation_catalog";
 import { ErrorBoundary } from "@/components/error_boundary";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
@@ -49,12 +33,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-
-interface NavigationItem {
-  icon: LucideIcon;
-  label: string;
-  to: string;
-}
 
 const applicationSidebarInboxCountQueryNode = graphql`
   query applicationSidebarInboxCountQuery {
@@ -112,6 +90,9 @@ export function ApplicationSidebar() {
   const emailAddress = userState.user?.primaryEmailAddress?.emailAddress || "workspace@companyhelm.dev";
   const isDarkTheme = themeState.theme !== "light";
   const ThemeIcon = isDarkTheme ? SunIcon : MoonIcon;
+  const navigationGroups = ApplicationNavigationCatalog.buildMainGroups({
+    isComputeProvidersEnabled: featureFlags.isEnabled("computer_providers"),
+  });
 
   function handleNavigationClick() {
     if (!sidebarState.isMobile) {
@@ -120,94 +101,6 @@ export function ApplicationSidebar() {
 
     sidebarState.setOpenMobile(false);
   }
-
-  const primaryNavigationItems: NavigationItem[] = [
-    {
-      icon: LayoutDashboardIcon,
-      label: "Dashboard",
-      to: "/",
-    },
-    {
-      icon: MessageSquareIcon,
-      label: "Chats",
-      to: "/chats",
-    },
-    {
-      icon: InboxIcon,
-      label: "Inbox",
-      to: "/inbox",
-    },
-    {
-      icon: MessagesSquareIcon,
-      label: "Agent Conversations",
-      to: "/conversations",
-    },
-    {
-      icon: CalendarClockIcon,
-      label: "Routines",
-      to: "/routines",
-    },
-    {
-      icon: WorkflowIcon,
-      label: "Workflows",
-      to: "/workflows",
-    },
-    {
-      icon: ListTodoIcon,
-      label: "Tasks",
-      to: "/tasks",
-    },
-  ];
-
-  const resourceNavigationItems: NavigationItem[] = [
-    {
-      icon: BotIcon,
-      label: "Agents",
-      to: "/agents",
-    },
-    {
-      icon: KeyRoundIcon,
-      label: "Model Credentials",
-      to: "/model-provider-credentials",
-    },
-    {
-      icon: LockKeyholeIcon,
-      label: "Secrets",
-      to: "/secrets",
-    },
-    {
-      icon: PlugIcon,
-      label: "MCP Servers",
-      to: "/mcp-servers",
-    },
-    {
-      icon: SparklesIcon,
-      label: "Skills",
-      to: "/skills",
-    },
-    {
-      icon: ServerIcon,
-      label: "Environments",
-      to: "/environments",
-    },
-    ...(featureFlags.isEnabled("computer_providers")
-      ? [{
-        icon: WrenchIcon,
-        label: "Compute Providers",
-        to: "/compute-providers",
-      }]
-      : []),
-    {
-      icon: FolderGit2Icon,
-      label: "Repositories",
-      to: "/repositories",
-    },
-    {
-      icon: BookOpenIcon,
-      label: "Knowledge Base",
-      to: "/knowledge-base",
-    },
-  ];
 
   return (
     <Sidebar className="app-shell-sidebar" collapsible="icon" variant="inset">
@@ -235,62 +128,39 @@ export function ApplicationSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Operate</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {primaryNavigationItems.map((item) => {
-                const ItemIcon = item.icon;
+        {navigationGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const ItemIcon = item.icon;
 
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      isActive={isNavigationItemActive(pathname, item.to)}
-                      onClick={handleNavigationClick}
-                      render={<Link params={{ organizationSlug }} to={OrganizationPath.route(item.to)} />}
-                      tooltip={item.label}
-                    >
-                      <ItemIcon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                    {item.to === "/inbox" ? (
-                      <ErrorBoundary boundaryKey={pathname} fallback={null}>
-                        <Suspense fallback={null}>
-                          <ApplicationSidebarInboxBadge />
-                        </Suspense>
-                      </ErrorBoundary>
-                    ) : null}
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Resources</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {resourceNavigationItems.map((item) => {
-                const ItemIcon = item.icon;
-
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      isActive={isNavigationItemActive(pathname, item.to)}
-                      onClick={handleNavigationClick}
-                      render={<Link params={{ organizationSlug }} to={OrganizationPath.route(item.to)} />}
-                      tooltip={item.label}
-                    >
-                      <ItemIcon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton
+                        isActive={isNavigationItemActive(pathname, item.to)}
+                        onClick={handleNavigationClick}
+                        render={<Link params={{ organizationSlug }} to={OrganizationPath.route(item.to)} />}
+                        tooltip={item.label}
+                      >
+                        <ItemIcon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
+                      {item.to === "/inbox" ? (
+                        <ErrorBoundary boundaryKey={pathname} fallback={null}>
+                          <Suspense fallback={null}>
+                            <ApplicationSidebarInboxBadge />
+                          </Suspense>
+                        </ErrorBoundary>
+                      ) : null}
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
