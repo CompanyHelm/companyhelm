@@ -19,4 +19,8 @@ Instructions:
 {{ step.instructions if step.instructions else "(no step instructions provided)" }}
 {% endfor %}
 
-Start with the first workflow run step. When referring to a step, use the workflow run step ID, not the definition step ID.
+Execute the workflow run steps one by one in order.
+Start with the first workflow run step.
+After completing a step and before starting the next step, call update_workflow_running_step with the next workflow run step ID.
+Do not skip steps.
+When referring to a step, use the workflow run step ID, not the definition step ID.
