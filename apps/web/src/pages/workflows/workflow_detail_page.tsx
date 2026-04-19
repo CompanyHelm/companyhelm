@@ -1,12 +1,21 @@
 import { Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ArrowDownIcon, ArrowUpIcon, MessageSquareIcon, PlayIcon, PlusIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon, MessageSquareIcon, PencilIcon, PlayIcon, PlusIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { PageTabs } from "@/components/ui/page_tabs";
 import {
   Table,
@@ -18,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { cn } from "@/lib/utils";
 import { RunWorkflowDialog } from "./run_workflow_dialog";
 import type { WorkflowInputRecord, WorkflowRecord, WorkflowStepRecord } from "./workflow_types";
 import type { workflowDetailPageQuery } from "./__generated__/workflowDetailPageQuery.graphql";
@@ -308,6 +318,115 @@ function WorkflowDetailPageFallback() {
   );
 }
 
+function WorkflowStepEditorDialog(props: {
+  isOpen: boolean;
+  step: WorkflowStepRecord | null;
+  onOpenChange(open: boolean): void;
+  onSave(patch: Pick<WorkflowStepRecord, "instructions" | "name">): Promise<void>;
+}) {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [instructions, setInstructions] = useState("");
+  const [isSaving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const canSave = /\S/u.test(name) && /\S/u.test(instructions);
+
+  useEffect(() => {
+    if (!props.isOpen || !props.step) {
+      setErrorMessage(null);
+      setInstructions("");
+      setName("");
+      return;
+    }
+
+    setErrorMessage(null);
+    setInstructions(props.step.instructions);
+    setName(props.step.name);
+  }, [props.isOpen, props.step]);
+
+  return (
+    <Dialog onOpenChange={props.onOpenChange} open={props.isOpen}>
+      <DialogContent className="w-[min(94vw,38rem)]">
+        <DialogHeader>
+          <DialogTitle>Edit step</DialogTitle>
+          <DialogDescription>
+            Update the step label and the instructions the agent follows when this step runs.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="workflow-step-name">
+              Name
+            </label>
+            <Input
+              id="workflow-step-name"
+              onChange={(event) => {
+                setName(event.target.value);
+              }}
+              value={name}
+            />
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-foreground" htmlFor="workflow-step-instructions">
+              Instructions
+            </label>
+            <textarea
+              className="min-h-36 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm leading-6 outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              id="workflow-step-instructions"
+              onChange={(event) => {
+                setInstructions(event.target.value);
+              }}
+              rows={6}
+              value={instructions}
+            />
+          </div>
+
+          {errorMessage ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {errorMessage}
+            </div>
+          ) : null}
+        </div>
+
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              props.onOpenChange(false);
+            }}
+            type="button"
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+          <Button
+            data-primary-cta=""
+            disabled={isSaving || !canSave}
+            onClick={async () => {
+              setSaving(true);
+              setErrorMessage(null);
+
+              try {
+                await props.onSave({
+                  instructions,
+                  name,
+                });
+                props.onOpenChange(false);
+              } catch (error: unknown) {
+                setErrorMessage(getErrorMessage(error, "Failed to update workflow step."));
+              } finally {
+                setSaving(false);
+              }
+            }}
+            type="button"
+          >
+            {isSaving ? "Saving..." : "Save step"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function WorkflowOverviewTab(props: {
   canExecute: boolean;
   isExecuting: boolean;
@@ -316,6 +435,9 @@ function WorkflowOverviewTab(props: {
   workflow: WorkflowRecord;
 }) {
   const [definitionErrorMessage, setDefinitionErrorMessage] = useState<string | null>(null);
+  const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
+  const [dragOverStepId, setDragOverStepId] = useState<string | null>(null);
+  const [editingStep, setEditingStep] = useState<WorkflowStepRecord | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const isDefinitionActionPending = pendingActionId !== null;
 
@@ -330,6 +452,22 @@ function WorkflowOverviewTab(props: {
     } finally {
       setPendingActionId(null);
     }
+  }
+
+  async function saveDraggedStepOrder(targetStepId: string): Promise<void> {
+    if (!draggedStepId || draggedStepId === targetStepId) {
+      return;
+    }
+
+    const fromIndex = props.workflow.steps.findIndex((step) => step.id === draggedStepId);
+    const toIndex = props.workflow.steps.findIndex((step) => step.id === targetStepId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+      return;
+    }
+
+    await saveDefinitionPatch(`drag-step-${draggedStepId}-${targetStepId}`, {
+      steps: normalizeStepOrdinals(moveItem(props.workflow.steps, fromIndex, toIndex)),
+    });
   }
 
   return (
@@ -564,13 +702,81 @@ function WorkflowOverviewTab(props: {
         </div>
         <div className="grid gap-4">
           {props.workflow.steps.map((step, stepIndex) => (
-            <div className="grid gap-4 rounded-lg border border-border/60 bg-muted/10 p-4" key={step.id}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="grid gap-1">
-                  <p className="text-sm font-medium text-foreground">Step {stepIndex + 1}</p>
-                  <p className="text-xs text-muted-foreground">{step.name}</p>
+            <div
+              className={cn(
+                "rounded-lg border border-border/60 bg-muted/10 px-3 py-2 transition",
+                draggedStepId === step.id && "opacity-50",
+                dragOverStepId === step.id && draggedStepId !== step.id && "border-primary/60 bg-primary/5",
+              )}
+              key={step.id}
+              onDragLeave={() => {
+                if (dragOverStepId === step.id) {
+                  setDragOverStepId(null);
+                }
+              }}
+              onDragOver={(event) => {
+                if (!draggedStepId || draggedStepId === step.id) {
+                  return;
+                }
+
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDragOverStepId(step.id);
+              }}
+              onDrop={async (event) => {
+                event.preventDefault();
+                try {
+                  await saveDraggedStepOrder(step.id);
+                } finally {
+                  setDraggedStepId(null);
+                  setDragOverStepId(null);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <button
+                    aria-label={`Drag ${step.name}`}
+                    className="flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isDefinitionActionPending || props.workflow.steps.length < 2}
+                    draggable={!isDefinitionActionPending && props.workflow.steps.length > 1}
+                    onDragEnd={() => {
+                      setDraggedStepId(null);
+                      setDragOverStepId(null);
+                    }}
+                    onDragStart={(event) => {
+                      if (isDefinitionActionPending || props.workflow.steps.length < 2) {
+                        event.preventDefault();
+                        return;
+                      }
+
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", step.id);
+                      setDraggedStepId(step.id);
+                    }}
+                    title={`Drag ${step.name}`}
+                    type="button"
+                  >
+                    <GripVerticalIcon />
+                  </button>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{step.name}</p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-end gap-1">
+                  <Button
+                    aria-label={`Edit ${step.name}`}
+                    disabled={isDefinitionActionPending}
+                    onClick={() => {
+                      setEditingStep(step);
+                    }}
+                    size="icon-sm"
+                    title={`Edit ${step.name}`}
+                    type="button"
+                    variant="ghost"
+                  >
+                    <PencilIcon />
+                  </Button>
                   <Button
                     aria-label={`Move ${step.name} up`}
                     disabled={isDefinitionActionPending || stepIndex === 0}
@@ -620,37 +826,29 @@ function WorkflowOverviewTab(props: {
                   </Button>
                 </div>
               </div>
-              <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
-                <EditableField
-                  emptyValueLabel="Unnamed step"
-                  fieldType="text"
-                  label="Name"
-                  onSave={async (value) => {
-                    await props.onSave({
-                      steps: updateStepRecord(props.workflow.steps, step.id, { name: value }),
-                    });
-                  }}
-                  value={step.name}
-                  variant="plain"
-                />
-                <EditableField
-                  emptyValueLabel="No instructions"
-                  fieldType="textarea"
-                  label="Instructions"
-                  onSave={async (value) => {
-                    await props.onSave({
-                      steps: updateStepRecord(props.workflow.steps, step.id, { instructions: value }),
-                    });
-                  }}
-                  readOnlyFormat="markdown"
-                  value={step.instructions}
-                  variant="plain"
-                />
-              </div>
             </div>
           ))}
         </div>
       </section>
+
+      <WorkflowStepEditorDialog
+        isOpen={editingStep !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingStep(null);
+          }
+        }}
+        onSave={async (patch) => {
+          if (!editingStep) {
+            return;
+          }
+
+          await props.onSave({
+            steps: updateStepRecord(props.workflow.steps, editingStep.id, patch),
+          });
+        }}
+        step={editingStep}
+      />
 
       {definitionErrorMessage ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
