@@ -520,7 +520,7 @@ export class SessionLifecycleService {
         throw new Error("Archived sessions cannot be interrupted.");
       }
 
-      if (existingSession.status !== "running") {
+      if (existingSession.status === "stopped") {
         return {
           interruptedMessageIds: [],
           shouldInterrupt: false,
@@ -528,6 +528,33 @@ export class SessionLifecycleService {
       }
 
       const now = new Date();
+      if (existingSession.status === "queued") {
+        await updatableDatabase
+          .update(agentSessions)
+          .set({
+            isCompacting: false,
+            isThinking: false,
+            status: "stopped",
+            thinkingText: null,
+            updated_at: now,
+          })
+          .where(and(
+            eq(agentSessions.companyId, companyId),
+            eq(agentSessions.id, sessionId),
+          ));
+
+        await this.sessionPromptService.deleteAllQueuedMessagesForSessionInTransaction(
+          tx as DeletableDatabase,
+          companyId,
+          sessionId,
+        );
+
+        return {
+          interruptedMessageIds: [],
+          shouldInterrupt: true,
+        };
+      }
+
       const runningMessageRows = await selectableDatabase
         .select({
           id: sessionMessages.id,

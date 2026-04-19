@@ -1424,6 +1424,110 @@ test("SessionManagerService interruptSession stops running sessions in the datab
   }]);
 });
 
+test("SessionManagerService interruptSession cancels queued sessions before a worker starts", async () => {
+  const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
+  const deletedQueuedSessions: Array<{ companyId: string; sessionId: string }> = [];
+  const publishCalls: Array<{ channel: string; message: string }> = [];
+  const updatedValues: Array<Record<string, unknown>> = [];
+  const transaction = {
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              return [{
+                agentId: "agent-1",
+                currentModelProviderCredentialModelId: "model-row-1",
+                currentReasoningLevel: "high",
+                id: "session-1",
+                status: "queued",
+              }];
+            },
+          };
+        },
+      };
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedValues.push(value);
+          return {
+            where() {
+              return undefined;
+            },
+          };
+        },
+      };
+    },
+  };
+  const service = SessionManagerServiceTestHarness.createService({
+    logs,
+    redisService: {
+      async getClient() {
+        return {
+          async publish(channel: string, message: string) {
+            publishCalls.push({
+              channel,
+              message,
+            });
+            return 1;
+          },
+        };
+      },
+    },
+    sessionProcessQueueService: {
+      async enqueueSessionWake() {
+        throw new Error("Wake queue should not be touched while interrupting.");
+      },
+    },
+    sessionQueuedMessageService: {
+      async deleteAllForSessionInTransaction(_database: unknown, companyId: string, sessionId: string) {
+        deletedQueuedSessions.push({
+          companyId,
+          sessionId,
+        });
+      },
+    },
+  });
+
+  await service.interruptSession(
+    SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
+    "company-1",
+    "session-1",
+  );
+
+  assert.equal(updatedValues.length, 1);
+  assert.equal(updatedValues[0]?.status, "stopped");
+  assert.equal(updatedValues[0]?.isThinking, false);
+  assert.equal(updatedValues[0]?.thinkingText, null);
+  assert.equal(updatedValues[0]?.isCompacting, false);
+  assert.ok(updatedValues[0]?.updated_at instanceof Date);
+  assert.deepEqual(deletedQueuedSessions, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(publishCalls, [{
+    channel: "company:company-1:session:session-1:queued:update",
+    message: "",
+  }, {
+    channel: "company:company-1:session:session-1:update",
+    message: "",
+  }, {
+    channel: "company:company-1:session:session-1:interrupt",
+    message: "",
+  }]);
+  assert.deepEqual(logs, [{
+    bindings: {
+      component: "session_manager_service",
+    },
+    message: "interrupted agent session",
+    payload: {
+      companyId: "company-1",
+      sessionId: "session-1",
+    },
+  }]);
+});
+
 test("SessionManagerService interruptSession is a no-op for stopped sessions", async () => {
   const publishCalls: Array<{ channel: string; message: string }> = [];
   const transaction = {

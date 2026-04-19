@@ -49,6 +49,10 @@ type CredentialRow = {
   modelProvider: string;
 };
 
+type SessionStatusRow = {
+  status: string;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -187,6 +191,14 @@ export class SessionProcessExecutionService {
           void this.piMonoSessionManagerService.abort(sessionId);
         },
       );
+      if (!await this.isSessionProcessable(transactionProvider, companyId, sessionId)) {
+        await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+        return;
+      }
+      if (interruptError) {
+        await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+        return;
+      }
 
       const primaryMessageIds = [primaryQueuedMessage.id];
       await this.sessionQueuedMessageService.markProcessing(
@@ -195,6 +207,10 @@ export class SessionProcessExecutionService {
         primaryMessageIds,
       );
       await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
+      if (interruptError) {
+        await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+        return;
+      }
 
       try {
         await this.piMonoSessionManagerService.prompt(
@@ -373,7 +389,7 @@ export class SessionProcessExecutionService {
       if (!sessionRow) {
         throw new Error("Session not found.");
       }
-      if (sessionRow.status === "archived") {
+      if (!this.isProcessableStatus(sessionRow.status)) {
         return null;
       }
 
@@ -448,6 +464,31 @@ export class SessionProcessExecutionService {
         reasoningLevel: sessionRow.currentReasoningLevel,
       };
     });
+  }
+
+  private async isSessionProcessable(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<boolean> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const [sessionRow] = await selectableDatabase
+        .select({
+          status: agentSessions.status,
+        })
+        .from(agentSessions)
+        .where(and(
+          eq(agentSessions.companyId, companyId),
+          eq(agentSessions.id, sessionId),
+        )) as SessionStatusRow[];
+
+      return Boolean(sessionRow && this.isProcessableStatus(sessionRow.status));
+    });
+  }
+
+  private isProcessableStatus(status: string): boolean {
+    return status === "queued" || status === "running";
   }
 
   private resolveRuntimeApiKey(credentialRow: CredentialRow): string {

@@ -251,7 +251,9 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
                 from() {
                   return {
                     async where() {
-                      return [];
+                      return [{
+                        status: "queued",
+                      }];
                     },
                   };
                 },
@@ -471,7 +473,9 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                 from() {
                   return {
                     async where() {
-                      return [];
+                      return [{
+                        status: "queued",
+                      }];
                     },
                   };
                 },
@@ -718,6 +722,20 @@ test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues un
               };
             }
 
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        status: "queued",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
             throw new Error("Unexpected select call.");
           },
         });
@@ -938,7 +956,9 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
                 from() {
                   return {
                     async where() {
-                      return [];
+                      return [{
+                        status: "queued",
+                      }];
                     },
                   };
                 },
@@ -1052,6 +1072,230 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
   assert.deepEqual(enqueueSessionWakeCalls, []);
 });
 
+test("SessionProcessExecutionService clears stale queued work when the session stops before prompt delivery", async () => {
+  const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
+  const disposeCalls: string[] = [];
+  const ensureSessionCalls: string[] = [];
+  const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
+  const subscriber = {
+    isOpen: true,
+    async connect() {
+      return this;
+    },
+    async subscribe() {},
+    async unsubscribe() {
+      return undefined;
+    },
+    async quit() {},
+  };
+  let selectCallCount = 0;
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        assert.equal(companyId, "company-1");
+        return callback({
+          select() {
+            selectCallCount += 1;
+            if (selectCallCount === 1) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        agentId: "agent-1",
+                        currentModelProviderCredentialModelId: "model-row-1",
+                        currentReasoningLevel: "high",
+                        status: "running",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 2) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "Support Agent",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 3) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        modelId: "gpt-5.4",
+                        modelProviderCredentialId: "credential-1",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        encryptedApiKey: "sk-openai",
+                        modelProvider: "openai",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 6) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        status: "stopped",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            throw new Error("Unexpected select call.");
+          },
+        });
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {},
+          error() {},
+        };
+      },
+    } as never,
+    {
+      async ensureSession(_transactionProvider: unknown, sessionId: string) {
+        ensureSessionCalls.push(sessionId);
+      },
+      dispose(sessionId: string) {
+        disposeCalls.push(sessionId);
+      },
+      async prompt() {
+        throw new Error("prompt should not run after the session is stopped.");
+      },
+    } as never,
+    {
+      async getClient() {
+        return {
+          async publish() {
+            return 1;
+          },
+        };
+      },
+      async getSubscriberClient() {
+        return subscriber;
+      },
+    } as never,
+    {
+      async acquire(companyId: string, sessionId: string) {
+        return {
+          companyId,
+          sessionId,
+          token: "lease-token",
+        };
+      },
+      async heartbeat() {
+        return true;
+      },
+      async release(handle: { companyId: string; sessionId: string; token: string }) {
+        releaseCalls.push(handle);
+      },
+    } as never,
+    {
+      async enqueueSessionWake() {
+        throw new Error("Stopped sessions should not enqueue a follow-up wake.");
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        return [{
+          createdAt: new Date("2026-03-26T12:00:00.000Z"),
+          id: "queued-1",
+          images: [],
+          sessionId: "session-1",
+          shouldSteer: false,
+          status: "pending",
+          text: "Investigate the regression.",
+          updatedAt: new Date("2026-03-26T12:00:00.000Z"),
+        }];
+      },
+      async deleteAllForSession(_transactionProvider: unknown, companyId: string, sessionId: string) {
+        clearQueuedCalls.push({
+          companyId,
+          sessionId,
+        });
+      },
+      async listPendingSteer() {
+        throw new Error("listPendingSteer should not run after the session is stopped.");
+      },
+      async markProcessing() {
+        throw new Error("markProcessing should not run after the session is stopped.");
+      },
+      async deleteProcessed() {
+        throw new Error("deleteProcessed should not run after the session is stopped.");
+      },
+      async markPending() {
+        throw new Error("markPending should not run after the session is stopped.");
+      },
+      async hasPendingMessages() {
+        return false;
+      },
+    } as never,
+    undefined as never,
+    companySettingsService as never,
+  );
+
+  await service.execute("company-1", "session-1");
+
+  assert.deepEqual(ensureSessionCalls, ["session-1"]);
+  assert.deepEqual(clearQueuedCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(releaseCalls, [{
+    companyId: "company-1",
+    sessionId: "session-1",
+    token: "lease-token",
+  }]);
+});
+
 test("SessionProcessExecutionService aborts the active prompt when an interrupt signal arrives", async () => {
   const abortCalls: string[] = [];
   const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
@@ -1163,7 +1407,9 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
                 from() {
                   return {
                     async where() {
-                      return [];
+                      return [{
+                        status: "running",
+                      }];
                     },
                   };
                 },
