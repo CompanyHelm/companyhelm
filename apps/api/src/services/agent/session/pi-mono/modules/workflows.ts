@@ -1,5 +1,5 @@
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
-import { AgentWorkflowToolProvider } from "../tools/workflows/provider.ts";
+import { AgentWorkflowRunToolProvider } from "../tools/workflows/run_provider.ts";
 import { AgentWorkflowToolService } from "../tools/workflows/service.ts";
 import { AgentSessionBootstrapContext } from "../bootstrap_context.ts";
 import { AgentSessionModuleInterface } from "./module_interface.ts";
@@ -19,7 +19,7 @@ export class WorkflowsSessionModule extends AgentSessionModuleInterface {
 
   async createToolProviders(context: AgentSessionBootstrapContext): Promise<AgentToolProviderInterface[]> {
     return [
-      new AgentWorkflowToolProvider(this.createWorkflowToolService(context)),
+      new AgentWorkflowRunToolProvider(this.createWorkflowToolService(context)),
     ];
   }
 
@@ -27,6 +27,7 @@ export class WorkflowsSessionModule extends AgentSessionModuleInterface {
     return new AgentWorkflowToolService(
       context.transactionProvider,
       context.companyId,
+      context.agentId,
       context.sessionId,
     );
   }
