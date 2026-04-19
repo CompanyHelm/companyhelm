@@ -148,6 +148,11 @@ export function ApplicationSidebar() {
     },
     {
       icon: WorkflowIcon,
+      label: "Workflows",
+      to: "/workflows",
+    },
+    {
+      icon: WorkflowIcon,
       label: "Tasks",
       to: "/tasks",
     },

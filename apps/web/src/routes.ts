@@ -34,6 +34,7 @@ import { SettingsPage } from "./pages/settings/settings_page";
 import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
+import { WorkflowsPage } from "./pages/workflows/workflows_page";
 import { OrganizationPath } from "./lib/organization_path";
 import { AuthenticatedRoute } from "./pages/root/authenticated_route";
 import { OrganizationHomeRoute } from "./pages/root/organization_home_route";
@@ -252,6 +253,12 @@ const routinesRoute = createRoute({
   component: RoutinesPage,
 });
 
+const workflowsRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/workflows"),
+  component: WorkflowsPage,
+});
+
 const secretsRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/secrets"),
@@ -385,6 +392,7 @@ const routeTree = rootRoute.addChildren([
         inboxRoute,
         conversationsRoute,
         routinesRoute,
+        workflowsRoute,
         secretsRoute,
         secretGroupsRoute,
         mcpServersRoute,
