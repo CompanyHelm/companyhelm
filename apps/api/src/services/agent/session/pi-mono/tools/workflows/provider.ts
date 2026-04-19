@@ -15,8 +15,11 @@ export class AgentWorkflowToolProvider extends AgentToolProviderInterface {
   }
 
   createToolDefinitions(): ToolDefinition[] {
+    const updateStepStatusTool = new AgentUpdateWorkflowRunStepStatusTool(this.workflowToolService)
+      .createDefinition() as unknown as ToolDefinition;
+
     return [
-      new AgentUpdateWorkflowRunStepStatusTool(this.workflowToolService).createDefinition(),
+      updateStepStatusTool,
     ];
   }
 }
