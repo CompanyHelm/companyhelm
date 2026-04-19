@@ -205,6 +205,7 @@ test("AgentTerminalToolProvider contributes read_image with the environment term
       "pty_resize",
       "pty_kill",
       "read_image",
+      "get_e2b_port_url",
     ],
   );
 });

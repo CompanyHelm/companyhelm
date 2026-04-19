@@ -41,4 +41,11 @@ export abstract class AgentEnvironmentShellInterface {
     exitCode: number;
     stdout: string;
   }>;
+
+  /**
+   * Builds a provider-hosted public HTTPS URL for one port inside the environment. The returned URL
+   * is intentionally provider-owned; CompanyHelm auth, persistence, and custom domains can wrap it
+   * later without changing the agent-facing tool contract.
+   */
+  abstract getPublicHttpUrlForPort(port: number): string;
 }

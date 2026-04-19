@@ -158,6 +158,7 @@ const baseToolNames = [
   "pty_resize",
   "pty_kill",
   "read_image",
+  "get_e2b_port_url",
   "list_assigned_secrets",
   "read_secret",
   "list_available_secrets",
@@ -503,7 +504,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(createAgentSessionOptions.tools, []);
   assert.deepEqual(
     createAgentSessionOptions.customTools?.map((tool) => tool.name),
-    [...baseToolNames.slice(0, 10), ...computerUseToolNames, ...baseToolNames.slice(10)],
+    [...baseToolNames.slice(0, 11), ...computerUseToolNames, ...baseToolNames.slice(11)],
   );
   assert.deepEqual(createAgentSessionOptions.resourceLoader?.getAgentsFiles(), {
     agentsFiles: [],
@@ -543,9 +544,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
     [[[
-      ...baseToolNames.slice(0, 10),
+      ...baseToolNames.slice(0, 11),
       ...computerUseToolNames,
-      ...baseToolNames.slice(10),
+      ...baseToolNames.slice(11),
     ]]],
   );
   assert.deepEqual(piAgentMocks.promptMock.mock.calls, [["Draft the migration.", undefined]]);
