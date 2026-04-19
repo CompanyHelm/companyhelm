@@ -10,6 +10,7 @@ import {
   InboxIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  ListTodoIcon,
   CalendarClockIcon,
   LockKeyholeIcon,
   MessageSquareIcon,
@@ -19,8 +20,8 @@ import {
   Settings2Icon,
   SparklesIcon,
   SunIcon,
-  WorkflowIcon,
   PlugIcon,
+  WorkflowIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { config } from "@/config";
@@ -152,7 +153,7 @@ export function ApplicationSidebar() {
       to: "/workflows",
     },
     {
-      icon: WorkflowIcon,
+      icon: ListTodoIcon,
       label: "Tasks",
       to: "/tasks",
     },
