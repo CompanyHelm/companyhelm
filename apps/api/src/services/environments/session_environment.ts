@@ -109,6 +109,10 @@ export class AgentSessionEnvironment extends AgentEnvironmentInterfaceClass impl
     };
   }
 
+  getPublicHttpUrlForPort(port: number): string {
+    return this.shell.getPublicHttpUrlForPort(port);
+  }
+
   sendInput(ptyId: string, input: string, yieldTimeMilliseconds?: number): Promise<AgentEnvironmentCommandResult> {
     return this.pty.sendInput(ptyId, input, yieldTimeMilliseconds);
   }

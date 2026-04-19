@@ -109,6 +109,13 @@ export abstract class AgentEnvironmentInterface {
   ): Promise<AgentEnvironmentDirectShellCommandResult>;
 
   /**
+   * Returns a provider-hosted HTTPS URL for a service listening on one environment port. This is a
+   * temporary preview primitive; callers should treat it as a raw provider URL without CompanyHelm
+   * authentication, revocation, or audit semantics.
+   */
+  abstract getPublicHttpUrlForPort(port: number): string;
+
+  /**
    * Sends raw terminal input into an existing PTY and waits for additional output until
    * the yield deadline elapses or the shell exits.
    */

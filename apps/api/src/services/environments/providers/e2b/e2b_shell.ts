@@ -74,6 +74,10 @@ export class AgentComputeE2bShell extends AgentEnvironmentShellInterface {
     }
   }
 
+  getPublicHttpUrlForPort(port: number): string {
+    return `https://${this.sandbox.getHost(port)}`;
+  }
+
   private isTimeoutError(error: E2bCommandExitError): boolean {
     const code = typeof error.code === "string" ? error.code.toLowerCase() : "";
     const message = typeof error.message === "string" ? error.message.toLowerCase() : "";

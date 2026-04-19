@@ -4,6 +4,7 @@ import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentApplyPatchTool } from "./apply_patch.ts";
 import { AgentBashExecTool } from "./bash_exec.ts";
+import { AgentE2bPortUrlTool } from "./e2b_port_url.ts";
 import { AgentPtyExecTool } from "./pty_exec.ts";
 import { AgentPtyKillTool } from "./pty_kill.ts";
 import { AgentPtyListTool } from "./pty_list.ts";
@@ -44,6 +45,7 @@ export class AgentTerminalToolProvider extends AgentToolProviderInterface {
       new AgentPtyResizeTool(this.promptScope).createDefinition(),
       new AgentPtyKillTool(this.promptScope).createDefinition(),
       new AgentReadImageTool(this.promptScope, this.readImageToolService).createDefinition(),
+      new AgentE2bPortUrlTool(this.promptScope).createDefinition(),
     ];
   }
 }
