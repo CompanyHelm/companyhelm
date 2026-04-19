@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
+import { EditableModelField } from "@/components/editable_model_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
@@ -378,6 +379,7 @@ function AgentDetailPageContent() {
       defaultReasoningLevel: providerOption.defaultReasoningLevel ?? null,
       models: providerOption.models.map((modelOption) => ({
         id: modelOption.id,
+        description: modelOption.description,
         modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
         modelId: modelOption.modelId,
         name: modelOption.name,
@@ -586,10 +588,9 @@ function AgentDetailPageContent() {
                     variant="plain"
                   />
 
-                  <EditableField
+                  <EditableModelField
                     displayValue={selectedModelOption?.name ?? null}
                     emptyValueLabel="No model selected"
-                    fieldType="select"
                     label="Model"
                     onSave={async (value) => {
                       const nextModelOption = selectedProviderOption?.models.find((option) => option.id === value) ?? null;
@@ -601,9 +602,12 @@ function AgentDetailPageContent() {
                         modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
                       });
                     }}
-                    options={(selectedProviderOption?.models ?? []).map((option) => ({
-                      label: option.name,
-                      value: option.id,
+                    options={(selectedProviderOption?.models ?? []).map((modelOption) => ({
+                      description: modelOption.description,
+                      id: modelOption.id,
+                      modelId: modelOption.modelId,
+                      name: modelOption.name,
+                      providerLabel: selectedProviderOption?.label ?? "",
                     }))}
                     value={selectedModelOption?.id ?? null}
                     variant="plain"

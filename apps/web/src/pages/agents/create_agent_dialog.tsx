@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { ModelSelectionDialog } from "@/components/model_selection_dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +30,7 @@ export type AgentCreateProviderOption = {
   defaultReasoningLevel: string | null | undefined;
   models: Array<{
     id: string;
+    description: string | null | undefined;
     modelProviderCredentialModelId: string;
     modelId: string;
     name: string;
@@ -121,6 +123,7 @@ interface CreateAgentDialogProps {
 export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [agentName, setAgentName] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [computeProviderDefinitionId, setComputeProviderDefinitionId] = useState("");
   const [environmentTemplateId, setEnvironmentTemplateId] = useState("");
   const [providerOptionId, setProviderOptionId] = useState("");
@@ -223,6 +226,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
     if (!props.isOpen) {
       setAgentName("");
       setIsAdvancedOpen(false);
+      setIsModelDialogOpen(false);
       setComputeProviderDefinitionId("");
       setEnvironmentTemplateId("");
       setProviderOptionId("");
@@ -562,27 +566,38 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             <label className="text-xs font-medium text-foreground" htmlFor="agent-model">
               Model
             </label>
-            <Select
-              items={orderedModelOptions.map((modelOption) => ({
-                label: modelOption.name,
-                value: modelOption.id,
-              }))}
-              onValueChange={(value) => {
-                setModelOptionId(value ?? "");
+            <button
+              className="flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-input/20 px-3 py-2 text-left text-sm outline-none transition hover:bg-input/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!selectedProviderOption || orderedModelOptions.length === 0}
+              id="agent-model"
+              onClick={() => {
+                setIsModelDialogOpen(true);
               }}
-              value={modelOptionId}
+              type="button"
             >
-              <SelectTrigger id="agent-model">
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent>
-                {orderedModelOptions.map((modelOption) => (
-                  <SelectItem key={modelOption.id} value={modelOption.id}>
-                    {modelOption.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <span className={selectedModelOption ? "truncate text-foreground" : "truncate text-muted-foreground"}>
+                {selectedModelOption?.name ?? "Select a model"}
+              </span>
+              <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
+            </button>
+            <ModelSelectionDialog
+              description="Search the available model catalog for the selected provider."
+              noItemsMessage="No models are available for the selected provider."
+              onOpenChange={setIsModelDialogOpen}
+              onSelect={(selectedModelOptionId) => {
+                setModelOptionId(selectedModelOptionId);
+                setIsModelDialogOpen(false);
+              }}
+              open={isModelDialogOpen}
+              options={orderedModelOptions.map((modelOption) => ({
+                description: modelOption.description,
+                id: modelOption.id,
+                modelId: modelOption.modelId,
+                name: modelOption.name,
+                providerLabel: selectedProviderOption?.label ?? "",
+              }))}
+              selectedOptionId={modelOptionId}
+            />
           </div>
 
           {isReasoningLevelRequired ? (

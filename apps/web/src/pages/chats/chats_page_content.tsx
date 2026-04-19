@@ -8,6 +8,7 @@ import type {
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ListTodoIcon, Loader2Icon, MessageSquareIcon, Settings2Icon } from "lucide-react";
 import { fetchQuery, requestSubscription, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
+import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,6 @@ import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug"
 import { ChatComposerImage } from "./chat_composer_image";
 import type { ChatComposerModelOption } from "./chat_composer_model_picker";
 import { ChatComposerPane } from "./chat_composer_pane";
-import { ChatSelectionDialog } from "./chat_selection_dialog";
 import {
   type ChatsPageArchiveSessionMutation,
   type ChatsPageCreateSessionMutation,
@@ -2044,7 +2044,7 @@ export function ChatsPageContent() {
   ) : null;
 
   const newChatDialog = (
-    <ChatSelectionDialog
+    <SearchableSelectionDialog
       description="Pick an agent to open a fresh draft chat."
       items={newChatAgentItems}
       noItemsMessage="Create an agent first from the Agents page."

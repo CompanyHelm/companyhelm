@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
+import { ModelSelectionDialog, type ModelSelectionOption } from "@/components/model_selection_dialog";
 import {
   Select,
   SelectContent,
@@ -7,15 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChatSelectionDialog } from "./chat_selection_dialog";
 
-export type ChatComposerModelOption = {
+export type ChatComposerModelOption = ModelSelectionOption & {
   description: string;
-  id: string;
   modelProviderCredentialModelId: string;
-  modelId: string;
-  name: string;
-  providerLabel: string;
   reasoningSupported: boolean;
   reasoningLevels: string[];
 };
@@ -38,16 +34,13 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
     return modelOption.id === props.selectedModelOptionId;
   }) ?? null;
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
-  const modelSelectionItems = useMemo(() => {
+  const modelSelectionOptions = useMemo(() => {
     return props.modelOptions.map((modelOption) => ({
-      description: `${modelOption.providerLabel} • ${modelOption.description}`,
+      description: modelOption.description,
       id: modelOption.id,
-      searchText: [
-        modelOption.name,
-        modelOption.providerLabel,
-        modelOption.description,
-      ].join(" "),
-      title: modelOption.name,
+      modelId: modelOption.modelId,
+      name: modelOption.name,
+      providerLabel: modelOption.providerLabel,
     }));
   }, [props.modelOptions]);
   const selectedModelDisplayValue = selectedModelOption
@@ -75,21 +68,17 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
         <ChevronDownIcon className="size-3.5 shrink-0" />
       </button>
 
-      <ChatSelectionDialog
-        contentClassName="sm:max-w-2xl"
+      <ModelSelectionDialog
         description="Search the available model catalog and use the keyboard to pick the active draft model."
-        items={modelSelectionItems}
         noItemsMessage="No models are available for this chat."
-        noResultsMessage="No models match your search."
         onOpenChange={setIsModelDialogOpen}
         onSelect={(modelOptionId) => {
           props.onModelChange(modelOptionId);
           setIsModelDialogOpen(false);
         }}
         open={isModelDialogOpen}
-        searchPlaceholder="Search models"
-        selectedItemId={props.selectedModelOptionId}
-        title="Select model"
+        options={modelSelectionOptions}
+        selectedOptionId={props.selectedModelOptionId}
       />
 
       {selectedReasoningLevels.length > 0 ? (

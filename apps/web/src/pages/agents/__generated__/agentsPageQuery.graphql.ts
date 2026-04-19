@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a902d0d6283f4d16fcb5483afbc60723>>
+ * @generated SignedSource<<47b810c004f299cca3d84f6099f79d27>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,7 @@ export type agentsPageQuery$data = {
     readonly modelProvider: string;
     readonly modelProviderCredentialId: string;
     readonly models: ReadonlyArray<{
+      readonly description: string;
       readonly id: string;
       readonly modelId: string;
       readonly modelProviderCredentialModelId: string;
@@ -223,6 +224,7 @@ v6 = [
         "plural": true,
         "selections": [
           (v0/*: any*/),
+          (v4/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -435,16 +437,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "596fd1f3eae7ba595fb23b1b4851f2e8",
+    "cacheID": "73ff4c8e94aa44cacb04a18c688df6db",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      description\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5e9df2b0275b13e990b0c6d683e5437f";
+(node as any).hash = "7bc983e755bb5ba60b4e04a2e9bb8c1d";
 
 export default node;

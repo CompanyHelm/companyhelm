@@ -1,5 +1,6 @@
 import { ChevronRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { EditableField } from "@/components/editable_field";
+import { EditableModelField } from "@/components/editable_model_field";
 import { EnvironmentActions } from "@/components/environment_actions";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -70,10 +71,6 @@ export function ChatEnvironmentPanel({
 
   const currentSessionEnvironment = sessionEnvironmentInfo?.currentEnvironment ?? null;
   const agentDefaultComputeProviderDefinition = sessionEnvironmentInfo?.agentDefaultComputeProviderDefinition ?? null;
-  const environmentModelOptions = composerModelOptions.map((modelOption) => ({
-    label: `${modelOption.providerLabel} ${modelOption.name}`,
-    value: modelOption.id,
-  }));
   const environmentReasoningOptions = (selectedComposerModelOption?.reasoningLevels ?? []).map((reasoningOption) => ({
     label: reasoningOption,
     value: reasoningOption,
@@ -115,15 +112,14 @@ export function ChatEnvironmentPanel({
                 </p>
               </div>
 
-              <EditableField
+              <EditableModelField
                 displayValue={selectedComposerModelDisplayValue}
                 emptyValueLabel="Select model"
-                fieldType="select"
                 label="Model"
                 onSave={async (nextModelOptionId) => {
                   onComposerModelOptionChange(nextModelOptionId);
                 }}
-                options={environmentModelOptions}
+                options={composerModelOptions}
                 value={composerModelOptionId}
               />
 

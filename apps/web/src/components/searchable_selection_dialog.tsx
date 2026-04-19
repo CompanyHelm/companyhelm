@@ -5,17 +5,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export type ChatSelectionDialogItem = {
+export type SearchableSelectionDialogItem = {
   description: string;
   id: string;
   searchText: string;
   title: string;
 };
 
-interface ChatSelectionDialogProps {
+interface SearchableSelectionDialogProps {
   contentClassName?: string;
   description: string;
-  items: readonly ChatSelectionDialogItem[];
+  items: readonly SearchableSelectionDialogItem[];
   noItemsMessage: string;
   noResultsMessage: string;
   open: boolean;
@@ -27,10 +27,10 @@ interface ChatSelectionDialogProps {
 }
 
 /**
- * Keeps chat pickers on one searchable, keyboard-accessible dialog pattern so agents, models, and
- * future chooser surfaces behave the same across the chats experience.
+ * Provides the product-wide searchable picker dialog used for large option catalogs where a
+ * native select would hide too much context and make keyboard search impossible.
  */
-export function ChatSelectionDialog(props: ChatSelectionDialogProps) {
+export function SearchableSelectionDialog(props: SearchableSelectionDialogProps) {
   const [searchValue, setSearchValue] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
