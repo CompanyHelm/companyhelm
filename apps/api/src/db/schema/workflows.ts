@@ -114,7 +114,7 @@ export const workflowRuns = pgTable("workflow_runs", {
     .notNull(),
   // Steps with an ordinal before the running step are considered completed.
   runningStepRunId: uuid("running_step_run_id")
-    .references((): AnyPgColumn => workflowStepRuns.id, { onDelete: "set null" }),
+    .references((): AnyPgColumn => workflowRunSteps.id, { onDelete: "set null" }),
   startedByUserId: uuid("started_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   startedByAgentId: uuid("started_by_agent_id")
@@ -142,7 +142,7 @@ export const workflowRuns = pgTable("workflow_runs", {
   ),
 }));
 
-export const workflowStepRuns = pgTable("workflow_step_runs", {
+export const workflowRunSteps = pgTable("workflow_run_steps", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
@@ -156,7 +156,7 @@ export const workflowStepRuns = pgTable("workflow_step_runs", {
   instructions: text("instructions"),
   ordinal: integer("ordinal").notNull(),
 }, (table) => ({
-  companyIdIndex: index("workflow_step_runs_company_id_idx").on(table.companyId),
-  workflowRunIdIndex: index("workflow_step_runs_workflow_run_id_idx").on(table.workflowRunId),
-  ordinalCheck: check("workflow_step_runs_ordinal_check", sql`${table.ordinal} > 0`),
+  companyIdIndex: index("workflow_run_steps_company_id_idx").on(table.companyId),
+  workflowRunIdIndex: index("workflow_run_steps_workflow_run_id_idx").on(table.workflowRunId),
+  ordinalCheck: check("workflow_run_steps_ordinal_check", sql`${table.ordinal} > 0`),
 }));
