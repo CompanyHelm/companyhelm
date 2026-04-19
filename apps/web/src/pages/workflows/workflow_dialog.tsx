@@ -58,7 +58,8 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
 
 /**
  * Captures the workflow definition fields that can be managed before execution APIs exist. Inputs
- * and steps stay ordered by their array position so the UI maps directly to schema ordinals later.
+ * keep creation order because they do not have ordinals, while steps map their array order to
+ * execution order.
  */
 export function WorkflowDialog(props: WorkflowDialogProps) {
   const [description, setDescription] = useState("");
@@ -180,7 +181,7 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
             </div>
 
             <div className="grid gap-3">
-              {inputs.map((input, inputIndex) => (
+              {inputs.map((input) => (
                 <div className="rounded-lg border border-border/60 bg-muted/15 p-3" key={input.id}>
                   <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
                     <div className="grid gap-2">
@@ -210,30 +211,6 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
                       />
                     </div>
                     <div className="flex items-end gap-1">
-                      <Button
-                        aria-label="Move input up"
-                        disabled={inputIndex === 0}
-                        onClick={() => {
-                          setInputs((currentInputs) => moveItem(currentInputs, inputIndex, inputIndex - 1));
-                        }}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <ArrowUpIcon />
-                      </Button>
-                      <Button
-                        aria-label="Move input down"
-                        disabled={inputIndex === inputs.length - 1}
-                        onClick={() => {
-                          setInputs((currentInputs) => moveItem(currentInputs, inputIndex, inputIndex + 1));
-                        }}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <ArrowDownIcon />
-                      </Button>
                       <Button
                         aria-label="Remove input"
                         disabled={inputs.length === 1}

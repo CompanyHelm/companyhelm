@@ -170,24 +170,27 @@ export function WorkflowsPage() {
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
+                          aria-label={`Edit ${workflow.name}`}
                           onClick={() => {
                             setEditingWorkflow(workflow);
                             setDialogOpen(true);
                           }}
+                          size="icon"
+                          title={`Edit ${workflow.name}`}
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                         >
-                          <PencilIcon data-icon="inline-start" />
-                          Edit
+                          <PencilIcon className="size-4" />
                         </Button>
                         <Button
+                          aria-label={`Run ${workflow.name}`}
                           onClick={() => undefined}
-                          title="Workflow execution is not wired yet."
+                          size="icon"
+                          title="Workflow execution is not wired yet"
                           type="button"
-                          variant="secondary"
+                          variant="ghost"
                         >
-                          <PlayIcon data-icon="inline-start" />
-                          Run
+                          <PlayIcon className="size-4" />
                         </Button>
                       </div>
                     </TableCell>
