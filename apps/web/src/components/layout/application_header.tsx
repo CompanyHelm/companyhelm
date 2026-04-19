@@ -28,6 +28,7 @@ export function ApplicationHeader() {
   const isKnowledgeBaseDetailPage = /^\/knowledge-base\/[^/]+$/.test(normalizedPathname);
   const isSkillDetailPage = /^\/skills\/[^/]+$/.test(normalizedPathname);
   const isTaskDetailPage = /^\/tasks\/[^/]+$/.test(normalizedPathname);
+  const isWorkflowDetailPage = /^\/workflows\/[^/]+$/.test(normalizedPathname);
   const pageTitle = normalizedPathname.startsWith("/model-provider-credentials")
     ? "LLM Credentials"
     : normalizedPathname.startsWith("/compute-providers")
@@ -62,7 +63,9 @@ export function ApplicationHeader() {
                 ? "Settings"
                 : normalizedPathname.startsWith("/agents")
                   ? "Agents"
-                  : "Dashboard";
+                  : normalizedPathname.startsWith("/workflows")
+                    ? "Workflows"
+                    : "Dashboard";
   const detailPageTitle = detailLabel
     || (isAgentDetailPage
       ? "Agent"
@@ -72,6 +75,8 @@ export function ApplicationHeader() {
           ? "Skill"
         : isTaskDetailPage
           ? "Task"
+          : isWorkflowDetailPage
+            ? "Workflow"
           : "Credential");
   const detailPageHref = isCredentialDetailPage
     ? OrganizationPath.route("/model-provider-credentials")
@@ -83,12 +88,15 @@ export function ApplicationHeader() {
           ? OrganizationPath.route("/skills")
         : isTaskDetailPage
           ? OrganizationPath.route("/tasks")
+          : isWorkflowDetailPage
+            ? OrganizationPath.route("/workflows")
       : null;
   const isDetailPage = isCredentialDetailPage
     || isAgentDetailPage
     || isKnowledgeBaseDetailPage
     || isSkillDetailPage
-    || isTaskDetailPage;
+    || isTaskDetailPage
+    || isWorkflowDetailPage;
   const taskViewType = currentLocation.searchParams.get("viewType");
   const detailPageSearch = isTaskDetailPage && (taskViewType === "board" || taskViewType === "list")
     ? { viewType: taskViewType as "board" | "list" }
