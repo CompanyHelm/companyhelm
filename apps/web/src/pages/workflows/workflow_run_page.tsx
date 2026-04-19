@@ -1,8 +1,16 @@
-import { Suspense } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeftIcon, MessageSquareIcon } from "lucide-react";
+import { Suspense, useMemo } from "react";
+import { Link, useParams } from "@tanstack/react-router";
+import { MessageSquareIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery } from "react-relay";
+import { useApplicationHeader } from "@/components/layout/application_breadcrumb_context";
 import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -119,7 +127,6 @@ function WorkflowRunPageFallback() {
 }
 
 function WorkflowRunPageContent() {
-  const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
   const { runId, workflowId } = useParams({ strict: false }) as {
     runId?: string;
@@ -142,29 +149,51 @@ function WorkflowRunPageContent() {
     },
   );
   const run = data.WorkflowRun;
+  const breadcrumbContent = useMemo(() => (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <Link
+            className="font-medium text-muted-foreground transition hover:text-foreground"
+            params={{ organizationSlug }}
+            to={OrganizationPath.route("/workflows")}
+          >
+            Workflows
+          </Link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <Link
+            className="font-medium text-muted-foreground transition hover:text-foreground"
+            params={{
+              organizationSlug,
+              workflowId: data.Workflow.id,
+            }}
+            search={{
+              tab: "runs",
+            }}
+            to={OrganizationPath.route("/workflows/$workflowId")}
+          >
+            {data.Workflow.name}
+          </Link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage>Run {run.id}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  ), [data.Workflow.id, data.Workflow.name, organizationSlug, run.id]);
+
+  useApplicationHeader({
+    content: breadcrumbContent,
+  });
 
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card variant="page">
         <CardHeader className="flex flex-col gap-4 px-0 sm:flex-row sm:items-start sm:justify-between">
           <div className="grid gap-2">
-            <Button
-              className="w-fit"
-              onClick={() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  to: OrganizationPath.route("/workflows"),
-                });
-              }}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              <ArrowLeftIcon data-icon="inline-start" />
-              Workflows
-            </Button>
             <div className="grid gap-1">
               <CardTitle>{data.Workflow.name}</CardTitle>
               <CardDescription>
@@ -175,17 +204,13 @@ function WorkflowRunPageContent() {
           <CardAction className="flex items-center gap-2">
             <Badge variant={resolveRunBadgeVariant(run.status)}>{run.status}</Badge>
             <Button
-              onClick={() => {
-                void navigate({
-                  params: {
-                    organizationSlug,
-                  },
-                  search: {
-                    sessionId: run.sessionId,
-                  },
-                  to: OrganizationPath.route("/chats"),
-                });
-              }}
+              render={(
+                <Link
+                  params={{ organizationSlug }}
+                  search={{ sessionId: run.sessionId }}
+                  to={OrganizationPath.route("/chats")}
+                />
+              )}
               type="button"
               variant="outline"
             >

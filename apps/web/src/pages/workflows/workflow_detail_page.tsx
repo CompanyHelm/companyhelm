@@ -666,6 +666,8 @@ function WorkflowRunsTab(props: {
   runs: ReadonlyArray<WorkflowRunRecord>;
   workflowId: string;
 }) {
+  const navigate = useNavigate();
+
   if (props.runs.length === 0) {
     return (
       <div className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 text-center">
@@ -678,6 +680,17 @@ function WorkflowRunsTab(props: {
         </div>
       </div>
     );
+  }
+
+  function openWorkflowRun(runId: string): void {
+    void navigate({
+      params: {
+        organizationSlug: props.organizationSlug,
+        runId,
+        workflowId: props.workflowId,
+      },
+      to: OrganizationPath.route("/workflows/$workflowId/runs/$runId"),
+    });
   }
 
   return (
@@ -694,20 +707,28 @@ function WorkflowRunsTab(props: {
       </TableHeader>
       <TableBody>
         {props.runs.map((run) => (
-          <TableRow key={run.id}>
+          <TableRow
+            className="cursor-pointer"
+            key={run.id}
+            onClick={() => {
+              openWorkflowRun(run.id);
+            }}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) {
+                return;
+              }
+
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openWorkflowRun(run.id);
+              }
+            }}
+            role="link"
+            tabIndex={0}
+          >
             <TableCell>
               <div className="grid gap-1">
-                <Link
-                  className="font-medium text-foreground hover:underline"
-                  params={{
-                    organizationSlug: props.organizationSlug,
-                    runId: run.id,
-                    workflowId: props.workflowId,
-                  }}
-                  to={OrganizationPath.route("/workflows/$workflowId/runs/$runId")}
-                >
-                  {run.id}
-                </Link>
+                <span className="font-medium text-foreground">{run.id}</span>
                 <span className="text-xs text-muted-foreground">Session {run.sessionId}</span>
               </div>
             </TableCell>
@@ -723,6 +744,9 @@ function WorkflowRunsTab(props: {
               <div className="flex justify-end gap-2">
                 <Button
                   aria-label={`Open session for run ${run.id}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                  }}
                   render={(
                     <Link
                       params={{ organizationSlug: props.organizationSlug }}
