@@ -82,7 +82,7 @@ export const workflowStepDefinitions = pgTable("workflow_step_definitions", {
     .notNull(),
   stepId: text("step_id").notNull(),
   name: text("name").notNull(),
-  description: text("description"),
+  instructions: text("instructions"),
   ordinal: integer("ordinal").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -114,7 +114,8 @@ export const workflowRuns = pgTable("workflow_runs", {
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
   // Steps with an ordinal before the running step are considered completed.
-  runningStepId: text("running_step_id"),
+  runningStepRunId: uuid("running_step_run_id")
+    .references(() => workflowStepRuns.id, { onDelete: "set null" }),
   startedByUserId: uuid("started_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   startedByAgentId: uuid("started_by_agent_id")
@@ -123,8 +124,6 @@ export const workflowRuns = pgTable("workflow_runs", {
     .references(() => agentSessions.id, { onDelete: "set null" }),
   parentWorkflowRunId: uuid("parent_workflow_run_id")
     .references((): AnyPgColumn => workflowRuns.id, { onDelete: "set null" }),
-  parentStepRunId: uuid("parent_step_run_id")
-    .references((): AnyPgColumn => workflowStepRuns.id, { onDelete: "set null" }),
   startedAt: timestamp("started_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -154,16 +153,9 @@ export const workflowStepRuns = pgTable("workflow_step_runs", {
   workflowRunId: uuid("workflow_run_id")
     .references(() => workflowRuns.id, { onDelete: "cascade" })
     .notNull(),
-  workflowStepDefinitionId: uuid("workflow_step_definition_id")
-    .references(() => workflowStepDefinitions.id, { onDelete: "set null" }),
-  stepId: text("step_id").notNull(),
   name: text("name").notNull(),
-  description: text("description"),
+  instructions: text("instructions"),
   ordinal: integer("ordinal").notNull(),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   companyIdIndex: index("workflow_step_runs_company_id_idx").on(table.companyId),
   workflowRunIdIndex: index("workflow_step_runs_workflow_run_id_idx").on(table.workflowRunId),
