@@ -51,6 +51,7 @@ type Query {
   Routines: [Routine!]!
   Workflow(id: ID!): Workflow!
   WorkflowRun(id: ID!): WorkflowRun!
+  WorkflowRuns(workflowDefinitionId: ID!): [WorkflowRun!]!
   Workflows: [Workflow!]!
   Task(id: ID!): Task!
   TaskRuns(taskId: ID!): [TaskRun!]!

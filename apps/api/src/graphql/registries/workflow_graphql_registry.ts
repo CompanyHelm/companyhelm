@@ -4,6 +4,7 @@ import { CreateWorkflowMutation } from "../mutations/create_workflow.ts";
 import { StartWorkflowRunMutation } from "../mutations/start_workflow_run.ts";
 import { UpdateWorkflowMutation } from "../mutations/update_workflow.ts";
 import { WorkflowRunQueryResolver } from "../resolvers/workflow_run.ts";
+import { WorkflowRunsQueryResolver } from "../resolvers/workflow_runs.ts";
 import { WorkflowQueryResolver } from "../resolvers/workflow.ts";
 import { WorkflowsQueryResolver } from "../resolvers/workflows.ts";
 import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
@@ -21,6 +22,9 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(WorkflowRunQueryResolver)
     private readonly workflowRunQueryResolver: WorkflowRunQueryResolver =
       new WorkflowRunQueryResolver(WorkflowGraphqlRegistry.createMissingWorkflowService()),
+    @inject(WorkflowRunsQueryResolver)
+    private readonly workflowRunsQueryResolver: WorkflowRunsQueryResolver =
+      new WorkflowRunsQueryResolver(WorkflowGraphqlRegistry.createMissingWorkflowService()),
     @inject(WorkflowsQueryResolver)
     private readonly workflowsQueryResolver: WorkflowsQueryResolver =
       new WorkflowsQueryResolver(WorkflowGraphqlRegistry.createMissingWorkflowService()),
@@ -45,6 +49,7 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
       Query: {
         Workflow: this.workflowQueryResolver.execute,
         WorkflowRun: this.workflowRunQueryResolver.execute,
+        WorkflowRuns: this.workflowRunsQueryResolver.execute,
         Workflows: this.workflowsQueryResolver.execute,
       },
     };
@@ -59,6 +64,9 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
         throw new Error("Workflow service is not configured.");
       },
       async getWorkflowRun() {
+        throw new Error("Workflow service is not configured.");
+      },
+      async listWorkflowRuns() {
         throw new Error("Workflow service is not configured.");
       },
       async listWorkflows() {

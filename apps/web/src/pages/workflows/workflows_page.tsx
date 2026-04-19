@@ -2,7 +2,7 @@ import { Suspense, useState } from "react";
 import { PencilIcon, PlayIcon, PlusIcon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import type { RecordProxy } from "relay-runtime";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -413,7 +413,19 @@ function WorkflowsPageContent() {
                   <TableRow key={workflow.id}>
                     <TableCell>
                       <div className="grid gap-1">
-                        <span className="font-medium text-foreground">{workflow.name}</span>
+                        <Link
+                          className="font-medium text-foreground hover:underline"
+                          params={{
+                            organizationSlug,
+                            workflowId: workflow.id,
+                          }}
+                          search={{
+                            tab: "overview",
+                          }}
+                          to={OrganizationPath.route("/workflows/$workflowId")}
+                        >
+                          {workflow.name}
+                        </Link>
                         {workflow.description.length > 0 ? (
                           <span className="line-clamp-2 max-w-xl text-xs text-muted-foreground">
                             {workflow.description}

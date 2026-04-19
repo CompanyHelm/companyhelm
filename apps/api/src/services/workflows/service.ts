@@ -191,6 +191,26 @@ export class WorkflowService {
     });
   }
 
+  async listWorkflowRuns(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    workflowDefinitionId: string,
+  ): Promise<WorkflowRunRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      await this.requireWorkflowDefinitionRow(tx, companyId, workflowDefinitionId);
+      const runRows = await tx
+        .select(this.getWorkflowRunSelection())
+        .from(workflowRuns)
+        .where(and(
+          eq(workflowRuns.companyId, companyId),
+          eq(workflowRuns.workflowDefinitionId, workflowDefinitionId),
+        )) as WorkflowRunRow[];
+      runRows.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+
+      return this.hydrateWorkflowRunRows(tx, companyId, runRows);
+    });
+  }
+
   async startWorkflowRun(
     transactionProvider: TransactionProviderInterface,
     input: WorkflowRunCreateInput,
@@ -316,6 +336,44 @@ export class WorkflowService {
       name: workflowRow.name,
       steps: stepsByWorkflowDefinitionId.get(workflowRow.id) ?? [],
       updatedAt: workflowRow.updatedAt,
+    }));
+  }
+
+  private async hydrateWorkflowRunRows(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    runRows: WorkflowRunRow[],
+  ): Promise<WorkflowRunRecord[]> {
+    const workflowRunIds = runRows.map((runRow) => runRow.id);
+    if (workflowRunIds.length === 0) {
+      return [];
+    }
+
+    const stepRows = await tx
+      .select({
+        id: workflowRunSteps.id,
+        instructions: workflowRunSteps.instructions,
+        name: workflowRunSteps.name,
+        ordinal: workflowRunSteps.ordinal,
+        workflowRunId: workflowRunSteps.workflowRunId,
+      })
+      .from(workflowRunSteps)
+      .where(and(
+        eq(workflowRunSteps.companyId, companyId),
+        inArray(workflowRunSteps.workflowRunId, workflowRunIds),
+      )) as WorkflowRunStepRow[];
+    stepRows.sort((left, right) => left.ordinal - right.ordinal);
+
+    const stepsByWorkflowRunId = new Map<string, WorkflowRunStepRecord[]>();
+    for (const stepRow of stepRows) {
+      const runSteps = stepsByWorkflowRunId.get(stepRow.workflowRunId) ?? [];
+      runSteps.push(stepRow);
+      stepsByWorkflowRunId.set(stepRow.workflowRunId, runSteps);
+    }
+
+    return runRows.map((runRow) => ({
+      ...runRow,
+      steps: stepsByWorkflowRunId.get(runRow.id) ?? [],
     }));
   }
 

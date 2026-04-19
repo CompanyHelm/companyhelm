@@ -34,6 +34,7 @@ import { SettingsPage } from "./pages/settings/settings_page";
 import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
+import { WorkflowDetailPage } from "./pages/workflows/workflow_detail_page";
 import { WorkflowRunPage } from "./pages/workflows/workflow_run_page";
 import { WorkflowsPage } from "./pages/workflows/workflows_page";
 import { OrganizationPath } from "./lib/organization_path";
@@ -64,6 +65,10 @@ type TaskArtifactDetailRouteSearch = {
 
 type AgentDetailRouteSearch = {
   tab?: "archived" | "overview";
+};
+
+type WorkflowDetailRouteSearch = {
+  tab?: "overview" | "runs";
 };
 
 type ConversationsRouteSearch = {
@@ -118,6 +123,14 @@ function validateTaskArtifactDetailRouteSearch(search: Record<string, unknown>):
 function validateAgentDetailRouteSearch(search: Record<string, unknown>): AgentDetailRouteSearch {
   return {
     tab: search.tab === "archived" || search.tab === "overview"
+      ? search.tab
+      : undefined,
+  };
+}
+
+function validateWorkflowDetailRouteSearch(search: Record<string, unknown>): WorkflowDetailRouteSearch {
+  return {
+    tab: search.tab === "overview" || search.tab === "runs"
       ? search.tab
       : undefined,
   };
@@ -260,6 +273,13 @@ const workflowsRoute = createRoute({
   component: WorkflowsPage,
 });
 
+const workflowDetailRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/workflows/$workflowId"),
+  validateSearch: validateWorkflowDetailRouteSearch,
+  component: WorkflowDetailPage,
+});
+
 const workflowRunRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/workflows/$workflowId/runs/$runId"),
@@ -400,6 +420,7 @@ const routeTree = rootRoute.addChildren([
         conversationsRoute,
         routinesRoute,
         workflowsRoute,
+        workflowDetailRoute,
         workflowRunRoute,
         secretsRoute,
         secretGroupsRoute,
