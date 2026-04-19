@@ -49,6 +49,9 @@ type Query {
   Routine(id: ID!): Routine!
   RoutineRuns(routineId: ID!): [RoutineRun!]!
   Routines: [Routine!]!
+  Workflow(id: ID!): Workflow!
+  WorkflowRun(id: ID!): WorkflowRun!
+  Workflows: [Workflow!]!
   Task(id: ID!): Task!
   TaskRuns(taskId: ID!): [TaskRun!]!
   TaskAssignableUsers: [TaskAssignableUser!]!
@@ -154,6 +157,9 @@ type Mutation {
   ): ModelProviderCredentialModel!
   SetTaskStage(input: SetTaskStageInput!): Task!
   TriggerRoutine(input: TriggerRoutineInput!): RoutineRun!
+  CreateWorkflow(input: CreateWorkflowInput!): Workflow!
+  StartWorkflowRun(input: StartWorkflowRunInput!): WorkflowRun!
+  UpdateWorkflow(input: UpdateWorkflowInput!): Workflow!
   UpdateRoutine(input: UpdateRoutineInput!): Routine!
   UpdateRoutineCronTrigger(input: UpdateRoutineCronTriggerInput!): RoutineCronTrigger!
   UpdateTask(input: UpdateTaskInput!): Task!
@@ -738,6 +744,59 @@ type RoutineRun {
   updatedAt: String!
 }
 
+type Workflow {
+  id: ID!
+  name: String!
+  description: String
+  instructions: String
+  isEnabled: Boolean!
+  inputs: [WorkflowInput!]!
+  steps: [WorkflowStep!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type WorkflowInput {
+  id: ID!
+  name: String!
+  description: String
+  isRequired: Boolean!
+  defaultValue: String
+  createdAt: String!
+}
+
+type WorkflowStep {
+  id: ID!
+  stepId: String!
+  name: String!
+  instructions: String
+  ordinal: Int!
+  createdAt: String!
+}
+
+type WorkflowRun {
+  id: ID!
+  workflowDefinitionId: ID
+  instructions: String
+  status: String!
+  agentId: ID!
+  sessionId: ID!
+  runningStepRunId: ID
+  steps: [WorkflowRunStep!]!
+  startedAt: String
+  completedAt: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type WorkflowRunStep {
+  id: ID!
+  workflowRunId: ID!
+  name: String!
+  instructions: String
+  ordinal: Int!
+}
+
 type Task {
   id: ID!
   name: String!
@@ -1274,6 +1333,48 @@ input DeleteRoutineTriggerInput {
 
 input TriggerRoutineInput {
   id: ID!
+}
+
+input CreateWorkflowInput {
+  name: String!
+  description: String
+  instructions: String
+  isEnabled: Boolean
+  inputs: [WorkflowInputDraftInput!]!
+  steps: [WorkflowStepDraftInput!]!
+}
+
+input UpdateWorkflowInput {
+  id: ID!
+  name: String
+  description: String
+  instructions: String
+  isEnabled: Boolean
+  inputs: [WorkflowInputDraftInput!]
+  steps: [WorkflowStepDraftInput!]
+}
+
+input WorkflowInputDraftInput {
+  name: String!
+  description: String
+  isRequired: Boolean
+  defaultValue: String
+}
+
+input WorkflowStepDraftInput {
+  name: String!
+  instructions: String
+}
+
+input StartWorkflowRunInput {
+  workflowDefinitionId: ID!
+  agentId: ID!
+  inputValues: [WorkflowRunInputValueInput!]!
+}
+
+input WorkflowRunInputValueInput {
+  name: String!
+  value: String!
 }
 
 input UpdateArtifactInput {

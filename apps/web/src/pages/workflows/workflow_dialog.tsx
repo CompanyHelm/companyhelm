@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { WorkflowInputRecord, WorkflowRecord, WorkflowStepRecord } from "./workflow_storage";
+import type { WorkflowInputRecord, WorkflowRecord, WorkflowStepRecord } from "./workflow_types";
 
 type WorkflowDialogDraft = {
   description: string;
@@ -21,10 +21,12 @@ type WorkflowDialogDraft = {
 };
 
 interface WorkflowDialogProps {
+  errorMessage: string | null;
   isOpen: boolean;
+  isSaving: boolean;
   workflow: WorkflowRecord | null;
   onOpenChange(open: boolean): void;
-  onSave(draft: WorkflowDialogDraft): void;
+  onSave(draft: WorkflowDialogDraft): Promise<void>;
 }
 
 function createDraftId(): string {
@@ -63,7 +65,7 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number): T[] {
  */
 export function WorkflowDialog(props: WorkflowDialogProps) {
   const [description, setDescription] = useState("");
-  const [inputs, setInputs] = useState<WorkflowInputRecord[]>([createInputDraft()]);
+  const [inputs, setInputs] = useState<WorkflowInputRecord[]>([]);
   const [instructions, setInstructions] = useState("");
   const [name, setName] = useState("");
   const [steps, setSteps] = useState<WorkflowStepRecord[]>([createStepDraft()]);
@@ -72,7 +74,7 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
   useEffect(() => {
     if (!props.isOpen) {
       setDescription("");
-      setInputs([createInputDraft()]);
+      setInputs([]);
       setInstructions("");
       setName("");
       setSteps([createStepDraft()]);
@@ -80,7 +82,7 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
     }
 
     setDescription(props.workflow?.description ?? "");
-    setInputs(props.workflow?.inputs.length ? [...props.workflow.inputs] : [createInputDraft()]);
+    setInputs(props.workflow?.inputs.length ? [...props.workflow.inputs] : []);
     setInstructions(props.workflow?.instructions ?? "");
     setName(props.workflow?.name ?? "");
     setSteps(props.workflow?.steps.length ? [...props.workflow.steps] : [createStepDraft()]);
@@ -213,7 +215,6 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
                     <div className="flex items-end gap-1">
                       <Button
                         aria-label="Remove input"
-                        disabled={inputs.length === 1}
                         onClick={() => {
                           setInputs((currentInputs) => currentInputs.filter((currentInput) => currentInput.id !== input.id));
                         }}
@@ -347,6 +348,12 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
               ))}
             </div>
           </section>
+
+          {props.errorMessage ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {props.errorMessage}
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
@@ -361,9 +368,9 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
           </Button>
           <Button
             data-primary-cta=""
-            disabled={!canSave}
-            onClick={() => {
-              props.onSave({
+            disabled={props.isSaving || !canSave}
+            onClick={async () => {
+              await props.onSave({
                 description,
                 inputs,
                 instructions,
@@ -373,7 +380,7 @@ export function WorkflowDialog(props: WorkflowDialogProps) {
             }}
             type="button"
           >
-            {isEditing ? "Save workflow" : "Create workflow"}
+            {props.isSaving ? "Saving..." : isEditing ? "Save workflow" : "Create workflow"}
           </Button>
         </DialogFooter>
       </DialogContent>

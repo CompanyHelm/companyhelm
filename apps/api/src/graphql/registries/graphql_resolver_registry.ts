@@ -7,6 +7,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 import { ManagementGraphqlRegistry } from "./management_graphql_registry.ts";
 import { RoutineGraphqlRegistry } from "./routine_graphql_registry.ts";
 import { TaskGraphqlRegistry } from "./task_graphql_registry.ts";
+import { WorkflowGraphqlRegistry } from "./workflow_graphql_registry.ts";
 
 /**
  * Merges the domain resolver fragments into the single resolver object expected by Mercurius while
@@ -29,6 +30,8 @@ export class GraphqlResolverRegistry implements GraphqlRegistryInterface {
     private readonly routineGraphqlRegistry: RoutineGraphqlRegistry,
     @inject(TaskGraphqlRegistry)
     private readonly taskGraphqlRegistry: TaskGraphqlRegistry,
+    @inject(WorkflowGraphqlRegistry)
+    private readonly workflowGraphqlRegistry: WorkflowGraphqlRegistry,
   ) {}
 
   createResolvers(): GraphqlResolverFragment {
@@ -40,6 +43,7 @@ export class GraphqlResolverRegistry implements GraphqlRegistryInterface {
       this.managementGraphqlRegistry.createResolvers(),
       this.routineGraphqlRegistry.createResolvers(),
       this.taskGraphqlRegistry.createResolvers(),
+      this.workflowGraphqlRegistry.createResolvers(),
     ];
     const mergedResolvers: GraphqlResolverFragment = {};
 

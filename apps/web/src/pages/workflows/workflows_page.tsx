@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useState } from "react";
 import { PencilIcon, PlayIcon, PlusIcon, WorkflowIcon } from "lucide-react";
+import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import type { RecordProxy } from "relay-runtime";
+import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -11,12 +14,142 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { RunWorkflowDialog } from "./run_workflow_dialog";
 import { WorkflowDialog } from "./workflow_dialog";
-import { WorkflowStorage, type WorkflowRecord } from "./workflow_storage";
+import type { WorkflowRecord } from "./workflow_types";
+import type { workflowsPageCreateMutation } from "./__generated__/workflowsPageCreateMutation.graphql";
+import type { workflowsPageQuery } from "./__generated__/workflowsPageQuery.graphql";
+import type { workflowsPageStartRunMutation } from "./__generated__/workflowsPageStartRunMutation.graphql";
+import type { workflowsPageUpdateMutation } from "./__generated__/workflowsPageUpdateMutation.graphql";
 
-function createWorkflowId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+type WorkflowQueryRecord = workflowsPageQuery["response"]["Workflows"][number];
+type WorkflowDialogDraft = {
+  description: string;
+  inputs: WorkflowRecord["inputs"];
+  instructions: string;
+  name: string;
+  steps: WorkflowRecord["steps"];
+};
+
+const workflowsPageQueryNode = graphql`
+  query workflowsPageQuery {
+    Agents {
+      id
+      name
+    }
+    Workflows {
+      id
+      name
+      description
+      instructions
+      isEnabled
+      inputs {
+        id
+        name
+        description
+        isRequired
+        defaultValue
+        createdAt
+      }
+      steps {
+        id
+        stepId
+        name
+        instructions
+        ordinal
+        createdAt
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const workflowsPageCreateMutationNode = graphql`
+  mutation workflowsPageCreateMutation($input: CreateWorkflowInput!) {
+    CreateWorkflow(input: $input) {
+      id
+      name
+      description
+      instructions
+      isEnabled
+      inputs {
+        id
+        name
+        description
+        isRequired
+        defaultValue
+        createdAt
+      }
+      steps {
+        id
+        stepId
+        name
+        instructions
+        ordinal
+        createdAt
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const workflowsPageUpdateMutationNode = graphql`
+  mutation workflowsPageUpdateMutation($input: UpdateWorkflowInput!) {
+    UpdateWorkflow(input: $input) {
+      id
+      name
+      description
+      instructions
+      isEnabled
+      inputs {
+        id
+        name
+        description
+        isRequired
+        defaultValue
+        createdAt
+      }
+      steps {
+        id
+        stepId
+        name
+        instructions
+        ordinal
+        createdAt
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const workflowsPageStartRunMutationNode = graphql`
+  mutation workflowsPageStartRunMutation($input: StartWorkflowRunInput!) {
+    StartWorkflowRun(input: $input) {
+      id
+      workflowDefinitionId
+      status
+      agentId
+      sessionId
+      runningStepRunId
+      startedAt
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+function filterStoreRecords(records: ReadonlyArray<unknown>): RecordProxy[] {
+  return records.filter((record): record is RecordProxy => {
+    return typeof record === "object"
+      && record !== null
+      && "getDataID" in record
+      && typeof record.getDataID === "function";
+  });
 }
 
 function formatDateTime(value: string): string {
@@ -31,81 +164,211 @@ function formatDateTime(value: string): string {
   }).format(date);
 }
 
-function createStorageKey(organizationSlug: string): string {
-  return `companyhelm:${organizationSlug}:workflows:v1`;
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
-/**
- * Provides the workflow management shell before backend workflow mutations exist. The page persists
- * locally and keeps run as a no-op so execution-specific behavior can be added independently.
- */
-export function WorkflowsPage() {
+function toWorkflowRecord(workflow: WorkflowQueryRecord): WorkflowRecord {
+  return {
+    createdAt: workflow.createdAt,
+    description: workflow.description ?? "",
+    id: workflow.id,
+    inputs: workflow.inputs.map((input) => ({
+      createdAt: input.createdAt,
+      defaultValue: input.defaultValue ?? "",
+      description: input.description ?? "",
+      id: input.id,
+      isRequired: input.isRequired,
+      name: input.name,
+    })),
+    instructions: workflow.instructions ?? "",
+    isEnabled: workflow.isEnabled,
+    name: workflow.name,
+    steps: workflow.steps.map((step) => ({
+      createdAt: step.createdAt,
+      id: step.id,
+      instructions: step.instructions ?? "",
+      name: step.name,
+      ordinal: step.ordinal,
+      stepId: step.stepId,
+    })),
+    updatedAt: workflow.updatedAt,
+  };
+}
+
+function createWorkflowInput(draft: WorkflowDialogDraft) {
+  return {
+    description: draft.description,
+    inputs: draft.inputs.map((input) => ({
+      defaultValue: input.defaultValue,
+      description: input.description,
+      isRequired: input.isRequired,
+      name: input.name,
+    })),
+    instructions: draft.instructions,
+    isEnabled: true,
+    name: draft.name,
+    steps: draft.steps.map((step) => ({
+      instructions: step.instructions,
+      name: step.name,
+    })),
+  };
+}
+
+function WorkflowsPageFallback() {
+  return (
+    <main className="flex flex-1 flex-col gap-6">
+      <Card variant="page">
+        <CardHeader>
+          <CardDescription>Loading workflows.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3">
+            <div className="h-16 rounded-lg border border-border/60 bg-muted/30" />
+            <div className="h-16 rounded-lg border border-border/60 bg-muted/20" />
+            <div className="h-16 rounded-lg border border-border/60 bg-muted/10" />
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function WorkflowsPageContent() {
+  const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
-  const storage = useMemo(() => new WorkflowStorage(createStorageKey(organizationSlug)), [organizationSlug]);
+  const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null);
   const [editingWorkflow, setEditingWorkflow] = useState<WorkflowRecord | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
-  const [isLoaded, setLoaded] = useState(false);
-  const [workflows, setWorkflows] = useState<WorkflowRecord[]>([]);
-
-  useEffect(() => {
-    setWorkflows(storage.read());
-    setLoaded(true);
-  }, [storage]);
-
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-
-    storage.write(workflows);
-  }, [isLoaded, storage, workflows]);
+  const [isRunDialogOpen, setRunDialogOpen] = useState(false);
+  const [runDialogErrorMessage, setRunDialogErrorMessage] = useState<string | null>(null);
+  const [runningWorkflow, setRunningWorkflow] = useState<WorkflowRecord | null>(null);
+  const data = useLazyLoadQuery<workflowsPageQuery>(
+    workflowsPageQueryNode,
+    {},
+    {
+      fetchPolicy: "store-and-network",
+    },
+  );
+  const [commitCreateWorkflow, isCreateWorkflowInFlight] = useMutation<workflowsPageCreateMutation>(
+    workflowsPageCreateMutationNode,
+  );
+  const [commitUpdateWorkflow, isUpdateWorkflowInFlight] = useMutation<workflowsPageUpdateMutation>(
+    workflowsPageUpdateMutationNode,
+  );
+  const [commitStartWorkflowRun, isStartWorkflowRunInFlight] = useMutation<workflowsPageStartRunMutation>(
+    workflowsPageStartRunMutationNode,
+  );
+  const workflows = data.Workflows.map(toWorkflowRecord);
+  const agents = data.Agents.map((agent) => ({
+    id: agent.id,
+    name: agent.name,
+  }));
+  const isWorkflowSaving = isCreateWorkflowInFlight || isUpdateWorkflowInFlight;
 
   function openCreateDialog(): void {
+    setDialogErrorMessage(null);
     setEditingWorkflow(null);
     setDialogOpen(true);
   }
 
-  function saveWorkflow(input: {
-    description: string;
-    inputs: WorkflowRecord["inputs"];
-    instructions: string;
-    name: string;
-    steps: WorkflowRecord["steps"];
-  }): void {
-    const timestamp = new Date().toISOString();
-    if (editingWorkflow) {
-      setWorkflows((currentWorkflows) => currentWorkflows.map((workflow) => (
-        workflow.id === editingWorkflow.id
-          ? {
-            ...workflow,
-            description: input.description,
-            inputs: input.inputs,
-            instructions: input.instructions,
-            name: input.name,
-            steps: input.steps,
-            updatedAt: timestamp,
-          }
-          : workflow
-      )));
+  async function saveWorkflow(draft: WorkflowDialogDraft): Promise<void> {
+    setDialogErrorMessage(null);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const baseInput = createWorkflowInput(draft);
+        if (editingWorkflow) {
+          commitUpdateWorkflow({
+            variables: {
+              input: {
+                ...baseInput,
+                id: editingWorkflow.id,
+                isEnabled: editingWorkflow.isEnabled,
+              },
+            },
+            onCompleted: (_response, errors) => {
+              const nextErrorMessage = errors?.[0]?.message;
+              if (nextErrorMessage) {
+                reject(new Error(nextErrorMessage));
+                return;
+              }
+              resolve();
+            },
+            onError: reject,
+          });
+          return;
+        }
+
+        commitCreateWorkflow({
+          variables: {
+            input: baseInput,
+          },
+          updater: (store) => {
+            const createdWorkflow = store.getRootField("CreateWorkflow");
+            if (!createdWorkflow) {
+              return;
+            }
+
+            const rootRecord = store.getRoot();
+            const currentWorkflows = filterStoreRecords(rootRecord.getLinkedRecords("Workflows") || []);
+            rootRecord.setLinkedRecords([createdWorkflow, ...currentWorkflows], "Workflows");
+          },
+          onCompleted: (_response, errors) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+            resolve();
+          },
+          onError: reject,
+        });
+      });
       setEditingWorkflow(null);
       setDialogOpen(false);
-      return;
+    } catch (error: unknown) {
+      setDialogErrorMessage(getErrorMessage(error, "Failed to save workflow."));
     }
+  }
 
-    setWorkflows((currentWorkflows) => [
-      {
-        createdAt: timestamp,
-        description: input.description,
-        id: createWorkflowId(),
-        inputs: input.inputs,
-        instructions: input.instructions,
-        name: input.name,
-        steps: input.steps,
-        updatedAt: timestamp,
-      },
-      ...currentWorkflows,
-    ]);
-    setDialogOpen(false);
+  async function runWorkflow(input: {
+    agentId: string;
+    inputValues: Array<{ name: string; value: string }>;
+    workflowDefinitionId: string;
+  }): Promise<void> {
+    setRunDialogErrorMessage(null);
+
+    try {
+      const workflowRunId = await new Promise<string>((resolve, reject) => {
+        commitStartWorkflowRun({
+          variables: {
+            input,
+          },
+          onCompleted: (response, errors) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+            resolve(response.StartWorkflowRun.id);
+          },
+          onError: reject,
+        });
+      });
+      setRunDialogOpen(false);
+      setRunningWorkflow(null);
+      void navigate({
+        params: {
+          organizationSlug,
+          runId: workflowRunId,
+          workflowId: input.workflowDefinitionId,
+        },
+        to: OrganizationPath.route("/workflows/$workflowId/runs/$runId"),
+      });
+    } catch (error: unknown) {
+      setRunDialogErrorMessage(getErrorMessage(error, "Failed to start workflow run."));
+    }
   }
 
   return (
@@ -130,7 +393,7 @@ export function WorkflowsPage() {
               <div className="grid gap-1">
                 <p className="text-sm font-medium text-foreground">No workflows yet</p>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Create a workflow to define the inputs and steps operators will use before execution is wired in.
+                  Create a workflow to define the inputs, templates, and ordered steps the agent should run.
                 </p>
               </div>
             </div>
@@ -142,7 +405,7 @@ export function WorkflowsPage() {
                   <TableHead>Inputs</TableHead>
                   <TableHead>Steps</TableHead>
                   <TableHead>Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="w-24 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -152,7 +415,9 @@ export function WorkflowsPage() {
                       <div className="grid gap-1">
                         <span className="font-medium text-foreground">{workflow.name}</span>
                         {workflow.description.length > 0 ? (
-                          <span className="max-w-xl text-xs text-muted-foreground">{workflow.description}</span>
+                          <span className="line-clamp-2 max-w-xl text-xs text-muted-foreground">
+                            {workflow.description}
+                          </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">No description</span>
                         )}
@@ -172,25 +437,31 @@ export function WorkflowsPage() {
                         <Button
                           aria-label={`Edit ${workflow.name}`}
                           onClick={() => {
+                            setDialogErrorMessage(null);
                             setEditingWorkflow(workflow);
                             setDialogOpen(true);
                           }}
-                          size="icon"
+                          size="icon-sm"
                           title={`Edit ${workflow.name}`}
                           type="button"
                           variant="ghost"
                         >
-                          <PencilIcon className="size-4" />
+                          <PencilIcon />
                         </Button>
                         <Button
                           aria-label={`Run ${workflow.name}`}
-                          onClick={() => undefined}
-                          size="icon"
-                          title="Workflow execution is not wired yet"
+                          disabled={agents.length === 0}
+                          onClick={() => {
+                            setRunDialogErrorMessage(null);
+                            setRunningWorkflow(workflow);
+                            setRunDialogOpen(true);
+                          }}
+                          size="icon-sm"
+                          title={`Run ${workflow.name}`}
                           type="button"
                           variant="ghost"
                         >
-                          <PlayIcon className="size-4" />
+                          <PlayIcon />
                         </Button>
                       </div>
                     </TableCell>
@@ -203,16 +474,43 @@ export function WorkflowsPage() {
       </Card>
 
       <WorkflowDialog
+        errorMessage={dialogErrorMessage}
         isOpen={isDialogOpen}
+        isSaving={isWorkflowSaving}
         onOpenChange={(open) => {
           setDialogOpen(open);
           if (!open) {
             setEditingWorkflow(null);
+            setDialogErrorMessage(null);
           }
         }}
         onSave={saveWorkflow}
         workflow={editingWorkflow}
       />
+
+      <RunWorkflowDialog
+        agents={agents}
+        errorMessage={runDialogErrorMessage}
+        isOpen={isRunDialogOpen}
+        isSaving={isStartWorkflowRunInFlight}
+        onOpenChange={(open) => {
+          setRunDialogOpen(open);
+          if (!open) {
+            setRunningWorkflow(null);
+            setRunDialogErrorMessage(null);
+          }
+        }}
+        onRun={runWorkflow}
+        workflow={runningWorkflow}
+      />
     </main>
+  );
+}
+
+export function WorkflowsPage() {
+  return (
+    <Suspense fallback={<WorkflowsPageFallback />}>
+      <WorkflowsPageContent />
+    </Suspense>
   );
 }

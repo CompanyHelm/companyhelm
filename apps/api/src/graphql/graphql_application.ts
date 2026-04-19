@@ -138,6 +138,7 @@ import { EnvironmentGraphqlRegistry } from "./registries/environment_graphql_reg
 import { ManagementGraphqlRegistry } from "./registries/management_graphql_registry.ts";
 import { RoutineGraphqlRegistry } from "./registries/routine_graphql_registry.ts";
 import { TaskGraphqlRegistry } from "./registries/task_graphql_registry.ts";
+import { WorkflowGraphqlRegistry } from "./registries/workflow_graphql_registry.ts";
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 
 type ResolverExecutorLike = {
@@ -446,6 +447,7 @@ export class GraphqlApplication {
       executeTaskMutation,
     );
     const routineGraphqlRegistry = new RoutineGraphqlRegistry();
+    const workflowGraphqlRegistry = new WorkflowGraphqlRegistry();
 
     return new GraphqlApplication(
       config,
@@ -458,6 +460,7 @@ export class GraphqlApplication {
         managementGraphqlRegistry,
         routineGraphqlRegistry,
         taskGraphqlRegistry,
+        workflowGraphqlRegistry,
       ),
       resolvedRedisService,
       resolvedGraphqlErrorLogger,
