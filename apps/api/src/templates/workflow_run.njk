@@ -1,9 +1,5 @@
 Execute the following workflow run.
 
-Workflow run ID: {{ workflowRunId }}
-Workflow definition ID: {{ workflowDefinitionId }}
-Current workflow run step ID: {{ runningStepRunId }}
-
 Workflow:
 {{ workflowName }}
 {% if workflowDescription %}
@@ -23,4 +19,4 @@ Instructions:
 {{ step.instructions if step.instructions else "(no step instructions provided)" }}
 {% endfor %}
 
-Start with the current workflow run step. When referring to a step, use the workflow run step ID, not the definition step ID.
+Start with the first workflow run step. When referring to a step, use the workflow run step ID, not the definition step ID.

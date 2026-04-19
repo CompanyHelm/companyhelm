@@ -230,12 +230,9 @@ export class WorkflowService {
       const instructions = this.renderDefinitionTemplate(workflowRow.instructions, templateValues);
       const prompt = this.workflowRunTemplate.render({
         instructions,
-        runningStepRunId,
         steps: stepSnapshots,
-        workflowDefinitionId: workflowRow.id,
         workflowDescription: workflowRow.description,
         workflowName: workflowRow.name,
-        workflowRunId,
       });
       const sessionRecord = await this.sessionManagerService.createSessionInTransaction(
         tx as never,
