@@ -1,4 +1,5 @@
 import { Loader2Icon, StarIcon, XIcon } from "lucide-react";
+import { MarkdownContent } from "@/components/markdown_content";
 
 export type SessionHumanQuestionSnippetRecord = {
   allowCustomAnswer: boolean;
@@ -49,9 +50,11 @@ export function SessionHumanQuestionSnippet(props: SessionHumanQuestionSnippetPr
               Question for human
             </p>
             <p className="mt-1 text-sm font-medium text-foreground">{props.question.title}</p>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {props.question.questionText}
-            </p>
+            <MarkdownContent
+              className="mt-2"
+              content={props.question.questionText}
+              tone="muted"
+            />
           </div>
           <button
             aria-label="Dismiss question"
@@ -75,9 +78,9 @@ export function SessionHumanQuestionSnippet(props: SessionHumanQuestionSnippetPr
                 onClick={() => props.onSelectProposal(proposal.id)}
                 type="button"
               >
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground" title={proposal.answerText}>
-                  {proposal.answerText}
-                </span>
+                <div className="min-w-0 flex-1 font-medium" title={proposal.answerText}>
+                  <MarkdownContent content={proposal.answerText} />
+                </div>
                 {renderRating(proposal.rating)}
               </button>
             ))}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { MessageSquareReplyIcon, StarIcon } from "lucide-react";
+import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -92,8 +93,8 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
       </CardHeader>
 
       <CardContent className="grid gap-4">
-        <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-sm leading-6 text-foreground">
-          {props.question.questionText}
+        <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3">
+          <MarkdownContent content={props.question.questionText} />
         </div>
 
         {props.question.proposals.length > 0 ? (
@@ -118,7 +119,9 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
                   type="button"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 text-sm font-medium text-foreground">{proposal.answerText}</div>
+                    <div className="min-w-0 flex-1 font-medium">
+                      <MarkdownContent content={proposal.answerText} />
+                    </div>
                     {renderRating(proposal.rating)}
                   </div>
                   <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
@@ -126,24 +129,28 @@ export function InboxQuestionCard(props: InboxQuestionCardProps) {
                       <div className="font-medium uppercase tracking-[0.18em] text-[0.65rem] text-foreground/70">
                         Pros
                       </div>
-                      <ul className="space-y-1">
+                      <ul className="ml-4 grid list-disc gap-1">
                         {proposal.pros.length > 0
                           ? proposal.pros.map((pro) => (
-                            <li key={pro}>- {pro}</li>
+                            <li key={pro}>
+                              <MarkdownContent content={pro} tone="muted" variant="compact" />
+                            </li>
                           ))
-                          : <li>- No explicit pros provided.</li>}
+                          : <li>No explicit pros provided.</li>}
                       </ul>
                     </div>
                     <div className="space-y-1">
                       <div className="font-medium uppercase tracking-[0.18em] text-[0.65rem] text-foreground/70">
                         Cons
                       </div>
-                      <ul className="space-y-1">
+                      <ul className="ml-4 grid list-disc gap-1">
                         {proposal.cons.length > 0
                           ? proposal.cons.map((con) => (
-                            <li key={con}>- {con}</li>
+                            <li key={con}>
+                              <MarkdownContent content={con} tone="muted" variant="compact" />
+                            </li>
                           ))
-                          : <li>- No explicit cons provided.</li>}
+                          : <li>No explicit cons provided.</li>}
                       </ul>
                     </div>
                   </div>
