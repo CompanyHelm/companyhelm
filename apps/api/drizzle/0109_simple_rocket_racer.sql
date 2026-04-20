@@ -1,0 +1,1 @@
+CREATE INDEX "session_messages_company_session_created_id_idx" ON "session_messages" USING btree ("company_id","session_id","created_at","id");

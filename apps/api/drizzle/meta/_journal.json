@@ -764,6 +764,13 @@
       "when": 1776573317595,
       "tag": "0108_milky_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1776704869576,
+      "tag": "0109_simple_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

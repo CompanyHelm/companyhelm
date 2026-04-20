@@ -169,6 +169,8 @@ export const sessionMessages = pgTable("session_messages", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   companyIdIndex: index("session_messages_company_id_idx").on(table.companyId),
+  companySessionCreatedIdIndex: index("session_messages_company_session_created_id_idx")
+    .on(table.companyId, table.sessionId, table.createdAt, table.id),
   sessionIdIndex: index("session_messages_session_id_idx").on(table.sessionId),
   sessionTurnIdIndex: index("session_messages_session_turn_id_idx").on(table.sessionId, table.turnId),
 }));
