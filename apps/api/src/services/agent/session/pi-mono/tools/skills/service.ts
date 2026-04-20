@@ -30,6 +30,7 @@ export type AgentSkillActivationResult = {
  */
 export class AgentSkillToolService {
   private readonly companyId: string;
+  private readonly agentId: string;
   private readonly promptScope: AgentEnvironmentPromptScope;
   private readonly sessionId: string;
   private readonly sessionSkillService: SessionSkillService;
@@ -49,7 +50,7 @@ export class AgentSkillToolService {
     this.transactionProvider = transactionProvider;
     this.companyId = companyId;
     this.sessionId = sessionId;
-    void agentId;
+    this.agentId = agentId;
     this.promptScope = promptScope;
     this.skillPathService = new AgentEnvironmentSkillPathService();
     this.skillService = skillService;
@@ -57,6 +58,7 @@ export class AgentSkillToolService {
   }
 
   async activateSkill(skillName: string): Promise<AgentSkillActivationResult> {
+    await this.requireAvailableSkill(skillName);
     const activation = await this.sessionSkillService.activateSkill(this.transactionProvider, {
       companyId: this.companyId,
       sessionId: this.sessionId,
@@ -88,12 +90,38 @@ export class AgentSkillToolService {
 
   async listAvailableSkills(): Promise<AgentSkillSummary[]> {
     const [availableSkills, activeSkills] = await Promise.all([
-      this.skillService.listSkills(this.transactionProvider, this.companyId),
+      this.skillService.listAgentAvailableSkills(this.transactionProvider, this.companyId, this.agentId),
       this.sessionSkillService.listActiveSkills(this.transactionProvider, this.companyId, this.sessionId),
     ]);
-    const activeSkillNames = new Set(activeSkills.map((skill) => skill.name));
+    const activeSkillIds = new Set(activeSkills.map((skill) => skill.id));
+    const activeSystemKeys = new Set(activeSkills.flatMap((skill) => skill.systemKey ? [skill.systemKey] : []));
 
-    return availableSkills.map((skill) => this.toSkillSummary(skill, activeSkillNames.has(skill.name)));
+    return availableSkills.map((skill) => this.toSkillSummary(skill, this.isActiveSkill(skill, activeSkillIds, activeSystemKeys)));
+  }
+
+  private async requireAvailableSkill(skillName: string): Promise<void> {
+    const availableSkills = await this.skillService.listAgentAvailableSkills(
+      this.transactionProvider,
+      this.companyId,
+      this.agentId,
+    );
+    if (availableSkills.some((skill) => skill.name === skillName)) {
+      return;
+    }
+
+    throw new Error(`Skill ${skillName} is not available to this agent.`);
+  }
+
+  private isActiveSkill(
+    skill: Awaited<ReturnType<SkillService["getSkill"]>>,
+    activeSkillIds: Set<string>,
+    activeSystemKeys: Set<string>,
+  ): boolean {
+    if (skill.systemKey) {
+      return activeSystemKeys.has(skill.systemKey);
+    }
+
+    return activeSkillIds.has(skill.id);
   }
 
   private toSkillSummary(
