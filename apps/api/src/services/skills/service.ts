@@ -120,6 +120,10 @@ export class SkillService {
       skillGroupId: string;
     },
   ): Promise<SkillGroupRecord> {
+    if (this.systemSkillRegistry.isSystemSkillGroupId(input.skillGroupId)) {
+      throw new Error("System skill group cannot be edited.");
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
@@ -268,7 +272,10 @@ export class SkillService {
         .from(skill_groups)
         .where(eq(skill_groups.companyId, companyId)) as SkillGroupRecord[];
 
-      return [...records].sort((left, right) => left.name.localeCompare(right.name));
+      return [
+        ...[...records].sort((left, right) => left.name.localeCompare(right.name)),
+        this.systemSkillRegistry.getSystemSkillGroup(companyId),
+      ];
     });
   }
 
@@ -362,6 +369,10 @@ export class SkillService {
       skillGroupId: string;
     },
   ): Promise<SkillGroupRecord> {
+    if (this.systemSkillRegistry.isSystemSkillGroupId(input.skillGroupId)) {
+      throw new Error("System skill group cannot be deleted.");
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const deletableDatabase = tx as DeletableDatabase;
       const [deletedGroup] = await deletableDatabase
@@ -418,6 +429,10 @@ export class SkillService {
       userId: string | null;
     },
   ): Promise<SkillGroupRecord> {
+    if (this.systemSkillRegistry.isSystemSkillGroupId(input.skillGroupId)) {
+      throw new Error("System skill group cannot be attached to agents.");
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
@@ -552,6 +567,10 @@ export class SkillService {
     agentId: string,
     skillGroupId: string,
   ): Promise<SkillGroupRecord> {
+    if (this.systemSkillRegistry.isSystemSkillGroupId(skillGroupId)) {
+      throw new Error("System skill group cannot be detached from agents.");
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const deletableDatabase = tx as DeletableDatabase;
@@ -704,6 +723,9 @@ export class SkillService {
   ): Promise<string | null> {
     if (skillGroupId === null) {
       return null;
+    }
+    if (this.systemSkillRegistry.isSystemSkillGroupId(skillGroupId)) {
+      throw new Error("System skill group cannot contain custom skills.");
     }
 
     const group = await this.requireSkillGroup(selectableDatabase, companyId, skillGroupId);

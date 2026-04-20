@@ -19,6 +19,8 @@ import type { agentsPageAddAgentMutation } from "./__generated__/agentsPageAddAg
 import type { agentsPageDeleteAgentMutation } from "./__generated__/agentsPageDeleteAgentMutation.graphql";
 import type { agentsPageQuery } from "./__generated__/agentsPageQuery.graphql";
 
+const SYSTEM_SKILL_GROUP_ID = "system";
+
 const agentsPageQueryNode = graphql`
   query agentsPageQuery {
     Agents {
@@ -201,10 +203,12 @@ function AgentsPageContent() {
     id: secretGroup.id,
     name: secretGroup.name,
   }));
-  const skillGroupOptions: AgentCreateSkillGroupOption[] = data.SkillGroups.map((skillGroup) => ({
-    id: skillGroup.id,
-    name: skillGroup.name,
-  }));
+  const skillGroupOptions: AgentCreateSkillGroupOption[] = data.SkillGroups
+    .filter((skillGroup) => skillGroup.id !== SYSTEM_SKILL_GROUP_ID)
+    .map((skillGroup) => ({
+      id: skillGroup.id,
+      name: skillGroup.name,
+    }));
   const skillOptions: AgentCreateSkillOption[] = data.Skills.map((skill) => ({
     description: skill.description,
     id: skill.id,

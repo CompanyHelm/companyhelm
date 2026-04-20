@@ -11,6 +11,8 @@ import {
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 
+const SYSTEM_SKILL_GROUP_ID = "system";
+
 export type SkillsTreeSkillRecord = {
   fileCount: number;
   id: string;
@@ -74,6 +76,10 @@ export function SkillsTree(props: SkillsTreeProps) {
   async function handleDrop(event: DragEvent<HTMLElement>, skillGroupId: string | null, groupKey: string) {
     event.preventDefault();
     setDropTargetKey("");
+    if (skillGroupId === SYSTEM_SKILL_GROUP_ID) {
+      return;
+    }
+
     const skillId = event.dataTransfer.getData("text/skill-id");
     if (!skillId) {
       return;
@@ -88,6 +94,7 @@ export function SkillsTree(props: SkillsTreeProps) {
       {groups.map((group) => {
         const isExpanded = expandedGroupKeys[group.key] ?? true;
         const GroupIcon = isExpanded ? FolderOpenIcon : FolderIcon;
+        const canDropIntoGroup = group.id !== SYSTEM_SKILL_GROUP_ID;
         const isDropTarget = dropTargetKey === group.key;
 
         return (
@@ -99,6 +106,10 @@ export function SkillsTree(props: SkillsTreeProps) {
                 setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
               }}
               onDragOver={(event) => {
+                if (!canDropIntoGroup) {
+                  return;
+                }
+
                 event.preventDefault();
                 setDropTargetKey(group.key);
               }}
@@ -130,6 +141,10 @@ export function SkillsTree(props: SkillsTreeProps) {
                   setDropTargetKey((currentKey) => currentKey === group.key ? "" : currentKey);
                 }}
                 onDragOver={(event) => {
+                  if (!canDropIntoGroup) {
+                    return;
+                  }
+
                   event.preventDefault();
                   setDropTargetKey(group.key);
                 }}

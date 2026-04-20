@@ -220,6 +220,30 @@ test("SkillService creates a skill group for the authenticated company", async (
   assert.equal(transactionProvider.groups[0]?.name, "Research");
 });
 
+test("SkillService lists the virtual system skill group with company groups", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [{
+      companyId: "company-123",
+      id: "group-automation",
+      name: "Automation",
+    }],
+    skills: [],
+  });
+  const service = new SkillService();
+
+  const groups = await service.listSkillGroups(transactionProvider as never, "company-123");
+
+  assert.deepEqual(groups, [{
+    companyId: "company-123",
+    id: "group-automation",
+    name: "Automation",
+  }, {
+    companyId: "company-123",
+    id: "system",
+    name: "System",
+  }]);
+});
+
 test("SkillService deletes a skill group and clears existing assignments", async () => {
   const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
     groups: [{
@@ -251,6 +275,40 @@ test("SkillService deletes a skill group and clears existing assignments", async
   assert.equal(deletedGroup.id, "group-automation");
   assert.equal(transactionProvider.groups.length, 0);
   assert.equal(transactionProvider.skillRecords[0]?.skillGroupId, null);
+});
+
+test("SkillService rejects mutations against the virtual system skill group", async () => {
+  const transactionProvider = SkillServiceTestHarness.createTransactionProvider({
+    groups: [],
+    skills: [],
+  });
+  const service = new SkillService();
+
+  await assert.rejects(
+    service.updateSkillGroup(transactionProvider as never, {
+      companyId: "company-123",
+      name: "Renamed",
+      skillGroupId: "system",
+    }),
+    /System skill group cannot be edited/,
+  );
+  await assert.rejects(
+    service.deleteSkillGroup(transactionProvider as never, {
+      companyId: "company-123",
+      skillGroupId: "system",
+    }),
+    /System skill group cannot be deleted/,
+  );
+  await assert.rejects(
+    service.createSkill(transactionProvider as never, {
+      companyId: "company-123",
+      description: "Description",
+      instructions: "Instructions",
+      name: "Skill",
+      skillGroupId: "system",
+    }),
+    /System skill group cannot contain custom skills/,
+  );
 });
 
 test("SkillService renames a skill group for the authenticated company", async () => {

@@ -10,6 +10,7 @@ import type { skillDetailPageQuery } from "./__generated__/skillDetailPageQuery.
 import type { skillDetailPageUpdateSkillMutation } from "./__generated__/skillDetailPageUpdateSkillMutation.graphql";
 
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
+const SYSTEM_SKILL_GROUP_ID = "system";
 
 const skillDetailPageQueryNode = graphql`
   query skillDetailPageQuery($skillId: ID!) {
@@ -99,10 +100,12 @@ function SkillDetailPageContent() {
     return [{
       label: "Ungrouped",
       value: UNGROUPED_SKILL_GROUP_VALUE,
-    }, ...data.SkillGroups.map((group) => ({
-      label: group.name,
-      value: group.id,
-    }))];
+    }, ...data.SkillGroups
+      .filter((group) => group.id !== SYSTEM_SKILL_GROUP_ID)
+      .map((group) => ({
+        label: group.name,
+        value: group.id,
+      }))];
   }, [data.SkillGroups]);
   const activeSkillGroupName = data.SkillGroups.find((group) => group.id === skill.skillGroupId)?.name ?? "Ungrouped";
   const isSystemSkill = skill.skillType === "system";

@@ -442,6 +442,10 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     companyId: "company-123",
     id: "group-research",
     name: "Research",
+  }, {
+    companyId: "company-123",
+    id: "system",
+    name: "System",
   }]);
   assert.deepEqual(initialDocument.data.Skills, [{
     companyId: "company-123",
@@ -455,7 +459,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     companyId: "company-123",
     id: "system:company_directory",
     name: "Company directory",
-    skillGroupId: null,
+    skillGroupId: "system",
     repository: null,
     skillDirectory: null,
     fileList: [],
@@ -463,7 +467,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     companyId: "company-123",
     id: "system:manage_agents",
     name: "Manage agents",
-    skillGroupId: null,
+    skillGroupId: "system",
     repository: null,
     skillDirectory: null,
     fileList: [],
@@ -471,7 +475,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     companyId: "company-123",
     id: "system:manage_artifacts",
     name: "Manage artifacts",
-    skillGroupId: null,
+    skillGroupId: "system",
     repository: null,
     skillDirectory: null,
     fileList: [],
@@ -479,7 +483,7 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     companyId: "company-123",
     id: "system:manage_workflows",
     name: "Manage workflows",
-    skillGroupId: null,
+    skillGroupId: "system",
     repository: null,
     skillDirectory: null,
     fileList: [],
@@ -984,6 +988,9 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
   }, {
     id: "group-new",
     name: "Docs",
+  }, {
+    id: "system",
+    name: "System",
   }]);
   assert.deepEqual(listDocument.data.Skills, [{
     id: "skill-browser",
@@ -993,16 +1000,16 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     skillGroupId: null,
   }, {
     id: "system:company_directory",
-    skillGroupId: null,
+    skillGroupId: "system",
   }, {
     id: "system:manage_agents",
-    skillGroupId: null,
+    skillGroupId: "system",
   }, {
     id: "system:manage_artifacts",
-    skillGroupId: null,
+    skillGroupId: "system",
   }, {
     id: "system:manage_workflows",
-    skillGroupId: null,
+    skillGroupId: "system",
   }]);
 
   await app.close();

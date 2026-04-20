@@ -67,6 +67,8 @@ type SkillGroupDialogState = {
   name: string;
 };
 
+const SYSTEM_SKILL_GROUP_ID = "system";
+
 function filterRelayRecords(records: ReadonlyArray<unknown>): RelayLinkedRecord[] {
   return records.filter((record): record is RelayLinkedRecord => {
     return typeof record === "object"
@@ -211,6 +213,7 @@ function SkillGroupsPageContent() {
 
           {sortedGroups.map((group) => {
             const skillCount = groupSkillCounts.get(group.id) ?? 0;
+            const isSystemGroup = group.id === SYSTEM_SKILL_GROUP_ID;
 
             return (
               <div
@@ -220,87 +223,89 @@ function SkillGroupsPageContent() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">{group.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {skillCount} {skillCount === 1 ? "skill" : "skills"} currently assigned
+                    {isSystemGroup ? "Built-in group" : `${skillCount} ${skillCount === 1 ? "skill" : "skills"} currently assigned`}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    aria-label={`Rename ${group.name}`}
-                    className="text-muted-foreground hover:text-foreground"
-                    disabled={deletingGroupId === group.id || updatingGroupId === group.id}
-                    onClick={() => {
-                      setErrorMessage(null);
-                      setGroupDialogState({
-                        groupId: group.id,
-                        mode: "edit",
-                        name: group.name,
-                      });
-                    }}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <PencilIcon className="size-4" />
-                  </Button>
-                  <Button
-                    aria-label={`Delete ${group.name}`}
-                    className="text-muted-foreground hover:text-destructive"
-                    disabled={deletingGroupId === group.id || updatingGroupId === group.id}
-                    onClick={() => {
-                      setErrorMessage(null);
-                      setDeletingGroupId(group.id);
-
-                      void new Promise<void>((resolve, reject) => {
-                        commitDeleteSkillGroup({
-                          variables: {
-                            input: {
-                              id: group.id,
-                            },
-                          },
-                          updater: (store) => {
-                            const deletedGroup = store.getRootField("DeleteSkillGroup");
-                            if (!deletedGroup) {
-                              return;
-                            }
-
-                            const rootRecord = store.getRoot();
-                            const currentGroups = filterRelayRecords(rootRecord.getLinkedRecords("SkillGroups") || []);
-                            rootRecord.setLinkedRecords(
-                              currentGroups.filter((record) => record.getDataID() !== deletedGroup.getDataID()),
-                              "SkillGroups",
-                            );
-
-                            const currentSkills = filterRelayRecords(rootRecord.getLinkedRecords("Skills") || []);
-                            for (const skillRecord of currentSkills) {
-                              if (skillRecord.getValue("skillGroupId") === deletedGroup.getDataID()) {
-                                skillRecord.setValue(null, "skillGroupId");
-                              }
-                            }
-                          },
-                          onCompleted: (_response, errors) => {
-                            const nextErrorMessage = errors?.[0]?.message;
-                            if (nextErrorMessage) {
-                              reject(new Error(nextErrorMessage));
-                              return;
-                            }
-
-                            resolve();
-                          },
-                          onError: reject,
+                {isSystemGroup ? null : (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      aria-label={`Rename ${group.name}`}
+                      className="text-muted-foreground hover:text-foreground"
+                      disabled={deletingGroupId === group.id || updatingGroupId === group.id}
+                      onClick={() => {
+                        setErrorMessage(null);
+                        setGroupDialogState({
+                          groupId: group.id,
+                          mode: "edit",
+                          name: group.name,
                         });
-                      }).catch((error: unknown) => {
-                        setErrorMessage(error instanceof Error ? error.message : "Failed to delete skill group.");
-                      }).finally(() => {
-                        setDeletingGroupId(null);
-                      });
-                    }}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
-                </div>
+                      }}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <PencilIcon className="size-4" />
+                    </Button>
+                    <Button
+                      aria-label={`Delete ${group.name}`}
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={deletingGroupId === group.id || updatingGroupId === group.id}
+                      onClick={() => {
+                        setErrorMessage(null);
+                        setDeletingGroupId(group.id);
+
+                        void new Promise<void>((resolve, reject) => {
+                          commitDeleteSkillGroup({
+                            variables: {
+                              input: {
+                                id: group.id,
+                              },
+                            },
+                            updater: (store) => {
+                              const deletedGroup = store.getRootField("DeleteSkillGroup");
+                              if (!deletedGroup) {
+                                return;
+                              }
+
+                              const rootRecord = store.getRoot();
+                              const currentGroups = filterRelayRecords(rootRecord.getLinkedRecords("SkillGroups") || []);
+                              rootRecord.setLinkedRecords(
+                                currentGroups.filter((record) => record.getDataID() !== deletedGroup.getDataID()),
+                                "SkillGroups",
+                              );
+
+                              const currentSkills = filterRelayRecords(rootRecord.getLinkedRecords("Skills") || []);
+                              for (const skillRecord of currentSkills) {
+                                if (skillRecord.getValue("skillGroupId") === deletedGroup.getDataID()) {
+                                  skillRecord.setValue(null, "skillGroupId");
+                                }
+                              }
+                            },
+                            onCompleted: (_response, errors) => {
+                              const nextErrorMessage = errors?.[0]?.message;
+                              if (nextErrorMessage) {
+                                reject(new Error(nextErrorMessage));
+                                return;
+                              }
+
+                              resolve();
+                            },
+                            onError: reject,
+                          });
+                        }).catch((error: unknown) => {
+                          setErrorMessage(error instanceof Error ? error.message : "Failed to delete skill group.");
+                        }).finally(() => {
+                          setDeletingGroupId(null);
+                        });
+                      }}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2Icon className="size-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })}

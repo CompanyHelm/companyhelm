@@ -174,6 +174,7 @@ test("SessionSkillService activates registry-backed system skills by name", asyn
 
   assert.equal(activation.inserted, true);
   assert.equal(activation.skill.id, "system:manage_workflows");
+  assert.equal(activation.skill.skillGroupId, "system");
   assert.equal(activation.skill.systemKey, "manage_workflows");
   assert.equal(transactionProvider.activeSkillRecords[0]?.skillId, null);
   assert.equal(transactionProvider.activeSkillRecords[0]?.systemSkillKey, "manage_workflows");

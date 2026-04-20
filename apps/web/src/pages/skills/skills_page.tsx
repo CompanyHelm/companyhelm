@@ -25,6 +25,8 @@ type RelayLinkedRecord = {
   setValue(value: unknown, key: string): void;
 };
 
+const SYSTEM_SKILL_GROUP_ID = "system";
+
 const skillsPageQueryNode = graphql`
   query skillsPageQuery {
     SkillGroups {
@@ -195,6 +197,7 @@ function SkillsPageContent() {
   );
   const groupOptions: CreateSkillDialogGroupOption[] = useMemo(() => {
     return [...data.SkillGroups]
+      .filter((group) => group.id !== SYSTEM_SKILL_GROUP_ID)
       .sort((left, right) => left.name.localeCompare(right.name))
       .map((group) => ({
         id: group.id,

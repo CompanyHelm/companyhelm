@@ -15,6 +15,8 @@ type SystemSkillDefinition = {
  */
 export class SystemSkillRegistry {
   private static readonly idPrefix = "system:";
+  static readonly systemSkillGroupId = "system";
+  private static readonly systemSkillGroupName = "System";
 
   private readonly commandCatalog: SystemCommandCatalog;
   private readonly definitions: SystemSkillDefinition[] = [
@@ -72,6 +74,18 @@ export class SystemSkillRegistry {
     return `${SystemSkillRegistry.idPrefix}${systemSkillKey}`;
   }
 
+  getSystemSkillGroup(companyId: string) {
+    return {
+      companyId,
+      id: SystemSkillRegistry.systemSkillGroupId,
+      name: SystemSkillRegistry.systemSkillGroupName,
+    };
+  }
+
+  isSystemSkillGroupId(skillGroupId: string): boolean {
+    return skillGroupId === SystemSkillRegistry.systemSkillGroupId;
+  }
+
   parseSystemSkillId(skillId: string): string {
     if (!this.isSystemSkillId(skillId)) {
       throw new Error(`${skillId} is not a system skill ID.`);
@@ -122,7 +136,7 @@ export class SystemSkillRegistry {
       name: definition.name,
       repository: null,
       skillDirectory: null,
-      skillGroupId: null,
+      skillGroupId: SystemSkillRegistry.systemSkillGroupId,
       skillType: "system",
       systemCommands: this.commandCatalog.listCommandDefinitions(definition.key),
       systemKey: definition.key,
