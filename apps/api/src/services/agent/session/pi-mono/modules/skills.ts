@@ -30,6 +30,18 @@ export class SkillsSessionModule extends AgentSessionModuleInterface {
               name: skill.name,
             };
           }),
+          promptVisibleSkills.filter((skill) => skill.active && skill.skillType === "system").map((skill) => {
+            return {
+              instructions: skill.instructions,
+              name: skill.name,
+              systemCommands: skill.systemCommands.map((command) => ({
+                description: command.description,
+                id: command.id,
+                inputSchemaJson: JSON.stringify(command.inputSchema, null, 2),
+              })),
+              systemKey: skill.systemKey,
+            };
+          }),
           promptVisibleSkills.map((skill) => {
             return {
               description: skill.description,

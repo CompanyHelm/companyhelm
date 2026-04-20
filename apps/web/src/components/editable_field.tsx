@@ -25,6 +25,7 @@ type EditableFieldTextProps = {
   min?: number;
   onSave: (value: string) => Promise<void>;
   readOnlyFormat?: "markdown" | "plain";
+  readOnly?: boolean;
   value: string | null;
 };
 
@@ -35,6 +36,7 @@ type EditableFieldSelectProps = {
   label: string;
   onSave: (value: string) => Promise<void>;
   options: EditableFieldOption[];
+  readOnly?: boolean;
   value: string | null;
 };
 
@@ -117,21 +119,23 @@ export function EditableField(props: EditableFieldProps & EditableFieldLayoutPro
             {props.label}
           </p>
         </div>
-        <Button
-          disabled={isSaving || (props.fieldType === "select" && props.options.length === 0)}
-          onClick={() => {
-            setDraftValue(props.value ?? "");
-            setErrorMessage(null);
-            setEditing(true);
-            if (props.fieldType === "select") {
-              setOpen(true);
-            }
-          }}
-          size="icon"
-          variant="ghost"
-        >
-          {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
-        </Button>
+        {props.readOnly ? null : (
+          <Button
+            disabled={isSaving || (props.fieldType === "select" && props.options.length === 0)}
+            onClick={() => {
+              setDraftValue(props.value ?? "");
+              setErrorMessage(null);
+              setEditing(true);
+              if (props.fieldType === "select") {
+                setOpen(true);
+              }
+            }}
+            size="icon"
+            variant="ghost"
+          >
+            {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <PencilIcon className="size-4" />}
+          </Button>
+        )}
       </div>
 
       <div className={valueSpacingClassName}>

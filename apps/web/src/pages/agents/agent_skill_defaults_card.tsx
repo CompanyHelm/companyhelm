@@ -15,6 +15,7 @@ type AgentSkillRecord = {
   id: string;
   name: string;
   skillGroupId: string | null | undefined;
+  skillType: "custom" | "system" | "%future added value";
 };
 
 type AgentSkillGroupRecord = {
@@ -59,6 +60,7 @@ const agentSkillDefaultsCardAttachSkillToAgentMutationNode = graphql`
       name
       description
       skillGroupId
+      skillType
     }
   }
 `;
@@ -179,6 +181,7 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
         description: skill.description,
         id: skill.id,
         label: skill.name,
+        metaLabel: skill.skillType === "system" ? "Built-in" : null,
       }));
   }, [attachedSkillIds, props.companySkills]);
   const fieldArguments = useMemo(() => ({
@@ -386,6 +389,7 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
             description: skill.description,
             id: skill.id,
             label: skill.name,
+            metaLabel: skill.skillType === "system" ? "Built-in" : null,
           }))}
         />
 

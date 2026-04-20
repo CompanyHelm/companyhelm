@@ -3,6 +3,7 @@ import { injectable } from "inversify";
 import { agentSessionActiveSkills, agentSessions, skills } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import type { SkillRecord } from "./service.ts";
+import { SystemSkillRegistry } from "./system_registry.ts";
 
 export type SessionSkillActivationRecord = {
   inserted: boolean;
@@ -34,7 +35,8 @@ type SessionRecord = {
 };
 
 type SkillIdRecord = {
-  skillId: string;
+  skillId: string | null;
+  systemSkillKey: string | null;
 };
 
 /**
@@ -43,6 +45,12 @@ type SkillIdRecord = {
  */
 @injectable()
 export class SessionSkillService {
+  private readonly systemSkillRegistry: SystemSkillRegistry;
+
+  constructor(systemSkillRegistry: SystemSkillRegistry = new SystemSkillRegistry()) {
+    this.systemSkillRegistry = systemSkillRegistry;
+  }
+
   async activateSkill(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -57,16 +65,21 @@ export class SessionSkillService {
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
       await this.requireSession(selectableDatabase, input.companyId, input.sessionId);
-      const skill = await this.requireSkillByName(selectableDatabase, input.companyId, skillName);
+      const customSkill = await this.findSkillByName(selectableDatabase, input.companyId, skillName);
+      if (!customSkill) {
+        return this.activateSystemSkill(selectableDatabase, insertableDatabase, input.companyId, input.sessionId, skillName);
+      }
+
       const [existingActivation] = await selectableDatabase
         .select({
           skillId: agentSessionActiveSkills.skillId,
+          systemSkillKey: agentSessionActiveSkills.systemSkillKey,
         })
         .from(agentSessionActiveSkills)
         .where(and(
           eq(agentSessionActiveSkills.companyId, input.companyId),
           eq(agentSessionActiveSkills.sessionId, input.sessionId),
-          eq(agentSessionActiveSkills.skillId, skill.id),
+          eq(agentSessionActiveSkills.skillId, customSkill.id),
         )) as SkillIdRecord[];
       if (!existingActivation) {
         await insertableDatabase
@@ -75,13 +88,14 @@ export class SessionSkillService {
             activatedAt: new Date(),
             companyId: input.companyId,
             sessionId: input.sessionId,
-            skillId: skill.id,
+            skillId: customSkill.id,
+            systemSkillKey: null,
           });
       }
 
       return {
         inserted: !existingActivation,
-        skill,
+        skill: customSkill,
       };
     });
   }
@@ -96,6 +110,18 @@ export class SessionSkillService {
   ): Promise<void> {
     await transactionProvider.transaction(async (tx) => {
       const deletableDatabase = tx as DeletableDatabase;
+      if (this.systemSkillRegistry.isSystemSkillId(input.skillId)) {
+        const systemSkillKey = this.systemSkillRegistry.parseSystemSkillId(input.skillId);
+        await deletableDatabase
+          .delete(agentSessionActiveSkills)
+          .where(and(
+            eq(agentSessionActiveSkills.companyId, input.companyId),
+            eq(agentSessionActiveSkills.sessionId, input.sessionId),
+            eq(agentSessionActiveSkills.systemSkillKey, systemSkillKey),
+          ));
+        return;
+      }
+
       await deletableDatabase
         .delete(agentSessionActiveSkills)
         .where(and(
@@ -117,6 +143,7 @@ export class SessionSkillService {
       const activeSkillIds = await selectableDatabase
         .select({
           skillId: agentSessionActiveSkills.skillId,
+          systemSkillKey: agentSessionActiveSkills.systemSkillKey,
         })
         .from(agentSessionActiveSkills)
         .where(and(
@@ -127,15 +154,49 @@ export class SessionSkillService {
         return [];
       }
 
+      const customSkillIds = activeSkillIds.flatMap((activeSkill) => activeSkill.skillId ? [activeSkill.skillId] : []);
+      const systemSkillKeys = activeSkillIds.flatMap((activeSkill) => activeSkill.systemSkillKey ? [activeSkill.systemSkillKey] : []);
+      const systemSkills = this.systemSkillRegistry.listSkillsByKeys(companyId, systemSkillKeys);
+      if (customSkillIds.length === 0) {
+        return systemSkills;
+      }
+
       const activeSkills = await selectableDatabase
         .select(this.skillSelection())
         .from(skills)
         .where(and(
           eq(skills.companyId, companyId),
-          inArray(skills.id, activeSkillIds.map((activeSkill) => activeSkill.skillId)),
+          inArray(skills.id, customSkillIds),
         )) as SkillRecord[];
 
-      return [...activeSkills].sort((left, right) => left.name.localeCompare(right.name));
+      return [...systemSkills, ...activeSkills.map((skill) => this.toCustomSkillRecord(skill))]
+        .sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async isSystemSkillActive(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      sessionId: string;
+      systemSkillKey: string;
+    },
+  ): Promise<boolean> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireSession(selectableDatabase, input.companyId, input.sessionId);
+      const [activeSkill] = await selectableDatabase
+        .select({
+          systemSkillKey: agentSessionActiveSkills.systemSkillKey,
+        })
+        .from(agentSessionActiveSkills)
+        .where(and(
+          eq(agentSessionActiveSkills.companyId, input.companyId),
+          eq(agentSessionActiveSkills.sessionId, input.sessionId),
+          eq(agentSessionActiveSkills.systemSkillKey, input.systemSkillKey),
+        )) as Array<{ systemSkillKey: string }>;
+
+      return Boolean(activeSkill);
     });
   }
 
@@ -169,11 +230,11 @@ export class SessionSkillService {
     return session;
   }
 
-  private async requireSkillByName(
+  private async findSkillByName(
     selectableDatabase: SelectableDatabase,
     companyId: string,
     skillName: string,
-  ): Promise<SkillRecord> {
+  ): Promise<SkillRecord | null> {
     const [skill] = await selectableDatabase
       .select(this.skillSelection())
       .from(skills)
@@ -181,11 +242,57 @@ export class SessionSkillService {
         eq(skills.companyId, companyId),
         eq(skills.name, skillName),
       )) as SkillRecord[];
-    if (!skill) {
+    return skill ? this.toCustomSkillRecord(skill) : null;
+  }
+
+  private async activateSystemSkill(
+    selectableDatabase: SelectableDatabase,
+    insertableDatabase: InsertableDatabase,
+    companyId: string,
+    sessionId: string,
+    skillName: string,
+  ): Promise<SessionSkillActivationRecord> {
+    const systemSkill = this.systemSkillRegistry.findSkillByName(companyId, skillName);
+    if (!systemSkill || !systemSkill.systemKey) {
       throw new Error(`Skill ${skillName} not found.`);
     }
 
-    return skill;
+    const [existingActivation] = await selectableDatabase
+      .select({
+        skillId: agentSessionActiveSkills.skillId,
+        systemSkillKey: agentSessionActiveSkills.systemSkillKey,
+      })
+      .from(agentSessionActiveSkills)
+      .where(and(
+        eq(agentSessionActiveSkills.companyId, companyId),
+        eq(agentSessionActiveSkills.sessionId, sessionId),
+        eq(agentSessionActiveSkills.systemSkillKey, systemSkill.systemKey),
+      )) as SkillIdRecord[];
+    if (!existingActivation) {
+      await insertableDatabase
+        .insert(agentSessionActiveSkills)
+        .values({
+          activatedAt: new Date(),
+          companyId,
+          sessionId,
+          skillId: null,
+          systemSkillKey: systemSkill.systemKey,
+        });
+    }
+
+    return {
+      inserted: !existingActivation,
+      skill: systemSkill,
+    };
+  }
+
+  private toCustomSkillRecord(skill: SkillRecord): SkillRecord {
+    return {
+      ...skill,
+      skillType: "custom",
+      systemCommands: [],
+      systemKey: null,
+    };
   }
 
   private skillSelection() {

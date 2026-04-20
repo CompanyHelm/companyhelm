@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0af2cd3c8d2bf05224d8319a26f73a61>>
+ * @generated SignedSource<<dc5ec174e2db58cdf287a49755541b2b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type skillsPageQuery$variables = Record<PropertyKey, never>;
 export type skillsPageQuery$data = {
   readonly SkillGroups: ReadonlyArray<{
@@ -21,6 +22,7 @@ export type skillsPageQuery$data = {
     readonly name: string;
     readonly repository: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
   }>;
 };
 export type skillsPageQuery = {
@@ -78,6 +80,13 @@ v2 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "repository",
         "storageKey": null
       },
@@ -110,16 +119,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "2ec025c412e6452e357b738a113a3367",
+    "cacheID": "1b63e1c1c46c5a0719af0d95dcc78c10",
     "id": null,
     "metadata": {},
     "name": "skillsPageQuery",
     "operationKind": "query",
-    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    repository\n    fileList\n  }\n}\n"
+    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    skillType\n    repository\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "04bbef063ad2ff847a60ab3158bd9772";
+(node as any).hash = "943c553371ec2638fc88efb1b7ef8423";
 
 export default node;

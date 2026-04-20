@@ -61,6 +61,7 @@ export type AgentCreateSkillOption = {
   id: string;
   name: string;
   skillGroupId: string | null | undefined;
+  skillType: "custom" | "system" | "%future added value";
 };
 
 export type AgentCreateMcpServerOption = {

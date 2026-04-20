@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<04dff7a83bd5c03af8872578da3f615d>>
+ * @generated SignedSource<<5014fdd6f884f6dedacce093a4ff6160>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type UpdateSkillInput = {
   description?: string | null | undefined;
   id: string;
@@ -29,6 +30,7 @@ export type skillDetailPageUpdateSkillMutation$data = {
     readonly repository: string | null | undefined;
     readonly skillDirectory: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
   };
 };
 export type skillDetailPageUpdateSkillMutation = {
@@ -98,6 +100,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "repository",
         "storageKey": null
       },
@@ -137,16 +146,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "dd9715b85e7e331225cac269d6abfe13",
+    "cacheID": "ed1d68e4fa9cb753f720d8a4c517e870",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageUpdateSkillMutation",
     "operationKind": "mutation",
-    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
+    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "f63f68cc9f1fc775bd0b636b7ba54b3f";
+(node as any).hash = "575c1c5ea734ea43ad27048a500f9e48";
 
 export default node;

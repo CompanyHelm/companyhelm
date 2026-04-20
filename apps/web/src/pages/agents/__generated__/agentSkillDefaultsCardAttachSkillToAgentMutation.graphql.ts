@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9bd159934787002922e54d1b8ace2ceb>>
+ * @generated SignedSource<<555dd1fc28070e81184ddaa15217e7a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type AttachSkillToAgentInput = {
   agentId: string;
   skillId: string;
@@ -22,6 +23,7 @@ export type agentSkillDefaultsCardAttachSkillToAgentMutation$data = {
     readonly id: string;
     readonly name: string;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
   };
 };
 export type agentSkillDefaultsCardAttachSkillToAgentMutation = {
@@ -79,6 +81,13 @@ v1 = [
         "kind": "ScalarField",
         "name": "skillGroupId",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -102,16 +111,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "6d4022d43dffaf9b97ea29eba6610ce8",
+    "cacheID": "5eec3214a9f46ef5a9ecc3c1a6bc41e4",
     "id": null,
     "metadata": {},
     "name": "agentSkillDefaultsCardAttachSkillToAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentSkillDefaultsCardAttachSkillToAgentMutation(\n  $input: AttachSkillToAgentInput!\n) {\n  AttachSkillToAgent(input: $input) {\n    id\n    name\n    description\n    skillGroupId\n  }\n}\n"
+    "text": "mutation agentSkillDefaultsCardAttachSkillToAgentMutation(\n  $input: AttachSkillToAgentInput!\n) {\n  AttachSkillToAgent(input: $input) {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bbef2033f1dfefb20892298e06dd8503";
+(node as any).hash = "5d30b6e3a73830dc9cc21daab41f1b70";
 
 export default node;

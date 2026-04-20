@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<33d02fc19e0ffb393b2922f38e7ec18b>>
+ * @generated SignedSource<<3961bc305e46d9c8c3409b904726f548>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type CreateSkillInput = {
   description: string;
   instructions: string;
@@ -28,6 +29,7 @@ export type skillsPageCreateSkillMutation$data = {
     readonly repository: string | null | undefined;
     readonly skillDirectory: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
   };
 };
 export type skillsPageCreateSkillMutation = {
@@ -97,6 +99,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "repository",
         "storageKey": null
       },
@@ -136,16 +145,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "c6668f1de2cea1aa40af808ece97fd55",
+    "cacheID": "a96c6288b948c440b7b7762b30b1b1c2",
     "id": null,
     "metadata": {},
     "name": "skillsPageCreateSkillMutation",
     "operationKind": "mutation",
-    "text": "mutation skillsPageCreateSkillMutation(\n  $input: CreateSkillInput!\n) {\n  CreateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
+    "text": "mutation skillsPageCreateSkillMutation(\n  $input: CreateSkillInput!\n) {\n  CreateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "86e2e2f64bbf395def801d0e2292ad21";
+(node as any).hash = "023179531c438e5a1896fe903dbaaf0a";
 
 export default node;

@@ -12,6 +12,16 @@ export class AgentSkillResultFormatter {
       `files: ${AgentSkillResultFormatter.formatFiles(result.skill.files)}`,
       `description: ${result.skill.description}`,
     ];
+    if (result.skill.skillType === "system") {
+      lines.push("instructions:");
+      lines.push(result.skill.instructions);
+      lines.push("systemCommands:");
+      lines.push(JSON.stringify(result.skill.systemCommands.map((command) => ({
+        description: command.description,
+        id: command.id,
+        inputSchema: command.inputSchema,
+      })), null, 2));
+    }
     if (result.skill.files.length > 0) {
       lines.push(`repository: ${result.skill.repository ?? "(missing)"}`);
       lines.push(`skillDirectory: ${result.skill.skillDirectory ?? "(missing)"}`);
@@ -33,6 +43,9 @@ export class AgentSkillResultFormatter {
         `files: ${AgentSkillResultFormatter.formatFiles(skill.files)}`,
         `description: ${skill.description}`,
       ];
+      if (skill.skillType === "system") {
+        lines.push(`systemKey: ${skill.systemKey ?? "(missing)"}`);
+      }
       if (skill.files.length > 0) {
         lines.push(`repository: ${skill.repository ?? "(missing)"}`);
         lines.push(`skillDirectory: ${skill.skillDirectory ?? "(missing)"}`);

@@ -1,4 +1,5 @@
 import type { SkillGroupRecord, SkillRecord } from "../services/skills/service.ts";
+import type { SystemCommandDefinition } from "../services/skills/system_command_catalog.ts";
 
 export type GraphqlSkillRecord = {
   companyId: string;
@@ -12,6 +13,9 @@ export type GraphqlSkillRecord = {
   repository: string | null;
   skillDirectory: string | null;
   skillGroupId: string | null;
+  skillType: string;
+  systemCommands: SystemCommandDefinition[];
+  systemKey: string | null;
 };
 
 export type GraphqlSkillGroupRecord = {
@@ -37,6 +41,9 @@ export class GraphqlSkillPresenter {
       repository: record.repository,
       skillDirectory: record.skillDirectory,
       skillGroupId: record.skillGroupId,
+      skillType: record.skillType ?? "custom",
+      systemCommands: record.systemCommands ?? [],
+      systemKey: record.systemKey ?? null,
     };
   }
 

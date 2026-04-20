@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<47b810c004f299cca3d84f6099f79d27>>
+ * @generated SignedSource<<cf933f004ce96f8145b88124185899d6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type agentsPageQuery$variables = Record<PropertyKey, never>;
 export type agentsPageQuery$data = {
   readonly AgentCreateOptions: ReadonlyArray<{
@@ -79,6 +80,7 @@ export type agentsPageQuery$data = {
     readonly id: string;
     readonly name: string;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
   }>;
 };
 export type agentsPageQuery = {
@@ -318,6 +320,13 @@ v6 = [
         "kind": "ScalarField",
         "name": "skillGroupId",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -437,16 +446,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "73ff4c8e94aa44cacb04a18c688df6db",
+    "cacheID": "36fbd882d7c07e6f993eee86b88ebb73",
     "id": null,
     "metadata": {},
     "name": "agentsPageQuery",
     "operationKind": "query",
-    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      description\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
+    "text": "query agentsPageQuery {\n  Agents {\n    id\n    name\n    modelProvider\n    modelName\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n  AgentCreateOptions {\n    id\n    modelProviderCredentialId\n    isDefault\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      description\n      modelProviderCredentialModelId\n      modelId\n      name\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  Secrets {\n    id\n    name\n    description\n    envVarName\n  }\n  SecretGroups {\n    id\n    name\n  }\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    description\n    skillGroupId\n    skillType\n  }\n  McpServers {\n    id\n    name\n    description\n    url\n    enabled\n  }\n  ComputeProviderDefinitions {\n    id\n    isDefault\n    name\n    provider\n    templates {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7bc983e755bb5ba60b4e04a2e9bb8c1d";
+(node as any).hash = "45b191af3d146bf10745b35be0eae63f";
 
 export default node;

@@ -17,6 +17,7 @@ export type SkillsTreeSkillRecord = {
   name: string;
   repository: string | null;
   skillGroupId: string | null;
+  skillType: "custom" | "system" | "%future added value";
 };
 
 export type SkillsTreeGroupRecord = {
@@ -138,11 +139,17 @@ export function SkillsTree(props: SkillsTreeProps) {
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">Drop skills here.</div>
                 ) : null}
 
-                {group.skills.map((skill) => (
+                {group.skills.map((skill) => {
+                  const sourceLabel = skill.skillType === "system"
+                    ? "Built-in"
+                    : skill.repository ? "GitHub" : "Manual";
+                  const canManageSkill = skill.skillType !== "system";
+
+                  return (
                   <article
                     key={skill.id}
-                    className={`cursor-grab rounded-md transition active:cursor-grabbing ${(props.movingSkillId === skill.id || props.deletingSkillId === skill.id) ? "opacity-60" : ""}`}
-                    draggable
+                    className={`${canManageSkill ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"} rounded-md transition ${(props.movingSkillId === skill.id || props.deletingSkillId === skill.id) ? "opacity-60" : ""}`}
+                    draggable={canManageSkill}
                     onClick={() => {
                       if (suppressOpenSkillIdRef.current === skill.id) {
                         return;
@@ -164,6 +171,9 @@ export function SkillsTree(props: SkillsTreeProps) {
                       }, 0);
                     }}
                     onDragStart={(event) => {
+                      if (!canManageSkill) {
+                        return;
+                      }
                       suppressOpenSkillIdRef.current = skill.id;
                       event.dataTransfer.effectAllowed = "move";
                       event.dataTransfer.setData("text/skill-id", skill.id);
@@ -192,24 +202,27 @@ export function SkillsTree(props: SkillsTreeProps) {
                       </div>
                       <div className="flex shrink-0 items-center gap-2 text-[0.7rem] text-muted-foreground">
                         <span>{skill.fileCount} files</span>
-                        <span>{skill.repository ? "GitHub" : "Manual"}</span>
-                        <button
-                          aria-label={`Delete ${skill.name}`}
-                          className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={props.deletingSkillId === skill.id}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            void props.onDeleteSkill(skill.id);
-                          }}
-                          type="button"
-                        >
-                          <Trash2Icon className="size-3.5" />
-                        </button>
+                        <span>{sourceLabel}</span>
+                        {canManageSkill ? (
+                          <button
+                            aria-label={`Delete ${skill.name}`}
+                            className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={props.deletingSkillId === skill.id}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void props.onDeleteSkill(skill.id);
+                            }}
+                            type="button"
+                          >
+                            <Trash2Icon className="size-3.5" />
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   </article>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
           </section>

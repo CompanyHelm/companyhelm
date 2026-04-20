@@ -9,6 +9,22 @@ Active skills for this session:
 {% else %}
 - None
 {% endif %}
+{% if activeSystemSkills.length > 0 %}
+Active system skill commands:
+{% for skill in activeSystemSkills %}
+### {{ skill.name }}
+systemKey: {{ skill.systemKey }}
+instructions:
+{{ skill.instructions }}
+commands:
+{% for command in skill.systemCommands %}
+- id: {{ command.id }}
+  description: {{ command.description }}
+  inputSchema:
+{{ command.inputSchemaJson }}
+{% endfor %}
+{% endfor %}
+{% endif %}
 Available skills for this session:
 {% if availableSkills.length > 0 %}
 {% for skill in availableSkills %}

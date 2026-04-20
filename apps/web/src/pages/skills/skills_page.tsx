@@ -35,6 +35,7 @@ const skillsPageQueryNode = graphql`
       id
       name
       skillGroupId
+      skillType
       repository
       fileList
     }
@@ -49,6 +50,7 @@ const skillsPageCreateSkillMutationNode = graphql`
       description
       instructions
       skillGroupId
+      skillType
       repository
       skillDirectory
       fileList
@@ -102,6 +104,7 @@ const skillsPageImportGithubSkillsMutationNode = graphql`
       description
       instructions
       skillGroupId
+      skillType
       repository
       skillDirectory
       fileList
@@ -117,6 +120,7 @@ const skillsPageUpdateSkillMutationNode = graphql`
       description
       instructions
       skillGroupId
+      skillType
       repository
       skillDirectory
       fileList
@@ -210,6 +214,7 @@ function SkillsPageContent() {
         name: skill.name,
         repository: skill.repository ?? null,
         skillGroupId: nextSkillGroupId,
+        skillType: skill.skillType,
       });
       skillsByGroupId.set(nextSkillGroupId, currentSkills);
     }

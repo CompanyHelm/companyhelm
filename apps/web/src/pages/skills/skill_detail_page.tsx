@@ -19,6 +19,13 @@ const skillDetailPageQueryNode = graphql`
       description
       instructions
       skillGroupId
+      skillType
+      systemKey
+      systemCommands {
+        id
+        description
+        inputSchema
+      }
       repository
       skillDirectory
       fileList
@@ -38,6 +45,7 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
       description
       instructions
       skillGroupId
+      skillType
       repository
       skillDirectory
       fileList
@@ -97,7 +105,8 @@ function SkillDetailPageContent() {
     }))];
   }, [data.SkillGroups]);
   const activeSkillGroupName = data.SkillGroups.find((group) => group.id === skill.skillGroupId)?.name ?? "Ungrouped";
-  const sourceLabel = skill.repository ? "GitHub" : "Manual";
+  const isSystemSkill = skill.skillType === "system";
+  const sourceLabel = isSystemSkill ? "Built-in" : skill.repository ? "GitHub" : "Manual";
 
   useEffect(() => {
     setDetailLabel(skill.name);
@@ -168,6 +177,7 @@ function SkillDetailPageContent() {
                 name: value,
               });
             }}
+            readOnly={isSystemSkill}
             value={skill.name}
           />
           <EditableField
@@ -180,6 +190,7 @@ function SkillDetailPageContent() {
               });
             }}
             options={skillGroupOptions}
+            readOnly={isSystemSkill}
             value={skill.skillGroupId ?? UNGROUPED_SKILL_GROUP_VALUE}
             displayValue={activeSkillGroupName}
           />
@@ -192,6 +203,7 @@ function SkillDetailPageContent() {
                 description: value,
               });
             }}
+            readOnly={isSystemSkill}
             value={skill.description}
           />
           <EditableField
@@ -204,6 +216,7 @@ function SkillDetailPageContent() {
               });
             }}
             readOnlyFormat="markdown"
+            readOnly={isSystemSkill}
             value={skill.instructions}
           />
         </CardContent>
@@ -223,6 +236,15 @@ function SkillDetailPageContent() {
               <p className="text-sm font-semibold text-foreground">{sourceLabel}</p>
             </div>
           </div>
+
+          {isSystemSkill ? (
+            <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                System key
+              </p>
+              <p className="mt-3 text-sm text-foreground">{skill.systemKey ?? "—"}</p>
+            </div>
+          ) : null}
 
           <div className="rounded-xl border border-border/60 bg-card/50 p-4">
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -247,6 +269,22 @@ function SkillDetailPageContent() {
             </p>
             <p className="mt-3 text-sm text-foreground">{skill.skillDirectory ?? "—"}</p>
           </div>
+
+          {isSystemSkill ? (
+            <div className="sm:col-span-2 rounded-xl border border-border/60 bg-card/50 p-4">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                System commands
+              </p>
+              <div className="mt-3 grid gap-3">
+                {skill.systemCommands.map((command) => (
+                  <div key={command.id} className="rounded-lg border border-border/50 bg-background/40 p-3">
+                    <p className="text-sm font-semibold text-foreground">{command.id}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{command.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="sm:col-span-2 rounded-xl border border-border/60 bg-card/50 p-4">
             <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">

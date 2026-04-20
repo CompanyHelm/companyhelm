@@ -80,6 +80,7 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       skillGroupId
+      skillType
     }
     Sessions {
       id
@@ -140,6 +141,7 @@ const agentDetailPageQueryNode = graphql`
       name
       description
       skillGroupId
+      skillType
     }
     ComputeProviderDefinitions {
       id
@@ -357,6 +359,7 @@ function AgentDetailPageContent() {
     id: skill.id,
     name: skill.name,
     skillGroupId: skill.skillGroupId ?? null,
+    skillType: skill.skillType,
   }));
   const companySkillGroups: AgentCreateSkillGroupOption[] = data.SkillGroups.map((skillGroup) => ({
     id: skillGroup.id,
@@ -367,6 +370,7 @@ function AgentDetailPageContent() {
     id: skill.id,
     name: skill.name,
     skillGroupId: skill.skillGroupId ?? null,
+    skillType: skill.skillType,
   }));
   const providerOptions: AgentCreateProviderOption[] = useMemo(() => {
     return data.AgentCreateOptions.map((providerOption) => ({

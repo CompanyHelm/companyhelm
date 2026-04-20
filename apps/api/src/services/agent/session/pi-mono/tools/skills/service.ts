@@ -2,16 +2,21 @@ import type { TransactionProviderInterface } from "../../../../../../db/transact
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 import { AgentEnvironmentSkillPathService } from "../../../../../environments/skills/path_service.ts";
 import { SessionSkillService } from "../../../../../skills/session_service.ts";
-import { SkillService } from "../../../../../skills/service.ts";
+import { type SkillType, SkillService } from "../../../../../skills/service.ts";
+import type { SystemCommandDefinition } from "../../../../../skills/system_command_catalog.ts";
 
 export type AgentSkillSummary = {
   active: boolean;
   description: string;
   files: string[];
   githubTrackedCommitSha: string | null;
+  instructions: string;
   name: string;
   repository: string | null;
   skillDirectory: string | null;
+  skillType: SkillType;
+  systemCommands: SystemCommandDefinition[];
+  systemKey: string | null;
 };
 
 export type AgentSkillActivationResult = {
@@ -100,9 +105,13 @@ export class AgentSkillToolService {
       description: typeof skill.description === "string" ? skill.description : "",
       files: this.toSkillFiles(skill),
       githubTrackedCommitSha: skill.githubTrackedCommitSha,
+      instructions: typeof skill.instructions === "string" ? skill.instructions : "",
       name: typeof skill.name === "string" ? skill.name : "",
       repository: skill.repository,
       skillDirectory: skill.skillDirectory,
+      skillType: skill.skillType ?? "custom",
+      systemCommands: skill.systemCommands ?? [],
+      systemKey: skill.systemKey ?? null,
     };
   }
 

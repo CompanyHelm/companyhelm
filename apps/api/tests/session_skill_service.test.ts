@@ -7,7 +7,8 @@ type MockActiveSkillRecord = {
   activatedAt: Date;
   companyId: string;
   sessionId: string;
-  skillId: string;
+  skillId: string | null;
+  systemSkillKey: string | null;
 };
 
 type MockSessionRecord = {
@@ -30,13 +31,15 @@ type MockSkillRecord = {
 };
 
 class SessionSkillServiceTestHarness {
-  static createTransactionProvider() {
+  static createTransactionProvider(input?: {
+    skills?: MockSkillRecord[];
+  }) {
     const activeSkillRecords: MockActiveSkillRecord[] = [];
     const sessionRecords: MockSessionRecord[] = [{
       companyId: "company-123",
       id: "session-1",
     }];
-    const skillRecords: MockSkillRecord[] = [{
+    const skillRecords: MockSkillRecord[] = input?.skills ?? [{
       companyId: "company-123",
       description: "Browser automation guidance.",
       fileList: ["skills/browser/scripts/open.sh"],
@@ -73,7 +76,8 @@ class SessionSkillServiceTestHarness {
               activatedAt: value.activatedAt as Date,
               companyId: String(value.companyId),
               sessionId: String(value.sessionId),
-              skillId: String(value.skillId),
+              skillId: value.skillId ? String(value.skillId) : null,
+              systemSkillKey: value.systemSkillKey ? String(value.systemSkillKey) : null,
             });
           },
         };
@@ -98,6 +102,7 @@ class SessionSkillServiceTestHarness {
                 if (table === agentSessionActiveSkills) {
                   return activeSkillRecords.map((activeSkillRecord) => ({
                     skillId: activeSkillRecord.skillId,
+                    systemSkillKey: activeSkillRecord.systemSkillKey,
                   }));
                 }
 
@@ -147,4 +152,31 @@ test("SessionSkillService stores one active skill per session and lists it back"
   });
 
   assert.equal(transactionProvider.activeSkillRecords.length, 0);
+});
+
+test("SessionSkillService activates registry-backed system skills by name", async () => {
+  const transactionProvider = SessionSkillServiceTestHarness.createTransactionProvider({
+    skills: [],
+  });
+  const service = new SessionSkillService();
+
+  const activation = await service.activateSkill(transactionProvider as never, {
+    companyId: "company-123",
+    sessionId: "session-1",
+    skillName: "Manage workflows",
+  });
+  const activeSkills = await service.listActiveSkills(transactionProvider as never, "company-123", "session-1");
+  const isActive = await service.isSystemSkillActive(transactionProvider as never, {
+    companyId: "company-123",
+    sessionId: "session-1",
+    systemSkillKey: "manage_workflows",
+  });
+
+  assert.equal(activation.inserted, true);
+  assert.equal(activation.skill.id, "system:manage_workflows");
+  assert.equal(activation.skill.systemKey, "manage_workflows");
+  assert.equal(transactionProvider.activeSkillRecords[0]?.skillId, null);
+  assert.equal(transactionProvider.activeSkillRecords[0]?.systemSkillKey, "manage_workflows");
+  assert.equal(activeSkills[0]?.id, "system:manage_workflows");
+  assert.equal(isActive, true);
 });

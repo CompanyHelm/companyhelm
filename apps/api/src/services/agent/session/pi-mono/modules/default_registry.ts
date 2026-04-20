@@ -30,6 +30,7 @@ import { McpSessionModule } from "./mcp.ts";
 import { RuntimeSessionModule } from "./runtime.ts";
 import { SecretsSessionModule } from "./secrets.ts";
 import { SkillsSessionModule } from "./skills.ts";
+import { SystemCommandsSessionModule } from "./system_commands.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
@@ -68,6 +69,7 @@ export class DefaultAgentSessionModuleRegistry {
       new ComputerUseSessionModule(input.config, input.computeProviderDefinitionService),
       new SecretsSessionModule(input.secretService),
       new SkillsSessionModule(),
+      new SystemCommandsSessionModule(input.workflowService),
       new CompanyDirectorySessionModule(),
       new AgentManagementSessionModule({
         computeProviderDefinitionService: input.computeProviderDefinitionService,

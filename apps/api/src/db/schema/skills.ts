@@ -72,17 +72,24 @@ export const agentSessionActiveSkills = pgTable("agent_session_active_skills", {
     .references(() => agentSessions.id, { onDelete: "cascade" })
     .notNull(),
   skillId: uuid("skill_id")
-    .references(() => skills.id, { onDelete: "cascade" })
-    .notNull(),
+    .references(() => skills.id, { onDelete: "cascade" }),
+  systemSkillKey: text("system_skill_key"),
   activatedAt: timestamp("activated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
-  pk: primaryKey({
-    columns: [table.sessionId, table.skillId],
-    name: "agent_session_active_skills_session_id_skill_id_pk",
-  }),
   companyIdIndex: index("agent_session_active_skills_company_id_idx").on(table.companyId),
   sessionIdIndex: index("agent_session_active_skills_session_id_idx").on(table.sessionId),
   skillIdIndex: index("agent_session_active_skills_skill_id_idx").on(table.skillId),
+  systemSkillKeyIndex: index("agent_session_active_skills_system_skill_key_idx").on(table.systemSkillKey),
+  customSkillUnique: uniqueIndex("agent_session_active_skills_session_skill_uidx")
+    .on(table.sessionId, table.skillId)
+    .where(sql`${table.skillId} IS NOT NULL`),
+  systemSkillUnique: uniqueIndex("agent_session_active_skills_session_system_skill_uidx")
+    .on(table.sessionId, table.systemSkillKey)
+    .where(sql`${table.systemSkillKey} IS NOT NULL`),
+  oneSkillReferenceCheck: check(
+    "agent_session_active_skills_one_skill_reference_check",
+    sql`num_nonnulls(${table.skillId}, ${table.systemSkillKey}) = 1`,
+  ),
 }));
 
 export const agentSkills = pgTable("agent_skills", {
@@ -93,16 +100,26 @@ export const agentSkills = pgTable("agent_skills", {
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
   skillId: uuid("skill_id")
-    .references(() => skills.id, { onDelete: "cascade" })
-    .notNull(),
+    .references(() => skills.id, { onDelete: "cascade" }),
+  systemSkillKey: text("system_skill_key"),
   createdByUserId: uuid("created_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
-  pk: primaryKey({ columns: [table.agentId, table.skillId] }),
   companyIdIndex: index("agent_skills_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_skills_agent_id_idx").on(table.agentId),
   skillIdIndex: index("agent_skills_skill_id_idx").on(table.skillId),
+  systemSkillKeyIndex: index("agent_skills_system_skill_key_idx").on(table.systemSkillKey),
+  customSkillUnique: uniqueIndex("agent_skills_agent_skill_uidx")
+    .on(table.agentId, table.skillId)
+    .where(sql`${table.skillId} IS NOT NULL`),
+  systemSkillUnique: uniqueIndex("agent_skills_agent_system_skill_uidx")
+    .on(table.agentId, table.systemSkillKey)
+    .where(sql`${table.systemSkillKey} IS NOT NULL`),
+  oneSkillReferenceCheck: check(
+    "agent_skills_one_skill_reference_check",
+    sql`num_nonnulls(${table.skillId}, ${table.systemSkillKey}) = 1`,
+  ),
 }));
 
 export const agentSkillGroups = pgTable("agent_skill_groups", {

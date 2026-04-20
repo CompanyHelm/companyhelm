@@ -184,6 +184,11 @@ type Subscription {
 
 scalar JSON
 
+enum SkillType {
+  custom
+  system
+}
+
 enum McpServerAuthType {
   none
   authorization_header
@@ -650,6 +655,16 @@ type Skill {
   githubTrackedCommitSha: String
   repository: String
   skillDirectory: String
+  skillType: SkillType!
+  systemCommands: [SystemCommand!]!
+  systemKey: String
+}
+
+type SystemCommand {
+  id: ID!
+  description: String!
+  inputSchema: JSON!
+  systemSkillKey: String!
 }
 
 type SkillGroup {

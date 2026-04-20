@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<fde6f091991d85f1ee901928e2fedada>>
+ * @generated SignedSource<<79e22d88f7c5fd467a540d8b704e4914>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type skillDetailPageQuery$variables = {
   skillId: string;
 };
@@ -22,6 +23,13 @@ export type skillDetailPageQuery$data = {
     readonly repository: string | null | undefined;
     readonly skillDirectory: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
+    readonly systemCommands: ReadonlyArray<{
+      readonly description: string;
+      readonly id: string;
+      readonly inputSchema: any;
+    }>;
+    readonly systemKey: string | null | undefined;
   };
   readonly SkillGroups: ReadonlyArray<{
     readonly id: string;
@@ -55,7 +63,14 @@ v2 = {
   "name": "name",
   "storageKey": null
 },
-v3 = [
+v3 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "description",
+  "storageKey": null
+},
+v4 = [
   {
     "alias": null,
     "args": [
@@ -72,13 +87,7 @@ v3 = [
     "selections": [
       (v1/*: any*/),
       (v2/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "description",
-        "storageKey": null
-      },
+      (v3/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -91,6 +100,40 @@ v3 = [
         "args": null,
         "kind": "ScalarField",
         "name": "skillGroupId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "systemKey",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "SystemCommand",
+        "kind": "LinkedField",
+        "name": "systemCommands",
+        "plural": true,
+        "selections": [
+          (v1/*: any*/),
+          (v3/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "inputSchema",
+            "storageKey": null
+          }
+        ],
         "storageKey": null
       },
       {
@@ -137,7 +180,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "skillDetailPageQuery",
-    "selections": (v3/*: any*/),
+    "selections": (v4/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -146,19 +189,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "skillDetailPageQuery",
-    "selections": (v3/*: any*/)
+    "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "85b11db20c7e9c962733c6844fb6420d",
+    "cacheID": "404dadfa0ad94759e504008c3ecb384f",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageQuery",
     "operationKind": "query",
-    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    repository\n    skillDirectory\n    fileList\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
+    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    skillDirectory\n    fileList\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "835f9400810ab37c1c530be4a00b193e";
+(node as any).hash = "6bed55a1973de993e759c4aadaf1e659";
 
 export default node;

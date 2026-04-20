@@ -115,8 +115,12 @@ test("AgentSkillToolService lists the catalog with active flags", async () => {
     description: "Browser automation guidance.",
     files: ["scripts/open.sh", "references/FOO.md"],
     githubTrackedCommitSha: "commit-sha-1",
+    instructions: "Use the browser skill when working on websites.",
     name: "Browser skill",
     repository: "companyhelm/skills",
     skillDirectory: "skills/browser",
+    skillType: "custom",
+    systemCommands: [],
+    systemKey: null,
   }]);
 });

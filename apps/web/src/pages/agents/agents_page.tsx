@@ -68,6 +68,7 @@ const agentsPageQueryNode = graphql`
       name
       description
       skillGroupId
+      skillType
     }
     McpServers {
       id
@@ -209,6 +210,7 @@ function AgentsPageContent() {
     id: skill.id,
     name: skill.name,
     skillGroupId: skill.skillGroupId,
+    skillType: skill.skillType,
   }));
   const mcpServerOptions: AgentCreateMcpServerOption[] = data.McpServers
     .filter((server) => server.enabled)

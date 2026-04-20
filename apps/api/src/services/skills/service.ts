@@ -1,7 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { injectable } from "inversify";
 import { agentSkillGroups, agentSkills, agents, skill_groups, skills } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import type { SystemCommandDefinition } from "./system_command_catalog.ts";
+import { SystemSkillRegistry } from "./system_registry.ts";
+
+export type SkillType = "custom" | "system";
 
 export type SkillRecord = {
   companyId: string;
@@ -15,6 +19,9 @@ export type SkillRecord = {
   repository: string | null;
   skillDirectory: string | null;
   skillGroupId: string | null;
+  skillType?: SkillType;
+  systemCommands?: SystemCommandDefinition[];
+  systemKey?: string | null;
 };
 
 export type SkillGroupRecord = {
@@ -25,6 +32,11 @@ export type SkillGroupRecord = {
 
 type AgentRecord = {
   id: string;
+};
+
+type AgentSkillAttachmentRecord = {
+  skillId: string | null;
+  systemSkillKey: string | null;
 };
 
 type SelectableDatabase = {
@@ -67,6 +79,12 @@ type DeletableDatabase = {
  */
 @injectable()
 export class SkillService {
+  private readonly systemSkillRegistry: SystemSkillRegistry;
+
+  constructor(systemSkillRegistry: SystemSkillRegistry = new SystemSkillRegistry()) {
+    this.systemSkillRegistry = systemSkillRegistry;
+  }
+
   async createSkillGroup(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -165,7 +183,7 @@ export class SkillService {
         throw new Error("Failed to create skill.");
       }
 
-      return createdSkill;
+      return this.toCustomSkillRecord(createdSkill);
     });
   }
 
@@ -220,7 +238,7 @@ export class SkillService {
         throw new Error("Failed to import Git skill.");
       }
 
-      return createdSkill;
+      return this.toCustomSkillRecord(createdSkill);
     });
   }
 
@@ -229,6 +247,10 @@ export class SkillService {
     companyId: string,
     skillId: string,
   ): Promise<SkillRecord> {
+    if (this.systemSkillRegistry.isSystemSkillId(skillId)) {
+      return this.systemSkillRegistry.requireSkillById(companyId, skillId);
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       return this.requireSkill(selectableDatabase, companyId, skillId);
@@ -261,7 +283,10 @@ export class SkillService {
         .from(skills)
         .where(eq(skills.companyId, companyId)) as SkillRecord[];
 
-      return [...records].sort((left, right) => left.name.localeCompare(right.name));
+      return [
+        ...this.systemSkillRegistry.listSkills(companyId),
+        ...records.map((record) => this.toCustomSkillRecord(record)),
+      ].sort((left, right) => left.name.localeCompare(right.name));
     });
   }
 
@@ -302,18 +327,25 @@ export class SkillService {
       const attachments = await selectableDatabase
         .select({
           skillId: agentSkills.skillId,
+          systemSkillKey: agentSkills.systemSkillKey,
         })
         .from(agentSkills)
         .where(and(
           eq(agentSkills.companyId, companyId),
           eq(agentSkills.agentId, agentId),
-        )) as Array<{ skillId: string }>;
+        )) as AgentSkillAttachmentRecord[];
 
-      return this.listSkillsByIds(
+      const customSkills = await this.listSkillsByIds(
         selectableDatabase,
         companyId,
-        attachments.map((attachment) => attachment.skillId),
+        attachments.flatMap((attachment) => attachment.skillId ? [attachment.skillId] : []),
       );
+      const systemSkills = this.systemSkillRegistry.listSkillsByKeys(
+        companyId,
+        attachments.flatMap((attachment) => attachment.systemSkillKey ? [attachment.systemSkillKey] : []),
+      );
+
+      return [...systemSkills, ...customSkills].sort((left, right) => left.name.localeCompare(right.name));
     });
   }
 
@@ -349,6 +381,10 @@ export class SkillService {
       skillId: string;
     },
   ): Promise<SkillRecord> {
+    if (this.systemSkillRegistry.isSystemSkillId(input.skillId)) {
+      throw new Error("System skills cannot be deleted.");
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const deletableDatabase = tx as DeletableDatabase;
       const [deletedSkill] = await deletableDatabase
@@ -363,7 +399,7 @@ export class SkillService {
         throw new Error("Skill not found.");
       }
 
-      return deletedSkill;
+      return this.toCustomSkillRecord(deletedSkill);
     });
   }
 
@@ -417,6 +453,10 @@ export class SkillService {
       userId: string | null;
     },
   ): Promise<SkillRecord> {
+    if (this.systemSkillRegistry.isSystemSkillId(input.skillId)) {
+      return this.attachSystemSkillToAgent(transactionProvider, input);
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const insertableDatabase = tx as InsertableDatabase;
@@ -442,6 +482,7 @@ export class SkillService {
             createdAt: new Date(),
             createdByUserId: input.userId,
             skillId: input.skillId,
+            systemSkillKey: null,
           });
       }
 
@@ -460,6 +501,10 @@ export class SkillService {
       skillId: string;
     },
   ): Promise<SkillRecord> {
+    if (this.systemSkillRegistry.isSystemSkillId(input.skillId)) {
+      throw new Error("System skills cannot be edited.");
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
@@ -491,7 +536,7 @@ export class SkillService {
         throw new Error("Failed to update skill.");
       }
 
-      return updatedSkill;
+      return this.toCustomSkillRecord(updatedSkill);
     });
   }
 
@@ -531,6 +576,10 @@ export class SkillService {
     agentId: string,
     skillId: string,
   ): Promise<SkillRecord> {
+    if (this.systemSkillRegistry.isSystemSkillId(skillId)) {
+      return this.detachSystemSkillFromAgent(transactionProvider, companyId, agentId, skillId);
+    }
+
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const deletableDatabase = tx as DeletableDatabase;
@@ -542,6 +591,7 @@ export class SkillService {
           eq(agentSkills.companyId, companyId),
           eq(agentSkills.agentId, agentId),
           eq(agentSkills.skillId, skillId),
+          isNull(agentSkills.systemSkillKey),
         ))
         .returning?.({
           skillId: agentSkills.skillId,
@@ -618,7 +668,7 @@ export class SkillService {
       throw new Error("Skill not found.");
     }
 
-    return skill;
+    return this.toCustomSkillRecord(skill);
   }
 
   private async requireSkillGroup(
@@ -691,7 +741,8 @@ export class SkillService {
         inArray(skills.id, skillIds),
       )) as SkillRecord[];
 
-    return [...records].sort((left, right) => left.name.localeCompare(right.name));
+    return [...records].map((record) => this.toCustomSkillRecord(record))
+      .sort((left, right) => left.name.localeCompare(right.name));
   }
 
   private skillGroupSelection() {
@@ -716,5 +767,86 @@ export class SkillService {
       skillDirectory: skills.skillDirectory,
       skillGroupId: skills.skillGroupId,
     };
+  }
+
+  private toCustomSkillRecord(record: SkillRecord): SkillRecord {
+    return {
+      ...record,
+      skillType: "custom",
+      systemCommands: [],
+      systemKey: null,
+    };
+  }
+
+  private async attachSystemSkillToAgent(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      agentId: string;
+      companyId: string;
+      skillId: string;
+      userId: string | null;
+    },
+  ): Promise<SkillRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
+      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const skill = this.systemSkillRegistry.requireSkillById(input.companyId, input.skillId);
+      const existingAttachments = await selectableDatabase
+        .select({
+          systemSkillKey: agentSkills.systemSkillKey,
+        })
+        .from(agentSkills)
+        .where(and(
+          eq(agentSkills.companyId, input.companyId),
+          eq(agentSkills.agentId, input.agentId),
+          eq(agentSkills.systemSkillKey, skill.systemKey ?? ""),
+        )) as Array<{ systemSkillKey: string }>;
+
+      if (!existingAttachments[0]) {
+        await insertableDatabase
+          .insert(agentSkills)
+          .values({
+            agentId: input.agentId,
+            companyId: input.companyId,
+            createdAt: new Date(),
+            createdByUserId: input.userId,
+            skillId: null,
+            systemSkillKey: skill.systemKey,
+          });
+      }
+
+      return skill;
+    });
+  }
+
+  private async detachSystemSkillFromAgent(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+    skillId: string,
+  ): Promise<SkillRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const skill = this.systemSkillRegistry.requireSkillById(companyId, skillId);
+      const [deletedAttachment] = await deletableDatabase
+        .delete(agentSkills)
+        .where(and(
+          eq(agentSkills.companyId, companyId),
+          eq(agentSkills.agentId, agentId),
+          eq(agentSkills.systemSkillKey, skill.systemKey ?? ""),
+        ))
+        .returning?.({
+          systemSkillKey: agentSkills.systemSkillKey,
+        }) as Array<{ systemSkillKey: string }>;
+
+      if (!deletedAttachment) {
+        throw new Error("Skill is not attached to the agent.");
+      }
+
+      return skill;
+    });
   }
 }

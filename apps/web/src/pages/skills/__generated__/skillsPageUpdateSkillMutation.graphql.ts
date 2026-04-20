@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<19648282fb60a788de8b994f98274d07>>
+ * @generated SignedSource<<4370786acff8a24089f5791762c351da>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillType = "custom" | "system" | "%future added value";
 export type UpdateSkillInput = {
   description?: string | null | undefined;
   id: string;
@@ -29,6 +30,7 @@ export type skillsPageUpdateSkillMutation$data = {
     readonly repository: string | null | undefined;
     readonly skillDirectory: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
+    readonly skillType: SkillType;
   };
 };
 export type skillsPageUpdateSkillMutation = {
@@ -98,6 +100,13 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "skillType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "repository",
         "storageKey": null
       },
@@ -137,16 +146,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "e0940beb6b810ce8923df65b0708ba1c",
+    "cacheID": "5cbfbe1ff6e6b114c90d35c54f2cddea",
     "id": null,
     "metadata": {},
     "name": "skillsPageUpdateSkillMutation",
     "operationKind": "mutation",
-    "text": "mutation skillsPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
+    "text": "mutation skillsPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "c77dd430a06211c6af0e6ca4a9fe1304";
+(node as any).hash = "ec1f4acd87430a260648e7f417f01c91";
 
 export default node;

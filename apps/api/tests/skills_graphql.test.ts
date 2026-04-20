@@ -451,6 +451,14 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     repository: "companyhelm/skills",
     skillDirectory: "skills/browser",
     fileList: ["scripts/open.sh"],
+  }, {
+    companyId: "company-123",
+    id: "system:manage_workflows",
+    name: "Manage workflows",
+    skillGroupId: null,
+    repository: null,
+    skillDirectory: null,
+    fileList: [],
   }]);
 
   const createResponse = await app.inject({
@@ -956,6 +964,9 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
   assert.deepEqual(listDocument.data.Skills, [{
     id: "skill-browser",
     skillGroupId: "group-automation",
+  }, {
+    id: "system:manage_workflows",
+    skillGroupId: null,
   }, {
     id: "skill-research",
     skillGroupId: null,
