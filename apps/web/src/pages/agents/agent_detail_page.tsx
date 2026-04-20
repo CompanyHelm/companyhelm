@@ -294,7 +294,7 @@ function AgentDetailPageContent() {
   const params = useParams({ strict: false }) as { agentId?: string };
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
-  const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" };
+  const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" | "skills" };
   const normalizedAgentId = String(params.agentId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   if (!normalizedAgentId) {
@@ -315,7 +315,7 @@ function AgentDetailPageContent() {
   );
 
   const agent = data.Agent;
-  const selectedTab = search.tab === "archived" ? "archived" : "overview";
+  const selectedTab = search.tab === "archived" || search.tab === "skills" ? search.tab : "overview";
   const agentSecrets = data.AgentSecrets.map((secret) => ({
     description: secret.description ?? null,
     envVarName: secret.envVarName,
@@ -528,6 +528,10 @@ function AgentDetailPageContent() {
           {
             key: "overview" as const,
             label: "Overview",
+          },
+          {
+            key: "skills" as const,
+            label: "Skills",
           },
           {
             key: "archived" as const,
@@ -774,20 +778,20 @@ function AgentDetailPageContent() {
             companySecrets={companySecrets}
           />
 
-          <AgentSkillDefaultsCard
-            agentId={agent.id}
-            agentSkillGroups={agentSkillGroups}
-            agentSkills={agentSkills}
-            companySkillGroups={companySkillGroups}
-            companySkills={companySkills}
-          />
-
           <AgentMcpServerDefaultsCard
             agentId={agent.id}
             agentMcpServers={agentMcpServers}
             companyMcpServers={companyMcpServers}
           />
         </>
+      ) : selectedTab === "skills" ? (
+        <AgentSkillDefaultsCard
+          agentId={agent.id}
+          agentSkillGroups={agentSkillGroups}
+          agentSkills={agentSkills}
+          companySkillGroups={companySkillGroups}
+          companySkills={companySkills}
+        />
       ) : (
         <AgentArchivedChatsTab sessions={archivedChats} />
       )}
