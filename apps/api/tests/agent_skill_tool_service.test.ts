@@ -29,7 +29,11 @@ test("AgentSkillToolService rolls back a new activation when live materializatio
         throw new Error("sync failed");
       },
     } as never,
-    {} as never,
+    {
+      async listAgentAvailableSkills() {
+        return [browserSkillRecord];
+      },
+    } as never,
     {
       async activateSkill() {
         return {
@@ -65,7 +69,11 @@ test("AgentSkillToolService keeps an existing activation when live materializati
         throw new Error("sync failed");
       },
     } as never,
-    {} as never,
+    {
+      async listAgentAvailableSkills() {
+        return [browserSkillRecord];
+      },
+    } as never,
     {
       async activateSkill() {
         return {
@@ -85,7 +93,7 @@ test("AgentSkillToolService keeps an existing activation when live materializati
   assert.equal(deactivateSkill.mock.calls.length, 0);
 });
 
-test("AgentSkillToolService lists the catalog with active flags", async () => {
+test("AgentSkillToolService lists agent-visible skills with active flags", async () => {
   const service = new AgentSkillToolService(
     {} as never,
     "company-123",
@@ -97,7 +105,7 @@ test("AgentSkillToolService lists the catalog with active flags", async () => {
       },
     } as never,
     {
-      async listSkills() {
+      async listAgentAvailableSkills() {
         return [browserSkillRecord];
       },
     } as never,
@@ -123,4 +131,37 @@ test("AgentSkillToolService lists the catalog with active flags", async () => {
     systemCommands: [],
     systemKey: null,
   }]);
+});
+
+test("AgentSkillToolService refuses activation outside the agent-visible skill set", async () => {
+  const activateSkill = vi.fn(async () => ({
+    inserted: true,
+    skill: browserSkillRecord,
+  }));
+  const service = new AgentSkillToolService(
+    {} as never,
+    "company-123",
+    "session-1",
+    "agent-1",
+    {
+      async syncSkillIfEnvironmentLeased() {
+        return false;
+      },
+    } as never,
+    {
+      async listAgentAvailableSkills() {
+        return [];
+      },
+    } as never,
+    {
+      activateSkill,
+    } as never,
+  );
+
+  await assert.rejects(
+    service.activateSkill("Browser skill"),
+    /not available to this agent/,
+  );
+
+  assert.equal(activateSkill.mock.calls.length, 0);
 });

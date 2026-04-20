@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { injectable } from "inversify";
 import { agentSkillGroups, agentSkills, agents, skill_groups, skills } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
@@ -370,6 +370,49 @@ export class SkillService {
       const systemSkills = this.systemSkillRegistry.listSkillsByKeys(
         companyId,
         attachments.flatMap((attachment) => attachment.systemSkillKey ? [attachment.systemSkillKey] : []),
+      );
+
+      return [...systemSkills, ...customSkills].sort((left, right) => left.name.localeCompare(right.name));
+    });
+  }
+
+  async listAgentAvailableSkills(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+  ): Promise<SkillRecord[]> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const skillAttachments = await selectableDatabase
+        .select({
+          skillId: agentSkills.skillId,
+          systemSkillKey: agentSkills.systemSkillKey,
+        })
+        .from(agentSkills)
+        .where(and(
+          eq(agentSkills.companyId, companyId),
+          eq(agentSkills.agentId, agentId),
+        )) as AgentSkillAttachmentRecord[];
+      const groupAttachments = await selectableDatabase
+        .select({
+          skillGroupId: agentSkillGroups.skillGroupId,
+        })
+        .from(agentSkillGroups)
+        .where(and(
+          eq(agentSkillGroups.companyId, companyId),
+          eq(agentSkillGroups.agentId, agentId),
+        )) as Array<{ skillGroupId: string }>;
+
+      const customSkills = await this.listAgentAvailableCustomSkills(
+        selectableDatabase,
+        companyId,
+        skillAttachments.flatMap((attachment) => attachment.skillId ? [attachment.skillId] : []),
+        groupAttachments.map((attachment) => attachment.skillGroupId),
+      );
+      const systemSkills = this.systemSkillRegistry.listSkillsByKeys(
+        companyId,
+        skillAttachments.flatMap((attachment) => attachment.systemSkillKey ? [attachment.systemSkillKey] : []),
       );
 
       return [...systemSkills, ...customSkills].sort((left, right) => left.name.localeCompare(right.name));
@@ -782,6 +825,32 @@ export class SkillService {
       .where(and(
         eq(skills.companyId, companyId),
         inArray(skills.id, skillIds),
+      )) as SkillRecord[];
+
+    return [...records].map((record) => this.toCustomSkillRecord(record))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  private async listAgentAvailableCustomSkills(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    skillIds: string[],
+    skillGroupIds: string[],
+  ): Promise<SkillRecord[]> {
+    const availabilityConditions = [
+      ...(skillIds.length > 0 ? [inArray(skills.id, skillIds)] : []),
+      ...(skillGroupIds.length > 0 ? [inArray(skills.skillGroupId, skillGroupIds)] : []),
+    ];
+    if (availabilityConditions.length === 0) {
+      return [];
+    }
+
+    const records = await selectableDatabase
+      .select(this.skillSelection())
+      .from(skills)
+      .where(and(
+        eq(skills.companyId, companyId),
+        availabilityConditions.length === 1 ? availabilityConditions[0] : or(...availabilityConditions),
       )) as SkillRecord[];
 
     return [...records].map((record) => this.toCustomSkillRecord(record))
