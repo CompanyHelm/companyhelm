@@ -283,10 +283,16 @@ export class SkillService {
         .from(skills)
         .where(eq(skills.companyId, companyId)) as SkillRecord[];
 
+      const customSkills = records
+        .map((record) => this.toCustomSkillRecord(record))
+        .sort((left, right) => left.name.localeCompare(right.name));
+
       return [
-        ...this.systemSkillRegistry.listSkills(companyId),
-        ...records.map((record) => this.toCustomSkillRecord(record)),
-      ].sort((left, right) => left.name.localeCompare(right.name));
+        ...customSkills,
+        ...this.systemSkillRegistry
+          .listSkills(companyId)
+          .sort((left, right) => left.name.localeCompare(right.name)),
+      ];
     });
   }
 

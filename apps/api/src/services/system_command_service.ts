@@ -1,6 +1,15 @@
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
+import { ArtifactService } from "./artifact_service.ts";
+import { ModelRegistry } from "./ai_providers/model_registry.ts";
+import { ModelProviderService } from "./ai_providers/model_provider_service.ts";
+import { ComputeProviderDefinitionService } from "./compute_provider_definitions/service.ts";
+import { AgentEnvironmentTemplateService } from "./environments/template_service.ts";
+import { SecretService } from "./secrets/service.ts";
 import { WorkflowService } from "./workflows/service.ts";
 import { WorkflowSystemCommandService } from "./workflows/system_command_service.ts";
+import { AgentManagementSystemCommandService } from "./system_commands/agent_management.ts";
+import { ArtifactManagementSystemCommandService } from "./system_commands/artifact_management.ts";
+import { CompanyDirectorySystemCommandService } from "./system_commands/company_directory.ts";
 import { SessionSkillService } from "./skills/session_service.ts";
 import { SystemCommandCatalog } from "./skills/system_command_catalog.ts";
 
@@ -17,16 +26,28 @@ export type SystemCommandExecutionContext = {
  * grant access to product-owned mutation capabilities.
  */
 export class SystemCommandService {
+  private readonly agentManagementCommandService: AgentManagementSystemCommandService | null;
+  private readonly artifactCommandService: ArtifactManagementSystemCommandService;
   private readonly commandCatalog: SystemCommandCatalog;
+  private readonly companyDirectoryCommandService: CompanyDirectorySystemCommandService;
   private readonly sessionSkillService: SessionSkillService;
   private readonly workflowCommandService: WorkflowSystemCommandService;
 
   constructor(input: {
+    artifactService?: ArtifactService;
     commandCatalog?: SystemCommandCatalog;
+    computeProviderDefinitionService?: ComputeProviderDefinitionService;
+    modelProviderService?: ModelProviderService;
+    modelRegistry?: ModelRegistry;
+    secretService?: SecretService;
     sessionSkillService?: SessionSkillService;
+    templateService?: AgentEnvironmentTemplateService;
     workflowService: WorkflowService;
   }) {
+    this.agentManagementCommandService = this.createAgentManagementCommandService(input);
+    this.artifactCommandService = new ArtifactManagementSystemCommandService(input.artifactService ?? new ArtifactService());
     this.commandCatalog = input.commandCatalog ?? new SystemCommandCatalog();
+    this.companyDirectoryCommandService = new CompanyDirectorySystemCommandService();
     this.sessionSkillService = input.sessionSkillService ?? new SessionSkillService();
     this.workflowCommandService = new WorkflowSystemCommandService(input.workflowService);
   }
@@ -48,11 +69,56 @@ export class SystemCommandService {
 
     if (command.systemSkillKey === "manage_workflows") {
       return this.workflowCommandService.execute(command.id, input, {
+        agentId: context.agentId,
         companyId: context.companyId,
+        sessionId: context.sessionId,
         transactionProvider: context.transactionProvider,
       });
     }
+    if (command.systemSkillKey === "manage_agents") {
+      return this.requireAgentManagementCommandService().execute(command.id, input, context);
+    }
+    if (command.systemSkillKey === "manage_artifacts") {
+      return this.artifactCommandService.execute(command.id, input, context);
+    }
+    if (command.systemSkillKey === "company_directory") {
+      return this.companyDirectoryCommandService.execute(command.id, context);
+    }
 
     throw new Error(`System command ${command.id} is not wired to a handler.`);
+  }
+
+  private createAgentManagementCommandService(input: {
+    computeProviderDefinitionService?: ComputeProviderDefinitionService;
+    modelProviderService?: ModelProviderService;
+    modelRegistry?: ModelRegistry;
+    secretService?: SecretService;
+    templateService?: AgentEnvironmentTemplateService;
+  }): AgentManagementSystemCommandService | null {
+    if (
+      !input.computeProviderDefinitionService
+      || !input.modelProviderService
+      || !input.modelRegistry
+      || !input.secretService
+      || !input.templateService
+    ) {
+      return null;
+    }
+
+    return new AgentManagementSystemCommandService({
+      computeProviderDefinitionService: input.computeProviderDefinitionService,
+      modelProviderService: input.modelProviderService,
+      modelRegistry: input.modelRegistry,
+      secretService: input.secretService,
+      templateService: input.templateService,
+    });
+  }
+
+  private requireAgentManagementCommandService(): AgentManagementSystemCommandService {
+    if (!this.agentManagementCommandService) {
+      throw new Error("Agent management system commands are not configured for this session.");
+    }
+
+    return this.agentManagementCommandService;
   }
 }

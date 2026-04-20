@@ -18,9 +18,6 @@ import {
   AgentSessionModuleRegistry,
   type AgentSessionModuleRegistryResolution,
 } from "./registry.ts";
-import { AgentManagementSessionModule } from "./agent_management.ts";
-import { ArtifactsSessionModule } from "./artifacts.ts";
-import { CompanyDirectorySessionModule } from "./company_directory.ts";
 import { ComputerUseSessionModule } from "./computer_use.ts";
 import { ConversationSessionModule } from "./conversation.ts";
 import { CorePromptSessionModule } from "./core_prompt.ts";
@@ -34,7 +31,6 @@ import { SystemCommandsSessionModule } from "./system_commands.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
-import { WorkflowManagementSessionModule } from "./workflow_management.ts";
 import { WorkflowsSessionModule } from "./workflows.ts";
 
 type DefaultAgentSessionModuleRegistryInput = {
@@ -69,24 +65,22 @@ export class DefaultAgentSessionModuleRegistry {
       new ComputerUseSessionModule(input.config, input.computeProviderDefinitionService),
       new SecretsSessionModule(input.secretService),
       new SkillsSessionModule(),
-      new SystemCommandsSessionModule(input.workflowService),
-      new CompanyDirectorySessionModule(),
-      new AgentManagementSessionModule({
+      new SystemCommandsSessionModule({
+        artifactService: new ArtifactService(),
         computeProviderDefinitionService: input.computeProviderDefinitionService,
         modelProviderService: input.modelProviderService,
         modelRegistry: input.modelRegistry,
         secretService: input.secretService,
         templateService: input.templateService,
+        workflowService: input.workflowService,
       }),
       new GithubSessionModule(input.githubClient),
       new WebSessionModule(input.exaWebClient),
       new McpSessionModule(input.logger, input.mcpService),
       new InboxSessionModule(input.inboxService),
       new ConversationSessionModule(input.agentConversationService),
-      new WorkflowManagementSessionModule(input.workflowService),
       new WorkflowsSessionModule(),
       new TasksSessionModule(new TaskService()),
-      new ArtifactsSessionModule(new ArtifactService()),
     ]);
   }
 

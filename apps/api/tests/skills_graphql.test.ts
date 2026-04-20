@@ -453,6 +453,30 @@ test("GraphQL skills query and create mutation expose the skill catalog and grou
     fileList: ["scripts/open.sh"],
   }, {
     companyId: "company-123",
+    id: "system:company_directory",
+    name: "Company directory",
+    skillGroupId: null,
+    repository: null,
+    skillDirectory: null,
+    fileList: [],
+  }, {
+    companyId: "company-123",
+    id: "system:manage_agents",
+    name: "Manage agents",
+    skillGroupId: null,
+    repository: null,
+    skillDirectory: null,
+    fileList: [],
+  }, {
+    companyId: "company-123",
+    id: "system:manage_artifacts",
+    name: "Manage artifacts",
+    skillGroupId: null,
+    repository: null,
+    skillDirectory: null,
+    fileList: [],
+  }, {
+    companyId: "company-123",
     id: "system:manage_workflows",
     name: "Manage workflows",
     skillGroupId: null,
@@ -965,10 +989,19 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     id: "skill-browser",
     skillGroupId: "group-automation",
   }, {
-    id: "system:manage_workflows",
+    id: "skill-research",
     skillGroupId: null,
   }, {
-    id: "skill-research",
+    id: "system:company_directory",
+    skillGroupId: null,
+  }, {
+    id: "system:manage_agents",
+    skillGroupId: null,
+  }, {
+    id: "system:manage_artifacts",
+    skillGroupId: null,
+  }, {
+    id: "system:manage_workflows",
     skillGroupId: null,
   }]);
 

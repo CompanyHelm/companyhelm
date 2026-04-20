@@ -17,17 +17,48 @@ export class SystemSkillRegistry {
   private static readonly idPrefix = "system:";
 
   private readonly commandCatalog: SystemCommandCatalog;
-  private readonly definitions: SystemSkillDefinition[] = [{
-    description: "Create and maintain durable workflow definitions through scoped system commands.",
-    instructions: [
-      "Use workflow management commands only when the user asks to create or change durable workflow definitions.",
-      "Prefer small edits that preserve existing inputs and steps unless the user asks for a broader rewrite.",
-      "Read the current workflow before deleting inputs or steps so you can target the correct IDs.",
-      "Keep workflow step instructions concrete enough for a later agent session to execute without extra context.",
-    ].join("\n"),
-    key: "manage_workflows",
-    name: "Manage workflows",
-  }];
+  private readonly definitions: SystemSkillDefinition[] = [
+    {
+      description: "Create, inspect, start, and maintain durable workflow definitions through scoped system commands.",
+      instructions: [
+        "Use workflow management commands when the user asks to inspect available workflows, start a workflow, or create and change durable workflow definitions.",
+        "Prefer small edits that preserve existing inputs and steps unless the user asks for a broader rewrite.",
+        "Read the current workflow before deleting inputs or steps so you can target the correct IDs.",
+        "Keep workflow step instructions concrete enough for a later agent session to execute without extra context.",
+      ].join("\n"),
+      key: "manage_workflows",
+      name: "Manage workflows",
+    },
+    {
+      description: "Inspect, create, and update company agents through scoped system commands.",
+      instructions: [
+        "Use agent management commands only when the user asks to inspect or change persisted company agent configuration.",
+        "Call agent.list before creating or updating agents when you need model, credential, compute provider, template, or secret IDs.",
+        "Only send fields that should change when updating an agent.",
+      ].join("\n"),
+      key: "manage_agents",
+      name: "Manage agents",
+    },
+    {
+      description: "Create, inspect, update, and archive durable artifacts through scoped system commands.",
+      instructions: [
+        "Use artifact commands when the user asks to manage durable docs, links, pull requests, or other saved deliverables.",
+        "List or get existing artifacts before creating duplicates or replacing content.",
+        "Choose the narrowest update command for the artifact field that needs to change.",
+      ].join("\n"),
+      key: "manage_artifacts",
+      name: "Manage artifacts",
+    },
+    {
+      description: "Read company members and agents from the directory through scoped system commands.",
+      instructions: [
+        "Use company directory commands when you need stable company member or agent IDs for follow-up work.",
+        "The directory is read-only; use the agent management system skill for persisted agent changes.",
+      ].join("\n"),
+      key: "company_directory",
+      name: "Company directory",
+    },
+  ];
 
   constructor(commandCatalog: SystemCommandCatalog = new SystemCommandCatalog()) {
     this.commandCatalog = commandCatalog;

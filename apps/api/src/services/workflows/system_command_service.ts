@@ -5,9 +5,13 @@ import type {
   WorkflowStepDraft,
 } from "./types.ts";
 import { WorkflowService } from "./service.ts";
+import { AgentWorkflowToolService } from "../agent/session/pi-mono/tools/workflows/service.ts";
+import { SystemCommandJsonSerializer } from "../system_commands/json_serializer.ts";
 
 export type WorkflowSystemCommandContext = {
+  agentId: string;
   companyId: string;
+  sessionId: string;
   transactionProvider: TransactionProviderInterface;
 };
 
@@ -17,6 +21,7 @@ export type WorkflowSystemCommandContext = {
  * hydration behavior as the GraphQL workflow management surface.
  */
 export class WorkflowSystemCommandService {
+  private readonly jsonSerializer = new SystemCommandJsonSerializer();
   private readonly workflowService: WorkflowService;
 
   constructor(workflowService: WorkflowService) {
@@ -29,6 +34,10 @@ export class WorkflowSystemCommandService {
     context: WorkflowSystemCommandContext,
   ): Promise<Record<string, unknown>> {
     switch (commandId) {
+      case "workflow.list":
+        return this.listWorkflows(context);
+      case "workflow.start":
+        return this.startWorkflow(input, context);
       case "workflow.create":
         return this.serializeWorkflow(await this.createWorkflow(input, context));
       case "workflow.update":
@@ -44,6 +53,24 @@ export class WorkflowSystemCommandService {
       default:
         throw new Error(`System command ${commandId} is not handled by workflow management.`);
     }
+  }
+
+  private async listWorkflows(context: WorkflowSystemCommandContext): Promise<Record<string, unknown>> {
+    const toolService = this.createWorkflowToolService(context);
+    return this.jsonSerializer.serializeRecord({
+      workflows: await toolService.listWorkflows(),
+    });
+  }
+
+  private async startWorkflow(input: unknown, context: WorkflowSystemCommandContext): Promise<Record<string, unknown>> {
+    const payload = this.requireRecord(input);
+    const toolService = this.createWorkflowToolService(context);
+    return this.jsonSerializer.serializeRecord({
+      startedWorkflow: await toolService.startWorkflow({
+        input: this.readOptionalRecord(payload, "input") ?? {},
+        workflowDefinitionId: this.readRequiredString(payload, "workflowDefinitionId"),
+      }),
+    });
   }
 
   private async createWorkflow(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
@@ -294,6 +321,18 @@ export class WorkflowSystemCommandService {
     return value;
   }
 
+  private readOptionalRecord(payload: Record<string, unknown>, key: string): Record<string, unknown> | null {
+    const value = payload[key];
+    if (value === undefined || value === null) {
+      return null;
+    }
+    if (typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`${key} must be a JSON object.`);
+    }
+
+    return value as Record<string, unknown>;
+  }
+
   private readOptionalInteger(payload: Record<string, unknown>, key: string): number | null {
     const value = payload[key];
     if (value === undefined || value === null) {
@@ -304,5 +343,15 @@ export class WorkflowSystemCommandService {
     }
 
     return value;
+  }
+
+  private createWorkflowToolService(context: WorkflowSystemCommandContext): AgentWorkflowToolService {
+    return new AgentWorkflowToolService(
+      context.transactionProvider,
+      context.companyId,
+      context.agentId,
+      context.sessionId,
+      this.workflowService,
+    );
   }
 }

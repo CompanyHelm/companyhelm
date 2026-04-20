@@ -37,6 +37,27 @@ test("SystemCommandService rejects commands when their owning system skill is in
   );
 });
 
+test("SystemCommandService rejects migrated agent commands when manage_agents is inactive", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return false;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  await assert.rejects(
+    service.executeCommand("agent.list", {}, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      sessionId: "session-1",
+      transactionProvider: {} as never,
+    }),
+    /Activate the manage_agents system skill/,
+  );
+});
+
 test("SystemCommandService executes workflow commands when manage_workflows is active", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {
@@ -68,4 +89,99 @@ test("SystemCommandService executes workflow commands when manage_workflows is a
 
   assert.equal(result.id, "workflow-1");
   assert.equal(result.name, "Release workflow");
+});
+
+test("SystemCommandService exposes workflow listing through manage_workflows commands", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    workflowService: {
+      async listWorkflows(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          description: "Enabled workflow",
+          id: "workflow-enabled",
+          inputs: [{
+            defaultValue: null,
+            description: "Target branch",
+            isRequired: true,
+            name: "branch",
+          }],
+          isEnabled: true,
+          name: "Enabled",
+        }, {
+          description: "Disabled workflow",
+          id: "workflow-disabled",
+          inputs: [],
+          isEnabled: false,
+          name: "Disabled",
+        }];
+      },
+    } as never,
+  });
+
+  const result = await service.executeCommand("workflow.list", {}, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.deepEqual(result.workflows, [{
+    description: "Enabled workflow",
+    id: "workflow-enabled",
+    inputs: [{
+      defaultValue: null,
+      description: "Target branch",
+      isRequired: true,
+      name: "branch",
+    }],
+    name: "Enabled",
+  }]);
+});
+
+test("SystemCommandService executes company directory commands when company_directory is active", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+  const transactionProvider = {
+    async transaction(callback: (tx: unknown) => Promise<unknown>) {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [{
+                    id: "agent-1",
+                    name: "Builder",
+                  }];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+
+  const result = await service.executeCommand("company_directory.agents.list", {}, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: transactionProvider as never,
+  });
+
+  assert.deepEqual(result.agents, [{
+    id: "agent-1",
+    name: "Builder",
+  }]);
 });
