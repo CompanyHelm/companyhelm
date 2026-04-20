@@ -25,8 +25,6 @@ import type {
 import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.graphql";
 import type { agentDetailPageUpdateAgentMutation } from "./__generated__/agentDetailPageUpdateAgentMutation.graphql";
 
-const SYSTEM_SKILL_GROUP_ID = "system";
-
 const agentDetailPageQueryNode = graphql`
   query agentDetailPageQuery($agentId: ID!) {
     Agent(id: $agentId) {
@@ -364,7 +362,6 @@ function AgentDetailPageContent() {
     skillType: skill.skillType,
   }));
   const companySkillGroups: AgentCreateSkillGroupOption[] = data.SkillGroups
-    .filter((skillGroup) => skillGroup.id !== SYSTEM_SKILL_GROUP_ID)
     .map((skillGroup) => ({
       id: skillGroup.id,
       name: skillGroup.name,

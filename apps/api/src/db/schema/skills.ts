@@ -3,7 +3,6 @@ import {
   check,
   index,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -130,14 +129,24 @@ export const agentSkillGroups = pgTable("agent_skill_groups", {
     .references(() => agents.id, { onDelete: "cascade" })
     .notNull(),
   skillGroupId: uuid("skill_group_id")
-    .references(() => skill_groups.id, { onDelete: "cascade" })
-    .notNull(),
+    .references(() => skill_groups.id, { onDelete: "cascade" }),
+  systemSkillGroupKey: text("system_skill_group_key"),
   createdByUserId: uuid("created_by_user_id")
     .references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 }, (table) => ({
-  pk: primaryKey({ columns: [table.agentId, table.skillGroupId] }),
   companyIdIndex: index("agent_skill_groups_company_id_idx").on(table.companyId),
   agentIdIndex: index("agent_skill_groups_agent_id_idx").on(table.agentId),
   skillGroupIdIndex: index("agent_skill_groups_skill_group_id_idx").on(table.skillGroupId),
+  systemSkillGroupKeyIndex: index("agent_skill_groups_system_skill_group_key_idx").on(table.systemSkillGroupKey),
+  customSkillGroupUnique: uniqueIndex("agent_skill_groups_agent_skill_group_uidx")
+    .on(table.agentId, table.skillGroupId)
+    .where(sql`${table.skillGroupId} IS NOT NULL`),
+  systemSkillGroupUnique: uniqueIndex("agent_skill_groups_agent_system_skill_group_uidx")
+    .on(table.agentId, table.systemSkillGroupKey)
+    .where(sql`${table.systemSkillGroupKey} IS NOT NULL`),
+  oneSkillGroupReferenceCheck: check(
+    "agent_skill_groups_one_skill_group_reference_check",
+    sql`num_nonnulls(${table.skillGroupId}, ${table.systemSkillGroupKey}) = 1`,
+  ),
 }));

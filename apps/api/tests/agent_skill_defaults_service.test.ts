@@ -13,7 +13,8 @@ type MockAgentSkillGroupAttachmentRecord = {
   companyId: string;
   createdAt: Date;
   createdByUserId: string | null;
-  skillGroupId: string;
+  skillGroupId: string | null;
+  systemSkillGroupKey: string | null;
 };
 
 type MockAgentSkillAttachmentRecord = {
@@ -57,7 +58,7 @@ class AgentSkillDefaultsServiceTestHarness {
     const agentSkillAttachments = [...(input.agentSkillAttachments ?? [])];
 
     const database = {
-      select() {
+      select(selection: Record<string, unknown>) {
         return {
           from(table: unknown) {
             return {
@@ -73,8 +74,19 @@ class AgentSkillDefaultsServiceTestHarness {
                   return [...skillRecords];
                 }
                 if (table === agentSkillGroups) {
-                  return agentSkillGroupAttachments.map((attachment) => ({
+                  const selectedKeys = Object.keys(selection);
+                  const selectedAttachments = selectedKeys.includes("skillGroupId")
+                    && selectedKeys.includes("systemSkillGroupKey")
+                    ? agentSkillGroupAttachments
+                    : agentSkillGroupAttachments.filter((attachment) => {
+                      return selectedKeys.includes("systemSkillGroupKey")
+                        ? attachment.systemSkillGroupKey !== null
+                        : attachment.skillGroupId !== null;
+                    });
+
+                  return selectedAttachments.map((attachment) => ({
                     skillGroupId: attachment.skillGroupId,
+                    systemSkillGroupKey: attachment.systemSkillGroupKey,
                   }));
                 }
                 if (table === agentSkills) {
@@ -98,7 +110,8 @@ class AgentSkillDefaultsServiceTestHarness {
                 companyId: String(value.companyId),
                 createdAt: value.createdAt as Date,
                 createdByUserId: value.createdByUserId ? String(value.createdByUserId) : null,
-                skillGroupId: String(value.skillGroupId),
+                skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
+                systemSkillGroupKey: value.systemSkillGroupKey ? String(value.systemSkillGroupKey) : null,
               });
 
               return {};
@@ -131,7 +144,12 @@ class AgentSkillDefaultsServiceTestHarness {
               return {
                 async returning() {
                   const [deletedAttachment] = agentSkillGroupAttachments.splice(0, 1);
-                  return deletedAttachment ? [{ skillGroupId: deletedAttachment.skillGroupId }] : [];
+                  return deletedAttachment
+                    ? [{
+                      skillGroupId: deletedAttachment.skillGroupId,
+                      systemSkillGroupKey: deletedAttachment.systemSkillGroupKey,
+                    }]
+                    : [];
                 },
               };
             },
@@ -202,6 +220,18 @@ test("SkillService stores distinct agent skill defaults and lists them back", as
     skillGroupId: "group-1",
     userId: "user-1",
   });
+  await service.attachSkillGroupToAgent(transactionProvider as never, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    skillGroupId: "system",
+    userId: "user-1",
+  });
+  await service.attachSkillGroupToAgent(transactionProvider as never, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    skillGroupId: "system",
+    userId: "user-1",
+  });
   await service.attachSkillToAgent(transactionProvider as never, {
     agentId: "agent-1",
     companyId: "company-123",
@@ -215,13 +245,13 @@ test("SkillService stores distinct agent skill defaults and lists them back", as
     userId: "user-1",
   });
 
-  assert.equal(transactionProvider.agentSkillGroupAttachments.length, 1);
+  assert.equal(transactionProvider.agentSkillGroupAttachments.length, 2);
   assert.equal(transactionProvider.agentSkillAttachments.length, 1);
 
   const attachedGroups = await service.listAgentSkillGroups(transactionProvider as never, "company-123", "agent-1");
   const attachedSkills = await service.listAgentSkills(transactionProvider as never, "company-123", "agent-1");
 
-  assert.deepEqual(attachedGroups.map((group) => group.id), ["group-1"]);
+  assert.deepEqual(attachedGroups.map((group) => group.id), ["group-1", "system"]);
   assert.deepEqual(attachedSkills.map((skill) => skill.id), ["skill-1"]);
 });
 
@@ -233,6 +263,14 @@ test("SkillService detaches agent skill defaults independently", async () => {
       createdAt: new Date("2026-04-08T12:00:00.000Z"),
       createdByUserId: "user-1",
       skillGroupId: "group-1",
+      systemSkillGroupKey: null,
+    }, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      createdAt: new Date("2026-04-08T12:00:00.000Z"),
+      createdByUserId: "user-1",
+      skillGroupId: null,
+      systemSkillGroupKey: "system",
     }],
     agentSkillAttachments: [{
       agentId: "agent-1",
@@ -276,9 +314,16 @@ test("SkillService detaches agent skill defaults independently", async () => {
     "agent-1",
     "skill-1",
   );
+  const detachedSystemGroup = await service.detachSkillGroupFromAgent(
+    transactionProvider as never,
+    "company-123",
+    "agent-1",
+    "system",
+  );
 
   assert.equal(detachedGroup.id, "group-1");
   assert.equal(detachedSkill.id, "skill-1");
+  assert.equal(detachedSystemGroup.id, "system");
   assert.equal(transactionProvider.agentSkillGroupAttachments.length, 0);
   assert.equal(transactionProvider.agentSkillAttachments.length, 0);
 });

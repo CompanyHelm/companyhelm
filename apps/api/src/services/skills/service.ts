@@ -39,6 +39,11 @@ type AgentSkillAttachmentRecord = {
   systemSkillKey: string | null;
 };
 
+type AgentSkillGroupAttachmentRecord = {
+  skillGroupId: string | null;
+  systemSkillGroupKey: string | null;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -314,18 +319,27 @@ export class SkillService {
       const attachments = await selectableDatabase
         .select({
           skillGroupId: agentSkillGroups.skillGroupId,
+          systemSkillGroupKey: agentSkillGroups.systemSkillGroupKey,
         })
         .from(agentSkillGroups)
         .where(and(
           eq(agentSkillGroups.companyId, companyId),
           eq(agentSkillGroups.agentId, agentId),
-        )) as Array<{ skillGroupId: string }>;
+        )) as AgentSkillGroupAttachmentRecord[];
 
-      return this.listSkillGroupsByIds(
+      const customGroups = await this.listSkillGroupsByIds(
         selectableDatabase,
         companyId,
-        attachments.map((attachment) => attachment.skillGroupId),
+        attachments.flatMap((attachment) => attachment.skillGroupId ? [attachment.skillGroupId] : []),
       );
+      const systemGroups = attachments.some((attachment) => {
+        return attachment.systemSkillGroupKey
+          && this.systemSkillRegistry.isSystemSkillGroupId(attachment.systemSkillGroupKey);
+      })
+        ? [this.systemSkillRegistry.getSystemSkillGroup(companyId)]
+        : [];
+
+      return [...customGroups, ...systemGroups];
     });
   }
 
@@ -430,7 +444,7 @@ export class SkillService {
     },
   ): Promise<SkillGroupRecord> {
     if (this.systemSkillRegistry.isSystemSkillGroupId(input.skillGroupId)) {
-      throw new Error("System skill group cannot be attached to agents.");
+      return this.attachSystemSkillGroupToAgent(transactionProvider, input);
     }
 
     return transactionProvider.transaction(async (tx) => {
@@ -458,6 +472,7 @@ export class SkillService {
             createdAt: new Date(),
             createdByUserId: input.userId,
             skillGroupId: input.skillGroupId,
+            systemSkillGroupKey: null,
           });
       }
 
@@ -568,7 +583,7 @@ export class SkillService {
     skillGroupId: string,
   ): Promise<SkillGroupRecord> {
     if (this.systemSkillRegistry.isSystemSkillGroupId(skillGroupId)) {
-      throw new Error("System skill group cannot be detached from agents.");
+      return this.detachSystemSkillGroupFromAgent(transactionProvider, companyId, agentId, skillGroupId);
     }
 
     return transactionProvider.transaction(async (tx) => {
@@ -848,6 +863,48 @@ export class SkillService {
     });
   }
 
+  private async attachSystemSkillGroupToAgent(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      agentId: string;
+      companyId: string;
+      skillGroupId: string;
+      userId: string | null;
+    },
+  ): Promise<SkillGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const insertableDatabase = tx as InsertableDatabase;
+      await this.requireAgent(selectableDatabase, input.companyId, input.agentId);
+      const group = this.systemSkillRegistry.getSystemSkillGroup(input.companyId);
+      const existingAttachment = await selectableDatabase
+        .select({
+          systemSkillGroupKey: agentSkillGroups.systemSkillGroupKey,
+        })
+        .from(agentSkillGroups)
+        .where(and(
+          eq(agentSkillGroups.companyId, input.companyId),
+          eq(agentSkillGroups.agentId, input.agentId),
+          eq(agentSkillGroups.systemSkillGroupKey, input.skillGroupId),
+        )) as Array<{ systemSkillGroupKey: string | null }>;
+
+      if (existingAttachment.length === 0) {
+        await insertableDatabase
+          .insert(agentSkillGroups)
+          .values({
+            agentId: input.agentId,
+            companyId: input.companyId,
+            createdAt: new Date(),
+            createdByUserId: input.userId,
+            skillGroupId: null,
+            systemSkillGroupKey: input.skillGroupId,
+          });
+      }
+
+      return group;
+    });
+  }
+
   private async detachSystemSkillFromAgent(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -875,6 +932,36 @@ export class SkillService {
       }
 
       return skill;
+    });
+  }
+
+  private async detachSystemSkillGroupFromAgent(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    agentId: string,
+    skillGroupId: string,
+  ): Promise<SkillGroupRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const deletableDatabase = tx as DeletableDatabase;
+      await this.requireAgent(selectableDatabase, companyId, agentId);
+      const group = this.systemSkillRegistry.getSystemSkillGroup(companyId);
+      const [deletedAttachment] = await deletableDatabase
+        .delete(agentSkillGroups)
+        .where(and(
+          eq(agentSkillGroups.companyId, companyId),
+          eq(agentSkillGroups.agentId, agentId),
+          eq(agentSkillGroups.systemSkillGroupKey, skillGroupId),
+        ))
+        .returning?.({
+          systemSkillGroupKey: agentSkillGroups.systemSkillGroupKey,
+        }) as Array<{ systemSkillGroupKey: string | null }>;
+
+      if (!deletedAttachment) {
+        throw new Error("Skill group is not attached to the agent.");
+      }
+
+      return group;
     });
   }
 }
