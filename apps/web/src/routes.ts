@@ -64,7 +64,7 @@ type TaskArtifactDetailRouteSearch = {
 };
 
 type AgentDetailRouteSearch = {
-  tab?: "archived" | "overview";
+  tab?: "archived" | "overview" | "skills";
 };
 
 type WorkflowDetailRouteSearch = {
@@ -122,7 +122,7 @@ function validateTaskArtifactDetailRouteSearch(search: Record<string, unknown>):
 
 function validateAgentDetailRouteSearch(search: Record<string, unknown>): AgentDetailRouteSearch {
   return {
-    tab: search.tab === "archived" || search.tab === "overview"
+    tab: search.tab === "archived" || search.tab === "overview" || search.tab === "skills"
       ? search.tab
       : undefined,
   };
