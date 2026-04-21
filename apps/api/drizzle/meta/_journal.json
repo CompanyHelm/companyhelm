@@ -785,6 +785,13 @@
       "when": 1776715870138,
       "tag": "0111_brainy_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1776734555276,
+      "tag": "0112_modern_black_bolt",
+      "breakpoints": true
     }
   ]
 }

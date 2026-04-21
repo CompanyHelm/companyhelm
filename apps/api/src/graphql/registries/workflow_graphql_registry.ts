@@ -1,7 +1,10 @@
 import { inject, injectable } from "inversify";
 import { WorkflowService } from "../../services/workflows/service.ts";
+import { CreateWorkflowCronTriggerMutation } from "../mutations/create_workflow_cron_trigger.ts";
 import { CreateWorkflowMutation } from "../mutations/create_workflow.ts";
+import { DeleteWorkflowTriggerMutation } from "../mutations/delete_workflow_trigger.ts";
 import { StartWorkflowRunMutation } from "../mutations/start_workflow_run.ts";
+import { UpdateWorkflowCronTriggerMutation } from "../mutations/update_workflow_cron_trigger.ts";
 import { UpdateWorkflowMutation } from "../mutations/update_workflow.ts";
 import { WorkflowRunQueryResolver } from "../resolvers/workflow_run.ts";
 import { WorkflowRunsQueryResolver } from "../resolvers/workflow_runs.ts";
@@ -31,9 +34,18 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(CreateWorkflowMutation)
     private readonly createWorkflowMutation: CreateWorkflowMutation =
       new CreateWorkflowMutation(WorkflowGraphqlRegistry.createMissingWorkflowService()),
+    @inject(CreateWorkflowCronTriggerMutation)
+    private readonly createWorkflowCronTriggerMutation: CreateWorkflowCronTriggerMutation =
+      new CreateWorkflowCronTriggerMutation(WorkflowGraphqlRegistry.createMissingWorkflowService(), {} as never),
+    @inject(DeleteWorkflowTriggerMutation)
+    private readonly deleteWorkflowTriggerMutation: DeleteWorkflowTriggerMutation =
+      new DeleteWorkflowTriggerMutation(WorkflowGraphqlRegistry.createMissingWorkflowService(), {} as never),
     @inject(StartWorkflowRunMutation)
     private readonly startWorkflowRunMutation: StartWorkflowRunMutation =
       new StartWorkflowRunMutation(WorkflowGraphqlRegistry.createMissingWorkflowService()),
+    @inject(UpdateWorkflowCronTriggerMutation)
+    private readonly updateWorkflowCronTriggerMutation: UpdateWorkflowCronTriggerMutation =
+      new UpdateWorkflowCronTriggerMutation(WorkflowGraphqlRegistry.createMissingWorkflowService(), {} as never),
     @inject(UpdateWorkflowMutation)
     private readonly updateWorkflowMutation: UpdateWorkflowMutation =
       new UpdateWorkflowMutation(WorkflowGraphqlRegistry.createMissingWorkflowService()),
@@ -42,8 +54,11 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
   createResolvers(): GraphqlResolverFragment {
     return {
       Mutation: {
+        CreateWorkflowCronTrigger: this.createWorkflowCronTriggerMutation.execute,
         CreateWorkflow: this.createWorkflowMutation.execute,
+        DeleteWorkflowTrigger: this.deleteWorkflowTriggerMutation.execute,
         StartWorkflowRun: this.startWorkflowRunMutation.execute,
+        UpdateWorkflowCronTrigger: this.updateWorkflowCronTriggerMutation.execute,
         UpdateWorkflow: this.updateWorkflowMutation.execute,
       },
       Query: {
@@ -60,6 +75,15 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
       async createWorkflow() {
         throw new Error("Workflow service is not configured.");
       },
+      async createCronTrigger() {
+        throw new Error("Workflow service is not configured.");
+      },
+      async deleteTrigger() {
+        throw new Error("Workflow service is not configured.");
+      },
+      async getCronTriggerSchedule() {
+        throw new Error("Workflow service is not configured.");
+      },
       async getWorkflow() {
         throw new Error("Workflow service is not configured.");
       },
@@ -73,6 +97,9 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
         throw new Error("Workflow service is not configured.");
       },
       async startWorkflowRun() {
+        throw new Error("Workflow service is not configured.");
+      },
+      async updateCronTrigger() {
         throw new Error("Workflow service is not configured.");
       },
       async updateWorkflow() {

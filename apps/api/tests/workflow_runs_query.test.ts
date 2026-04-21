@@ -17,6 +17,7 @@ test("WorkflowRunsQueryResolver serializes workflow run history for one workflow
         id: "workflow-run-1",
         instructions: "Run the workflow",
         sessionId: "session-1",
+        source: "manual",
         startedAt: new Date("2026-04-03T18:00:30.000Z"),
         status: "running",
         steps: [{
@@ -27,6 +28,7 @@ test("WorkflowRunsQueryResolver serializes workflow run history for one workflow
           status: "running",
           workflowRunId: "workflow-run-1",
         }],
+        triggerId: null,
         updatedAt: new Date("2026-04-03T18:05:00.000Z"),
         workflowDefinitionId: "workflow-1",
       }];
@@ -65,6 +67,7 @@ test("WorkflowRunsQueryResolver serializes workflow run history for one workflow
     id: "workflow-run-1",
     instructions: "Run the workflow",
     sessionId: "session-1",
+    source: "manual",
     startedAt: "2026-04-03T18:00:30.000Z",
     status: "running",
     steps: [{
@@ -75,6 +78,7 @@ test("WorkflowRunsQueryResolver serializes workflow run history for one workflow
       status: "running",
       workflowRunId: "workflow-run-1",
     }],
+    triggerId: null,
     updatedAt: "2026-04-03T18:05:00.000Z",
     workflowDefinitionId: "workflow-1",
   }]);

@@ -160,6 +160,7 @@ function toWorkflowRecord(workflow: WorkflowQueryRecord): WorkflowRecord {
       ordinal: step.ordinal,
       stepId: step.stepId,
     })),
+    triggers: [],
     updatedAt: workflow.updatedAt,
   };
 }

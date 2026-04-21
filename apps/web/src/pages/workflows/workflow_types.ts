@@ -16,6 +16,27 @@ export type WorkflowStepRecord = {
   stepId?: string;
 };
 
+export type WorkflowTriggerInputValueRecord = {
+  id: string;
+  name: string;
+  value: string;
+};
+
+export type WorkflowCronTriggerRecord = {
+  agentId: string;
+  agentName: string;
+  createdAt: string;
+  cronPattern: string;
+  enabled: boolean;
+  id: string;
+  inputValues: WorkflowTriggerInputValueRecord[];
+  overlapPolicy: string;
+  timezone: string;
+  type: string;
+  updatedAt: string;
+  workflowDefinitionId: string;
+};
+
 export type WorkflowRecord = {
   createdAt: string;
   description: string;
@@ -25,6 +46,7 @@ export type WorkflowRecord = {
   isEnabled: boolean;
   name: string;
   steps: WorkflowStepRecord[];
+  triggers: WorkflowCronTriggerRecord[];
   updatedAt: string;
 };
 

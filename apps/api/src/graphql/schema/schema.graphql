@@ -159,7 +159,10 @@ type Mutation {
   SetTaskStage(input: SetTaskStageInput!): Task!
   TriggerRoutine(input: TriggerRoutineInput!): RoutineRun!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
+  CreateWorkflowCronTrigger(input: CreateWorkflowCronTriggerInput!): WorkflowCronTrigger!
+  DeleteWorkflowTrigger(input: DeleteWorkflowTriggerInput!): WorkflowCronTrigger!
   StartWorkflowRun(input: StartWorkflowRunInput!): WorkflowRun!
+  UpdateWorkflowCronTrigger(input: UpdateWorkflowCronTriggerInput!): WorkflowCronTrigger!
   UpdateWorkflow(input: UpdateWorkflowInput!): Workflow!
   UpdateRoutine(input: UpdateRoutineInput!): Routine!
   UpdateRoutineCronTrigger(input: UpdateRoutineCronTriggerInput!): RoutineCronTrigger!
@@ -768,6 +771,7 @@ type Workflow {
   isEnabled: Boolean!
   inputs: [WorkflowInput!]!
   steps: [WorkflowStep!]!
+  triggers: [WorkflowCronTrigger!]!
   createdAt: String!
   updatedAt: String!
 }
@@ -793,7 +797,9 @@ type WorkflowStep {
 type WorkflowRun {
   id: ID!
   workflowDefinitionId: ID
+  triggerId: ID
   instructions: String
+  source: String!
   status: String!
   agentId: ID!
   sessionId: ID!
@@ -802,6 +808,27 @@ type WorkflowRun {
   completedAt: String
   createdAt: String!
   updatedAt: String!
+}
+
+type WorkflowCronTrigger {
+  id: ID!
+  workflowDefinitionId: ID!
+  agentId: ID!
+  agentName: String!
+  type: String!
+  enabled: Boolean!
+  overlapPolicy: String!
+  cronPattern: String!
+  timezone: String!
+  inputValues: [WorkflowTriggerInputValue!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type WorkflowTriggerInputValue {
+  id: ID!
+  name: String!
+  value: String!
 }
 
 type WorkflowRunStep {
@@ -1368,6 +1395,28 @@ input UpdateWorkflowInput {
   isEnabled: Boolean
   inputs: [WorkflowInputDraftInput!]
   steps: [WorkflowStepDraftInput!]
+}
+
+input CreateWorkflowCronTriggerInput {
+  workflowDefinitionId: ID!
+  agentId: ID!
+  cronPattern: String!
+  timezone: String!
+  enabled: Boolean
+  inputValues: [WorkflowRunInputValueInput!]!
+}
+
+input UpdateWorkflowCronTriggerInput {
+  id: ID!
+  agentId: ID
+  cronPattern: String
+  timezone: String
+  enabled: Boolean
+  inputValues: [WorkflowRunInputValueInput!]
+}
+
+input DeleteWorkflowTriggerInput {
+  id: ID!
 }
 
 input WorkflowInputDraftInput {

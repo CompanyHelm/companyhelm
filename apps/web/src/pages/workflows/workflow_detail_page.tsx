@@ -1,7 +1,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ArrowDownIcon, ArrowUpIcon, GripVerticalIcon, MessageSquareIcon, PencilIcon, PlayIcon, PlusIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CalendarClockIcon, GripVerticalIcon, MessageSquareIcon, PencilIcon, PlayIcon, PlusIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
+import type { RecordProxy, RecordSourceSelectorProxy } from "relay-runtime";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Badge } from "@/components/ui/badge";
@@ -29,13 +30,17 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
 import { RunWorkflowDialog } from "./run_workflow_dialog";
-import type { WorkflowInputRecord, WorkflowRecord, WorkflowStepRecord } from "./workflow_types";
+import { WorkflowTriggerDialog, type WorkflowTriggerDraft } from "./workflow_trigger_dialog";
+import type { WorkflowCronTriggerRecord, WorkflowInputRecord, WorkflowRecord, WorkflowStepRecord } from "./workflow_types";
+import type { workflowDetailPageCreateCronTriggerMutation } from "./__generated__/workflowDetailPageCreateCronTriggerMutation.graphql";
+import type { workflowDetailPageDeleteTriggerMutation } from "./__generated__/workflowDetailPageDeleteTriggerMutation.graphql";
 import type { workflowDetailPageQuery } from "./__generated__/workflowDetailPageQuery.graphql";
 import type { workflowDetailPageStartRunMutation } from "./__generated__/workflowDetailPageStartRunMutation.graphql";
 import type {
   UpdateWorkflowInput,
   workflowDetailPageUpdateMutation,
 } from "./__generated__/workflowDetailPageUpdateMutation.graphql";
+import type { workflowDetailPageUpdateCronTriggerMutation } from "./__generated__/workflowDetailPageUpdateCronTriggerMutation.graphql";
 
 type WorkflowQueryRecord = workflowDetailPageQuery["response"]["Workflow"];
 type WorkflowRunRecord = workflowDetailPageQuery["response"]["WorkflowRuns"][number];
@@ -69,6 +74,24 @@ const workflowDetailPageQueryNode = graphql`
         instructions
         ordinal
         createdAt
+      }
+      triggers {
+        id
+        workflowDefinitionId
+        agentId
+        agentName
+        type
+        enabled
+        overlapPolicy
+        cronPattern
+        timezone
+        inputValues {
+          id
+          name
+          value
+        }
+        createdAt
+        updatedAt
       }
       createdAt
       updatedAt
@@ -119,8 +142,81 @@ const workflowDetailPageUpdateMutationNode = graphql`
         ordinal
         createdAt
       }
+      triggers {
+        id
+        workflowDefinitionId
+        agentId
+        agentName
+        type
+        enabled
+        overlapPolicy
+        cronPattern
+        timezone
+        inputValues {
+          id
+          name
+          value
+        }
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
+    }
+  }
+`;
+
+const workflowDetailPageCreateCronTriggerMutationNode = graphql`
+  mutation workflowDetailPageCreateCronTriggerMutation($input: CreateWorkflowCronTriggerInput!) {
+    CreateWorkflowCronTrigger(input: $input) {
+      id
+      workflowDefinitionId
+      agentId
+      agentName
+      type
+      enabled
+      overlapPolicy
+      cronPattern
+      timezone
+      inputValues {
+        id
+        name
+        value
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const workflowDetailPageUpdateCronTriggerMutationNode = graphql`
+  mutation workflowDetailPageUpdateCronTriggerMutation($input: UpdateWorkflowCronTriggerInput!) {
+    UpdateWorkflowCronTrigger(input: $input) {
+      id
+      workflowDefinitionId
+      agentId
+      agentName
+      type
+      enabled
+      overlapPolicy
+      cronPattern
+      timezone
+      inputValues {
+        id
+        name
+        value
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const workflowDetailPageDeleteTriggerMutationNode = graphql`
+  mutation workflowDetailPageDeleteTriggerMutation($input: DeleteWorkflowTriggerInput!) {
+    DeleteWorkflowTrigger(input: $input) {
+      id
+      workflowDefinitionId
     }
   }
 `;
@@ -159,6 +255,19 @@ function formatDateTime(value: string | null | undefined): string {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+function filterStoreRecords(records: ReadonlyArray<unknown>): RecordProxy[] {
+  return records.filter((record): record is RecordProxy => {
+    return typeof record === "object"
+      && record !== null
+      && "getDataID" in record
+      && typeof record.getDataID === "function";
+  });
+}
+
+function findWorkflowRecord(store: RecordSourceSelectorProxy, workflowId: string): RecordProxy | null {
+  return store.getRoot().getLinkedRecord("Workflow", { id: workflowId });
 }
 
 function resolveRunBadgeVariant(status: string): "destructive" | "outline" | "positive" | "warning" {
@@ -295,6 +404,24 @@ function toWorkflowRecord(workflow: WorkflowQueryRecord): WorkflowRecord {
       ordinal: step.ordinal,
       stepId: step.stepId,
     })),
+    triggers: workflow.triggers.map((trigger) => ({
+      agentId: trigger.agentId,
+      agentName: trigger.agentName,
+      createdAt: trigger.createdAt,
+      cronPattern: trigger.cronPattern,
+      enabled: trigger.enabled,
+      id: trigger.id,
+      inputValues: trigger.inputValues.map((inputValue) => ({
+        id: inputValue.id,
+        name: inputValue.name,
+        value: inputValue.value,
+      })),
+      overlapPolicy: trigger.overlapPolicy,
+      timezone: trigger.timezone,
+      type: trigger.type,
+      updatedAt: trigger.updatedAt,
+      workflowDefinitionId: trigger.workflowDefinitionId,
+    })),
     updatedAt: workflow.updatedAt,
   };
 }
@@ -428,8 +555,13 @@ function WorkflowStepEditorDialog(props: {
 }
 
 function WorkflowOverviewTab(props: {
+  agents: Array<{ id: string; name: string }>;
   canExecute: boolean;
   isExecuting: boolean;
+  isTriggerSaving: boolean;
+  onCreateSchedule(): void;
+  onDeleteSchedule(triggerId: string): Promise<void>;
+  onEditSchedule(trigger: WorkflowCronTriggerRecord): void;
   onSave(patch: WorkflowPatch): Promise<void>;
   onExecute(): void;
   workflow: WorkflowRecord;
@@ -512,6 +644,92 @@ function WorkflowOverviewTab(props: {
           <p className="mt-1 text-sm font-medium text-foreground">{formatDateTime(props.workflow.updatedAt)}</p>
         </div>
       </div>
+
+      <section className="grid gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="grid gap-1">
+            <h2 className="text-sm font-semibold text-foreground">Schedules</h2>
+            <p className="text-sm text-muted-foreground">
+              Run this workflow automatically with stored launch values.
+            </p>
+          </div>
+          <Button
+            disabled={props.agents.length === 0 || props.isTriggerSaving}
+            onClick={props.onCreateSchedule}
+            type="button"
+            variant="outline"
+          >
+            <CalendarClockIcon data-icon="inline-start" />
+            Add schedule
+          </Button>
+        </div>
+        {props.workflow.triggers.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border/70 bg-muted/15 p-4 text-sm text-muted-foreground">
+            This workflow does not have cron schedules.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Schedule</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {props.workflow.triggers.map((trigger) => (
+                <TableRow key={trigger.id}>
+                  <TableCell>
+                    <div className="grid gap-1">
+                      <span className="font-mono text-sm text-foreground">{trigger.cronPattern}</span>
+                      <span className="text-xs text-muted-foreground">{trigger.timezone}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{trigger.agentName}</TableCell>
+                  <TableCell>
+                    <Badge variant={trigger.enabled ? "positive" : "outline"}>
+                      {trigger.enabled ? "enabled" : "disabled"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatDateTime(trigger.updatedAt)}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        aria-label={`Edit schedule ${trigger.cronPattern}`}
+                        disabled={props.isTriggerSaving}
+                        onClick={() => {
+                          props.onEditSchedule(trigger);
+                        }}
+                        size="icon-sm"
+                        title={`Edit schedule ${trigger.cronPattern}`}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <PencilIcon />
+                      </Button>
+                      <Button
+                        aria-label={`Delete schedule ${trigger.cronPattern}`}
+                        disabled={props.isTriggerSaving}
+                        onClick={() => {
+                          void props.onDeleteSchedule(trigger.id);
+                        }}
+                        size="icon-sm"
+                        title={`Delete schedule ${trigger.cronPattern}`}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
 
       <section className="grid gap-4">
         <div className="grid gap-1">
@@ -997,12 +1215,30 @@ function WorkflowDetailPageContent() {
   }));
   const [isRunDialogOpen, setRunDialogOpen] = useState(false);
   const [runDialogErrorMessage, setRunDialogErrorMessage] = useState<string | null>(null);
+  const [editingTrigger, setEditingTrigger] = useState<WorkflowCronTriggerRecord | null>(null);
+  const [isTriggerDialogOpen, setTriggerDialogOpen] = useState(false);
+  const [triggerDialogErrorMessage, setTriggerDialogErrorMessage] = useState<string | null>(null);
   const [commitUpdateWorkflow] = useMutation<workflowDetailPageUpdateMutation>(
     workflowDetailPageUpdateMutationNode,
   );
+  const [commitCreateWorkflowCronTrigger, isCreateWorkflowCronTriggerInFlight] =
+    useMutation<workflowDetailPageCreateCronTriggerMutation>(
+      workflowDetailPageCreateCronTriggerMutationNode,
+    );
+  const [commitUpdateWorkflowCronTrigger, isUpdateWorkflowCronTriggerInFlight] =
+    useMutation<workflowDetailPageUpdateCronTriggerMutation>(
+      workflowDetailPageUpdateCronTriggerMutationNode,
+    );
+  const [commitDeleteWorkflowTrigger, isDeleteWorkflowTriggerInFlight] =
+    useMutation<workflowDetailPageDeleteTriggerMutation>(
+      workflowDetailPageDeleteTriggerMutationNode,
+    );
   const [commitStartWorkflowRun, isStartWorkflowRunInFlight] = useMutation<workflowDetailPageStartRunMutation>(
     workflowDetailPageStartRunMutationNode,
   );
+  const isWorkflowTriggerSaving = isCreateWorkflowCronTriggerInFlight
+    || isUpdateWorkflowCronTriggerInFlight
+    || isDeleteWorkflowTriggerInFlight;
 
   useEffect(() => {
     setDetailLabel(workflow.name);
@@ -1072,6 +1308,104 @@ function WorkflowDetailPageContent() {
     }
   }
 
+  async function saveWorkflowTrigger(draft: WorkflowTriggerDraft): Promise<void> {
+    setTriggerDialogErrorMessage(null);
+
+    try {
+      if (editingTrigger) {
+        await new Promise<void>((resolve, reject) => {
+          commitUpdateWorkflowCronTrigger({
+            variables: {
+              input: {
+                agentId: draft.agentId,
+                cronPattern: draft.cronPattern,
+                enabled: draft.enabled,
+                id: editingTrigger.id,
+                inputValues: draft.inputValues,
+                timezone: draft.timezone,
+              },
+            },
+            onCompleted: (_response, errors) => {
+              const nextErrorMessage = errors?.[0]?.message;
+              if (nextErrorMessage) {
+                reject(new Error(nextErrorMessage));
+                return;
+              }
+              resolve();
+            },
+            onError: reject,
+          });
+        });
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          commitCreateWorkflowCronTrigger({
+            updater: (store) => {
+              const createdTrigger = store.getRootField("CreateWorkflowCronTrigger");
+              const workflowRecord = findWorkflowRecord(store, workflow.id);
+              if (!createdTrigger || !workflowRecord) {
+                return;
+              }
+              const currentTriggers = filterStoreRecords(workflowRecord.getLinkedRecords("triggers") || []);
+              workflowRecord.setLinkedRecords([createdTrigger, ...currentTriggers], "triggers");
+            },
+            variables: {
+              input: draft,
+            },
+            onCompleted: (_response, errors) => {
+              const nextErrorMessage = errors?.[0]?.message;
+              if (nextErrorMessage) {
+                reject(new Error(nextErrorMessage));
+                return;
+              }
+              resolve();
+            },
+            onError: reject,
+          });
+        });
+      }
+      setTriggerDialogOpen(false);
+      setEditingTrigger(null);
+    } catch (error: unknown) {
+      setTriggerDialogErrorMessage(getErrorMessage(error, "Failed to save workflow schedule."));
+    }
+  }
+
+  async function deleteWorkflowTrigger(triggerId: string): Promise<void> {
+    setTriggerDialogErrorMessage(null);
+
+    await new Promise<void>((resolve, reject) => {
+      commitDeleteWorkflowTrigger({
+        updater: (store) => {
+          const deletedTrigger = store.getRootField("DeleteWorkflowTrigger");
+          const workflowRecord = findWorkflowRecord(store, workflow.id);
+          if (!deletedTrigger || !workflowRecord) {
+            return;
+          }
+          const deletedTriggerId = deletedTrigger.getValue("id");
+          const currentTriggers = filterStoreRecords(workflowRecord.getLinkedRecords("triggers") || []);
+          workflowRecord.setLinkedRecords(
+            currentTriggers.filter((record) => record.getValue("id") !== deletedTriggerId),
+            "triggers",
+          );
+        },
+        variables: {
+          input: {
+            id: triggerId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+          resolve();
+        },
+        onError: reject,
+      });
+    });
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card variant="page">
@@ -1098,8 +1432,21 @@ function WorkflowDetailPageContent() {
 
           {selectedTab === "overview" ? (
             <WorkflowOverviewTab
+              agents={agents}
               canExecute={agents.length > 0}
               isExecuting={isStartWorkflowRunInFlight}
+              isTriggerSaving={isWorkflowTriggerSaving}
+              onCreateSchedule={() => {
+                setTriggerDialogErrorMessage(null);
+                setEditingTrigger(null);
+                setTriggerDialogOpen(true);
+              }}
+              onDeleteSchedule={deleteWorkflowTrigger}
+              onEditSchedule={(trigger) => {
+                setTriggerDialogErrorMessage(null);
+                setEditingTrigger(trigger);
+                setTriggerDialogOpen(true);
+              }}
               onExecute={() => {
                 setRunDialogErrorMessage(null);
                 setRunDialogOpen(true);
@@ -1129,6 +1476,22 @@ function WorkflowDetailPageContent() {
           }
         }}
         onRun={runWorkflow}
+        workflow={workflow}
+      />
+      <WorkflowTriggerDialog
+        agents={agents}
+        errorMessage={triggerDialogErrorMessage}
+        isOpen={isTriggerDialogOpen}
+        isSaving={isWorkflowTriggerSaving}
+        onOpenChange={(open) => {
+          setTriggerDialogOpen(open);
+          if (!open) {
+            setEditingTrigger(null);
+            setTriggerDialogErrorMessage(null);
+          }
+        }}
+        onSave={saveWorkflowTrigger}
+        trigger={editingTrigger}
         workflow={workflow}
       />
     </main>

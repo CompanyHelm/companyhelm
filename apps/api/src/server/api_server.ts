@@ -10,10 +10,13 @@ import { ApiLogger } from "../log/api_logger.ts";
 import { GithubWebhookQueueService } from "../github/webhooks/queue.ts";
 import { QueuePolicyValidator } from "../services/redis/queue_policy_validator.ts";
 import { RoutineSchedulerSyncService } from "../services/routines/scheduler_sync.ts";
+import { WorkflowTriggerQueueService } from "../services/workflows/queue.ts";
+import { WorkflowSchedulerSyncService } from "../services/workflows/scheduler_sync.ts";
 import { GithubWebhookWorker } from "../workers/github_webhooks.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 import { RoutineTriggerWorker } from "../workers/routine_triggers.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
+import { WorkflowTriggerWorker } from "../workers/workflow_triggers.ts";
 import { EnvironmentTerminalWebsocketRoute } from "./environment_terminal_websocket_route.ts";
 import { GithubWebhookRoute } from "./github_webhook_route.ts";
 
@@ -36,6 +39,9 @@ export class ApiServer {
   private readonly routineSchedulerSyncService: RoutineSchedulerSyncService;
   private readonly routineTriggerWorker: RoutineTriggerWorker;
   private readonly sessionProcessWorker: SessionProcessWorker;
+  private readonly workflowSchedulerSyncService: WorkflowSchedulerSyncService;
+  private readonly workflowTriggerQueueService: WorkflowTriggerQueueService;
+  private readonly workflowTriggerWorker: WorkflowTriggerWorker;
   private readonly app;
 
   constructor(
@@ -49,6 +55,19 @@ export class ApiServer {
     @inject(SessionProcessWorker) sessionProcessWorker: SessionProcessWorker,
     @inject(RoutineSchedulerSyncService) routineSchedulerSyncService: RoutineSchedulerSyncService,
     @inject(RoutineTriggerWorker) routineTriggerWorker: RoutineTriggerWorker,
+    @inject(WorkflowSchedulerSyncService)
+    workflowSchedulerSyncService: WorkflowSchedulerSyncService = {
+      async syncEnabledCronTriggers() {},
+    } as never,
+    @inject(WorkflowTriggerQueueService)
+    workflowTriggerQueueService: WorkflowTriggerQueueService = {
+      async close() {},
+    } as never,
+    @inject(WorkflowTriggerWorker)
+    workflowTriggerWorker: WorkflowTriggerWorker = {
+      start() {},
+      async stop() {},
+    } as never,
     @inject(EnvironmentTerminalWebsocketRoute)
     environmentTerminalWebsocketRoute: EnvironmentTerminalWebsocketRoute = {
       register() {},
@@ -81,6 +100,9 @@ export class ApiServer {
     this.routineSchedulerSyncService = routineSchedulerSyncService;
     this.routineTriggerWorker = routineTriggerWorker;
     this.sessionProcessWorker = sessionProcessWorker;
+    this.workflowSchedulerSyncService = workflowSchedulerSyncService;
+    this.workflowTriggerQueueService = workflowTriggerQueueService;
+    this.workflowTriggerWorker = workflowTriggerWorker;
     this.app = Fastify({
       loggerInstance: this.logger.getLogger(),
     });
@@ -94,6 +116,8 @@ export class ApiServer {
       await this.githubWebhookWorker.stop();
       await this.sessionProcessWorker.stop();
       await this.routineTriggerWorker.stop();
+      await this.workflowTriggerWorker.stop();
+      await this.workflowTriggerQueueService.close();
       await this.githubWebhookQueueService.close();
       await this.database.close();
       await this.adminDatabase.close();
@@ -121,10 +145,12 @@ export class ApiServer {
     });
 
     await this.routineSchedulerSyncService.syncEnabledCronTriggers();
+    await this.workflowSchedulerSyncService.syncEnabledCronTriggers();
     this.llmOauthRefreshWorker.start();
     this.githubWebhookWorker.start();
     this.sessionProcessWorker.start();
     this.routineTriggerWorker.start();
+    this.workflowTriggerWorker.start();
   }
 
   static createLoggerOptions(config: Pick<Config, "log">): FastifyServerOptions["logger"] {

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<08e24a6e380f6401f04787f6b96831f3>>
+ * @generated SignedSource<<81bbd024a7e14b59daa0f7f18d65637d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -39,6 +39,24 @@ export type workflowDetailPageQuery$data = {
       readonly name: string;
       readonly ordinal: number;
       readonly stepId: string;
+    }>;
+    readonly triggers: ReadonlyArray<{
+      readonly agentId: string;
+      readonly agentName: string;
+      readonly createdAt: string;
+      readonly cronPattern: string;
+      readonly enabled: boolean;
+      readonly id: string;
+      readonly inputValues: ReadonlyArray<{
+        readonly id: string;
+        readonly name: string;
+        readonly value: string;
+      }>;
+      readonly overlapPolicy: string;
+      readonly timezone: string;
+      readonly type: string;
+      readonly updatedAt: string;
+      readonly workflowDefinitionId: string;
     }>;
     readonly updatedAt: string;
   };
@@ -121,17 +139,31 @@ v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "updatedAt",
+  "name": "workflowDefinitionId",
   "storageKey": null
 },
 v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "agentId",
+  "storageKey": null
+},
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "updatedAt",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "status",
   "storageKey": null
 },
-v9 = [
+v11 = [
   {
     "alias": null,
     "args": null,
@@ -222,8 +254,86 @@ v9 = [
         ],
         "storageKey": null
       },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "WorkflowCronTrigger",
+        "kind": "LinkedField",
+        "name": "triggers",
+        "plural": true,
+        "selections": [
+          (v1/*: any*/),
+          (v7/*: any*/),
+          (v8/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "agentName",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "type",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "enabled",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "overlapPolicy",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "cronPattern",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "timezone",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "WorkflowTriggerInputValue",
+            "kind": "LinkedField",
+            "name": "inputValues",
+            "plural": true,
+            "selections": [
+              (v1/*: any*/),
+              (v2/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "value",
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          },
+          (v5/*: any*/),
+          (v9/*: any*/)
+        ],
+        "storageKey": null
+      },
       (v5/*: any*/),
-      (v7/*: any*/)
+      (v9/*: any*/)
     ],
     "storageKey": null
   },
@@ -242,21 +352,9 @@ v9 = [
     "plural": true,
     "selections": [
       (v1/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "workflowDefinitionId",
-        "storageKey": null
-      },
+      (v7/*: any*/),
+      (v10/*: any*/),
       (v8/*: any*/),
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "agentId",
-        "storageKey": null
-      },
       {
         "alias": null,
         "args": null,
@@ -283,7 +381,7 @@ v9 = [
           (v2/*: any*/),
           (v4/*: any*/),
           (v6/*: any*/),
-          (v8/*: any*/)
+          (v10/*: any*/)
         ],
         "storageKey": null
       },
@@ -302,7 +400,7 @@ v9 = [
         "storageKey": null
       },
       (v5/*: any*/),
-      (v7/*: any*/)
+      (v9/*: any*/)
     ],
     "storageKey": null
   }
@@ -313,7 +411,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "workflowDetailPageQuery",
-    "selections": (v9/*: any*/),
+    "selections": (v11/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -322,19 +420,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "workflowDetailPageQuery",
-    "selections": (v9/*: any*/)
+    "selections": (v11/*: any*/)
   },
   "params": {
-    "cacheID": "fc11b448337d0d1739c906be7240f586",
+    "cacheID": "50a0afacfa21cc6d39c515620b4762a1",
     "id": null,
     "metadata": {},
     "name": "workflowDetailPageQuery",
     "operationKind": "query",
-    "text": "query workflowDetailPageQuery(\n  $workflowId: ID!\n) {\n  Agents {\n    id\n    name\n  }\n  Workflow(id: $workflowId) {\n    id\n    name\n    description\n    instructions\n    isEnabled\n    inputs {\n      id\n      name\n      description\n      isRequired\n      defaultValue\n      createdAt\n    }\n    steps {\n      id\n      stepId\n      name\n      instructions\n      ordinal\n      createdAt\n    }\n    createdAt\n    updatedAt\n  }\n  WorkflowRuns(workflowDefinitionId: $workflowId) {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    steps {\n      id\n      workflowRunId\n      name\n      instructions\n      ordinal\n      status\n    }\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "query workflowDetailPageQuery(\n  $workflowId: ID!\n) {\n  Agents {\n    id\n    name\n  }\n  Workflow(id: $workflowId) {\n    id\n    name\n    description\n    instructions\n    isEnabled\n    inputs {\n      id\n      name\n      description\n      isRequired\n      defaultValue\n      createdAt\n    }\n    steps {\n      id\n      stepId\n      name\n      instructions\n      ordinal\n      createdAt\n    }\n    triggers {\n      id\n      workflowDefinitionId\n      agentId\n      agentName\n      type\n      enabled\n      overlapPolicy\n      cronPattern\n      timezone\n      inputValues {\n        id\n        name\n        value\n      }\n      createdAt\n      updatedAt\n    }\n    createdAt\n    updatedAt\n  }\n  WorkflowRuns(workflowDefinitionId: $workflowId) {\n    id\n    workflowDefinitionId\n    status\n    agentId\n    sessionId\n    steps {\n      id\n      workflowRunId\n      name\n      instructions\n      ordinal\n      status\n    }\n    startedAt\n    completedAt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d91dfd8d259a8ffb682212bb44b096f6";
+(node as any).hash = "625a091230026177a267c97d2c873498";
 
 export default node;

@@ -1,20 +1,28 @@
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { and, eq, inArray } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import nunjucks from "nunjucks";
 import {
   agents,
+  workflowCronTriggers,
   workflowDefinitionInputs,
   workflowDefinitions,
   workflowRuns,
   workflowRunSteps,
   workflowStepDefinitions,
+  workflowTriggerInputValues,
+  workflowTriggers,
 } from "../../db/schema.ts";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { WorkflowRunTemplate } from "../../prompts/workflow_run_template.ts";
 import { SessionManagerService } from "../agent/session/session_manager_service.ts";
 import type {
   WorkflowCreateInput,
+  WorkflowCronTriggerCreateInput,
+  WorkflowCronTriggerRecord,
+  WorkflowCronTriggerScheduleRecord,
+  WorkflowCronTriggerUpdateInput,
   WorkflowDefinitionInputRecord,
   WorkflowInputDraft,
   WorkflowRecord,
@@ -27,6 +35,10 @@ import type {
   WorkflowStepDraft,
   WorkflowUpdateInput,
 } from "./types.ts";
+
+type CronParserRuntime = {
+  parseExpression(cronPattern: string, options: { tz: string }): unknown;
+};
 
 type WorkflowDefinitionRow = {
   createdAt: Date;
@@ -49,10 +61,33 @@ type WorkflowRunRow = {
   id: string;
   instructions: string | null;
   sessionId: string;
+  source: "manual" | "scheduled";
   startedAt: Date | null;
   status: WorkflowRunStatus;
+  triggerId: string | null;
   updatedAt: Date;
   workflowDefinitionId: string | null;
+};
+
+type WorkflowCronTriggerRow = {
+  agentId: string;
+  agentName: string;
+  createdAt: Date;
+  cronPattern: string;
+  enabled: boolean;
+  id: string;
+  overlapPolicy: "skip";
+  timezone: string;
+  type: "cron";
+  updatedAt: Date;
+  workflowDefinitionId: string;
+};
+
+type WorkflowTriggerInputValueRow = {
+  id: string;
+  name: string;
+  triggerId: string;
+  value: string;
 };
 
 /**
@@ -62,6 +97,8 @@ type WorkflowRunRow = {
  */
 @injectable()
 export class WorkflowService {
+  private static readonly cronParser = createRequire(import.meta.url)("cron-parser") as CronParserRuntime;
+
   constructor(
     @inject(SessionManagerService)
     private readonly sessionManagerService: SessionManagerService,
@@ -181,6 +218,167 @@ export class WorkflowService {
     });
   }
 
+  async createCronTrigger(
+    transactionProvider: TransactionProviderInterface,
+    input: WorkflowCronTriggerCreateInput,
+  ): Promise<WorkflowCronTriggerRecord> {
+    this.assertCron(input.cronPattern, input.timezone);
+
+    return transactionProvider.transaction(async (tx) => {
+      await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+      await this.requireAgent(tx, input.companyId, input.agentId);
+      const definitionInputs = await this.loadInputsByWorkflowDefinitionId(
+        tx,
+        input.companyId,
+        [input.workflowDefinitionId],
+      );
+      const resolvedValues = this.resolveTemplateValues(
+        definitionInputs.get(input.workflowDefinitionId) ?? [],
+        input.inputValues,
+      );
+      const now = new Date();
+      const triggerId = randomUUID();
+
+      await tx
+        .insert(workflowTriggers)
+        .values({
+          agentId: input.agentId,
+          companyId: input.companyId,
+          createdAt: now,
+          enabled: input.enabled ?? true,
+          id: triggerId,
+          overlapPolicy: "skip",
+          type: "cron",
+          updatedAt: now,
+          workflowDefinitionId: input.workflowDefinitionId,
+        });
+      await tx
+        .insert(workflowCronTriggers)
+        .values({
+          companyId: input.companyId,
+          createdAt: now,
+          cronPattern: input.cronPattern,
+          timezone: input.timezone,
+          triggerId,
+          updatedAt: now,
+        });
+      await this.replaceTriggerInputValues(tx, input.companyId, triggerId, resolvedValues);
+
+      return this.requireCronTriggerRow(tx, input.companyId, triggerId);
+    });
+  }
+
+  async updateCronTrigger(
+    transactionProvider: TransactionProviderInterface,
+    input: WorkflowCronTriggerUpdateInput,
+  ): Promise<WorkflowCronTriggerRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const existingTrigger = await this.requireCronTriggerRow(tx, input.companyId, input.triggerId);
+      const nextCronPattern = input.cronPattern ?? existingTrigger.cronPattern;
+      const nextTimezone = input.timezone ?? existingTrigger.timezone;
+      this.assertCron(nextCronPattern, nextTimezone);
+
+      const now = new Date();
+      const triggerValues: Record<string, unknown> = {
+        updatedAt: now,
+      };
+      if (input.agentId !== undefined && input.agentId !== null) {
+        await this.requireAgent(tx, input.companyId, input.agentId);
+        triggerValues.agentId = input.agentId;
+      }
+      if (input.enabled !== undefined && input.enabled !== null) {
+        triggerValues.enabled = input.enabled;
+      }
+
+      await tx
+        .update(workflowTriggers)
+        .set(triggerValues)
+        .where(and(
+          eq(workflowTriggers.companyId, input.companyId),
+          eq(workflowTriggers.id, input.triggerId),
+        ));
+
+      await tx
+        .update(workflowCronTriggers)
+        .set({
+          cronPattern: nextCronPattern,
+          timezone: nextTimezone,
+          updatedAt: now,
+        })
+        .where(and(
+          eq(workflowCronTriggers.companyId, input.companyId),
+          eq(workflowCronTriggers.triggerId, input.triggerId),
+        ));
+
+      if (input.inputValues) {
+        const definitionInputs = await this.loadInputsByWorkflowDefinitionId(
+          tx,
+          input.companyId,
+          [existingTrigger.workflowDefinitionId],
+        );
+        const resolvedValues = this.resolveTemplateValues(
+          definitionInputs.get(existingTrigger.workflowDefinitionId) ?? [],
+          input.inputValues,
+        );
+        await tx
+          .delete(workflowTriggerInputValues)
+          .where(and(
+            eq(workflowTriggerInputValues.companyId, input.companyId),
+            eq(workflowTriggerInputValues.triggerId, input.triggerId),
+          ));
+        await this.replaceTriggerInputValues(tx, input.companyId, input.triggerId, resolvedValues);
+      }
+
+      return this.requireCronTriggerRow(tx, input.companyId, input.triggerId);
+    });
+  }
+
+  async deleteTrigger(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    triggerId: string,
+  ): Promise<WorkflowCronTriggerRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const triggerRecord = await this.requireCronTriggerRow(tx, companyId, triggerId);
+      await tx
+        .delete(workflowTriggers)
+        .where(and(
+          eq(workflowTriggers.companyId, companyId),
+          eq(workflowTriggers.id, triggerId),
+        ));
+      return triggerRecord;
+    });
+  }
+
+  async getCronTriggerSchedule(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    triggerId: string,
+  ): Promise<WorkflowCronTriggerScheduleRecord | null> {
+    return transactionProvider.transaction(async (tx) => {
+      const [triggerRow] = await tx
+        .select({
+          agentId: workflowTriggers.agentId,
+          companyId: workflowTriggers.companyId,
+          cronPattern: workflowCronTriggers.cronPattern,
+          id: workflowTriggers.id,
+          timezone: workflowCronTriggers.timezone,
+          workflowDefinitionId: workflowTriggers.workflowDefinitionId,
+        })
+        .from(workflowTriggers)
+        .innerJoin(workflowDefinitions, eq(workflowDefinitions.id, workflowTriggers.workflowDefinitionId))
+        .innerJoin(workflowCronTriggers, eq(workflowCronTriggers.triggerId, workflowTriggers.id))
+        .where(and(
+          eq(workflowTriggers.companyId, companyId),
+          eq(workflowTriggers.id, triggerId),
+          eq(workflowTriggers.enabled, true),
+          eq(workflowDefinitions.isEnabled, true),
+        )) as WorkflowCronTriggerScheduleRecord[];
+
+      return triggerRow ?? null;
+    });
+  }
+
   async getWorkflowRun(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
@@ -278,11 +476,13 @@ export class WorkflowService {
           instructions,
           parentWorkflowRunId: input.parentWorkflowRunId ?? null,
           sessionId: sessionRecord.id,
+          source: input.source ?? "manual",
           startedAt: now,
           startedByAgentId: input.startedByAgentId ?? null,
           startedBySessionId: input.startedBySessionId ?? null,
           startedByUserId: input.startedByUserId ?? null,
           status: "running",
+          triggerId: input.triggerId ?? null,
           updatedAt: now,
           workflowDefinitionId: input.workflowDefinitionId,
         });
@@ -309,6 +509,50 @@ export class WorkflowService {
     return workflowRunRecord;
   }
 
+  async startScheduledWorkflowRun(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      bullmqJobId?: string | null;
+      companyId: string;
+      triggerId: string;
+    },
+  ): Promise<WorkflowRunRecord | null> {
+    void input.bullmqJobId;
+    const trigger = await transactionProvider.transaction(async (tx) => {
+      const triggerRecord = await this.requireCronTriggerRow(tx, input.companyId, input.triggerId);
+      if (!triggerRecord.enabled) {
+        return null;
+      }
+      const workflowRow = await this.requireWorkflowDefinitionRow(
+        tx,
+        input.companyId,
+        triggerRecord.workflowDefinitionId,
+      );
+      if (!workflowRow.isEnabled) {
+        return null;
+      }
+      if (await this.hasRunningRunForTrigger(tx, input.companyId, input.triggerId)) {
+        return null;
+      }
+      return triggerRecord;
+    });
+    if (!trigger) {
+      return null;
+    }
+
+    return this.startWorkflowRun(transactionProvider, {
+      agentId: trigger.agentId,
+      companyId: input.companyId,
+      inputValues: trigger.inputValues.map((inputValue) => ({
+        name: inputValue.name,
+        value: inputValue.value,
+      })),
+      source: "scheduled",
+      triggerId: trigger.id,
+      workflowDefinitionId: trigger.workflowDefinitionId,
+    });
+  }
+
   private async hydrateWorkflowRows(
     tx: AppRuntimeTransaction,
     companyId: string,
@@ -317,6 +561,7 @@ export class WorkflowService {
     const workflowDefinitionIds = workflowRows.map((workflowRow) => workflowRow.id);
     const inputsByWorkflowDefinitionId = await this.loadInputsByWorkflowDefinitionId(tx, companyId, workflowDefinitionIds);
     const stepsByWorkflowDefinitionId = await this.loadStepsByWorkflowDefinitionId(tx, workflowDefinitionIds);
+    const triggersByWorkflowDefinitionId = await this.loadTriggersByWorkflowDefinitionId(tx, companyId, workflowDefinitionIds);
 
     return workflowRows.map((workflowRow) => ({
       createdAt: workflowRow.createdAt,
@@ -327,6 +572,7 @@ export class WorkflowService {
       isEnabled: workflowRow.isEnabled,
       name: workflowRow.name,
       steps: stepsByWorkflowDefinitionId.get(workflowRow.id) ?? [],
+      triggers: triggersByWorkflowDefinitionId.get(workflowRow.id) ?? [],
       updatedAt: workflowRow.updatedAt,
     }));
   }
@@ -513,6 +759,127 @@ export class WorkflowService {
     };
   }
 
+  private async requireCronTriggerRow(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    triggerId: string,
+  ): Promise<WorkflowCronTriggerRecord> {
+    const [triggerRow] = await this.loadCronTriggerRows(tx, companyId, [triggerId]);
+    if (!triggerRow) {
+      throw new Error("Workflow trigger not found.");
+    }
+
+    return triggerRow;
+  }
+
+  private async loadTriggersByWorkflowDefinitionId(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    workflowDefinitionIds: string[],
+  ): Promise<Map<string, WorkflowCronTriggerRecord[]>> {
+    if (workflowDefinitionIds.length === 0) {
+      return new Map();
+    }
+
+    const triggerRows = await this.loadCronTriggerRowsByWorkflowDefinitionId(tx, companyId, workflowDefinitionIds);
+    const triggersByWorkflowDefinitionId = new Map<string, WorkflowCronTriggerRecord[]>();
+    for (const triggerRow of triggerRows) {
+      const workflowTriggersForDefinition = triggersByWorkflowDefinitionId.get(triggerRow.workflowDefinitionId) ?? [];
+      workflowTriggersForDefinition.push(triggerRow);
+      triggersByWorkflowDefinitionId.set(triggerRow.workflowDefinitionId, workflowTriggersForDefinition);
+    }
+
+    return triggersByWorkflowDefinitionId;
+  }
+
+  private async loadCronTriggerRows(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    triggerIds: string[],
+  ): Promise<WorkflowCronTriggerRecord[]> {
+    if (triggerIds.length === 0) {
+      return [];
+    }
+
+    const triggerRows = await tx
+      .select(this.getWorkflowCronTriggerSelection())
+      .from(workflowTriggers)
+      .innerJoin(workflowCronTriggers, eq(workflowCronTriggers.triggerId, workflowTriggers.id))
+      .innerJoin(agents, eq(agents.id, workflowTriggers.agentId))
+      .where(and(
+        eq(workflowTriggers.companyId, companyId),
+        inArray(workflowTriggers.id, triggerIds),
+      )) as WorkflowCronTriggerRow[];
+
+    return this.hydrateTriggerRows(tx, companyId, triggerRows);
+  }
+
+  private async loadCronTriggerRowsByWorkflowDefinitionId(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    workflowDefinitionIds: string[],
+  ): Promise<WorkflowCronTriggerRecord[]> {
+    const triggerRows = await tx
+      .select(this.getWorkflowCronTriggerSelection())
+      .from(workflowTriggers)
+      .innerJoin(workflowCronTriggers, eq(workflowCronTriggers.triggerId, workflowTriggers.id))
+      .innerJoin(agents, eq(agents.id, workflowTriggers.agentId))
+      .where(and(
+        eq(workflowTriggers.companyId, companyId),
+        inArray(workflowTriggers.workflowDefinitionId, workflowDefinitionIds),
+      )) as WorkflowCronTriggerRow[];
+    triggerRows.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
+
+    return this.hydrateTriggerRows(tx, companyId, triggerRows);
+  }
+
+  private async hydrateTriggerRows(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    triggerRows: WorkflowCronTriggerRow[],
+  ): Promise<WorkflowCronTriggerRecord[]> {
+    const triggerIds = triggerRows.map((triggerRow) => triggerRow.id);
+    const inputValuesByTriggerId = await this.loadInputValuesByTriggerId(tx, companyId, triggerIds);
+
+    return triggerRows.map((triggerRow) => ({
+      ...triggerRow,
+      inputValues: inputValuesByTriggerId.get(triggerRow.id) ?? [],
+    }));
+  }
+
+  private async loadInputValuesByTriggerId(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    triggerIds: string[],
+  ): Promise<Map<string, WorkflowTriggerInputValueRow[]>> {
+    if (triggerIds.length === 0) {
+      return new Map();
+    }
+
+    const inputRows = await tx
+      .select({
+        id: workflowTriggerInputValues.id,
+        name: workflowTriggerInputValues.name,
+        triggerId: workflowTriggerInputValues.triggerId,
+        value: workflowTriggerInputValues.value,
+      })
+      .from(workflowTriggerInputValues)
+      .where(and(
+        eq(workflowTriggerInputValues.companyId, companyId),
+        inArray(workflowTriggerInputValues.triggerId, triggerIds),
+      )) as WorkflowTriggerInputValueRow[];
+    inputRows.sort((left, right) => left.name.localeCompare(right.name));
+
+    const inputValuesByTriggerId = new Map<string, WorkflowTriggerInputValueRow[]>();
+    for (const inputRow of inputRows) {
+      const triggerInputValues = inputValuesByTriggerId.get(inputRow.triggerId) ?? [];
+      triggerInputValues.push(inputRow);
+      inputValuesByTriggerId.set(inputRow.triggerId, triggerInputValues);
+    }
+
+    return inputValuesByTriggerId;
+  }
+
   private async replaceInputs(
     tx: AppRuntimeTransaction,
     companyId: string,
@@ -536,6 +903,50 @@ export class WorkflowService {
         name: input.name,
         workflowDefinitionId,
       })));
+  }
+
+  private async replaceTriggerInputValues(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    triggerId: string,
+    values: Record<string, string>,
+  ): Promise<void> {
+    const inputEntries = Object.entries(values);
+    if (inputEntries.length === 0) {
+      return;
+    }
+
+    const now = new Date();
+    await tx
+      .insert(workflowTriggerInputValues)
+      .values(inputEntries.map(([name, value]) => ({
+        companyId,
+        createdAt: now,
+        id: randomUUID(),
+        name,
+        triggerId,
+        updatedAt: now,
+        value,
+      })));
+  }
+
+  private async hasRunningRunForTrigger(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    triggerId: string,
+  ): Promise<boolean> {
+    const [runRow] = await tx
+      .select({
+        id: workflowRuns.id,
+      })
+      .from(workflowRuns)
+      .where(and(
+        eq(workflowRuns.companyId, companyId),
+        eq(workflowRuns.triggerId, triggerId),
+        eq(workflowRuns.status, "running"),
+      )) as Array<{ id: string }>;
+
+    return Boolean(runRow);
   }
 
   private async replaceSteps(
@@ -624,6 +1035,18 @@ export class WorkflowService {
     }
   }
 
+  private assertCron(cronPattern: string, timezone: string): void {
+    this.assertText(cronPattern, "cron pattern is required.");
+    this.assertText(timezone, "timezone is required.");
+    try {
+      WorkflowService.cronParser.parseExpression(cronPattern, { tz: timezone });
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Invalid cron pattern.", {
+        cause: error,
+      });
+    }
+  }
+
   private getWorkflowDefinitionSelection() {
     return {
       createdAt: workflowDefinitions.createdAt,
@@ -644,10 +1067,28 @@ export class WorkflowService {
       id: workflowRuns.id,
       instructions: workflowRuns.instructions,
       sessionId: workflowRuns.sessionId,
+      source: workflowRuns.source,
       startedAt: workflowRuns.startedAt,
       status: workflowRuns.status,
+      triggerId: workflowRuns.triggerId,
       updatedAt: workflowRuns.updatedAt,
       workflowDefinitionId: workflowRuns.workflowDefinitionId,
+    };
+  }
+
+  private getWorkflowCronTriggerSelection() {
+    return {
+      agentId: workflowTriggers.agentId,
+      agentName: agents.name,
+      createdAt: workflowTriggers.createdAt,
+      cronPattern: workflowCronTriggers.cronPattern,
+      enabled: workflowTriggers.enabled,
+      id: workflowTriggers.id,
+      overlapPolicy: workflowTriggers.overlapPolicy,
+      timezone: workflowCronTriggers.timezone,
+      type: workflowTriggers.type,
+      updatedAt: workflowTriggers.updatedAt,
+      workflowDefinitionId: workflowTriggers.workflowDefinitionId,
     };
   }
 }
