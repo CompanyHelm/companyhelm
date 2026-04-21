@@ -108,7 +108,7 @@ test("GithubClient lists discovered skill directories from a repository tree", a
   const client = createGithubClient(fetchImpl);
 
   const directories = await client.listSkillDirectories({
-    defaultBranch: "main",
+    branchName: "main",
     installationId: 110600868,
     repositoryFullName: "companyhelm/skills",
   });
@@ -147,6 +147,13 @@ test("GithubClient reads a skill package and derives metadata from SKILL.md", as
         }],
       });
     }
+    if (url.includes("/branches/main")) {
+      return createJsonResponse({
+        commit: {
+          sha: "commit-sha-main",
+        },
+      });
+    }
     if (url.includes("/git/blobs/sha-browser-skill")) {
       return createJsonResponse({
         content: Buffer.from("# Browser automation\n\nUse the browser helpers first.\n").toString("base64"),
@@ -159,7 +166,7 @@ test("GithubClient reads a skill package and derives metadata from SKILL.md", as
   const client = createGithubClient(fetchImpl);
 
   const skillPackage = await client.getSkillPackage({
-    defaultBranch: "main",
+    branchName: "main",
     installationId: 110600868,
     repositoryFullName: "companyhelm/skills",
     skillDirectory: "skills/browser",
@@ -167,6 +174,7 @@ test("GithubClient reads a skill package and derives metadata from SKILL.md", as
 
   assert.deepEqual(skillPackage, {
     branchName: "main",
+    commitSha: "commit-sha-main",
     description: "Use the browser helpers first.",
     fileList: ["scripts/open.sh"],
     instructions: "# Browser automation\n\nUse the browser helpers first.\n",

@@ -1,5 +1,6 @@
 import { createSign } from "node:crypto";
 import { inject, injectable } from "inversify";
+import matter from "gray-matter";
 import { Config } from "../config/schema.ts";
 
 const GITHUB_API_URL = "https://api.github.com";
@@ -31,6 +32,13 @@ export type GithubInstallationRepository = {
   archived: boolean;
 };
 
+export type GithubRepositoryBranch = {
+  commitSha: string;
+  isDefault: boolean;
+  name: string;
+  repositoryFullName: string;
+};
+
 export type GithubDiscoveredSkillDirectory = {
   fileList: string[];
   name: string;
@@ -39,6 +47,7 @@ export type GithubDiscoveredSkillDirectory = {
 
 export type GithubSkillPackage = {
   branchName: string;
+  commitSha: string;
   description: string;
   fileList: string[];
   instructions: string;
@@ -151,11 +160,11 @@ export class GithubClient {
   }
 
   async listSkillDirectories(input: {
-    defaultBranch: string;
+    branchName: string;
     installationId: string | number | bigint;
     repositoryFullName: string;
   }): Promise<GithubDiscoveredSkillDirectory[]> {
-    const branchName = this.requireRepositoryBranch(input.defaultBranch);
+    const branchName = this.requireRepositoryBranch(input.branchName);
     const installationId = GithubClient.validateInstallationId(input.installationId);
     const repository = GithubClient.parseRepositoryFullName(input.repositoryFullName);
     const repositoryTree = await this.fetchRepositoryTree({
@@ -175,20 +184,59 @@ export class GithubClient {
     }));
   }
 
+  async listRepositoryBranches(input: {
+    defaultBranch: string | null;
+    installationId: string | number | bigint;
+    repositoryFullName: string;
+  }): Promise<GithubRepositoryBranch[]> {
+    const installationId = GithubClient.validateInstallationId(input.installationId);
+    const repository = GithubClient.parseRepositoryFullName(input.repositoryFullName);
+    const branches = await this.fetchRepositoryBranches({
+      installationId,
+      repository,
+    });
+    const defaultBranch = GithubClient.normalizeTextValue(input.defaultBranch);
+
+    return branches
+      .map((branch) => ({
+        commitSha: branch.commitSha,
+        isDefault: Boolean(defaultBranch) && branch.name === defaultBranch,
+        name: branch.name,
+        repositoryFullName: repository.fullName,
+      }))
+      .sort((left, right) => {
+        if (left.isDefault && !right.isDefault) {
+          return -1;
+        }
+        if (!left.isDefault && right.isDefault) {
+          return 1;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+  }
+
   async getSkillPackage(input: {
-    defaultBranch: string;
+    branchName: string;
     installationId: string | number | bigint;
     repositoryFullName: string;
     skillDirectory: string;
   }): Promise<GithubSkillPackage> {
-    const branchName = this.requireRepositoryBranch(input.defaultBranch);
+    const branchName = this.requireRepositoryBranch(input.branchName);
     const installationId = GithubClient.validateInstallationId(input.installationId);
     const repository = GithubClient.parseRepositoryFullName(input.repositoryFullName);
-    const repositoryTree = await this.fetchRepositoryTree({
-      branchName,
-      installationId,
-      repository,
-    });
+    const [commitSha, repositoryTree] = await Promise.all([
+      this.fetchRepositoryBranchCommitSha({
+        branchName,
+        installationId,
+        repository,
+      }),
+      this.fetchRepositoryTree({
+        branchName,
+        installationId,
+        repository,
+      }),
+    ]);
     const indexedDirectories = GithubClient.indexSkillDirectories({
       repositoryName: repository.name,
       treeEntries: repositoryTree,
@@ -218,6 +266,7 @@ export class GithubClient {
 
     return {
       branchName,
+      commitSha,
       description: parsedSkill.description,
       fileList: [...skillDirectoryRecord.fileList],
       instructions,
@@ -556,6 +605,73 @@ export class GithubClient {
       : [];
   }
 
+  private async fetchRepositoryBranches(input: {
+    installationId: number;
+    repository: {
+      owner: string;
+      name: string;
+      fullName: string;
+    };
+  }): Promise<Array<{ commitSha: string; name: string }>> {
+    const branches: Array<{ commitSha: string; name: string }> = [];
+    for (let page = 1; ; page += 1) {
+      const payload = await this.fetchInstallationJson<Array<Record<string, unknown>>>({
+        errorLabel: `Failed to list branches for ${input.repository.fullName}`,
+        installationId: input.installationId,
+        url: `${GITHUB_API_URL}/repos/${encodeURIComponent(input.repository.owner)}/${
+          encodeURIComponent(input.repository.name)
+        }/branches?per_page=100&page=${page}`,
+      });
+      const pageBranches = payload
+        .filter((record) => Boolean(record) && typeof record === "object")
+        .map((record) => {
+          const commit = record.commit;
+          const commitRecord = Boolean(commit) && typeof commit === "object"
+            ? commit as Record<string, unknown>
+            : {};
+          return {
+            commitSha: GithubClient.normalizeTextValue(commitRecord.sha),
+            name: GithubClient.normalizeTextValue(record.name),
+          };
+        })
+        .filter((branch) => branch.commitSha.length > 0 && branch.name.length > 0);
+      branches.push(...pageBranches);
+      if (pageBranches.length < 100) {
+        break;
+      }
+    }
+
+    return branches;
+  }
+
+  private async fetchRepositoryBranchCommitSha(input: {
+    branchName: string;
+    installationId: number;
+    repository: {
+      owner: string;
+      name: string;
+      fullName: string;
+    };
+  }): Promise<string> {
+    const payload = await this.fetchInstallationJson<Record<string, unknown>>({
+      errorLabel: `Failed to read branch ${input.repository.fullName}@${input.branchName}`,
+      installationId: input.installationId,
+      url: `${GITHUB_API_URL}/repos/${encodeURIComponent(input.repository.owner)}/${
+        encodeURIComponent(input.repository.name)
+      }/branches/${encodeURIComponent(input.branchName)}`,
+    });
+    const commit = payload.commit;
+    const commitRecord = Boolean(commit) && typeof commit === "object"
+      ? commit as Record<string, unknown>
+      : {};
+    const commitSha = GithubClient.normalizeTextValue(commitRecord.sha);
+    if (!commitSha) {
+      throw new Error("GitHub branch response is missing commit sha.");
+    }
+
+    return commitSha;
+  }
+
   private async fetchRepositoryBlobText(input: {
     blobSha: string;
     installationId: number;
@@ -852,7 +968,10 @@ export class GithubClient {
     description: string;
     name: string;
   } {
-    const lines = input.markdown.split(/\r?\n/);
+    const document = matter(input.markdown);
+    const nameFromFrontmatter = GithubClient.normalizeTextValue(document.data.name);
+    const descriptionFromFrontmatter = GithubClient.normalizeTextValue(document.data.description);
+    const lines = document.content.split(/\r?\n/);
     const headingLine = lines.find((line) => /^#\s+/.test(line.trim()));
     const headingName = headingLine
       ? GithubClient.normalizeTextValue(headingLine.replace(/^#\s+/, ""))
@@ -860,8 +979,8 @@ export class GithubClient {
     const descriptionParagraph = GithubClient.extractMarkdownParagraph(lines);
 
     return {
-      description: descriptionParagraph || input.fallbackDescription,
-      name: headingName || input.fallbackName,
+      description: descriptionFromFrontmatter || descriptionParagraph || input.fallbackDescription,
+      name: nameFromFrontmatter || headingName || input.fallbackName,
     };
   }
 

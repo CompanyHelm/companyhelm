@@ -8,7 +8,12 @@ test("DetachSkillFromSessionMutation deactivates the skill and removes it from a
   const removeCalls: Array<{ agentId: string; sessionId: string; skillId: string }> = [];
   const mutation = new DetachSkillFromSessionMutation(
     {
-      async removeSkillFromOpenEnvironmentForSession(_transactionProvider, agentId: string, sessionId: string, skill) {
+      async removeSkillFromOpenEnvironmentForSession(
+        _transactionProvider: unknown,
+        agentId: string,
+        sessionId: string,
+        skill: { id: string },
+      ) {
         removeCalls.push({
           agentId,
           sessionId,
@@ -29,7 +34,10 @@ test("DetachSkillFromSessionMutation deactivates the skill and removes it from a
       async activateSkill() {
         throw new Error("rollback should not run");
       },
-      async deactivateSkill(_transactionProvider, input) {
+      async deactivateSkill(
+        _transactionProvider: unknown,
+        input: { companyId: string; sessionId: string; skillId: string },
+      ) {
         deactivateCalls.push(input);
       },
     } as never,
@@ -39,14 +47,16 @@ test("DetachSkillFromSessionMutation deactivates the skill and removes it from a
           companyId: "company-123",
           description: "Browser automation guidance.",
           fileList: [],
-          githubBranchName: null,
-          githubTrackedCommitSha: null,
+          branchName: null,
+          trackedCommitSha: null,
+          githubRepositoryId: null,
           id: "skill-1",
           instructions: "Read this first.",
           name: "Browser skill",
           repository: null,
           skillDirectory: null,
           skillGroupId: null,
+          sourceType: "manual",
         };
       },
     } as never,
@@ -94,13 +104,23 @@ test("DetachSkillFromSessionMutation deactivates the skill and removes it from a
     companyId: "company-123",
     description: "Browser automation guidance.",
     fileList: [],
-    githubBranchName: null,
-    githubTrackedCommitSha: null,
+    branchName: null,
+    trackedCommitSha: null,
+    branchSkillFileUrl: null,
+    fileInventory: [],
+    githubRepositoryId: null,
     id: "skill-1",
     instructions: "Read this first.",
     name: "Browser skill",
     repository: null,
+    repositoryUrl: null,
     skillDirectory: null,
+    skillDirectoryUrl: null,
     skillGroupId: null,
+    skillType: "custom",
+    sourceType: "manual",
+    systemCommands: [],
+    systemKey: null,
+    trackedCommitSkillFileUrl: null,
   });
 });

@@ -32,7 +32,7 @@ test("SessionEnvironmentQueryResolver includes active session skills", async () 
     } as never,
     {} as never,
     {
-      async listActiveSkills(_transactionProvider, companyId: string, sessionId: string) {
+      async listActiveSkills(_transactionProvider: unknown, companyId: string, sessionId: string) {
         listActiveSkillsCalls.push({
           companyId,
           sessionId,
@@ -42,14 +42,16 @@ test("SessionEnvironmentQueryResolver includes active session skills", async () 
           companyId,
           description: "Browser automation guidance.",
           fileList: [],
-          githubBranchName: null,
-          githubTrackedCommitSha: null,
+          branchName: null,
+          trackedCommitSha: null,
+          githubRepositoryId: null,
           id: "skill-1",
           instructions: "Read this first.",
           name: "Browser skill",
           repository: null,
           skillDirectory: null,
           skillGroupId: null,
+          sourceType: "manual",
         }];
       },
     } as never,
@@ -120,14 +122,24 @@ test("SessionEnvironmentQueryResolver includes active session skills", async () 
     companyId: "company-123",
     description: "Browser automation guidance.",
     fileList: [],
-    githubBranchName: null,
-    githubTrackedCommitSha: null,
+    branchName: null,
+    trackedCommitSha: null,
+    branchSkillFileUrl: null,
+    fileInventory: [],
+    githubRepositoryId: null,
     id: "skill-1",
     instructions: "Read this first.",
     name: "Browser skill",
     repository: null,
+    repositoryUrl: null,
     skillDirectory: null,
+    skillDirectoryUrl: null,
     skillGroupId: null,
+    skillType: "custom",
+    sourceType: "manual",
+    systemCommands: [],
+    systemKey: null,
+    trackedCommitSkillFileUrl: null,
   }]);
   assert.equal(result.currentEnvironment, null);
   assert.equal(result.agentDefaultComputeProviderDefinition, null);

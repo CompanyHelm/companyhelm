@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dc5ec174e2db58cdf287a49755541b2b>>
+ * @generated SignedSource<<dd5bfbd029d1562419945e2915b17a04>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,6 +12,14 @@ import { ConcreteRequest } from 'relay-runtime';
 export type SkillType = "custom" | "system" | "%future added value";
 export type skillsPageQuery$variables = Record<PropertyKey, never>;
 export type skillsPageQuery$data = {
+  readonly GithubRepositories: ReadonlyArray<{
+    readonly archived: boolean;
+    readonly defaultBranch: string | null | undefined;
+    readonly fullName: string;
+    readonly id: string;
+    readonly isPrivate: boolean;
+    readonly name: string;
+  }>;
   readonly SkillGroups: ReadonlyArray<{
     readonly id: string;
     readonly name: string;
@@ -56,6 +64,47 @@ v2 = [
     "selections": [
       (v0/*: any*/),
       (v1/*: any*/)
+    ],
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "GithubRepository",
+    "kind": "LinkedField",
+    "name": "GithubRepositories",
+    "plural": true,
+    "selections": [
+      (v0/*: any*/),
+      (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "fullName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "isPrivate",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "defaultBranch",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "archived",
+        "storageKey": null
+      }
     ],
     "storageKey": null
   },
@@ -119,16 +168,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "1b63e1c1c46c5a0719af0d95dcc78c10",
+    "cacheID": "a810c31db63aeded486b535d363a7708",
     "id": null,
     "metadata": {},
     "name": "skillsPageQuery",
     "operationKind": "query",
-    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    skillType\n    repository\n    fileList\n  }\n}\n"
+    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  GithubRepositories {\n    id\n    name\n    fullName\n    isPrivate\n    defaultBranch\n    archived\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    skillType\n    repository\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "943c553371ec2638fc88efb1b7ef8423";
+(node as any).hash = "35a468fbfe3867daa5b231472bc0b101";
 
 export default node;

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<41806afbaedf9356a60a82af4ebf432b>>
+ * @generated SignedSource<<798fa9b8b6879373020ad8242461fa55>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,9 +9,15 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillSourceType = "github_installation" | "manual" | "public_git" | "%future added value";
+export type GitSkillSourceInput = {
+  githubRepositoryId?: string | null | undefined;
+  repository?: string | null | undefined;
+  sourceType: SkillSourceType;
+};
 export type createSkillDialogGithubDiscoveredSkillsQuery$variables = {
   branchName: string;
-  repositoryUrl: string;
+  source: GitSkillSourceInput;
 };
 export type createSkillDialogGithubDiscoveredSkillsQuery$data = {
   readonly GithubDiscoveredSkills: ReadonlyArray<{
@@ -34,7 +40,7 @@ var v0 = {
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "repositoryUrl"
+  "name": "source"
 },
 v2 = [
   {
@@ -47,8 +53,8 @@ v2 = [
       },
       {
         "kind": "Variable",
-        "name": "repositoryUrl",
-        "variableName": "repositoryUrl"
+        "name": "source",
+        "variableName": "source"
       }
     ],
     "concreteType": "GithubDiscoveredSkill",
@@ -105,16 +111,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "9b0073219ff2044346b25b7d3c3558f0",
+    "cacheID": "212b3727ff9d2372271af8dc7febf955",
     "id": null,
     "metadata": {},
     "name": "createSkillDialogGithubDiscoveredSkillsQuery",
     "operationKind": "query",
-    "text": "query createSkillDialogGithubDiscoveredSkillsQuery(\n  $repositoryUrl: String!\n  $branchName: String!\n) {\n  GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {\n    name\n    skillDirectory\n    trackedFileCount\n  }\n}\n"
+    "text": "query createSkillDialogGithubDiscoveredSkillsQuery(\n  $source: GitSkillSourceInput!\n  $branchName: String!\n) {\n  GithubDiscoveredSkills(source: $source, branchName: $branchName) {\n    name\n    skillDirectory\n    trackedFileCount\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a2e6c666c90f3555f80eba15e56414e5";
+(node as any).hash = "cb40def83c16996397364908ee72f7c3";
 
 export default node;

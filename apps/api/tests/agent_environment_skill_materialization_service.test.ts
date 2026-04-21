@@ -7,14 +7,16 @@ const fileBackedSkillRecord = {
   companyId: "company-123",
   description: "Browser automation guidance.",
   fileList: ["skills/browser/scripts/open.sh"],
-  githubBranchName: "main",
-  githubTrackedCommitSha: "commit-sha-1",
+  branchName: "main",
+  trackedCommitSha: "commit-sha-1",
+  githubRepositoryId: null,
   id: "skill-1",
   instructions: "Use the browser skill when working on websites.",
   name: "Browser skill",
   repository: "companyhelm/skills",
   skillDirectory: "skills/browser",
   skillGroupId: null,
+  sourceType: "public_git" as const,
 };
 
 test("AgentEnvironmentSkillCheckoutCacheService fetches one tracked commit and checks out only the declared files", async () => {
@@ -34,7 +36,7 @@ test("AgentEnvironmentSkillCheckoutCacheService fetches one tracked commit and c
   const command = String(executeCommand.mock.calls[0]?.[0] ?? "");
   assert.match(command, /git -C "\$checkout_dir" fetch --depth 1 --filter=blob:none origin "\$commit_sha"/);
   assert.match(command, /git -C "\$checkout_dir" checkout --force "\$commit_sha" --/);
-  assert.match(command, /\/home\/user\/\.companyhelm\/skill-cache\/companyhelm\/skills\/commit-sha-1\/checkout/);
+  assert.match(command, /\/home\/user\/\.companyhelm\/skill-cache\/public_git\/companyhelm\/skills\/commit-sha-1\/checkout/);
   assert.match(command, /skills\/browser\/SKILL\.md/);
   assert.match(command, /skills\/browser\/scripts\/open\.sh/);
   assert.match(command, /https:\/\/github\.com\/companyhelm\/skills\.git/);
@@ -61,5 +63,5 @@ test("AgentEnvironmentSkillMaterializationService copies SKILL.md and each decla
   const command = String(executeCommand.mock.calls[0]?.[0] ?? "");
   assert.match(command, /'\/home\/user\/skills\/Browser skill\/SKILL\.md'/);
   assert.match(command, /'\/home\/user\/skills\/Browser skill\/scripts\/open\.sh'/);
-  assert.match(command, /'\/home\/user\/\.companyhelm\/skill-cache\/companyhelm\/skills\/commit-sha-1\/checkout\/skills\/browser\/SKILL\.md'/);
+  assert.match(command, /\/home\/user\/\.companyhelm\/skill-cache\/public_git\/companyhelm\/skills\/commit-sha-1\/checkout\/skills\/browser\/SKILL\.md/);
 });

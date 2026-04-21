@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FolderPlusIcon, GithubIcon, PencilRulerIcon } from "lucide-react";
+import { FolderPlusIcon, GithubIcon, LockKeyholeIcon, PencilRulerIcon } from "lucide-react";
 import { fetchQuery, graphql, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,9 +43,16 @@ export type CreateSkillDialogGithubImportRecord = {
 
 export type CreateSkillDialogGithubImportSelectionRecord = {
   branchName: string;
-  repository: string;
+  repository?: string | null;
   skillDirectory: string;
+  source: {
+    githubRepositoryId?: string | null;
+    repository?: string | null;
+    sourceType: "public_git" | "github_installation";
+  };
 };
+
+type CreateSkillDialogGitSource = CreateSkillDialogGithubImportSelectionRecord["source"];
 
 type CreateSkillDialogGithubBranchOption = {
   commitSha: string;
@@ -54,11 +61,20 @@ type CreateSkillDialogGithubBranchOption = {
   repository: string;
 };
 
+export type CreateSkillDialogGithubRepositoryOption = {
+  defaultBranch: string | null | undefined;
+  fullName: string;
+  id: string;
+  isPrivate: boolean;
+  name: string;
+};
+
 interface CreateSkillDialogProps {
   errorMessage: string | null;
   groups: CreateSkillDialogGroupOption[];
   isOpen: boolean;
   isSaving: boolean;
+  privateRepositories: CreateSkillDialogGithubRepositoryOption[];
   onCreate(input: {
     description: string;
     instructions: string;
@@ -76,12 +92,12 @@ interface CreateSkillDialogProps {
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
 const GITHUB_BRANCH_DISCOVERY_DEBOUNCE_MS = 500;
 
-type CreateSkillDialogMode = "choose" | "github" | "manual";
+type CreateSkillDialogMode = "choose" | "github_private" | "github_public" | "manual";
 type CreateSkillDialogGithubStep = "repository" | "skills";
 
 const createSkillDialogGithubSkillBranchesQueryNode = graphql`
-  query createSkillDialogGithubSkillBranchesQuery($repositoryUrl: String!) {
-    GithubSkillBranches(repositoryUrl: $repositoryUrl) {
+  query createSkillDialogGithubSkillBranchesQuery($source: GitSkillSourceInput!) {
+    GithubSkillBranches(source: $source) {
       commitSha
       isDefault
       name
@@ -91,8 +107,8 @@ const createSkillDialogGithubSkillBranchesQueryNode = graphql`
 `;
 
 const createSkillDialogGithubDiscoveredSkillsQueryNode = graphql`
-  query createSkillDialogGithubDiscoveredSkillsQuery($repositoryUrl: String!, $branchName: String!) {
-    GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {
+  query createSkillDialogGithubDiscoveredSkillsQuery($source: GitSkillSourceInput!, $branchName: String!) {
+    GithubDiscoveredSkills(source: $source, branchName: $branchName) {
       name
       skillDirectory
       trackedFileCount
@@ -109,9 +125,10 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const [description, setDescription] = useState("");
   const [draftSkillGroupName, setDraftSkillGroupName] = useState("");
   const [ephemeralSkillGroup, setEphemeralSkillGroup] = useState<CreateSkillDialogGroupOption | null>(null);
-  const [githubBranchName, setGithubBranchName] = useState("");
+  const [branchName, setGithubBranchName] = useState("");
   const [githubBranches, setGithubBranches] = useState<CreateSkillDialogGithubBranchOption[]>([]);
   const [githubDiscoveredSkills, setGithubDiscoveredSkills] = useState<CreateSkillDialogGithubImportRecord[]>([]);
+  const [githubPrivateRepositoryId, setGithubPrivateRepositoryId] = useState("");
   const [githubRepositoryUrl, setGithubRepositoryUrl] = useState("");
   const [isGithubBranchAutoSelected, setIsGithubBranchAutoSelected] = useState(false);
   const [githubSelectedSkillDirectories, setGithubSelectedSkillDirectories] = useState<string[]>([]);
@@ -142,6 +159,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       setGithubBranchName("");
       setGithubBranches([]);
       setGithubDiscoveredSkills([]);
+      setGithubPrivateRepositoryId("");
       setGithubRepositoryUrl("");
       setIsGithubBranchAutoSelected(false);
       setGithubSelectedSkillDirectories([]);
@@ -160,7 +178,22 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     }
   }, [props.isOpen]);
 
-  const selectedGithubBranch = githubBranches.find((branch) => branch.name === githubBranchName) ?? null;
+  const selectedGithubBranch = githubBranches.find((branch) => branch.name === branchName) ?? null;
+  const selectedPrivateRepository = props.privateRepositories.find((repository) =>
+    repository.id === githubPrivateRepositoryId
+  ) ?? null;
+  const activeGithubSource: CreateSkillDialogGitSource = mode === "github_private"
+    ? {
+        githubRepositoryId: selectedPrivateRepository?.id ?? null,
+        repository: null,
+        sourceType: "github_installation" as const,
+      }
+    : {
+        githubRepositoryId: null,
+        repository: githubRepositoryUrl.trim(),
+        sourceType: "public_git" as const,
+      };
+  const isGithubMode = mode === "github_private" || mode === "github_public";
   const githubBranchTriggerLabel = selectedGithubBranch
     ? isGithubBranchAutoSelected
       ? `${selectedGithubBranch.name} (auto-selected)`
@@ -210,8 +243,12 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       : null;
   }, [githubRepositoryUrl]);
   const githubImportRepository = selectedGithubBranch?.repository
+    ?? selectedPrivateRepository?.fullName
     ?? githubRepositoryUrlDiscoveryCandidate
     ?? githubRepositoryUrl.trim();
+  const hasGithubSource = mode === "github_private"
+    ? Boolean(selectedPrivateRepository)
+    : Boolean(githubRepositoryUrl.trim());
   const isMutating = props.isSaving || isCreatingGroup;
 
   async function createSkillGroup() {
@@ -341,10 +378,14 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     );
   }
 
-  const discoverGithubBranches = useCallback(async (repositoryUrl: string) => {
-    const normalizedRepositoryUrl = repositoryUrl.trim();
-    if (!normalizedRepositoryUrl) {
-      setLocalErrorMessage("Paste a public GitHub repository URL first.");
+  const discoverGithubBranches = useCallback(async (source: CreateSkillDialogGitSource) => {
+    if (
+      (source.sourceType === "public_git" && !source.repository?.trim())
+      || (source.sourceType === "github_installation" && !source.githubRepositoryId)
+    ) {
+      setLocalErrorMessage(source.sourceType === "github_installation"
+        ? "Select a private repository first."
+        : "Paste a public Git repository URL first.");
       setGithubBranchName("");
       setGithubBranches([]);
       return;
@@ -365,7 +406,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         environment,
         createSkillDialogGithubSkillBranchesQueryNode,
         {
-          repositoryUrl: normalizedRepositoryUrl,
+          source,
         },
         {
           fetchPolicy: "network-only",
@@ -403,7 +444,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   }, [environment]);
 
   useEffect(() => {
-    if (!props.isOpen || mode !== "github" || githubStep !== "repository") {
+    if (!props.isOpen || mode !== "github_public" || githubStep !== "repository") {
       if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
         window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
         githubBranchDiscoveryTimeoutIdRef.current = null;
@@ -422,7 +463,11 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     const timeoutId = window.setTimeout(() => {
       hasQueuedGithubBranchDiscoveryRef.current = true;
       githubBranchDiscoveryTimeoutIdRef.current = null;
-      void discoverGithubBranches(githubRepositoryUrlDiscoveryCandidate);
+      void discoverGithubBranches({
+        githubRepositoryId: null,
+        repository: githubRepositoryUrlDiscoveryCandidate,
+        sourceType: "public_git",
+      });
     }, delayMs);
     githubBranchDiscoveryTimeoutIdRef.current = timeoutId;
 
@@ -440,13 +485,26 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
     props.isOpen,
   ]);
 
-  async function discoverGithubSkills() {
-    const normalizedRepositoryUrl = githubRepositoryUrl.trim();
-    if (!normalizedRepositoryUrl) {
-      setLocalErrorMessage("Paste a public GitHub repository URL first.");
+  useEffect(() => {
+    if (!props.isOpen || mode !== "github_private" || githubStep !== "repository" || !selectedPrivateRepository) {
       return;
     }
-    if (!githubBranchName) {
+
+    void discoverGithubBranches({
+      githubRepositoryId: selectedPrivateRepository.id,
+      repository: null,
+      sourceType: "github_installation",
+    });
+  }, [discoverGithubBranches, githubStep, mode, props.isOpen, selectedPrivateRepository]);
+
+  async function discoverGithubSkills() {
+    if (!hasGithubSource) {
+      setLocalErrorMessage(mode === "github_private"
+        ? "Select a private repository first."
+        : "Paste a public Git repository URL first.");
+      return;
+    }
+    if (!branchName) {
       setLocalErrorMessage("Select a branch before continuing.");
       return;
     }
@@ -461,8 +519,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         environment,
         createSkillDialogGithubDiscoveredSkillsQueryNode,
         {
-          branchName: githubBranchName,
-          repositoryUrl: normalizedRepositoryUrl,
+          branchName: branchName,
+          source: activeGithubSource,
         },
         {
           fetchPolicy: "network-only",
@@ -492,20 +550,21 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
             Add a reusable skill for your company, either by creating it manually now or by
-            importing a GitHub skill package from a public repository URL.
+            importing a skill package from a public Git repository or installed private GitHub repository.
           </DialogDescription>
         </DialogHeader>
 
         <div className="modern-scrollbar min-h-0 flex-1 overflow-y-auto">
           {mode === "choose" ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <button
                 className={cn(
                   "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-foreground/30 hover:bg-accent/20",
                 )}
                 onClick={() => {
-                  setMode("github");
+                  setMode("github_public");
                   setGithubStep("repository");
+                  resetGithubRepositorySelection(true);
                 }}
                 type="button"
               >
@@ -514,9 +573,9 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                     <GithubIcon className="size-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Import from GitHub</p>
+                    <p className="text-sm font-semibold text-foreground">Import public Git repo</p>
                     <p className="text-xs text-muted-foreground">
-                      Paste a public repo URL, confirm the branch, then choose skills
+                      Paste a repository URL, confirm the branch, then choose skills
                     </p>
                   </div>
                 </div>
@@ -531,6 +590,44 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                 </div>
                 <p className="mt-auto pt-5 text-xs text-muted-foreground">
                   Best for existing skill packages that already live in source control.
+                </p>
+              </button>
+
+              <button
+                className={cn(
+                  "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-foreground/30 hover:bg-accent/20",
+                )}
+                onClick={() => {
+                  setMode("github_private");
+                  setGithubStep("repository");
+                  resetGithubRepositorySelection(true);
+                }}
+                type="button"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-xl border border-border/60 bg-background/90">
+                    <LockKeyholeIcon className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Import private repo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Select an installed GitHub repository, then choose skills
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Installed repositories
+                  </p>
+                  <p className="mt-3 text-sm text-foreground">
+                    Use repositories mirrored from a GitHub App installation without making the source
+                    package public.
+                  </p>
+                </div>
+                <p className="mt-auto pt-5 text-xs text-muted-foreground">
+                  {props.privateRepositories.length > 0
+                    ? `${props.privateRepositories.length} private repos available.`
+                    : "Connect private repositories from the repositories page first."}
                 </p>
               </button>
 
@@ -568,15 +665,21 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
             </div>
           ) : null}
 
-          {mode === "github" ? (
+          {isGithubMode ? (
             <div className="grid gap-4">
               <div className="rounded-2xl border border-border/60 bg-card/50 p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-background/80">
-                    <GithubIcon className="size-5" />
+                    {mode === "github_private" ? (
+                      <LockKeyholeIcon className="size-5" />
+                    ) : (
+                      <GithubIcon className="size-5" />
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">GitHub import</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {mode === "github_private" ? "Private repository import" : "Public Git import"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Step {githubStep === "repository" ? "1" : "2"} of 2
                     </p>
@@ -586,36 +689,76 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
 
               {githubStep === "repository" ? (
                 <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
-                      Repository URL
-                    </label>
-                    <Input
-                      autoComplete="off"
-                      id="skill-repository-url"
-                      onChange={(event) => {
-                        setGithubRepositoryUrl(event.target.value);
-                        resetGithubRepositorySelection(true);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
-                            window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
-                            githubBranchDiscoveryTimeoutIdRef.current = null;
+                  {mode === "github_public" ? (
+                    <div className="grid gap-2">
+                      <label className="text-xs font-medium text-foreground" htmlFor="skill-repository-url">
+                        Repository URL
+                      </label>
+                      <Input
+                        autoComplete="off"
+                        id="skill-repository-url"
+                        onChange={(event) => {
+                          setGithubRepositoryUrl(event.target.value);
+                          resetGithubRepositorySelection(true);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            if (githubBranchDiscoveryTimeoutIdRef.current !== null) {
+                              window.clearTimeout(githubBranchDiscoveryTimeoutIdRef.current);
+                              githubBranchDiscoveryTimeoutIdRef.current = null;
+                            }
+                            hasQueuedGithubBranchDiscoveryRef.current = true;
+                            void discoverGithubBranches({
+                              githubRepositoryId: null,
+                              repository: event.currentTarget.value.trim(),
+                              sourceType: "public_git",
+                            });
                           }
-                          hasQueuedGithubBranchDiscoveryRef.current = true;
-                          void discoverGithubBranches(event.currentTarget.value);
-                        }
-                      }}
-                      placeholder="https://github.com/openai/skills"
-                      value={githubRepositoryUrl}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Repository URLs load branches automatically. The first lookup starts
-                      immediately, and follow-up edits refresh after a short debounce.
-                    </p>
-                  </div>
+                        }}
+                        placeholder="https://github.com/openai/skills"
+                        value={githubRepositoryUrl}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Repository URLs load branches automatically. The first lookup starts
+                        immediately, and follow-up edits refresh after a short debounce.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {mode === "github_private" ? (
+                    <div className="grid gap-2">
+                      <label className="text-xs font-medium text-foreground" htmlFor="private-github-repository">
+                        Private repository
+                      </label>
+                      <Select
+                        items={props.privateRepositories.map((repository) => ({
+                          label: repository.fullName,
+                          value: repository.id,
+                        }))}
+                        onValueChange={(value) => {
+                          resetGithubRepositorySelection(true);
+                          setGithubPrivateRepositoryId(typeof value === "string" ? value : "");
+                        }}
+                        value={githubPrivateRepositoryId || undefined}
+                      >
+                        <SelectTrigger id="private-github-repository">
+                          <SelectValue
+                            placeholder={props.privateRepositories.length > 0
+                              ? "Select a private repository"
+                              : "No private repositories installed"}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {props.privateRepositories.map((repository) => (
+                            <SelectItem key={repository.id} value={repository.id}>
+                              {repository.fullName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
 
                   <div className="grid gap-2">
                     <label className="text-xs font-medium text-foreground" htmlFor="github-branch">
@@ -633,7 +776,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                         setGithubSelectedSkillDirectories([]);
                         setLocalErrorMessage(null);
                       }}
-                      value={githubBranchName || undefined}
+                      value={branchName || undefined}
                     >
                       <SelectTrigger
                         className={cn(isLoadingGithubBranches ? "animate-pulse" : null)}
@@ -643,12 +786,14 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                           <span className="truncate">{githubBranchTriggerLabel}</span>
                         ) : (
                           <SelectValue
-                            placeholder={!githubRepositoryUrl.trim()
-                              ? "Paste a repository URL first"
+                            placeholder={!hasGithubSource
+                              ? mode === "github_private"
+                                ? "Select a private repository first"
+                                : "Paste a repository URL first"
                               : isLoadingGithubBranches
                               ? "Loading branches..."
-                              : !githubRepositoryUrlDiscoveryCandidate
-                              ? "Enter a GitHub repository URL"
+                              : mode === "github_public" && !githubRepositoryUrlDiscoveryCandidate
+                              ? "Enter a Git repository URL"
                               : githubBranches.length > 0
                               ? "Select a branch"
                               : "No branches found"}
@@ -700,14 +845,14 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                         Repository
                       </p>
                       <p className="mt-2 text-sm font-semibold text-foreground">
-                        {selectedGithubBranch?.repository ?? githubRepositoryUrl.trim()}
+                        {githubImportRepository}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                         Branch
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-foreground">{githubBranchName}</p>
+                      <p className="mt-2 text-sm font-semibold text-foreground">{branchName}</p>
                     </div>
                     <div>
                       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -874,7 +1019,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
             <Button
               onClick={() => {
                 setLocalErrorMessage(null);
-                if (mode === "github" && githubStep === "skills") {
+                if (isGithubMode && githubStep === "skills") {
                   setGithubStep("repository");
                   return;
                 }
@@ -919,10 +1064,10 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               Create skill
             </Button>
           ) : null}
-          {mode === "github" && githubStep === "repository" ? (
+          {isGithubMode && githubStep === "repository" ? (
             <Button
               data-primary-cta=""
-              disabled={isMutating || isLoadingGithubDiscoveredSkills || !githubRepositoryUrl.trim() || !githubBranchName}
+              disabled={isMutating || isLoadingGithubDiscoveredSkills || !hasGithubSource || !branchName}
               onClick={() => {
                 void discoverGithubSkills();
               }}
@@ -931,7 +1076,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               {isLoadingGithubDiscoveredSkills ? "Loading skills..." : "Continue"}
             </Button>
           ) : null}
-          {mode === "github" && githubStep === "skills" ? (
+          {isGithubMode && githubStep === "skills" ? (
             <Button
               data-primary-cta=""
               disabled={isMutating || selectedGithubSkills.length === 0}
@@ -942,9 +1087,10 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                   await props.onImportGithub({
                     skillGroupId: skillGroupId === UNGROUPED_SKILL_GROUP_VALUE ? null : skillGroupId,
                     skills: selectedGithubSkills.map((skill) => ({
-                      branchName: githubBranchName,
-                      repository: githubImportRepository,
+                      branchName: branchName,
+                      repository: mode === "github_public" ? githubImportRepository : null,
                       skillDirectory: skill.skillDirectory,
+                      source: activeGithubSource,
                     })),
                   });
                 } catch (error) {

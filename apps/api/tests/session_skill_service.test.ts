@@ -20,8 +20,8 @@ type MockSkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
-  githubBranchName: string | null;
-  githubTrackedCommitSha: string | null;
+  branchName: string | null;
+  trackedCommitSha: string | null;
   id: string;
   instructions: string;
   name: string;
@@ -43,8 +43,8 @@ class SessionSkillServiceTestHarness {
       companyId: "company-123",
       description: "Browser automation guidance.",
       fileList: ["skills/browser/scripts/open.sh"],
-      githubBranchName: "main",
-      githubTrackedCommitSha: "commit-sha-1",
+      branchName: "main",
+      trackedCommitSha: "commit-sha-1",
       id: "skill-1",
       instructions: "Use the browser skill when interacting with websites.",
       name: "Browser skill",

@@ -16,8 +16,8 @@ type Query {
   GithubInstallations: [GithubInstallation!]!
   GithubRepositoryProvisionings: [GithubRepositoryProvisioning!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
-  GithubSkillBranches(repositoryUrl: String!): [GithubSkillBranch!]!
-  GithubDiscoveredSkills(repositoryUrl: String!, branchName: String!): [GithubDiscoveredSkill!]!
+  GithubSkillBranches(source: GitSkillSourceInput!): [GithubSkillBranch!]!
+  GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -674,17 +674,25 @@ type Skill {
   instructions: String!
   fileInventory: [SkillFileInventoryEntry!]!
   fileList: [String!]!
-  githubBranchName: String
-  githubBranchSkillFileUrl: String
-  githubTrackedCommitSkillFileUrl: String
-  githubTrackedCommitSha: String
+  branchName: String
+  branchSkillFileUrl: String
+  trackedCommitSkillFileUrl: String
+  trackedCommitSha: String
+  githubRepositoryId: ID
   repository: String
   repositoryUrl: String
   skillDirectory: String
   skillDirectoryUrl: String
+  sourceType: SkillSourceType!
   skillType: SkillType!
   systemCommands: [SystemCommand!]!
   systemKey: String
+}
+
+enum SkillSourceType {
+  manual
+  public_git
+  github_installation
 }
 
 type SkillFileInventoryEntry {
@@ -1111,8 +1119,15 @@ input ImportGithubSkillsInput {
 
 input ImportGithubSkillRecordInput {
   branchName: String!
-  repository: String!
+  repository: String
+  source: GitSkillSourceInput
   skillDirectory: String!
+}
+
+input GitSkillSourceInput {
+  githubRepositoryId: ID
+  repository: String
+  sourceType: SkillSourceType!
 }
 
 input CreateSkillInput {

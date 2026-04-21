@@ -12,10 +12,11 @@ export type GraphqlSkillRecord = {
   description: string;
   fileInventory: GraphqlSkillFileInventoryEntry[];
   fileList: string[];
-  githubBranchName: string | null;
-  githubBranchSkillFileUrl: string | null;
-  githubTrackedCommitSkillFileUrl: string | null;
-  githubTrackedCommitSha: string | null;
+  branchName: string | null;
+  branchSkillFileUrl: string | null;
+  trackedCommitSkillFileUrl: string | null;
+  trackedCommitSha: string | null;
+  githubRepositoryId: string | null;
   id: string;
   instructions: string;
   name: string;
@@ -24,6 +25,7 @@ export type GraphqlSkillRecord = {
   skillDirectory: string | null;
   skillDirectoryUrl: string | null;
   skillGroupId: string | null;
+  sourceType: string;
   skillType: string;
   systemCommands: SystemCommandDefinition[];
   systemKey: string | null;
@@ -47,49 +49,51 @@ export class GraphqlSkillPresenter {
       description: record.description,
       fileInventory: record.fileList.map((filePath) => ({
         path: filePath,
-        url: githubSource && record.githubTrackedCommitSha
+        url: githubSource && record.trackedCommitSha
           ? GraphqlSkillPresenter.buildGithubSourceUrl(
             githubSource.repositoryUrl,
             "blob",
-            record.githubTrackedCommitSha,
+            record.trackedCommitSha,
             filePath,
           )
           : null,
       })),
       fileList: [...record.fileList],
-      githubBranchName: record.githubBranchName,
-      githubBranchSkillFileUrl: githubSource && record.githubBranchName && record.skillDirectory
+      branchName: record.branchName,
+      branchSkillFileUrl: githubSource && record.branchName && record.skillDirectory
         ? GraphqlSkillPresenter.buildGithubSourceUrl(
           githubSource.repositoryUrl,
           "blob",
-          record.githubBranchName,
+          record.branchName,
           GraphqlSkillPresenter.joinRepositoryPath(record.skillDirectory, "SKILL.md"),
         )
         : null,
-      githubTrackedCommitSkillFileUrl: githubSource && record.githubTrackedCommitSha && record.skillDirectory
+      trackedCommitSkillFileUrl: githubSource && record.trackedCommitSha && record.skillDirectory
         ? GraphqlSkillPresenter.buildGithubSourceUrl(
           githubSource.repositoryUrl,
           "blob",
-          record.githubTrackedCommitSha,
+          record.trackedCommitSha,
           GraphqlSkillPresenter.joinRepositoryPath(record.skillDirectory, "SKILL.md"),
         )
         : null,
-      githubTrackedCommitSha: record.githubTrackedCommitSha,
+      trackedCommitSha: record.trackedCommitSha,
+      githubRepositoryId: record.githubRepositoryId,
       id: record.id,
       instructions: record.instructions,
       name: record.name,
       repository: record.repository,
       repositoryUrl: githubSource?.repositoryUrl ?? null,
       skillDirectory: record.skillDirectory,
-      skillDirectoryUrl: githubSource && record.githubTrackedCommitSha && record.skillDirectory
+      skillDirectoryUrl: githubSource && record.trackedCommitSha && record.skillDirectory
         ? GraphqlSkillPresenter.buildGithubSourceUrl(
           githubSource.repositoryUrl,
           "tree",
-          record.githubTrackedCommitSha,
+          record.trackedCommitSha,
           record.skillDirectory,
         )
         : null,
       skillGroupId: record.skillGroupId,
+      sourceType: record.sourceType,
       skillType: record.skillType ?? "custom",
       systemCommands: record.systemCommands ?? [],
       systemKey: record.systemKey ?? null,

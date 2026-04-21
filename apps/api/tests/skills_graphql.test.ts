@@ -29,14 +29,16 @@ type MockSkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
-  githubBranchName: string | null;
-  githubTrackedCommitSha: string | null;
+  branchName: string | null;
+  trackedCommitSha: string | null;
+  githubRepositoryId: string | null;
   id: string;
   instructions: string;
   name: string;
   repository: string | null;
   skillDirectory: string | null;
   skillGroupId: string | null;
+  sourceType: "manual" | "public_git" | "github_installation";
 };
 
 const TEST_PRIVATE_KEY_PEM = (() => {
@@ -109,14 +111,16 @@ class SkillsGraphqlTestHarness {
       companyId: "company-123",
       description: "Runs browser tasks.",
       fileList: ["scripts/open.sh"],
-      githubBranchName: null,
-      githubTrackedCommitSha: null,
+      branchName: null,
+      trackedCommitSha: null,
+      githubRepositoryId: null,
       id: "skill-browser",
       instructions: "Read SKILL.md first.",
       name: "Browser automation",
       repository: "companyhelm/skills",
       skillDirectory: "skills/browser",
       skillGroupId: "group-automation",
+      sourceType: "public_git",
     }];
     const insertedValues: Array<Record<string, unknown>> = [];
 
@@ -135,14 +139,16 @@ class SkillsGraphqlTestHarness {
                     companyId: String(value.companyId),
                     description: String(value.description),
                     fileList: [...(value.fileList as string[])],
-                    githubBranchName: value.githubBranchName ? String(value.githubBranchName) : null,
-                    githubTrackedCommitSha: value.githubTrackedCommitSha ? String(value.githubTrackedCommitSha) : null,
+                    branchName: value.branchName ? String(value.branchName) : null,
+                    trackedCommitSha: value.trackedCommitSha ? String(value.trackedCommitSha) : null,
+                    githubRepositoryId: value.githubRepositoryId ? String(value.githubRepositoryId) : null,
                     id: "skill-new",
                     instructions: String(value.instructions),
                     name: String(value.name),
                     repository: value.repository ? String(value.repository) : null,
                     skillDirectory: value.skillDirectory ? String(value.skillDirectory) : null,
                     skillGroupId: value.skillGroupId ? String(value.skillGroupId) : null,
+                    sourceType: String(value.sourceType || "manual") as MockSkillRecord["sourceType"],
                   };
                   skillRecords.push(createdSkill);
 
@@ -612,8 +618,8 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
       },
       payload: {
         query: `
-          query GithubSkillBranches($repositoryUrl: String!) {
-            GithubSkillBranches(repositoryUrl: $repositoryUrl) {
+          query GithubSkillBranches($source: GitSkillSourceInput!) {
+            GithubSkillBranches(source: $source) {
               commitSha
               isDefault
               name
@@ -622,7 +628,10 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
           }
         `,
         variables: {
-          repositoryUrl: "https://github.com/companyhelm/skills",
+          source: {
+            repository: "https://github.com/companyhelm/skills",
+            sourceType: "public_git",
+          },
         },
       },
     });
@@ -649,8 +658,8 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
       },
       payload: {
         query: `
-          query GithubDiscoveredSkills($repositoryUrl: String!, $branchName: String!) {
-            GithubDiscoveredSkills(repositoryUrl: $repositoryUrl, branchName: $branchName) {
+          query GithubDiscoveredSkills($source: GitSkillSourceInput!, $branchName: String!) {
+            GithubDiscoveredSkills(source: $source, branchName: $branchName) {
               name
               skillDirectory
               trackedFileCount
@@ -659,7 +668,10 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
         `,
         variables: {
           branchName: "main",
-          repositoryUrl: "https://github.com/companyhelm/skills",
+          source: {
+            repository: "https://github.com/companyhelm/skills",
+            sourceType: "public_git",
+          },
         },
       },
     });
@@ -688,10 +700,12 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
               description
               instructions
               skillGroupId
-              githubBranchName
-              githubTrackedCommitSha
+              branchName
+              trackedCommitSha
+              githubRepositoryId
               repository
               skillDirectory
+              sourceType
               fileList
             }
           }
@@ -701,7 +715,10 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
             skillGroupId: "group-research",
             skills: [{
               branchName: "main",
-              repository: "companyhelm/skills",
+              source: {
+                repository: "companyhelm/skills",
+                sourceType: "public_git",
+              },
               skillDirectory: "skills/github-browser",
             }],
           },
@@ -715,21 +732,25 @@ test("GraphQL GitHub skill discovery and batch import resolve selected skills se
       companyId: "company-123",
       description: "Use the imported browser helpers.",
       fileList: ["skills/github-browser/scripts/import.sh"],
-      githubBranchName: "main",
-      githubTrackedCommitSha: TEST_MAIN_COMMIT_SHA,
+      branchName: "main",
+      trackedCommitSha: TEST_MAIN_COMMIT_SHA,
+      githubRepositoryId: null,
       id: "skill-new",
       instructions: "Use the imported browser helpers.",
       name: "Imported browser",
       repository: "companyhelm/skills",
       skillDirectory: "skills/github-browser",
       skillGroupId: "group-research",
+      sourceType: "public_git",
     }]);
 
     const importedSkillInsert = database.insertedValues.at(-1);
-    assert.equal(importedSkillInsert?.githubBranchName, "main");
-    assert.equal(importedSkillInsert?.githubTrackedCommitSha, TEST_MAIN_COMMIT_SHA);
+    assert.equal(importedSkillInsert?.branchName, "main");
+    assert.equal(importedSkillInsert?.trackedCommitSha, TEST_MAIN_COMMIT_SHA);
+    assert.equal(importedSkillInsert?.githubRepositoryId, null);
     assert.equal(importedSkillInsert?.repository, "companyhelm/skills");
     assert.equal(importedSkillInsert?.skillDirectory, "skills/github-browser");
+    assert.equal(importedSkillInsert?.sourceType, "public_git");
     assert.deepEqual(importedSkillInsert?.fileList, ["skills/github-browser/scripts/import.sh"]);
     const gitInvocations = await fakeGit.readInvocations();
     assert.equal(gitInvocations.filter((args) => args[0] === "ls-remote").length, 2);
@@ -794,8 +815,8 @@ test("GraphQL GitHub branch discovery returns Git errors instead of hanging", as
       },
       payload: {
         query: `
-          query GithubSkillBranches($repositoryUrl: String!) {
-            GithubSkillBranches(repositoryUrl: $repositoryUrl) {
+          query GithubSkillBranches($source: GitSkillSourceInput!) {
+            GithubSkillBranches(source: $source) {
               commitSha
               isDefault
               name
@@ -804,7 +825,10 @@ test("GraphQL GitHub branch discovery returns Git errors instead of hanging", as
           }
         `,
         variables: {
-          repositoryUrl: "https://github.com/companyhelm/skills",
+          source: {
+            repository: "https://github.com/companyhelm/skills",
+            sourceType: "public_git",
+          },
         },
       },
     });
@@ -831,14 +855,16 @@ test("GraphQL skill group mutations create groups and ungroup skills on delete",
     companyId: "company-123",
     description: "Research notes",
     fileList: [],
-    githubBranchName: null,
-    githubTrackedCommitSha: null,
+    branchName: null,
+    trackedCommitSha: null,
+    githubRepositoryId: null,
     id: "skill-research",
     instructions: "Open the research checklist.",
     name: "Research helper",
     repository: null,
     skillDirectory: null,
     skillGroupId: "group-research",
+    sourceType: "manual",
   });
   const modelManager = {
     async fetchModels(): Promise<ModelProviderModel[]> {

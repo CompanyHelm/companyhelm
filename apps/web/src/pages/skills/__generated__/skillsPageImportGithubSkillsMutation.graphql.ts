@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<340f93f3c99021f8205b8c74766f0610>>
+ * @generated SignedSource<<dacc298305a9d34de35192cc853f7d88>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillSourceType = "github_installation" | "manual" | "public_git" | "%future added value";
 export type SkillType = "custom" | "system" | "%future added value";
 export type ImportGithubSkillsInput = {
   skillGroupId?: string | null | undefined;
@@ -16,8 +17,14 @@ export type ImportGithubSkillsInput = {
 };
 export type ImportGithubSkillRecordInput = {
   branchName: string;
-  repository: string;
+  repository?: string | null | undefined;
   skillDirectory: string;
+  source?: GitSkillSourceInput | null | undefined;
+};
+export type GitSkillSourceInput = {
+  githubRepositoryId?: string | null | undefined;
+  repository?: string | null | undefined;
+  sourceType: SkillSourceType;
 };
 export type skillsPageImportGithubSkillsMutation$variables = {
   input: ImportGithubSkillsInput;

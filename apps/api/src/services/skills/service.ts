@@ -1,24 +1,28 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { injectable } from "inversify";
-import { agentSkillGroups, agentSkills, agents, skill_groups, skills } from "../../db/schema.ts";
+import { agentSkillGroups, agentSkills, agents, githubRepositories, skill_groups, skills } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import type { SystemCommandDefinition } from "./system_command_catalog.ts";
 import { SystemSkillRegistry } from "./system_registry.ts";
 
 export type SkillType = "custom" | "system";
+export type SkillSourceType = "manual" | "public_git" | "github_installation";
 
 export type SkillRecord = {
   companyId: string;
   description: string;
   fileList: string[];
-  githubBranchName: string | null;
-  githubTrackedCommitSha: string | null;
+  branchName: string | null;
+  trackedCommitSha: string | null;
+  githubRepositoryId: string | null;
+  githubRepositoryInstallationId?: number | null;
   id: string;
   instructions: string;
   name: string;
   repository: string | null;
   skillDirectory: string | null;
   skillGroupId: string | null;
+  sourceType: SkillSourceType;
   skillType?: SkillType;
   systemCommands?: SystemCommandDefinition[];
   systemKey?: string | null;
@@ -42,6 +46,12 @@ type AgentSkillAttachmentRecord = {
 type AgentSkillGroupAttachmentRecord = {
   skillGroupId: string | null;
   systemSkillGroupKey: string | null;
+};
+
+type GithubRepositoryRecord = {
+  fullName: string;
+  id: string;
+  installationId: number;
 };
 
 type SelectableDatabase = {
@@ -180,11 +190,15 @@ export class SkillService {
           companyId: input.companyId,
           description,
           fileList: [],
-          githubBranchName: null,
-          githubTrackedCommitSha: null,
+          branchName: null,
+          githubRepositoryId: null,
+          trackedCommitSha: null,
           instructions,
           name,
+          repository: null,
+          skillDirectory: null,
           skillGroupId,
+          sourceType: "manual",
         })
         .returning?.(this.skillSelection()) as SkillRecord[];
 
@@ -202,8 +216,8 @@ export class SkillService {
       companyId: string;
       description: string;
       fileList: string[];
-      githubBranchName?: string | null;
-      githubTrackedCommitSha?: string | null;
+      branchName?: string | null;
+      trackedCommitSha?: string | null;
       instructions: string;
       name: string;
       repository: string;
@@ -216,10 +230,10 @@ export class SkillService {
     const instructions = this.requireNonEmptyValue(input.instructions, "Skill instructions");
     const repository = this.requireNonEmptyValue(input.repository, "Git repository");
     const skillDirectory = this.requireNonEmptyValue(input.skillDirectory, "Git skill directory");
-    const githubBranchName = input.githubBranchName === undefined || input.githubBranchName === null
+    const branchName = input.branchName === undefined || input.branchName === null
       ? null
-      : this.requireNonEmptyValue(input.githubBranchName, "Git branch name");
-    const githubTrackedCommitSha = this.resolveTrackedCommitSha(input.fileList, input.githubTrackedCommitSha);
+      : this.requireNonEmptyValue(input.branchName, "Git branch name");
+    const trackedCommitSha = this.resolveTrackedCommitSha(input.fileList, input.trackedCommitSha);
 
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
@@ -233,13 +247,15 @@ export class SkillService {
           companyId: input.companyId,
           description,
           fileList: [...input.fileList],
-          githubBranchName,
-          githubTrackedCommitSha,
+          branchName,
+          githubRepositoryId: null,
+          trackedCommitSha,
           instructions,
           name,
           repository,
           skillDirectory,
           skillGroupId,
+          sourceType: "public_git",
         })
         .returning?.(this.skillSelection()) as SkillRecord[];
 
@@ -298,9 +314,10 @@ export class SkillService {
       const customSkills = records
         .map((record) => this.toCustomSkillRecord(record))
         .sort((left, right) => left.name.localeCompare(right.name));
+      const hydratedCustomSkills = await this.hydrateSkillRepositories(selectableDatabase, customSkills);
 
       return [
-        ...customSkills,
+        ...hydratedCustomSkills,
         ...this.systemSkillRegistry
           .listSkills(companyId)
           .sort((left, right) => left.name.localeCompare(right.name)),
@@ -699,17 +716,17 @@ export class SkillService {
 
   private resolveTrackedCommitSha(
     fileList: string[],
-    githubTrackedCommitSha?: string | null,
+    trackedCommitSha?: string | null,
   ): string | null {
     if (fileList.length === 0) {
-      if (githubTrackedCommitSha === undefined || githubTrackedCommitSha === null) {
+      if (trackedCommitSha === undefined || trackedCommitSha === null) {
         return null;
       }
 
-      return this.requireNonEmptyValue(githubTrackedCommitSha, "Git tracked commit sha");
+      return this.requireNonEmptyValue(trackedCommitSha, "Git tracked commit sha");
     }
 
-    return this.requireNonEmptyValue(githubTrackedCommitSha ?? null, "Git tracked commit sha");
+    return this.requireNonEmptyValue(trackedCommitSha ?? null, "Git tracked commit sha");
   }
 
   private async requireAgent(
@@ -751,7 +768,7 @@ export class SkillService {
       throw new Error("Skill not found.");
     }
 
-    return this.toCustomSkillRecord(skill);
+    return (await this.hydrateSkillRepositories(selectableDatabase, [this.toCustomSkillRecord(skill)]))[0] as SkillRecord;
   }
 
   private async requireSkillGroup(
@@ -827,8 +844,11 @@ export class SkillService {
         inArray(skills.id, skillIds),
       )) as SkillRecord[];
 
-    return [...records].map((record) => this.toCustomSkillRecord(record))
-      .sort((left, right) => left.name.localeCompare(right.name));
+    return this.hydrateSkillRepositories(
+      selectableDatabase,
+      [...records].map((record) => this.toCustomSkillRecord(record))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    );
   }
 
   private async listAgentAvailableCustomSkills(
@@ -853,8 +873,11 @@ export class SkillService {
         availabilityConditions.length === 1 ? availabilityConditions[0] : or(...availabilityConditions),
       )) as SkillRecord[];
 
-    return [...records].map((record) => this.toCustomSkillRecord(record))
-      .sort((left, right) => left.name.localeCompare(right.name));
+    return this.hydrateSkillRepositories(
+      selectableDatabase,
+      [...records].map((record) => this.toCustomSkillRecord(record))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+    );
   }
 
   private skillGroupSelection() {
@@ -870,24 +893,66 @@ export class SkillService {
       companyId: skills.companyId,
       description: skills.description,
       fileList: skills.fileList,
-      githubBranchName: skills.githubBranchName,
-      githubTrackedCommitSha: skills.githubTrackedCommitSha,
+      branchName: skills.branchName,
+      trackedCommitSha: skills.trackedCommitSha,
+      githubRepositoryId: skills.githubRepositoryId,
       id: skills.id,
       instructions: skills.instructions,
       name: skills.name,
       repository: skills.repository,
       skillDirectory: skills.skillDirectory,
       skillGroupId: skills.skillGroupId,
+      sourceType: skills.sourceType,
     };
   }
 
   private toCustomSkillRecord(record: SkillRecord): SkillRecord {
     return {
       ...record,
+      githubRepositoryId: record.githubRepositoryId ?? null,
+      githubRepositoryInstallationId: record.githubRepositoryInstallationId ?? null,
+      sourceType: record.sourceType ?? "manual",
       skillType: "custom",
       systemCommands: [],
       systemKey: null,
     };
+  }
+
+  private async hydrateSkillRepositories(
+    selectableDatabase: SelectableDatabase,
+    records: SkillRecord[],
+  ): Promise<SkillRecord[]> {
+    const githubRepositoryIds = [...new Set(records.flatMap((record) =>
+      record.sourceType === "github_installation" && record.githubRepositoryId
+        ? [record.githubRepositoryId]
+        : []
+    ))];
+    if (githubRepositoryIds.length === 0) {
+      return records;
+    }
+
+    const repositories = await selectableDatabase
+      .select({
+        fullName: githubRepositories.fullName,
+        id: githubRepositories.id,
+        installationId: githubRepositories.installationId,
+      })
+      .from(githubRepositories)
+      .where(inArray(githubRepositories.id, githubRepositoryIds)) as GithubRepositoryRecord[];
+    const repositoryById = new Map(repositories.map((repository) => [repository.id, repository]));
+
+    return records.map((record) => {
+      if (record.sourceType !== "github_installation" || !record.githubRepositoryId) {
+        return record;
+      }
+
+      const repository = repositoryById.get(record.githubRepositoryId);
+      return {
+        ...record,
+        repository: repository?.fullName ?? record.repository,
+        githubRepositoryInstallationId: repository?.installationId ?? record.githubRepositoryInstallationId ?? null,
+      };
+    });
   }
 
   private async attachSystemSkillToAgent(

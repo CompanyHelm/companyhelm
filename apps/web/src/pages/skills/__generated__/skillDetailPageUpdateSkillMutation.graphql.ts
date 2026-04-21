@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c06d27708a22f8b8f9fbe5e2ca2c1918>>
+ * @generated SignedSource<<657120d618a126a7e8055c5543c05044>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,16 +22,14 @@ export type skillDetailPageUpdateSkillMutation$variables = {
 };
 export type skillDetailPageUpdateSkillMutation$data = {
   readonly UpdateSkill: {
+    readonly branchName: string | null | undefined;
+    readonly branchSkillFileUrl: string | null | undefined;
     readonly description: string;
     readonly fileInventory: ReadonlyArray<{
       readonly path: string;
       readonly url: string | null | undefined;
     }>;
     readonly fileList: ReadonlyArray<string>;
-    readonly githubBranchName: string | null | undefined;
-    readonly githubBranchSkillFileUrl: string | null | undefined;
-    readonly githubTrackedCommitSha: string | null | undefined;
-    readonly githubTrackedCommitSkillFileUrl: string | null | undefined;
     readonly id: string;
     readonly instructions: string;
     readonly name: string;
@@ -41,6 +39,8 @@ export type skillDetailPageUpdateSkillMutation$data = {
     readonly skillDirectoryUrl: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
     readonly skillType: SkillType;
+    readonly trackedCommitSha: string | null | undefined;
+    readonly trackedCommitSkillFileUrl: string | null | undefined;
   };
 };
 export type skillDetailPageUpdateSkillMutation = {
@@ -177,28 +177,28 @@ v1 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubBranchName",
+        "name": "branchName",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubBranchSkillFileUrl",
+        "name": "branchSkillFileUrl",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubTrackedCommitSha",
+        "name": "trackedCommitSha",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubTrackedCommitSkillFileUrl",
+        "name": "trackedCommitSkillFileUrl",
         "storageKey": null
       }
     ],
@@ -223,16 +223,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "5d080715c6466b2d667a01b80907012e",
+    "cacheID": "6e6281245458122f78e2657dd0506fe5",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageUpdateSkillMutation",
     "operationKind": "mutation",
-    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    githubBranchName\n    githubBranchSkillFileUrl\n    githubTrackedCommitSha\n    githubTrackedCommitSkillFileUrl\n  }\n}\n"
+    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    branchName\n    branchSkillFileUrl\n    trackedCommitSha\n    trackedCommitSkillFileUrl\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "d41731dae142c0957a6cd0ff6b1c4ab3";
+(node as any).hash = "42e92efa52edae2fa4db2f6a1ba5f3b6";
 
 export default node;

@@ -1,10 +1,10 @@
 import { inject, injectable } from "inversify";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
+import { SkillGithubCatalog, type SkillGitSourceInput } from "../../services/skills/github/catalog.ts";
 
 type GithubDiscoveredSkillsQueryArguments = {
   branchName: string;
-  repositoryUrl: string;
+  source: SkillGitSourceInput;
 };
 
 type GraphqlGithubDiscoveredSkillRecord = {
@@ -30,17 +30,18 @@ export class GithubDiscoveredSkillsQueryResolver {
     arguments_: GithubDiscoveredSkillsQueryArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlGithubDiscoveredSkillRecord[]> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
 
-    const discoveredSkills = await this.skillGithubCatalog.discoverSkills({
+    const discoveredSkills = await this.skillGithubCatalog.discoverSkills(context.app_runtime_transaction_provider, {
       branchName: arguments_.branchName,
-      repository: arguments_.repositoryUrl,
+      companyId: context.authSession.company.id,
+      source: arguments_.source,
     });
 
     return discoveredSkills
-      .filter((skill) => skill.importable && skill.instructions)
+      .filter((skill) => skill.importable)
       .map((skill) => ({
         name: skill.name,
         skillDirectory: skill.skillDirectory,

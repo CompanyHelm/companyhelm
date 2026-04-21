@@ -1,16 +1,21 @@
 import type { SkillRecord } from "../../skills/service.ts";
 import { SkillGithubRepositoryReference } from "../../skills/github/repository_reference.ts";
+import { injectable } from "inversify";
 
 export type FileBackedSkillRecord = {
-  githubTrackedCommitSha: string;
+  githubRepositoryInstallationId: number | null;
+  remoteUrl: string;
+  trackedCommitSha: string;
   repository: string;
   skillDirectory: string;
+  sourceType: "public_git" | "github_installation";
 };
 
 /**
  * Centralizes the cache and materialization paths for file-backed skills so shell-oriented sync
  * services can reason about one consistent directory layout instead of rebuilding path math ad hoc.
  */
+@injectable()
 export class AgentEnvironmentSkillPathService {
   private static readonly homeDirectory = "/home/user";
   private static readonly skillCacheRootDirectory = `${AgentEnvironmentSkillPathService.homeDirectory}/.companyhelm/skill-cache`;
@@ -28,9 +33,10 @@ export class AgentEnvironmentSkillPathService {
     const repositoryReference = SkillGithubRepositoryReference.parse(skill.repository);
     return [
       this.getSkillCacheRootDirectory(),
+      skill.sourceType,
       repositoryReference.owner,
       repositoryReference.repository,
-      skill.githubTrackedCommitSha,
+      skill.trackedCommitSha,
     ].join("/");
   }
 
@@ -88,17 +94,27 @@ export class AgentEnvironmentSkillPathService {
 
     const repository = String(skill.repository || "").trim();
     const skillDirectory = String(skill.skillDirectory || "").trim().replace(/^\/+|\/+$/g, "");
-    const githubTrackedCommitSha = String(skill.githubTrackedCommitSha || "").trim();
-    if (!repository || !skillDirectory || !githubTrackedCommitSha) {
+    const trackedCommitSha = String(skill.trackedCommitSha || "").trim();
+    const sourceType = skill.sourceType === "github_installation" ? "github_installation" : "public_git";
+    const githubRepositoryInstallationId = skill.githubRepositoryInstallationId ?? null;
+    if (!repository || !skillDirectory || !trackedCommitSha) {
       throw new Error(
-        `Skill ${skill.name} is file-backed but is missing repository, skillDirectory, or githubTrackedCommitSha.`,
+        `Skill ${skill.name} is file-backed but is missing repository, skillDirectory, or trackedCommitSha.`,
       );
     }
+    if (sourceType === "github_installation" && !githubRepositoryInstallationId) {
+      throw new Error(`Skill ${skill.name} is backed by a GitHub installation but is missing installation metadata.`);
+    }
+
+    const repositoryReference = SkillGithubRepositoryReference.parse(repository);
 
     return {
-      githubTrackedCommitSha,
-      repository: SkillGithubRepositoryReference.parse(repository).getFullName(),
+      githubRepositoryInstallationId,
+      remoteUrl: repositoryReference.remoteUrl,
+      trackedCommitSha,
+      repository: repositoryReference.getFullName(),
       skillDirectory,
+      sourceType,
     };
   }
 }

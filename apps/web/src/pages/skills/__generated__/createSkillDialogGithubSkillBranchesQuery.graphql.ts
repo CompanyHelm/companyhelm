@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c5e77c017fd99e01eb03e796b6e1f6b8>>
+ * @generated SignedSource<<7f889fe6c282a2f8b6fbb2843308b7f8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,8 +9,14 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type SkillSourceType = "github_installation" | "manual" | "public_git" | "%future added value";
+export type GitSkillSourceInput = {
+  githubRepositoryId?: string | null | undefined;
+  repository?: string | null | undefined;
+  sourceType: SkillSourceType;
+};
 export type createSkillDialogGithubSkillBranchesQuery$variables = {
-  repositoryUrl: string;
+  source: GitSkillSourceInput;
 };
 export type createSkillDialogGithubSkillBranchesQuery$data = {
   readonly GithubSkillBranches: ReadonlyArray<{
@@ -30,7 +36,7 @@ var v0 = [
   {
     "defaultValue": null,
     "kind": "LocalArgument",
-    "name": "repositoryUrl"
+    "name": "source"
   }
 ],
 v1 = [
@@ -39,8 +45,8 @@ v1 = [
     "args": [
       {
         "kind": "Variable",
-        "name": "repositoryUrl",
-        "variableName": "repositoryUrl"
+        "name": "source",
+        "variableName": "source"
       }
     ],
     "concreteType": "GithubSkillBranch",
@@ -98,16 +104,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "30d060482477112d316209fce87120b8",
+    "cacheID": "290bd95461993e23b3a069967b172949",
     "id": null,
     "metadata": {},
     "name": "createSkillDialogGithubSkillBranchesQuery",
     "operationKind": "query",
-    "text": "query createSkillDialogGithubSkillBranchesQuery(\n  $repositoryUrl: String!\n) {\n  GithubSkillBranches(repositoryUrl: $repositoryUrl) {\n    commitSha\n    isDefault\n    name\n    repository\n  }\n}\n"
+    "text": "query createSkillDialogGithubSkillBranchesQuery(\n  $source: GitSkillSourceInput!\n) {\n  GithubSkillBranches(source: $source) {\n    commitSha\n    isDefault\n    name\n    repository\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2d9a8d92efa279d78b4f3aa4f228284f";
+(node as any).hash = "44db9e24df561b343873048034d799a4";
 
 export default node;

@@ -9,7 +9,7 @@ export type AgentSkillSummary = {
   active: boolean;
   description: string;
   files: string[];
-  githubTrackedCommitSha: string | null;
+  trackedCommitSha: string | null;
   instructions: string;
   name: string;
   repository: string | null;
@@ -132,7 +132,7 @@ export class AgentSkillToolService {
       active,
       description: typeof skill.description === "string" ? skill.description : "",
       files: this.toSkillFiles(skill),
-      githubTrackedCommitSha: skill.githubTrackedCommitSha,
+      trackedCommitSha: skill.trackedCommitSha,
       instructions: typeof skill.instructions === "string" ? skill.instructions : "",
       name: typeof skill.name === "string" ? skill.name : "",
       repository: skill.repository,

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   check,
   index,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -11,8 +12,10 @@ import {
 import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
-import { companies, users } from "./company.ts";
+import { companies, githubRepositories, users } from "./company.ts";
 import { agentSessions } from "./conversations.ts";
+
+export const skillSourceTypeEnum = pgEnum("skill_source_type", ["manual", "public_git", "github_installation"]);
 
 export const skill_groups = pgTable("skill_groups", {
   id: uuid("id")
@@ -43,22 +46,43 @@ export const skills = pgTable("skills", {
   fileList: text("file_list").array().notNull(),
   skillGroupId: uuid("skill_group_id")
     .references(() => skill_groups.id, { onDelete: "set null" }),
-  /****************** GITHUB SKILL FIELDS ********************/
+  /****************** GIT SKILL SOURCE FIELDS ********************/
+  sourceType: skillSourceTypeEnum("source_type").notNull().default("manual"),
   repository: text("repository"),
+  githubRepositoryId: uuid("github_repository_id")
+    .references(() => githubRepositories.id, { onDelete: "cascade" }),
   // where in the repository the skill is located
   skillDirectory: text("skill_directory"),
-  githubBranchName: text("github_branch_name"),
-  githubTrackedCommitSha: text("github_tracked_commit_sha"),
+  branchName: text("branch_name"),
+  trackedCommitSha: text("tracked_commit_sha"),
 }, (table) => ({
   skillGroupIdIndex: index("skills_skill_group_id_idx").on(table.skillGroupId),
   companyIdIndex: index("skills_company_id_idx").on(table.companyId),
   nameUnique: uniqueIndex("skills_company_id_name_uidx").on(table.companyId, table.name),
   fileBackedSourceCheck: check(
     "skills_file_backed_source_check",
-    sql`coalesce(cardinality(${table.fileList}), 0) = 0 OR (
-      nullif(trim(${table.repository}), '') IS NOT NULL
+    sql`(
+      ${table.sourceType} = 'manual'
+      AND nullif(trim(${table.repository}), '') IS NULL
+      AND ${table.githubRepositoryId} IS NULL
+      AND nullif(trim(${table.skillDirectory}), '') IS NULL
+      AND nullif(trim(${table.branchName}), '') IS NULL
+      AND nullif(trim(${table.trackedCommitSha}), '') IS NULL
+      AND coalesce(cardinality(${table.fileList}), 0) = 0
+    ) OR (
+      ${table.sourceType} = 'public_git'
+      AND nullif(trim(${table.repository}), '') IS NOT NULL
+      AND ${table.githubRepositoryId} IS NULL
       AND nullif(trim(${table.skillDirectory}), '') IS NOT NULL
-      AND nullif(trim(${table.githubTrackedCommitSha}), '') IS NOT NULL
+      AND nullif(trim(${table.branchName}), '') IS NOT NULL
+      AND nullif(trim(${table.trackedCommitSha}), '') IS NOT NULL
+    ) OR (
+      ${table.sourceType} = 'github_installation'
+      AND nullif(trim(${table.repository}), '') IS NULL
+      AND ${table.githubRepositoryId} IS NOT NULL
+      AND nullif(trim(${table.skillDirectory}), '') IS NOT NULL
+      AND nullif(trim(${table.branchName}), '') IS NOT NULL
+      AND nullif(trim(${table.trackedCommitSha}), '') IS NOT NULL
     )`,
   ),
 }));

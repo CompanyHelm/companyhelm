@@ -25,7 +25,7 @@ export class AgentSkillResultFormatter {
     if (result.skill.files.length > 0) {
       lines.push(`repository: ${result.skill.repository ?? "(missing)"}`);
       lines.push(`skillDirectory: ${result.skill.skillDirectory ?? "(missing)"}`);
-      lines.push(`githubTrackedCommitSha: ${result.skill.githubTrackedCommitSha ?? "(missing)"}`);
+      lines.push(`trackedCommitSha: ${result.skill.trackedCommitSha ?? "(missing)"}`);
     }
 
     return lines.join("\n");

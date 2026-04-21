@@ -1,7 +1,7 @@
 import { inject, injectable } from "inversify";
 import { GraphqlSkillPresenter, type GraphqlSkillRecord } from "../skill_presenter.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
-import { SkillGithubCatalog } from "../../services/skills/github/catalog.ts";
+import { SkillGithubCatalog, type SkillGitSourceInput } from "../../services/skills/github/catalog.ts";
 import { Mutation } from "./mutation.ts";
 
 type ImportGithubSkillsMutationArguments = {
@@ -9,8 +9,9 @@ type ImportGithubSkillsMutationArguments = {
     skillGroupId?: string | null;
     skills: Array<{
       branchName: string;
-      repository: string;
+      repository?: string | null;
       skillDirectory: string;
+      source?: SkillGitSourceInput | null;
     }>;
   };
 };

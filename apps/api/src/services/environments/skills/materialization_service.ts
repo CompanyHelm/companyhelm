@@ -1,5 +1,5 @@
 import { dirname } from "node:path/posix";
-import { injectable } from "inversify";
+import { inject, injectable } from "inversify";
 import { AgentEnvironmentShellInterface } from "../providers/shell_interface.ts";
 import { AgentEnvironmentSkillCheckoutCacheService } from "./checkout_cache_service.ts";
 import { AgentEnvironmentSkillPathService } from "./path_service.ts";
@@ -16,7 +16,9 @@ export class AgentEnvironmentSkillMaterializationService {
   private readonly pathService: AgentEnvironmentSkillPathService;
 
   constructor(
+    @inject(AgentEnvironmentSkillCheckoutCacheService)
     checkoutCacheService: AgentEnvironmentSkillCheckoutCacheService = new AgentEnvironmentSkillCheckoutCacheService(),
+    @inject(AgentEnvironmentSkillPathService)
     pathService: AgentEnvironmentSkillPathService = new AgentEnvironmentSkillPathService(),
   ) {
     this.checkoutCacheService = checkoutCacheService;

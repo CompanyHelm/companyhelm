@@ -2,10 +2,19 @@ import matter from "gray-matter";
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { Config } from "../../../config/schema.ts";
-import { skill_groups, skills } from "../../../db/schema.ts";
+import { githubRepositories, skill_groups, skills } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
-import type { SkillRecord } from "../service.ts";
+import { GithubClient } from "../../../github/client.ts";
+import type { SkillRecord, SkillSourceType } from "../service.ts";
 import { SkillGithubPublicClient } from "./public_client.ts";
+
+export type SkillGitSourceType = "public_git" | "github_installation";
+
+export type SkillGitSourceInput = {
+  githubRepositoryId?: string | null;
+  repository?: string | null;
+  sourceType?: SkillGitSourceType | string | null;
+};
 
 export type SkillGithubDiscoveredBranchRecord = {
   commitSha: string;
@@ -16,7 +25,7 @@ export type SkillGithubDiscoveredBranchRecord = {
 
 export type SkillGithubDiscoveredSkillRecord = {
   branchName: string;
-  commitSha: string;
+  commitSha: string | null;
   description: string | null;
   fileList: string[];
   importable: boolean;
@@ -47,41 +56,86 @@ type SkillGroupRecord = {
   id: string;
 };
 
-type CreateGithubSkillRecord = {
+type GithubRepositoryRecord = {
+  archived: boolean;
+  defaultBranch: string | null;
+  fullName: string;
+  id: string;
+  installationId: number;
+};
+
+type CreateGitSkillRecord = {
   branchName: string;
   commitSha: string;
   description: string;
   fileList: string[];
+  githubRepositoryId: string | null;
+  githubRepositoryInstallationId: number | null;
   instructions: string;
   name: string;
   repository: string;
   skillDirectory: string;
+  sourceType: Extract<SkillSourceType, "public_git" | "github_installation">;
 };
 
-type GithubSkillSelectionRecord = {
+type GitSkillSelectionRecord = {
   branchName: string;
-  repository: string;
   skillDirectory: string;
+  source: SkillGitSourceInput;
+};
+
+type ResolvedGitSkillSourceRecord = {
+  defaultBranch: string | null;
+  githubRepositoryId: string | null;
+  installationId: number | null;
+  repository: string;
+  sourceType: Extract<SkillSourceType, "public_git" | "github_installation">;
 };
 
 /**
- * Discovers Git-backed skills from public repositories and imports selected discovery results
- * into the company skill catalog. Imports reload the selected SKILL.md files on the server so the
- * client never needs to echo large instructions payloads back through GraphQL.
+ * Discovers Git-backed skill packages from public repositories or company-linked GitHub App
+ * repositories, then imports selected package snapshots into the company skill catalog.
  */
 @injectable()
 export class SkillGithubCatalog {
+  private readonly githubClient: GithubClient;
   private readonly githubPublicClient: SkillGithubPublicClient;
 
   constructor(
     @inject(SkillGithubPublicClient)
     githubPublicClient: SkillGithubPublicClient = new SkillGithubPublicClient({} as Config),
+    @inject(GithubClient)
+    githubClient: GithubClient = new GithubClient({} as Config),
   ) {
+    this.githubClient = githubClient;
     this.githubPublicClient = githubPublicClient;
   }
 
-  async discoverBranches(repository: string): Promise<SkillGithubDiscoveredBranchRecord[]> {
-    const repositoryBranches = await this.githubPublicClient.getRepositoryBranches(repository);
+  async discoverBranches(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      companyId: string;
+      source: SkillGitSourceInput;
+    },
+  ): Promise<SkillGithubDiscoveredBranchRecord[]> {
+    const source = await this.resolveGitSource(transactionProvider, input.companyId, input.source);
+    if (source.sourceType === "github_installation") {
+      const installationId = this.requireInstallationId(source);
+      const branches = await this.githubClient.listRepositoryBranches({
+        defaultBranch: source.defaultBranch,
+        installationId,
+        repositoryFullName: source.repository,
+      });
+
+      return branches.map((branch) => ({
+        commitSha: branch.commitSha,
+        isDefault: branch.isDefault,
+        name: branch.name,
+        repository: branch.repositoryFullName,
+      }));
+    }
+
+    const repositoryBranches = await this.githubPublicClient.getRepositoryBranches(source.repository);
 
     return repositoryBranches.branches.map((branch) => ({
       commitSha: branch.commitSha,
@@ -91,15 +145,45 @@ export class SkillGithubCatalog {
     }));
   }
 
-  async discoverSkills(input: {
-    branchName: string;
-    repository: string;
-  }): Promise<SkillGithubDiscoveredSkillRecord[]> {
-    return this.githubPublicClient.inspectRepository(input.repository, input.branchName, async (repositoryTree) => {
+  async discoverSkills(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      branchName: string;
+      companyId: string;
+      source: SkillGitSourceInput;
+    },
+  ): Promise<SkillGithubDiscoveredSkillRecord[]> {
+    const source = await this.resolveGitSource(transactionProvider, input.companyId, input.source);
+    if (source.sourceType === "github_installation") {
+      const installationId = this.requireInstallationId(source);
+      const skillDirectories = await this.githubClient.listSkillDirectories({
+        branchName: input.branchName,
+        installationId,
+        repositoryFullName: source.repository,
+      });
+
+      return skillDirectories.map((skillDirectory) => ({
+        branchName: input.branchName,
+        commitSha: null,
+        description: null,
+        fileList: skillDirectory.fileList.map((filePath) =>
+          this.toRepositoryPath(skillDirectory.path, filePath)
+        ),
+        importable: true,
+        instructions: null,
+        name: skillDirectory.name,
+        repository: source.repository,
+        skillDirectory: skillDirectory.path,
+        validationError: null,
+      }));
+    }
+
+    return this.githubPublicClient.inspectRepository(source.repository, input.branchName, async (repositoryTree) => {
       const skillFilePaths = this.getSkillFilePaths(repositoryTree.treeEntries);
       const skillDirectories = skillFilePaths.map((skillFilePath) => this.getSkillDirectory(skillFilePath));
 
       return Promise.all(skillFilePaths.map(async (skillFilePath, skillIndex) => {
+        void skillFilePath;
         const skillDirectory = skillDirectories[skillIndex] || ".";
         return this.readDiscoveredSkill(repositoryTree, skillDirectory, skillDirectories);
       }));
@@ -113,13 +197,18 @@ export class SkillGithubCatalog {
       skillGroupId?: string | null;
       skills: Array<{
         branchName: string;
-        repository: string;
+        repository?: string | null;
         skillDirectory: string;
+        source?: SkillGitSourceInput | null;
       }>;
     },
   ): Promise<SkillRecord[]> {
-    const githubSkillSelections = this.requireGithubSkillSelections(input.skills);
-    const githubSkillRecords = await this.resolveGithubSkillSelections(githubSkillSelections);
+    const gitSkillSelections = this.requireGitSkillSelections(input.skills);
+    const gitSkillRecords = await this.resolveGitSkillSelections(
+      transactionProvider,
+      input.companyId,
+      gitSkillSelections,
+    );
 
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -130,36 +219,186 @@ export class SkillGithubCatalog {
         .from(skills)
         .where(eq(skills.companyId, input.companyId)) as SkillRecord[];
 
-      this.requireUniqueSkillSelections(existingSkills, githubSkillRecords);
+      this.requireUniqueSkillSelections(existingSkills, gitSkillRecords);
 
       const createdSkills: SkillRecord[] = [];
 
-      for (const githubSkillRecord of githubSkillRecords) {
+      for (const gitSkillRecord of gitSkillRecords) {
         const [createdSkill] = await insertableDatabase
           .insert(skills)
           .values({
+            branchName: gitSkillRecord.branchName,
             companyId: input.companyId,
-            description: githubSkillRecord.description,
-            fileList: [...githubSkillRecord.fileList],
-            githubBranchName: githubSkillRecord.branchName,
-            githubTrackedCommitSha: githubSkillRecord.commitSha,
-            instructions: githubSkillRecord.instructions,
-            name: githubSkillRecord.name,
-            repository: githubSkillRecord.repository,
-            skillDirectory: githubSkillRecord.skillDirectory,
+            description: gitSkillRecord.description,
+            fileList: [...gitSkillRecord.fileList],
+            githubRepositoryId: gitSkillRecord.githubRepositoryId,
+            instructions: gitSkillRecord.instructions,
+            name: gitSkillRecord.name,
+            repository: gitSkillRecord.sourceType === "public_git" ? gitSkillRecord.repository : null,
+            skillDirectory: gitSkillRecord.skillDirectory,
             skillGroupId,
+            sourceType: gitSkillRecord.sourceType,
+            trackedCommitSha: gitSkillRecord.commitSha,
           })
           .returning?.(this.skillSelection()) as SkillRecord[];
 
         if (!createdSkill) {
-          throw new Error(`Failed to import Git skill ${githubSkillRecord.skillDirectory}.`);
+          throw new Error(`Failed to import Git skill ${gitSkillRecord.skillDirectory}.`);
         }
 
-        createdSkills.push(createdSkill);
+        createdSkills.push({
+          ...createdSkill,
+          githubRepositoryInstallationId: gitSkillRecord.githubRepositoryInstallationId,
+          repository: gitSkillRecord.repository,
+        });
       }
 
       return createdSkills;
     });
+  }
+
+  private async resolveGitSkillSelections(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    selections: GitSkillSelectionRecord[],
+  ): Promise<CreateGitSkillRecord[]> {
+    const gitSkillRecords: CreateGitSkillRecord[] = [];
+    const selectionsByBranchKey = this.groupSelectionsByBranch(selections);
+
+    for (const selectionsForBranch of selectionsByBranchKey.values()) {
+      const [firstSelection] = selectionsForBranch;
+      if (!firstSelection) {
+        continue;
+      }
+
+      const source = await this.resolveGitSource(transactionProvider, companyId, firstSelection.source);
+      if (source.sourceType === "github_installation") {
+        const installationId = this.requireInstallationId(source);
+        for (const selection of selectionsForBranch) {
+          const skillPackage = await this.githubClient.getSkillPackage({
+            branchName: selection.branchName,
+            installationId,
+            repositoryFullName: source.repository,
+            skillDirectory: selection.skillDirectory,
+          });
+          gitSkillRecords.push({
+            branchName: skillPackage.branchName,
+            commitSha: skillPackage.commitSha,
+            description: skillPackage.description,
+            fileList: skillPackage.fileList.map((filePath) =>
+              this.toRepositoryPath(skillPackage.path, filePath)
+            ),
+            githubRepositoryId: source.githubRepositoryId,
+            githubRepositoryInstallationId: installationId,
+            instructions: skillPackage.instructions.trim(),
+            name: skillPackage.name,
+            repository: skillPackage.repositoryFullName,
+            skillDirectory: skillPackage.path,
+            sourceType: "github_installation",
+          });
+        }
+        continue;
+      }
+
+      await this.githubPublicClient.inspectRepository(source.repository, firstSelection.branchName, async (repositoryTree) => {
+        const skillDirectories = this.getSkillFilePaths(repositoryTree.treeEntries)
+          .map((skillFilePath) => this.getSkillDirectory(skillFilePath));
+
+        for (const selection of selectionsForBranch) {
+          const selectedSkill = await this.readDiscoveredSkill(
+            repositoryTree,
+            selection.skillDirectory,
+            skillDirectories,
+          );
+          if (!selectedSkill.importable || !selectedSkill.instructions) {
+            throw new Error(
+              selectedSkill.validationError
+              ?? `Skill ${selection.skillDirectory} could not be imported from Git.`,
+            );
+          }
+
+          gitSkillRecords.push({
+            branchName: selectedSkill.branchName,
+            commitSha: selectedSkill.commitSha ?? "",
+            description: selectedSkill.description ?? "",
+            fileList: [...selectedSkill.fileList],
+            githubRepositoryId: null,
+            githubRepositoryInstallationId: null,
+            instructions: selectedSkill.instructions,
+            name: selectedSkill.name,
+            repository: selectedSkill.repository,
+            skillDirectory: selectedSkill.skillDirectory,
+            sourceType: "public_git",
+          });
+        }
+      });
+    }
+
+    return gitSkillRecords;
+  }
+
+  private async resolveGitSource(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    source: SkillGitSourceInput,
+  ): Promise<ResolvedGitSkillSourceRecord> {
+    const sourceType = this.resolveSourceType(source);
+    if (sourceType === "public_git") {
+      return {
+        defaultBranch: null,
+        githubRepositoryId: null,
+        installationId: null,
+        repository: this.requireNonEmptyValue(source.repository ?? null, "Git repository"),
+        sourceType,
+      };
+    }
+
+    const githubRepositoryId = this.requireNonEmptyValue(source.githubRepositoryId ?? null, "GitHub repository id");
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const [repository] = await selectableDatabase
+        .select({
+          archived: githubRepositories.archived,
+          defaultBranch: githubRepositories.defaultBranch,
+          fullName: githubRepositories.fullName,
+          id: githubRepositories.id,
+          installationId: githubRepositories.installationId,
+        })
+        .from(githubRepositories)
+        .where(and(
+          eq(githubRepositories.companyId, companyId),
+          eq(githubRepositories.id, githubRepositoryId),
+        )) as GithubRepositoryRecord[];
+      if (!repository) {
+        throw new Error("GitHub repository not found.");
+      }
+      if (repository.archived) {
+        throw new Error("Archived GitHub repositories cannot be imported as skills.");
+      }
+
+      return {
+        defaultBranch: repository.defaultBranch,
+        githubRepositoryId: repository.id,
+        installationId: repository.installationId,
+        repository: repository.fullName,
+        sourceType,
+      };
+    });
+  }
+
+  private resolveSourceType(source: SkillGitSourceInput): SkillGitSourceType {
+    const sourceType = String(source.sourceType || "").trim();
+    if (!sourceType && source.repository) {
+      return "public_git";
+    }
+    if (sourceType === "public_git" || sourceType === "PUBLIC_GIT") {
+      return "public_git";
+    }
+    if (sourceType === "github_installation" || sourceType === "GITHUB_INSTALLATION") {
+      return "github_installation";
+    }
+
+    throw new Error("Git skill source type is required.");
   }
 
   private getSkillDirectory(skillFilePath: string): string {
@@ -230,50 +469,12 @@ export class SkillGithubCatalog {
     return normalizedValue;
   }
 
-  private async resolveGithubSkillSelections(
-    value: GithubSkillSelectionRecord[],
-  ): Promise<CreateGithubSkillRecord[]> {
-    const githubSkillRecords: CreateGithubSkillRecord[] = [];
-    const selectionsByBranchKey = this.groupSelectionsByBranch(value);
-
-    for (const selections of selectionsByBranchKey.values()) {
-      const [firstSelection] = selections;
-      if (!firstSelection) {
-        continue;
-      }
-
-      await this.githubPublicClient.inspectRepository(firstSelection.repository, firstSelection.branchName, async (repositoryTree) => {
-        const skillDirectories = this.getSkillFilePaths(repositoryTree.treeEntries)
-          .map((skillFilePath) => this.getSkillDirectory(skillFilePath));
-
-        for (const selection of selections) {
-          const selectedSkill = await this.readDiscoveredSkill(
-            repositoryTree,
-            selection.skillDirectory,
-            skillDirectories,
-          );
-          if (!selectedSkill.importable || !selectedSkill.instructions) {
-            throw new Error(
-              selectedSkill.validationError
-              ?? `Skill ${selection.skillDirectory} could not be imported from Git.`,
-            );
-          }
-
-          githubSkillRecords.push({
-            branchName: selectedSkill.branchName,
-            commitSha: selectedSkill.commitSha,
-            description: selectedSkill.description ?? "",
-            fileList: [...selectedSkill.fileList],
-            instructions: selectedSkill.instructions,
-            name: selectedSkill.name,
-            repository: selectedSkill.repository,
-            skillDirectory: selectedSkill.skillDirectory,
-          });
-        }
-      });
+  private requireInstallationId(source: ResolvedGitSkillSourceRecord): number {
+    if (source.installationId === null) {
+      throw new Error("GitHub repository installation id is required.");
     }
 
-    return githubSkillRecords;
+    return source.installationId;
   }
 
   private async readDiscoveredSkill(
@@ -372,11 +573,15 @@ export class SkillGithubCatalog {
   }
 
   private groupSelectionsByBranch(
-    selections: GithubSkillSelectionRecord[],
-  ): Map<string, GithubSkillSelectionRecord[]> {
-    const selectionsByBranchKey = new Map<string, GithubSkillSelectionRecord[]>();
+    selections: GitSkillSelectionRecord[],
+  ): Map<string, GitSkillSelectionRecord[]> {
+    const selectionsByBranchKey = new Map<string, GitSkillSelectionRecord[]>();
     for (const selection of selections) {
-      const branchKey = `${selection.repository}:${selection.branchName}`;
+      const sourceType = this.resolveSourceType(selection.source);
+      const sourceKey = sourceType === "github_installation"
+        ? selection.source.githubRepositoryId
+        : selection.source.repository;
+      const branchKey = `${sourceType}:${sourceKey}:${selection.branchName}`;
       const currentSelections = selectionsByBranchKey.get(branchKey) ?? [];
       currentSelections.push(selection);
       selectionsByBranchKey.set(branchKey, currentSelections);
@@ -385,25 +590,29 @@ export class SkillGithubCatalog {
     return selectionsByBranchKey;
   }
 
-  private requireGithubSkillSelections(
+  private requireGitSkillSelections(
     value: Array<{
       branchName: string;
-      repository: string;
+      repository?: string | null;
       skillDirectory: string;
+      source?: SkillGitSourceInput | null;
     }>,
-  ): GithubSkillSelectionRecord[] {
+  ): GitSkillSelectionRecord[] {
     if (!Array.isArray(value) || value.length === 0) {
       throw new Error("At least one Git skill must be selected.");
     }
 
     return value.map((record) => ({
       branchName: this.requireNonEmptyValue(record.branchName, "Git branch name"),
-      repository: this.requireNonEmptyValue(record.repository, "Git repository"),
       skillDirectory: this.normalizeSkillDirectory(record.skillDirectory),
+      source: record.source ?? {
+        repository: record.repository,
+        sourceType: "public_git",
+      },
     }));
   }
 
-  private requireNonEmptyValue(value: string, label: string): string {
+  private requireNonEmptyValue(value: string | null, label: string): string {
     const normalizedValue = String(value || "").trim();
     if (!normalizedValue) {
       throw new Error(`${label} is required.`);
@@ -414,33 +623,39 @@ export class SkillGithubCatalog {
 
   private requireUniqueSkillSelections(
     existingSkills: SkillRecord[],
-    githubSkillRecords: CreateGithubSkillRecord[],
+    gitSkillRecords: CreateGitSkillRecord[],
   ): void {
     const selectedSkillNames = new Set<string>();
     const selectedSkillRepositories = new Set<string>();
 
     // Validate the whole selection up front so a partially imported batch can never happen.
-    for (const githubSkillRecord of githubSkillRecords) {
-      const selectedRepositoryKey = `${githubSkillRecord.repository}:${githubSkillRecord.skillDirectory}`;
+    for (const gitSkillRecord of gitSkillRecords) {
+      const selectedRepositoryKey = gitSkillRecord.sourceType === "github_installation"
+        ? `${gitSkillRecord.githubRepositoryId}:${gitSkillRecord.skillDirectory}`
+        : `${gitSkillRecord.repository}:${gitSkillRecord.skillDirectory}`;
       if (selectedSkillRepositories.has(selectedRepositoryKey)) {
-        throw new Error(`Skill ${githubSkillRecord.skillDirectory} was selected more than once.`);
+        throw new Error(`Skill ${gitSkillRecord.skillDirectory} was selected more than once.`);
       }
       selectedSkillRepositories.add(selectedRepositoryKey);
 
-      if (selectedSkillNames.has(githubSkillRecord.name)) {
-        throw new Error(`Skill name ${githubSkillRecord.name} was selected more than once.`);
+      if (selectedSkillNames.has(gitSkillRecord.name)) {
+        throw new Error(`Skill name ${gitSkillRecord.name} was selected more than once.`);
       }
-      selectedSkillNames.add(githubSkillRecord.name);
+      selectedSkillNames.add(gitSkillRecord.name);
 
       const existingSkill = existingSkills.find((skill) =>
-        skill.repository === githubSkillRecord.repository
-        && skill.skillDirectory === githubSkillRecord.skillDirectory
+        skill.skillDirectory === gitSkillRecord.skillDirectory
+        && (
+          gitSkillRecord.sourceType === "github_installation"
+            ? skill.githubRepositoryId === gitSkillRecord.githubRepositoryId
+            : skill.repository === gitSkillRecord.repository
+        )
       );
       if (existingSkill?.skillDirectory) {
         throw new Error(`Skill ${existingSkill.skillDirectory} is already imported.`);
       }
 
-      const existingSkillName = existingSkills.find((skill) => skill.name === githubSkillRecord.name);
+      const existingSkillName = existingSkills.find((skill) => skill.name === gitSkillRecord.name);
       if (existingSkillName) {
         throw new Error(`Skill name ${existingSkillName.name} already exists.`);
       }
@@ -477,19 +692,29 @@ export class SkillGithubCatalog {
     return skillGroup.id;
   }
 
+  private toRepositoryPath(skillDirectory: string, relativePath: string): string {
+    if (skillDirectory === ".") {
+      return relativePath;
+    }
+
+    return `${skillDirectory}/${relativePath}`;
+  }
+
   private skillSelection() {
     return {
+      branchName: skills.branchName,
       companyId: skills.companyId,
       description: skills.description,
       fileList: skills.fileList,
-      githubBranchName: skills.githubBranchName,
-      githubTrackedCommitSha: skills.githubTrackedCommitSha,
+      githubRepositoryId: skills.githubRepositoryId,
       id: skills.id,
       instructions: skills.instructions,
       name: skills.name,
       repository: skills.repository,
       skillDirectory: skills.skillDirectory,
       skillGroupId: skills.skillGroupId,
+      sourceType: skills.sourceType,
+      trackedCommitSha: skills.trackedCommitSha,
     };
   }
 }

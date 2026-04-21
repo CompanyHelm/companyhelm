@@ -53,10 +53,10 @@ const skillDetailPageQueryNode = graphql`
         path
         url
       }
-      githubBranchName
-      githubBranchSkillFileUrl
-      githubTrackedCommitSha
-      githubTrackedCommitSkillFileUrl
+      branchName
+      branchSkillFileUrl
+      trackedCommitSha
+      trackedCommitSkillFileUrl
     }
     SkillGroups {
       id
@@ -83,10 +83,10 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
         path
         url
       }
-      githubBranchName
-      githubBranchSkillFileUrl
-      githubTrackedCommitSha
-      githubTrackedCommitSkillFileUrl
+      branchName
+      branchSkillFileUrl
+      trackedCommitSha
+      trackedCommitSkillFileUrl
     }
   }
 `;
@@ -379,8 +379,8 @@ function SkillDetailPageContent() {
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Tracking branch
                   </p>
-                  <SkillSourceValue href={skill.githubBranchSkillFileUrl}>
-                    {skill.githubBranchName ?? "—"}
+                  <SkillSourceValue href={skill.branchSkillFileUrl}>
+                    {skill.branchName ?? "—"}
                   </SkillSourceValue>
                 </div>
 
@@ -388,8 +388,8 @@ function SkillDetailPageContent() {
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Current tracked SHA
                   </p>
-                  <SkillSourceValue className="font-mono" href={skill.githubTrackedCommitSkillFileUrl}>
-                    {skill.githubTrackedCommitSha ?? "—"}
+                  <SkillSourceValue className="font-mono" href={skill.trackedCommitSkillFileUrl}>
+                    {skill.trackedCommitSha ?? "—"}
                   </SkillSourceValue>
                 </div>
 

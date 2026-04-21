@@ -7,22 +7,26 @@ import { AgentSkillsQueryResolver } from "../src/graphql/resolvers/agent_skills.
 test("AgentSkillsQueryResolver lists individual skills attached to one agent", async () => {
   const calls: Array<{ agentId: string; companyId: string }> = [];
   const resolver = new AgentSkillsQueryResolver({
-    async listAgentSkills(_transactionProvider, companyId: string, agentId: string) {
+    async listAgentSkills(_transactionProvider: unknown, companyId: string, agentId: string) {
       calls.push({
         agentId,
         companyId,
       });
 
       return [{
+        branchName: null,
         companyId,
         description: "Open pages and gather sources.",
         fileList: [],
+        githubRepositoryId: null,
         id: "skill-1",
         instructions: "Use the browser carefully.",
         name: "Browser research",
         repository: null,
         skillDirectory: null,
         skillGroupId: "group-1",
+        sourceType: "manual",
+        trackedCommitSha: null,
       }];
     },
   } as never);
@@ -57,22 +61,34 @@ test("AgentSkillsQueryResolver lists individual skills attached to one agent", a
     companyId: "company-123",
   }]);
   assert.deepEqual(result, [{
+    branchName: null,
+    branchSkillFileUrl: null,
     companyId: "company-123",
     description: "Open pages and gather sources.",
+    fileInventory: [],
     fileList: [],
+    githubRepositoryId: null,
     id: "skill-1",
     instructions: "Use the browser carefully.",
     name: "Browser research",
     repository: null,
+    repositoryUrl: null,
     skillDirectory: null,
+    skillDirectoryUrl: null,
     skillGroupId: "group-1",
+    skillType: "custom",
+    sourceType: "manual",
+    systemCommands: [],
+    systemKey: null,
+    trackedCommitSha: null,
+    trackedCommitSkillFileUrl: null,
   }]);
 });
 
 test("AgentSkillGroupsQueryResolver lists attached skill groups for one agent", async () => {
   const calls: Array<{ agentId: string; companyId: string }> = [];
   const resolver = new AgentSkillGroupsQueryResolver({
-    async listAgentSkillGroups(_transactionProvider, companyId: string, agentId: string) {
+    async listAgentSkillGroups(_transactionProvider: unknown, companyId: string, agentId: string) {
       calls.push({
         agentId,
         companyId,

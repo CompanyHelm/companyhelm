@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a1cd8cf901e4d3daa6d82d729fa11510>>
+ * @generated SignedSource<<2539a11644038aeb8467c84f896d1523>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,16 +15,14 @@ export type skillDetailPageQuery$variables = {
 };
 export type skillDetailPageQuery$data = {
   readonly Skill: {
+    readonly branchName: string | null | undefined;
+    readonly branchSkillFileUrl: string | null | undefined;
     readonly description: string;
     readonly fileInventory: ReadonlyArray<{
       readonly path: string;
       readonly url: string | null | undefined;
     }>;
     readonly fileList: ReadonlyArray<string>;
-    readonly githubBranchName: string | null | undefined;
-    readonly githubBranchSkillFileUrl: string | null | undefined;
-    readonly githubTrackedCommitSha: string | null | undefined;
-    readonly githubTrackedCommitSkillFileUrl: string | null | undefined;
     readonly id: string;
     readonly instructions: string;
     readonly name: string;
@@ -40,6 +38,8 @@ export type skillDetailPageQuery$data = {
       readonly inputSchema: any;
     }>;
     readonly systemKey: string | null | undefined;
+    readonly trackedCommitSha: string | null | undefined;
+    readonly trackedCommitSkillFileUrl: string | null | undefined;
   };
   readonly SkillGroups: ReadonlyArray<{
     readonly id: string;
@@ -210,28 +210,28 @@ v4 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubBranchName",
+        "name": "branchName",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubBranchSkillFileUrl",
+        "name": "branchSkillFileUrl",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubTrackedCommitSha",
+        "name": "trackedCommitSha",
         "storageKey": null
       },
       {
         "alias": null,
         "args": null,
         "kind": "ScalarField",
-        "name": "githubTrackedCommitSkillFileUrl",
+        "name": "trackedCommitSkillFileUrl",
         "storageKey": null
       }
     ],
@@ -269,16 +269,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "69a120317e3d1ce21cdf5e794ff9d301",
+    "cacheID": "4494a92e853a003d5bf2f68dfee5fddf",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageQuery",
     "operationKind": "query",
-    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    githubBranchName\n    githubBranchSkillFileUrl\n    githubTrackedCommitSha\n    githubTrackedCommitSkillFileUrl\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
+    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    branchName\n    branchSkillFileUrl\n    trackedCommitSha\n    trackedCommitSkillFileUrl\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4765efdc2af82ac1d3d51c378aeab1f9";
+(node as any).hash = "b241afe3782bd501f74c427417a1c7e8";
 
 export default node;
