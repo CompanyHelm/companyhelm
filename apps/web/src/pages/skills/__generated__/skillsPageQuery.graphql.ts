@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dd5bfbd029d1562419945e2915b17a04>>
+ * @generated SignedSource<<5ca529d9af21c954dd9628caf42d4628>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,6 @@ export type skillsPageQuery$data = {
     readonly defaultBranch: string | null | undefined;
     readonly fullName: string;
     readonly id: string;
-    readonly isPrivate: boolean;
     readonly name: string;
   }>;
   readonly SkillGroups: ReadonlyArray<{
@@ -82,13 +81,6 @@ v2 = [
         "args": null,
         "kind": "ScalarField",
         "name": "fullName",
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "kind": "ScalarField",
-        "name": "isPrivate",
         "storageKey": null
       },
       {
@@ -168,16 +160,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "a810c31db63aeded486b535d363a7708",
+    "cacheID": "552fd4286281e88a36119df83316b405",
     "id": null,
     "metadata": {},
     "name": "skillsPageQuery",
     "operationKind": "query",
-    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  GithubRepositories {\n    id\n    name\n    fullName\n    isPrivate\n    defaultBranch\n    archived\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    skillType\n    repository\n    fileList\n  }\n}\n"
+    "text": "query skillsPageQuery {\n  SkillGroups {\n    id\n    name\n  }\n  GithubRepositories {\n    id\n    name\n    fullName\n    defaultBranch\n    archived\n  }\n  Skills {\n    id\n    name\n    skillGroupId\n    skillType\n    repository\n    fileList\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "35a468fbfe3867daa5b231472bc0b101";
+(node as any).hash = "7f80a522a12bb03234212df980851738";
 
 export default node;

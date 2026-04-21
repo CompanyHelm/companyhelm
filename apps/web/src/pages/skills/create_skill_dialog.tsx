@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FolderPlusIcon, GithubIcon, LockKeyholeIcon, PencilRulerIcon } from "lucide-react";
+import { FolderPlusIcon, GithubIcon, PencilRulerIcon } from "lucide-react";
 import { fetchQuery, graphql, useRelayEnvironment } from "react-relay";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,7 +65,6 @@ export type CreateSkillDialogGithubRepositoryOption = {
   defaultBranch: string | null | undefined;
   fullName: string;
   id: string;
-  isPrivate: boolean;
   name: string;
 };
 
@@ -74,7 +73,7 @@ interface CreateSkillDialogProps {
   groups: CreateSkillDialogGroupOption[];
   isOpen: boolean;
   isSaving: boolean;
-  privateRepositories: CreateSkillDialogGithubRepositoryOption[];
+  installedRepositories: CreateSkillDialogGithubRepositoryOption[];
   onCreate(input: {
     description: string;
     instructions: string;
@@ -92,7 +91,7 @@ interface CreateSkillDialogProps {
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
 const GITHUB_BRANCH_DISCOVERY_DEBOUNCE_MS = 500;
 
-type CreateSkillDialogMode = "choose" | "github_private" | "github_public" | "manual";
+type CreateSkillDialogMode = "choose" | "github_installation" | "github_public" | "manual";
 type CreateSkillDialogGithubStep = "repository" | "skills";
 
 const createSkillDialogGithubSkillBranchesQueryNode = graphql`
@@ -128,7 +127,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   const [branchName, setGithubBranchName] = useState("");
   const [githubBranches, setGithubBranches] = useState<CreateSkillDialogGithubBranchOption[]>([]);
   const [githubDiscoveredSkills, setGithubDiscoveredSkills] = useState<CreateSkillDialogGithubImportRecord[]>([]);
-  const [githubPrivateRepositoryId, setGithubPrivateRepositoryId] = useState("");
+  const [githubInstalledRepositoryId, setGithubInstalledRepositoryId] = useState("");
   const [githubRepositoryUrl, setGithubRepositoryUrl] = useState("");
   const [isGithubBranchAutoSelected, setIsGithubBranchAutoSelected] = useState(false);
   const [githubSelectedSkillDirectories, setGithubSelectedSkillDirectories] = useState<string[]>([]);
@@ -159,7 +158,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       setGithubBranchName("");
       setGithubBranches([]);
       setGithubDiscoveredSkills([]);
-      setGithubPrivateRepositoryId("");
+      setGithubInstalledRepositoryId("");
       setGithubRepositoryUrl("");
       setIsGithubBranchAutoSelected(false);
       setGithubSelectedSkillDirectories([]);
@@ -179,12 +178,12 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   }, [props.isOpen]);
 
   const selectedGithubBranch = githubBranches.find((branch) => branch.name === branchName) ?? null;
-  const selectedPrivateRepository = props.privateRepositories.find((repository) =>
-    repository.id === githubPrivateRepositoryId
+  const selectedInstalledRepository = props.installedRepositories.find((repository) =>
+    repository.id === githubInstalledRepositoryId
   ) ?? null;
-  const activeGithubSource: CreateSkillDialogGitSource = mode === "github_private"
+  const activeGithubSource: CreateSkillDialogGitSource = mode === "github_installation"
     ? {
-        githubRepositoryId: selectedPrivateRepository?.id ?? null,
+        githubRepositoryId: selectedInstalledRepository?.id ?? null,
         repository: null,
         sourceType: "github_installation" as const,
       }
@@ -193,7 +192,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
         repository: githubRepositoryUrl.trim(),
         sourceType: "public_git" as const,
       };
-  const isGithubMode = mode === "github_private" || mode === "github_public";
+  const isGithubMode = mode === "github_installation" || mode === "github_public";
   const githubBranchTriggerLabel = selectedGithubBranch
     ? isGithubBranchAutoSelected
       ? `${selectedGithubBranch.name} (auto-selected)`
@@ -243,11 +242,11 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       : null;
   }, [githubRepositoryUrl]);
   const githubImportRepository = selectedGithubBranch?.repository
-    ?? selectedPrivateRepository?.fullName
+    ?? selectedInstalledRepository?.fullName
     ?? githubRepositoryUrlDiscoveryCandidate
     ?? githubRepositoryUrl.trim();
-  const hasGithubSource = mode === "github_private"
-    ? Boolean(selectedPrivateRepository)
+  const hasGithubSource = mode === "github_installation"
+    ? Boolean(selectedInstalledRepository)
     : Boolean(githubRepositoryUrl.trim());
   const isMutating = props.isSaving || isCreatingGroup;
 
@@ -384,7 +383,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
       || (source.sourceType === "github_installation" && !source.githubRepositoryId)
     ) {
       setLocalErrorMessage(source.sourceType === "github_installation"
-        ? "Select a private repository first."
+        ? "Select an installed repository first."
         : "Paste a public Git repository URL first.");
       setGithubBranchName("");
       setGithubBranches([]);
@@ -486,21 +485,21 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
   ]);
 
   useEffect(() => {
-    if (!props.isOpen || mode !== "github_private" || githubStep !== "repository" || !selectedPrivateRepository) {
+    if (!props.isOpen || mode !== "github_installation" || githubStep !== "repository" || !selectedInstalledRepository) {
       return;
     }
 
     void discoverGithubBranches({
-      githubRepositoryId: selectedPrivateRepository.id,
+      githubRepositoryId: selectedInstalledRepository.id,
       repository: null,
       sourceType: "github_installation",
     });
-  }, [discoverGithubBranches, githubStep, mode, props.isOpen, selectedPrivateRepository]);
+  }, [discoverGithubBranches, githubStep, mode, props.isOpen, selectedInstalledRepository]);
 
   async function discoverGithubSkills() {
     if (!hasGithubSource) {
-      setLocalErrorMessage(mode === "github_private"
-        ? "Select a private repository first."
+      setLocalErrorMessage(mode === "github_installation"
+        ? "Select an installed repository first."
         : "Paste a public Git repository URL first.");
       return;
     }
@@ -550,7 +549,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
           <DialogTitle>Create skill</DialogTitle>
           <DialogDescription>
             Add a reusable skill for your company, either by creating it manually now or by
-            importing a skill package from a public Git repository or installed private GitHub repository.
+            importing a skill package from a public Git repository or repository installed through GitHub.
           </DialogDescription>
         </DialogHeader>
 
@@ -598,7 +597,7 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                   "group flex min-h-52 flex-col rounded-2xl border border-border/70 bg-card/60 p-5 text-left transition hover:border-foreground/30 hover:bg-accent/20",
                 )}
                 onClick={() => {
-                  setMode("github_private");
+                  setMode("github_installation");
                   setGithubStep("repository");
                   resetGithubRepositorySelection(true);
                 }}
@@ -606,10 +605,10 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-11 items-center justify-center rounded-xl border border-border/60 bg-background/90">
-                    <LockKeyholeIcon className="size-5" />
+                    <GithubIcon className="size-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Import private repo</p>
+                    <p className="text-sm font-semibold text-foreground">Import installed repo</p>
                     <p className="text-xs text-muted-foreground">
                       Select an installed GitHub repository, then choose skills
                     </p>
@@ -620,14 +619,13 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                     Installed repositories
                   </p>
                   <p className="mt-3 text-sm text-foreground">
-                    Use repositories mirrored from a GitHub App installation without making the source
-                    package public.
+                    Use public or private repositories mirrored from a GitHub App installation.
                   </p>
                 </div>
                 <p className="mt-auto pt-5 text-xs text-muted-foreground">
-                  {props.privateRepositories.length > 0
-                    ? `${props.privateRepositories.length} private repos available.`
-                    : "Connect private repositories from the repositories page first."}
+                  {props.installedRepositories.length > 0
+                    ? `${props.installedRepositories.length} installed repos available.`
+                    : "Connect repositories from the repositories page first."}
                 </p>
               </button>
 
@@ -670,15 +668,11 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
               <div className="rounded-2xl border border-border/60 bg-card/50 p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex size-10 items-center justify-center rounded-xl border border-border/60 bg-background/80">
-                    {mode === "github_private" ? (
-                      <LockKeyholeIcon className="size-5" />
-                    ) : (
-                      <GithubIcon className="size-5" />
-                    )}
+                    <GithubIcon className="size-5" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">
-                      {mode === "github_private" ? "Private repository import" : "Public Git import"}
+                      {mode === "github_installation" ? "Installed repository import" : "Public Git import"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Step {githubStep === "repository" ? "1" : "2"} of 2
@@ -726,31 +720,31 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                     </div>
                   ) : null}
 
-                  {mode === "github_private" ? (
+                  {mode === "github_installation" ? (
                     <div className="grid gap-2">
-                      <label className="text-xs font-medium text-foreground" htmlFor="private-github-repository">
-                        Private repository
+                      <label className="text-xs font-medium text-foreground" htmlFor="installed-github-repository">
+                        Installed repository
                       </label>
                       <Select
-                        items={props.privateRepositories.map((repository) => ({
+                        items={props.installedRepositories.map((repository) => ({
                           label: repository.fullName,
                           value: repository.id,
                         }))}
                         onValueChange={(value) => {
                           resetGithubRepositorySelection(true);
-                          setGithubPrivateRepositoryId(typeof value === "string" ? value : "");
+                          setGithubInstalledRepositoryId(typeof value === "string" ? value : "");
                         }}
-                        value={githubPrivateRepositoryId || undefined}
+                        value={githubInstalledRepositoryId || undefined}
                       >
-                        <SelectTrigger id="private-github-repository">
+                        <SelectTrigger id="installed-github-repository">
                           <SelectValue
-                            placeholder={props.privateRepositories.length > 0
-                              ? "Select a private repository"
-                              : "No private repositories installed"}
+                            placeholder={props.installedRepositories.length > 0
+                              ? "Select an installed repository"
+                              : "No installed repositories available"}
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          {props.privateRepositories.map((repository) => (
+                          {props.installedRepositories.map((repository) => (
                             <SelectItem key={repository.id} value={repository.id}>
                               {repository.fullName}
                             </SelectItem>
@@ -787,8 +781,8 @@ export function CreateSkillDialog(props: CreateSkillDialogProps) {
                         ) : (
                           <SelectValue
                             placeholder={!hasGithubSource
-                              ? mode === "github_private"
-                                ? "Select a private repository first"
+                              ? mode === "github_installation"
+                                ? "Select an installed repository first"
                                 : "Paste a repository URL first"
                               : isLoadingGithubBranches
                               ? "Loading branches..."

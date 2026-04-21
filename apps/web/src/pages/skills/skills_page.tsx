@@ -38,7 +38,6 @@ const skillsPageQueryNode = graphql`
       id
       name
       fullName
-      isPrivate
       defaultBranch
       archived
     }
@@ -213,15 +212,14 @@ function SkillsPageContent() {
         name: group.name,
       }));
   }, [data.SkillGroups]);
-  const privateRepositories = useMemo<CreateSkillDialogGithubRepositoryOption[]>(() => {
+  const installedRepositories = useMemo<CreateSkillDialogGithubRepositoryOption[]>(() => {
     return [...data.GithubRepositories]
-      .filter((repository) => repository.isPrivate && !repository.archived)
+      .filter((repository) => !repository.archived)
       .sort((left, right) => left.fullName.localeCompare(right.fullName))
       .map((repository) => ({
         defaultBranch: repository.defaultBranch,
         fullName: repository.fullName,
         id: repository.id,
-        isPrivate: repository.isPrivate,
         name: repository.name,
       }));
   }, [data.GithubRepositories]);
@@ -414,7 +412,7 @@ function SkillsPageContent() {
         groups={groupOptions}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateSkillInFlight || isCreateSkillGroupInFlight || isImportGithubSkillsInFlight}
-        privateRepositories={privateRepositories}
+        installedRepositories={installedRepositories}
         onCreate={async (input) => {
           setErrorMessage(null);
 
