@@ -18,6 +18,31 @@ export type WorkflowStepDefinitionRecord = {
   workflowDefinitionId: string;
 };
 
+export type WorkflowOverlapPolicy = "skip";
+export type WorkflowRunSource = "manual" | "scheduled";
+export type WorkflowTriggerType = "cron";
+
+export type WorkflowTriggerInputValueRecord = {
+  id: string;
+  name: string;
+  value: string;
+};
+
+export type WorkflowCronTriggerRecord = {
+  agentId: string;
+  agentName: string;
+  createdAt: Date;
+  cronPattern: string;
+  enabled: boolean;
+  id: string;
+  inputValues: WorkflowTriggerInputValueRecord[];
+  overlapPolicy: WorkflowOverlapPolicy;
+  timezone: string;
+  type: WorkflowTriggerType;
+  updatedAt: Date;
+  workflowDefinitionId: string;
+};
+
 export type WorkflowRecord = {
   createdAt: Date;
   description: string | null;
@@ -27,6 +52,7 @@ export type WorkflowRecord = {
   isEnabled: boolean;
   name: string;
   steps: WorkflowStepDefinitionRecord[];
+  triggers: WorkflowCronTriggerRecord[];
   updatedAt: Date;
 };
 
@@ -89,9 +115,11 @@ export type WorkflowRunRecord = {
   id: string;
   instructions: string | null;
   sessionId: string;
+  source: WorkflowRunSource;
   startedAt: Date | null;
   status: WorkflowRunStatus;
   steps: WorkflowRunStepRecord[];
+  triggerId: string | null;
   updatedAt: Date;
   workflowDefinitionId: string | null;
 };
@@ -101,8 +129,45 @@ export type WorkflowRunCreateInput = {
   companyId: string;
   inputValues: WorkflowRunInputValue[];
   parentWorkflowRunId?: string | null;
+  source?: WorkflowRunSource | null;
   startedByAgentId?: string | null;
   startedBySessionId?: string | null;
   startedByUserId?: string | null;
+  triggerId?: string | null;
+  workflowDefinitionId: string;
+};
+
+export type WorkflowCronTriggerCreateInput = {
+  agentId: string;
+  companyId: string;
+  cronPattern: string;
+  enabled?: boolean | null;
+  inputValues: WorkflowRunInputValue[];
+  timezone: string;
+  workflowDefinitionId: string;
+};
+
+export type WorkflowCronTriggerUpdateInput = {
+  agentId?: string | null;
+  companyId: string;
+  cronPattern?: string | null;
+  enabled?: boolean | null;
+  inputValues?: WorkflowRunInputValue[] | null;
+  timezone?: string | null;
+  triggerId: string;
+};
+
+export type WorkflowCronTriggerScheduleRecord = {
+  agentId: string;
+  companyId: string;
+  cronPattern: string;
+  id: string;
+  timezone: string;
+  workflowDefinitionId: string;
+};
+
+export type WorkflowTriggerJobPayload = {
+  companyId: string;
+  triggerId: string;
   workflowDefinitionId: string;
 };

@@ -1,5 +1,6 @@
 import { injectable } from "inversify";
 import type {
+  WorkflowCronTriggerRecord,
   WorkflowDefinitionInputRecord,
   WorkflowRecord,
   WorkflowRunRecord,
@@ -25,6 +26,27 @@ export type GraphqlWorkflowStepRecord = {
   stepId: string;
 };
 
+export type GraphqlWorkflowTriggerInputValueRecord = {
+  id: string;
+  name: string;
+  value: string;
+};
+
+export type GraphqlWorkflowCronTriggerRecord = {
+  agentId: string;
+  agentName: string;
+  createdAt: string;
+  cronPattern: string;
+  enabled: boolean;
+  id: string;
+  inputValues: GraphqlWorkflowTriggerInputValueRecord[];
+  overlapPolicy: string;
+  timezone: string;
+  type: string;
+  updatedAt: string;
+  workflowDefinitionId: string;
+};
+
 export type GraphqlWorkflowRecord = {
   createdAt: string;
   description: string | null;
@@ -34,6 +56,7 @@ export type GraphqlWorkflowRecord = {
   isEnabled: boolean;
   name: string;
   steps: GraphqlWorkflowStepRecord[];
+  triggers: GraphqlWorkflowCronTriggerRecord[];
   updatedAt: string;
 };
 
@@ -53,9 +76,11 @@ export type GraphqlWorkflowRunRecord = {
   id: string;
   instructions: string | null;
   sessionId: string;
+  source: string;
   startedAt: string | null;
   status: string;
   steps: GraphqlWorkflowRunStepRecord[];
+  triggerId: string | null;
   updatedAt: string;
   workflowDefinitionId: string | null;
 };
@@ -77,7 +102,29 @@ export class WorkflowGraphqlPresenter {
       isEnabled: workflow.isEnabled,
       name: workflow.name,
       steps: workflow.steps.map((step) => this.serializeStep(step)),
+      triggers: workflow.triggers.map((trigger) => this.serializeCronTrigger(trigger)),
       updatedAt: workflow.updatedAt.toISOString(),
+    };
+  }
+
+  serializeCronTrigger(trigger: WorkflowCronTriggerRecord): GraphqlWorkflowCronTriggerRecord {
+    return {
+      agentId: trigger.agentId,
+      agentName: trigger.agentName,
+      createdAt: trigger.createdAt.toISOString(),
+      cronPattern: trigger.cronPattern,
+      enabled: trigger.enabled,
+      id: trigger.id,
+      inputValues: trigger.inputValues.map((inputValue) => ({
+        id: inputValue.id,
+        name: inputValue.name,
+        value: inputValue.value,
+      })),
+      overlapPolicy: trigger.overlapPolicy,
+      timezone: trigger.timezone,
+      type: trigger.type,
+      updatedAt: trigger.updatedAt.toISOString(),
+      workflowDefinitionId: trigger.workflowDefinitionId,
     };
   }
 
@@ -89,9 +136,11 @@ export class WorkflowGraphqlPresenter {
       id: run.id,
       instructions: run.instructions,
       sessionId: run.sessionId,
+      source: run.source,
       startedAt: run.startedAt?.toISOString() ?? null,
       status: run.status,
       steps: run.steps.map((step) => this.serializeRunStep(step)),
+      triggerId: run.triggerId,
       updatedAt: run.updatedAt.toISOString(),
       workflowDefinitionId: run.workflowDefinitionId,
     };
