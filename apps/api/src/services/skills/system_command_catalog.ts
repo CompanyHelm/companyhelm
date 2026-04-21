@@ -291,6 +291,82 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_agents",
   }, {
+    description: "List the direct skill and skill-group defaults attached to one company agent.",
+    id: "agent.skills.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+      },
+      required: ["agentId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_agents",
+  }, {
+    description: "Attach one direct skill default to a company agent.",
+    id: "agent.skill.attach",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+        skillId: { type: "string" },
+      },
+      required: ["agentId", "skillId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_agents",
+  }, {
+    description: "Detach one direct skill default from a company agent.",
+    id: "agent.skill.detach",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+        skillId: { type: "string" },
+      },
+      required: ["agentId", "skillId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_agents",
+  }, {
+    description: "Attach one skill-group default to a company agent.",
+    id: "agent.skill_group.attach",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+        skillGroupId: { type: "string" },
+      },
+      required: ["agentId", "skillGroupId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_agents",
+  }, {
+    description: "Detach one skill-group default from a company agent.",
+    id: "agent.skill_group.detach",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+        skillGroupId: { type: "string" },
+      },
+      required: ["agentId", "skillGroupId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_agents",
+  }, {
+    description: "List the MCP server defaults attached to one company agent.",
+    id: "agent.mcps.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+      },
+      required: ["agentId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_agents",
+  }, {
     description: "List artifacts for the current company, one task, or this session.",
     id: "artifact.list",
     inputSchema: {

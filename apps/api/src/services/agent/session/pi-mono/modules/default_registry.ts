@@ -68,6 +68,7 @@ export class DefaultAgentSessionModuleRegistry {
       new SystemCommandsSessionModule({
         artifactService: new ArtifactService(),
         computeProviderDefinitionService: input.computeProviderDefinitionService,
+        mcpService: input.mcpService,
         modelProviderService: input.modelProviderService,
         modelRegistry: input.modelRegistry,
         secretService: input.secretService,

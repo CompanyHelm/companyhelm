@@ -181,6 +181,211 @@ test("SystemCommandService executes skill-management commands when manage_skills
   }]);
 });
 
+test("SystemCommandService executes agent default skill and MCP commands when manage_agents is active", async () => {
+  const calls: string[] = [];
+  const service = new SystemCommandService({
+    mcpService: {
+      async listAgentMcpServers(_transactionProvider: unknown, companyId: string, agentId: string) {
+        calls.push("mcp-list");
+        assert.equal(companyId, "company-123");
+        assert.equal(agentId, "agent-2");
+        return [{
+          authType: "none",
+          callTimeoutMs: 10_000,
+          companyId,
+          createdAt: new Date("2026-04-20T12:00:00.000Z"),
+          description: "Docs tools",
+          enabled: true,
+          headers: {},
+          id: "mcp-1",
+          name: "Docs MCP",
+          oauthClientId: null,
+          oauthConnectionStatus: null,
+          oauthGrantedScopes: [],
+          oauthLastError: null,
+          oauthRequestedScopes: [],
+          updatedAt: new Date("2026-04-20T12:30:00.000Z"),
+          url: "https://mcp.example.com",
+        }];
+      },
+    } as never,
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    skillService: {
+      async listAgentSkillGroups(_transactionProvider: unknown, companyId: string, agentId: string) {
+        calls.push("skill-groups-list");
+        assert.equal(companyId, "company-123");
+        assert.equal(agentId, "agent-2");
+        return [{
+          companyId,
+          id: "group-1",
+          name: "Research",
+        }];
+      },
+      async listAgentSkills(_transactionProvider: unknown, companyId: string, agentId: string) {
+        calls.push("skills-list");
+        assert.equal(companyId, "company-123");
+        assert.equal(agentId, "agent-2");
+        return [{
+          companyId,
+          description: "Research guidance",
+          fileList: [],
+          githubBranchName: null,
+          githubTrackedCommitSha: null,
+          id: "skill-1",
+          instructions: "Read context first.",
+          name: "Research",
+          repository: null,
+          skillDirectory: null,
+          skillGroupId: "group-1",
+          skillType: "custom",
+          systemCommands: [],
+          systemKey: null,
+        }];
+      },
+      async attachSkillToAgent(_transactionProvider: unknown, input: {
+        agentId: string;
+        companyId: string;
+        skillId: string;
+        userId: string | null;
+      }) {
+        calls.push("skill-attach");
+        assert.deepEqual(input, {
+          agentId: "agent-2",
+          companyId: "company-123",
+          skillId: "skill-1",
+          userId: null,
+        });
+        return {
+          companyId: input.companyId,
+          description: "Research guidance",
+          fileList: [],
+          githubBranchName: null,
+          githubTrackedCommitSha: null,
+          id: input.skillId,
+          instructions: "Read context first.",
+          name: "Research",
+          repository: null,
+          skillDirectory: null,
+          skillGroupId: "group-1",
+          skillType: "custom",
+          systemCommands: [],
+          systemKey: null,
+        };
+      },
+      async detachSkillFromAgent(
+        _transactionProvider: unknown,
+        companyId: string,
+        agentId: string,
+        skillId: string,
+      ) {
+        calls.push("skill-detach");
+        assert.equal(companyId, "company-123");
+        assert.equal(agentId, "agent-2");
+        assert.equal(skillId, "skill-1");
+        return {
+          companyId,
+          description: "Research guidance",
+          fileList: [],
+          githubBranchName: null,
+          githubTrackedCommitSha: null,
+          id: skillId,
+          instructions: "Read context first.",
+          name: "Research",
+          repository: null,
+          skillDirectory: null,
+          skillGroupId: "group-1",
+          skillType: "custom",
+          systemCommands: [],
+          systemKey: null,
+        };
+      },
+      async attachSkillGroupToAgent(_transactionProvider: unknown, input: {
+        agentId: string;
+        companyId: string;
+        skillGroupId: string;
+        userId: string | null;
+      }) {
+        calls.push("skill-group-attach");
+        assert.deepEqual(input, {
+          agentId: "agent-2",
+          companyId: "company-123",
+          skillGroupId: "group-1",
+          userId: null,
+        });
+        return {
+          companyId: input.companyId,
+          id: input.skillGroupId,
+          name: "Research",
+        };
+      },
+      async detachSkillGroupFromAgent(
+        _transactionProvider: unknown,
+        companyId: string,
+        agentId: string,
+        skillGroupId: string,
+      ) {
+        calls.push("skill-group-detach");
+        assert.equal(companyId, "company-123");
+        assert.equal(agentId, "agent-2");
+        assert.equal(skillGroupId, "group-1");
+        return {
+          companyId,
+          id: skillGroupId,
+          name: "Research",
+        };
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+  const context = {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  };
+
+  const skillList = await service.executeCommand("agent.skills.list", {
+    agentId: "agent-2",
+  }, context);
+  const attachedSkill = await service.executeCommand("agent.skill.attach", {
+    agentId: "agent-2",
+    skillId: "skill-1",
+  }, context);
+  await service.executeCommand("agent.skill.detach", {
+    agentId: "agent-2",
+    skillId: "skill-1",
+  }, context);
+  await service.executeCommand("agent.skill_group.attach", {
+    agentId: "agent-2",
+    skillGroupId: "group-1",
+  }, context);
+  await service.executeCommand("agent.skill_group.detach", {
+    agentId: "agent-2",
+    skillGroupId: "group-1",
+  }, context);
+  const mcpList = await service.executeCommand("agent.mcps.list", {
+    agentId: "agent-2",
+  }, context);
+
+  assert.equal((attachedSkill.skill as Record<string, unknown>).id, "skill-1");
+  assert.equal((skillList.skillGroups as Array<Record<string, unknown>>)[0]?.id, "group-1");
+  assert.equal((skillList.skills as Array<Record<string, unknown>>)[0]?.id, "skill-1");
+  assert.equal((mcpList.mcpServers as Array<Record<string, unknown>>)[0]?.id, "mcp-1");
+  assert.deepEqual(calls, [
+    "skill-groups-list",
+    "skills-list",
+    "skill-attach",
+    "skill-detach",
+    "skill-group-attach",
+    "skill-group-detach",
+    "mcp-list",
+  ]);
+});
+
 test("SystemCommandService exposes workflow listing through manage_workflows commands", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {

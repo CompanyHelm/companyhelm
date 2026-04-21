@@ -4,6 +4,7 @@ import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../../ai_providers/model_provider_service.ts";
 import { ComputeProviderDefinitionService } from "../../../../compute_provider_definitions/service.ts";
 import { AgentEnvironmentTemplateService } from "../../../../environments/template_service.ts";
+import { McpService } from "../../../../mcp/service.ts";
 import { SecretService } from "../../../../secrets/service.ts";
 import { WorkflowService } from "../../../../workflows/service.ts";
 import type { AgentToolProviderInterface } from "../tools/provider_interface.ts";
@@ -14,6 +15,7 @@ import { AgentSessionModuleInterface } from "./module_interface.ts";
 type SystemCommandsSessionModuleInput = {
   artifactService: ArtifactService;
   computeProviderDefinitionService: ComputeProviderDefinitionService;
+  mcpService: McpService;
   modelProviderService: ModelProviderService;
   modelRegistry: ModelRegistry;
   secretService: SecretService;
@@ -28,6 +30,7 @@ type SystemCommandsSessionModuleInput = {
 export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
   private readonly artifactService: ArtifactService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly mcpService: McpService;
   private readonly modelProviderService: ModelProviderService;
   private readonly modelRegistry: ModelRegistry;
   private readonly secretService: SecretService;
@@ -38,6 +41,7 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
     super();
     this.artifactService = input.artifactService;
     this.computeProviderDefinitionService = input.computeProviderDefinitionService;
+    this.mcpService = input.mcpService;
     this.modelProviderService = input.modelProviderService;
     this.modelRegistry = input.modelRegistry;
     this.secretService = input.secretService;
@@ -60,6 +64,7 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
         new SystemCommandService({
           artifactService: this.artifactService,
           computeProviderDefinitionService: this.computeProviderDefinitionService,
+          mcpService: this.mcpService,
           modelProviderService: this.modelProviderService,
           modelRegistry: this.modelRegistry,
           secretService: this.secretService,
