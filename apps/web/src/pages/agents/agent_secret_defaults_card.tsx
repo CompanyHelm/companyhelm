@@ -8,12 +8,14 @@ import type { agentSecretDefaultsCardAttachSecretToAgentMutation } from "./__gen
 import type { agentSecretDefaultsCardDetachSecretGroupFromAgentMutation } from "./__generated__/agentSecretDefaultsCardDetachSecretGroupFromAgentMutation.graphql";
 import type { agentSecretDefaultsCardDetachSecretFromAgentMutation } from "./__generated__/agentSecretDefaultsCardDetachSecretFromAgentMutation.graphql";
 import { DefaultAttachmentSection } from "./default_attachment_section";
+import { SecretDefaultOptions } from "./secret_default_options";
 
 type AgentSecretRecord = {
   description: string | null;
   envVarName: string;
   id: string;
   name: string;
+  secretGroupId?: string | null;
 };
 
 type AgentSecretGroupRecord = {
@@ -153,6 +155,7 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
     agentSecretDefaultsCardDetachSecretFromAgentMutationNode,
   );
   const toast = useToast();
+  const secretDefaultOptions = useMemo(() => new SecretDefaultOptions(), []);
 
   const attachedSecretGroupIds = useMemo(() => {
     return new Set(props.agentSecretGroups.map((group) => group.id));
@@ -169,14 +172,14 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
       }));
   }, [attachedSecretGroupIds, props.companySecretGroups]);
   const availableSecretOptions = useMemo(() => {
-    return props.companySecrets
-      .filter((secret) => !attachedSecretIds.has(secret.id))
+    return secretDefaultOptions
+      .filterAvailableSecrets(props.companySecrets, attachedSecretIds, attachedSecretGroupIds)
       .map((secret) => ({
         description: secret.description,
         id: secret.id,
         label: `${secret.name} (${secret.envVarName})`,
       }));
-  }, [attachedSecretIds, props.companySecrets]);
+  }, [attachedSecretGroupIds, attachedSecretIds, props.companySecrets, secretDefaultOptions]);
   const fieldArguments = useMemo(() => ({
     agentId: props.agentId,
   }), [props.agentId]);
@@ -374,7 +377,7 @@ export function AgentSecretDefaultsCard(props: AgentSecretDefaultsCardProps) {
 
         <DefaultAttachmentSection
           addLabel="Add default secret"
-          availableEmptyLabel="All company secrets already added"
+          availableEmptyLabel="All company secrets already added or included by groups"
           availableOptions={availableSecretOptions}
           busyItemId={busySecretId}
           currentLabel="Attached individual secrets"

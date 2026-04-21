@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DefaultAttachmentSection } from "./default_attachment_section";
+import { SecretDefaultOptions } from "./secret_default_options";
 
 export type AgentCreateProviderOption = {
   id: string;
@@ -44,6 +45,7 @@ export type AgentCreateSecretOption = {
   envVarName: string;
   id: string;
   name: string;
+  secretGroupId: string | null | undefined;
 };
 
 export type AgentCreateSecretGroupOption = {
@@ -136,6 +138,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [selectedSkillGroupIds, setSelectedSkillGroupIds] = useState<string[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
   const [selectedMcpServerIds, setSelectedMcpServerIds] = useState<string[]>([]);
+  const secretDefaultOptions = useMemo(() => new SecretDefaultOptions(), []);
   const selectedProviderOption = useMemo(() => {
     return props.providerOptions.find((providerOption) => providerOption.id === providerOptionId);
   }, [props.providerOptions, providerOptionId]);
@@ -360,15 +363,16 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   }, [props.secretGroupOptions, selectedSecretGroupIds]);
   const availableSecretOptions = useMemo(() => {
     const attachedSecretIds = new Set(selectedSecretIds);
-    return props.secretOptions
-      .filter((secretOption) => !attachedSecretIds.has(secretOption.id))
+    const attachedSecretGroupIds = new Set(selectedSecretGroupIds);
+    return secretDefaultOptions
+      .filterAvailableSecrets(props.secretOptions, attachedSecretIds, attachedSecretGroupIds)
       .map((secretOption) => ({
         description: secretOption.description,
         id: secretOption.id,
         label: `${secretOption.name} (${secretOption.envVarName})`,
         metaLabel: secretOption.envVarName,
       }));
-  }, [props.secretOptions, selectedSecretIds]);
+  }, [props.secretOptions, secretDefaultOptions, selectedSecretGroupIds, selectedSecretIds]);
   const selectedSkillGroupOptions = useMemo(() => {
     return props.skillGroupOptions
       .filter((skillGroupOption) => selectedSkillGroupIds.includes(skillGroupOption.id))
@@ -694,7 +698,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
 
                 <DefaultAttachmentSection
                   addLabel="Add default secret"
-                  availableEmptyLabel="All company secrets already added"
+                  availableEmptyLabel="All company secrets already added or included by groups"
                   availableOptions={availableSecretOptions}
                   currentLabel="Current default secrets"
                   emptyStateLabel="No default secrets selected yet."

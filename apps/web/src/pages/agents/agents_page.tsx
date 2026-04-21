@@ -54,6 +54,7 @@ const agentsPageQueryNode = graphql`
       name
       description
       envVarName
+      secretGroupId
     }
     SecretGroups {
       id
@@ -196,6 +197,7 @@ function AgentsPageContent() {
     envVarName: secret.envVarName,
     id: secret.id,
     name: secret.name,
+    secretGroupId: secret.secretGroupId,
   }));
   const secretGroupOptions: AgentCreateSecretGroupOption[] = data.SecretGroups.map((secretGroup) => ({
     id: secretGroup.id,
