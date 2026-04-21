@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5014fdd6f884f6dedacce093a4ff6160>>
+ * @generated SignedSource<<6afb98a6075454d000635a48e5fe61a9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,8 @@ export type skillDetailPageUpdateSkillMutation$data = {
   readonly UpdateSkill: {
     readonly description: string;
     readonly fileList: ReadonlyArray<string>;
+    readonly githubBranchName: string | null | undefined;
+    readonly githubTrackedCommitSha: string | null | undefined;
     readonly id: string;
     readonly instructions: string;
     readonly name: string;
@@ -123,6 +125,20 @@ v1 = [
         "kind": "ScalarField",
         "name": "fileList",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "githubBranchName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "githubTrackedCommitSha",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -146,16 +162,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "ed1d68e4fa9cb753f720d8a4c517e870",
+    "cacheID": "14813f4a76e82b045660b6a620c05330",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageUpdateSkillMutation",
     "operationKind": "mutation",
-    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    skillDirectory\n    fileList\n  }\n}\n"
+    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    skillDirectory\n    fileList\n    githubBranchName\n    githubTrackedCommitSha\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "575c1c5ea734ea43ad27048a500f9e48";
+(node as any).hash = "21c6051cc1b4dec605faa3c388e848bc";
 
 export default node;

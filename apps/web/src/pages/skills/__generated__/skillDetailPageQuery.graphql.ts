@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<79e22d88f7c5fd467a540d8b704e4914>>
+ * @generated SignedSource<<ca40e7c32f788613b5f7933afb44b131>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,8 @@ export type skillDetailPageQuery$data = {
   readonly Skill: {
     readonly description: string;
     readonly fileList: ReadonlyArray<string>;
+    readonly githubBranchName: string | null | undefined;
+    readonly githubTrackedCommitSha: string | null | undefined;
     readonly id: string;
     readonly instructions: string;
     readonly name: string;
@@ -156,6 +158,20 @@ v4 = [
         "kind": "ScalarField",
         "name": "fileList",
         "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "githubBranchName",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "githubTrackedCommitSha",
+        "storageKey": null
       }
     ],
     "storageKey": null
@@ -192,16 +208,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "404dadfa0ad94759e504008c3ecb384f",
+    "cacheID": "f5757a4462b57dcc52332ded1f25e7d6",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageQuery",
     "operationKind": "query",
-    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    skillDirectory\n    fileList\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
+    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    skillDirectory\n    fileList\n    githubBranchName\n    githubTrackedCommitSha\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "6bed55a1973de993e759c4aadaf1e659";
+(node as any).hash = "b4a4696d6a49c6e6088cd91e5d28361a";
 
 export default node;

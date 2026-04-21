@@ -1,16 +1,32 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { GithubIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { PageTabs } from "@/components/ui/page_tabs";
+import { OrganizationPath } from "@/lib/organization_path";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { skillDetailPageQuery } from "./__generated__/skillDetailPageQuery.graphql";
 import type { skillDetailPageUpdateSkillMutation } from "./__generated__/skillDetailPageUpdateSkillMutation.graphql";
 
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
 const SYSTEM_SKILL_GROUP_ID = "system";
+
+type SkillDetailPageTab = "overview" | "source";
+
+const skillDetailPageTabs: Array<{ key: SkillDetailPageTab; label: string }> = [
+  {
+    key: "overview",
+    label: "Overview",
+  },
+  {
+    key: "source",
+    label: "Source",
+  },
+];
 
 const skillDetailPageQueryNode = graphql`
   query skillDetailPageQuery($skillId: ID!) {
@@ -30,6 +46,8 @@ const skillDetailPageQueryNode = graphql`
       repository
       skillDirectory
       fileList
+      githubBranchName
+      githubTrackedCommitSha
     }
     SkillGroups {
       id
@@ -50,6 +68,8 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
       repository
       skillDirectory
       fileList
+      githubBranchName
+      githubTrackedCommitSha
     }
   }
 `;
@@ -76,7 +96,10 @@ function SkillDetailPageFallback() {
  */
 function SkillDetailPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const organizationSlug = useCurrentOrganizationSlug();
   const { skillId } = useParams({ strict: false }) as { skillId?: string };
+  const search = useSearch({ strict: false }) as { tab?: SkillDetailPageTab };
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedSkillId = String(skillId || "").trim();
   if (!normalizedSkillId) {
@@ -109,7 +132,9 @@ function SkillDetailPageContent() {
   }, [data.SkillGroups]);
   const activeSkillGroupName = data.SkillGroups.find((group) => group.id === skill.skillGroupId)?.name ?? "Ungrouped";
   const isSystemSkill = skill.skillType === "system";
-  const sourceLabel = isSystemSkill ? "Built-in" : skill.repository ? "GitHub" : "Manual";
+  const isGithubSkill = Boolean(skill.repository);
+  const selectedTab: SkillDetailPageTab = search.tab === "source" ? "source" : "overview";
+  const sourceLabel = isSystemSkill ? "System skill" : isGithubSkill ? "GitHub" : "Manual";
 
   useEffect(() => {
     setDetailLabel(skill.name);
@@ -157,156 +182,203 @@ function SkillDetailPageContent() {
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardDescription>
-            Keep the skill instructions current, move the skill between groups, and inspect its
-            source metadata.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {errorMessage ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              {errorMessage}
-            </div>
-          ) : null}
+      <PageTabs
+        items={skillDetailPageTabs}
+        onSelect={(tab) => {
+          void navigate({
+            params: {
+              organizationSlug,
+              skillId: skill.id,
+            },
+            search: {
+              tab,
+            },
+            to: OrganizationPath.route("/skills/$skillId"),
+          });
+        }}
+        selectedKey={selectedTab}
+      />
 
-          <EditableField
-            emptyValueLabel="No name"
-            fieldType="text"
-            label="Name"
-            onSave={async (value) => {
-              await updateSkill({
-                name: value,
-              });
-            }}
-            readOnly={isSystemSkill}
-            value={skill.name}
-          />
-          <EditableField
-            emptyValueLabel="No group"
-            fieldType="select"
-            label="Group"
-            onSave={async (value) => {
-              await updateSkill({
-                skillGroupId: value === UNGROUPED_SKILL_GROUP_VALUE ? null : value,
-              });
-            }}
-            options={skillGroupOptions}
-            readOnly={isSystemSkill}
-            value={skill.skillGroupId ?? UNGROUPED_SKILL_GROUP_VALUE}
-            displayValue={activeSkillGroupName}
-          />
-          <EditableField
-            emptyValueLabel="No description"
-            fieldType="textarea"
-            label="Description"
-            onSave={async (value) => {
-              await updateSkill({
-                description: value,
-              });
-            }}
-            readOnly={isSystemSkill}
-            value={skill.description}
-          />
-          <EditableField
-            emptyValueLabel="No instructions"
-            fieldType="textarea"
-            label="Instructions"
-            onSave={async (value) => {
-              await updateSkill({
-                instructions: value,
-              });
-            }}
-            readOnlyFormat="markdown"
-            readOnly={isSystemSkill}
-            value={skill.instructions}
-          />
-        </CardContent>
-      </Card>
+      {selectedTab === "overview" ? (
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <CardDescription>
+              Keep the skill instructions current and move the skill between groups.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {errorMessage ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {errorMessage}
+              </div>
+            ) : null}
 
-      <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
-        <CardHeader>
-          <CardDescription>Source metadata for this skill.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Source
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              {skill.repository ? <GithubIcon className="size-4 text-foreground" /> : null}
-              <p className="text-sm font-semibold text-foreground">{sourceLabel}</p>
-            </div>
-          </div>
-
-          {isSystemSkill ? (
+            <EditableField
+              emptyValueLabel="No name"
+              fieldType="text"
+              label="Name"
+              onSave={async (value) => {
+                await updateSkill({
+                  name: value,
+                });
+              }}
+              readOnly={isSystemSkill}
+              value={skill.name}
+            />
+            <EditableField
+              emptyValueLabel="No group"
+              fieldType="select"
+              label="Group"
+              onSave={async (value) => {
+                await updateSkill({
+                  skillGroupId: value === UNGROUPED_SKILL_GROUP_VALUE ? null : value,
+                });
+              }}
+              options={skillGroupOptions}
+              readOnly={isSystemSkill}
+              value={skill.skillGroupId ?? UNGROUPED_SKILL_GROUP_VALUE}
+              displayValue={activeSkillGroupName}
+            />
+            <EditableField
+              emptyValueLabel="No description"
+              fieldType="textarea"
+              label="Description"
+              onSave={async (value) => {
+                await updateSkill({
+                  description: value,
+                });
+              }}
+              readOnly={isSystemSkill}
+              value={skill.description}
+            />
+            <EditableField
+              emptyValueLabel="No instructions"
+              fieldType="textarea"
+              label="Instructions"
+              onSave={async (value) => {
+                await updateSkill({
+                  instructions: value,
+                });
+              }}
+              readOnlyFormat="markdown"
+              readOnly={isSystemSkill}
+              value={skill.instructions}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <CardDescription>Source metadata for this skill.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-border/60 bg-card/50 p-4">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                System key
+                Source
               </p>
-              <p className="mt-3 text-sm text-foreground">{skill.systemKey ?? "—"}</p>
+              <div className="mt-3 flex items-center gap-2">
+                {isGithubSkill ? <GithubIcon className="size-4 text-foreground" /> : null}
+                <p className="text-sm font-semibold text-foreground">{sourceLabel}</p>
+              </div>
             </div>
-          ) : null}
 
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Files
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              <Badge variant="outline">{skill.fileList.length}</Badge>
-              <p className="text-sm text-foreground">Tracked files</p>
-            </div>
-          </div>
+            {isSystemSkill ? (
+              <>
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    System key
+                  </p>
+                  <p className="mt-3 text-sm text-foreground">{skill.systemKey ?? "—"}</p>
+                </div>
 
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Repository
-            </p>
-            <p className="mt-3 text-sm text-foreground">{skill.repository ?? "—"}</p>
-          </div>
-
-          <div className="rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              Skill directory
-            </p>
-            <p className="mt-3 text-sm text-foreground">{skill.skillDirectory ?? "—"}</p>
-          </div>
-
-          {isSystemSkill ? (
-            <div className="sm:col-span-2 rounded-xl border border-border/60 bg-card/50 p-4">
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                System commands
-              </p>
-              <div className="mt-3 grid gap-3">
-                {skill.systemCommands.map((command) => (
-                  <div key={command.id} className="rounded-lg border border-border/50 bg-background/40 p-3">
-                    <p className="text-sm font-semibold text-foreground">{command.id}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{command.description}</p>
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:col-span-2">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    System commands
+                  </p>
+                  <div className="mt-3 grid gap-3">
+                    {skill.systemCommands.map((command) => (
+                      <div key={command.id} className="rounded-lg border border-border/50 bg-background/40 p-3">
+                        <p className="text-sm font-semibold text-foreground">{command.id}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{command.description}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+                </div>
+              </>
+            ) : null}
 
-          <div className="sm:col-span-2 rounded-xl border border-border/60 bg-card/50 p-4">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              File inventory
-            </p>
-            {skill.fileList.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">No tracked files on this skill yet.</p>
-            ) : (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {skill.fileList.map((filePath) => (
-                  <Badge key={filePath} variant="secondary">
-                    {filePath}
-                  </Badge>
-                ))}
+            {!isSystemSkill && !isGithubSkill ? (
+              <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Storage
+                </p>
+                <p className="mt-3 text-sm text-foreground">Web-managed instructions</p>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            ) : null}
+
+            {isGithubSkill ? (
+              <>
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Repository
+                  </p>
+                  <p className="mt-3 break-all text-sm text-foreground">{skill.repository ?? "—"}</p>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Tracking branch
+                  </p>
+                  <p className="mt-3 text-sm text-foreground">{skill.githubBranchName ?? "—"}</p>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Current tracked SHA
+                  </p>
+                  <p className="mt-3 break-all font-mono text-sm text-foreground">
+                    {skill.githubTrackedCommitSha ?? "—"}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Skill directory in repo
+                  </p>
+                  <p className="mt-3 break-all text-sm text-foreground">{skill.skillDirectory ?? "—"}</p>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Files
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Badge variant="outline">{skill.fileList.length}</Badge>
+                    <p className="text-sm text-foreground">Tracked files</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4 sm:col-span-2">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    File inventory
+                  </p>
+                  {skill.fileList.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">No tracked files on this skill yet.</p>
+                  ) : (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {skill.fileList.map((filePath) => (
+                        <Badge key={filePath} variant="secondary">
+                          {filePath}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

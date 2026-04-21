@@ -71,6 +71,10 @@ type WorkflowDetailRouteSearch = {
   tab?: "overview" | "runs";
 };
 
+type SkillDetailRouteSearch = {
+  tab?: "overview" | "source";
+};
+
 type ConversationsRouteSearch = {
   conversationId?: string;
 };
@@ -131,6 +135,14 @@ function validateAgentDetailRouteSearch(search: Record<string, unknown>): AgentD
 function validateWorkflowDetailRouteSearch(search: Record<string, unknown>): WorkflowDetailRouteSearch {
   return {
     tab: search.tab === "overview" || search.tab === "runs"
+      ? search.tab
+      : undefined,
+  };
+}
+
+function validateSkillDetailRouteSearch(search: Record<string, unknown>): SkillDetailRouteSearch {
+  return {
+    tab: search.tab === "overview" || search.tab === "source"
       ? search.tab
       : undefined,
   };
@@ -390,6 +402,7 @@ const modelProviderCredentialDetailRoute = createRoute({
 const skillDetailRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/skills/$skillId"),
+  validateSearch: validateSkillDetailRouteSearch,
   component: SkillDetailPage,
 });
 
