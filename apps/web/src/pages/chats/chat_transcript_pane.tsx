@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import type { MutableRefObject, UIEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -31,11 +31,13 @@ import {
   sanitizeCommandOutput,
 } from "./chats_page_helpers";
 
-function AssistantTranscriptMessage({ text }: { text: string }) {
+const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ text }: { text: string }) {
   return <MarkdownContent content={text} />;
-}
+});
 
-function ToolTranscriptMessage(
+AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
+
+const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
 ) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -218,9 +220,11 @@ function ToolTranscriptMessage(
       ) : null}
     </div>
   );
-}
+});
 
-function TranscriptMessageRow({
+ToolTranscriptMessage.displayName = "ToolTranscriptMessage";
+
+const TranscriptMessageRow = memo(function TranscriptMessageRow({
   assistantContentMode,
   message,
   toolCallSummary,
@@ -296,9 +300,11 @@ function TranscriptMessageRow({
       </div>
     </div>
   );
-}
+});
 
-function TranscriptTurnSummaryRow({
+TranscriptMessageRow.displayName = "TranscriptMessageRow";
+
+const TranscriptTurnSummaryRow = memo(function TranscriptTurnSummaryRow({
   durationLabel,
   hasHiddenMessages,
   isExpanded,
@@ -328,9 +334,11 @@ function TranscriptTurnSummaryRow({
       )}
     </div>
   );
-}
+});
 
-function ForkedSessionBanner({
+TranscriptTurnSummaryRow.displayName = "TranscriptTurnSummaryRow";
+
+const ForkedSessionBanner = memo(function ForkedSessionBanner({
   session,
   organizationSlug,
 }: {
@@ -377,19 +385,11 @@ function ForkedSessionBanner({
       </div>
     </div>
   );
-}
+});
 
-export function ChatTranscriptPane({
-  isTranscriptStuckToBottom,
-  isLoadingOlderMessages,
-  isLoadingTranscript,
-  organizationSlug,
-  onJumpToLatest,
-  onScroll,
-  session,
-  sessionMessages,
-  transcriptScrollRef,
-}: {
+ForkedSessionBanner.displayName = "ForkedSessionBanner";
+
+type ChatTranscriptPaneProps = {
   isTranscriptStuckToBottom: boolean;
   isLoadingOlderMessages: boolean;
   isLoadingTranscript: boolean;
@@ -399,7 +399,35 @@ export function ChatTranscriptPane({
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
   transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
-}) {
+};
+
+/**
+ * The transcript can contain large markdown trees, so keeping it memoized prevents composer draft
+ * keystrokes from remounting historical assistant output when none of the transcript inputs changed.
+ */
+export function areChatTranscriptPanePropsEqual(previousProps: ChatTranscriptPaneProps, nextProps: ChatTranscriptPaneProps) {
+  return previousProps.isTranscriptStuckToBottom === nextProps.isTranscriptStuckToBottom
+    && previousProps.isLoadingOlderMessages === nextProps.isLoadingOlderMessages
+    && previousProps.isLoadingTranscript === nextProps.isLoadingTranscript
+    && previousProps.organizationSlug === nextProps.organizationSlug
+    && previousProps.onJumpToLatest === nextProps.onJumpToLatest
+    && previousProps.onScroll === nextProps.onScroll
+    && previousProps.session === nextProps.session
+    && previousProps.sessionMessages === nextProps.sessionMessages
+    && previousProps.transcriptScrollRef === nextProps.transcriptScrollRef;
+}
+
+function ChatTranscriptPaneComponent({
+  isTranscriptStuckToBottom,
+  isLoadingOlderMessages,
+  isLoadingTranscript,
+  organizationSlug,
+  onJumpToLatest,
+  onScroll,
+  session,
+  sessionMessages,
+  transcriptScrollRef,
+}: ChatTranscriptPaneProps) {
   const toolCallSummaryById = useMemo(() => {
     return buildToolCallSummaryById(sessionMessages);
   }, [sessionMessages]);
@@ -539,3 +567,7 @@ export function ChatTranscriptPane({
     </div>
   );
 }
+
+export const ChatTranscriptPane = memo(ChatTranscriptPaneComponent, areChatTranscriptPanePropsEqual);
+
+ChatTranscriptPane.displayName = "ChatTranscriptPane";

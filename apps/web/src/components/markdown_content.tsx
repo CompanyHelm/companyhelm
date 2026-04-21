@@ -1,3 +1,4 @@
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -14,8 +15,11 @@ type MarkdownContentProps = {
 /**
  * Renders markdown with the shared CompanyHelm typography so transcript, details, and dialogs use
  * one consistent spacing and code-block treatment across the web application.
+ *
+ * The chat transcript reuses many historical markdown blocks while the operator edits the composer,
+ * so memoization keeps unchanged markdown trees from being reparsed and remounted on every keystroke.
  */
-export function MarkdownContent({
+export const MarkdownContent = memo(function MarkdownContent({
   className,
   content,
   emptyClassName,
@@ -190,4 +194,6 @@ export function MarkdownContent({
       </ReactMarkdown>
     </div>
   );
-}
+});
+
+MarkdownContent.displayName = "MarkdownContent";
