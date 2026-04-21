@@ -8,7 +8,13 @@ type WorkflowRunTemplateStepInput = {
   ordinal: number;
 };
 
+type WorkflowRunTemplateValueInput = {
+  name: string;
+  value: string;
+};
+
 type WorkflowRunTemplateInput = {
+  inputValues: WorkflowRunTemplateValueInput[];
   instructions: string | null;
   steps: WorkflowRunTemplateStepInput[];
   workflowDescription: string | null;

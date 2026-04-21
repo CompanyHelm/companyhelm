@@ -32,15 +32,28 @@ export class SystemSkillRegistry {
       name: "Manage skills",
     },
     {
-      description: "Create, inspect, start, and maintain durable workflow definitions through scoped system commands.",
+      description: "Inspect and maintain durable workflow definitions through scoped system commands.",
       instructions: [
-        "Use workflow management commands when the user asks to inspect available workflows, start a workflow, or create and change durable workflow definitions.",
+        "Use workflow management commands only when the user asks to inspect or change durable workflow definitions.",
+        "Call workflow.list before updating workflows, inputs, or steps so you can target the correct IDs, including disabled workflows.",
         "Prefer small edits that preserve existing inputs and steps unless the user asks for a broader rewrite.",
-        "Read the current workflow before deleting inputs or steps so you can target the correct IDs.",
         "Keep workflow step instructions concrete enough for a later agent session to execute without extra context.",
+        "Do not start workflow runs with this skill; use the Execute workflows system skill for workflow execution.",
       ].join("\n"),
       key: "manage_workflows",
       name: "Manage workflows",
+    },
+    {
+      description: "Discover enabled workflows, start workflow runs, and track workflow run step progress.",
+      instructions: [
+        "Before processing a user request, check workflow.execution.list for enabled workflows that may fit the request.",
+        "Start a workflow only when there is a good match for the request; otherwise handle the request normally without a workflow.",
+        "Prefer executionMode local when the current agent should execute the workflow in this same session.",
+        "Use executionMode agent only when the workflow should be delegated to another agent session, and provide agentId.",
+        "After starting a local workflow, follow the returned ordered steps. Mark each step running before working on it and done after completing it.",
+      ].join("\n"),
+      key: "execute_workflows",
+      name: "Execute workflows",
     },
     {
       description: "Inspect, create, and update company agents through scoped system commands.",

@@ -210,7 +210,7 @@ export const workflowRuns = pgTable("workflow_runs", {
   triggerIdIndex: index("workflow_runs_trigger_id_idx").on(table.triggerId),
   parentWorkflowRunIdIndex: index("workflow_runs_parent_workflow_run_id_idx").on(table.parentWorkflowRunId),
   startedBySessionIdIndex: index("workflow_runs_started_by_session_id_idx").on(table.startedBySessionId),
-  sessionIdUnique: uniqueIndex("workflow_runs_session_id_uidx").on(table.sessionId),
+  sessionIdIndex: index("workflow_runs_session_id_idx").on(table.sessionId),
   oneStarterCheck: check(
     "workflow_runs_one_starter_check",
     sql`num_nonnulls(${table.startedByUserId}, ${table.startedByAgentId}) <= 1`,

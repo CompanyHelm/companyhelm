@@ -124,6 +124,11 @@ export type WorkflowRunRecord = {
   workflowDefinitionId: string | null;
 };
 
+export type WorkflowLocalRunStartRecord = {
+  executionInstructions: string;
+  workflowRun: WorkflowRunRecord;
+};
+
 export type WorkflowRunCreateInput = {
   agentId: string;
   companyId: string;
@@ -135,6 +140,10 @@ export type WorkflowRunCreateInput = {
   startedByUserId?: string | null;
   triggerId?: string | null;
   workflowDefinitionId: string;
+};
+
+export type WorkflowLocalRunCreateInput = WorkflowRunCreateInput & {
+  sessionId: string;
 };
 
 export type WorkflowCronTriggerCreateInput = {

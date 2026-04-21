@@ -124,6 +124,9 @@ export class PiMonoSessionManagerService {
       async listWorkflows() {
         throw new Error("workflow definitions should not be loaded during createRuntime");
       },
+      async startLocalWorkflowRun() {
+        throw new Error("local workflow runs should not be started during createRuntime");
+      },
       async startWorkflowRun() {
         throw new Error("workflow runs should not be started during createRuntime");
       },

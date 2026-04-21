@@ -6,6 +6,7 @@ import { ComputeProviderDefinitionService } from "./compute_provider_definitions
 import { AgentEnvironmentTemplateService } from "./environments/template_service.ts";
 import { McpService } from "./mcp/service.ts";
 import { SecretService } from "./secrets/service.ts";
+import { WorkflowExecutionSystemCommandService } from "./workflows/execution_system_command_service.ts";
 import { WorkflowService } from "./workflows/service.ts";
 import { WorkflowSystemCommandService } from "./workflows/system_command_service.ts";
 import { AgentManagementSystemCommandService } from "./system_commands/agent_management.ts";
@@ -37,6 +38,7 @@ export class SystemCommandService {
   private readonly sessionSkillService: SessionSkillService;
   private readonly skillManagementCommandService: SkillManagementSystemCommandService;
   private readonly workflowCommandService: WorkflowSystemCommandService;
+  private readonly workflowExecutionCommandService: WorkflowExecutionSystemCommandService;
 
   constructor(input: {
     artifactService?: ArtifactService;
@@ -70,6 +72,7 @@ export class SystemCommandService {
       input.skillGithubCatalog ?? new SkillGithubCatalog(),
     );
     this.workflowCommandService = new WorkflowSystemCommandService(input.workflowService);
+    this.workflowExecutionCommandService = new WorkflowExecutionSystemCommandService(input.workflowService);
   }
 
   async executeCommand(
@@ -89,6 +92,14 @@ export class SystemCommandService {
 
     if (command.systemSkillKey === "manage_workflows") {
       return this.workflowCommandService.execute(command.id, input, {
+        agentId: context.agentId,
+        companyId: context.companyId,
+        sessionId: context.sessionId,
+        transactionProvider: context.transactionProvider,
+      });
+    }
+    if (command.systemSkillKey === "execute_workflows") {
+      return this.workflowExecutionCommandService.execute(command.id, input, {
         agentId: context.agentId,
         companyId: context.companyId,
         sessionId: context.sessionId,

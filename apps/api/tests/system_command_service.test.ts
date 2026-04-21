@@ -386,7 +386,7 @@ test("SystemCommandService executes agent default skill and MCP commands when ma
   ]);
 });
 
-test("SystemCommandService exposes workflow listing through manage_workflows commands", async () => {
+test("SystemCommandService exposes all workflow definitions through manage_workflows commands", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {
       async isSystemSkillActive() {
@@ -434,8 +434,129 @@ test("SystemCommandService exposes workflow listing through manage_workflows com
       isRequired: true,
       name: "branch",
     }],
+    isEnabled: true,
+    name: "Enabled",
+  }, {
+    description: "Disabled workflow",
+    id: "workflow-disabled",
+    inputs: [],
+    isEnabled: false,
+    name: "Disabled",
+  }]);
+});
+
+test("SystemCommandService exposes enabled workflow execution commands through execute_workflows", async () => {
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive(_transactionProvider: unknown, input: {
+        systemSkillKey: string;
+      }) {
+        assert.equal(input.systemSkillKey, "execute_workflows");
+        return true;
+      },
+    } as never,
+    workflowService: {
+      async listWorkflows(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          description: "Enabled workflow",
+          id: "workflow-enabled",
+          inputs: [{
+            defaultValue: null,
+            description: "Target branch",
+            isRequired: true,
+            name: "branch",
+          }],
+          isEnabled: true,
+          name: "Enabled",
+        }, {
+          description: "Disabled workflow",
+          id: "workflow-disabled",
+          inputs: [],
+          isEnabled: false,
+          name: "Disabled",
+        }];
+      },
+      async startLocalWorkflowRun(_transactionProvider: unknown, input: {
+        agentId: string;
+        sessionId: string;
+        workflowDefinitionId: string;
+      }) {
+        assert.equal(input.agentId, "agent-1");
+        assert.equal(input.sessionId, "session-1");
+        assert.equal(input.workflowDefinitionId, "workflow-enabled");
+        return {
+          executionInstructions: [
+            "Execute the following workflow run.",
+            "Workflow:",
+            "Enabled",
+            "Workflow run steps:",
+            "1. Build",
+          ].join("\n"),
+          workflowRun: {
+            agentId: input.agentId,
+            completedAt: null,
+            createdAt: new Date("2026-04-20T12:00:00.000Z"),
+            id: "workflow-run-1",
+            instructions: "Run locally",
+            sessionId: input.sessionId,
+            source: "manual",
+            startedAt: new Date("2026-04-20T12:00:00.000Z"),
+            status: "running",
+            steps: [],
+            triggerId: null,
+            updatedAt: new Date("2026-04-20T12:00:00.000Z"),
+            workflowDefinitionId: input.workflowDefinitionId,
+          },
+        };
+      },
+    } as never,
+  });
+  const context = {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: transactionProvider as never,
+  };
+
+  const listResult = await service.executeCommand("workflow.execution.list", {}, context);
+  const startResult = await service.executeCommand("workflow.execution.start", {
+    input: {
+      branch: "main",
+    },
+    workflowDefinitionId: "workflow-enabled",
+  }, context);
+
+  assert.deepEqual(listResult.workflows, [{
+    description: "Enabled workflow",
+    id: "workflow-enabled",
+    inputs: [{
+      defaultValue: null,
+      description: "Target branch",
+      isRequired: true,
+      name: "branch",
+    }],
     name: "Enabled",
   }]);
+  assert.match((startResult.startedWorkflow as Record<string, string>).executionInstructions, /Execute the following workflow run/);
+  assert.equal(((startResult.startedWorkflow as Record<string, unknown>).workflowRun as Record<string, unknown>).sessionId, "session-1");
 });
 
 test("SystemCommandService executes company directory commands when company_directory is active", async () => {

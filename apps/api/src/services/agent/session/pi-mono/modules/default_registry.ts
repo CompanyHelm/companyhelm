@@ -31,7 +31,6 @@ import { SystemCommandsSessionModule } from "./system_commands.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
-import { WorkflowsSessionModule } from "./workflows.ts";
 
 type DefaultAgentSessionModuleRegistryInput = {
   agentConversationService: AgentConversationService;
@@ -80,7 +79,6 @@ export class DefaultAgentSessionModuleRegistry {
       new McpSessionModule(input.logger, input.mcpService),
       new InboxSessionModule(input.inboxService),
       new ConversationSessionModule(input.agentConversationService),
-      new WorkflowsSessionModule(),
       new TasksSessionModule(new TaskService()),
     ]);
   }

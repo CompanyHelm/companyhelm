@@ -1,55 +1,61 @@
 import { and, eq } from "drizzle-orm";
-import type { TransactionProviderInterface, AppRuntimeTransaction } from "../../../../../../db/transaction_provider_interface.ts";
+import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import {
   workflowRuns,
   workflowRunSteps,
-} from "../../../../../../db/schema.ts";
+} from "../../db/schema.ts";
 import {
   type WorkflowDefinitionInputRecord,
+  type WorkflowLocalRunStartRecord,
   type WorkflowRunInputValue,
   type WorkflowRunRecord,
-} from "../../../../../workflows/types.ts";
-import { WorkflowService } from "../../../../../workflows/service.ts";
+} from "./types.ts";
+import { WorkflowService } from "./service.ts";
 
-type AgentWorkflowServiceAdapter = Pick<WorkflowService, "listWorkflows" | "startWorkflowRun">;
+type WorkflowExecutionServiceAdapter = Pick<WorkflowService, "listWorkflows" | "startLocalWorkflowRun" | "startWorkflowRun">;
 
-export type AgentWorkflowToolListInput = {
+export type WorkflowExecutionMode = "agent" | "local";
+
+export type WorkflowExecutionStartInput = {
+  agentId?: string;
+  executionMode?: WorkflowExecutionMode;
   input?: Record<string, unknown>;
   workflowDefinitionId: string;
 };
 
-export type AgentWorkflowToolListItemInput = {
+export type WorkflowExecutionListItemInput = {
   defaultValue: string | null;
   description: string | null;
   isRequired: boolean;
   name: string;
 };
 
-export type AgentWorkflowToolListItem = {
+export type WorkflowExecutionListItem = {
   description: string | null;
   id: string;
-  inputs: AgentWorkflowToolListItemInput[];
+  inputs: WorkflowExecutionListItemInput[];
   name: string;
 };
 
-export type AgentWorkflowToolStartResult = {
+export type WorkflowExecutionStartResult = {
+  executionInstructions: string | null;
   parentWorkflowRunId: string | null;
   workflowRun: WorkflowRunRecord;
 };
 
-export type AgentWorkflowRunStepStatus = "pending" | "running" | "done";
+export type WorkflowExecutionRunStepStatus = "pending" | "running" | "done";
 
-export type AgentWorkflowToolRunStep = {
+export type WorkflowExecutionRunStep = {
   id: string;
   instructions: string | null;
   name: string;
   ordinal: number;
-  status: AgentWorkflowRunStepStatus;
+  status: WorkflowExecutionRunStepStatus;
 };
 
-export type AgentWorkflowToolRunState = {
+export type WorkflowExecutionRunState = {
   allStepsDone: boolean;
-  step: AgentWorkflowToolRunStep;
+  step: WorkflowExecutionRunStep;
   workflowRunStatus: "running" | "done";
   workflowRunId: string;
 };
@@ -58,28 +64,31 @@ type WorkflowRunRow = {
   id: string;
 };
 
-type WorkflowRunStepRow = AgentWorkflowToolRunStep;
+type WorkflowRunStepRow = WorkflowExecutionRunStep;
 
 /**
- * Adapts workflow discovery, kickoff, and in-run step management to the current PI Mono session.
- * It binds company, agent, and session identity once so the individual workflow tools can stay
- * focused on their own payloads while lineage and session scoping are enforced centrally.
+ * Binds workflow execution operations to one active agent session. The service lists runnable
+ * company workflows, starts them locally or in a delegated agent session, and scopes step-status
+ * updates to the workflow run currently owned by this session.
  */
-export class AgentWorkflowToolService {
+export class WorkflowExecutionSessionService {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly companyId: string;
   private readonly agentId: string;
   private readonly sessionId: string;
-  private readonly workflowService: AgentWorkflowServiceAdapter;
+  private readonly workflowService: WorkflowExecutionServiceAdapter;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     agentId: string,
     sessionId: string,
-    workflowService: AgentWorkflowServiceAdapter = {
+    workflowService: WorkflowExecutionServiceAdapter = {
       async listWorkflows() {
         throw new Error("workflow definitions should not be loaded for this session");
+      },
+      async startLocalWorkflowRun() {
+        throw new Error("local workflow runs should not be started for this session");
       },
       async startWorkflowRun() {
         throw new Error("workflow runs should not be started for this session");
@@ -93,7 +102,7 @@ export class AgentWorkflowToolService {
     this.workflowService = workflowService;
   }
 
-  async listWorkflows(): Promise<AgentWorkflowToolListItem[]> {
+  async listWorkflows(): Promise<WorkflowExecutionListItem[]> {
     const workflows = await this.workflowService.listWorkflows(this.transactionProvider, this.companyId);
 
     return workflows
@@ -106,38 +115,55 @@ export class AgentWorkflowToolService {
       }));
   }
 
-  async startWorkflow(input: AgentWorkflowToolListInput): Promise<AgentWorkflowToolStartResult> {
+  async startWorkflow(input: WorkflowExecutionStartInput): Promise<WorkflowExecutionStartResult> {
+    const executionMode = input.executionMode ?? "local";
     const parentWorkflowRunId = await this.transactionProvider.transaction(async (tx) => {
       const runRows = await this.loadRunningWorkflowRuns(tx);
       return runRows[0]?.id ?? null;
     });
-    const workflowRun = await this.workflowService.startWorkflowRun(this.transactionProvider, {
+
+    if (executionMode === "agent") {
+      if (!input.agentId) {
+        throw new Error("agentId is required when executionMode is agent.");
+      }
+      const workflowRun = await this.workflowService.startWorkflowRun(this.transactionProvider, {
+        agentId: input.agentId,
+        companyId: this.companyId,
+        inputValues: this.serializeWorkflowInputValues(input.input ?? {}),
+        parentWorkflowRunId,
+        startedByAgentId: this.agentId,
+        startedBySessionId: this.sessionId,
+        workflowDefinitionId: input.workflowDefinitionId,
+      });
+
+      return {
+        executionInstructions: null,
+        parentWorkflowRunId,
+        workflowRun,
+      };
+    }
+    if (input.agentId) {
+      throw new Error("agentId is only supported when executionMode is agent.");
+    }
+
+    const localRun = await this.workflowService.startLocalWorkflowRun(this.transactionProvider, {
       agentId: this.agentId,
       companyId: this.companyId,
       inputValues: this.serializeWorkflowInputValues(input.input ?? {}),
       parentWorkflowRunId,
+      sessionId: this.sessionId,
       startedByAgentId: this.agentId,
       startedBySessionId: this.sessionId,
       workflowDefinitionId: input.workflowDefinitionId,
     });
 
-    return {
-      parentWorkflowRunId,
-      workflowRun,
-    };
-  }
-
-  async hasRunningWorkflowRun(): Promise<boolean> {
-    return this.transactionProvider.transaction(async (tx) => {
-      const runRows = await this.loadRunningWorkflowRuns(tx);
-      return runRows.length > 0;
-    });
+    return this.serializeLocalRunStart(parentWorkflowRunId, localRun);
   }
 
   async updateStepStatus(input: {
-    status: AgentWorkflowRunStepStatus;
+    status: WorkflowExecutionRunStepStatus;
     workflowRunStepId: string;
-  }): Promise<AgentWorkflowToolRunState> {
+  }): Promise<WorkflowExecutionRunState> {
     return this.transactionProvider.transaction(async (tx) => {
       const runRow = await this.requireRunningWorkflowRun(tx);
       const steps = await this.loadRunSteps(tx, runRow.id);
@@ -261,12 +287,23 @@ export class AgentWorkflowToolService {
     return steps;
   }
 
-  private serializeWorkflowInput(input: WorkflowDefinitionInputRecord): AgentWorkflowToolListItemInput {
+  private serializeWorkflowInput(input: WorkflowDefinitionInputRecord): WorkflowExecutionListItemInput {
     return {
       defaultValue: input.defaultValue,
       description: input.description,
       isRequired: input.isRequired,
       name: input.name,
+    };
+  }
+
+  private serializeLocalRunStart(
+    parentWorkflowRunId: string | null,
+    localRun: WorkflowLocalRunStartRecord,
+  ): WorkflowExecutionStartResult {
+    return {
+      executionInstructions: localRun.executionInstructions,
+      parentWorkflowRunId,
+      workflowRun: localRun.workflowRun,
     };
   }
 

@@ -1,136 +1,8 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { AgentListWorkflowsTool } from "../src/services/agent/session/pi-mono/tools/workflows/list_workflows.ts";
-import { AgentWorkflowToolProvider } from "../src/services/agent/session/pi-mono/tools/workflows/provider.ts";
-import { AgentWorkflowRunToolProvider } from "../src/services/agent/session/pi-mono/tools/workflows/run_provider.ts";
-import { AgentWorkflowToolService } from "../src/services/agent/session/pi-mono/tools/workflows/service.ts";
-import { AgentStartWorkflowTool } from "../src/services/agent/session/pi-mono/tools/workflows/start_workflow.ts";
+import { WorkflowExecutionSessionService } from "../src/services/workflows/execution_session_service.ts";
 
-type AgentToolExecutionResult = {
-  content: Array<{
-    text?: string;
-  }>;
-  details?: Record<string, unknown>;
-};
-
-test("AgentWorkflowToolProvider contributes workflow discovery and kickoff tools", () => {
-  const provider = new AgentWorkflowToolProvider({
-    async listWorkflows() {
-      throw new Error("workflow listing is lazy");
-    },
-    async startWorkflow() {
-      throw new Error("workflow kickoff is lazy");
-    },
-  } as never);
-
-  assert.deepEqual(
-    provider.createToolDefinitions().map((tool) => tool.name),
-    ["list_workflows", "start_workflow"],
-  );
-});
-
-test("AgentWorkflowRunToolProvider contributes the in-run workflow status tool", () => {
-  const provider = new AgentWorkflowRunToolProvider({
-    async updateStepStatus() {
-      throw new Error("workflow step updates are lazy");
-    },
-  } as never);
-
-  assert.deepEqual(
-    provider.createToolDefinitions().map((tool) => tool.name),
-    ["update_workflow_run_step_status"],
-  );
-});
-
-test("AgentListWorkflowsTool renders enabled workflows and their inputs", async () => {
-  const tool = new AgentListWorkflowsTool({
-    async listWorkflows() {
-      return [{
-        description: "Launches the feature workflow.",
-        id: "workflow-1",
-        inputs: [{
-          defaultValue: "main",
-          description: "Repository branch to work against.",
-          isRequired: true,
-          name: "branch",
-        }],
-        name: "Implement Feature",
-      }];
-    },
-  } as never);
-
-  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
-  const result = await execute(
-    "tool-call-1",
-    {},
-    undefined,
-    undefined,
-    undefined,
-  );
-
-  assert.deepEqual(result.details, {
-    type: "workflow_catalog",
-    workflowCount: 1,
-    workflowIds: ["workflow-1"],
-  });
-  assert.match(result.content[0]?.text ?? "", /name: Implement Feature/);
-  assert.match(result.content[0]?.text ?? "", /input: branch/);
-  assert.match(result.content[0]?.text ?? "", /defaultValue: main/);
-});
-
-test("AgentStartWorkflowTool returns the created workflow run metadata", async () => {
-  const tool = new AgentStartWorkflowTool({
-    async startWorkflow() {
-      return {
-        parentWorkflowRunId: "workflow-run-parent",
-        workflowRun: {
-          agentId: "agent-1",
-          completedAt: null,
-          createdAt: new Date("2026-04-19T06:15:00.000Z"),
-          id: "workflow-run-1",
-          instructions: "Execute the run",
-          sessionId: "session-2",
-          source: "manual",
-          startedAt: new Date("2026-04-19T06:15:00.000Z"),
-          status: "running",
-          steps: [],
-          triggerId: null,
-          updatedAt: new Date("2026-04-19T06:15:00.000Z"),
-          workflowDefinitionId: "workflow-1",
-        },
-      };
-    },
-  } as never);
-
-  const execute = tool.createDefinition().execute as (...args: unknown[]) => Promise<AgentToolExecutionResult>;
-  const result = await execute(
-    "tool-call-1",
-    {
-      input: {
-        branch: "main",
-      },
-      workflowDefinitionId: "workflow-1",
-    },
-    undefined,
-    undefined,
-    undefined,
-  );
-
-  assert.deepEqual(result.details, {
-    executionSessionId: "session-2",
-    parentWorkflowRunId: "workflow-run-parent",
-    startedAt: "2026-04-19T06:15:00.000Z",
-    status: "running",
-    type: "workflow_run",
-    workflowDefinitionId: "workflow-1",
-    workflowRunId: "workflow-run-1",
-  });
-  assert.match(result.content[0]?.text ?? "", /workflowRunId: workflow-run-1/);
-  assert.match(result.content[0]?.text ?? "", /executionSessionId: session-2/);
-  assert.match(result.content[0]?.text ?? "", /parentWorkflowRunId: workflow-run-parent/);
-});
-
-test("AgentWorkflowToolService only exposes enabled workflows", async () => {
+test("WorkflowExecutionSessionService only exposes enabled workflows", async () => {
   const transactionProvider = {
     async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
       return callback({});
@@ -171,7 +43,7 @@ test("AgentWorkflowToolService only exposes enabled workflows", async () => {
       }];
     }),
   };
-  const service = new AgentWorkflowToolService(
+  const service = new WorkflowExecutionSessionService(
     transactionProvider as never,
     "company-1",
     "agent-1",
@@ -195,7 +67,7 @@ test("AgentWorkflowToolService only exposes enabled workflows", async () => {
   }]);
 });
 
-test("AgentWorkflowToolService normalizes kickoff inputs and records workflow lineage", async () => {
+test("WorkflowExecutionSessionService normalizes local kickoff inputs and records workflow lineage", async () => {
   const transactionProvider = {
     async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
       return callback({
@@ -215,30 +87,33 @@ test("AgentWorkflowToolService normalizes kickoff inputs and records workflow li
       });
     },
   };
-  const startWorkflowRun = vi.fn(async () => {
+  const startLocalWorkflowRun = vi.fn(async () => {
     return {
-      agentId: "agent-1",
-      completedAt: null,
-      createdAt: new Date("2026-04-19T06:10:00.000Z"),
-      id: "workflow-run-2",
-      instructions: "Execute the workflow",
-      sessionId: "session-2",
-      source: "manual",
-      startedAt: new Date("2026-04-19T06:10:00.000Z"),
-      status: "running",
-      steps: [],
-      triggerId: null,
-      updatedAt: new Date("2026-04-19T06:10:00.000Z"),
-      workflowDefinitionId: "workflow-2",
+      executionInstructions: "Execute the following workflow run.\n\nWorkflow run steps:\n1. Build",
+      workflowRun: {
+        agentId: "agent-1",
+        completedAt: null,
+        createdAt: new Date("2026-04-19T06:10:00.000Z"),
+        id: "workflow-run-2",
+        instructions: "Execute the workflow",
+        sessionId: "session-1",
+        source: "manual",
+        startedAt: new Date("2026-04-19T06:10:00.000Z"),
+        status: "running",
+        steps: [],
+        triggerId: null,
+        updatedAt: new Date("2026-04-19T06:10:00.000Z"),
+        workflowDefinitionId: "workflow-2",
+      },
     };
   });
-  const service = new AgentWorkflowToolService(
+  const service = new WorkflowExecutionSessionService(
     transactionProvider as never,
     "company-1",
     "agent-1",
     "session-1",
     {
-      startWorkflowRun,
+      startLocalWorkflowRun,
     } as never,
   );
 
@@ -255,7 +130,7 @@ test("AgentWorkflowToolService normalizes kickoff inputs and records workflow li
     workflowDefinitionId: "workflow-2",
   });
 
-  assert.deepEqual(startWorkflowRun.mock.calls, [[transactionProvider, {
+  assert.deepEqual(startLocalWorkflowRun.mock.calls, [[transactionProvider, {
     agentId: "agent-1",
     companyId: "company-1",
     inputValues: [{
@@ -277,10 +152,82 @@ test("AgentWorkflowToolService normalizes kickoff inputs and records workflow li
       value: "",
     }],
     parentWorkflowRunId: "workflow-run-parent",
+    sessionId: "session-1",
     startedByAgentId: "agent-1",
     startedBySessionId: "session-1",
     workflowDefinitionId: "workflow-2",
   }]]);
+  assert.match(result.executionInstructions ?? "", /Execute the following workflow run/);
   assert.equal(result.parentWorkflowRunId, "workflow-run-parent");
   assert.equal(result.workflowRun.id, "workflow-run-2");
+});
+
+test("WorkflowExecutionSessionService starts delegated workflow runs with the requested agent", async () => {
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const startWorkflowRun = vi.fn(async () => {
+    return {
+      agentId: "agent-2",
+      completedAt: null,
+      createdAt: new Date("2026-04-19T06:10:00.000Z"),
+      id: "workflow-run-3",
+      instructions: "Execute the delegated workflow",
+      sessionId: "session-3",
+      source: "manual",
+      startedAt: new Date("2026-04-19T06:10:00.000Z"),
+      status: "running",
+      steps: [],
+      triggerId: null,
+      updatedAt: new Date("2026-04-19T06:10:00.000Z"),
+      workflowDefinitionId: "workflow-3",
+    };
+  });
+  const service = new WorkflowExecutionSessionService(
+    transactionProvider as never,
+    "company-1",
+    "agent-1",
+    "session-1",
+    {
+      startWorkflowRun,
+    } as never,
+  );
+
+  const result = await service.startWorkflow({
+    agentId: "agent-2",
+    executionMode: "agent",
+    input: {
+      branch: "main",
+    },
+    workflowDefinitionId: "workflow-3",
+  });
+
+  assert.deepEqual(startWorkflowRun.mock.calls, [[transactionProvider, {
+    agentId: "agent-2",
+    companyId: "company-1",
+    inputValues: [{
+      name: "branch",
+      value: "main",
+    }],
+    parentWorkflowRunId: null,
+    startedByAgentId: "agent-1",
+    startedBySessionId: "session-1",
+    workflowDefinitionId: "workflow-3",
+  }]]);
+  assert.equal(result.executionInstructions, null);
+  assert.equal(result.workflowRun.agentId, "agent-2");
 });

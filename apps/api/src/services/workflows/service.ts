@@ -17,6 +17,7 @@ import {
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { WorkflowRunTemplate } from "../../prompts/workflow_run_template.ts";
 import { SessionManagerService } from "../agent/session/session_manager_service.ts";
+import { SessionSkillService } from "../skills/session_service.ts";
 import type {
   WorkflowCreateInput,
   WorkflowCronTriggerCreateInput,
@@ -25,6 +26,8 @@ import type {
   WorkflowCronTriggerUpdateInput,
   WorkflowDefinitionInputRecord,
   WorkflowInputDraft,
+  WorkflowLocalRunCreateInput,
+  WorkflowLocalRunStartRecord,
   WorkflowRecord,
   WorkflowRunCreateInput,
   WorkflowRunInputValue,
@@ -90,6 +93,20 @@ type WorkflowTriggerInputValueRow = {
   value: string;
 };
 
+type PreparedWorkflowRun = {
+  instructions: string | null;
+  prompt: string;
+  stepSnapshots: Array<{
+    id: string;
+    instructions: string | null;
+    name: string;
+    ordinal: number;
+    status: "pending";
+    workflowRunId: string;
+  }>;
+  workflowRunId: string;
+};
+
 /**
  * Owns durable workflow definitions and run initialization. It snapshots ordered definition steps
  * into `workflow_run_steps` at launch time, then delegates actual agent execution to the existing
@@ -102,6 +119,8 @@ export class WorkflowService {
   constructor(
     @inject(SessionManagerService)
     private readonly sessionManagerService: SessionManagerService,
+    @inject(SessionSkillService)
+    private readonly sessionSkillService: SessionSkillService = new SessionSkillService(),
     private readonly workflowRunTemplate: WorkflowRunTemplate = new WorkflowRunTemplate(),
   ) {}
 
@@ -415,98 +434,45 @@ export class WorkflowService {
   ): Promise<WorkflowRunRecord> {
     let queuedSessionId: string | null = null;
     const workflowRunRecord = await transactionProvider.transaction(async (tx) => {
-      const workflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
-      if (!workflowRow.isEnabled) {
-        throw new Error("Workflow is disabled.");
-      }
-      await this.requireAgent(tx, input.companyId, input.agentId);
-
-      const definitionInputs = await this.loadInputsByWorkflowDefinitionId(
-        tx,
-        input.companyId,
-        [input.workflowDefinitionId],
-      );
-      const stepRows = await this.loadStepsByWorkflowDefinitionId(tx, [input.workflowDefinitionId]);
-      const steps = stepRows.get(input.workflowDefinitionId) ?? [];
-      if (steps.length === 0) {
-        throw new Error("Workflow must have at least one step.");
-      }
-
-      const templateValues = this.resolveTemplateValues(
-        definitionInputs.get(input.workflowDefinitionId) ?? [],
-        input.inputValues,
-      );
-      const workflowRunId = randomUUID();
-      const stepSnapshots = steps.map((step) => ({
-        id: randomUUID(),
-        instructions: this.renderDefinitionTemplate(step.instructions, templateValues),
-        name: step.name,
-        ordinal: step.ordinal,
-        status: "pending" as const,
-        workflowRunId,
-      }));
-      const instructions = this.renderDefinitionTemplate(workflowRow.instructions, templateValues);
-      const prompt = this.workflowRunTemplate.render({
-        instructions,
-        steps: stepSnapshots,
-        workflowDescription: workflowRow.description,
-        workflowName: workflowRow.name,
-      });
+      const preparedRun = await this.prepareWorkflowRun(tx, input);
       const sessionRecord = await this.sessionManagerService.createSessionInTransaction(
         tx as never,
         tx as never,
         input.companyId,
         input.agentId,
-        prompt,
+        preparedRun.prompt,
         {
           userId: input.startedByUserId ?? null,
         },
       );
       queuedSessionId = sessionRecord.id;
-      const now = new Date();
-
-      await tx
-        .insert(workflowRuns)
-        .values({
-          agentId: input.agentId,
-          companyId: input.companyId,
-          completedAt: null,
-          createdAt: now,
-          id: workflowRunId,
-          instructions,
-          parentWorkflowRunId: input.parentWorkflowRunId ?? null,
-          sessionId: sessionRecord.id,
-          source: input.source ?? "manual",
-          startedAt: now,
-          startedByAgentId: input.startedByAgentId ?? null,
-          startedBySessionId: input.startedBySessionId ?? null,
-          startedByUserId: input.startedByUserId ?? null,
-          status: "running",
-          triggerId: input.triggerId ?? null,
-          updatedAt: now,
-          workflowDefinitionId: input.workflowDefinitionId,
-        });
-
-      await tx
-        .insert(workflowRunSteps)
-        .values(stepSnapshots.map((step) => ({
-          companyId: input.companyId,
-          id: step.id,
-          instructions: step.instructions,
-          name: step.name,
-          ordinal: step.ordinal,
-          status: step.status,
-          workflowRunId,
-        })));
-
-      return this.requireWorkflowRun(tx, input.companyId, workflowRunId);
+      return this.insertPreparedWorkflowRun(tx, input, sessionRecord.id, preparedRun);
     });
 
     if (queuedSessionId) {
+      await this.sessionSkillService.activateSkill(transactionProvider, {
+        companyId: input.companyId,
+        sessionId: queuedSessionId,
+        skillName: "Execute workflows",
+      });
       await this.sessionManagerService.notifyQueuedSessionMessage(input.companyId, queuedSessionId, false);
     }
 
     return workflowRunRecord;
+  }
+
+  async startLocalWorkflowRun(
+    transactionProvider: TransactionProviderInterface,
+    input: WorkflowLocalRunCreateInput,
+  ): Promise<WorkflowLocalRunStartRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const preparedRun = await this.prepareWorkflowRun(tx, input);
+      const workflowRun = await this.insertPreparedWorkflowRun(tx, input, input.sessionId, preparedRun);
+      return {
+        executionInstructions: preparedRun.prompt,
+        workflowRun,
+      };
+    });
   }
 
   async startScheduledWorkflowRun(
@@ -551,6 +517,104 @@ export class WorkflowService {
       triggerId: trigger.id,
       workflowDefinitionId: trigger.workflowDefinitionId,
     });
+  }
+
+  private async prepareWorkflowRun(
+    tx: AppRuntimeTransaction,
+    input: WorkflowRunCreateInput,
+  ): Promise<PreparedWorkflowRun> {
+    const workflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+    if (!workflowRow.isEnabled) {
+      throw new Error("Workflow is disabled.");
+    }
+    await this.requireAgent(tx, input.companyId, input.agentId);
+
+    const definitionInputs = await this.loadInputsByWorkflowDefinitionId(
+      tx,
+      input.companyId,
+      [input.workflowDefinitionId],
+    );
+    const stepRows = await this.loadStepsByWorkflowDefinitionId(tx, [input.workflowDefinitionId]);
+    const steps = stepRows.get(input.workflowDefinitionId) ?? [];
+    if (steps.length === 0) {
+      throw new Error("Workflow must have at least one step.");
+    }
+
+    const templateValues = this.resolveTemplateValues(
+      definitionInputs.get(input.workflowDefinitionId) ?? [],
+      input.inputValues,
+    );
+    const workflowRunId = randomUUID();
+    const stepSnapshots = steps.map((step) => ({
+      id: randomUUID(),
+      instructions: this.renderDefinitionTemplate(step.instructions, templateValues),
+      name: step.name,
+      ordinal: step.ordinal,
+      status: "pending" as const,
+      workflowRunId,
+    }));
+    const instructions = this.renderDefinitionTemplate(workflowRow.instructions, templateValues);
+    const prompt = this.workflowRunTemplate.render({
+      inputValues: Object.entries(templateValues).map(([name, value]) => ({
+        name,
+        value,
+      })),
+      instructions,
+      steps: stepSnapshots,
+      workflowDescription: workflowRow.description,
+      workflowName: workflowRow.name,
+    });
+
+    return {
+      instructions,
+      prompt,
+      stepSnapshots,
+      workflowRunId,
+    };
+  }
+
+  private async insertPreparedWorkflowRun(
+    tx: AppRuntimeTransaction,
+    input: WorkflowRunCreateInput,
+    sessionId: string,
+    preparedRun: PreparedWorkflowRun,
+  ): Promise<WorkflowRunRecord> {
+    const now = new Date();
+    await tx
+      .insert(workflowRuns)
+      .values({
+        agentId: input.agentId,
+        companyId: input.companyId,
+        completedAt: null,
+        createdAt: now,
+        id: preparedRun.workflowRunId,
+        instructions: preparedRun.instructions,
+        parentWorkflowRunId: input.parentWorkflowRunId ?? null,
+        sessionId,
+        source: input.source ?? "manual",
+        startedAt: now,
+        startedByAgentId: input.startedByAgentId ?? null,
+        startedBySessionId: input.startedBySessionId ?? null,
+        startedByUserId: input.startedByUserId ?? null,
+        status: "running",
+        triggerId: input.triggerId ?? null,
+        updatedAt: now,
+        workflowDefinitionId: input.workflowDefinitionId,
+      });
+
+    await tx
+      .insert(workflowRunSteps)
+      .values(preparedRun.stepSnapshots.map((step) => ({
+        companyId: input.companyId,
+        id: step.id,
+        instructions: step.instructions,
+        name: step.name,
+        ordinal: step.ordinal,
+        status: step.status,
+        workflowRunId: preparedRun.workflowRunId,
+      })));
+
+    return this.requireWorkflowRun(tx, input.companyId, preparedRun.workflowRunId);
   }
 
   private async hydrateWorkflowRows(

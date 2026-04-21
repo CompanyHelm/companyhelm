@@ -126,24 +126,11 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_skills",
   }, {
-    description: "List enabled workflows available to the current agent session, including launch inputs.",
+    description: "List all company workflow definitions, including disabled workflows, launch inputs, and ordered steps.",
     id: "workflow.list",
     inputSchema: {
       additionalProperties: false,
       properties: {},
-      type: "object",
-    },
-    systemSkillKey: "manage_workflows",
-  }, {
-    description: "Start a workflow run for the current agent session.",
-    id: "workflow.start",
-    inputSchema: {
-      additionalProperties: false,
-      properties: {
-        input: { additionalProperties: true, type: "object" },
-        workflowDefinitionId: { type: "string" },
-      },
-      required: ["workflowDefinitionId"],
       type: "object",
     },
     systemSkillKey: "manage_workflows",
@@ -237,6 +224,43 @@ export class SystemCommandCatalog {
       type: "object",
     },
     systemSkillKey: "manage_workflows",
+  }, {
+    description: "List enabled company workflows that can be started from the current session.",
+    id: "workflow.execution.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {},
+      type: "object",
+    },
+    systemSkillKey: "execute_workflows",
+  }, {
+    description: "Start a workflow run locally in this session or delegate it to another agent session.",
+    id: "workflow.execution.start",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        agentId: { type: "string" },
+        executionMode: { enum: ["local", "agent"], type: "string" },
+        input: { additionalProperties: true, type: "object" },
+        workflowDefinitionId: { type: "string" },
+      },
+      required: ["workflowDefinitionId"],
+      type: "object",
+    },
+    systemSkillKey: "execute_workflows",
+  }, {
+    description: "Set the status for one workflow run step in the current session.",
+    id: "workflow.execution.step.update",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        status: { enum: ["pending", "running", "done"], type: "string" },
+        workflowRunStepId: { type: "string" },
+      },
+      required: ["workflowRunStepId", "status"],
+      type: "object",
+    },
+    systemSkillKey: "execute_workflows",
   }, {
     description: "List company agents and the option catalogs needed to create or update them.",
     id: "agent.list",
