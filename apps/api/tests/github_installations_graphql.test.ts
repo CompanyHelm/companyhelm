@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { AddGithubInstallationMutation } from "../src/graphql/mutations/add_github_installation.ts";
 import { CreateGithubInstallationUrlMutation } from "../src/graphql/mutations/create_github_installation_url.ts";
+import { CreateGithubRepositoryProvisioningMutation } from "../src/graphql/mutations/create_github_repository_provisioning.ts";
 import { DeleteGithubInstallationMutation } from "../src/graphql/mutations/delete_github_installation.ts";
+import { DeleteGithubRepositoryProvisioningMutation } from "../src/graphql/mutations/delete_github_repository_provisioning.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../src/graphql/mutations/refresh_github_installation_repositories.ts";
 import { GithubAppConfigQueryResolver } from "../src/graphql/resolvers/github_app_config.ts";
+import { GithubRepositoryProvisioningsQueryResolver } from "../src/graphql/resolvers/github_repository_provisionings.ts";
 
 function createContext(
   transactionImplementation: (callback: (tx: unknown) => Promise<unknown>) => Promise<unknown>,
@@ -75,6 +78,140 @@ test("CreateGithubInstallationUrlMutation builds an installation URL with encryp
   assert.deepEqual(githubClient.buildInstallationUrl.mock.calls, [["opaque-state"]]);
   assert.deepEqual(payload, {
     url: "https://github.com/apps/test-local/installations/new?state=opaque-state",
+  });
+});
+
+test("GithubRepositoryProvisioningsQueryResolver returns pinned repositories", async () => {
+  const resolver = new GithubRepositoryProvisioningsQueryResolver({
+    async listProvisionings() {
+      return [{
+        companyId: "company-123",
+        createdAt: new Date("2026-04-21T18:01:00.000Z"),
+        githubRepository: {
+          archived: false,
+          createdAt: new Date("2026-04-21T18:00:00.000Z"),
+          defaultBranch: "main",
+          externalId: "1",
+          fullName: "acme/repo-one",
+          htmlUrl: "https://github.com/acme/repo-one",
+          id: "github-repository-1",
+          installationId: 110600868,
+          isPrivate: true,
+          name: "repo-one",
+          updatedAt: new Date("2026-04-21T18:00:00.000Z"),
+        },
+        githubRepositoryId: "github-repository-1",
+        id: "provisioning-1",
+        updatedAt: new Date("2026-04-21T18:01:00.000Z"),
+      }];
+    },
+  } as never);
+
+  const payload = await resolver.execute(
+    {},
+    {},
+    createContext(async () => {
+      throw new Error("transaction should not be used by the mock service");
+    }),
+  );
+
+  assert.equal(payload.length, 1);
+  assert.equal(payload[0]?.companyId, "company-123");
+  assert.equal(payload[0]?.githubRepository.githubInstallationId, "110600868");
+  assert.equal(payload[0]?.githubRepository.fullName, "acme/repo-one");
+});
+
+test("CreateGithubRepositoryProvisioningMutation pins a cached repository for the current company", async () => {
+  const createProvisioning = vi.fn(async (
+    _transactionProvider: unknown,
+    _input: {
+      companyId: string;
+      githubRepositoryId: string;
+    },
+  ) => {
+    void _transactionProvider;
+    void _input;
+
+    return {
+      companyId: "company-123",
+      createdAt: new Date("2026-04-21T18:01:00.000Z"),
+      githubRepository: {
+        archived: false,
+        createdAt: new Date("2026-04-21T18:00:00.000Z"),
+        defaultBranch: "main",
+        externalId: "1",
+        fullName: "acme/repo-one",
+        htmlUrl: "https://github.com/acme/repo-one",
+        id: "github-repository-1",
+        installationId: 110600868,
+        isPrivate: true,
+        name: "repo-one",
+        updatedAt: new Date("2026-04-21T18:00:00.000Z"),
+      },
+      githubRepositoryId: "github-repository-1",
+      id: "provisioning-1",
+      updatedAt: new Date("2026-04-21T18:01:00.000Z"),
+    };
+  });
+  const mutation = new CreateGithubRepositoryProvisioningMutation({
+    createProvisioning,
+  } as never);
+
+  const payload = await mutation.execute(
+    {},
+    {
+      input: {
+        githubRepositoryId: "github-repository-1",
+      },
+    },
+    createContext(async () => {
+      throw new Error("transaction should not be used by the mock service");
+    }),
+  );
+
+  assert.deepEqual(createProvisioning.mock.calls[0]?.[1], {
+    companyId: "company-123",
+    githubRepositoryId: "github-repository-1",
+  });
+  assert.equal(payload.id, "provisioning-1");
+  assert.equal(payload.githubRepository.fullName, "acme/repo-one");
+});
+
+test("DeleteGithubRepositoryProvisioningMutation unpins a repository provisioning", async () => {
+  const deleteProvisioning = vi.fn(async (
+    _transactionProvider: unknown,
+    _input: {
+      companyId: string;
+      provisioningId: string;
+    },
+  ) => {
+    void _transactionProvider;
+    void _input;
+
+    return "provisioning-1";
+  });
+  const mutation = new DeleteGithubRepositoryProvisioningMutation({
+    deleteProvisioning,
+  } as never);
+
+  const payload = await mutation.execute(
+    {},
+    {
+      input: {
+        id: "provisioning-1",
+      },
+    },
+    createContext(async () => {
+      throw new Error("transaction should not be used by the mock service");
+    }),
+  );
+
+  assert.deepEqual(deleteProvisioning.mock.calls[0]?.[1], {
+    companyId: "company-123",
+    provisioningId: "provisioning-1",
+  });
+  assert.deepEqual(payload, {
+    deletedProvisioningId: "provisioning-1",
   });
 });
 
@@ -412,7 +549,7 @@ test("AddGithubInstallationMutation rejects installations already linked elsewhe
   );
 });
 
-test("RefreshGithubInstallationRepositoriesMutation replaces the cached repositories", async () => {
+test("RefreshGithubInstallationRepositoriesMutation preserves cached repository rows still returned by GitHub", async () => {
   const githubClient = {
     getInstallationRepositories: vi.fn().mockResolvedValue([
       {
@@ -425,10 +562,10 @@ test("RefreshGithubInstallationRepositoriesMutation replaces the cached reposito
         archived: false,
       },
       {
-        externalId: "2",
-        name: "repo-two",
-        fullName: "acme/repo-two",
-        htmlUrl: "https://github.com/acme/repo-two",
+        externalId: "3",
+        name: "repo-three",
+        fullName: "acme/repo-three",
+        htmlUrl: "https://github.com/acme/repo-three",
         isPrivate: false,
         defaultBranch: "develop",
         archived: false,
@@ -437,6 +574,7 @@ test("RefreshGithubInstallationRepositoriesMutation replaces the cached reposito
   };
   const deletedConditions: unknown[] = [];
   const insertedRepositorySets: Array<Array<Record<string, unknown>>> = [];
+  const updatedRepositorySets: Array<Record<string, unknown>> = [];
   let selectCallCount = 0;
   const tx = {
     select() {
@@ -459,40 +597,71 @@ test("RefreshGithubInstallationRepositoriesMutation replaces the cached reposito
         };
       }
 
+      const returnedRepositories = selectCallCount === 2
+        ? [
+          {
+            id: "repo-db-1",
+            installationId: 110600868,
+            externalId: "1",
+            name: "repo-one",
+            fullName: "acme/repo-one",
+            htmlUrl: "https://github.com/acme/repo-one",
+            isPrivate: true,
+            defaultBranch: "main",
+            archived: false,
+            createdAt: new Date("2026-03-26T19:00:00.000Z"),
+            updatedAt: new Date("2026-03-26T19:00:00.000Z"),
+          },
+          {
+            id: "repo-db-2",
+            installationId: 110600868,
+            externalId: "2",
+            name: "repo-two",
+            fullName: "acme/repo-two",
+            htmlUrl: "https://github.com/acme/repo-two",
+            isPrivate: false,
+            defaultBranch: "develop",
+            archived: false,
+            createdAt: new Date("2026-03-26T19:00:00.000Z"),
+            updatedAt: new Date("2026-03-26T19:00:00.000Z"),
+          },
+        ]
+        : [
+          {
+            id: "repo-db-1",
+            installationId: 110600868,
+            externalId: "1",
+            name: "repo-one",
+            fullName: "acme/repo-one",
+            htmlUrl: "https://github.com/acme/repo-one",
+            isPrivate: true,
+            defaultBranch: "main",
+            archived: false,
+            createdAt: new Date("2026-03-26T19:00:00.000Z"),
+            updatedAt: new Date("2026-03-26T19:01:00.000Z"),
+          },
+          {
+            id: "repo-db-3",
+            installationId: 110600868,
+            externalId: "3",
+            name: "repo-three",
+            fullName: "acme/repo-three",
+            htmlUrl: "https://github.com/acme/repo-three",
+            isPrivate: false,
+            defaultBranch: "develop",
+            archived: false,
+            createdAt: new Date("2026-03-26T19:01:00.000Z"),
+            updatedAt: new Date("2026-03-26T19:01:00.000Z"),
+          },
+        ];
+
       return {
         from() {
           return {
             where() {
               return {
                 async orderBy() {
-                  return [
-                    {
-                      id: "repo-db-1",
-                      installationId: 110600868,
-                      externalId: "1",
-                      name: "repo-one",
-                      fullName: "acme/repo-one",
-                      htmlUrl: "https://github.com/acme/repo-one",
-                      isPrivate: true,
-                      defaultBranch: "main",
-                      archived: false,
-                      createdAt: new Date("2026-03-26T19:00:00.000Z"),
-                      updatedAt: new Date("2026-03-26T19:00:00.000Z"),
-                    },
-                    {
-                      id: "repo-db-2",
-                      installationId: 110600868,
-                      externalId: "2",
-                      name: "repo-two",
-                      fullName: "acme/repo-two",
-                      htmlUrl: "https://github.com/acme/repo-two",
-                      isPrivate: false,
-                      defaultBranch: "develop",
-                      archived: false,
-                      createdAt: new Date("2026-03-26T19:00:00.000Z"),
-                      updatedAt: new Date("2026-03-26T19:00:00.000Z"),
-                    },
-                  ];
+                  return returnedRepositories;
                 },
               };
             },
@@ -510,11 +679,27 @@ test("RefreshGithubInstallationRepositoriesMutation replaces the cached reposito
     },
     insert() {
       return {
-        values(value: Array<Record<string, unknown>>) {
-          insertedRepositorySets.push(value);
+        values(value: Array<Record<string, unknown>> | Record<string, unknown>) {
+          insertedRepositorySets.push(Array.isArray(value) ? value : [value]);
           return {
             async returning() {
               return [];
+            },
+          };
+        },
+      };
+    },
+    update() {
+      return {
+        set(value: Record<string, unknown>) {
+          updatedRepositorySets.push(value);
+          return {
+            where() {
+              return {
+                async returning() {
+                  return [];
+                },
+              };
             },
           };
         },
@@ -535,10 +720,13 @@ test("RefreshGithubInstallationRepositoriesMutation replaces the cached reposito
 
   assert.deepEqual(githubClient.getInstallationRepositories.mock.calls, [[110600868, { forceRefresh: true }]]);
   assert.equal(deletedConditions.length, 1);
+  assert.equal(updatedRepositorySets.length, 1);
+  assert.equal(updatedRepositorySets[0]?.name, "repo-one");
   assert.equal(insertedRepositorySets.length, 1);
-  assert.equal(insertedRepositorySets[0]?.length, 2);
+  assert.equal(insertedRepositorySets[0]?.length, 1);
+  assert.equal(insertedRepositorySets[0]?.[0]?.externalId, "3");
   assert.equal(payload.repositories.length, 2);
-  assert.deepEqual(payload.repositories.map((repository) => repository.id), ["repo-db-1", "repo-db-2"]);
+  assert.deepEqual(payload.repositories.map((repository) => repository.id), ["repo-db-1", "repo-db-3"]);
 });
 
 test("DeleteGithubInstallationMutation returns the deleted installation id", async () => {

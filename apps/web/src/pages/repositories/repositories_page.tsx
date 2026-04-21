@@ -2,6 +2,8 @@ import { Suspense, useMemo, useState } from "react";
 import {
   ExternalLinkIcon,
   FolderGit2Icon,
+  PinIcon,
+  PinOffIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
@@ -39,9 +41,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageTabs } from "@/components/ui/page_tabs";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import type { repositoriesPageCreateGithubRepositoryProvisioningMutation } from "./__generated__/repositoriesPageCreateGithubRepositoryProvisioningMutation.graphql";
 import type { repositoriesPageCreateGithubInstallationUrlMutation } from "./__generated__/repositoriesPageCreateGithubInstallationUrlMutation.graphql";
 import type { repositoriesPageDeleteGithubInstallationMutation } from "./__generated__/repositoriesPageDeleteGithubInstallationMutation.graphql";
+import type { repositoriesPageDeleteGithubRepositoryProvisioningMutation } from "./__generated__/repositoriesPageDeleteGithubRepositoryProvisioningMutation.graphql";
 import type { repositoriesPageQuery } from "./__generated__/repositoriesPageQuery.graphql";
 import type { repositoriesPageRefreshGithubInstallationRepositoriesMutation } from "./__generated__/repositoriesPageRefreshGithubInstallationRepositoriesMutation.graphql";
 
@@ -70,6 +75,25 @@ const repositoriesPageQueryNode = graphql`
       archived
       createdAt
       updatedAt
+    }
+    GithubRepositoryProvisionings {
+      id
+      companyId
+      createdAt
+      updatedAt
+      githubRepository {
+        id
+        githubInstallationId
+        externalId
+        name
+        fullName
+        htmlUrl
+        isPrivate
+        defaultBranch
+        archived
+        createdAt
+        updatedAt
+      }
     }
   }
 `;
@@ -114,6 +138,42 @@ const repositoriesPageRefreshGithubInstallationRepositoriesMutationNode = graphq
   }
 `;
 
+const repositoriesPageCreateGithubRepositoryProvisioningMutationNode = graphql`
+  mutation repositoriesPageCreateGithubRepositoryProvisioningMutation(
+    $input: CreateGithubRepositoryProvisioningInput!
+  ) {
+    CreateGithubRepositoryProvisioning(input: $input) {
+      id
+      companyId
+      createdAt
+      updatedAt
+      githubRepository {
+        id
+        githubInstallationId
+        externalId
+        name
+        fullName
+        htmlUrl
+        isPrivate
+        defaultBranch
+        archived
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const repositoriesPageDeleteGithubRepositoryProvisioningMutationNode = graphql`
+  mutation repositoriesPageDeleteGithubRepositoryProvisioningMutation(
+    $input: DeleteGithubRepositoryProvisioningInput!
+  ) {
+    DeleteGithubRepositoryProvisioning(input: $input) {
+      deletedProvisioningId
+    }
+  }
+`;
+
 type InstallationRecord = {
   id: string;
   installationId: string;
@@ -134,10 +194,32 @@ type RepositoryRecord = {
   updatedAt: string;
 };
 
+type RepositoryProvisioningRecord = {
+  id: string;
+  companyId: string;
+  createdAt: string;
+  updatedAt: string;
+  githubRepository: RepositoryRecord;
+};
+
 type StoreRecord = {
   getDataID(): string;
+  getLinkedRecord(name: string): StoreRecord | null;
   getValue(name: string): unknown;
 };
+
+type RepositoriesPageTab = "inventory" | "workspace";
+
+const repositoriesPageTabs: Array<{ key: RepositoriesPageTab; label: string }> = [
+  {
+    key: "inventory",
+    label: "Repository Inventory",
+  },
+  {
+    key: "workspace",
+    label: "Workspace Repositories",
+  },
+];
 
 function formatTimestamp(value: string): string {
   const parsedDate = new Date(value);
@@ -160,9 +242,15 @@ function filterStoreRecords(records: ReadonlyArray<unknown>): StoreRecord[] {
       && record !== null
       && "getDataID" in record
       && typeof record.getDataID === "function"
+      && "getLinkedRecord" in record
+      && typeof record.getLinkedRecord === "function"
       && "getValue" in record
       && typeof record.getValue === "function";
   });
+}
+
+function getWorkspaceRepositoryPath(repository: RepositoryRecord): string {
+  return `~/workspace/${repository.name}`;
 }
 
 function RepositoriesPageFallback() {
@@ -193,7 +281,10 @@ function RepositoriesPageContent() {
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [refreshedInstallationId, setRefreshedInstallationId] = useState<string | null>(null);
   const [deletingInstallationId, setDeletingInstallationId] = useState<string | null>(null);
+  const [deletingProvisioningId, setDeletingProvisioningId] = useState<string | null>(null);
+  const [pinningRepositoryId, setPinningRepositoryId] = useState<string | null>(null);
   const [refreshingInstallationId, setRefreshingInstallationId] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<RepositoriesPageTab>("inventory");
   const data = useLazyLoadQuery<repositoriesPageQuery>(
     repositoriesPageQueryNode,
     {},
@@ -212,6 +303,14 @@ function RepositoriesPageContent() {
   const [commitRefreshRepositories, isRefreshRepositoriesInFlight] =
     useMutation<repositoriesPageRefreshGithubInstallationRepositoriesMutation>(
       repositoriesPageRefreshGithubInstallationRepositoriesMutationNode,
+    );
+  const [commitCreateRepositoryProvisioning, isCreateRepositoryProvisioningInFlight] =
+    useMutation<repositoriesPageCreateGithubRepositoryProvisioningMutation>(
+      repositoriesPageCreateGithubRepositoryProvisioningMutationNode,
+    );
+  const [commitDeleteRepositoryProvisioning, isDeleteRepositoryProvisioningInFlight] =
+    useMutation<repositoriesPageDeleteGithubRepositoryProvisioningMutation>(
+      repositoriesPageDeleteGithubRepositoryProvisioningMutationNode,
     );
 
   const installations: InstallationRecord[] = useMemo(() => {
@@ -236,6 +335,32 @@ function RepositoriesPageContent() {
       updatedAt: repository.updatedAt,
     }));
   }, [data.GithubRepositories]);
+  const repositoryProvisionings: RepositoryProvisioningRecord[] = useMemo(() => {
+    return data.GithubRepositoryProvisionings.map((provisioning) => ({
+      companyId: provisioning.companyId,
+      createdAt: provisioning.createdAt,
+      githubRepository: {
+        archived: provisioning.githubRepository.archived,
+        createdAt: provisioning.githubRepository.createdAt,
+        defaultBranch: provisioning.githubRepository.defaultBranch,
+        externalId: provisioning.githubRepository.externalId,
+        fullName: provisioning.githubRepository.fullName,
+        githubInstallationId: provisioning.githubRepository.githubInstallationId,
+        htmlUrl: provisioning.githubRepository.htmlUrl,
+        id: provisioning.githubRepository.id,
+        isPrivate: provisioning.githubRepository.isPrivate,
+        name: provisioning.githubRepository.name,
+        updatedAt: provisioning.githubRepository.updatedAt,
+      },
+      id: provisioning.id,
+      updatedAt: provisioning.updatedAt,
+    }));
+  }, [data.GithubRepositoryProvisionings]);
+  const provisioningByRepositoryId = useMemo(() => {
+    return new Map(
+      repositoryProvisionings.map((provisioning) => [provisioning.githubRepository.id, provisioning]),
+    );
+  }, [repositoryProvisionings]);
   const repositoriesByInstallationId = useMemo(() => {
     const nextMap = new Map<string, RepositoryRecord[]>();
 
@@ -270,6 +395,142 @@ function RepositoriesPageContent() {
       [...preservedRepositories, ...newRepositories],
       "GithubRepositories",
     );
+
+    const refreshedRepositoryIds = new Set(newRepositories.map((repository) => repository.getDataID()));
+    const currentProvisionings = filterStoreRecords(rootRecord.getLinkedRecords("GithubRepositoryProvisionings") || []);
+    rootRecord.setLinkedRecords(
+      currentProvisionings.filter((provisioning) => {
+        const githubRepository = provisioning.getLinkedRecord("githubRepository");
+        if (!githubRepository) {
+          return false;
+        }
+
+        return String(githubRepository.getValue("githubInstallationId") || "") !== installationId
+          || refreshedRepositoryIds.has(githubRepository.getDataID());
+      }),
+      "GithubRepositoryProvisionings",
+    );
+  };
+  const appendProvisioningStoreRecord = (
+    store: RecordSourceSelectorProxy,
+    newProvisioningFieldName: string,
+  ) => {
+    const rootRecord = store.getRoot();
+    const payload = store.getRootField(newProvisioningFieldName);
+    if (!payload) {
+      return;
+    }
+
+    const currentProvisionings = filterStoreRecords(rootRecord.getLinkedRecords("GithubRepositoryProvisionings") || []);
+    if (currentProvisionings.some((provisioning) => provisioning.getDataID() === payload.getDataID())) {
+      return;
+    }
+
+    rootRecord.setLinkedRecords(
+      [...currentProvisionings, payload],
+      "GithubRepositoryProvisionings",
+    );
+  };
+  const removeProvisioningStoreRecord = (
+    store: RecordSourceSelectorProxy,
+    deletedProvisioningId: string,
+  ) => {
+    if (!deletedProvisioningId) {
+      return;
+    }
+
+    const rootRecord = store.getRoot();
+    const currentProvisionings = filterStoreRecords(rootRecord.getLinkedRecords("GithubRepositoryProvisionings") || []);
+    rootRecord.setLinkedRecords(
+      currentProvisionings.filter((provisioning) => provisioning.getDataID() !== deletedProvisioningId),
+      "GithubRepositoryProvisionings",
+    );
+  };
+  const isRepositoryProvisioningMutationInFlight =
+    isCreateRepositoryProvisioningInFlight || isDeleteRepositoryProvisioningInFlight;
+  const pinRepository = async (repository: RepositoryRecord) => {
+    if (isRepositoryProvisioningMutationInFlight) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setNoticeMessage(null);
+    setPinningRepositoryId(repository.id);
+
+    await new Promise<void>((resolve, reject) => {
+      commitCreateRepositoryProvisioning({
+        variables: {
+          input: {
+            githubRepositoryId: repository.id,
+          },
+        },
+        updater: (store) => {
+          appendProvisioningStoreRecord(store, "CreateGithubRepositoryProvisioning");
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          setNoticeMessage(`Pinned ${repository.fullName} for workspace checkout.`);
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to pin repository for workspace checkout.",
+      );
+    });
+
+    setPinningRepositoryId(null);
+  };
+  const unpinRepository = async (provisioning: RepositoryProvisioningRecord) => {
+    if (isRepositoryProvisioningMutationInFlight) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setNoticeMessage(null);
+    setDeletingProvisioningId(provisioning.id);
+
+    await new Promise<void>((resolve, reject) => {
+      commitDeleteRepositoryProvisioning({
+        variables: {
+          input: {
+            id: provisioning.id,
+          },
+        },
+        updater: (store) => {
+          const payload = store.getRootField("DeleteGithubRepositoryProvisioning");
+          const deletedProvisioningId = String(payload?.getValue("deletedProvisioningId") || "");
+          removeProvisioningStoreRecord(store, deletedProvisioningId);
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          setNoticeMessage(`Unpinned ${provisioning.githubRepository.fullName}.`);
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to unpin repository.",
+      );
+    });
+
+    setDeletingProvisioningId(null);
   };
 
   return (
@@ -335,6 +596,14 @@ function RepositoriesPageContent() {
         </CardContent>
       </Card>
 
+      <PageTabs
+        items={repositoriesPageTabs}
+        onSelect={setSelectedTab}
+        selectedKey={selectedTab}
+      />
+
+      {selectedTab === "inventory" ? (
+        <>
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <div className="min-w-0">
@@ -500,6 +769,9 @@ function RepositoriesPageContent() {
                                             const currentRepositories = filterStoreRecords(
                                               rootRecord.getLinkedRecords("GithubRepositories") || [],
                                             );
+                                            const currentProvisionings = filterStoreRecords(
+                                              rootRecord.getLinkedRecords("GithubRepositoryProvisionings") || [],
+                                            );
 
                                             rootRecord.setLinkedRecords(
                                               currentInstallations.filter((currentInstallation) => {
@@ -514,6 +786,14 @@ function RepositoriesPageContent() {
                                                   !== deletedInstallationId;
                                               }),
                                               "GithubRepositories",
+                                            );
+                                            rootRecord.setLinkedRecords(
+                                              currentProvisionings.filter((provisioning) => {
+                                                const githubRepository = provisioning.getLinkedRecord("githubRepository");
+                                                return String(githubRepository?.getValue("githubInstallationId") || "")
+                                                  !== deletedInstallationId;
+                                              }),
+                                              "GithubRepositoryProvisionings",
                                             );
                                           },
                                           onCompleted: (_response, errors) => {
@@ -606,52 +886,100 @@ function RepositoriesPageContent() {
                             <TableHead>Visibility</TableHead>
                             <TableHead>Default branch</TableHead>
                             <TableHead>Archived</TableHead>
+                            <TableHead>Workspace</TableHead>
                             <TableHead>Updated</TableHead>
+                            <TableHead className="w-32 text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {installationRepositories.map((repository) => (
-                            <TableRow key={repository.id}>
-                              <TableCell>
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <div className="min-w-0">
-                                    <p className="truncate font-medium text-foreground">{repository.fullName}</p>
-                                    <p className="truncate text-[11px] text-muted-foreground">{repository.name}</p>
+                          {installationRepositories.map((repository) => {
+                            const provisioning = provisioningByRepositoryId.get(repository.id);
+                            const isPinningRepository = pinningRepositoryId === repository.id;
+                            const isDeletingProvisioning = deletingProvisioningId === provisioning?.id;
+
+                            return (
+                              <TableRow key={repository.id}>
+                                <TableCell>
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-foreground">{repository.fullName}</p>
+                                      <p className="truncate text-[11px] text-muted-foreground">{repository.name}</p>
+                                    </div>
+                                    {repository.htmlUrl ? (
+                                      <a
+                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition hover:border-border hover:text-foreground"
+                                        href={repository.htmlUrl}
+                                        rel="noreferrer"
+                                        target="_blank"
+                                      >
+                                        <ExternalLinkIcon className="h-3.5 w-3.5" />
+                                      </a>
+                                    ) : null}
                                   </div>
-                                  {repository.htmlUrl ? (
-                                    <a
-                                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition hover:border-border hover:text-foreground"
-                                      href={repository.htmlUrl}
-                                      rel="noreferrer"
-                                      target="_blank"
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={repository.isPrivate ? "secondary" : "outline"}>
+                                    {repository.isPrivate ? "Private" : "Public"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {repository.defaultBranch ? (
+                                    <Badge variant="outline">{repository.defaultBranch}</Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">Unknown</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {repository.archived ? (
+                                    <Badge variant="warning">Archived</Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">Active</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {provisioning ? (
+                                    <Badge className="max-w-48 truncate font-mono" variant="outline">
+                                      {getWorkspaceRepositoryPath(repository)}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">Not pinned</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>{formatTimestamp(repository.updatedAt)}</TableCell>
+                                <TableCell className="text-right">
+                                  {provisioning ? (
+                                    <Button
+                                      disabled={isDeletingProvisioning || isRepositoryProvisioningMutationInFlight}
+                                      onClick={() => {
+                                        void unpinRepository(provisioning);
+                                      }}
+                                      size="sm"
+                                      variant="ghost"
                                     >
-                                      <ExternalLinkIcon className="h-3.5 w-3.5" />
-                                    </a>
-                                  ) : null}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={repository.isPrivate ? "secondary" : "outline"}>
-                                  {repository.isPrivate ? "Private" : "Public"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {repository.defaultBranch ? (
-                                  <Badge variant="outline">{repository.defaultBranch}</Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">Unknown</span>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {repository.archived ? (
-                                  <Badge variant="warning">Archived</Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">Active</span>
-                                )}
-                              </TableCell>
-                              <TableCell>{formatTimestamp(repository.updatedAt)}</TableCell>
-                            </TableRow>
-                          ))}
+                                      <PinOffIcon className="h-3.5 w-3.5" />
+                                      {isDeletingProvisioning ? "Removing..." : "Unpin"}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      disabled={
+                                        repository.archived
+                                        || isPinningRepository
+                                        || isRepositoryProvisioningMutationInFlight
+                                      }
+                                      onClick={() => {
+                                        void pinRepository(repository);
+                                      }}
+                                      size="sm"
+                                      variant="ghost"
+                                    >
+                                      <PinIcon className="h-3.5 w-3.5" />
+                                      {isPinningRepository ? "Pinning..." : "Pin"}
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     )}
@@ -662,6 +990,103 @@ function RepositoriesPageContent() {
           )}
         </CardContent>
       </Card>
+        </>
+      ) : (
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Workspace Repositories</CardTitle>
+              <CardDescription>
+                Pinned repositories clone into new agent environments at ~/workspace.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {repositoryProvisionings.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                <p className="text-sm font-medium text-foreground">No workspace repositories pinned</p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                  Pin repositories from the inventory tab to make them available in agent workspaces.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Repository</TableHead>
+                    <TableHead>Checkout path</TableHead>
+                    <TableHead>Visibility</TableHead>
+                    <TableHead>Default branch</TableHead>
+                    <TableHead>Added</TableHead>
+                    <TableHead className="w-32 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {repositoryProvisionings.map((provisioning) => {
+                    const repository = provisioning.githubRepository;
+                    const isDeletingProvisioning = deletingProvisioningId === provisioning.id;
+
+                    return (
+                      <TableRow key={provisioning.id}>
+                        <TableCell>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <PinIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-foreground">{repository.fullName}</p>
+                              <p className="truncate text-[11px] text-muted-foreground">{repository.name}</p>
+                            </div>
+                            {repository.htmlUrl ? (
+                              <a
+                                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition hover:border-border hover:text-foreground"
+                                href={repository.htmlUrl}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                <ExternalLinkIcon className="h-3.5 w-3.5" />
+                              </a>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="max-w-56 truncate font-mono" variant="outline">
+                            {getWorkspaceRepositoryPath(repository)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={repository.isPrivate ? "secondary" : "outline"}>
+                            {repository.isPrivate ? "Private" : "Public"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {repository.defaultBranch ? (
+                            <Badge variant="outline">{repository.defaultBranch}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">Unknown</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{formatTimestamp(provisioning.createdAt)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            disabled={isDeletingProvisioning || isRepositoryProvisioningMutationInFlight}
+                            onClick={() => {
+                              void unpinRepository(provisioning);
+                            }}
+                            size="sm"
+                            variant="ghost"
+                          >
+                            <PinOffIcon className="h-3.5 w-3.5" />
+                            {isDeletingProvisioning ? "Removing..." : "Unpin"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

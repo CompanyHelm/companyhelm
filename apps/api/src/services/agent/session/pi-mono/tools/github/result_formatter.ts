@@ -27,7 +27,10 @@ export class AgentGithubResultFormatter {
     return installations.map((installation) => {
       const repositories = installation.repositories.length > 0
         ? installation.repositories.map((repository) => {
-          return `- ${repository.fullName}${repository.archived ? " (archived)" : ""}`;
+          const repositoryLine = `- ${repository.fullName}${repository.archived ? " (archived)" : ""}`;
+          return repository.workspacePath
+            ? `${repositoryLine}\n  workspace: ${repository.workspacePath}`
+            : repositoryLine;
         }).join("\n")
         : "- No repositories cached for this installation.";
 

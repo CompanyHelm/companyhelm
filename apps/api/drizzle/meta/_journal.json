@@ -799,6 +799,13 @@
       "when": 1776795863957,
       "tag": "0113_tiny_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1776798421513,
+      "tag": "0114_worthless_red_wolf",
+      "breakpoints": true
     }
   ]
 }

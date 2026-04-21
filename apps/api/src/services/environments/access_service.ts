@@ -18,6 +18,7 @@ import { AgentEnvironmentSelectionService } from "./selection_service.ts";
 import { SecretService } from "../secrets/service.ts";
 import { AgentEnvironmentSkillSyncService } from "./skills/sync_service.ts";
 import type { SkillRecord } from "../skills/service.ts";
+import { GithubRepositoryProvisioningSyncService } from "../repositories/sync_service.ts";
 
 /**
  * Resolves a leased environment for one agent session. It centralizes the reuse policy, on-demand
@@ -34,6 +35,7 @@ export class AgentEnvironmentAccessService {
   private readonly selectionService: AgentEnvironmentSelectionService;
   private readonly secretService: SecretService;
   private readonly skillSyncService: AgentEnvironmentSkillSyncService;
+  private readonly repositorySyncService: GithubRepositoryProvisioningSyncService;
 
   constructor(
     @inject(AgentEnvironmentCatalogService) catalogService: AgentEnvironmentCatalogService,
@@ -58,6 +60,12 @@ export class AgentEnvironmentAccessService {
     } as never,
     @inject(AgentEnvironmentSkillSyncService)
     skillSyncService?: AgentEnvironmentSkillSyncService,
+    @inject(GithubRepositoryProvisioningSyncService)
+    repositorySyncService: GithubRepositoryProvisioningSyncService = {
+      async syncProvisionedRepositories() {
+        return undefined;
+      },
+    } as never,
   ) {
     this.catalogService = catalogService;
     this.leaseService = leaseService;
@@ -74,6 +82,7 @@ export class AgentEnvironmentAccessService {
     this.provisioningService = provisioningService;
     this.selectionService = selectionService;
     this.secretService = secretService;
+    this.repositorySyncService = repositorySyncService;
     this.skillSyncService = skillSyncService ?? new AgentEnvironmentSkillSyncService(
       catalogService,
       leaseService,
@@ -109,6 +118,13 @@ export class AgentEnvironmentAccessService {
           sessionId,
           environment,
           true,
+        );
+        await this.repositorySyncService.syncProvisionedRepositories(
+          transactionProvider,
+          {
+            companyId: environment.companyId,
+            environmentShell,
+          },
         );
         await this.skillSyncService.syncActiveSkillsForEnvironment(
           transactionProvider,
@@ -157,6 +173,13 @@ export class AgentEnvironmentAccessService {
       sessionId,
       selectedEnvironment,
       false,
+    );
+    await this.repositorySyncService.syncProvisionedRepositories(
+      transactionProvider,
+      {
+        companyId: selectedEnvironment.companyId,
+        environmentShell,
+      },
     );
     await this.skillSyncService.syncActiveSkillsForEnvironment(
       transactionProvider,

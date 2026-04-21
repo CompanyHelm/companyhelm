@@ -14,6 +14,7 @@ type Query {
   Environments: [Environment!]!
   GithubAppConfig: GithubAppConfig!
   GithubInstallations: [GithubInstallation!]!
+  GithubRepositoryProvisionings: [GithubRepositoryProvisioning!]!
   GithubRepositories(installationId: ID): [GithubRepository!]!
   GithubSkillBranches(repositoryUrl: String!): [GithubSkillBranch!]!
   GithubDiscoveredSkills(repositoryUrl: String!, branchName: String!): [GithubDiscoveredSkill!]!
@@ -64,6 +65,9 @@ type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
   CreateGithubInstallationUrl(input: CreateGithubInstallationUrlInput!): CreateGithubInstallationUrlPayload!
+  CreateGithubRepositoryProvisioning(
+    input: CreateGithubRepositoryProvisioningInput!
+  ): GithubRepositoryProvisioning!
   CreateEnvironmentTerminalConnection(
     input: CreateEnvironmentTerminalConnectionInput!
   ): EnvironmentTerminalConnection!
@@ -101,6 +105,9 @@ type Mutation {
   DeleteAgent(input: DeleteAgentInput!): Agent!
   DeleteArtifact(input: DeleteArtifactInput!): Artifact!
   DeleteGithubInstallation(input: DeleteGithubInstallationInput!): DeleteGithubInstallationPayload!
+  DeleteGithubRepositoryProvisioning(
+    input: DeleteGithubRepositoryProvisioningInput!
+  ): DeleteGithubRepositoryProvisioningPayload!
   DeleteModelProviderCredential(input: DeleteModelProviderCredentialInput!): ModelProviderCredential!
   DeleteSession(input: DeleteSessionInput!): Session!
   DeleteSessionQueuedMessage(input: DeleteSessionQueuedMessageInput!): SessionQueuedMessage!
@@ -240,6 +247,14 @@ type GithubRepository {
   updatedAt: String!
 }
 
+type GithubRepositoryProvisioning {
+  id: ID!
+  companyId: ID!
+  githubRepository: GithubRepository!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type GithubSkillBranch {
   commitSha: String!
   isDefault: Boolean!
@@ -340,6 +355,10 @@ type CreateGithubInstallationUrlPayload {
 
 type DeleteGithubInstallationPayload {
   deletedInstallationId: ID!
+}
+
+type DeleteGithubRepositoryProvisioningPayload {
+  deletedProvisioningId: ID!
 }
 
 type DeleteAgentConversationPayload {
@@ -904,6 +923,10 @@ input CreateGithubInstallationUrlInput {
   organizationSlug: String!
 }
 
+input CreateGithubRepositoryProvisioningInput {
+  githubRepositoryId: ID!
+}
+
 input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
@@ -979,6 +1002,10 @@ input StopEnvironmentInput {
 
 input DeleteGithubInstallationInput {
   installationId: ID!
+}
+
+input DeleteGithubRepositoryProvisioningInput {
+  id: ID!
 }
 
 input DeleteComputeProviderDefinitionInput {

@@ -13,6 +13,13 @@ type ToolExecuteFunction = (toolCallId: string, params: unknown) => Promise<{
   details?: Record<string, unknown>;
 }>;
 
+type TestBashCommandInput = {
+  command?: string;
+  environment?: Record<string, string>;
+  timeoutSeconds?: number;
+  workingDirectory?: string;
+};
+
 test("AgentGithubToolProvider contributes the GitHub installation, clone, push, create PR, and gh exec tools", () => {
   const provider = new AgentGithubToolProvider({
     async getEnvironment() {
@@ -53,6 +60,7 @@ test("AgentListGithubInstallationsTool renders linked installations and reposito
           installationId: 110600868,
           isPrivate: true,
           name: "repo-one",
+          workspacePath: "~/workspace/repo-one",
         }],
       }];
     },
@@ -70,6 +78,7 @@ test("AgentListGithubInstallationsTool renders linked installations and reposito
         "createdAt: 2026-03-29T12:00:00.000Z",
         "repositories:",
         "- acme/repo-one",
+        "  workspace: ~/workspace/repo-one",
       ].join("\n"),
       type: "text",
     }],
@@ -134,7 +143,8 @@ test("AgentGithubCloneRepositoryTool clones with installation-backed git auth wi
 });
 
 test("AgentGithubCloneRepositoryTool allows the agent to override the clone timeout", async () => {
-  const executeBashCommand = vi.fn(async () => {
+  const executeBashCommand = vi.fn(async (_input: TestBashCommandInput) => {
+    void _input;
     return {
       exitCode: 0,
       output: "",
@@ -192,7 +202,8 @@ test("AgentGithubCloneRepositoryTool turns shell timeouts into tool errors", asy
 });
 
 test("AgentGithubPushBranchTool pushes with installation-backed git auth without exposing the token", async () => {
-  const executeBashCommand = vi.fn(async () => {
+  const executeBashCommand = vi.fn(async (_input: TestBashCommandInput) => {
+    void _input;
     return {
       exitCode: 0,
       output: "To https://github.com/CompanyHelm/companyhelm.git\n * [new branch]      ceo/test -> ceo/test\n",
@@ -277,7 +288,8 @@ test("AgentGithubPushBranchTool turns shell timeouts into tool errors", async ()
 });
 
 test("AgentGithubCreatePullRequestTool creates a PR through gh with installation token auth", async () => {
-  const executeBashCommand = vi.fn(async () => {
+  const executeBashCommand = vi.fn(async (_input: TestBashCommandInput) => {
+    void _input;
     return {
       exitCode: 0,
       output: "https://github.com/CompanyHelm/companyhelm/pull/123\n",

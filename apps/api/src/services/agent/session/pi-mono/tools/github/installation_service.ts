@@ -5,6 +5,8 @@ import {
 } from "../../../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../../../db/transaction_provider_interface.ts";
 import { GithubClient } from "../../../../../../github/client.ts";
+import { GithubRepositoryProvisioningPathService } from "../../../../../repositories/path_service.ts";
+import { GithubRepositoryProvisioningService } from "../../../../../repositories/provisioning_service.ts";
 
 type GithubInstallationRow = {
   createdAt: Date;
@@ -20,6 +22,7 @@ type GithubRepositoryRow = {
   defaultBranch: string | null;
   fullName: string;
   htmlUrl: string | null;
+  id: string;
   installationId: number;
   isPrivate: boolean;
   name: string;
@@ -41,9 +44,11 @@ export type AgentGithubInstallationRepository = {
   defaultBranch: string | null;
   fullName: string;
   htmlUrl: string | null;
+  id: string;
   installationId: number;
   isPrivate: boolean;
   name: string;
+  workspacePath: string | null;
 };
 
 export type AgentGithubInstallation = {
@@ -62,18 +67,32 @@ export class AgentGithubInstallationService {
   private readonly transactionProvider: TransactionProviderInterface;
   private readonly companyId: string;
   private readonly githubClient: GithubClient;
+  private readonly pathService: GithubRepositoryProvisioningPathService;
+  private readonly provisioningService: GithubRepositoryProvisioningService;
 
   constructor(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     githubClient: GithubClient,
+    provisioningService: GithubRepositoryProvisioningService = new GithubRepositoryProvisioningService(),
+    pathService: GithubRepositoryProvisioningPathService = new GithubRepositoryProvisioningPathService(),
   ) {
     this.transactionProvider = transactionProvider;
     this.companyId = companyId;
     this.githubClient = githubClient;
+    this.pathService = pathService;
+    this.provisioningService = provisioningService;
   }
 
   async listInstallations(): Promise<AgentGithubInstallation[]> {
+    const provisionings = await this.provisioningService.listProvisionings(this.transactionProvider, this.companyId);
+    const workspacePathByRepositoryId = new Map(
+      provisionings.map((provisioning) => [
+        provisioning.githubRepositoryId,
+        this.pathService.getDisplayPath(provisioning.githubRepository),
+      ]),
+    );
+
     return this.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
       const installations = await selectableDatabase
@@ -90,6 +109,7 @@ export class AgentGithubInstallationService {
           defaultBranch: githubRepositories.defaultBranch,
           fullName: githubRepositories.fullName,
           htmlUrl: githubRepositories.htmlUrl,
+          id: githubRepositories.id,
           installationId: githubRepositories.installationId,
           isPrivate: githubRepositories.isPrivate,
           name: githubRepositories.name,
@@ -109,9 +129,11 @@ export class AgentGithubInstallationService {
           defaultBranch: repository.defaultBranch,
           fullName: repository.fullName,
           htmlUrl: repository.htmlUrl,
+          id: repository.id,
           installationId: repository.installationId,
           isPrivate: repository.isPrivate,
           name: repository.name,
+          workspacePath: workspacePathByRepositoryId.get(repository.id) ?? null,
         });
         repositoriesByInstallationId.set(repository.installationId, installationRepositories);
       }

@@ -146,3 +146,22 @@ export const githubRepositories = pgTable("github_repositories", {
   uniqueInstallationRepository: uniqueIndex("github_repositories_company_installation_external_uidx")
     .on(table.companyId, table.installationId, table.externalId),
 }));
+
+export const githubRepositoryProvisionings = pgTable("github_repository_provisionings", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  githubRepositoryId: uuid("github_repository_id")
+    .references(() => githubRepositories.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companyIdIndex: index("github_repository_provisionings_company_id_idx").on(table.companyId),
+  githubRepositoryIdIndex: index("github_repository_provisionings_repository_id_idx").on(table.githubRepositoryId),
+  uniqueCompanyRepository: uniqueIndex("github_repository_provisionings_company_repository_uidx")
+    .on(table.companyId, table.githubRepositoryId),
+}));
