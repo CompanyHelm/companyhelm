@@ -1,4 +1,5 @@
-import * as amplitude from "@amplitude/unified";
+import type { AmplitudeClientInterface } from "./amplitude_client_interface";
+import { UnifiedAmplitudeClient } from "./unified_amplitude_client";
 
 type RouteLocation = {
   hash: string;
@@ -17,8 +18,16 @@ type AnalyticsRouter = {
 };
 
 type AmplitudeWindowState = {
+  client: AmplitudeClientInterface;
   initialized: boolean;
   lastTrackedHref: string | null;
+  lastSyncedUserId: string | null;
+};
+
+type AmplitudeUserSession = {
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  userId: string | null;
 };
 
 type EnvironmentActionProperties = {
@@ -61,7 +70,7 @@ export class AmplitudeAnalytics {
     }
 
     state.initialized = true;
-    void amplitude.initAll(configuration.id, {
+    void state.client.initAll(configuration.id, {
       analytics: {
         autocapture: true,
       },
@@ -95,17 +104,48 @@ export class AmplitudeAnalytics {
       return;
     }
 
-    amplitude.track("environment_action_clicked", {
+    AmplitudeAnalytics.getWindowState().client.track("environment_action_clicked", {
       ...properties,
       pathname: window.location.pathname,
     });
   }
 
+  static syncUserSession(session: AmplitudeUserSession): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const state = AmplitudeAnalytics.getWindowState();
+    if (!state.initialized || !session.isLoaded) {
+      return;
+    }
+
+    if (session.isSignedIn && typeof session.userId === "string" && session.userId.length > 0) {
+      if (state.lastSyncedUserId === session.userId) {
+        return;
+      }
+
+      state.lastSyncedUserId = session.userId;
+      state.client.setUserId(session.userId);
+      return;
+    }
+
+    if (state.lastSyncedUserId === null) {
+      return;
+    }
+
+    state.lastSyncedUserId = null;
+    state.client.setUserId(undefined);
+    state.client.reset();
+  }
+
   private static getWindowState(): AmplitudeWindowState {
     if (!window.__COMPANYHELM_AMPLITUDE__) {
       window.__COMPANYHELM_AMPLITUDE__ = {
+        client: new UnifiedAmplitudeClient(),
         initialized: false,
         lastTrackedHref: null,
+        lastSyncedUserId: null,
       };
     }
 
@@ -119,7 +159,7 @@ export class AmplitudeAnalytics {
     }
 
     state.lastTrackedHref = location.href;
-    amplitude.track("page_viewed", {
+    state.client.track("page_viewed", {
       hash: location.hash,
       href: location.href,
       pathname: location.pathname,
