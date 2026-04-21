@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import pino from "pino";
 import { ApiServer } from "../src/server/api_server.ts";
 
@@ -126,6 +126,124 @@ test("ApiServer exposes a health endpoint", async () => {
   assert.deepEqual(await response.json(), { status: "ok" });
 
   await app.close();
+});
+
+test("ApiServer health endpoint reports draining state", async () => {
+  const server = new ApiServer({
+    host: "127.0.0.1",
+    port: 0,
+    cors: {
+      origin: ["http://localhost:5173"],
+      credentials: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowed_headers: ["content-type", "authorization"],
+    },
+  } as never, {
+    close: async () => {},
+  } as never, {
+    close: async () => {},
+  } as never, {
+    register: async () => {},
+  } as never, {
+    getLogger: () => pino({ level: "silent" }),
+  } as never, {
+    validateNoEvictionPolicy: async () => {},
+  } as never, {
+    start: () => {},
+    stop: () => {},
+  } as never, {
+    start: () => {},
+    stop: async () => {},
+  } as never, {
+    syncEnabledCronTriggers: async () => {},
+  } as never, {
+    start: () => {},
+    stop: async () => {},
+  } as never);
+
+  await server.start();
+
+  Reflect.set(server, "isDraining", true);
+  const app = Reflect.get(server, "app");
+  const address = app.server.address() as AddressInfo;
+  const response = await fetch(`http://127.0.0.1:${address.port}/health`);
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { status: "draining" });
+
+  await app.close();
+});
+
+test("ApiServer stop is idempotent and closes runtime dependencies once", async () => {
+  const adminClose = vi.fn(async () => {});
+  const databaseClose = vi.fn(async () => {});
+  const githubQueueClose = vi.fn(async () => {});
+  const githubWorkerStop = vi.fn(async () => {});
+  const llmOauthStop = vi.fn();
+  const routineStop = vi.fn(async () => {});
+  const sessionStop = vi.fn(async () => {});
+  const workflowQueueClose = vi.fn(async () => {});
+  const workflowStop = vi.fn(async () => {});
+  const server = new ApiServer({
+    host: "127.0.0.1",
+    port: 0,
+    cors: {
+      origin: ["http://localhost:5173"],
+      credentials: true,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowed_headers: ["content-type", "authorization"],
+    },
+  } as never, {
+    close: adminClose,
+  } as never, {
+    close: databaseClose,
+  } as never, {
+    register: async () => {},
+  } as never, {
+    getLogger: () => pino({ level: "silent" }),
+  } as never, {
+    validateNoEvictionPolicy: async () => {},
+  } as never, {
+    start: () => {},
+    stop: llmOauthStop,
+  } as never, {
+    start: () => {},
+    stop: sessionStop,
+  } as never, {
+    syncEnabledCronTriggers: async () => {},
+  } as never, {
+    start: () => {},
+    stop: routineStop,
+  } as never, {
+    syncEnabledCronTriggers: async () => {},
+  } as never, {
+    close: workflowQueueClose,
+  } as never, {
+    start: () => {},
+    stop: workflowStop,
+  } as never, {
+    register: () => {},
+  } as never, {
+    close: githubQueueClose,
+  } as never, {
+    register: () => {},
+  } as never, {
+    start: () => {},
+    stop: githubWorkerStop,
+  } as never);
+
+  await server.start();
+  await Promise.all([server.stop(), server.stop()]);
+
+  assert.equal(llmOauthStop.mock.calls.length, 1);
+  assert.equal(githubWorkerStop.mock.calls.length, 1);
+  assert.equal(sessionStop.mock.calls.length, 1);
+  assert.equal(routineStop.mock.calls.length, 1);
+  assert.equal(workflowStop.mock.calls.length, 1);
+  assert.equal(workflowQueueClose.mock.calls.length, 1);
+  assert.equal(githubQueueClose.mock.calls.length, 1);
+  assert.equal(databaseClose.mock.calls.length, 1);
+  assert.equal(adminClose.mock.calls.length, 1);
 });
 
 test("ApiServer fails startup before listening when the Redis queue policy is unsafe", async () => {

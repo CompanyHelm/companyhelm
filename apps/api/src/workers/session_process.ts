@@ -1,12 +1,13 @@
 import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
-import IORedis from "ioredis";
+import { Redis as IORedis } from "ioredis";
 import { Worker } from "bullmq";
 import { Config } from "../config/schema.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import { SessionProcessExecutionService } from "../services/agent/session/process/execution.ts";
 import type { SessionWakeJobPayload } from "../services/agent/session/process/queue.ts";
 import { SessionProcessQueuedNames } from "../services/agent/session/process/queued_names.ts";
+import { drainLocalWork } from "./local_drain.ts";
 
 /**
  * Owns the BullMQ consumer that turns wake jobs into one leased session-processing pass. Its scope
@@ -18,6 +19,7 @@ export class SessionProcessWorker {
   private readonly logger: PinoLogger;
   private readonly sessionProcessExecutionService: SessionProcessExecutionService;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
+  private readonly activeJobIds = new Set<string>();
   private connection?: IORedis;
   private worker?: Worker<SessionWakeJobPayload>;
 
@@ -51,12 +53,13 @@ export class SessionProcessWorker {
     this.worker = new Worker<SessionWakeJobPayload>(
       this.sessionProcessQueuedNames.getWakeQueueName(),
       async (job) => {
-        this.logger.debug({
-          companyId: job.data.companyId,
-          sessionId: job.data.sessionId,
-        }, "processing session wake job");
-
+        const activeJobId = String(job.id ?? `${job.data.companyId}:${job.data.sessionId}`);
+        this.activeJobIds.add(activeJobId);
         try {
+          this.logger.debug({
+            companyId: job.data.companyId,
+            sessionId: job.data.sessionId,
+          }, "processing session wake job");
           await this.sessionProcessExecutionService.execute(job.data.companyId, job.data.sessionId);
         } catch (error) {
           this.logger.error({
@@ -65,6 +68,8 @@ export class SessionProcessWorker {
             sessionId: job.data.sessionId,
           }, "session wake job failed");
           throw error;
+        } finally {
+          this.activeJobIds.delete(activeJobId);
         }
 
         this.logger.debug({
@@ -90,9 +95,19 @@ export class SessionProcessWorker {
     this.worker = undefined;
     this.connection = undefined;
 
-    await worker?.close();
-    if (connection) {
-      await connection.quit();
+    try {
+      await drainLocalWork({
+        close: async () => {
+          await worker?.close(false);
+        },
+        getActiveJobIds: () => [...this.activeJobIds],
+        logger: this.logger,
+        workerName: "session_process",
+      });
+    } finally {
+      if (connection) {
+        await connection.quit();
+      }
     }
   }
 }

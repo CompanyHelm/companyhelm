@@ -93,6 +93,7 @@ test("WorkflowTriggerWorker starts scheduled workflow jobs under the job company
         return {
           debug,
           error,
+          info() {},
         };
       },
     } as never,
@@ -129,5 +130,6 @@ test("WorkflowTriggerWorker starts scheduled workflow jobs under the job company
   await worker.stop();
 
   assert.equal(workerMocks.closeMock.mock.calls.length, 1);
+  assert.deepEqual(workerMocks.closeMock.mock.calls[0] as unknown[] | undefined, [false]);
   assert.equal(ioRedisMocks.quitMock.mock.calls.length, 1);
 });

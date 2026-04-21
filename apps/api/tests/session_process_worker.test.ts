@@ -11,7 +11,7 @@ const workerMocks = vi.hoisted(() => ({
     close: ReturnType<typeof vi.fn>;
     on: ReturnType<typeof vi.fn>;
     options: Record<string, unknown> | undefined;
-    processor: (job: { data: { companyId: string; sessionId: string } }) => Promise<void>;
+    processor: (job: { data: { companyId: string; sessionId: string }; id?: string }) => Promise<void>;
   }>,
 }));
 
@@ -24,11 +24,12 @@ vi.mock("bullmq", () => ({
   Worker: class MockWorker {
     close = workerMocks.closeMock;
     on = workerMocks.onMock;
+    options: Record<string, unknown> | undefined;
     processor;
 
     constructor(
       queueName: string,
-      processor: (job: { data: { companyId: string; sessionId: string } }) => Promise<void>,
+      processor: (job: { data: { companyId: string; sessionId: string }; id?: string }) => Promise<void>,
       options?: Record<string, unknown>,
     ) {
       void queueName;
@@ -39,15 +40,20 @@ vi.mock("bullmq", () => ({
   },
 }));
 
-vi.mock("ioredis", () => ({
-  default: class MockIORedis {
+vi.mock("ioredis", () => {
+  class MockIORedis {
     quit = ioRedisMocks.quitMock;
 
     constructor() {
       ioRedisMocks.instances.push(this);
     }
-  },
-}));
+  }
+
+  return {
+    default: MockIORedis,
+    Redis: MockIORedis,
+  };
+});
 
 afterEach(() => {
   workerMocks.closeMock.mockReset();
@@ -76,6 +82,7 @@ test("SessionProcessWorker starts one BullMQ worker and closes it cleanly", asyn
       child() {
         return {
           error() {},
+          info() {},
         };
       },
     } as never,
@@ -95,7 +102,86 @@ test("SessionProcessWorker starts one BullMQ worker and closes it cleanly", asyn
   await worker.stop();
 
   assert.equal(workerMocks.closeMock.mock.calls.length, 1);
+  assert.deepEqual(workerMocks.closeMock.mock.calls[0] as unknown[] | undefined, [false]);
   assert.equal(ioRedisMocks.quitMock.mock.calls.length, 1);
+});
+
+test("SessionProcessWorker logs only local active jobs while stopping", async () => {
+  vi.useFakeTimers();
+  const info = vi.fn();
+  let resolveClose: () => void = () => {};
+  let resolveExecute: () => void = () => {};
+  const closePromise = new Promise<undefined>((resolve) => {
+    resolveClose = () => resolve(undefined);
+  });
+  const executePromise = new Promise<void>((resolve) => {
+    resolveExecute = resolve;
+  });
+  workerMocks.closeMock.mockImplementationOnce(() => closePromise);
+  const worker = new SessionProcessWorker(
+    {
+      redis: {
+        host: "127.0.0.1",
+        password: "redis-password",
+        port: 6379,
+        username: "redis-user",
+      },
+      workers: {
+        session_process: {
+          concurrency: 7,
+        },
+      },
+    } as Config,
+    {
+      child() {
+        return {
+          debug() {},
+          error() {},
+          info,
+        };
+      },
+    } as never,
+    {
+      async execute() {
+        await executePromise;
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+  );
+
+  worker.start();
+  const workerInstance = workerMocks.workerInstances[0];
+  assert.ok(workerInstance, "worker instance should be created");
+
+  const processingPromise = workerInstance.processor({
+    data: {
+      companyId: "company-1",
+      sessionId: "session-1",
+    },
+    id: "bullmq-job-1",
+  });
+  await Promise.resolve();
+
+  const stopPromise = worker.stop();
+  await vi.advanceTimersByTimeAsync(5_000);
+
+  assert.ok(info.mock.calls.some((call) =>
+    call[1] === "waiting for worker jobs to drain"
+    && call[0]?.activeJobs === 1
+    && call[0]?.activeJobIds?.[0] === "bullmq-job-1"
+  ));
+
+  resolveExecute();
+  await processingPromise;
+  resolveClose();
+  await stopPromise;
+
+  assert.ok(info.mock.calls.some((call) =>
+    call[1] === "worker drained"
+    && call[0]?.activeJobs === 0
+  ));
+
+  vi.useRealTimers();
 });
 
 test("SessionProcessWorker logs and rethrows failed wake jobs with company and session context", async () => {
@@ -120,6 +206,7 @@ test("SessionProcessWorker logs and rethrows failed wake jobs with company and s
         return {
           debug,
           error,
+          info() {},
         };
       },
     } as never,

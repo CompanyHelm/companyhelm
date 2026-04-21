@@ -9,6 +9,7 @@ import { ApiLogger } from "../log/api_logger.ts";
 import { RoutineExecutionService } from "../services/routines/execution.ts";
 import { RoutineQueueNames } from "../services/routines/queue_names.ts";
 import type { RoutineTriggerJobPayload } from "../services/routines/types.ts";
+import { drainLocalWork } from "./local_drain.ts";
 
 /**
  * Consumes BullMQ routine trigger jobs and translates each cron fire into one routine execution
@@ -21,6 +22,7 @@ export class RoutineTriggerWorker {
   private readonly logger: PinoLogger;
   private readonly names: RoutineQueueNames;
   private readonly routineExecutionService: RoutineExecutionService;
+  private readonly activeJobIds = new Set<string>();
   private connection?: IORedis;
   private worker?: Worker<RoutineTriggerJobPayload>;
 
@@ -55,23 +57,29 @@ export class RoutineTriggerWorker {
     this.worker = new Worker<RoutineTriggerJobPayload>(
       this.names.getTriggerQueueName(),
       async (job) => {
-        this.logger.debug({
-          companyId: job.data.companyId,
-          routineId: job.data.routineId,
-          triggerId: job.data.triggerId,
-        }, "processing routine trigger job");
+        const activeJobId = String(job.id ?? `${job.data.companyId}:${job.data.routineId}:${job.data.triggerId}`);
+        this.activeJobIds.add(activeJobId);
+        try {
+          this.logger.debug({
+            companyId: job.data.companyId,
+            routineId: job.data.routineId,
+            triggerId: job.data.triggerId,
+          }, "processing routine trigger job");
 
-        const transactionProvider = new AppRuntimeTransactionProvider(
-          this.appRuntimeDatabase,
-          job.data.companyId,
-        );
-        await this.routineExecutionService.execute(transactionProvider, {
-          bullmqJobId: job.id,
-          companyId: job.data.companyId,
-          routineId: job.data.routineId,
-          source: "scheduled",
-          triggerId: job.data.triggerId,
-        });
+          const transactionProvider = new AppRuntimeTransactionProvider(
+            this.appRuntimeDatabase,
+            job.data.companyId,
+          );
+          await this.routineExecutionService.execute(transactionProvider, {
+            bullmqJobId: job.id,
+            companyId: job.data.companyId,
+            routineId: job.data.routineId,
+            source: "scheduled",
+            triggerId: job.data.triggerId,
+          });
+        } finally {
+          this.activeJobIds.delete(activeJobId);
+        }
       },
       {
         connection: this.connection,
@@ -91,9 +99,19 @@ export class RoutineTriggerWorker {
     this.worker = undefined;
     this.connection = undefined;
 
-    await worker?.close();
-    if (connection) {
-      await connection.quit();
+    try {
+      await drainLocalWork({
+        close: async () => {
+          await worker?.close(false);
+        },
+        getActiveJobIds: () => [...this.activeJobIds],
+        logger: this.logger,
+        workerName: "routine_triggers",
+      });
+    } finally {
+      if (connection) {
+        await connection.quit();
+      }
     }
   }
 }

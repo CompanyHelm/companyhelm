@@ -7,6 +7,7 @@ import { ApiLogger } from "../log/api_logger.ts";
 import { GithubWebhookProcessor } from "../github/webhooks/processor.ts";
 import { GithubWebhookQueueNames } from "../github/webhooks/queue_names.ts";
 import type { GithubWebhookJobPayload } from "../github/webhooks/queue.ts";
+import { drainLocalWork } from "./local_drain.ts";
 
 /**
  * Consumes verified GitHub webhook jobs and delegates event-specific behavior to the processor.
@@ -19,6 +20,7 @@ export class GithubWebhookWorker {
   private readonly logger: PinoLogger;
   private readonly names: GithubWebhookQueueNames;
   private readonly processor: GithubWebhookProcessor;
+  private readonly activeJobIds = new Set<string>();
   private connection?: IORedis;
   private worker?: Worker<GithubWebhookJobPayload>;
 
@@ -51,12 +53,13 @@ export class GithubWebhookWorker {
     this.worker = new Worker<GithubWebhookJobPayload>(
       this.names.getQueueName(),
       async (job) => {
-        this.logger.debug({
-          deliveryId: job.data.deliveryId,
-          eventName: job.data.eventName,
-        }, "processing github webhook job");
-
+        const activeJobId = String(job.id ?? job.data.deliveryId);
+        this.activeJobIds.add(activeJobId);
         try {
+          this.logger.debug({
+            deliveryId: job.data.deliveryId,
+            eventName: job.data.eventName,
+          }, "processing github webhook job");
           await this.processor.process(job.data);
         } catch (error) {
           this.logger.error({
@@ -65,6 +68,8 @@ export class GithubWebhookWorker {
             eventName: job.data.eventName,
           }, "github webhook job failed");
           throw error;
+        } finally {
+          this.activeJobIds.delete(activeJobId);
         }
       },
       {
@@ -85,9 +90,19 @@ export class GithubWebhookWorker {
     this.worker = undefined;
     this.connection = undefined;
 
-    await worker?.close();
-    if (connection) {
-      await connection.quit();
+    try {
+      await drainLocalWork({
+        close: async () => {
+          await worker?.close(false);
+        },
+        getActiveJobIds: () => [...this.activeJobIds],
+        logger: this.logger,
+        workerName: "github_webhooks",
+      });
+    } finally {
+      if (connection) {
+        await connection.quit();
+      }
     }
   }
 }

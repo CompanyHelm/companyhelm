@@ -43,6 +43,9 @@ export class ApiServer {
   private readonly workflowTriggerQueueService: WorkflowTriggerQueueService;
   private readonly workflowTriggerWorker: WorkflowTriggerWorker;
   private readonly app;
+  private closeRuntimeDependenciesPromise: Promise<void> | null = null;
+  private isDraining = false;
+  private stopPromise: Promise<void> | null = null;
 
   constructor(
     @inject(Config) config: Config,
@@ -112,15 +115,7 @@ export class ApiServer {
     await this.queuePolicyValidator.validateNoEvictionPolicy();
 
     this.app.addHook("onClose", async () => {
-      this.llmOauthRefreshWorker.stop();
-      await this.githubWebhookWorker.stop();
-      await this.sessionProcessWorker.stop();
-      await this.routineTriggerWorker.stop();
-      await this.workflowTriggerWorker.stop();
-      await this.workflowTriggerQueueService.close();
-      await this.githubWebhookQueueService.close();
-      await this.database.close();
-      await this.adminDatabase.close();
+      await this.closeRuntimeDependencies();
     });
 
     await this.app.register(fastifyCors, {
@@ -131,7 +126,11 @@ export class ApiServer {
     });
     await this.app.register(fastifyWebsocket);
 
-    this.app.get("/health", async () => {
+    this.app.get("/health", async (_request, reply) => {
+      if (this.isDraining) {
+        return reply.code(503).send({ status: "draining" });
+      }
+
       return { status: "ok" };
     });
 
@@ -153,7 +152,48 @@ export class ApiServer {
     this.workflowTriggerWorker.start();
   }
 
+  async stop(): Promise<void> {
+    if (this.stopPromise) {
+      return this.stopPromise;
+    }
+
+    const startedAt = Date.now();
+    this.isDraining = true;
+    this.logger.getLogger().info({
+      component: "api_server",
+    }, "api server entering draining mode");
+
+    this.stopPromise = this.app.close().then(() => {
+      this.logger.getLogger().info({
+        component: "api_server",
+        elapsedMilliseconds: Date.now() - startedAt,
+      }, "api server stopped");
+    });
+
+    return this.stopPromise;
+  }
+
   static createLoggerOptions(config: Pick<Config, "log">): FastifyServerOptions["logger"] {
     return ApiLogger.createOptions(config);
+  }
+
+  private closeRuntimeDependencies(): Promise<void> {
+    if (this.closeRuntimeDependenciesPromise) {
+      return this.closeRuntimeDependenciesPromise;
+    }
+
+    this.closeRuntimeDependenciesPromise = (async () => {
+      this.llmOauthRefreshWorker.stop();
+      await this.githubWebhookWorker.stop();
+      await this.sessionProcessWorker.stop();
+      await this.routineTriggerWorker.stop();
+      await this.workflowTriggerWorker.stop();
+      await this.workflowTriggerQueueService.close();
+      await this.githubWebhookQueueService.close();
+      await this.database.close();
+      await this.adminDatabase.close();
+    })();
+
+    return this.closeRuntimeDependenciesPromise;
   }
 }

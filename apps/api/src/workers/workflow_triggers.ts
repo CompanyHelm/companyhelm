@@ -9,6 +9,7 @@ import { ApiLogger } from "../log/api_logger.ts";
 import { WorkflowQueueNames } from "../services/workflows/queue_names.ts";
 import { WorkflowService } from "../services/workflows/service.ts";
 import type { WorkflowTriggerJobPayload } from "../services/workflows/types.ts";
+import { drainLocalWork } from "./local_drain.ts";
 
 /**
  * Consumes BullMQ workflow trigger jobs and starts scheduled workflow runs under the job company.
@@ -21,6 +22,7 @@ export class WorkflowTriggerWorker {
   private readonly logger: PinoLogger;
   private readonly names: WorkflowQueueNames;
   private readonly workflowService: WorkflowService;
+  private readonly activeJobIds = new Set<string>();
   private connection?: IORedis;
   private worker?: Worker<WorkflowTriggerJobPayload>;
 
@@ -55,21 +57,27 @@ export class WorkflowTriggerWorker {
     this.worker = new Worker<WorkflowTriggerJobPayload>(
       this.names.getTriggerQueueName(),
       async (job) => {
-        this.logger.debug({
-          companyId: job.data.companyId,
-          triggerId: job.data.triggerId,
-          workflowDefinitionId: job.data.workflowDefinitionId,
-        }, "processing workflow trigger job");
+        const activeJobId = String(job.id ?? `${job.data.companyId}:${job.data.triggerId}`);
+        this.activeJobIds.add(activeJobId);
+        try {
+          this.logger.debug({
+            companyId: job.data.companyId,
+            triggerId: job.data.triggerId,
+            workflowDefinitionId: job.data.workflowDefinitionId,
+          }, "processing workflow trigger job");
 
-        const transactionProvider = new AppRuntimeTransactionProvider(
-          this.appRuntimeDatabase,
-          job.data.companyId,
-        );
-        await this.workflowService.startScheduledWorkflowRun(transactionProvider, {
-          bullmqJobId: job.id,
-          companyId: job.data.companyId,
-          triggerId: job.data.triggerId,
-        });
+          const transactionProvider = new AppRuntimeTransactionProvider(
+            this.appRuntimeDatabase,
+            job.data.companyId,
+          );
+          await this.workflowService.startScheduledWorkflowRun(transactionProvider, {
+            bullmqJobId: job.id,
+            companyId: job.data.companyId,
+            triggerId: job.data.triggerId,
+          });
+        } finally {
+          this.activeJobIds.delete(activeJobId);
+        }
       },
       {
         connection: this.connection,
@@ -89,9 +97,19 @@ export class WorkflowTriggerWorker {
     this.worker = undefined;
     this.connection = undefined;
 
-    await worker?.close();
-    if (connection) {
-      await connection.quit();
+    try {
+      await drainLocalWork({
+        close: async () => {
+          await worker?.close(false);
+        },
+        getActiveJobIds: () => [...this.activeJobIds],
+        logger: this.logger,
+        workerName: "workflow_triggers",
+      });
+    } finally {
+      if (connection) {
+        await connection.quit();
+      }
     }
   }
 }
