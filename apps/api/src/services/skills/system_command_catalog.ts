@@ -523,6 +523,28 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_artifacts",
   }, {
+    description: "List GitHub App installations linked to this company and the repositories they expose.",
+    id: "github.installation.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {},
+      type: "object",
+    },
+    systemSkillKey: "manage_github_installations",
+  }, {
+    description: "Start a GitHub App installation flow and return a user-facing install URL.",
+    id: "github.installation.start",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        organizationSlug: { type: "string" },
+        returnPath: { type: "string" },
+      },
+      required: ["returnPath"],
+      type: "object",
+    },
+    systemSkillKey: "manage_github_installations",
+  }, {
     description: "List company agents from the read-only company directory.",
     id: "company_directory.agents.list",
     inputSchema: {

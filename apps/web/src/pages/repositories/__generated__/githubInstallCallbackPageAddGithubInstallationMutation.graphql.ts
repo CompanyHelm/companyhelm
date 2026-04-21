@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ba886c6e9d8d4f8482f76a74f20fbaaa>>
+ * @generated SignedSource<<17e2e4b38487049b3c85da28cd60d52c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,7 @@ import { ConcreteRequest } from 'relay-runtime';
 export type AddGithubInstallationInput = {
   installationId: string;
   setupAction?: string | null | undefined;
-  state?: string | null | undefined;
+  state: string;
 };
 export type githubInstallCallbackPageAddGithubInstallationMutation$variables = {
   input: AddGithubInstallationInput;
@@ -38,6 +38,7 @@ export type githubInstallCallbackPageAddGithubInstallationMutation$data = {
       readonly name: string;
       readonly updatedAt: string;
     }>;
+    readonly returnPath: string;
   };
 };
 export type githubInstallCallbackPageAddGithubInstallationMutation = {
@@ -100,6 +101,13 @@ v3 = [
           },
           (v2/*: any*/)
         ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "returnPath",
         "storageKey": null
       },
       {
@@ -207,16 +215,16 @@ return {
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "04b3cb3a2bea067a6d968ae594a28cd9",
+    "cacheID": "972dbd2d4ee200a1e52f833ecefefca7",
     "id": null,
     "metadata": {},
     "name": "githubInstallCallbackPageAddGithubInstallationMutation",
     "operationKind": "mutation",
-    "text": "mutation githubInstallCallbackPageAddGithubInstallationMutation(\n  $input: AddGithubInstallationInput!\n) {\n  AddGithubInstallation(input: $input) {\n    githubInstallation {\n      id\n      installationId\n      createdAt\n    }\n    organizationSlug\n    repositories {\n      id\n      githubInstallationId\n      externalId\n      name\n      fullName\n      htmlUrl\n      isPrivate\n      defaultBranch\n      archived\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
+    "text": "mutation githubInstallCallbackPageAddGithubInstallationMutation(\n  $input: AddGithubInstallationInput!\n) {\n  AddGithubInstallation(input: $input) {\n    githubInstallation {\n      id\n      installationId\n      createdAt\n    }\n    returnPath\n    organizationSlug\n    repositories {\n      id\n      githubInstallationId\n      externalId\n      name\n      fullName\n      htmlUrl\n      isPrivate\n      defaultBranch\n      archived\n      createdAt\n      updatedAt\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "be7668b255d274ed8080c4cee1b46c51";
+(node as any).hash = "de399d8af35d34405586f63c4cde7ce1";
 
 export default node;

@@ -63,6 +63,7 @@ test("CreateGithubInstallationUrlMutation builds an installation URL with encryp
     {
       input: {
         organizationSlug: "acme",
+        returnPath: "/orgs/acme/repositories",
       },
     },
     createContext(async () => {
@@ -73,6 +74,8 @@ test("CreateGithubInstallationUrlMutation builds an installation URL with encryp
   assert.deepEqual(stateService.createState.mock.calls, [[{
     companyId: "company-123",
     organizationSlug: "acme",
+    returnPath: "/orgs/acme/repositories",
+    sourceSessionId: null,
     userId: "user-123",
   }]]);
   assert.deepEqual(githubClient.buildInstallationUrl.mock.calls, [["opaque-state"]]);
@@ -231,9 +234,29 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
   };
   const insertedValues: Array<Record<string, unknown> | Array<Record<string, unknown>>> = [];
   let insertCallCount = 0;
+  let selectCallCount = 0;
   const createdAt = new Date("2026-03-26T18:00:00.000Z");
   const tx = {
     select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              where() {
+                return {
+                  async limit() {
+                    return [{
+                      userId: "user-123",
+                    }];
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
       return {
         from() {
           return {
@@ -278,14 +301,29 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
       };
     },
   };
+  const appRuntimeDatabase = {
+    withCompanyContext: vi.fn(async (_companyId: string, callback: (database: unknown) => Promise<unknown>) => {
+      return callback(tx);
+    }),
+  };
+  const sessionManagerService = {
+    prompt: vi.fn().mockResolvedValue({}),
+  };
   const mutation = new AddGithubInstallationMutation(
     githubClient as never,
     {
-      readState() {
-        throw new Error("state should not be read for the default install flow");
-      },
+      readState: vi.fn().mockReturnValue({
+        companyId: "company-123",
+        issuedAt: "2026-04-08T21:00:00.000Z",
+        keyId: "github-state-key",
+        organizationSlug: "acme",
+        returnPath: "/orgs/acme/repositories",
+        sourceSessionId: "session-123",
+        userId: "user-123",
+      }),
     } as never,
-    {} as never,
+    appRuntimeDatabase as never,
+    sessionManagerService as never,
   );
 
   const payload = await mutation.execute(
@@ -294,11 +332,15 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
       input: {
         installationId: "110600868",
         setupAction: "install",
+        state: "opaque-state",
       },
     },
-    createContext(async (callback) => callback(tx)),
+    createContext(async () => {
+      throw new Error("stateful install should use app runtime company context");
+    }),
   );
 
+  assert.equal(appRuntimeDatabase.withCompanyContext.mock.calls[0]?.[0], "company-123");
   assert.deepEqual(githubClient.getInstallationRepositories.mock.calls, [[110600868]]);
   assert.equal(insertedValues.length, 2);
   assert.equal((insertedValues[0] as Record<string, unknown>)?.installationId, 110600868);
@@ -315,11 +357,18 @@ test("AddGithubInstallationMutation links an installation and seeds repositories
     installationId: "110600868",
     createdAt: "2026-03-26T18:00:00.000Z",
   });
-  assert.equal(payload.organizationSlug, null);
+  assert.equal(payload.organizationSlug, "acme");
+  assert.equal(payload.returnPath, "/orgs/acme/repositories");
   assert.equal(payload.repositories.length, 1);
   assert.equal(payload.repositories[0]?.githubInstallationId, "110600868");
   assert.equal(payload.repositories[0]?.externalId, "1");
   assert.equal(payload.repositories[0]?.fullName, "acme/repo-one");
+  assert.equal(sessionManagerService.prompt.mock.calls.length, 1);
+  assert.equal(sessionManagerService.prompt.mock.calls[0]?.[1], "company-123");
+  assert.equal(sessionManagerService.prompt.mock.calls[0]?.[2], "session-123");
+  assert.match(String(sessionManagerService.prompt.mock.calls[0]?.[3] || ""), /1 repository synced/);
+  assert.equal(sessionManagerService.prompt.mock.calls[0]?.[6], true);
+  assert.equal(sessionManagerService.prompt.mock.calls[0]?.[8], "user-123");
 });
 
 test("AddGithubInstallationMutation uses the signed callback state to target the original company", async () => {
@@ -342,6 +391,8 @@ test("AddGithubInstallationMutation uses the signed callback state to target the
       issuedAt: "2026-04-08T21:00:00.000Z",
       keyId: "github-state-key",
       organizationSlug: "target-org",
+      returnPath: "/orgs/target-org/repositories",
+      sourceSessionId: null,
       userId: "user-123",
     }),
   };
@@ -450,6 +501,7 @@ test("AddGithubInstallationMutation uses the signed callback state to target the
   assert.equal((insertedValues[0] as Record<string, unknown>)?.companyId, "company-target");
   assert.equal((insertedValues[1] as Array<Record<string, unknown>>)[0]?.companyId, "company-target");
   assert.equal(payload.organizationSlug, "target-org");
+  assert.equal(payload.returnPath, "/orgs/target-org/repositories");
 });
 
 test("AddGithubInstallationMutation rejects callback states minted for a different user", async () => {
@@ -464,6 +516,8 @@ test("AddGithubInstallationMutation rejects callback states minted for a differe
           issuedAt: "2026-04-08T21:00:00.000Z",
           keyId: "github-state-key",
           organizationSlug: "target-org",
+          returnPath: "/orgs/target-org/repositories",
+          sourceSessionId: null,
           userId: "user-other",
         };
       },
@@ -497,8 +551,28 @@ test("AddGithubInstallationMutation rejects installations already linked elsewhe
   const duplicateKeyError = Object.assign(new Error("duplicate key"), {
     code: "23505",
   });
+  let selectCallCount = 0;
   const tx = {
     select() {
+      selectCallCount += 1;
+      if (selectCallCount === 1) {
+        return {
+          from() {
+            return {
+              where() {
+                return {
+                  async limit() {
+                    return [{
+                      userId: "user-123",
+                    }];
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
       return {
         from() {
           return {
@@ -525,14 +599,25 @@ test("AddGithubInstallationMutation rejects installations already linked elsewhe
       };
     },
   };
+  const appRuntimeDatabase = {
+    withCompanyContext: vi.fn(async (_companyId: string, callback: (database: unknown) => Promise<unknown>) => {
+      return callback(tx);
+    }),
+  };
   const mutation = new AddGithubInstallationMutation(
     githubClient as never,
     {
-      readState() {
-        throw new Error("state should not be read for the default install flow");
-      },
+      readState: vi.fn().mockReturnValue({
+        companyId: "company-123",
+        issuedAt: "2026-04-08T21:00:00.000Z",
+        keyId: "github-state-key",
+        organizationSlug: "acme",
+        returnPath: "/orgs/acme/repositories",
+        sourceSessionId: null,
+        userId: "user-123",
+      }),
     } as never,
-    {} as never,
+    appRuntimeDatabase as never,
   );
 
   await assert.rejects(
@@ -541,9 +626,12 @@ test("AddGithubInstallationMutation rejects installations already linked elsewhe
       {
         input: {
           installationId: "110600868",
+          state: "opaque-state",
         },
       },
-      createContext(async (callback) => callback(tx)),
+      createContext(async () => {
+        throw new Error("stateful install should use app runtime company context");
+      }),
     ),
     /already linked to another company/,
   );

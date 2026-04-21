@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<09aafc3118e2e6e811eede26160dd38b>>
+ * @generated SignedSource<<06fff03d45459a23c12ce39d9832921a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,8 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type CreateGithubInstallationUrlInput = {
   organizationSlug: string;
+  returnPath: string;
+  sourceSessionId?: string | null | undefined;
 };
 export type repositoriesPageCreateGithubInstallationUrlMutation$variables = {
   input: CreateGithubInstallationUrlInput;

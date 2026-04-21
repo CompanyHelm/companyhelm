@@ -8,6 +8,8 @@ import { Mutation } from "./mutation.ts";
 type CreateGithubInstallationUrlMutationArguments = {
   input: {
     organizationSlug: string;
+    returnPath: string;
+    sourceSessionId?: string | null;
   };
 };
 
@@ -49,6 +51,8 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
     const state = this.githubInstallationStateService.createState({
       companyId: context.authSession.company.id,
       organizationSlug: this.requireOrganizationSlug(arguments_.input.organizationSlug),
+      returnPath: this.requireReturnPath(arguments_.input.returnPath),
+      sourceSessionId: this.normalizeSourceSessionId(arguments_.input.sourceSessionId),
       userId: context.authSession.user.id,
     });
 
@@ -64,5 +68,19 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
     }
 
     return normalizedOrganizationSlug;
+  }
+
+  private requireReturnPath(returnPath: string): string {
+    const normalizedReturnPath = String(returnPath || "").trim();
+    if (!normalizedReturnPath) {
+      throw new Error("returnPath is required.");
+    }
+
+    return normalizedReturnPath;
+  }
+
+  private normalizeSourceSessionId(sourceSessionId: string | null | undefined): string | null {
+    const normalizedSourceSessionId = String(sourceSessionId || "").trim();
+    return normalizedSourceSessionId || null;
   }
 }

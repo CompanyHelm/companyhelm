@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { OrganizationPath } from "@/lib/organization_path";
 import type { githubInstallCallbackPageAddGithubInstallationMutation } from "./__generated__/githubInstallCallbackPageAddGithubInstallationMutation.graphql";
 
 type StoreRecord = {
@@ -33,6 +32,7 @@ const githubInstallCallbackPageAddGithubInstallationMutationNode = graphql`
         installationId
         createdAt
       }
+      returnPath
       organizationSlug
       repositories {
         id
@@ -127,6 +127,10 @@ export function GithubInstallCallbackPage() {
       setErrorMessage("GitHub install callback is missing installation_id.");
       return;
     }
+    if (!callbackState) {
+      setErrorMessage("GitHub install callback is missing state.");
+      return;
+    }
 
     setErrorMessage(null);
 
@@ -167,7 +171,7 @@ export function GithubInstallCallbackPage() {
         input: {
           installationId: callbackInstallationId,
           setupAction: callbackSetupAction || null,
-          state: callbackState || null,
+          state: callbackState,
         },
       },
       updater: updateRepositoriesStore,
@@ -178,13 +182,14 @@ export function GithubInstallCallbackPage() {
           return;
         }
 
-        const organizationSlug = String(response.AddGithubInstallation?.organizationSlug || "").trim();
+        const returnPath = String(response.AddGithubInstallation?.returnPath || "").trim();
+        if (!returnPath) {
+          setErrorMessage("GitHub install callback did not include a return path.");
+          return;
+        }
+
         if (typeof window !== "undefined") {
-          window.location.replace(
-            organizationSlug
-              ? OrganizationPath.href(organizationSlug, "/repositories")
-              : "/",
-          );
+          window.location.replace(returnPath);
         }
       },
       onError: (error: Error) => {
@@ -214,7 +219,7 @@ export function GithubInstallCallbackPage() {
                   size="sm"
                   variant="outline"
                 >
-                  Back to repositories
+                  Back to CompanyHelm
                 </Button>
               </div>
             </>

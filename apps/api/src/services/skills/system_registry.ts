@@ -78,6 +78,17 @@ export class SystemSkillRegistry {
       name: "Manage artifacts",
     },
     {
+      description: "List GitHub App installations and start user-driven installation flows through scoped system commands.",
+      instructions: [
+        "Use GitHub installation commands when the user needs to connect or inspect GitHub App installations for this company.",
+        "Call github.installation.list before starting a new install when you need to know what is already connected.",
+        "Use github.installation.start to create the install URL; give that URL to the user and let the callback report completion back into this session.",
+        "Always provide a CompanyHelm app-relative returnPath. Use organizationSlug when the return path is not under /orgs/:organizationSlug.",
+      ].join("\n"),
+      key: "manage_github_installations",
+      name: "Manage GitHub installations",
+    },
+    {
       description: "Read company members and agents from the directory through scoped system commands.",
       instructions: [
         "Use company directory commands when you need stable company member or agent IDs for follow-up work.",

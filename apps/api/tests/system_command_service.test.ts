@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { SystemCommandService } from "../src/services/system_command_service.ts";
 
 const workflowRecord = {
@@ -77,6 +77,98 @@ test("SystemCommandService rejects skill-management commands when manage_skills 
     }),
     /Activate the manage_skills system skill/,
   );
+});
+
+test("SystemCommandService rejects GitHub installation commands when manage_github_installations is inactive", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return false;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  await assert.rejects(
+    service.executeCommand("github.installation.start", {
+      returnPath: "/orgs/acme/repositories",
+    }, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      sessionId: "session-1",
+      transactionProvider: {} as never,
+    }),
+    /Activate the manage_github_installations system skill/,
+  );
+});
+
+test("SystemCommandService starts GitHub installation flows when manage_github_installations is active", async () => {
+  const createState = vi.fn().mockReturnValue("signed-state");
+  const buildInstallationUrl = vi.fn().mockReturnValue("https://github.com/apps/companyhelm/installations/new?state=signed-state");
+  const transactionProvider = {
+    async transaction(callback: (tx: unknown) => Promise<unknown>) {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    async limit() {
+                      return [{
+                        ownerUserId: "user-123",
+                      }];
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const service = new SystemCommandService({
+    githubClient: {
+      buildInstallationUrl,
+    } as never,
+    githubInstallationStateService: {
+      createState,
+    } as never,
+    sessionSkillService: {
+      async isSystemSkillActive(_transactionProvider: unknown, input: {
+        systemSkillKey: string;
+      }) {
+        assert.equal(input.systemSkillKey, "manage_github_installations");
+        return true;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("github.installation.start", {
+    returnPath: "/orgs/acme/repositories",
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: transactionProvider as never,
+  });
+
+  assert.deepEqual(createState.mock.calls, [[{
+    companyId: "company-123",
+    organizationSlug: "acme",
+    returnPath: "/orgs/acme/repositories",
+    sourceSessionId: "session-1",
+    userId: "user-123",
+  }]]);
+  assert.deepEqual(buildInstallationUrl.mock.calls, [["signed-state"]]);
+  assert.deepEqual(result, {
+    installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+    returnPath: "/orgs/acme/repositories",
+    sourceSessionId: "session-1",
+    status: "waiting_for_user",
+  });
 });
 
 test("SystemCommandService executes workflow commands when manage_workflows is active", async () => {

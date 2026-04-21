@@ -18,6 +18,8 @@ type GithubInstallationStateValue = {
   companyId: string;
   issuedAt: string;
   organizationSlug: string;
+  returnPath: string;
+  sourceSessionId: string | null;
   userId: string;
 };
 
@@ -42,6 +44,8 @@ export class GithubInstallationStateService {
   createState(params: {
     companyId: string;
     organizationSlug: string;
+    returnPath: string;
+    sourceSessionId?: string | null;
     userId: string;
   }): string {
     const stateValue: GithubInstallationStateValue = {
@@ -51,6 +55,8 @@ export class GithubInstallationStateService {
         params.organizationSlug,
         "GitHub installation state organization slug",
       ),
+      returnPath: this.requireReturnPath(params.returnPath),
+      sourceSessionId: this.optionalValue(params.sourceSessionId ?? null),
       userId: this.requireValue(params.userId, "GitHub installation state user id"),
     };
     const iv = randomBytes(12);
@@ -108,6 +114,8 @@ export class GithubInstallationStateService {
         stateValue.organizationSlug,
         "GitHub installation state organization slug",
       ),
+      returnPath: this.requireReturnPath(stateValue.returnPath),
+      sourceSessionId: this.optionalValue(stateValue.sourceSessionId),
       userId: this.requireValue(stateValue.userId, "GitHub installation state user id"),
     };
   }
@@ -133,5 +141,24 @@ export class GithubInstallationStateService {
     }
 
     return normalizedValue;
+  }
+
+  private optionalValue(value: string | null | undefined): string | null {
+    const normalizedValue = String(value || "").trim();
+    return normalizedValue || null;
+  }
+
+  private requireReturnPath(value: string): string {
+    const normalizedValue = this.requireValue(value, "GitHub installation return path");
+    if (!normalizedValue.startsWith("/") || normalizedValue.startsWith("//")) {
+      throw new Error("GitHub installation return path must be an app-relative path.");
+    }
+
+    const parsedUrl = new URL(normalizedValue, "https://companyhelm.local");
+    if (parsedUrl.origin !== "https://companyhelm.local") {
+      throw new Error("GitHub installation return path must stay inside CompanyHelm.");
+    }
+
+    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
   }
 }

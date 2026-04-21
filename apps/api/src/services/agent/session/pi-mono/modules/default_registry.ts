@@ -1,5 +1,6 @@
 import type { Logger as PinoLogger } from "pino";
 import { GithubClient } from "../../../../../github/client.ts";
+import { GithubInstallationStateService } from "../../../../../github/installation_state_service.ts";
 import { Config } from "../../../../../config/schema.ts";
 import { ArtifactService } from "../../../../artifact_service.ts";
 import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
@@ -67,6 +68,8 @@ export class DefaultAgentSessionModuleRegistry {
       new SystemCommandsSessionModule({
         artifactService: new ArtifactService(),
         computeProviderDefinitionService: input.computeProviderDefinitionService,
+        githubClient: input.githubClient,
+        githubInstallationStateService: new GithubInstallationStateService(input.config),
         mcpService: input.mcpService,
         modelProviderService: input.modelProviderService,
         modelRegistry: input.modelRegistry,

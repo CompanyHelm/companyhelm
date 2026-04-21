@@ -1,4 +1,6 @@
 import { SystemCommandService } from "../../../../system_command_service.ts";
+import { GithubClient } from "../../../../../github/client.ts";
+import { GithubInstallationStateService } from "../../../../../github/installation_state_service.ts";
 import { ArtifactService } from "../../../../artifact_service.ts";
 import { ModelRegistry } from "../../../../ai_providers/model_registry.ts";
 import { ModelProviderService } from "../../../../ai_providers/model_provider_service.ts";
@@ -15,6 +17,8 @@ import { AgentSessionModuleInterface } from "./module_interface.ts";
 type SystemCommandsSessionModuleInput = {
   artifactService: ArtifactService;
   computeProviderDefinitionService: ComputeProviderDefinitionService;
+  githubClient: GithubClient;
+  githubInstallationStateService: GithubInstallationStateService;
   mcpService: McpService;
   modelProviderService: ModelProviderService;
   modelRegistry: ModelRegistry;
@@ -30,6 +34,8 @@ type SystemCommandsSessionModuleInput = {
 export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
   private readonly artifactService: ArtifactService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
+  private readonly githubClient: GithubClient;
+  private readonly githubInstallationStateService: GithubInstallationStateService;
   private readonly mcpService: McpService;
   private readonly modelProviderService: ModelProviderService;
   private readonly modelRegistry: ModelRegistry;
@@ -41,6 +47,8 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
     super();
     this.artifactService = input.artifactService;
     this.computeProviderDefinitionService = input.computeProviderDefinitionService;
+    this.githubClient = input.githubClient;
+    this.githubInstallationStateService = input.githubInstallationStateService;
     this.mcpService = input.mcpService;
     this.modelProviderService = input.modelProviderService;
     this.modelRegistry = input.modelRegistry;
@@ -64,6 +72,8 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
         new SystemCommandService({
           artifactService: this.artifactService,
           computeProviderDefinitionService: this.computeProviderDefinitionService,
+          githubClient: this.githubClient,
+          githubInstallationStateService: this.githubInstallationStateService,
           mcpService: this.mcpService,
           modelProviderService: this.modelProviderService,
           modelRegistry: this.modelRegistry,

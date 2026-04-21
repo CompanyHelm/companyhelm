@@ -347,6 +347,7 @@ type AddGithubInstallationPayload {
   githubInstallation: GithubInstallation!
   organizationSlug: String
   repositories: [GithubRepository!]!
+  returnPath: String!
 }
 
 type CreateGithubInstallationUrlPayload {
@@ -934,11 +935,13 @@ input AddModelProviderCredentialInput {
 input AddGithubInstallationInput {
   installationId: ID!
   setupAction: String
-  state: String
+  state: String!
 }
 
 input CreateGithubInstallationUrlInput {
   organizationSlug: String!
+  returnPath: String!
+  sourceSessionId: ID
 }
 
 input CreateGithubRepositoryProvisioningInput {

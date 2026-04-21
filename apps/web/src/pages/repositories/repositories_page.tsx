@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageTabs } from "@/components/ui/page_tabs";
+import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { repositoriesPageCreateGithubRepositoryProvisioningMutation } from "./__generated__/repositoriesPageCreateGithubRepositoryProvisioningMutation.graphql";
 import type { repositoriesPageCreateGithubInstallationUrlMutation } from "./__generated__/repositoriesPageCreateGithubInstallationUrlMutation.graphql";
@@ -553,6 +554,7 @@ function RepositoriesPageContent() {
                   variables: {
                     input: {
                       organizationSlug,
+                      returnPath: OrganizationPath.href(organizationSlug, "/repositories"),
                     },
                   },
                   onCompleted: (response, errors) => {

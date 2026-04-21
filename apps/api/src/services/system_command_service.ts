@@ -1,4 +1,7 @@
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
+import { Config } from "../config/schema.ts";
+import { GithubClient } from "../github/client.ts";
+import { GithubInstallationStateService } from "../github/installation_state_service.ts";
 import { ArtifactService } from "./artifact_service.ts";
 import { ModelRegistry } from "./ai_providers/model_registry.ts";
 import { ModelProviderService } from "./ai_providers/model_provider_service.ts";
@@ -12,6 +15,7 @@ import { WorkflowSystemCommandService } from "./workflows/system_command_service
 import { AgentManagementSystemCommandService } from "./system_commands/agent_management.ts";
 import { ArtifactManagementSystemCommandService } from "./system_commands/artifact_management.ts";
 import { CompanyDirectorySystemCommandService } from "./system_commands/company_directory.ts";
+import { GithubInstallationSystemCommandService } from "./system_commands/github_installation.ts";
 import { SkillManagementSystemCommandService } from "./system_commands/skill_management.ts";
 import { SkillGithubCatalog } from "./skills/github/catalog.ts";
 import { SessionSkillService } from "./skills/session_service.ts";
@@ -35,6 +39,7 @@ export class SystemCommandService {
   private readonly artifactCommandService: ArtifactManagementSystemCommandService;
   private readonly commandCatalog: SystemCommandCatalog;
   private readonly companyDirectoryCommandService: CompanyDirectorySystemCommandService;
+  private readonly githubInstallationCommandService: GithubInstallationSystemCommandService;
   private readonly sessionSkillService: SessionSkillService;
   private readonly skillManagementCommandService: SkillManagementSystemCommandService;
   private readonly workflowCommandService: WorkflowSystemCommandService;
@@ -44,6 +49,8 @@ export class SystemCommandService {
     artifactService?: ArtifactService;
     commandCatalog?: SystemCommandCatalog;
     computeProviderDefinitionService?: ComputeProviderDefinitionService;
+    githubClient?: GithubClient;
+    githubInstallationStateService?: GithubInstallationStateService;
     mcpService?: McpService;
     modelProviderService?: ModelProviderService;
     modelRegistry?: ModelRegistry;
@@ -66,6 +73,10 @@ export class SystemCommandService {
     this.artifactCommandService = new ArtifactManagementSystemCommandService(input.artifactService ?? new ArtifactService());
     this.commandCatalog = input.commandCatalog ?? new SystemCommandCatalog();
     this.companyDirectoryCommandService = new CompanyDirectorySystemCommandService();
+    this.githubInstallationCommandService = new GithubInstallationSystemCommandService(
+      input.githubClient ?? new GithubClient({} as Config),
+      input.githubInstallationStateService ?? new GithubInstallationStateService({} as Config),
+    );
     this.sessionSkillService = input.sessionSkillService ?? new SessionSkillService();
     this.skillManagementCommandService = new SkillManagementSystemCommandService(
       input.skillService ?? new SkillService(),
@@ -114,6 +125,9 @@ export class SystemCommandService {
     }
     if (command.systemSkillKey === "company_directory") {
       return this.companyDirectoryCommandService.execute(command.id, context);
+    }
+    if (command.systemSkillKey === "manage_github_installations") {
+      return this.githubInstallationCommandService.execute(command.id, input, context);
     }
     if (command.systemSkillKey === "manage_skills") {
       return this.skillManagementCommandService.execute(command.id, input, context);
