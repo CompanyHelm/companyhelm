@@ -10,13 +10,12 @@ import {
 type ForkSessionMutationArguments = {
   input: {
     sessionId: string;
-    turnId: string;
   };
 };
 
 /**
- * Branches one new persisted agent session from a completed turn checkpoint so the user can keep
- * exploring an alternate path without mutating the original session history.
+ * Branches one new persisted agent session from the source session's latest stored PI context so
+ * the user can keep exploring an alternate path without retaining historical context snapshots.
  */
 @injectable()
 export class ForkSessionMutation extends Mutation<ForkSessionMutationArguments, SessionGraphqlRecord> {
@@ -48,15 +47,11 @@ export class ForkSessionMutation extends Mutation<ForkSessionMutationArguments, 
     if (arguments_.input.sessionId.length === 0) {
       throw new Error("sessionId is required.");
     }
-    if (arguments_.input.turnId.length === 0) {
-      throw new Error("turnId is required.");
-    }
 
     const sessionRecord = await this.sessionManagerService.forkSession(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
       arguments_.input.sessionId,
-      arguments_.input.turnId,
       context.authSession.user.id,
     );
 

@@ -10,13 +10,11 @@ test("ForkSessionMutation delegates to SessionManagerService and serializes the 
         transactionProvider: unknown,
         companyId: string,
         sessionId: string,
-        turnId: string,
         userId?: string | null,
       ) {
         assert.ok(transactionProvider);
         assert.equal(companyId, "company-1");
         assert.equal(sessionId, "session-1");
-        assert.equal(turnId, "turn-1");
         assert.equal(userId, "user-1");
 
         return {
@@ -76,7 +74,6 @@ test("ForkSessionMutation delegates to SessionManagerService and serializes the 
     {
       input: {
         sessionId: "session-1",
-        turnId: "turn-1",
       },
     },
     {

@@ -300,19 +300,13 @@ function TranscriptMessageRow({
 
 function TranscriptTurnSummaryRow({
   durationLabel,
-  isForkDisabled,
   hasHiddenMessages,
   isExpanded,
-  isForking,
-  onFork,
   onToggleHiddenMessages,
 }: {
   durationLabel: string;
-  isForkDisabled: boolean;
   hasHiddenMessages: boolean;
   isExpanded: boolean;
-  isForking: boolean;
-  onFork: () => void;
   onToggleHiddenMessages: () => void;
 }) {
   return (
@@ -332,18 +326,6 @@ function TranscriptTurnSummaryRow({
           <span className="truncate">Worked for {durationLabel}</span>
         </div>
       )}
-      <Button
-        aria-label="Fork from this turn"
-        className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
-        disabled={isForkDisabled}
-        onClick={onFork}
-        size="icon"
-        title="Fork from this turn"
-        type="button"
-        variant="ghost"
-      >
-        {isForking ? <Loader2Icon className="size-3.5 animate-spin" /> : <GitForkIcon className="size-3.5" />}
-      </Button>
     </div>
   );
 }
@@ -398,7 +380,6 @@ function ForkedSessionBanner({
 }
 
 export function ChatTranscriptPane({
-  forkingTurnId,
   isTranscriptStuckToBottom,
   isLoadingOlderMessages,
   isLoadingTranscript,
@@ -408,9 +389,7 @@ export function ChatTranscriptPane({
   session,
   sessionMessages,
   transcriptScrollRef,
-  onForkTurn,
 }: {
-  forkingTurnId: string | null;
   isTranscriptStuckToBottom: boolean;
   isLoadingOlderMessages: boolean;
   isLoadingTranscript: boolean;
@@ -420,7 +399,6 @@ export function ChatTranscriptPane({
   session: SessionRecord;
   sessionMessages: ReadonlyArray<SessionMessageRecord>;
   transcriptScrollRef: MutableRefObject<HTMLDivElement | null>;
-  onForkTurn: (turnId: string) => void;
 }) {
   const toolCallSummaryById = useMemo(() => {
     return buildToolCallSummaryById(sessionMessages);
@@ -505,11 +483,6 @@ export function ChatTranscriptPane({
                 durationLabel={turn.durationLabel}
                 hasHiddenMessages={hasHiddenMessages}
                 isExpanded={isExpanded}
-                isForkDisabled={forkingTurnId !== null}
-                isForking={forkingTurnId === turn.turnId}
-                onFork={() => {
-                  onForkTurn(turn.turnId);
-                }}
                 onToggleHiddenMessages={() => {
                   setExpandedTurnIds((currentExpandedTurnIds) => ({
                     ...currentExpandedTurnIds,

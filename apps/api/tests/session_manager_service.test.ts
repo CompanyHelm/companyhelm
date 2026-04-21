@@ -1,7 +1,6 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { SessionContextCheckpointService } from "../src/services/agent/session/context_checkpoint_service.ts";
 import { SessionLifecycleService } from "../src/services/agent/session/session_lifecycle_service.ts";
 import { SessionProcessPubSubNames } from "../src/services/agent/session/process/pub_sub_names.ts";
 import { SessionManagerService } from "../src/services/agent/session/session_manager_service.ts";
@@ -38,10 +37,10 @@ class SessionManagerServiceTestHarness {
   static createService(input: {
     logs?: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }>;
     redisService?: unknown;
-    sessionContextCheckpointService?: unknown;
     sessionProcessPubSubNames?: SessionProcessPubSubNames;
     sessionProcessQueueService?: unknown;
     sessionProcessQueuedNames?: SessionProcessQueuedNames;
+    sessionSecretCopyService?: unknown;
     sessionQueuedMessageService?: unknown;
   }): SessionManagerService {
     const sessionModelSelectionService = new SessionModelSelectionService();
@@ -94,8 +93,14 @@ class SessionManagerServiceTestHarness {
       }) as never,
       sessionModelSelectionService,
       sessionPromptService,
-      new SessionSecretCopyService(),
-      (input.sessionContextCheckpointService as SessionContextCheckpointService | undefined) ?? new SessionContextCheckpointService(),
+      (input.sessionSecretCopyService ?? {
+        async copyAgentDefaultSecretsToSession() {
+          return undefined;
+        },
+        async copySessionSecretsToSession() {
+          return undefined;
+        },
+      }) as never,
       sessionProcessPubSubNames,
       sessionProcessQueuedNames,
     );
@@ -554,6 +559,18 @@ test("SessionManagerService createSession copies agent default secrets into the 
         };
       }
 
+      if (selectCallCount === 4) {
+        return {
+          from() {
+            return {
+              async where() {
+                return [];
+              },
+            };
+          },
+        };
+      }
+
       throw new Error("Unexpected select call.");
     },
     insert() {
@@ -584,6 +601,7 @@ test("SessionManagerService createSession copies agent default secrets into the 
     },
   };
   const service = SessionManagerServiceTestHarness.createService({
+    sessionSecretCopyService: new SessionSecretCopyService(),
     sessionProcessQueueService: {
       async enqueueSessionWake() {},
     },
@@ -2088,7 +2106,7 @@ test("SessionManagerService prompt rejects archived sessions without queueing wo
   assert.deepEqual(wakeCalls, []);
 });
 
-test("SessionManagerService forkSession creates a stopped branch from the selected turn and copies session secrets", async () => {
+test("SessionManagerService forkSession creates a stopped branch from the latest context and copies session secrets", async () => {
   const logs: Array<{ bindings: Record<string, unknown>; message: string; payload?: Record<string, unknown> }> = [];
   const publishCalls: Array<{ channel: string; message: string }> = [];
   const insertedSessionValues: Array<Record<string, unknown>> = [];
@@ -2106,10 +2124,18 @@ test("SessionManagerService forkSession creates a stopped branch from the select
               async where() {
                 return [{
                   agentId: "agent-1",
+                  contextMessagesSnapshot: [{
+                    content: "Latest branch context",
+                    role: "assistant",
+                    timestamp: 1712538600000,
+                  }],
+                  contextMessagesSnapshotAt: new Date("2026-04-07T19:12:00.000Z"),
+                  currentContextTokens: 2048,
                   currentModelProviderCredentialModelId: "model-row-1",
                   currentReasoningLevel: "high",
                   id: "session-child",
                   inferredTitle: "Review the release plan",
+                  maxContextTokens: 200000,
                   status: "stopped",
                   userSetTitle: null,
                 }];
@@ -2125,17 +2151,13 @@ test("SessionManagerService forkSession creates a stopped branch from the select
             return {
               async where() {
                 return [{
-                  companyId: "company-1",
-                  contextMessagesSnapshot: [{
-                    content: "Child branch context",
-                    role: "assistant",
-                    timestamp: 1712538600000,
-                  }],
-                  createdAt: new Date("2026-04-07T19:10:00.000Z"),
-                  currentContextTokens: 2048,
-                  maxContextTokens: 200000,
-                  sessionId: "session-child",
-                  turnId: "turn-child-1",
+                  endedAt: new Date("2026-04-07T19:10:00.000Z"),
+                  id: "turn-child-1",
+                  startedAt: new Date("2026-04-07T19:08:00.000Z"),
+                }, {
+                  endedAt: new Date("2026-04-07T19:11:00.000Z"),
+                  id: "turn-child-2",
+                  startedAt: new Date("2026-04-07T19:10:10.000Z"),
                 }];
               },
             };
@@ -2245,6 +2267,7 @@ test("SessionManagerService forkSession creates a stopped branch from the select
         throw new Error("Wake queue should not run while forking an existing session.");
       },
     },
+    sessionSecretCopyService: new SessionSecretCopyService(),
     sessionQueuedMessageService: {
       async enqueueInTransaction() {
         throw new Error("Forking should not enqueue a new user message.");
@@ -2256,7 +2279,6 @@ test("SessionManagerService forkSession creates a stopped branch from the select
     SessionManagerServiceTestHarness.createTransactionProviderMock(transaction) as never,
     "company-1",
     "session-child",
-    "turn-child-1",
     "user-123",
   );
 
@@ -2264,18 +2286,18 @@ test("SessionManagerService forkSession creates a stopped branch from the select
   assert.equal(sessionRecord.currentModelId, "gpt-5.4");
   assert.equal(insertedSessionValues.length, 1);
   assert.equal(insertedSessionValues[0]?.companyId, "company-1");
-  assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-child-1");
+  assert.equal(insertedSessionValues[0]?.forkedFromTurnId, "turn-child-2");
   assert.equal(insertedSessionValues[0]?.status, "stopped");
   assert.equal(insertedSessionValues[0]?.inferredTitle, "Fork of Review the release plan");
   assert.equal(insertedSessionValues[0]?.ownerUserId, "user-123");
   assert.deepEqual(insertedSessionValues[0]?.contextMessagesSnapshot, [{
-    content: "Child branch context",
+    content: "Latest branch context",
     role: "assistant",
     timestamp: 1712538600000,
   }]);
   assert.equal(
     (insertedSessionValues[0]?.contextMessagesSnapshotAt as Date | undefined)?.toISOString(),
-    "2026-04-07T19:10:00.000Z",
+    "2026-04-07T19:12:00.000Z",
   );
   assert.equal(insertedSessionValues[0]?.currentContextTokens, 2048);
   assert.equal(insertedSessionValues[0]?.maxContextTokens, 200000);
@@ -2294,11 +2316,9 @@ test("SessionManagerService forkSession creates a stopped branch from the select
     bindings: {
       component: "session_manager_service",
     },
-    message: "forked agent session",
+    message: "forked latest agent session context",
     payload: {
-      checkpointSessionId: "session-child",
       companyId: "company-1",
-      forkedFromTurnId: "turn-child-1",
       sessionId: "session-fork-1",
       sourceSessionId: "session-child",
     },

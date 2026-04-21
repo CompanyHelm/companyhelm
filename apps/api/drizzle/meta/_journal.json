@@ -792,6 +792,13 @@
       "when": 1776734555276,
       "tag": "0112_modern_black_bolt",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1776795863957,
+      "tag": "0113_tiny_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

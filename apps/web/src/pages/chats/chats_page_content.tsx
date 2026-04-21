@@ -156,7 +156,7 @@ export function ChatsPageContent() {
   const [draftImages, setDraftImages] = useState<DraftComposerImageRecord[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(null);
-  const [forkingTurnId, setForkingTurnId] = useState<string | null>(null);
+  const [isForkingLatestSession, setIsForkingLatestSession] = useState(false);
   const [pendingCreatedSessionId, setPendingCreatedSessionId] = useState<string | null>(null);
   const [pendingCreatedSessionTranscriptReloadId, setPendingCreatedSessionTranscriptReloadId] = useState<string | null>(
     null,
@@ -1432,20 +1432,19 @@ export function ChatsPageContent() {
     selectedComposerModelOption,
   ]);
 
-  const forkSessionFromTurn = useCallback(async (turnId: string) => {
-    if (!selectedSession || forkingTurnId !== null) {
+  const forkLatestSessionContext = useCallback(async () => {
+    if (!selectedSession || isForkingLatestSession) {
       return;
     }
 
     setErrorMessage(null);
-    setForkingTurnId(turnId);
+    setIsForkingLatestSession(true);
 
     await new Promise<void>((resolve, reject) => {
       commitForkSession({
         variables: {
           input: {
             sessionId: selectedSession.id,
-            turnId,
           },
         },
         updater: (store) => {
@@ -1500,11 +1499,9 @@ export function ChatsPageContent() {
     }).catch((error: unknown) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to fork chat session.");
     }).finally(() => {
-      setForkingTurnId((currentTurnId) => {
-        return currentTurnId === turnId ? null : currentTurnId;
-      });
+      setIsForkingLatestSession(false);
     });
-  }, [commitForkSession, forkingTurnId, navigate, organizationSlug, search.agentId, search.sessionId, selectedSession]);
+  }, [commitForkSession, isForkingLatestSession, navigate, organizationSlug, search.agentId, search.sessionId, selectedSession]);
 
   const archiveSession = useCallback(async (session: SessionRecord) => {
     setErrorMessage(null);
@@ -2165,13 +2162,9 @@ export function ChatsPageContent() {
         {selectedAgent && selectedSession ? (
           <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pl-4 pr-0 pt-0 pb-0 md:pt-0 md:pb-0">
             <ChatTranscriptPane
-              forkingTurnId={forkingTurnId}
               isTranscriptStuckToBottom={isTranscriptStuckToBottom}
               isLoadingOlderMessages={isLoadingOlderTranscript}
               isLoadingTranscript={isLoadingTranscript}
-              onForkTurn={(turnId) => {
-                void forkSessionFromTurn(turnId);
-              }}
               onJumpToLatest={jumpToLatestMessage}
               onScroll={handleTranscriptScroll}
               organizationSlug={organizationSlug}
@@ -2196,6 +2189,7 @@ export function ChatsPageContent() {
             draftSubmitAriaLabel={draftSubmitAriaLabel}
             draftTextareaRef={draftTextareaRef}
             hasDraftInput={hasDraftInput}
+            isForkingLatestSession={isForkingLatestSession}
             isComposerDragActive={isComposerDragActive}
             isDismissInboxHumanQuestionInFlight={isDismissInboxHumanQuestionInFlight}
             isResolveInboxHumanQuestionInFlight={isResolveInboxHumanQuestionInFlight}
@@ -2215,6 +2209,9 @@ export function ChatsPageContent() {
             onOpenDraftImagePicker={openDraftImagePicker}
             onQueueDraft={() => {
               void queueDraftMessage();
+            }}
+            onForkLatestSession={() => {
+              void forkLatestSessionContext();
             }}
             onReasoningLevelChange={setComposerReasoningLevel}
             onRemoveDraftImage={removeDraftImage}

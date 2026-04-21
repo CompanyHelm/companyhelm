@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b8a5eede7595b53a7beeffa431e60651>>
+ * @generated SignedSource<<1e558ccc60b1460870af12b4d8f96b03>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,6 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type ForkSessionInput = {
   sessionId: string;
-  turnId: string;
 };
 export type chatsPageDataForkSessionMutation$variables = {
   input: ForkSessionInput;

@@ -5,7 +5,6 @@ import { agentInboxItems, agentSessions, agents, sessionMessages, sessionTurns }
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { AgentInboxPubSubNames } from "../../inbox/pub_sub_names.ts";
-import { SessionContextCheckpointService } from "./context_checkpoint_service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueuedNames } from "./process/queued_names.ts";
 import { SessionModelSelectionService } from "./session_model_selection_service.ts";
@@ -33,9 +32,22 @@ type InterruptSessionResult = {
   shouldInterrupt: boolean;
 };
 
+type LatestContextForkSourceRow = ExistingSessionRow & {
+  contextMessagesSnapshot: unknown;
+  contextMessagesSnapshotAt: Date | null;
+  currentContextTokens: number | null;
+  maxContextTokens: number | null;
+};
+
+type LatestContextForkTurnRow = {
+  endedAt: Date | null;
+  id: string;
+  startedAt: Date;
+};
+
 /**
  * Owns session lifecycle transitions that are broader than a single queued prompt. It creates new
- * sessions, archives or interrupts active ones, forks from checkpoints, and persists user-chosen
+ * sessions, archives or interrupts active ones, forks from latest stored context, and persists user-chosen
  * titles while delegating prompt ingress, model policy, and secret-copy details to smaller
  * collaborators.
  */
@@ -45,7 +57,6 @@ export class SessionLifecycleService {
   private readonly sessionModelSelectionService: SessionModelSelectionService;
   private readonly sessionPromptService: SessionPromptService;
   private readonly sessionSecretCopyService: SessionSecretCopyService;
-  private readonly sessionContextCheckpointService: SessionContextCheckpointService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
   private readonly inboxPubSubNames: AgentInboxPubSubNames;
@@ -56,8 +67,6 @@ export class SessionLifecycleService {
     sessionModelSelectionService: SessionModelSelectionService,
     @inject(SessionPromptService) sessionPromptService: SessionPromptService,
     @inject(SessionSecretCopyService) sessionSecretCopyService: SessionSecretCopyService,
-    @inject(SessionContextCheckpointService)
-    sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
     @inject(SessionProcessPubSubNames)
     sessionProcessPubSubNames: SessionProcessPubSubNames = new SessionProcessPubSubNames(),
     @inject(SessionProcessQueuedNames)
@@ -69,7 +78,6 @@ export class SessionLifecycleService {
     this.sessionModelSelectionService = sessionModelSelectionService;
     this.sessionPromptService = sessionPromptService;
     this.sessionSecretCopyService = sessionSecretCopyService;
-    this.sessionContextCheckpointService = sessionContextCheckpointService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
     this.inboxPubSubNames = inboxPubSubNames;
@@ -400,7 +408,6 @@ export class SessionLifecycleService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
-    forkedFromTurnId: string,
     userId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await transactionProvider.transaction(async (tx) => {
@@ -409,10 +416,14 @@ export class SessionLifecycleService {
       const [sourceSession] = await selectableDatabase
         .select({
           agentId: agentSessions.agentId,
+          contextMessagesSnapshot: agentSessions.contextMessagesSnapshot,
+          contextMessagesSnapshotAt: agentSessions.contextMessagesSnapshotAt,
+          currentContextTokens: agentSessions.currentContextTokens,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
           id: agentSessions.id,
           inferredTitle: agentSessions.inferredTitle,
+          maxContextTokens: agentSessions.maxContextTokens,
           ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
           userSetTitle: agentSessions.userSetTitle,
@@ -421,19 +432,30 @@ export class SessionLifecycleService {
         .where(and(
           eq(agentSessions.companyId, companyId),
           eq(agentSessions.id, sessionId),
-        )) as ExistingSessionRow[];
+        )) as LatestContextForkSourceRow[];
       if (!sourceSession) {
         throw new Error("Source session not found.");
       }
       this.assertUserCanMutateSession(sourceSession.ownerUserId, userId);
 
-      const checkpoint = await this.sessionContextCheckpointService.getCheckpointForTurn(
-        selectableDatabase,
-        companyId,
-        forkedFromTurnId,
-      );
-      if (!checkpoint || checkpoint.sessionId !== sourceSession.id) {
-        throw new Error("Fork source turn is unavailable.");
+      if (!Array.isArray(sourceSession.contextMessagesSnapshot) || sourceSession.contextMessagesSnapshot.length === 0) {
+        throw new Error("Latest session context is unavailable.");
+      }
+
+      const sourceTurns = await selectableDatabase
+        .select({
+          endedAt: sessionTurns.endedAt,
+          id: sessionTurns.id,
+          startedAt: sessionTurns.startedAt,
+        })
+        .from(sessionTurns)
+        .where(and(
+          eq(sessionTurns.companyId, companyId),
+          eq(sessionTurns.sessionId, sourceSession.id),
+        )) as LatestContextForkTurnRow[];
+      const latestCompletedTurn = this.resolveLatestCompletedTurn(sourceTurns);
+      if (!latestCompletedTurn) {
+        throw new Error("Latest session turn is unavailable.");
       }
 
       const currentModelRecord = await this.sessionModelSelectionService.resolveCurrentModelRecord(
@@ -446,17 +468,17 @@ export class SessionLifecycleService {
         .insert(agentSessions)
         .values({
           companyId,
-          contextMessagesSnapshot: checkpoint.contextMessagesSnapshot,
-          contextMessagesSnapshotAt: checkpoint.createdAt,
-          currentContextTokens: checkpoint.currentContextTokens,
+          contextMessagesSnapshot: sourceSession.contextMessagesSnapshot,
+          contextMessagesSnapshotAt: sourceSession.contextMessagesSnapshotAt ?? latestCompletedTurn.endedAt,
+          currentContextTokens: sourceSession.currentContextTokens,
           agentId: sourceSession.agentId,
           currentModelProviderCredentialModelId: sourceSession.currentModelProviderCredentialModelId,
           currentReasoningLevel: sourceSession.currentReasoningLevel,
-          forkedFromTurnId,
+          forkedFromTurnId: latestCompletedTurn.id,
           inferredTitle: this.inferForkTitle(sourceSession.userSetTitle ?? sourceSession.inferredTitle ?? null),
           isCompacting: false,
           isThinking: false,
-          maxContextTokens: checkpoint.maxContextTokens,
+          maxContextTokens: sourceSession.maxContextTokens,
           ownerUserId: userId ?? null,
           status: "stopped",
           thinkingText: null,
@@ -487,6 +509,19 @@ export class SessionLifecycleService {
     await this.publishSessionUpdate(companyId, sessionRecord.id);
 
     return sessionRecord;
+  }
+
+  private resolveLatestCompletedTurn(turns: LatestContextForkTurnRow[]): LatestContextForkTurnRow | null {
+    const completedTurns = turns.filter((turn) => {
+      return turn.endedAt instanceof Date;
+    });
+    if (completedTurns.length === 0) {
+      return null;
+    }
+
+    return [...completedTurns].sort((leftTurn, rightTurn) => {
+      return (leftTurn.endedAt?.getTime() ?? 0) - (rightTurn.endedAt?.getTime() ?? 0);
+    }).at(-1) ?? null;
   }
 
   async interruptSession(

@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   RefObject,
 } from "react";
-import { Loader2Icon, PlusIcon, SendHorizonalIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { GitForkIcon, Loader2Icon, PlusIcon, SendHorizonalIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { SessionHumanQuestionSnippet } from "./session_human_question_snippet";
 import { ChatsContextUsageIndicator } from "./context_usage_indicator";
 import { Button } from "@/components/ui/button";
@@ -323,6 +323,7 @@ export function ChatComposerPane({
   deletingQueuedMessageId,
   queuedMessages,
   isDismissInboxHumanQuestionInFlight,
+  isForkingLatestSession,
   isResolveInboxHumanQuestionInFlight,
   shouldUseCompactComposerSettings,
   composerModelOptions,
@@ -353,6 +354,7 @@ export function ChatComposerPane({
   onReasoningLevelChange,
   onSubmitDraft,
   onQueueDraft,
+  onForkLatestSession,
   onStartDraftTextareaResize,
 }: {
   selectedSession: SessionRecord | null;
@@ -398,7 +400,9 @@ export function ChatComposerPane({
   onReasoningLevelChange: (reasoningLevel: string) => void;
   onSubmitDraft: () => void;
   onQueueDraft: () => void;
+  onForkLatestSession: () => void;
   onStartDraftTextareaResize: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  isForkingLatestSession: boolean;
 }) {
   return (
     <div className="relative shrink-0 border-t border-border/60 px-2 pt-2 pb-0 md:px-3 md:pt-2 md:pb-0">
@@ -523,11 +527,24 @@ export function ChatComposerPane({
                 />
               ) : null}
               {selectedSession ? (
-                <ChatsContextUsageIndicator
-                  currentContextTokens={selectedSession.currentContextTokens ?? null}
-                  isCompacting={selectedSession.isCompacting}
-                  maxContextTokens={selectedSession.maxContextTokens ?? null}
-                />
+                <div className="flex shrink-0 items-center gap-1">
+                  <ChatsContextUsageIndicator
+                    currentContextTokens={selectedSession.currentContextTokens ?? null}
+                    isCompacting={selectedSession.isCompacting}
+                    maxContextTokens={selectedSession.maxContextTokens ?? null}
+                  />
+                  <Button
+                    aria-label="Fork latest context"
+                    className="h-7 w-7 shrink-0 rounded-full bg-background/60 px-0 text-muted-foreground shadow-none hover:bg-background/80 hover:text-foreground"
+                    disabled={isForkingLatestSession}
+                    onClick={onForkLatestSession}
+                    title="Fork latest context"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {isForkingLatestSession ? <Loader2Icon className="size-3.5 animate-spin" /> : <GitForkIcon className="size-3.5" />}
+                  </Button>
+                </div>
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">

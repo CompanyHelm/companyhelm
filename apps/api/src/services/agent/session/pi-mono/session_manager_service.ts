@@ -26,7 +26,6 @@ import { OpenRouterCatalogService } from "../../../ai_providers/openrouter_catal
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { AgentEnvironmentWorkspacePath } from "../../../environments/workspace_path.ts";
-import { SessionContextCheckpointService } from "../context_checkpoint_service.ts";
 import { CompanyHelmResourceLoader } from "./companyhelm_resource_loader.ts";
 import { PiMonoSessionEventHandler } from "./session_event_handler.ts";
 import { ComputeProviderDefinitionService } from "../../../compute_provider_definitions/service.ts";
@@ -90,7 +89,6 @@ export class PiMonoSessionManagerService {
   private readonly logger: PinoLogger;
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
-  private readonly sessionContextCheckpointService: SessionContextCheckpointService;
   private readonly agentConversationService: AgentConversationService;
   private readonly exaWebClient: ExaWebClient;
   private readonly templateService: AgentEnvironmentTemplateService;
@@ -119,8 +117,6 @@ export class PiMonoSessionManagerService {
     @inject(OpenRouterCatalogService)
     openRouterCatalogService: OpenRouterCatalogService = new OpenRouterCatalogService(),
     @inject(ModelRegistry) appModelRegistry: ModelRegistry,
-    @inject(SessionContextCheckpointService)
-    sessionContextCheckpointService: SessionContextCheckpointService = new SessionContextCheckpointService(),
     @inject(McpService)
     mcpService: McpService = new McpService(),
     @inject(WorkflowService)
@@ -149,7 +145,6 @@ export class PiMonoSessionManagerService {
     this.openRouterCatalogService = openRouterCatalogService;
     this.appModelRegistry = appModelRegistry;
     this.mcpService = mcpService;
-    this.sessionContextCheckpointService = sessionContextCheckpointService;
     this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
       agentConversationService: this.agentConversationService,
       config,
@@ -179,7 +174,7 @@ export class PiMonoSessionManagerService {
     );
     const authStorage = AuthStorage.inMemory();
     authStorage.setRuntimeApiKey(bootstrapContext.modelProviderId, bootstrapContext.modelApiKey);
-    const modelRegistry = new PiMonoModelRegistry(authStorage);
+    const modelRegistry = PiMonoModelRegistry.inMemory(authStorage);
     if (bootstrapContext.modelProviderId === "openrouter") {
       await this.configureOpenRouterProvider(bootstrapContext.modelApiKey, modelRegistry);
     }
@@ -203,7 +198,7 @@ export class PiMonoSessionManagerService {
     const storedContextMessagesSnapshot = await this.loadStoredContextMessagesSnapshot(transactionProvider, sessionId);
     for (const message of storedContextMessagesSnapshot.contextMessagesSnapshot) {
       // PI Mono restores initial agent state from the SessionManager history.
-      sessionManager.appendMessage(message);
+      sessionManager.appendMessage(message as Parameters<typeof sessionManager.appendMessage>[0]);
     }
     const resourceLoader = new CompanyHelmResourceLoader(
       bootstrapContext.toSystemPromptTemplateContext(),
@@ -265,7 +260,6 @@ export class PiMonoSessionManagerService {
 
     const session = runtime.session;
     await runtime.eventHandler.startPromptTurn(new Date());
-    let completedTurnId: string | null;
     let completedTurnAt: Date;
     try {
       await session.prompt(message, images && images.length > 0 ? { images } : undefined);
@@ -277,14 +271,12 @@ export class PiMonoSessionManagerService {
       }
     } finally {
       completedTurnAt = new Date();
-      completedTurnId = await runtime.eventHandler.finishPromptTurn(completedTurnAt);
+      await runtime.eventHandler.finishPromptTurn(completedTurnAt);
     }
     await this.persistContextMessagesSnapshot(
       transactionProvider,
-      runtime.getCompanyId(),
       sessionId,
       session.agent.state.messages,
-      completedTurnId,
       completedTurnAt,
       this.buildContextSnapshot(session),
     );
@@ -307,10 +299,8 @@ export class PiMonoSessionManagerService {
     await session.steer(message, images);
     await this.persistContextMessagesSnapshot(
       transactionProvider,
-      runtime.getCompanyId(),
       sessionId,
       session.agent.state.messages,
-      null,
       new Date(),
       this.buildContextSnapshot(session),
     );
@@ -482,10 +472,8 @@ export class PiMonoSessionManagerService {
 
   private async persistContextMessagesSnapshot(
     transactionProvider: TransactionProviderInterface,
-    companyId: string,
     sessionId: string,
     messages: AgentMessage[],
-    completedTurnId?: string | null,
     completedTurnAt: Date = new Date(),
     contextSnapshot: {
       currentContextTokens: number | null;
@@ -499,11 +487,6 @@ export class PiMonoSessionManagerService {
   ): Promise<void> {
     await transactionProvider.transaction(async (tx) => {
       const updatableDatabase = tx as unknown as UpdatableDatabase;
-      const insertableDatabase = tx as {
-        insert(table: unknown): {
-          values(value: Record<string, unknown>): Promise<unknown>;
-        };
-      };
       await updatableDatabase
         .update(agentSessions)
         .set({
@@ -515,20 +498,6 @@ export class PiMonoSessionManagerService {
           updated_at: new Date(),
         })
         .where(eq(agentSessions.id, sessionId));
-
-      if (!completedTurnId) {
-        return;
-      }
-
-      await this.sessionContextCheckpointService.createCheckpointInTransaction(insertableDatabase, {
-        companyId,
-        contextMessagesSnapshot: messages,
-        createdAt: completedTurnAt,
-        currentContextTokens: contextSnapshot.currentContextTokens,
-        maxContextTokens: contextSnapshot.maxContextTokens,
-        sessionId,
-        turnId: completedTurnId,
-      });
     });
   }
 

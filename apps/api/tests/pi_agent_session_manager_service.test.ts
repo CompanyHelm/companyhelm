@@ -58,6 +58,10 @@ vi.mock("@mariozechner/pi-coding-agent", () => {
       this.authStorage = authStorage;
       piAgentMocks.modelRegistryInstances.push(this);
     }
+
+    static inMemory(authStorage: unknown) {
+      return new MockModelRegistry(authStorage);
+    }
   }
 
   class MockSessionManager {
@@ -234,7 +238,6 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     role: "user",
     timestamp: 1234,
   }];
-  const persistedCheckpointInserts: Array<Record<string, unknown>> = [];
   const persistedContextUpdates: Array<Record<string, unknown>> = [];
   const model = {
     id: "gpt-5.4",
@@ -348,7 +351,6 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
         throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
-    undefined,
     emptyMcpService,
   );
 
@@ -409,14 +411,6 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   await service.prompt(runtime, {
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback({
-        insert() {
-          return {
-            async values(value: Record<string, unknown>) {
-              persistedCheckpointInserts.push(value);
-              return undefined;
-            },
-          };
-        },
         select() {
           return {
             from() {
@@ -546,13 +540,6 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       .map((value) => value.contextMessagesSnapshot),
     [createdSession.agent.state.messages, createdSession.agent.state.messages],
   );
-  assert.equal(persistedCheckpointInserts.length, 1);
-  assert.equal(persistedCheckpointInserts[0]?.companyId, "company-1");
-  assert.equal(persistedCheckpointInserts[0]?.sessionId, "session-1");
-  assert.deepEqual(persistedCheckpointInserts[0]?.contextMessagesSnapshot, createdSession.agent.state.messages);
-  assert.equal(persistedCheckpointInserts[0]?.currentContextTokens, null);
-  assert.equal(persistedCheckpointInserts[0]?.maxContextTokens, null);
-  assert.ok(typeof persistedCheckpointInserts[0]?.turnId === "string");
 });
 
 test("PiMonoSessionManagerService registers OpenAI-compatible runtime providers with the credential base URL", async () => {
@@ -662,7 +649,6 @@ test("PiMonoSessionManagerService registers OpenAI-compatible runtime providers 
         throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
-    undefined,
     emptyMcpService,
   );
 
@@ -857,7 +843,6 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
         throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
-    undefined,
     emptyMcpService,
   );
 
@@ -1073,7 +1058,6 @@ test("PiMonoSessionManagerService creates a fresh runtime for each wake", async 
         throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
-    undefined,
     emptyMcpService,
   );
 
@@ -1288,7 +1272,6 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
         throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
-    undefined,
     {
       async listAgentMcpServers() {
         return [{

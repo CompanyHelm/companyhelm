@@ -158,24 +158,20 @@ export class SessionManagerService {
     transactionProvider: TransactionProviderInterface,
     companyId: string,
     sessionId: string,
-    forkedFromTurnId: string,
     userId?: string | null,
   ): Promise<SessionRecord> {
     const sessionRecord = await this.sessionLifecycleService.forkSession(
       transactionProvider,
       companyId,
       sessionId,
-      forkedFromTurnId,
       userId,
     );
 
     this.logger.info({
-      checkpointSessionId: sessionId,
       companyId,
-      forkedFromTurnId,
       sessionId: sessionRecord.id,
       sourceSessionId: sessionId,
-    }, "forked agent session");
+    }, "forked latest agent session context");
 
     return sessionRecord;
   }

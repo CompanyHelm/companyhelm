@@ -1003,7 +1003,6 @@ input InterruptSessionInput {
 
 input ForkSessionInput {
   sessionId: ID!
-  turnId: ID!
 }
 
 input CreateSessionInput {

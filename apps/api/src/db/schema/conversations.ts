@@ -89,26 +89,6 @@ export const sessionTurns = pgTable("session_turns", {
   sessionStartedAtIndex: index("session_turns_session_started_at_idx").on(table.sessionId, table.startedAt),
 }));
 
-export const sessionContextCheckpoints = pgTable("session_context_checkpoints", {
-  turnId: uuid("turn_id")
-    .primaryKey()
-    .references(() => sessionTurns.id, { onDelete: "cascade" }),
-  companyId: uuid("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  sessionId: uuid("session_id")
-    .references(() => agentSessions.id, { onDelete: "cascade" })
-    .notNull(),
-  contextMessagesSnapshot: jsonb("context_messages_snapshot").notNull(),
-  currentContextTokens: integer("current_context_tokens"),
-  maxContextTokens: integer("max_context_tokens"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-}, (table) => ({
-  companyIdIndex: index("session_context_checkpoints_company_id_idx").on(table.companyId),
-  sessionIdIndex: index("session_context_checkpoints_session_id_idx").on(table.sessionId),
-  sessionCreatedAtIndex: index("session_context_checkpoints_session_created_at_idx").on(table.sessionId, table.createdAt),
-}));
-
 export const userSessionReads = pgTable("user_session_reads", {
   companyId: uuid("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
