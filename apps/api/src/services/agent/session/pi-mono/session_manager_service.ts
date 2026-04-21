@@ -273,13 +273,7 @@ export class PiMonoSessionManagerService {
       completedTurnAt = new Date();
       await runtime.eventHandler.finishPromptTurn(completedTurnAt);
     }
-    await this.persistContextMessagesSnapshot(
-      transactionProvider,
-      sessionId,
-      session.agent.state.messages,
-      completedTurnAt,
-      this.buildContextSnapshot(session),
-    );
+    await this.persistRuntimeContextSnapshot(runtime, transactionProvider, sessionId, completedTurnAt);
   }
 
   async steer(
@@ -297,11 +291,21 @@ export class PiMonoSessionManagerService {
 
     const session = runtime.session;
     await session.steer(message, images);
+    await this.persistRuntimeContextSnapshot(runtime, transactionProvider, sessionId);
+  }
+
+  async persistRuntimeContextSnapshot(
+    runtime: AgentSessionRuntimeContext,
+    transactionProvider: TransactionProviderInterface,
+    sessionId: string,
+    snapshotAt: Date = new Date(),
+  ): Promise<void> {
+    const session = runtime.session;
     await this.persistContextMessagesSnapshot(
       transactionProvider,
       sessionId,
       session.agent.state.messages,
-      new Date(),
+      snapshotAt,
       this.buildContextSnapshot(session),
     );
   }

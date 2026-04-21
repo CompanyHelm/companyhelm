@@ -457,6 +457,24 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       });
     },
   } as never, "session-1", "Focus on the failed migration.");
+  await service.persistRuntimeContextSnapshot(runtime, {
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
+      return callback({
+        update() {
+          return {
+            set(value: Record<string, unknown>) {
+              persistedContextUpdates.push(value);
+              return {
+                async where() {
+                  return undefined;
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  } as never, "session-1", new Date("2026-04-21T19:00:00.000Z"));
   await service.abort(runtime);
 
   assert.equal(runtime.session, createdSession);
@@ -533,12 +551,20 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
   assert.deepEqual(piAgentMocks.steerMock.mock.calls, [["Focus on the failed migration.", undefined]]);
   assert.deepEqual(piAgentMocks.continueMock.mock.calls, []);
   assert.equal(piAgentMocks.abortMock.mock.calls.length, 1);
-  assert.equal(persistedContextUpdates.filter((value) => "contextMessagesSnapshot" in value).length, 2);
+  assert.equal(persistedContextUpdates.filter((value) => "contextMessagesSnapshot" in value).length, 3);
   assert.deepEqual(
     persistedContextUpdates
       .filter((value) => "contextMessagesSnapshot" in value)
       .map((value) => value.contextMessagesSnapshot),
-    [createdSession.agent.state.messages, createdSession.agent.state.messages],
+    [createdSession.agent.state.messages, createdSession.agent.state.messages, createdSession.agent.state.messages],
+  );
+  assert.equal(
+    (
+      persistedContextUpdates
+        .filter((value) => "contextMessagesSnapshot" in value)[2]
+        ?.contextMessagesSnapshotAt as Date | undefined
+    )?.toISOString(),
+    "2026-04-21T19:00:00.000Z",
   );
 });
 

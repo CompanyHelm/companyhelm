@@ -133,6 +133,7 @@ export class SessionProcessExecutionService {
     let leaseLossError: Error | null = null;
     let runtime: AgentSessionRuntimeContext | null = null;
     let shouldEnqueueFollowUpWake = false;
+    let interruptDeliveryPromise = Promise.resolve();
     let steeringSubscription: RedisSubscriptionHandle | null = null;
     let steeringDeliveryPromise = Promise.resolve();
 
@@ -202,7 +203,24 @@ export class SessionProcessExecutionService {
           }
           interruptError = new Error("Session interrupted.");
           if (runtime) {
-            void this.piMonoSessionManagerService.abort(runtime);
+            const interruptedRuntime = runtime;
+            interruptDeliveryPromise = interruptDeliveryPromise.then(async () => {
+              await this.persistInterruptedRuntimeContext(
+                interruptedRuntime,
+                transactionProvider,
+                companyId,
+                sessionId,
+              );
+              try {
+                await this.piMonoSessionManagerService.abort(interruptedRuntime);
+              } catch (error) {
+                this.logger.error({
+                  companyId,
+                  error,
+                  sessionId,
+                }, "failed to abort interrupted session runtime");
+              }
+            });
           }
         },
       );
@@ -211,6 +229,7 @@ export class SessionProcessExecutionService {
         return;
       }
       if (interruptError) {
+        await interruptDeliveryPromise;
         await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
         return;
       }
@@ -223,6 +242,7 @@ export class SessionProcessExecutionService {
       );
       await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
       if (interruptError) {
+        await interruptDeliveryPromise;
         await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
         return;
       }
@@ -242,6 +262,7 @@ export class SessionProcessExecutionService {
           throw leaseLossError;
         }
         if (interruptError) {
+          await interruptDeliveryPromise;
           await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
           return;
         }
@@ -255,6 +276,7 @@ export class SessionProcessExecutionService {
         );
       } catch (error) {
         if (interruptError) {
+          await interruptDeliveryPromise;
           await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
           return;
         }
@@ -276,6 +298,7 @@ export class SessionProcessExecutionService {
       if (heartbeatHandle) {
         clearInterval(heartbeatHandle);
       }
+      await interruptDeliveryPromise;
 
       try {
         const requeuedUndispatchedSteerIds = await this.sessionQueuedMessageService.requeueUndispatchedProcessingSteer?.(
@@ -312,6 +335,27 @@ export class SessionProcessExecutionService {
       if (shouldEnqueueFollowUpWake) {
         await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
       }
+    }
+  }
+
+  private async persistInterruptedRuntimeContext(
+    runtime: AgentSessionRuntimeContext,
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    try {
+      await this.piMonoSessionManagerService.persistRuntimeContextSnapshot(
+        runtime,
+        transactionProvider,
+        sessionId,
+      );
+    } catch (error) {
+      this.logger.error({
+        companyId,
+        error,
+        sessionId,
+      }, "failed to persist interrupted session runtime context");
     }
   }
 

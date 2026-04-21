@@ -1309,6 +1309,8 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
   const abortCalls: unknown[] = [];
   const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
   const disposeCalls: unknown[] = [];
+  const operationOrder: string[] = [];
+  const persistContextCalls: Array<{ runtime: unknown; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const subscribedListeners = new Map<string, () => void>();
   const subscriber = {
@@ -1442,7 +1444,15 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
       async createRuntime() {
         return runtime;
       },
+      async persistRuntimeContextSnapshot(receivedRuntime: unknown, _transactionProvider: unknown, receivedSessionId: string) {
+        operationOrder.push("persist-context");
+        persistContextCalls.push({
+          runtime: receivedRuntime,
+          sessionId: receivedSessionId,
+        });
+      },
       async abort(receivedRuntime: unknown) {
+        operationOrder.push("abort");
         abortCalls.push(receivedRuntime);
       },
       disposeRuntime(receivedRuntime: unknown) {
@@ -1532,6 +1542,11 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
   subscribedListeners.get("company:company-1:session:session-1:interrupt")?.();
 
   await executionPromise;
+  assert.deepEqual(persistContextCalls, [{
+    runtime,
+    sessionId: "session-1",
+  }]);
+  assert.deepEqual(operationOrder, ["persist-context", "abort"]);
   assert.deepEqual(abortCalls, [runtime]);
   assert.deepEqual(clearQueuedCalls, [{
     companyId: "company-1",
