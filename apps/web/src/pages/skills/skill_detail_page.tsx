@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { GithubIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
+import { cn } from "@/lib/utils";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { skillDetailPageQuery } from "./__generated__/skillDetailPageQuery.graphql";
 import type { skillDetailPageUpdateSkillMutation } from "./__generated__/skillDetailPageUpdateSkillMutation.graphql";
@@ -44,10 +45,18 @@ const skillDetailPageQueryNode = graphql`
         inputSchema
       }
       repository
+      repositoryUrl
       skillDirectory
+      skillDirectoryUrl
       fileList
+      fileInventory {
+        path
+        url
+      }
       githubBranchName
+      githubBranchSkillFileUrl
       githubTrackedCommitSha
+      githubTrackedCommitSkillFileUrl
     }
     SkillGroups {
       id
@@ -66,10 +75,18 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
       skillGroupId
       skillType
       repository
+      repositoryUrl
       skillDirectory
+      skillDirectoryUrl
       fileList
+      fileInventory {
+        path
+        url
+      }
       githubBranchName
+      githubBranchSkillFileUrl
       githubTrackedCommitSha
+      githubTrackedCommitSkillFileUrl
     }
   }
 `;
@@ -88,6 +105,28 @@ function SkillDetailPageFallback() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+function SkillSourceValue(props: {
+  children: ReactNode;
+  className?: string;
+  href?: string | null;
+}) {
+  const className = cn(
+    "mt-3 break-all text-sm text-foreground",
+    props.href ? "inline-block underline-offset-4 hover:underline" : null,
+    props.className,
+  );
+
+  if (!props.href) {
+    return <p className={className}>{props.children}</p>;
+  }
+
+  return (
+    <a className={className} href={props.href} rel="noreferrer" target="_blank">
+      {props.children}
+    </a>
   );
 }
 
@@ -132,9 +171,17 @@ function SkillDetailPageContent() {
   }, [data.SkillGroups]);
   const activeSkillGroupName = data.SkillGroups.find((group) => group.id === skill.skillGroupId)?.name ?? "Ungrouped";
   const isSystemSkill = skill.skillType === "system";
-  const isGithubSkill = Boolean(skill.repository);
+  const isRepositorySkill = Boolean(skill.repository);
+  const isGithubSkill = Boolean(skill.repositoryUrl);
   const selectedTab: SkillDetailPageTab = search.tab === "source" ? "source" : "overview";
-  const sourceLabel = isSystemSkill ? "System skill" : isGithubSkill ? "GitHub" : "Manual";
+  let sourceLabel = "Manual";
+  if (isSystemSkill) {
+    sourceLabel = "System skill";
+  } else if (isGithubSkill) {
+    sourceLabel = "GitHub";
+  } else if (isRepositorySkill) {
+    sourceLabel = "Git repository";
+  }
 
   useEffect(() => {
     setDetailLabel(skill.name);
@@ -307,7 +354,7 @@ function SkillDetailPageContent() {
               </>
             ) : null}
 
-            {!isSystemSkill && !isGithubSkill ? (
+            {!isSystemSkill && !isRepositorySkill ? (
               <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                   Storage
@@ -316,36 +363,40 @@ function SkillDetailPageContent() {
               </div>
             ) : null}
 
-            {isGithubSkill ? (
+            {isRepositorySkill ? (
               <>
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Repository
                   </p>
-                  <p className="mt-3 break-all text-sm text-foreground">{skill.repository ?? "—"}</p>
+                  <SkillSourceValue href={skill.repositoryUrl}>{skill.repository ?? "—"}</SkillSourceValue>
                 </div>
 
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Tracking branch
                   </p>
-                  <p className="mt-3 text-sm text-foreground">{skill.githubBranchName ?? "—"}</p>
+                  <SkillSourceValue href={skill.githubBranchSkillFileUrl}>
+                    {skill.githubBranchName ?? "—"}
+                  </SkillSourceValue>
                 </div>
 
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Current tracked SHA
                   </p>
-                  <p className="mt-3 break-all font-mono text-sm text-foreground">
+                  <SkillSourceValue className="font-mono" href={skill.githubTrackedCommitSkillFileUrl}>
                     {skill.githubTrackedCommitSha ?? "—"}
-                  </p>
+                  </SkillSourceValue>
                 </div>
 
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Skill directory in repo
                   </p>
-                  <p className="mt-3 break-all text-sm text-foreground">{skill.skillDirectory ?? "—"}</p>
+                  <SkillSourceValue href={skill.skillDirectoryUrl}>
+                    {skill.skillDirectory ?? "—"}
+                  </SkillSourceValue>
                 </div>
 
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">
@@ -353,7 +404,7 @@ function SkillDetailPageContent() {
                     Files
                   </p>
                   <div className="mt-3 flex items-center gap-2">
-                    <Badge variant="outline">{skill.fileList.length}</Badge>
+                    <Badge variant="outline">{skill.fileInventory.length}</Badge>
                     <p className="text-sm text-foreground">Tracked files</p>
                   </div>
                 </div>
@@ -362,14 +413,24 @@ function SkillDetailPageContent() {
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     File inventory
                   </p>
-                  {skill.fileList.length === 0 ? (
+                  {skill.fileInventory.length === 0 ? (
                     <p className="mt-3 text-sm text-muted-foreground">No tracked files on this skill yet.</p>
                   ) : (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {skill.fileList.map((filePath) => (
-                        <Badge key={filePath} variant="secondary">
-                          {filePath}
-                        </Badge>
+                      {skill.fileInventory.map((file) => (
+                        file.url ? (
+                          <Badge
+                            key={file.path}
+                            render={<a href={file.url} rel="noreferrer" target="_blank" />}
+                            variant="secondary"
+                          >
+                            {file.path}
+                          </Badge>
+                        ) : (
+                          <Badge key={file.path} variant="secondary">
+                            {file.path}
+                          </Badge>
+                        )
                       ))}
                     </div>
                   )}

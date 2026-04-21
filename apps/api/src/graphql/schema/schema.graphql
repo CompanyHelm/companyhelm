@@ -672,14 +672,24 @@ type Skill {
   name: String!
   description: String!
   instructions: String!
+  fileInventory: [SkillFileInventoryEntry!]!
   fileList: [String!]!
   githubBranchName: String
+  githubBranchSkillFileUrl: String
+  githubTrackedCommitSkillFileUrl: String
   githubTrackedCommitSha: String
   repository: String
+  repositoryUrl: String
   skillDirectory: String
+  skillDirectoryUrl: String
   skillType: SkillType!
   systemCommands: [SystemCommand!]!
   systemKey: String
+}
+
+type SkillFileInventoryEntry {
+  path: String!
+  url: String
 }
 
 type SystemCommand {

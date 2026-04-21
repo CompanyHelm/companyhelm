@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ca40e7c32f788613b5f7933afb44b131>>
+ * @generated SignedSource<<a1cd8cf901e4d3daa6d82d729fa11510>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,14 +16,22 @@ export type skillDetailPageQuery$variables = {
 export type skillDetailPageQuery$data = {
   readonly Skill: {
     readonly description: string;
+    readonly fileInventory: ReadonlyArray<{
+      readonly path: string;
+      readonly url: string | null | undefined;
+    }>;
     readonly fileList: ReadonlyArray<string>;
     readonly githubBranchName: string | null | undefined;
+    readonly githubBranchSkillFileUrl: string | null | undefined;
     readonly githubTrackedCommitSha: string | null | undefined;
+    readonly githubTrackedCommitSkillFileUrl: string | null | undefined;
     readonly id: string;
     readonly instructions: string;
     readonly name: string;
     readonly repository: string | null | undefined;
+    readonly repositoryUrl: string | null | undefined;
     readonly skillDirectory: string | null | undefined;
+    readonly skillDirectoryUrl: string | null | undefined;
     readonly skillGroupId: string | null | undefined;
     readonly skillType: SkillType;
     readonly systemCommands: ReadonlyArray<{
@@ -149,6 +157,13 @@ v4 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "repositoryUrl",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "skillDirectory",
         "storageKey": null
       },
@@ -156,7 +171,39 @@ v4 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "skillDirectoryUrl",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "fileList",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "SkillFileInventoryEntry",
+        "kind": "LinkedField",
+        "name": "fileInventory",
+        "plural": true,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "path",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "url",
+            "storageKey": null
+          }
+        ],
         "storageKey": null
       },
       {
@@ -170,7 +217,21 @@ v4 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "githubBranchSkillFileUrl",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "githubTrackedCommitSha",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "githubTrackedCommitSkillFileUrl",
         "storageKey": null
       }
     ],
@@ -208,16 +269,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "f5757a4462b57dcc52332ded1f25e7d6",
+    "cacheID": "69a120317e3d1ce21cdf5e794ff9d301",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageQuery",
     "operationKind": "query",
-    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    skillDirectory\n    fileList\n    githubBranchName\n    githubTrackedCommitSha\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
+    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    githubBranchName\n    githubBranchSkillFileUrl\n    githubTrackedCommitSha\n    githubTrackedCommitSkillFileUrl\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b4a4696d6a49c6e6088cd91e5d28361a";
+(node as any).hash = "4765efdc2af82ac1d3d51c378aeab1f9";
 
 export default node;
