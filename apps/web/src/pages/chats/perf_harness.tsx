@@ -1,4 +1,4 @@
-import { StrictMode, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ChatComposerPane } from "./chat_composer_pane";
 import { ChatTranscriptPane } from "./chat_transcript_pane";
@@ -83,6 +83,9 @@ function buildModelOptions() {
   }] satisfies ChatComposerModelOption[];
 }
 
+function noop() {
+}
+
 function ChatPerformanceHarness() {
   const searchParams = new URLSearchParams(window.location.search);
   const initialVariant = searchParams.get("variant") === "short" ? "short" : "long";
@@ -94,6 +97,24 @@ function ChatPerformanceHarness() {
   const session = useMemo(() => buildSession(), []);
   const modelOptions = useMemo(() => buildModelOptions(), []);
   const sessionMessages = useMemo(() => buildSessionMessages(variant), [variant]);
+  const draftHasInput = draftMessage.trim().length > 0;
+  const draftImages = useMemo(() => [], []);
+  const queuedMessages = useMemo(() => [], []);
+  const onSelectShortTranscript = useCallback(() => {
+    setVariant("short");
+  }, []);
+  const onSelectLongTranscript = useCallback(() => {
+    setVariant("long");
+  }, []);
+  const onJumpToLatest = useCallback(() => {
+    const transcriptElement = transcriptScrollRef.current;
+
+    if (!transcriptElement) {
+      return;
+    }
+
+    transcriptElement.scrollTo({ top: transcriptElement.scrollHeight });
+  }, []);
 
   return (
     <main className="min-h-screen bg-background px-6 py-6 text-foreground">
@@ -109,14 +130,14 @@ function ChatPerformanceHarness() {
             <div className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/30 p-1">
               <button
                 className={`rounded-full px-3 py-1.5 text-sm ${variant === "short" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                onClick={() => setVariant("short")}
+                onClick={onSelectShortTranscript}
                 type="button"
               >
                 Short transcript
               </button>
               <button
                 className={`rounded-full px-3 py-1.5 text-sm ${variant === "long" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                onClick={() => setVariant("long")}
+                onClick={onSelectLongTranscript}
                 type="button"
               >
                 Long transcript
@@ -131,10 +152,8 @@ function ChatPerformanceHarness() {
               isLoadingOlderMessages={false}
               isLoadingTranscript={false}
               isTranscriptStuckToBottom={true}
-              onJumpToLatest={() => {
-                transcriptScrollRef.current?.scrollTo({ top: transcriptScrollRef.current.scrollHeight });
-              }}
-              onScroll={() => {}}
+              onJumpToLatest={onJumpToLatest}
+              onScroll={noop}
               organizationSlug="test-org"
               session={session}
               sessionMessages={sessionMessages}
@@ -164,41 +183,41 @@ function ChatPerformanceHarness() {
             <div className="mt-auto">
               <ChatComposerPane
                 canInterruptSelectedSession={false}
-                canSubmitDraft={draftMessage.trim().length > 0}
+                canSubmitDraft={draftHasInput}
                 composerModelOptionId={modelOptions[0].id}
                 composerModelOptions={modelOptions}
                 composerReasoningLevel="high"
                 deletingQueuedMessageId={null}
                 draftImageFileInputRef={draftImageFileInputRef}
-                draftImages={[]}
+                draftImages={draftImages}
                 draftMessage={draftMessage}
                 draftSubmitAriaLabel="Send message"
                 draftTextareaRef={draftTextareaRef}
-                hasDraftInput={draftMessage.trim().length > 0}
+                hasDraftInput={draftHasInput}
                 isComposerDragActive={false}
                 isDismissInboxHumanQuestionInFlight={false}
                 isForkingLatestSession={false}
                 isResolveInboxHumanQuestionInFlight={false}
-                onComposerDragEnter={() => {}}
-                onComposerDragLeave={() => {}}
-                onComposerDragOver={() => {}}
-                onComposerDrop={() => {}}
-                onDeleteQueuedMessage={() => {}}
-                onDismissHumanQuestion={() => {}}
-                onDraftImageInputChange={() => {}}
+                onComposerDragEnter={noop}
+                onComposerDragLeave={noop}
+                onComposerDragOver={noop}
+                onComposerDrop={noop}
+                onDeleteQueuedMessage={noop}
+                onDismissHumanQuestion={noop}
+                onDraftImageInputChange={noop}
                 onDraftMessageChange={setDraftMessage}
-                onForkLatestSession={() => {}}
-                onModelChange={() => {}}
-                onOpenDraftImagePicker={() => {}}
-                onQueueDraft={() => {}}
-                onReasoningLevelChange={() => {}}
-                onRemoveDraftImage={() => {}}
-                onResolveHumanQuestion={() => {}}
-                onStartDraftTextareaResize={() => {}}
-                onSteerQueuedMessage={() => {}}
-                onSubmitDraft={() => {}}
+                onForkLatestSession={noop}
+                onModelChange={noop}
+                onOpenDraftImagePicker={noop}
+                onQueueDraft={noop}
+                onReasoningLevelChange={noop}
+                onRemoveDraftImage={noop}
+                onResolveHumanQuestion={noop}
+                onStartDraftTextareaResize={noop}
+                onSteerQueuedMessage={noop}
+                onSubmitDraft={noop}
                 queueDraftAriaLabel="Queue message"
-                queuedMessages={[]}
+                queuedMessages={queuedMessages}
                 selectedSession={session}
                 selectedSessionHumanQuestion={null}
                 shouldShowInterruptComposerAction={false}
@@ -221,7 +240,5 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  <StrictMode>
-    <ChatPerformanceHarness />
-  </StrictMode>,
+  <ChatPerformanceHarness />,
 );
