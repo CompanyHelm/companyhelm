@@ -4,7 +4,7 @@
 
 **Goal:** Make ECS deployments drain CompanyHelm API/worker processes gracefully on `SIGTERM`/`SIGINT`, with readiness changes and periodic logs that show active job drainage progress.
 
-**Architecture:** Add an explicit `ApiServer.stop()` lifecycle that is idempotent, flips the process into draining mode, stops accepting new HTTP traffic, waits for BullMQ workers to finish active jobs, then closes queue/database resources. Wrap worker shutdown in a reusable drain helper that logs active BullMQ job counts every few seconds while `worker.close(false)` is pending. Wire `main.ts` process signal handlers to call `server.stop()` instead of relying on process exit.
+**Architecture:** Add an explicit `ApiServer.stop()` lifecycle that is idempotent, flips the process into draining mode, stops accepting new HTTP traffic, waits for this process's BullMQ workers to finish their own active jobs, then closes queue/database resources. Wrap worker shutdown in a reusable drain helper that logs instance-local active job counts every few seconds while `worker.close(false)` is pending. Wire `main.ts` process signal handlers to call `server.stop()` instead of relying on process exit.
 
 **Tech Stack:** Node 20, TypeScript, Fastify, BullMQ 5, ioredis, Pino, Vitest.
 
@@ -17,14 +17,15 @@ Current lifecycle entry points:
 - `apps/api/src/main.ts` constructs the container and calls `ApiServer.start()`, but does not register `SIGTERM` or `SIGINT` handlers.
 - `apps/api/src/server/api_server.ts` registers a Fastify `onClose` hook that stops workers and closes databases, but only runs if `app.close()` is called.
 - `apps/api/src/workers/session_process.ts`, `github_webhooks.ts`, `routine_triggers.ts`, and `workflow_triggers.ts` each call `worker.close()` directly and do not emit drain-progress logs.
-- BullMQ `Worker.close(false)` waits for active jobs to finish before resolving. BullMQ `Queue.getActiveCount()` can report active queue count while close is pending.
+- BullMQ `Worker.close(false)` waits for jobs currently owned by that worker instance to finish before resolving. Do not use `Queue.getActiveCount()` for drain progress because it reports queue-global active jobs across every ECS task, not this draining process.
 
 Implementation constraints:
 
 - Keep shutdown idempotent. Multiple `SIGTERM`/`SIGINT` signals must not double-close workers or databases.
 - Do not accept new HTTP requests after shutdown starts.
 - Do not force-close BullMQ workers during normal ECS shutdown.
-- Log drain progress every few seconds while active jobs remain.
+- Log drain progress every few seconds while this process still owns active jobs.
+- Do not create a separate "drain worker" and do not use queue-global counts for progress. The drain state belongs to each running `Worker` object in this Node process.
 - Keep the first implementation narrow: graceful process drain only. Do not split API and workers into separate ECS services in this change.
 
 ## Drain Log Shape
@@ -59,7 +60,7 @@ logger.info({
 }, "api server stopped");
 ```
 
-Keep the exact wording stable enough for log searches. Use `activeJobs`, not a message-only count.
+Keep the exact wording stable enough for log searches. Use `activeJobs`, not a message-only count. `activeJobs` must be the count owned by the current Node process, not the queue-wide active count.
 
 ## Task 1: Add A Reusable Worker Drain Helper
 
@@ -72,27 +73,23 @@ Keep the exact wording stable enough for log searches. Use `activeJobs`, not a m
 
 Create `apps/api/tests/worker_drain.test.ts`.
 
-Test 1: closes a worker and logs active-job progress while close is pending.
+Test 1: closes a worker and logs instance-local active-job progress while close is pending.
 
 ```ts
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { drainBullmqWorker } from "../src/workers/drain.ts";
+import { BullmqWorkerDrainTracker, drainBullmqWorker } from "../src/workers/drain.ts";
 
-test("drainBullmqWorker logs active job count while close is pending", async () => {
+test("drainBullmqWorker logs instance-local active job count while close is pending", async () => {
   vi.useFakeTimers();
   const info = vi.fn();
   let resolveClose: () => void = () => {};
   const closePromise = new Promise<void>((resolve) => {
     resolveClose = resolve;
   });
-  const queue = {
-    getActiveCount: vi.fn()
-      .mockResolvedValueOnce(3)
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(0),
-    close: vi.fn(async () => undefined),
-  };
+  const tracker = new BullmqWorkerDrainTracker();
+  tracker.markActive("job-1");
+  tracker.markActive("job-2");
   const worker = {
     close: vi.fn(() => closePromise),
   };
@@ -100,42 +97,71 @@ test("drainBullmqWorker logs active job count while close is pending", async () 
   const drainPromise = drainBullmqWorker({
     intervalMilliseconds: 2_000,
     logger: { info, warn: vi.fn(), error: vi.fn() } as never,
-    queue: queue as never,
+    tracker,
     worker: worker as never,
     workerName: "session_process",
   });
 
   await vi.advanceTimersByTimeAsync(2_000);
+  tracker.markFinished("job-1");
   await vi.advanceTimersByTimeAsync(2_000);
   resolveClose();
   await drainPromise;
 
   assert.equal(worker.close.mock.calls.length, 1);
   assert.equal(worker.close.mock.calls[0]?.[0], false);
-  assert.equal(queue.close.mock.calls.length, 1);
-  assert.ok(info.mock.calls.some((call) => call[1] === "waiting for worker jobs to drain"));
+  assert.ok(info.mock.calls.some((call) => call[0]?.activeJobs === 2));
+  assert.ok(info.mock.calls.some((call) => call[0]?.activeJobs === 1));
   assert.ok(info.mock.calls.some((call) => call[1] === "worker drained"));
 
   vi.useRealTimers();
 });
 ```
 
-Test 2: still resolves if the worker is missing.
+Test 2: tracks active/completed/failed events using only jobs owned by this worker instance.
 
 ```ts
-test("drainBullmqWorker closes the queue when worker was never started", async () => {
-  const queue = {
-    close: vi.fn(async () => undefined),
+test("BullmqWorkerDrainTracker tracks only events from the attached worker", () => {
+  const listeners = new Map<string, (...args: unknown[]) => void>();
+  const worker = {
+    on: vi.fn((eventName: string, listener: (...args: unknown[]) => void) => {
+      listeners.set(eventName, listener);
+      return worker;
+    }),
   };
+  const tracker = new BullmqWorkerDrainTracker();
+
+  tracker.attach(worker as never);
+  listeners.get("active")?.({ id: "job-1" });
+  listeners.get("active")?.({ id: "job-2" });
+  assert.deepEqual(tracker.snapshot(), {
+    activeJobIds: ["job-1", "job-2"],
+    activeJobs: 2,
+  });
+
+  listeners.get("completed")?.({ id: "job-1" });
+  listeners.get("failed")?.({ id: "job-2" });
+  assert.deepEqual(tracker.snapshot(), {
+    activeJobIds: [],
+    activeJobs: 0,
+  });
+});
+```
+
+Test 3: still resolves if the worker is missing.
+
+```ts
+test("drainBullmqWorker resolves when worker was never started", async () => {
+  const info = vi.fn();
 
   await drainBullmqWorker({
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } as never,
-    queue: queue as never,
+    logger: { info, warn: vi.fn(), error: vi.fn() } as never,
+    tracker: new BullmqWorkerDrainTracker(),
     worker: undefined,
     workerName: "session_process",
   });
 
-  assert.equal(queue.close.mock.calls.length, 1);
+  assert.ok(info.mock.calls.some((call) => call[1] === "worker drained"));
 });
 ```
 
@@ -154,16 +180,50 @@ Expected: fails because `apps/api/src/workers/drain.ts` does not exist.
 Create `apps/api/src/workers/drain.ts`.
 
 ```ts
-import type { Queue, Worker } from "bullmq";
+import type { Job, Worker } from "bullmq";
 import type { Logger as PinoLogger } from "pino";
 
 export type DrainBullmqWorkerInput = {
   intervalMilliseconds?: number;
   logger: Pick<PinoLogger, "error" | "info" | "warn">;
-  queue?: Pick<Queue, "close" | "getActiveCount">;
+  tracker: BullmqWorkerDrainTracker;
   worker?: Pick<Worker, "close">;
   workerName: string;
 };
+
+export class BullmqWorkerDrainTracker {
+  private readonly activeJobIds = new Set<string>();
+
+  attach(worker: Pick<Worker, "on">): void {
+    worker.on("active", (job: Job) => {
+      this.markActive(String(job.id));
+    });
+    worker.on("completed", (job: Job) => {
+      this.markFinished(String(job.id));
+    });
+    worker.on("failed", (job: Job | undefined) => {
+      if (job) {
+        this.markFinished(String(job.id));
+      }
+    });
+  }
+
+  markActive(jobId: string): void {
+    this.activeJobIds.add(jobId);
+  }
+
+  markFinished(jobId: string): void {
+    this.activeJobIds.delete(jobId);
+  }
+
+  snapshot(): { activeJobIds: string[]; activeJobs: number } {
+    const activeJobIds = [...this.activeJobIds].sort();
+    return {
+      activeJobIds,
+      activeJobs: activeJobIds.length,
+    };
+  }
+}
 
 export async function drainBullmqWorker(input: DrainBullmqWorkerInput): Promise<void> {
   const startedAt = Date.now();
@@ -172,24 +232,17 @@ export async function drainBullmqWorker(input: DrainBullmqWorkerInput): Promise<
 
   const closePromise = input.worker?.close(false) ?? Promise.resolve();
   const progressTimer = setInterval(() => {
-    if (isDone || !input.queue?.getActiveCount) {
+    if (isDone) {
       return;
     }
 
-    void input.queue.getActiveCount()
-      .then((activeJobs) => {
-        input.logger.info({
-          activeJobs,
-          elapsedMilliseconds: Date.now() - startedAt,
-          worker: input.workerName,
-        }, "waiting for worker jobs to drain");
-      })
-      .catch((error) => {
-        input.logger.warn({
-          error,
-          worker: input.workerName,
-        }, "failed to read worker active job count while draining");
-      });
+    const snapshot = input.tracker.snapshot();
+    input.logger.info({
+      activeJobIds: snapshot.activeJobIds.slice(0, 20),
+      activeJobs: snapshot.activeJobs,
+      elapsedMilliseconds: Date.now() - startedAt,
+      worker: input.workerName,
+    }, "waiting for worker jobs to drain");
   }, intervalMilliseconds);
 
   try {
@@ -203,8 +256,6 @@ export async function drainBullmqWorker(input: DrainBullmqWorkerInput): Promise<
     elapsedMilliseconds: Date.now() - startedAt,
     worker: input.workerName,
   }, "worker drained");
-
-  await input.queue?.close();
 }
 ```
 
@@ -240,7 +291,7 @@ git commit -m "feat(api): add bullmq worker drain logging"
 
 **Step 1: Write failing tests for session worker drain behavior**
 
-Update the BullMQ mock in `apps/api/tests/session_process_worker.test.ts` so mock workers expose `close(false)` and mock queues expose `getActiveCount()` and `close()`.
+Update the BullMQ mock in `apps/api/tests/session_process_worker.test.ts` so mock workers expose `close(false)` and store listeners registered through `on()`.
 
 Add an assertion to the existing close test:
 
@@ -248,10 +299,17 @@ Add an assertion to the existing close test:
 assert.equal(workerMocks.closeMock.mock.calls[0]?.[0], false);
 ```
 
-Add an assertion that drain logs use the worker name:
+Add assertions that drain logs use the worker name and instance-local active job count:
 
 ```ts
 assert.ok(info.mock.calls.some((call) => call[0]?.worker === "session_process"));
+assert.ok(info.mock.calls.some((call) => call[0]?.activeJobs === 1));
+```
+
+Drive the mocked worker events before shutdown:
+
+```ts
+workerMocks.workerInstances[0]?.emit("active", { id: "job-owned-by-this-worker" });
 ```
 
 **Step 2: Run the failing test**
@@ -262,30 +320,29 @@ Run:
 npm exec -w @companyhelm/api -- vitest run tests/session_process_worker.test.ts
 ```
 
-Expected: fails because current worker `stop()` does not pass `false` explicitly and does not use the drain helper.
+Expected: fails because current worker `stop()` does not pass `false` explicitly and does not track active jobs owned by this worker instance.
 
-**Step 3: Add queue ownership to workers**
+**Step 3: Add instance-local drain tracking to workers**
 
 In each worker file:
 
-- Import `Queue` from `bullmq`.
-- Add `private queue?: Queue<PayloadType>;`.
-- Instantiate a `Queue` with the same queue name and Redis connection configuration used for the worker.
-- Call `drainBullmqWorker({ logger: this.logger, queue, worker, workerName })` in `stop()`.
+- Import `BullmqWorkerDrainTracker` and `drainBullmqWorker` from `./drain.ts`.
+- Add `private drainTracker?: BullmqWorkerDrainTracker;`.
+- Create a new tracker when creating the worker.
+- Attach the tracker to that exact worker instance immediately after construction.
+- Call `drainBullmqWorker({ logger: this.logger, tracker, worker, workerName })` in `stop()`.
 - Keep `connection.quit()` after the drain helper returns.
 
 Example for `session_process.ts`:
 
 ```ts
-import { Queue, Worker } from "bullmq";
-import { drainBullmqWorker } from "./drain.ts";
+import { Worker } from "bullmq";
+import { BullmqWorkerDrainTracker, drainBullmqWorker } from "./drain.ts";
 
-private queue?: Queue<SessionWakeJobPayload>;
+private drainTracker?: BullmqWorkerDrainTracker;
 
-this.queue = new Queue<SessionWakeJobPayload>(
-  this.sessionProcessQueuedNames.getWakeQueueName(),
-  { connection: this.connection },
-);
+this.drainTracker = new BullmqWorkerDrainTracker();
+this.drainTracker.attach(this.worker);
 ```
 
 Shutdown shape:
@@ -293,15 +350,15 @@ Shutdown shape:
 ```ts
 async stop(): Promise<void> {
   const worker = this.worker;
-  const queue = this.queue;
+  const tracker = this.drainTracker;
   const connection = this.connection;
   this.worker = undefined;
-  this.queue = undefined;
+  this.drainTracker = undefined;
   this.connection = undefined;
 
   await drainBullmqWorker({
     logger: this.logger,
-    queue,
+    tracker: tracker ?? new BullmqWorkerDrainTracker(),
     worker,
     workerName: "session_process",
   });
@@ -792,7 +849,7 @@ Add a temporary local-only test or script that starts a mocked worker close prom
 Expected:
 
 - drain progress logs appear every 5 seconds while the close promise is pending,
-- active job count decreases when the mocked queue returns lower counts,
+- active job count decreases when the instance-local tracker receives completed/failed events,
 - no force close is used.
 
 **Step 6: Commit final fixes**
