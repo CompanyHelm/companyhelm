@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useMemo, useRef, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useAuth } from "@clerk/react";
 import { RelayEnvironmentProvider } from "react-relay";
+import { AmplitudeAnalytics } from "@/lib/amplitude_analytics";
 import type { GraphqlSubscriptionConnectionStatus } from "@/lib/graphql_subscription_connection_store";
 import { RelayEnvironment } from "@/lib/relay_environment";
 
@@ -23,6 +24,14 @@ export function AppRelayEnvironmentProvider(props: AppRelayEnvironmentProviderPr
   const relayEnvironment = useMemo(() => {
     return new RelayEnvironment(async () => getTokenRef.current());
   }, []);
+
+  useEffect(() => {
+    AmplitudeAnalytics.syncUserSession({
+      isLoaded: auth.isLoaded,
+      isSignedIn: auth.isSignedIn === true,
+      userId: auth.userId || null,
+    });
+  }, [auth.isLoaded, auth.isSignedIn, auth.userId]);
 
   return (
     <SessionTranscriptRetentionStoreContext.Provider value={relayEnvironment.sessionTranscriptRetentionStore}>
