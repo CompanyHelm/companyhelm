@@ -1,9 +1,29 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import { MigrationJournalAuditor } from "../src/db/bootstrap/modules/migration_journal_auditor.ts";
 import { MigrationBootstrapModule } from "../src/db/bootstrap/modules/migration.ts";
+
+/**
+ * Reads the Drizzle metadata documents that the startup migrator parses before applying pending
+ * SQL files. Keeping this guard near the journal auditor covers merge conflicts that leave JSON
+ * syntactically broken even when every migration tag is present.
+ */
+class DrizzleMetadataJsonTest {
+  static readMetadataJsonFiles(): string[] {
+    const metadataFolderPath = join(MigrationBootstrapModule.getMigrationsFolderPath(), "meta");
+
+    return readdirSync(metadataFolderPath)
+      .filter((fileName) => fileName.endsWith(".json"))
+      .map((fileName) => join(metadataFolderPath, fileName))
+      .sort();
+  }
+
+  static assertParses(filePath: string): void {
+    expect(() => JSON.parse(readFileSync(filePath, "utf8")), filePath).not.toThrow();
+  }
+}
 
 /**
  * Exercises the migration journal guard against the specific failure mode where a checked-in SQL
@@ -22,6 +42,12 @@ describe("MigrationJournalAuditor", () => {
     const auditor = new MigrationJournalAuditor(MigrationBootstrapModule.getMigrationsFolderPath());
 
     expect(() => auditor.assertSynchronized()).not.toThrow();
+  });
+
+  it("keeps every checked-in Drizzle metadata document parseable", () => {
+    for (const filePath of DrizzleMetadataJsonTest.readMetadataJsonFiles()) {
+      DrizzleMetadataJsonTest.assertParses(filePath);
+    }
   });
 
   it("throws when a migration SQL file is missing from the journal", () => {
