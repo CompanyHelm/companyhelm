@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<78e5f288c55e51df00be00aad9a3d7a6>>
+ * @generated SignedSource<<7217414dc71dbfaa8e1b5621a889a9c1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,19 +10,14 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type SkillType = "custom" | "system" | "%future added value";
-export type UpdateSkillInput = {
-  autoUpdate?: boolean | null | undefined;
-  description?: string | null | undefined;
+export type UpdateSkillFromRepositoryInput = {
   id: string;
-  instructions?: string | null | undefined;
-  name?: string | null | undefined;
-  skillGroupId?: string | null | undefined;
 };
-export type skillDetailPageUpdateSkillMutation$variables = {
-  input: UpdateSkillInput;
+export type skillDetailPageUpdateSkillFromRepositoryMutation$variables = {
+  input: UpdateSkillFromRepositoryInput;
 };
-export type skillDetailPageUpdateSkillMutation$data = {
-  readonly UpdateSkill: {
+export type skillDetailPageUpdateSkillFromRepositoryMutation$data = {
+  readonly UpdateSkillFromRepository: {
     readonly autoUpdate: boolean;
     readonly branchCommitSha: string | null | undefined;
     readonly branchName: string | null | undefined;
@@ -46,9 +41,9 @@ export type skillDetailPageUpdateSkillMutation$data = {
     readonly trackedCommitSkillFileUrl: string | null | undefined;
   };
 };
-export type skillDetailPageUpdateSkillMutation = {
-  response: skillDetailPageUpdateSkillMutation$data;
-  variables: skillDetailPageUpdateSkillMutation$variables;
+export type skillDetailPageUpdateSkillFromRepositoryMutation = {
+  response: skillDetailPageUpdateSkillFromRepositoryMutation$data;
+  variables: skillDetailPageUpdateSkillFromRepositoryMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -71,7 +66,7 @@ v1 = [
     ],
     "concreteType": "Skill",
     "kind": "LinkedField",
-    "name": "UpdateSkill",
+    "name": "UpdateSkillFromRepository",
     "plural": false,
     "selections": [
       {
@@ -227,7 +222,7 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Fragment",
     "metadata": null,
-    "name": "skillDetailPageUpdateSkillMutation",
+    "name": "skillDetailPageUpdateSkillFromRepositoryMutation",
     "selections": (v1/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -236,20 +231,20 @@ return {
   "operation": {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
-    "name": "skillDetailPageUpdateSkillMutation",
+    "name": "skillDetailPageUpdateSkillFromRepositoryMutation",
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "27ac5999f1479ce860d9475ac758ae7e",
+    "cacheID": "e123c4239cb4161028a4c99dccdd3abb",
     "id": null,
     "metadata": {},
-    "name": "skillDetailPageUpdateSkillMutation",
+    "name": "skillDetailPageUpdateSkillFromRepositoryMutation",
     "operationKind": "mutation",
-    "text": "mutation skillDetailPageUpdateSkillMutation(\n  $input: UpdateSkillInput!\n) {\n  UpdateSkill(input: $input) {\n    id\n    autoUpdate\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    branchName\n    branchCommitSha\n    branchSkillFileUrl\n    trackedCommitSha\n    trackedCommitSkillFileUrl\n  }\n}\n"
+    "text": "mutation skillDetailPageUpdateSkillFromRepositoryMutation(\n  $input: UpdateSkillFromRepositoryInput!\n) {\n  UpdateSkillFromRepository(input: $input) {\n    id\n    autoUpdate\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    branchName\n    branchCommitSha\n    branchSkillFileUrl\n    trackedCommitSha\n    trackedCommitSkillFileUrl\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "de45a7327d6b11df764d3e3e13555da3";
+(node as any).hash = "50b5fbcd84fd73b429a5229bc1f2d395";
 
 export default node;

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  boolean,
   check,
   index,
   pgEnum,
@@ -54,7 +55,9 @@ export const skills = pgTable("skills", {
   // where in the repository the skill is located
   skillDirectory: text("skill_directory"),
   branchName: text("branch_name"),
+  branchCommitSha: text("branch_commit_sha"),
   trackedCommitSha: text("tracked_commit_sha"),
+  autoUpdate: boolean("auto_update").notNull().default(false),
 }, (table) => ({
   skillGroupIdIndex: index("skills_skill_group_id_idx").on(table.skillGroupId),
   companyIdIndex: index("skills_company_id_idx").on(table.companyId),
@@ -67,7 +70,9 @@ export const skills = pgTable("skills", {
       AND ${table.githubRepositoryId} IS NULL
       AND nullif(trim(${table.skillDirectory}), '') IS NULL
       AND nullif(trim(${table.branchName}), '') IS NULL
+      AND nullif(trim(${table.branchCommitSha}), '') IS NULL
       AND nullif(trim(${table.trackedCommitSha}), '') IS NULL
+      AND ${table.autoUpdate} = false
       AND coalesce(cardinality(${table.fileList}), 0) = 0
     ) OR (
       ${table.sourceType} = 'public_git'
@@ -75,6 +80,7 @@ export const skills = pgTable("skills", {
       AND ${table.githubRepositoryId} IS NULL
       AND nullif(trim(${table.skillDirectory}), '') IS NOT NULL
       AND nullif(trim(${table.branchName}), '') IS NOT NULL
+      AND nullif(trim(${table.branchCommitSha}), '') IS NOT NULL
       AND nullif(trim(${table.trackedCommitSha}), '') IS NOT NULL
     ) OR (
       ${table.sourceType} = 'github_installation'
@@ -82,6 +88,7 @@ export const skills = pgTable("skills", {
       AND ${table.githubRepositoryId} IS NOT NULL
       AND nullif(trim(${table.skillDirectory}), '') IS NOT NULL
       AND nullif(trim(${table.branchName}), '') IS NOT NULL
+      AND nullif(trim(${table.branchCommitSha}), '') IS NOT NULL
       AND nullif(trim(${table.trackedCommitSha}), '') IS NOT NULL
     )`,
   ),

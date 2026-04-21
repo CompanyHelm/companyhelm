@@ -9,6 +9,8 @@ type MockSkillRecord = {
   fileList: string[];
   branchName: string | null;
   trackedCommitSha: string | null;
+  branchCommitSha?: string | null;
+  autoUpdate?: boolean;
   id: string;
   instructions: string;
   name: string;
@@ -42,6 +44,8 @@ class SkillServiceTestHarness {
                 fileList: [...(value.fileList as string[])],
                 branchName: value.branchName ? String(value.branchName) : null,
                 trackedCommitSha: value.trackedCommitSha ? String(value.trackedCommitSha) : null,
+                branchCommitSha: value.branchCommitSha ? String(value.branchCommitSha) : null,
+                autoUpdate: value.autoUpdate === undefined ? false : Boolean(value.autoUpdate),
                 id: `skill-${skillRecords.length + 1}`,
                 instructions: String(value.instructions),
                 name: String(value.name),
@@ -446,10 +450,14 @@ test("SkillService creates a GitHub-backed skill with source metadata", async ()
   assert.equal(createdSkill.skillDirectory, "skills/browser");
   assert.equal(createdSkill.branchName, "main");
   assert.equal(createdSkill.trackedCommitSha, "commit-sha-1");
+  assert.equal(createdSkill.branchCommitSha, "commit-sha-1");
+  assert.equal(createdSkill.autoUpdate, true);
   assert.deepEqual(createdSkill.fileList, ["scripts/open.sh", "templates/prompt.md"]);
   assert.equal(transactionProvider.skillRecords[0]?.repository, "companyhelm/skills");
   assert.equal(transactionProvider.skillRecords[0]?.skillDirectory, "skills/browser");
   assert.equal(transactionProvider.skillRecords[0]?.trackedCommitSha, "commit-sha-1");
+  assert.equal(transactionProvider.skillRecords[0]?.branchCommitSha, "commit-sha-1");
+  assert.equal(transactionProvider.skillRecords[0]?.autoUpdate, true);
 });
 
 test("SkillService requires a tracked commit sha for file-backed Git skills", async () => {
@@ -464,6 +472,7 @@ test("SkillService requires a tracked commit sha for file-backed Git skills", as
       companyId: "company-123",
       description: "Imported from GitHub",
       fileList: ["skills/browser/scripts/open.sh"],
+      branchName: "main",
       instructions: "Read the imported skill instructions.",
       name: "Browser skill",
       repository: "companyhelm/skills",

@@ -13,6 +13,8 @@ type MockSkillRecord = {
   fileList: string[];
   branchName: string | null;
   trackedCommitSha: string | null;
+  branchCommitSha?: string | null;
+  autoUpdate?: boolean;
   githubRepositoryId: string | null;
   id: string;
   instructions: string;
@@ -69,6 +71,8 @@ class GithubSkillCatalogServiceTestHarness {
               fileList: [...(value.fileList as string[])],
               branchName: value.branchName ? String(value.branchName) : null,
               trackedCommitSha: value.trackedCommitSha ? String(value.trackedCommitSha) : null,
+              branchCommitSha: value.branchCommitSha ? String(value.branchCommitSha) : null,
+              autoUpdate: value.autoUpdate === undefined ? false : Boolean(value.autoUpdate),
               githubRepositoryId: value.githubRepositoryId ? String(value.githubRepositoryId) : null,
               id: `skill-${skillRecords.length + 1}`,
               instructions: String(value.instructions),
@@ -331,6 +335,8 @@ test("SkillGithubCatalog imports selected Git skills by resolving their content 
 
   assert.equal(createdSkill.branchName, "main");
   assert.equal(createdSkill.trackedCommitSha, "commit-sha-2");
+  assert.equal(createdSkill.branchCommitSha, "commit-sha-2");
+  assert.equal(createdSkill.autoUpdate, true);
   assert.equal(createdSkill.repository, "openai/skills");
   assert.equal(createdSkill.skillDirectory, "skills/browser");
   assert.equal(createdSkill.name, "Browser automation");
@@ -393,6 +399,8 @@ test("SkillGithubCatalog imports selected private GitHub installation skills", a
   assert.equal(createdSkill.repository, "companyhelm/private-skills");
   assert.equal(createdSkill.sourceType, "github_installation");
   assert.equal(createdSkill.trackedCommitSha, "commit-sha-private");
+  assert.equal(createdSkill.branchCommitSha, "commit-sha-private");
+  assert.equal(createdSkill.autoUpdate, true);
   assert.equal(transactionProvider.skillRecords[0]?.repository, null);
   assert.equal(transactionProvider.skillRecords[0]?.githubRepositoryId, "repository-1");
   assert.equal(transactionProvider.skillRecords[0]?.sourceType, "github_installation");

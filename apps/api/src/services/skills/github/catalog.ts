@@ -36,6 +36,26 @@ export type SkillGithubDiscoveredSkillRecord = {
   validationError: string | null;
 };
 
+export type SkillGithubResolvedSkillPackageRecord = {
+  branchName: string;
+  commitSha: string;
+  description: string;
+  fileList: string[];
+  githubRepositoryId: string | null;
+  githubRepositoryInstallationId: number | null;
+  instructions: string;
+  name: string;
+  repository: string;
+  skillDirectory: string;
+  sourceType: Extract<SkillSourceType, "public_git" | "github_installation">;
+};
+
+export type SkillGithubBranchCommitRecord = {
+  branchName: string;
+  commitSha: string;
+  repository: string;
+};
+
 type SelectableDatabase = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
@@ -64,19 +84,7 @@ type GithubRepositoryRecord = {
   installationId: number;
 };
 
-type CreateGitSkillRecord = {
-  branchName: string;
-  commitSha: string;
-  description: string;
-  fileList: string[];
-  githubRepositoryId: string | null;
-  githubRepositoryInstallationId: number | null;
-  instructions: string;
-  name: string;
-  repository: string;
-  skillDirectory: string;
-  sourceType: Extract<SkillSourceType, "public_git" | "github_installation">;
-};
+type CreateGitSkillRecord = SkillGithubResolvedSkillPackageRecord;
 
 type GitSkillSelectionRecord = {
   branchName: string;
@@ -190,6 +198,43 @@ export class SkillGithubCatalog {
     });
   }
 
+  async resolveBranchCommitSha(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      branchName: string;
+      companyId: string;
+      source: SkillGitSourceInput;
+    },
+  ): Promise<SkillGithubBranchCommitRecord> {
+    const branchName = this.requireNonEmptyValue(input.branchName, "Git branch name");
+    const source = await this.resolveGitSource(transactionProvider, input.companyId, input.source);
+    const branches = source.sourceType === "github_installation"
+      ? await this.githubClient.listRepositoryBranches({
+        defaultBranch: source.defaultBranch,
+        installationId: this.requireInstallationId(source),
+        repositoryFullName: source.repository,
+      })
+      : await this.getPublicRepositoryBranchesWithRepositoryName(source.repository);
+    const branch = branches.find((candidateBranch) => candidateBranch.name === branchName);
+    if (!branch) {
+      throw new Error(`Git branch ${branchName} was not found.`);
+    }
+
+    return {
+      branchName: branch.name,
+      commitSha: branch.commitSha,
+      repository: branch.repositoryFullName,
+    };
+  }
+
+  private async getPublicRepositoryBranchesWithRepositoryName(repository: string) {
+    const repositoryBranches = await this.githubPublicClient.getRepositoryBranches(repository);
+    return repositoryBranches.branches.map((branch) => ({
+      ...branch,
+      repositoryFullName: repositoryBranches.repository,
+    }));
+  }
+
   async importSkills(
     transactionProvider: TransactionProviderInterface,
     input: {
@@ -238,6 +283,8 @@ export class SkillGithubCatalog {
             skillDirectory: gitSkillRecord.skillDirectory,
             skillGroupId,
             sourceType: gitSkillRecord.sourceType,
+            autoUpdate: true,
+            branchCommitSha: gitSkillRecord.commitSha,
             trackedCommitSha: gitSkillRecord.commitSha,
           })
           .returning?.(this.skillSelection()) as SkillRecord[];
@@ -255,6 +302,31 @@ export class SkillGithubCatalog {
 
       return createdSkills;
     });
+  }
+
+  async resolveSkillPackage(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      branchName: string;
+      companyId: string;
+      skillDirectory: string;
+      source: SkillGitSourceInput;
+    },
+  ): Promise<SkillGithubResolvedSkillPackageRecord> {
+    const [resolvedSkillPackage] = await this.resolveGitSkillSelections(
+      transactionProvider,
+      input.companyId,
+      this.requireGitSkillSelections([{
+        branchName: input.branchName,
+        skillDirectory: input.skillDirectory,
+        source: input.source,
+      }]),
+    );
+    if (!resolvedSkillPackage) {
+      throw new Error("Git skill could not be resolved.");
+    }
+
+    return resolvedSkillPackage;
   }
 
   private async resolveGitSkillSelections(
@@ -703,6 +775,7 @@ export class SkillGithubCatalog {
   private skillSelection() {
     return {
       branchName: skills.branchName,
+      branchCommitSha: skills.branchCommitSha,
       companyId: skills.companyId,
       description: skills.description,
       fileList: skills.fileList,
@@ -714,6 +787,7 @@ export class SkillGithubCatalog {
       skillDirectory: skills.skillDirectory,
       skillGroupId: skills.skillGroupId,
       sourceType: skills.sourceType,
+      autoUpdate: skills.autoUpdate,
       trackedCommitSha: skills.trackedCommitSha,
     };
   }

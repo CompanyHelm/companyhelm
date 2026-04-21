@@ -74,6 +74,7 @@ import { UpdateExternalLinkArtifactMutation } from "./mutations/update_external_
 import { UpdateMarkdownArtifactMutation } from "./mutations/update_markdown_artifact.ts";
 import { UpdateSecretMutation } from "./mutations/update_secret.ts";
 import { UpdateSessionTitleMutation } from "./mutations/update_session_title.ts";
+import { UpdateSkillFromRepositoryMutation } from "./mutations/update_skill_from_repository.ts";
 import { UpdateSkillMutation } from "./mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "./mutations/update_skill_group.ts";
 import { UpdateTaskMutation } from "./mutations/update_task.ts";
@@ -291,6 +292,7 @@ export class GraphqlApplication {
     deleteSessionMutation?: DeleteSessionMutation,
     unarchiveSessionMutation?: UnarchiveSessionMutation,
     createEnvironmentTerminalConnectionMutation?: CreateEnvironmentTerminalConnectionMutation,
+    updateSkillFromRepositoryMutation?: UpdateSkillFromRepositoryMutation,
   ): GraphqlApplication {
     const resolvedRedisService = redisService ?? GraphqlApplication.createFallbackRedisService(config);
     const resolvedGraphqlErrorLogger = graphqlErrorLogger ?? new GraphqlErrorLogger();
@@ -421,6 +423,7 @@ export class GraphqlApplication {
       updateCompanySettingsMutation,
       createSkillMutation,
       updateSkillMutation,
+      updateSkillFromRepositoryMutation,
       skillGroupsQueryResolver,
       skillQueryResolver,
       skillsQueryResolver,

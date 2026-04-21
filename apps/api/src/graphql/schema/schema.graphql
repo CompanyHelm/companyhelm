@@ -180,6 +180,7 @@ type Mutation {
   UpdateSecret(input: UpdateSecretInput!): Secret!
   UpdateSecretGroup(input: UpdateSecretGroupInput!): SecretGroup!
   UpdateMcpServer(input: UpdateMcpServerInput!): McpServer!
+  UpdateSkillFromRepository(input: UpdateSkillFromRepositoryInput!): Skill!
   UpdateSkill(input: UpdateSkillInput!): Skill!
   UpdateSkillGroup(input: UpdateSkillGroupInput!): SkillGroup!
 }
@@ -670,12 +671,14 @@ type Skill {
   id: ID!
   companyId: ID!
   skillGroupId: ID
+  autoUpdate: Boolean!
   name: String!
   description: String!
   instructions: String!
   fileInventory: [SkillFileInventoryEntry!]!
   fileList: [String!]!
   branchName: String
+  branchCommitSha: String
   branchSkillFileUrl: String
   trackedCommitSkillFileUrl: String
   trackedCommitSha: String
@@ -1245,10 +1248,15 @@ input UpdateSecretGroupInput {
 
 input UpdateSkillInput {
   id: ID!
+  autoUpdate: Boolean
   name: String
   description: String
   instructions: String
   skillGroupId: ID
+}
+
+input UpdateSkillFromRepositoryInput {
+  id: ID!
 }
 
 input UpdateSkillGroupInput {

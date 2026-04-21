@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4370786acff8a24089f5791762c351da>>
+ * @generated SignedSource<<91c5c2875ba3f2fd511a9e1ea5988c0f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,6 +11,7 @@
 import { ConcreteRequest } from 'relay-runtime';
 export type SkillType = "custom" | "system" | "%future added value";
 export type UpdateSkillInput = {
+  autoUpdate?: boolean | null | undefined;
   description?: string | null | undefined;
   id: string;
   instructions?: string | null | undefined;

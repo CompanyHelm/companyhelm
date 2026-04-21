@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2539a11644038aeb8467c84f896d1523>>
+ * @generated SignedSource<<e802db6e5430e889cdcc928f7f0d9e7d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,8 @@ export type skillDetailPageQuery$variables = {
 };
 export type skillDetailPageQuery$data = {
   readonly Skill: {
+    readonly autoUpdate: boolean;
+    readonly branchCommitSha: string | null | undefined;
     readonly branchName: string | null | undefined;
     readonly branchSkillFileUrl: string | null | undefined;
     readonly description: string;
@@ -96,6 +98,13 @@ v4 = [
     "plural": false,
     "selections": [
       (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "autoUpdate",
+        "storageKey": null
+      },
       (v2/*: any*/),
       (v3/*: any*/),
       {
@@ -217,6 +226,13 @@ v4 = [
         "alias": null,
         "args": null,
         "kind": "ScalarField",
+        "name": "branchCommitSha",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
         "name": "branchSkillFileUrl",
         "storageKey": null
       },
@@ -269,16 +285,16 @@ return {
     "selections": (v4/*: any*/)
   },
   "params": {
-    "cacheID": "4494a92e853a003d5bf2f68dfee5fddf",
+    "cacheID": "34489799e7620b378017fe32579d9387",
     "id": null,
     "metadata": {},
     "name": "skillDetailPageQuery",
     "operationKind": "query",
-    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    branchName\n    branchSkillFileUrl\n    trackedCommitSha\n    trackedCommitSkillFileUrl\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
+    "text": "query skillDetailPageQuery(\n  $skillId: ID!\n) {\n  Skill(id: $skillId) {\n    id\n    autoUpdate\n    name\n    description\n    instructions\n    skillGroupId\n    skillType\n    systemKey\n    systemCommands {\n      id\n      description\n      inputSchema\n    }\n    repository\n    repositoryUrl\n    skillDirectory\n    skillDirectoryUrl\n    fileList\n    fileInventory {\n      path\n      url\n    }\n    branchName\n    branchCommitSha\n    branchSkillFileUrl\n    trackedCommitSha\n    trackedCommitSkillFileUrl\n  }\n  SkillGroups {\n    id\n    name\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "b241afe3782bd501f74c427417a1c7e8";
+(node as any).hash = "3dc400e592c2b985aafcbc24be9f1104";
 
 export default node;

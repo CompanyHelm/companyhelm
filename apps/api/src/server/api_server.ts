@@ -16,6 +16,7 @@ import { GithubWebhookWorker } from "../workers/github_webhooks.ts";
 import { LlmOauthRefreshWorker } from "../workers/llm_oauth_refresh_worker.ts";
 import { RoutineTriggerWorker } from "../workers/routine_triggers.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
+import { SkillRepositoryUpdateWorker } from "../workers/skill_repository_updates.ts";
 import { WorkflowTriggerWorker } from "../workers/workflow_triggers.ts";
 import { EnvironmentTerminalWebsocketRoute } from "./environment_terminal_websocket_route.ts";
 import { GithubWebhookRoute } from "./github_webhook_route.ts";
@@ -39,6 +40,7 @@ export class ApiServer {
   private readonly routineSchedulerSyncService: RoutineSchedulerSyncService;
   private readonly routineTriggerWorker: RoutineTriggerWorker;
   private readonly sessionProcessWorker: SessionProcessWorker;
+  private readonly skillRepositoryUpdateWorker: SkillRepositoryUpdateWorker;
   private readonly workflowSchedulerSyncService: WorkflowSchedulerSyncService;
   private readonly workflowTriggerQueueService: WorkflowTriggerQueueService;
   private readonly workflowTriggerWorker: WorkflowTriggerWorker;
@@ -88,6 +90,11 @@ export class ApiServer {
       start() {},
       async stop() {},
     } as never,
+    @inject(SkillRepositoryUpdateWorker)
+    skillRepositoryUpdateWorker: SkillRepositoryUpdateWorker = {
+      start() {},
+      stop() {},
+    } as never,
   ) {
     this.config = config;
     this.adminDatabase = adminDatabase;
@@ -103,6 +110,7 @@ export class ApiServer {
     this.routineSchedulerSyncService = routineSchedulerSyncService;
     this.routineTriggerWorker = routineTriggerWorker;
     this.sessionProcessWorker = sessionProcessWorker;
+    this.skillRepositoryUpdateWorker = skillRepositoryUpdateWorker;
     this.workflowSchedulerSyncService = workflowSchedulerSyncService;
     this.workflowTriggerQueueService = workflowTriggerQueueService;
     this.workflowTriggerWorker = workflowTriggerWorker;
@@ -150,6 +158,7 @@ export class ApiServer {
     this.sessionProcessWorker.start();
     this.routineTriggerWorker.start();
     this.workflowTriggerWorker.start();
+    this.skillRepositoryUpdateWorker.start();
   }
 
   async stop(): Promise<void> {
@@ -188,6 +197,7 @@ export class ApiServer {
       await this.sessionProcessWorker.stop();
       await this.routineTriggerWorker.stop();
       await this.workflowTriggerWorker.stop();
+      this.skillRepositoryUpdateWorker.stop();
       await this.workflowTriggerQueueService.close();
       await this.githubWebhookQueueService.close();
       await this.database.close();

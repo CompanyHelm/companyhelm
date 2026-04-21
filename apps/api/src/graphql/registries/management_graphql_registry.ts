@@ -33,6 +33,7 @@ import { UpdateCompanySettingsMutation } from "../mutations/update_company_setti
 import { UpdateSecretMutation } from "../mutations/update_secret.ts";
 import { UpdateSecretGroupMutation } from "../mutations/update_secret_group.ts";
 import { UpdateMcpServerMutation } from "../mutations/update_mcp_server.ts";
+import { UpdateSkillFromRepositoryMutation } from "../mutations/update_skill_from_repository.ts";
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
@@ -104,6 +105,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly updateSecretMutation: UpdateSecretMutation;
   private readonly updateSecretGroupMutation: UpdateSecretGroupMutation;
   private readonly updateMcpServerMutation: UpdateMcpServerMutation;
+  private readonly updateSkillFromRepositoryMutation: UpdateSkillFromRepositoryMutation;
   private readonly updateSkillMutation: UpdateSkillMutation;
   private readonly updateSkillGroupMutation: UpdateSkillGroupMutation;
 
@@ -178,6 +180,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     createSkillMutation?: CreateSkillMutation,
     @inject(UpdateSkillMutation)
     updateSkillMutation?: UpdateSkillMutation,
+    @inject(UpdateSkillFromRepositoryMutation)
+    updateSkillFromRepositoryMutation?: UpdateSkillFromRepositoryMutation,
     @inject(SkillGroupsQueryResolver)
     skillGroupsQueryResolver?: SkillGroupsQueryResolver,
     @inject(SkillQueryResolver)
@@ -282,6 +286,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.updateSecretMutation = updateSecretMutation ?? new UpdateSecretMutation(defaultSecretService);
     this.updateSecretGroupMutation = updateSecretGroupMutation ?? new UpdateSecretGroupMutation(defaultSecretService);
     this.updateMcpServerMutation = updateMcpServerMutation ?? new UpdateMcpServerMutation(defaultMcpService);
+    this.updateSkillFromRepositoryMutation = updateSkillFromRepositoryMutation
+      ?? new UpdateSkillFromRepositoryMutation({} as never);
     this.updateSkillMutation = updateSkillMutation ?? new UpdateSkillMutation(defaultSkillService);
     this.updateSkillGroupMutation = updateSkillGroupMutation ?? new UpdateSkillGroupMutation(defaultSkillService);
   }
@@ -314,6 +320,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         UpdateSecret: this.updateSecretMutation.execute,
         UpdateSecretGroup: this.updateSecretGroupMutation.execute,
         UpdateMcpServer: this.updateMcpServerMutation.execute,
+        UpdateSkillFromRepository: this.updateSkillFromRepositoryMutation.execute,
         UpdateSkill: this.updateSkillMutation.execute,
         UpdateSkillGroup: this.updateSkillGroupMutation.execute,
       },

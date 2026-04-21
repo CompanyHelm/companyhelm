@@ -8,6 +8,8 @@ export type GraphqlSkillFileInventoryEntry = {
 };
 
 export type GraphqlSkillRecord = {
+  autoUpdate: boolean;
+  branchCommitSha: string | null;
   companyId: string;
   description: string;
   fileInventory: GraphqlSkillFileInventoryEntry[];
@@ -45,6 +47,8 @@ export class GraphqlSkillPresenter {
     const githubSource = GraphqlSkillPresenter.resolveGithubSource(record);
 
     return {
+      autoUpdate: record.autoUpdate ?? false,
+      branchCommitSha: record.branchCommitSha ?? null,
       companyId: record.companyId,
       description: record.description,
       fileInventory: record.fileList.map((filePath) => ({

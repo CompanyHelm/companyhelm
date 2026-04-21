@@ -9,6 +9,8 @@ export type SkillType = "custom" | "system";
 export type SkillSourceType = "manual" | "public_git" | "github_installation";
 
 export type SkillRecord = {
+  autoUpdate?: boolean;
+  branchCommitSha?: string | null;
   companyId: string;
   description: string;
   fileList: string[];
@@ -193,6 +195,8 @@ export class SkillService {
           branchName: null,
           githubRepositoryId: null,
           trackedCommitSha: null,
+          branchCommitSha: null,
+          autoUpdate: false,
           instructions,
           name,
           repository: null,
@@ -218,6 +222,7 @@ export class SkillService {
       fileList: string[];
       branchName?: string | null;
       trackedCommitSha?: string | null;
+      branchCommitSha?: string | null;
       instructions: string;
       name: string;
       repository: string;
@@ -230,10 +235,12 @@ export class SkillService {
     const instructions = this.requireNonEmptyValue(input.instructions, "Skill instructions");
     const repository = this.requireNonEmptyValue(input.repository, "Git repository");
     const skillDirectory = this.requireNonEmptyValue(input.skillDirectory, "Git skill directory");
-    const branchName = input.branchName === undefined || input.branchName === null
-      ? null
-      : this.requireNonEmptyValue(input.branchName, "Git branch name");
+    const branchName = this.requireNonEmptyValue(input.branchName ?? null, "Git branch name");
     const trackedCommitSha = this.resolveTrackedCommitSha(input.fileList, input.trackedCommitSha);
+    const branchCommitSha = this.requireNonEmptyValue(
+      input.branchCommitSha ?? trackedCommitSha,
+      "Git branch commit sha",
+    );
 
     return transactionProvider.transaction(async (tx) => {
       const insertableDatabase = tx as InsertableDatabase;
@@ -250,6 +257,8 @@ export class SkillService {
           branchName,
           githubRepositoryId: null,
           trackedCommitSha,
+          branchCommitSha,
+          autoUpdate: true,
           instructions,
           name,
           repository,
@@ -593,6 +602,7 @@ export class SkillService {
       description?: string | null;
       instructions?: string | null;
       name?: string | null;
+      autoUpdate?: boolean | null;
       skillGroupId?: string | null;
       skillId: string;
     },
@@ -605,6 +615,9 @@ export class SkillService {
       const selectableDatabase = tx as SelectableDatabase;
       const updatableDatabase = tx as UpdatableDatabase;
       const existingSkill = await this.requireSkill(selectableDatabase, input.companyId, input.skillId);
+      if (input.autoUpdate !== undefined && existingSkill.sourceType === "manual") {
+        throw new Error("Manual skills cannot be auto-updated.");
+      }
       const nextSkillGroupId = input.skillGroupId === undefined
         ? existingSkill.skillGroupId
         : await this.requireSkillGroupId(selectableDatabase, input.companyId, input.skillGroupId);
@@ -620,6 +633,9 @@ export class SkillService {
           name: input.name === undefined
             ? existingSkill.name
             : this.requireNonEmptyValue(input.name, "Skill name"),
+          autoUpdate: input.autoUpdate === undefined
+            ? existingSkill.autoUpdate ?? false
+            : Boolean(input.autoUpdate),
           skillGroupId: nextSkillGroupId,
         })
         .where(and(
@@ -630,6 +646,95 @@ export class SkillService {
 
       if (!updatedSkill) {
         throw new Error("Failed to update skill.");
+      }
+
+      return this.toCustomSkillRecord(updatedSkill);
+    });
+  }
+
+  async updateRepositorySkillMetadata(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      branchCommitSha: string;
+      branchName: string;
+      companyId: string;
+      description: string;
+      fileList: string[];
+      instructions: string;
+      name: string;
+      skillDirectory: string;
+      skillId: string;
+      trackedCommitSha: string;
+    },
+  ): Promise<SkillRecord> {
+    const branchCommitSha = this.requireNonEmptyValue(input.branchCommitSha, "Git branch commit sha");
+    const trackedCommitSha = this.requireNonEmptyValue(input.trackedCommitSha, "Git tracked commit sha");
+
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingSkill = await this.requireSkill(selectableDatabase, input.companyId, input.skillId);
+      if (existingSkill.sourceType === "manual") {
+        throw new Error("Manual skills cannot be refreshed from a repository.");
+      }
+
+      const [updatedSkill] = await updatableDatabase
+        .update(skills)
+        .set({
+          branchCommitSha,
+          branchName: this.requireNonEmptyValue(input.branchName, "Git branch name"),
+          description: this.requireNonEmptyValue(input.description, "Skill description"),
+          fileList: [...input.fileList],
+          instructions: this.requireNonEmptyValue(input.instructions, "Skill instructions"),
+          name: this.requireNonEmptyValue(input.name, "Skill name"),
+          skillDirectory: this.requireNonEmptyValue(input.skillDirectory, "Git skill directory"),
+          trackedCommitSha,
+        })
+        .where(and(
+          eq(skills.companyId, input.companyId),
+          eq(skills.id, input.skillId),
+        ))
+        .returning?.(this.skillSelection()) as SkillRecord[];
+
+      if (!updatedSkill) {
+        throw new Error("Failed to refresh skill from repository.");
+      }
+
+      return this.toCustomSkillRecord(updatedSkill);
+    });
+  }
+
+  async updateRepositorySkillBranchCommitSha(
+    transactionProvider: TransactionProviderInterface,
+    input: {
+      branchCommitSha: string;
+      companyId: string;
+      skillId: string;
+    },
+  ): Promise<SkillRecord> {
+    const branchCommitSha = this.requireNonEmptyValue(input.branchCommitSha, "Git branch commit sha");
+
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as SelectableDatabase;
+      const updatableDatabase = tx as UpdatableDatabase;
+      const existingSkill = await this.requireSkill(selectableDatabase, input.companyId, input.skillId);
+      if (existingSkill.sourceType === "manual") {
+        throw new Error("Manual skills cannot track repository branch commits.");
+      }
+
+      const [updatedSkill] = await updatableDatabase
+        .update(skills)
+        .set({
+          branchCommitSha,
+        })
+        .where(and(
+          eq(skills.companyId, input.companyId),
+          eq(skills.id, input.skillId),
+        ))
+        .returning?.(this.skillSelection()) as SkillRecord[];
+
+      if (!updatedSkill) {
+        throw new Error("Failed to update skill branch commit sha.");
       }
 
       return this.toCustomSkillRecord(updatedSkill);
@@ -890,6 +995,8 @@ export class SkillService {
 
   private skillSelection() {
     return {
+      autoUpdate: skills.autoUpdate,
+      branchCommitSha: skills.branchCommitSha,
       companyId: skills.companyId,
       description: skills.description,
       fileList: skills.fileList,
@@ -909,6 +1016,8 @@ export class SkillService {
   private toCustomSkillRecord(record: SkillRecord): SkillRecord {
     return {
       ...record,
+      autoUpdate: record.autoUpdate ?? false,
+      branchCommitSha: record.branchCommitSha ?? null,
       githubRepositoryId: record.githubRepositoryId ?? null,
       githubRepositoryInstallationId: record.githubRepositoryInstallationId ?? null,
       sourceType: record.sourceType ?? "manual",

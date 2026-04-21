@@ -1,16 +1,18 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ExternalLinkIcon, GithubIcon } from "lucide-react";
+import { ExternalLinkIcon, GithubIcon, RefreshCwIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { cn } from "@/lib/utils";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { skillDetailPageQuery } from "./__generated__/skillDetailPageQuery.graphql";
+import type { skillDetailPageUpdateSkillFromRepositoryMutation } from "./__generated__/skillDetailPageUpdateSkillFromRepositoryMutation.graphql";
 import type { skillDetailPageUpdateSkillMutation } from "./__generated__/skillDetailPageUpdateSkillMutation.graphql";
 
 const UNGROUPED_SKILL_GROUP_VALUE = "__ungrouped__";
@@ -33,6 +35,7 @@ const skillDetailPageQueryNode = graphql`
   query skillDetailPageQuery($skillId: ID!) {
     Skill(id: $skillId) {
       id
+      autoUpdate
       name
       description
       instructions
@@ -54,6 +57,7 @@ const skillDetailPageQueryNode = graphql`
         url
       }
       branchName
+      branchCommitSha
       branchSkillFileUrl
       trackedCommitSha
       trackedCommitSkillFileUrl
@@ -69,6 +73,7 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
   mutation skillDetailPageUpdateSkillMutation($input: UpdateSkillInput!) {
     UpdateSkill(input: $input) {
       id
+      autoUpdate
       name
       description
       instructions
@@ -84,6 +89,35 @@ const skillDetailPageUpdateSkillMutationNode = graphql`
         url
       }
       branchName
+      branchCommitSha
+      branchSkillFileUrl
+      trackedCommitSha
+      trackedCommitSkillFileUrl
+    }
+  }
+`;
+
+const skillDetailPageUpdateSkillFromRepositoryMutationNode = graphql`
+  mutation skillDetailPageUpdateSkillFromRepositoryMutation($input: UpdateSkillFromRepositoryInput!) {
+    UpdateSkillFromRepository(input: $input) {
+      id
+      autoUpdate
+      name
+      description
+      instructions
+      skillGroupId
+      skillType
+      repository
+      repositoryUrl
+      skillDirectory
+      skillDirectoryUrl
+      fileList
+      fileInventory {
+        path
+        url
+      }
+      branchName
+      branchCommitSha
       branchSkillFileUrl
       trackedCommitSha
       trackedCommitSkillFileUrl
@@ -160,6 +194,10 @@ function SkillDetailPageContent() {
   const [commitUpdateSkill] = useMutation<skillDetailPageUpdateSkillMutation>(
     skillDetailPageUpdateSkillMutationNode,
   );
+  const [commitUpdateSkillFromRepository, isUpdatingSkillFromRepository] =
+    useMutation<skillDetailPageUpdateSkillFromRepositoryMutation>(
+      skillDetailPageUpdateSkillFromRepositoryMutationNode,
+    );
   const skill = data.Skill;
   const skillGroupOptions = useMemo(() => {
     return [{
@@ -195,6 +233,7 @@ function SkillDetailPageContent() {
   }, [setDetailLabel, skill.name]);
 
   async function updateSkill(input: {
+    autoUpdate?: boolean;
     description?: string;
     instructions?: string;
     name?: string;
@@ -206,6 +245,7 @@ function SkillDetailPageContent() {
       commitUpdateSkill({
         variables: {
           input: {
+            autoUpdate: input.autoUpdate,
             description: input.description,
             id: normalizedSkillId,
             instructions: input.instructions,
@@ -226,6 +266,33 @@ function SkillDetailPageContent() {
       });
     }).catch((error: unknown) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to update skill.");
+      throw error;
+    });
+  }
+
+  async function updateSkillFromRepository() {
+    setErrorMessage(null);
+
+    await new Promise<void>((resolve, reject) => {
+      commitUpdateSkillFromRepository({
+        variables: {
+          input: {
+            id: normalizedSkillId,
+          },
+        },
+        onCompleted: (_response, errors) => {
+          const nextErrorMessage = errors?.[0]?.message;
+          if (nextErrorMessage) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error: unknown) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to update skill from repository.");
       throw error;
     });
   }
@@ -386,11 +453,58 @@ function SkillDetailPageContent() {
 
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">
                   <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Available branch SHA
+                  </p>
+                  <SkillSourceValue className="font-mono">
+                    {skill.branchCommitSha ?? "—"}
+                  </SkillSourceValue>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                     Current tracked SHA
                   </p>
                   <SkillSourceValue className="font-mono" href={skill.trackedCommitSkillFileUrl}>
                     {skill.trackedCommitSha ?? "—"}
                   </SkillSourceValue>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Auto-update
+                  </p>
+                  <label className="mt-3 flex items-center gap-3 text-sm font-medium text-foreground">
+                    <input
+                      checked={skill.autoUpdate}
+                      className="size-4 rounded border border-input bg-background"
+                      onChange={(event) => {
+                        void updateSkill({
+                          autoUpdate: event.target.checked,
+                        });
+                      }}
+                      type="checkbox"
+                    />
+                    Enabled
+                  </label>
+                </div>
+
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Repository refresh
+                  </p>
+                  <Button
+                    className="mt-3"
+                    disabled={isUpdatingSkillFromRepository}
+                    onClick={() => {
+                      void updateSkillFromRepository();
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <RefreshCwIcon className={cn("size-4", isUpdatingSkillFromRepository ? "animate-spin" : null)} />
+                    {isUpdatingSkillFromRepository ? "Updating..." : "Update now"}
+                  </Button>
                 </div>
 
                 <div className="rounded-xl border border-border/60 bg-card/50 p-4">

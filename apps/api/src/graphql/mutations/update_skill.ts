@@ -10,6 +10,7 @@ type UpdateSkillMutationArguments = {
     id: string;
     instructions?: string | null;
     name?: string | null;
+    autoUpdate?: boolean | null;
     skillGroupId?: string | null;
   };
 };
@@ -39,6 +40,7 @@ export class UpdateSkillMutation extends Mutation<UpdateSkillMutationArguments, 
       description: arguments_.input.description,
       instructions: arguments_.input.instructions,
       name: arguments_.input.name,
+      autoUpdate: arguments_.input.autoUpdate,
       skillGroupId: arguments_.input.skillGroupId,
       skillId: arguments_.input.id,
     });
