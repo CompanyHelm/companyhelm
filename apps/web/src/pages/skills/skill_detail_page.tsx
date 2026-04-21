@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { GithubIcon } from "lucide-react";
+import { ExternalLinkIcon, GithubIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
@@ -114,8 +114,10 @@ function SkillSourceValue(props: {
   href?: string | null;
 }) {
   const className = cn(
-    "mt-3 break-all text-sm text-foreground",
-    props.href ? "inline-block underline-offset-4 hover:underline" : null,
+    "mt-3 text-sm text-foreground",
+    props.href
+      ? "inline-flex max-w-full items-center gap-1.5 underline-offset-4 hover:underline"
+      : "break-all",
     props.className,
   );
 
@@ -125,7 +127,8 @@ function SkillSourceValue(props: {
 
   return (
     <a className={className} href={props.href} rel="noreferrer" target="_blank">
-      {props.children}
+      <span className="break-all">{props.children}</span>
+      <ExternalLinkIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
     </a>
   );
 }
@@ -425,6 +428,7 @@ function SkillDetailPageContent() {
                             variant="secondary"
                           >
                             {file.path}
+                            <ExternalLinkIcon aria-hidden="true" />
                           </Badge>
                         ) : (
                           <Badge key={file.path} variant="secondary">
