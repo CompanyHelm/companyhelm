@@ -12,6 +12,120 @@ export type SystemCommandDefinition = {
  */
 export class SystemCommandCatalog {
   private readonly commands: SystemCommandDefinition[] = [{
+    description: "List company skill groups and skills, including system skills.",
+    id: "skill.list",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {},
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Create a manual company skill with instructions stored directly in CompanyHelm.",
+    id: "skill.create",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        description: { type: "string" },
+        instructions: { type: "string" },
+        name: { type: "string" },
+        skillGroupId: { type: ["string", "null"] },
+      },
+      required: ["name", "description", "instructions"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Import one or more Git-backed skill packages from a public repository branch.",
+    id: "skill.github.import",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        skillGroupId: { type: ["string", "null"] },
+        skills: {
+          items: {
+            additionalProperties: false,
+            properties: {
+              branchName: { type: "string" },
+              repository: { type: "string" },
+              skillDirectory: { type: "string" },
+            },
+            required: ["repository", "branchName", "skillDirectory"],
+            type: "object",
+          },
+          type: "array",
+        },
+      },
+      required: ["skills"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Update an editable company skill's metadata, instructions, or group.",
+    id: "skill.update",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        description: { type: ["string", "null"] },
+        instructions: { type: ["string", "null"] },
+        name: { type: ["string", "null"] },
+        skillGroupId: { type: ["string", "null"] },
+        skillId: { type: "string" },
+      },
+      required: ["skillId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Delete one custom company skill from the catalog.",
+    id: "skill.delete",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        skillId: { type: "string" },
+      },
+      required: ["skillId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Create a reusable company skill group.",
+    id: "skill.group.create",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        name: { type: "string" },
+      },
+      required: ["name"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Rename one reusable company skill group.",
+    id: "skill.group.update",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        name: { type: "string" },
+        skillGroupId: { type: "string" },
+      },
+      required: ["skillGroupId", "name"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
+    description: "Delete one reusable company skill group and ungroup its skills.",
+    id: "skill.group.delete",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        skillGroupId: { type: "string" },
+      },
+      required: ["skillGroupId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_skills",
+  }, {
     description: "List enabled workflows available to the current agent session, including launch inputs.",
     id: "workflow.list",
     inputSchema: {

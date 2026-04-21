@@ -10,7 +10,10 @@ import { WorkflowSystemCommandService } from "./workflows/system_command_service
 import { AgentManagementSystemCommandService } from "./system_commands/agent_management.ts";
 import { ArtifactManagementSystemCommandService } from "./system_commands/artifact_management.ts";
 import { CompanyDirectorySystemCommandService } from "./system_commands/company_directory.ts";
+import { SkillManagementSystemCommandService } from "./system_commands/skill_management.ts";
+import { SkillGithubCatalog } from "./skills/github/catalog.ts";
 import { SessionSkillService } from "./skills/session_service.ts";
+import { SkillService } from "./skills/service.ts";
 import { SystemCommandCatalog } from "./skills/system_command_catalog.ts";
 
 export type SystemCommandExecutionContext = {
@@ -31,6 +34,7 @@ export class SystemCommandService {
   private readonly commandCatalog: SystemCommandCatalog;
   private readonly companyDirectoryCommandService: CompanyDirectorySystemCommandService;
   private readonly sessionSkillService: SessionSkillService;
+  private readonly skillManagementCommandService: SkillManagementSystemCommandService;
   private readonly workflowCommandService: WorkflowSystemCommandService;
 
   constructor(input: {
@@ -41,6 +45,8 @@ export class SystemCommandService {
     modelRegistry?: ModelRegistry;
     secretService?: SecretService;
     sessionSkillService?: SessionSkillService;
+    skillGithubCatalog?: SkillGithubCatalog;
+    skillService?: SkillService;
     templateService?: AgentEnvironmentTemplateService;
     workflowService: WorkflowService;
   }) {
@@ -49,6 +55,10 @@ export class SystemCommandService {
     this.commandCatalog = input.commandCatalog ?? new SystemCommandCatalog();
     this.companyDirectoryCommandService = new CompanyDirectorySystemCommandService();
     this.sessionSkillService = input.sessionSkillService ?? new SessionSkillService();
+    this.skillManagementCommandService = new SkillManagementSystemCommandService(
+      input.skillService ?? new SkillService(),
+      input.skillGithubCatalog ?? new SkillGithubCatalog(),
+    );
     this.workflowCommandService = new WorkflowSystemCommandService(input.workflowService);
   }
 
@@ -83,6 +93,9 @@ export class SystemCommandService {
     }
     if (command.systemSkillKey === "company_directory") {
       return this.companyDirectoryCommandService.execute(command.id, context);
+    }
+    if (command.systemSkillKey === "manage_skills") {
+      return this.skillManagementCommandService.execute(command.id, input, context);
     }
 
     throw new Error(`System command ${command.id} is not wired to a handler.`);

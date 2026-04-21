@@ -21,6 +21,17 @@ export class SystemSkillRegistry {
   private readonly commandCatalog: SystemCommandCatalog;
   private readonly definitions: SystemSkillDefinition[] = [
     {
+      description: "Inspect and manage company skills, skill groups, and Git-backed skill imports through scoped system commands.",
+      instructions: [
+        "Use skill management commands when the user asks to inspect or change the company skill catalog or skill groups.",
+        "Call skill.list before updating or deleting skills and groups so you can target the correct IDs.",
+        "Use skill.create for manual skills and skill.github.import for repository-backed skills.",
+        "Do not try to attach skills to agents with this skill; use the agent management system skill for agent defaults.",
+      ].join("\n"),
+      key: "manage_skills",
+      name: "Manage skills",
+    },
+    {
       description: "Create, inspect, start, and maintain durable workflow definitions through scoped system commands.",
       instructions: [
         "Use workflow management commands when the user asks to inspect available workflows, start a workflow, or create and change durable workflow definitions.",

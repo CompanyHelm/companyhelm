@@ -58,6 +58,27 @@ test("SystemCommandService rejects migrated agent commands when manage_agents is
   );
 });
 
+test("SystemCommandService rejects skill-management commands when manage_skills is inactive", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return false;
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  await assert.rejects(
+    service.executeCommand("skill.list", {}, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      sessionId: "session-1",
+      transactionProvider: {} as never,
+    }),
+    /Activate the manage_skills system skill/,
+  );
+});
+
 test("SystemCommandService executes workflow commands when manage_workflows is active", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {
@@ -89,6 +110,75 @@ test("SystemCommandService executes workflow commands when manage_workflows is a
 
   assert.equal(result.id, "workflow-1");
   assert.equal(result.name, "Release workflow");
+});
+
+test("SystemCommandService executes skill-management commands when manage_skills is active", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    skillService: {
+      async listSkillGroups(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          companyId,
+          id: "group-1",
+          name: "Research",
+        }];
+      },
+      async listSkills(_transactionProvider: unknown, companyId: string) {
+        assert.equal(companyId, "company-123");
+        return [{
+          companyId,
+          description: "Research guidance",
+          fileList: [],
+          githubBranchName: null,
+          githubTrackedCommitSha: null,
+          id: "skill-1",
+          instructions: "Read context first.",
+          name: "Research",
+          repository: null,
+          skillDirectory: null,
+          skillGroupId: "group-1",
+          skillType: "custom",
+          systemCommands: [],
+          systemKey: null,
+        }];
+      },
+    } as never,
+    workflowService: {} as never,
+  });
+
+  const result = await service.executeCommand("skill.list", {}, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.deepEqual(result.skillGroups, [{
+    companyId: "company-123",
+    id: "group-1",
+    name: "Research",
+  }]);
+  assert.deepEqual(result.skills, [{
+    companyId: "company-123",
+    description: "Research guidance",
+    fileList: [],
+    githubBranchName: null,
+    githubTrackedCommitSha: null,
+    id: "skill-1",
+    instructions: "Read context first.",
+    name: "Research",
+    repository: null,
+    skillDirectory: null,
+    skillGroupId: "group-1",
+    skillType: "custom",
+    systemCommands: [],
+    systemKey: null,
+  }]);
 });
 
 test("SystemCommandService exposes workflow listing through manage_workflows commands", async () => {
