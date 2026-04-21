@@ -78,9 +78,9 @@ type StoredContextMessagesSnapshot = {
 };
 
 /**
- * Owns the process-local PI Mono runtime sessions keyed by CompanyHelm session id. Its scope is
- * creating the SDK runtime for the currently leased turn, restoring persisted context into it, and
- * giving prompt or steer calls access to the paired event handler that writes transcript rows.
+ * Builds PI Mono runtime sessions for a single leased wake. Its scope is creating the SDK runtime,
+ * restoring persisted context into it, and giving prompt or steer calls access to the paired event
+ * handler that writes transcript rows.
  */
 @injectable()
 export class PiMonoSessionManagerService {
@@ -88,7 +88,6 @@ export class PiMonoSessionManagerService {
   private readonly githubClient: GithubClient;
   private readonly inboxService: AgentInboxService;
   private readonly logger: PinoLogger;
-  private readonly runtimesById = new Map<string, AgentSessionRuntimeContext>();
   private readonly redisService: RedisService;
   private readonly secretService: SecretService;
   private readonly sessionContextCheckpointService: SessionContextCheckpointService;
@@ -127,10 +126,10 @@ export class PiMonoSessionManagerService {
     @inject(WorkflowService)
     workflowService: WorkflowService = {
       async listWorkflows() {
-        throw new Error("workflow definitions should not be loaded during ensureSession");
+        throw new Error("workflow definitions should not be loaded during createRuntime");
       },
       async startWorkflowRun() {
-        throw new Error("workflow runs should not be started during ensureSession");
+        throw new Error("workflow runs should not be started during createRuntime");
       },
     } as never,
   ) {
@@ -168,16 +167,11 @@ export class PiMonoSessionManagerService {
     });
   }
 
-  async ensureSession(
+  async createRuntime(
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     runtimeConfig: SessionRuntimeConfig,
-  ): Promise<AgentSession> {
-    const existingRuntime = this.runtimesById.get(sessionId);
-    if (existingRuntime) {
-      return existingRuntime.session;
-    }
-
+  ): Promise<AgentSessionRuntimeContext> {
     const bootstrapContext = await this.createBootstrapContext(
       transactionProvider,
       sessionId,
@@ -248,16 +242,16 @@ export class PiMonoSessionManagerService {
       void sessionEventHandler.handle(event);
     });
 
-    this.runtimesById.set(sessionId, new AgentSessionRuntimeContext({
+    return new AgentSessionRuntimeContext({
       bootstrapContext,
       eventHandler: sessionEventHandler,
       session,
       toolsService: agentToolsService,
-    }));
-    return session;
+    });
   }
 
   async prompt(
+    runtime: AgentSessionRuntimeContext,
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     message: string,
@@ -265,7 +259,6 @@ export class PiMonoSessionManagerService {
     userMessageCreatedAt?: Date,
     queuedMessageId?: string,
   ): Promise<void> {
-    const runtime = this.getRequiredRuntime(sessionId);
     if (userMessageCreatedAt) {
       runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId);
     }
@@ -298,6 +291,7 @@ export class PiMonoSessionManagerService {
   }
 
   async steer(
+    runtime: AgentSessionRuntimeContext,
     transactionProvider: TransactionProviderInterface,
     sessionId: string,
     message: string,
@@ -305,7 +299,6 @@ export class PiMonoSessionManagerService {
     userMessageCreatedAt?: Date,
     queuedMessageId?: string,
   ): Promise<void> {
-    const runtime = this.getRequiredRuntime(sessionId);
     if (userMessageCreatedAt) {
       runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId);
     }
@@ -323,37 +316,16 @@ export class PiMonoSessionManagerService {
     );
   }
 
-  async abort(sessionId: string): Promise<void> {
-    const runtime = this.runtimesById.get(sessionId);
-    if (!runtime) {
-      return;
-    }
-
+  async abort(runtime: AgentSessionRuntimeContext): Promise<void> {
     await runtime.session.abort();
   }
 
-  get(sessionId: string): AgentSession | undefined {
-    return this.runtimesById.get(sessionId)?.session;
-  }
-
-  async dispose(sessionId: string): Promise<void> {
-    const runtime = this.runtimesById.get(sessionId);
-    if (!runtime) {
-      return;
+  async disposeRuntime(runtime: AgentSessionRuntimeContext): Promise<void> {
+    try {
+      await runtime.toolsService.cleanupTools();
+    } finally {
+      runtime.session.dispose();
     }
-
-    await runtime.toolsService.cleanupTools();
-    runtime.session.dispose();
-    this.runtimesById.delete(sessionId);
-  }
-
-  private getRequiredRuntime(sessionId: string): AgentSessionRuntimeContext {
-    const runtime = this.runtimesById.get(sessionId);
-    if (!runtime) {
-      throw new Error("Session not found.");
-    }
-
-    return runtime;
   }
 
   private async createBootstrapContext(

@@ -287,41 +287,41 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     } as never,
     {
       async getEnvironmentForSession() {
-        throw new Error("tools should not acquire an environment during ensureSession");
+        throw new Error("tools should not acquire an environment during createRuntime");
       },
     } as never,
     {
       async getInstallationAccessToken() {
-        throw new Error("github installation tokens should not be loaded during ensureSession");
+        throw new Error("github installation tokens should not be loaded during createRuntime");
       },
     } as never,
     {
       async createHumanQuestion() {
-        throw new Error("inbox questions should not be created during ensureSession");
+        throw new Error("inbox questions should not be created during createRuntime");
       },
     } as never,
     {
       async listSecrets() {
-        throw new Error("company secrets should not be loaded during ensureSession");
+        throw new Error("company secrets should not be loaded during createRuntime");
       },
       async listSessionSecrets() {
-        throw new Error("session secrets should not be loaded during ensureSession");
+        throw new Error("session secrets should not be loaded during createRuntime");
       },
     } as never,
     {
       async sendMessage() {
-        throw new Error("agent conversations should not be sent during ensureSession");
+        throw new Error("agent conversations should not be sent during createRuntime");
       },
     } as never,
     {
       async fetchHtmlContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async fetchMarkdownContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async search() {
-        throw new Error("web searches should not run during ensureSession");
+        throw new Error("web searches should not run during createRuntime");
       },
     } as never,
     {
@@ -331,28 +331,28 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     } as never,
     {
       async listDefinitions() {
-        throw new Error("compute provider definitions should not be loaded during ensureSession");
+        throw new Error("compute provider definitions should not be loaded during createRuntime");
       },
     } as never,
     {
       get() {
-        throw new Error("model provider services should not be loaded during ensureSession");
+        throw new Error("model provider services should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     {
       getDefaultModelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
       getDefaultReasoningLevelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     emptyMcpService,
   );
 
-  const session = await service.ensureSession(
+  const runtime = await service.createRuntime(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
@@ -406,7 +406,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
     },
   );
 
-  await service.prompt({
+  await service.prompt(runtime, {
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback({
         insert() {
@@ -445,7 +445,7 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       });
     },
   } as never, "session-1", "Draft the migration.");
-  await service.steer({
+  await service.steer(runtime, {
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback({
         update() {
@@ -463,10 +463,9 @@ test("PiMonoSessionManagerService creates one runtime session and routes prompt 
       });
     },
   } as never, "session-1", "Focus on the failed migration.");
-  await service.abort("session-1");
+  await service.abort(runtime);
 
-  assert.equal(session, createdSession);
-  assert.equal(service.get("session-1"), createdSession);
+  assert.equal(runtime.session, createdSession);
   assert.deepEqual(piAgentMocks.findModelMock.mock.calls, [["openai", "gpt-5.4"]]);
   assert.deepEqual(piAgentMocks.setRuntimeApiKeyMock.mock.calls, [["openai", "sk-test"]]);
   assert.deepEqual(piAgentMocks.newSessionMock.mock.calls, [[{ id: "session-1" }]]);
@@ -602,41 +601,41 @@ test("PiMonoSessionManagerService registers OpenAI-compatible runtime providers 
     } as never,
     {
       async getEnvironmentForSession() {
-        throw new Error("tools should not acquire an environment during ensureSession");
+        throw new Error("tools should not acquire an environment during createRuntime");
       },
     } as never,
     {
       async getInstallationAccessToken() {
-        throw new Error("github installation tokens should not be loaded during ensureSession");
+        throw new Error("github installation tokens should not be loaded during createRuntime");
       },
     } as never,
     {
       async createHumanQuestion() {
-        throw new Error("inbox questions should not be created during ensureSession");
+        throw new Error("inbox questions should not be created during createRuntime");
       },
     } as never,
     {
       async listSecrets() {
-        throw new Error("company secrets should not be loaded during ensureSession");
+        throw new Error("company secrets should not be loaded during createRuntime");
       },
       async listSessionSecrets() {
-        throw new Error("session secrets should not be loaded during ensureSession");
+        throw new Error("session secrets should not be loaded during createRuntime");
       },
     } as never,
     {
       async sendMessage() {
-        throw new Error("agent conversations should not be sent during ensureSession");
+        throw new Error("agent conversations should not be sent during createRuntime");
       },
     } as never,
     {
       async fetchHtmlContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async fetchMarkdownContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async search() {
-        throw new Error("web searches should not run during ensureSession");
+        throw new Error("web searches should not run during createRuntime");
       },
     } as never,
     {
@@ -646,28 +645,28 @@ test("PiMonoSessionManagerService registers OpenAI-compatible runtime providers 
     } as never,
     {
       async listDefinitions() {
-        throw new Error("compute provider definitions should not be loaded during ensureSession");
+        throw new Error("compute provider definitions should not be loaded during createRuntime");
       },
     } as never,
     {
       get() {
-        throw new Error("model provider services should not be loaded during ensureSession");
+        throw new Error("model provider services should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     {
       getDefaultModelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
       getDefaultReasoningLevelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     emptyMcpService,
   );
 
-  await service.ensureSession(
+  await service.createRuntime(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
@@ -797,41 +796,41 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
     } as never,
     {
       async getEnvironmentForSession() {
-        throw new Error("tools should not acquire an environment during ensureSession");
+        throw new Error("tools should not acquire an environment during createRuntime");
       },
     } as never,
     {
       async getInstallationAccessToken() {
-        throw new Error("github installation tokens should not be loaded during ensureSession");
+        throw new Error("github installation tokens should not be loaded during createRuntime");
       },
     } as never,
     {
       async createHumanQuestion() {
-        throw new Error("inbox questions should not be created during ensureSession");
+        throw new Error("inbox questions should not be created during createRuntime");
       },
     } as never,
     {
       async listSecrets() {
-        throw new Error("company secrets should not be loaded during ensureSession");
+        throw new Error("company secrets should not be loaded during createRuntime");
       },
       async listSessionSecrets() {
-        throw new Error("session secrets should not be loaded during ensureSession");
+        throw new Error("session secrets should not be loaded during createRuntime");
       },
     } as never,
     {
       async sendMessage() {
-        throw new Error("agent conversations should not be sent during ensureSession");
+        throw new Error("agent conversations should not be sent during createRuntime");
       },
     } as never,
     {
       async fetchHtmlContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async fetchMarkdownContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async search() {
-        throw new Error("web searches should not run during ensureSession");
+        throw new Error("web searches should not run during createRuntime");
       },
     } as never,
     {
@@ -841,28 +840,28 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
     } as never,
     {
       async listDefinitions() {
-        throw new Error("compute provider definitions should not be loaded during ensureSession");
+        throw new Error("compute provider definitions should not be loaded during createRuntime");
       },
     } as never,
     {
       get() {
-        throw new Error("model provider services should not be loaded during ensureSession");
+        throw new Error("model provider services should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     {
       getDefaultModelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
       getDefaultReasoningLevelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     emptyMcpService,
   );
 
-  await service.ensureSession(
+  const runtime = await service.createRuntime(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
@@ -916,7 +915,7 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
     },
   );
 
-  await service.prompt({
+  await service.prompt(runtime, {
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback({
         insert() {
@@ -961,8 +960,8 @@ test("PiMonoSessionManagerService prompt drains pending queued messages before c
   assert.equal(persistedContextUpdates.filter((value) => "contextMessagesSnapshot" in value).length, 1);
 });
 
-test("PiMonoSessionManagerService reuses the live runtime session for repeated ensureSession calls", async () => {
-  const createdSession = {
+test("PiMonoSessionManagerService creates a fresh runtime for each wake", async () => {
+  const firstSession = {
     abort: piAgentMocks.abortMock,
     agent: {
       state: {
@@ -980,13 +979,25 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     steer: piAgentMocks.steerMock,
     subscribe: piAgentMocks.subscribeMock,
   };
+  const secondSession = {
+    ...firstSession,
+    agent: {
+      state: {
+        messages: [],
+      },
+    },
+  };
   piAgentMocks.findModelMock.mockReturnValue({
     id: "gpt-5.4",
     provider: "openai",
   });
-  piAgentMocks.createAgentSessionMock.mockResolvedValue({
-    session: createdSession,
-  });
+  piAgentMocks.createAgentSessionMock
+    .mockResolvedValueOnce({
+      session: firstSession,
+    })
+    .mockResolvedValueOnce({
+      session: secondSession,
+    });
   const service = new PiMonoSessionManagerService(
     piMonoTestConfig as never,
     logger,
@@ -1001,41 +1012,41 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     } as never,
     {
       async getEnvironmentForSession() {
-        throw new Error("tools should not acquire an environment during ensureSession");
+        throw new Error("tools should not acquire an environment during createRuntime");
       },
     } as never,
     {
       async getInstallationAccessToken() {
-        throw new Error("github installation tokens should not be loaded during ensureSession");
+        throw new Error("github installation tokens should not be loaded during createRuntime");
       },
     } as never,
     {
       async createHumanQuestion() {
-        throw new Error("inbox questions should not be created during ensureSession");
+        throw new Error("inbox questions should not be created during createRuntime");
       },
     } as never,
     {
       async listSecrets() {
-        throw new Error("company secrets should not be loaded during ensureSession");
+        throw new Error("company secrets should not be loaded during createRuntime");
       },
       async listSessionSecrets() {
-        throw new Error("session secrets should not be loaded during ensureSession");
+        throw new Error("session secrets should not be loaded during createRuntime");
       },
     } as never,
     {
       async sendMessage() {
-        throw new Error("agent conversations should not be sent during ensureSession");
+        throw new Error("agent conversations should not be sent during createRuntime");
       },
     } as never,
     {
       async fetchHtmlContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async fetchMarkdownContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async search() {
-        throw new Error("web searches should not run during ensureSession");
+        throw new Error("web searches should not run during createRuntime");
       },
     } as never,
     {
@@ -1045,28 +1056,28 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     } as never,
     {
       async listDefinitions() {
-        throw new Error("compute provider definitions should not be loaded during ensureSession");
+        throw new Error("compute provider definitions should not be loaded during createRuntime");
       },
     } as never,
     {
       get() {
-        throw new Error("model provider services should not be loaded during ensureSession");
+        throw new Error("model provider services should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     {
       getDefaultModelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
       getDefaultReasoningLevelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     emptyMcpService,
   );
 
-  const first = await service.ensureSession(
+  const first = await service.createRuntime(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
@@ -1099,7 +1110,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
       reasoningLevel: "medium",
     },
   );
-  const second = await service.ensureSession(
+  const second = await service.createRuntime(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({
@@ -1110,7 +1121,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
                   async where() {
                     return [{
                       contextMessagesSnapshot: [{
-                        content: "ignored on reuse",
+                        content: "restored on next wake",
                         role: "user",
                         timestamp: 1,
                       }],
@@ -1137,11 +1148,16 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
     },
   );
 
-  assert.equal(first, createdSession);
-  assert.equal(second, createdSession);
-  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 1);
+  assert.equal(first.session, firstSession);
+  assert.equal(second.session, secondSession);
+  assert.notEqual(first, second);
+  assert.equal(piAgentMocks.createAgentSessionMock.mock.calls.length, 2);
   assert.equal(piAgentMocks.disposeMock.mock.calls.length, 0);
-  assert.deepEqual(piAgentMocks.appendMessageMock.mock.calls, []);
+  assert.deepEqual(piAgentMocks.appendMessageMock.mock.calls, [[{
+    content: "restored on next wake",
+    role: "user",
+    timestamp: 1,
+  }]]);
   const createAgentSessionOptions = piAgentMocks.createAgentSessionMock.mock.calls[0]?.[0] as {
     resourceLoader?: {
       getAppendSystemPrompt(): string[];
@@ -1153,7 +1169,7 @@ test("PiMonoSessionManagerService reuses the live runtime session for repeated e
   );
   assert.deepEqual(
     piAgentMocks.setActiveToolsByNameMock.mock.calls,
-    [[baseToolNames]],
+    [[baseToolNames], [baseToolNames]],
   );
 });
 
@@ -1211,41 +1227,41 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
     } as never,
     {
       async getEnvironmentForSession() {
-        throw new Error("tools should not acquire an environment during ensureSession");
+        throw new Error("tools should not acquire an environment during createRuntime");
       },
     } as never,
     {
       async getInstallationAccessToken() {
-        throw new Error("github installation tokens should not be loaded during ensureSession");
+        throw new Error("github installation tokens should not be loaded during createRuntime");
       },
     } as never,
     {
       async createHumanQuestion() {
-        throw new Error("inbox questions should not be created during ensureSession");
+        throw new Error("inbox questions should not be created during createRuntime");
       },
     } as never,
     {
       async listSecrets() {
-        throw new Error("company secrets should not be loaded during ensureSession");
+        throw new Error("company secrets should not be loaded during createRuntime");
       },
       async listSessionSecrets() {
-        throw new Error("session secrets should not be loaded during ensureSession");
+        throw new Error("session secrets should not be loaded during createRuntime");
       },
     } as never,
     {
       async sendMessage() {
-        throw new Error("agent conversations should not be sent during ensureSession");
+        throw new Error("agent conversations should not be sent during createRuntime");
       },
     } as never,
     {
       async fetchHtmlContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async fetchMarkdownContents() {
-        throw new Error("web pages should not be fetched during ensureSession");
+        throw new Error("web pages should not be fetched during createRuntime");
       },
       async search() {
-        throw new Error("web searches should not run during ensureSession");
+        throw new Error("web searches should not run during createRuntime");
       },
     } as never,
     {
@@ -1255,21 +1271,21 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
     } as never,
     {
       async listDefinitions() {
-        throw new Error("compute provider definitions should not be loaded during ensureSession");
+        throw new Error("compute provider definitions should not be loaded during createRuntime");
       },
     } as never,
     {
       get() {
-        throw new Error("model provider services should not be loaded during ensureSession");
+        throw new Error("model provider services should not be loaded during createRuntime");
       },
     } as never,
     undefined,
     {
       getDefaultModelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
       getDefaultReasoningLevelForProvider() {
-        throw new Error("app model registry should not be loaded during ensureSession");
+        throw new Error("app model registry should not be loaded during createRuntime");
       },
     } as never,
     undefined,
@@ -1302,7 +1318,7 @@ test("PiMonoSessionManagerService adds discovered MCP tools to newly created ses
     } as never,
   );
 
-  await service.ensureSession(
+  await service.createRuntime(
     {
       async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
         return callback({

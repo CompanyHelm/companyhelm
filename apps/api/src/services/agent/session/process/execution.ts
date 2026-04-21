@@ -11,6 +11,7 @@ import { RedisCompanyScopedService } from "../../../redis/company_scoped_service
 import { RedisSubscriptionHandle } from "../../../redis/subscription_handle.ts";
 import { RedisService } from "../../../redis/service.ts";
 import { PiMonoSessionManagerService } from "../pi-mono/session_manager_service.ts";
+import type { AgentSessionRuntimeContext } from "../pi-mono/runtime_context.ts";
 import type { QueuedSessionMessageRecord } from "./queued_messages.ts";
 import { SessionQueuedMessageService } from "./queued_messages.ts";
 import { SessionLeaseHandle, SessionLeaseService } from "./lease.ts";
@@ -130,6 +131,7 @@ export class SessionProcessExecutionService {
     let interruptError: Error | null = null;
     let interruptSubscription: RedisSubscriptionHandle | null = null;
     let leaseLossError: Error | null = null;
+    let runtime: AgentSessionRuntimeContext | null = null;
     let shouldEnqueueFollowUpWake = false;
     let steeringSubscription: RedisSubscriptionHandle | null = null;
     let steeringDeliveryPromise = Promise.resolve();
@@ -151,7 +153,7 @@ export class SessionProcessExecutionService {
         return;
       }
       const companySettings = await this.companySettingsService.getSettings(transactionProvider, companyId);
-      await this.piMonoSessionManagerService.ensureSession(
+      runtime = await this.piMonoSessionManagerService.createRuntime(
         transactionProvider,
         sessionId,
         {
@@ -162,7 +164,9 @@ export class SessionProcessExecutionService {
 
       heartbeatHandle = this.startLeaseHeartbeat(lease, async (error) => {
         leaseLossError = error;
-        await this.piMonoSessionManagerService.abort(sessionId);
+        if (runtime) {
+          await this.piMonoSessionManagerService.abort(runtime);
+        }
       });
 
       steeringSubscription = await redisCompanyScopedService.subscribe(
@@ -170,7 +174,16 @@ export class SessionProcessExecutionService {
         () => {
           steeringDeliveryPromise = steeringDeliveryPromise.then(async () => {
             try {
-              await this.deliverPendingSteerMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+              if (!runtime) {
+                return;
+              }
+              await this.deliverPendingSteerMessages(
+                runtime,
+                transactionProvider,
+                redisCompanyScopedService,
+                companyId,
+                sessionId,
+              );
             } catch (error) {
               this.logger.error({
                 companyId,
@@ -188,7 +201,9 @@ export class SessionProcessExecutionService {
             return;
           }
           interruptError = new Error("Session interrupted.");
-          void this.piMonoSessionManagerService.abort(sessionId);
+          if (runtime) {
+            void this.piMonoSessionManagerService.abort(runtime);
+          }
         },
       );
       if (!await this.isSessionProcessable(transactionProvider, companyId, sessionId)) {
@@ -214,6 +229,7 @@ export class SessionProcessExecutionService {
 
       try {
         await this.piMonoSessionManagerService.prompt(
+          runtime,
           transactionProvider,
           sessionId,
           primaryQueuedMessage.text,
@@ -281,9 +297,17 @@ export class SessionProcessExecutionService {
         }, "failed to requeue undispatched steer messages before disposing the runtime");
       }
 
-      await this.piMonoSessionManagerService.dispose(sessionId);
-      await this.sessionLeaseService.release(lease);
-      await redisCompanyScopedService.disconnect();
+      try {
+        if (runtime) {
+          await this.piMonoSessionManagerService.disposeRuntime(runtime);
+        }
+      } finally {
+        try {
+          await this.sessionLeaseService.release(lease);
+        } finally {
+          await redisCompanyScopedService.disconnect();
+        }
+      }
 
       if (shouldEnqueueFollowUpWake) {
         await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
@@ -292,6 +316,7 @@ export class SessionProcessExecutionService {
   }
 
   private async deliverPendingSteerMessages(
+    runtime: AgentSessionRuntimeContext,
     transactionProvider: TransactionProviderInterface,
     redisCompanyScopedService: RedisCompanyScopedService,
     companyId: string,
@@ -313,6 +338,7 @@ export class SessionProcessExecutionService {
 
       try {
         await this.piMonoSessionManagerService.steer(
+          runtime,
           transactionProvider,
           sessionId,
           steerMessage.text,

@@ -26,8 +26,8 @@ test("SessionProcessExecutionService no-ops when another worker already owns the
       },
     } as never,
     {
-      async ensureSession() {
-        throw new Error("ensureSession should not be called.");
+      async createRuntime() {
+        throw new Error("createRuntime should not be called.");
       },
     } as never,
     {
@@ -77,8 +77,8 @@ test("SessionProcessExecutionService schedules a delayed wake when pending work 
       },
     } as never,
     {
-      async ensureSession() {
-        throw new Error("ensureSession should not be called.");
+      async createRuntime() {
+        throw new Error("createRuntime should not be called.");
       },
     } as never,
     {
@@ -274,13 +274,13 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
       },
     } as never,
     {
-      async ensureSession() {
+      async createRuntime() {
         return undefined;
       },
-      dispose() {
+      disposeRuntime() {
         return undefined;
       },
-      async prompt(_transactionProvider: unknown, sessionId: string, text: string) {
+      async prompt(_runtime: unknown, _transactionProvider: unknown, sessionId: string, text: string) {
         promptCalls.push({
           sessionId,
           text,
@@ -370,8 +370,9 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
 });
 
 test("SessionProcessExecutionService prompts one queued turn, releases the lease, and re-enqueues when more work remains", async () => {
-  const ensureSessionCalls: unknown[] = [];
-  const disposeCalls: string[] = [];
+  const runtime = { id: "runtime-1" };
+  const createRuntimeCalls: unknown[] = [];
+  const disposeCalls: unknown[] = [];
   const promptCalls: Array<{ createdAt: Date | undefined; images: unknown; queuedMessageId: string | undefined; sessionId: string; text: string }> = [];
   const queueWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
@@ -496,16 +497,18 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       },
     } as never,
     {
-      async ensureSession(_transactionProvider: unknown, sessionId: string, runtimeConfig: unknown) {
-        ensureSessionCalls.push({
+      async createRuntime(_transactionProvider: unknown, sessionId: string, runtimeConfig: unknown) {
+        createRuntimeCalls.push({
           runtimeConfig,
           sessionId,
         });
+        return runtime;
       },
-      dispose(sessionId: string) {
-        disposeCalls.push(sessionId);
+      disposeRuntime(receivedRuntime: unknown) {
+        disposeCalls.push(receivedRuntime);
       },
       async prompt(
+        receivedRuntime: unknown,
         _transactionProvider: unknown,
         sessionId: string,
         text: string,
@@ -513,6 +516,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
         createdAt?: Date,
         queuedMessageId?: string,
       ) {
+        assert.equal(receivedRuntime, runtime);
         promptCalls.push({
           createdAt,
           images,
@@ -590,7 +594,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
 
   await service.execute("company-1", "session-1");
 
-  assert.deepEqual(ensureSessionCalls, [{
+  assert.deepEqual(createRuntimeCalls, [{
     runtimeConfig: {
       agentId: "agent-1",
       agentName: "Support Agent",
@@ -622,11 +626,12 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
     companyId: "company-1",
     sessionId: "session-1",
   }]);
-  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(disposeCalls, [runtime]);
 });
 
 test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues undispatched steer rows", async () => {
-  const disposeCalls: string[] = [];
+  const runtime = { id: "runtime-1" };
+  const disposeCalls: unknown[] = [];
   const queueWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const requeueCalls: Array<{ companyId: string; sessionId: string }> = [];
@@ -750,14 +755,14 @@ test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues un
       },
     } as never,
     {
-      async ensureSession() {
-        return undefined;
+      async createRuntime() {
+        return runtime;
       },
       async prompt() {
         return undefined;
       },
-      async dispose(sessionId: string) {
-        disposeCalls.push(sessionId);
+      async disposeRuntime(receivedRuntime: unknown) {
+        disposeCalls.push(receivedRuntime);
       },
     } as never,
     {
@@ -847,7 +852,7 @@ test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues un
     companyId: "company-1",
     sessionId: "session-1",
   }]);
-  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(disposeCalls, [runtime]);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
@@ -856,7 +861,8 @@ test("SessionProcessExecutionService re-enqueues a wake when cleanup requeues un
 });
 
 test("SessionProcessExecutionService disposes the runtime session even when turn processing fails", async () => {
-  const disposeCalls: string[] = [];
+  const runtime = { id: "runtime-1" };
+  const disposeCalls: unknown[] = [];
   const enqueueSessionWakeCalls: Array<{ companyId: string; sessionId: string }> = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const subscriber = {
@@ -979,11 +985,11 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
       },
     } as never,
     {
-      async ensureSession() {
-        return undefined;
+      async createRuntime() {
+        return runtime;
       },
-      dispose(sessionId: string) {
-        disposeCalls.push(sessionId);
+      disposeRuntime(receivedRuntime: unknown) {
+        disposeCalls.push(receivedRuntime);
       },
       async prompt() {
         throw new Error("prompt failed");
@@ -1063,7 +1069,7 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
     /prompt failed/,
   );
 
-  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(disposeCalls, [runtime]);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
@@ -1073,9 +1079,10 @@ test("SessionProcessExecutionService disposes the runtime session even when turn
 });
 
 test("SessionProcessExecutionService clears stale queued work when the session stops before prompt delivery", async () => {
+  const runtime = { id: "runtime-1" };
   const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
-  const disposeCalls: string[] = [];
-  const ensureSessionCalls: string[] = [];
+  const disposeCalls: unknown[] = [];
+  const createRuntimeCalls: string[] = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const subscriber = {
     isOpen: true,
@@ -1199,11 +1206,12 @@ test("SessionProcessExecutionService clears stale queued work when the session s
       },
     } as never,
     {
-      async ensureSession(_transactionProvider: unknown, sessionId: string) {
-        ensureSessionCalls.push(sessionId);
+      async createRuntime(_transactionProvider: unknown, sessionId: string) {
+        createRuntimeCalls.push(sessionId);
+        return runtime;
       },
-      dispose(sessionId: string) {
-        disposeCalls.push(sessionId);
+      disposeRuntime(receivedRuntime: unknown) {
+        disposeCalls.push(receivedRuntime);
       },
       async prompt() {
         throw new Error("prompt should not run after the session is stopped.");
@@ -1283,12 +1291,12 @@ test("SessionProcessExecutionService clears stale queued work when the session s
 
   await service.execute("company-1", "session-1");
 
-  assert.deepEqual(ensureSessionCalls, ["session-1"]);
+  assert.deepEqual(createRuntimeCalls, ["session-1"]);
   assert.deepEqual(clearQueuedCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
   }]);
-  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(disposeCalls, [runtime]);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
@@ -1297,9 +1305,10 @@ test("SessionProcessExecutionService clears stale queued work when the session s
 });
 
 test("SessionProcessExecutionService aborts the active prompt when an interrupt signal arrives", async () => {
-  const abortCalls: string[] = [];
+  const runtime = { id: "runtime-1" };
+  const abortCalls: unknown[] = [];
   const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
-  const disposeCalls: string[] = [];
+  const disposeCalls: unknown[] = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   const subscribedListeners = new Map<string, () => void>();
   const subscriber = {
@@ -1430,14 +1439,14 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
       },
     } as never,
     {
-      async ensureSession() {
-        return undefined;
+      async createRuntime() {
+        return runtime;
       },
-      async abort(sessionId: string) {
-        abortCalls.push(sessionId);
+      async abort(receivedRuntime: unknown) {
+        abortCalls.push(receivedRuntime);
       },
-      dispose(sessionId: string) {
-        disposeCalls.push(sessionId);
+      disposeRuntime(receivedRuntime: unknown) {
+        disposeCalls.push(receivedRuntime);
       },
       async prompt() {
         resolvePromptStarted?.();
@@ -1523,12 +1532,12 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
   subscribedListeners.get("company:company-1:session:session-1:interrupt")?.();
 
   await executionPromise;
-  assert.deepEqual(abortCalls, ["session-1"]);
+  assert.deepEqual(abortCalls, [runtime]);
   assert.deepEqual(clearQueuedCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
   }]);
-  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(disposeCalls, [runtime]);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",
     sessionId: "session-1",
@@ -1538,7 +1547,7 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
 
 test("SessionProcessExecutionService clears queued work and exits quietly for archived sessions", async () => {
   const clearQueuedCalls: Array<{ companyId: string; sessionId: string }> = [];
-  const disposeCalls: string[] = [];
+  const disposeCalls: unknown[] = [];
   const releaseCalls: Array<{ companyId: string; sessionId: string; token: string }> = [];
   let selectCallCount = 0;
   const service = new SessionProcessExecutionService(
@@ -1579,14 +1588,14 @@ test("SessionProcessExecutionService clears queued work and exits quietly for ar
       },
     } as never,
     {
-      async ensureSession() {
-        throw new Error("ensureSession should not run for archived sessions.");
+      async createRuntime() {
+        throw new Error("createRuntime should not run for archived sessions.");
       },
       async prompt() {
         throw new Error("prompt should not run for archived sessions.");
       },
-      dispose(sessionId: string) {
-        disposeCalls.push(sessionId);
+      disposeRuntime(runtime: unknown) {
+        disposeCalls.push(runtime);
       },
     } as never,
     {
@@ -1675,7 +1684,7 @@ test("SessionProcessExecutionService clears queued work and exits quietly for ar
     companyId: "company-1",
     sessionId: "session-1",
   }]);
-  assert.deepEqual(disposeCalls, ["session-1"]);
+  assert.deepEqual(disposeCalls, []);
   assert.deepEqual(releaseCalls, [{
     companyId: "company-1",
     sessionId: "session-1",

@@ -27,11 +27,22 @@ export class AgentEnvironmentPromptScope {
   }
 
   async dispose(): Promise<void> {
-    const environment = this.environmentPromise ? await this.environmentPromise : null;
+    const environmentPromise = this.environmentPromise;
+    this.environmentPromise = null;
+    if (!environmentPromise) {
+      return;
+    }
+
+    let environment: AgentEnvironmentInterface;
+    try {
+      environment = await environmentPromise;
+    } catch {
+      return;
+    }
+
     if (environment) {
       await environment.dispose();
     }
-    this.environmentPromise = null;
   }
 
   getEnvironment(): Promise<AgentEnvironmentInterface> {
