@@ -5,9 +5,11 @@ import { CompanyHelmComputeProvider } from "@/companyhelm_compute_provider";
 import { EditableField } from "@/components/editable_field";
 import { EditableModelField } from "@/components/editable_model_field";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
+import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
 import { AgentArchivedChatsTab } from "./agent_archived_chats_tab";
@@ -26,7 +28,7 @@ import type { agentDetailPageQuery } from "./__generated__/agentDetailPageQuery.
 import type { agentDetailPageUpdateAgentMutation } from "./__generated__/agentDetailPageUpdateAgentMutation.graphql";
 
 const agentDetailPageQueryNode = graphql`
-  query agentDetailPageQuery($agentId: ID!) {
+  query agentDetailPageQuery($agentId: ID!, $dailyStart: String!, $monthlyStart: String!) {
     Agent(id: $agentId) {
       id
       name
@@ -157,6 +159,57 @@ const agentDetailPageQueryNode = graphql`
         name
         templateId
       }
+    }
+    agentTotal: LlmUsageAggregates(input: { scopeType: agent, scopeId: $agentId, period: total }) {
+      cacheReadCostNanoUsd
+      cacheReadTokens
+      cacheWriteCostNanoUsd
+      cacheWriteTokens
+      inputCostNanoUsd
+      inputTokens
+      outputCostNanoUsd
+      outputTokens
+      period
+      periodStart
+      requestCount
+      scopeId
+      scopeType
+      totalCostNanoUsd
+      totalTokens
+    }
+    agentDaily: LlmUsageAggregates(input: { scopeType: agent, scopeId: $agentId, period: day, periodStartAfter: $dailyStart }) {
+      cacheReadCostNanoUsd
+      cacheReadTokens
+      cacheWriteCostNanoUsd
+      cacheWriteTokens
+      inputCostNanoUsd
+      inputTokens
+      outputCostNanoUsd
+      outputTokens
+      period
+      periodStart
+      requestCount
+      scopeId
+      scopeType
+      totalCostNanoUsd
+      totalTokens
+    }
+    agentMonthly: LlmUsageAggregates(input: { scopeType: agent, scopeId: $agentId, period: month, periodStartAfter: $monthlyStart }) {
+      cacheReadCostNanoUsd
+      cacheReadTokens
+      cacheWriteCostNanoUsd
+      cacheWriteTokens
+      inputCostNanoUsd
+      inputTokens
+      outputCostNanoUsd
+      outputTokens
+      period
+      periodStart
+      requestCount
+      scopeId
+      scopeType
+      totalCostNanoUsd
+      totalTokens
     }
   }
 `;
@@ -295,7 +348,7 @@ function AgentDetailPageContent() {
   const params = useParams({ strict: false }) as { agentId?: string };
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
-  const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" | "skills" };
+  const search = useSearch({ strict: false }) as { tab?: "archived" | "overview" | "skills" | "usage" };
   const normalizedAgentId = String(params.agentId || "").trim();
   const { setDetailLabel } = useApplicationBreadcrumb();
   if (!normalizedAgentId) {
@@ -306,6 +359,8 @@ function AgentDetailPageContent() {
     agentDetailPageQueryNode,
     {
       agentId: normalizedAgentId,
+      dailyStart: UsageMetrics.resolveUtcDayStart(29),
+      monthlyStart: UsageMetrics.resolveUtcMonthStart(11),
     },
     {
       fetchPolicy: "store-and-network",
@@ -316,7 +371,9 @@ function AgentDetailPageContent() {
   );
 
   const agent = data.Agent;
-  const selectedTab = search.tab === "archived" || search.tab === "skills" ? search.tab : "overview";
+  const selectedTab = search.tab === "archived" || search.tab === "skills" || search.tab === "usage"
+    ? search.tab
+    : "overview";
   const agentSecrets = data.AgentSecrets.map((secret) => ({
     description: secret.description ?? null,
     envVarName: secret.envVarName,
@@ -443,6 +500,13 @@ function AgentDetailPageContent() {
     };
   });
   const companyBaseSystemPrompt = data.CompanySettings.baseSystemPrompt;
+  const agentUsageAggregates = useMemo(() => {
+    return UsageMetrics.fromGraphqlAggregates([
+      ...data.agentTotal,
+      ...data.agentDaily,
+      ...data.agentMonthly,
+    ]);
+  }, [data.agentDaily, data.agentMonthly, data.agentTotal]);
 
   const saveAgent = async (patch: {
     defaultComputeProviderDefinitionId?: string;
@@ -534,6 +598,10 @@ function AgentDetailPageContent() {
           {
             key: "skills" as const,
             label: "Skills",
+          },
+          {
+            key: "usage" as const,
+            label: "Usage",
           },
           {
             key: "archived" as const,
@@ -793,6 +861,14 @@ function AgentDetailPageContent() {
           agentSkills={agentSkills}
           companySkillGroups={companySkillGroups}
           companySkills={companySkills}
+        />
+      ) : selectedTab === "usage" ? (
+        <UsageSummaryPanel
+          aggregates={agentUsageAggregates}
+          description="Agent-specific rollup across every session owned by this agent, including interrupted and completed assistant turns."
+          scopeId={agent.id}
+          scopeType="agent"
+          title={`${agent.name} usage`}
         />
       ) : (
         <AgentArchivedChatsTab sessions={archivedChats} />

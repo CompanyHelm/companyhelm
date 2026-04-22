@@ -19,6 +19,7 @@ type Query {
   GithubSkillBranches(source: GitSkillSourceInput!): [GithubSkillBranch!]!
   GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
+  LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
@@ -566,6 +567,48 @@ type SessionTurn {
   sessionId: ID!
   startedAt: String!
   endedAt: String
+}
+
+enum LlmUsageAggregateScope {
+  company
+  provider
+  agent
+  session
+}
+
+enum LlmUsageAggregatePeriod {
+  total
+  day
+  month
+}
+
+input LlmUsageAggregatesInput {
+  scopeType: LlmUsageAggregateScope!
+  scopeId: ID
+  period: LlmUsageAggregatePeriod
+  periodStartAfter: String
+}
+
+type LlmUsageAggregate {
+  id: ID!
+  companyId: ID!
+  scopeType: LlmUsageAggregateScope!
+  scopeId: ID!
+  period: LlmUsageAggregatePeriod!
+  periodStart: String!
+  requestCount: Float!
+  inputTokens: Float!
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  totalTokens: Float!
+  inputCostNanoUsd: Float!
+  outputCostNanoUsd: Float!
+  cacheReadCostNanoUsd: Float!
+  cacheWriteCostNanoUsd: Float!
+  totalCostNanoUsd: Float!
+  createdAt: String!
+  updatedAt: String!
 }
 
 type SessionQueuedMessage {

@@ -34,6 +34,7 @@ import { SettingsPage } from "./pages/settings/settings_page";
 import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
+import { UsagePage } from "./pages/usage/usage_page";
 import { WorkflowDetailPage } from "./pages/workflows/workflow_detail_page";
 import { WorkflowRunPage } from "./pages/workflows/workflow_run_page";
 import { WorkflowsPage } from "./pages/workflows/workflows_page";
@@ -64,7 +65,11 @@ type TaskArtifactDetailRouteSearch = {
 };
 
 type AgentDetailRouteSearch = {
-  tab?: "archived" | "overview" | "skills";
+  tab?: "archived" | "overview" | "skills" | "usage";
+};
+
+type ModelProviderCredentialDetailRouteSearch = {
+  tab?: "models" | "usage";
 };
 
 type WorkflowDetailRouteSearch = {
@@ -126,7 +131,17 @@ function validateTaskArtifactDetailRouteSearch(search: Record<string, unknown>):
 
 function validateAgentDetailRouteSearch(search: Record<string, unknown>): AgentDetailRouteSearch {
   return {
-    tab: search.tab === "archived" || search.tab === "overview" || search.tab === "skills"
+    tab: search.tab === "archived" || search.tab === "overview" || search.tab === "skills" || search.tab === "usage"
+      ? search.tab
+      : undefined,
+  };
+}
+
+function validateModelProviderCredentialDetailRouteSearch(
+  search: Record<string, unknown>,
+): ModelProviderCredentialDetailRouteSearch {
+  return {
+    tab: search.tab === "usage" || search.tab === "models"
       ? search.tab
       : undefined,
   };
@@ -266,6 +281,12 @@ const inboxRoute = createRoute({
   component: InboxPage,
 });
 
+const usageRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/usage"),
+  component: UsagePage,
+});
+
 const conversationsRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/conversations"),
@@ -396,6 +417,7 @@ const agentDetailRoute = createRoute({
 const modelProviderCredentialDetailRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/model-provider-credentials/$credentialId"),
+  validateSearch: validateModelProviderCredentialDetailRouteSearch,
   component: ModelProviderCredentialDetailPage,
 });
 
@@ -430,6 +452,7 @@ const routeTree = rootRoute.addChildren([
         computeProvidersRoute,
         chatsRoute,
         inboxRoute,
+        usageRoute,
         conversationsRoute,
         routinesRoute,
         workflowsRoute,

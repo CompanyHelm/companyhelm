@@ -1,12 +1,17 @@
-import { Suspense, useEffect, useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { RefreshCcwIcon, StarIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { PageTabs } from "@/components/ui/page_tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { OrganizationPath } from "@/lib/organization_path";
+import { UsageMetrics } from "@/lib/usage_metrics";
+import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
 import type { credentialDetailPageRefreshCredentialTokenMutation } from "./__generated__/credentialDetailPageRefreshCredentialTokenMutation.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
@@ -19,7 +24,7 @@ import {
 import { formatProviderCredentialType, formatProviderLabel } from "./provider_label";
 
 const modelProviderCredentialDetailPageQueryNode = graphql`
-  query credentialDetailPageQuery($credentialId: ID!) {
+  query credentialDetailPageQuery($credentialId: ID!, $dailyStart: String!, $monthlyStart: String!) {
     ModelProviderCredentials {
       id
       baseUrl
@@ -39,6 +44,57 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       description
       reasoningSupported
       reasoningLevels
+    }
+    providerTotal: LlmUsageAggregates(input: { scopeType: provider, scopeId: $credentialId, period: total }) {
+      cacheReadCostNanoUsd
+      cacheReadTokens
+      cacheWriteCostNanoUsd
+      cacheWriteTokens
+      inputCostNanoUsd
+      inputTokens
+      outputCostNanoUsd
+      outputTokens
+      period
+      periodStart
+      requestCount
+      scopeId
+      scopeType
+      totalCostNanoUsd
+      totalTokens
+    }
+    providerDaily: LlmUsageAggregates(input: { scopeType: provider, scopeId: $credentialId, period: day, periodStartAfter: $dailyStart }) {
+      cacheReadCostNanoUsd
+      cacheReadTokens
+      cacheWriteCostNanoUsd
+      cacheWriteTokens
+      inputCostNanoUsd
+      inputTokens
+      outputCostNanoUsd
+      outputTokens
+      period
+      periodStart
+      requestCount
+      scopeId
+      scopeType
+      totalCostNanoUsd
+      totalTokens
+    }
+    providerMonthly: LlmUsageAggregates(input: { scopeType: provider, scopeId: $credentialId, period: month, periodStartAfter: $monthlyStart }) {
+      cacheReadCostNanoUsd
+      cacheReadTokens
+      cacheWriteCostNanoUsd
+      cacheWriteTokens
+      inputCostNanoUsd
+      inputTokens
+      outputCostNanoUsd
+      outputTokens
+      period
+      periodStart
+      requestCount
+      scopeId
+      scopeType
+      totalCostNanoUsd
+      totalTokens
     }
   }
 `;
@@ -135,7 +191,10 @@ function formatReasoning(model: {
 function ModelProviderCredentialDetailPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
+  const navigate = useNavigate();
   const { credentialId } = useParams({ strict: false }) as { credentialId?: string };
+  const search = useSearch({ strict: false }) as { tab?: "models" | "usage" };
+  const organizationSlug = useCurrentOrganizationSlug();
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedCredentialId = String(credentialId || "").trim();
   if (!normalizedCredentialId) {
@@ -145,6 +204,8 @@ function ModelProviderCredentialDetailPageContent() {
     modelProviderCredentialDetailPageQueryNode,
     {
       credentialId: normalizedCredentialId,
+      dailyStart: UsageMetrics.resolveUtcDayStart(29),
+      monthlyStart: UsageMetrics.resolveUtcMonthStart(11),
     },
     {
       fetchPolicy: "store-and-network",
@@ -171,6 +232,7 @@ function ModelProviderCredentialDetailPageContent() {
     || "Credential";
   const isOauthCredential = currentCredential?.type === "oauth_token";
   const isManagedCredential = currentCredential?.isManaged ?? false;
+  const selectedTab = search.tab === "usage" ? "usage" : "models";
   const showRefreshFailure = currentCredential ? hasCredentialRefreshFailure(currentCredential) : false;
   const credentialStatus = isOauthCredential
     ? (currentCredential?.refreshedAt
@@ -185,9 +247,42 @@ function ModelProviderCredentialDetailPageContent() {
       setDetailLabel(null);
     };
   }, [providerLabel, setDetailLabel]);
+  const providerUsageAggregates = useMemo(() => {
+    return UsageMetrics.fromGraphqlAggregates([
+      ...data.providerTotal,
+      ...data.providerDaily,
+      ...data.providerMonthly,
+    ]);
+  }, [data.providerDaily, data.providerMonthly, data.providerTotal]);
 
   return (
     <main className="flex flex-1 flex-col gap-6">
+      <PageTabs
+        items={[
+          {
+            key: "models" as const,
+            label: "Models",
+          },
+          {
+            key: "usage" as const,
+            label: "Usage",
+          },
+        ]}
+        onSelect={(tab) => {
+          void navigate({
+            params: {
+              credentialId: normalizedCredentialId,
+              organizationSlug,
+            },
+            search: {
+              tab,
+            },
+            to: OrganizationPath.route("/model-provider-credentials/$credentialId"),
+          });
+        }}
+        selectedKey={selectedTab}
+      />
+
       <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
         <CardHeader>
           <CardDescription className="flex flex-wrap items-center gap-2">
@@ -303,7 +398,15 @@ function ModelProviderCredentialDetailPageContent() {
               {errorMessage}
             </div>
           ) : null}
-          {data.ModelProviderCredentialModels.length === 0 ? (
+          {selectedTab === "usage" ? (
+            <UsageSummaryPanel
+              aggregates={providerUsageAggregates}
+              description="Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."
+              scopeId={normalizedCredentialId}
+              scopeType="provider"
+              title={`${currentCredential?.name ?? providerLabel} usage`}
+            />
+          ) : data.ModelProviderCredentialModels.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
               <p className="text-sm font-medium text-foreground">No models returned</p>
               <p className="mt-2 text-xs/relaxed text-muted-foreground">

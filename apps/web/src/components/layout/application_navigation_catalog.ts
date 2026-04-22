@@ -15,6 +15,7 @@ import {
   WorkflowIcon,
   WrenchIcon,
   CalendarClockIcon,
+  ChartColumnIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -95,6 +96,11 @@ export class ApplicationNavigationCatalog {
             icon: InboxIcon,
             label: "Inbox",
             to: "/inbox",
+          },
+          {
+            icon: ChartColumnIcon,
+            label: "Usage",
+            to: "/usage",
           },
           {
             icon: MessageSquareIcon,

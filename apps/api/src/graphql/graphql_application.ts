@@ -396,6 +396,7 @@ export class GraphqlApplication {
       healthQueryResolver,
       meQueryResolver,
       companySettingsQueryResolver,
+      undefined,
       githubAppConfigQueryResolver,
       githubInstallationsQueryResolver,
       githubRepositoriesQueryResolver,

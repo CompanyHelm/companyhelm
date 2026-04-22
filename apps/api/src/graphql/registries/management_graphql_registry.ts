@@ -44,6 +44,7 @@ import { GithubRepositoryProvisioningsQueryResolver } from "../resolvers/github_
 import { GithubRepositoriesQueryResolver } from "../resolvers/github_repositories.ts";
 import { GithubSkillBranchesQueryResolver } from "../resolvers/github_skill_branches.ts";
 import { HealthQueryResolver } from "../resolvers/health.ts";
+import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregates.ts";
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
 import { SecretsQueryResolver } from "../resolvers/secrets.ts";
@@ -91,6 +92,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly githubSkillBranchesQueryResolver: GithubSkillBranchesQueryResolver;
   private readonly healthQueryResolver: HealthQueryResolver;
   private readonly importGithubSkillsMutation: ImportGithubSkillsMutation;
+  private readonly llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver;
   private readonly mcpServerAuthTypeQueryResolver: McpServerAuthTypeQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
@@ -115,6 +117,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(MeQueryResolver) meQueryResolver: MeQueryResolver = new MeQueryResolver(),
     @inject(CompanySettingsQueryResolver)
     companySettingsQueryResolver: CompanySettingsQueryResolver = new CompanySettingsQueryResolver(),
+    @inject(LlmUsageAggregatesQueryResolver)
+    llmUsageAggregatesQueryResolver: LlmUsageAggregatesQueryResolver = new LlmUsageAggregatesQueryResolver(),
     @inject(GithubAppConfigQueryResolver)
     githubAppConfigQueryResolver: GithubAppConfigQueryResolver =
       new GithubAppConfigQueryResolver(new GithubClient(config)),
@@ -262,6 +266,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.healthQueryResolver = healthQueryResolver;
     this.importGithubSkillsMutation = importGithubSkillsMutation
       ?? new ImportGithubSkillsMutation(defaultSkillGithubCatalog);
+    this.llmUsageAggregatesQueryResolver = llmUsageAggregatesQueryResolver;
     this.mcpServerAuthTypeQueryResolver = mcpServerAuthTypeQueryResolver
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
@@ -333,6 +338,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         GithubRepositories: this.githubRepositoriesQueryResolver.execute,
         GithubSkillBranches: this.githubSkillBranchesQueryResolver.execute,
         health: this.healthQueryResolver.execute,
+        LlmUsageAggregates: this.llmUsageAggregatesQueryResolver.execute,
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
         Secrets: this.secretsQueryResolver.execute,
