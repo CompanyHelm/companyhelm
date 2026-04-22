@@ -8,6 +8,17 @@ test("formats nano USD without exposing floating point storage details", () => {
   assert.equal(UsageMetrics.formatUsdFromNano(1_250_000_000), "$1.25");
 });
 
+test("formats token breakdowns with cache tokens when they contribute to the total", () => {
+  const aggregate = UsageMetrics.emptyAggregate("provider", "credential-1");
+  aggregate.inputTokens = 264_000;
+  aggregate.outputTokens = 22_000;
+  aggregate.cacheReadTokens = 1_500_000;
+  aggregate.cacheWriteTokens = 40_000;
+  aggregate.totalTokens = 1_826_000;
+
+  assert.equal(UsageMetrics.formatTokenBreakdown(aggregate), "264K input, 22K output, 1.5M cache");
+});
+
 test("coerces GraphQL usage aggregates and ignores future enum values", () => {
   const aggregates = UsageMetrics.fromGraphqlAggregates([
     {

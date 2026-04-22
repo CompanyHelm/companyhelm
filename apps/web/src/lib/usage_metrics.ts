@@ -213,6 +213,20 @@ export class UsageMetrics {
     }).format(requests);
   }
 
+  static formatTokenBreakdown(aggregate: UsageAggregateRecord): string {
+    const cacheTokens = aggregate.cacheReadTokens + aggregate.cacheWriteTokens;
+    const parts = [
+      `${UsageMetrics.formatTokenCount(aggregate.inputTokens)} input`,
+      `${UsageMetrics.formatTokenCount(aggregate.outputTokens)} output`,
+    ];
+
+    if (cacheTokens > 0) {
+      parts.push(`${UsageMetrics.formatTokenCount(cacheTokens)} cache`);
+    }
+
+    return parts.join(", ");
+  }
+
   static formatPeriodLabel(periodStart: string, period: UsageAggregatePeriod): string {
     const date = new Date(periodStart);
     if (Number.isNaN(date.getTime())) {

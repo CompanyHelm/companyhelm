@@ -178,7 +178,7 @@ function formatMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricV
 
 function formatMetricSupportingText(aggregate: UsageAggregateRecord, metric: UsageMetricView): string {
   if (metric === "tokens") {
-    return `${UsageMetrics.formatTokenCount(aggregate.inputTokens)} input, ${UsageMetrics.formatTokenCount(aggregate.outputTokens)} output`;
+    return UsageMetrics.formatTokenBreakdown(aggregate);
   }
 
   return `${UsageMetrics.formatRequestCount(aggregate.requestCount)} requests`;
