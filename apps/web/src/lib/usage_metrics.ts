@@ -70,7 +70,12 @@ export class UsageMetrics {
     });
   }
 
-  static emptyAggregate(scopeType: string, scopeId: string): UsageAggregateRecord {
+  static emptyAggregate(
+    scopeType: string,
+    scopeId: string,
+    period: UsageAggregatePeriod = "total",
+    periodStart = new Date(0).toISOString(),
+  ): UsageAggregateRecord {
     return {
       cacheReadCostNanoUsd: 0,
       cacheReadTokens: 0,
@@ -80,8 +85,8 @@ export class UsageMetrics {
       inputTokens: 0,
       outputCostNanoUsd: 0,
       outputTokens: 0,
-      period: "total",
-      periodStart: new Date(0).toISOString(),
+      period,
+      periodStart,
       requestCount: 0,
       scopeId,
       scopeType,
@@ -98,6 +103,68 @@ export class UsageMetrics {
     return aggregates.find((aggregate) => {
       return aggregate.period === "total" && aggregate.scopeId === scopeId && aggregate.scopeType === scopeType;
     }) ?? UsageMetrics.emptyAggregate(scopeType, scopeId);
+  }
+
+  static findPeriodAggregate(
+    aggregates: ReadonlyArray<UsageAggregateRecord>,
+    scopeType: string,
+    scopeId: string,
+    period: UsageAggregatePeriod,
+    periodStart: string,
+  ): UsageAggregateRecord {
+    const targetKey = UsageMetrics.resolveUtcPeriodKey(periodStart, period);
+
+    return aggregates.find((aggregate) => {
+      return aggregate.period === period
+        && aggregate.scopeId === scopeId
+        && aggregate.scopeType === scopeType
+        && UsageMetrics.resolveUtcPeriodKey(aggregate.periodStart, period) === targetKey;
+    }) ?? UsageMetrics.emptyAggregate(scopeType, scopeId, period, periodStart);
+  }
+
+  static findCurrentDayAggregate(
+    aggregates: ReadonlyArray<UsageAggregateRecord>,
+    scopeType: string,
+    scopeId: string,
+  ): UsageAggregateRecord {
+    return UsageMetrics.findPeriodAggregate(
+      aggregates,
+      scopeType,
+      scopeId,
+      "day",
+      UsageMetrics.resolveUtcDayStart(0),
+    );
+  }
+
+  static findCurrentMonthAggregate(
+    aggregates: ReadonlyArray<UsageAggregateRecord>,
+    scopeType: string,
+    scopeId: string,
+  ): UsageAggregateRecord {
+    return UsageMetrics.findPeriodAggregate(
+      aggregates,
+      scopeType,
+      scopeId,
+      "month",
+      UsageMetrics.resolveUtcMonthStart(0),
+    );
+  }
+
+  static buildRecentDailyAggregates(
+    aggregates: ReadonlyArray<UsageAggregateRecord>,
+    scopeType: string,
+    scopeId: string,
+    dayCount: number,
+  ): UsageAggregateRecord[] {
+    return Array.from({ length: dayCount }, (_value, index) => {
+      return UsageMetrics.findPeriodAggregate(
+        aggregates,
+        scopeType,
+        scopeId,
+        "day",
+        UsageMetrics.resolveUtcDayStart(dayCount - index - 1),
+      );
+    });
   }
 
   static sortPeriodAggregates(aggregates: ReadonlyArray<UsageAggregateRecord>): UsageAggregateRecord[] {
@@ -168,6 +235,10 @@ export class UsageMetrics {
   }
 
   static resolveBarWidth(value: number, maxValue: number): string {
+    return UsageMetrics.resolveBarPercentage(value, maxValue);
+  }
+
+  static resolveBarPercentage(value: number, maxValue: number): string {
     if (value <= 0 || maxValue <= 0) {
       return "0%";
     }
@@ -191,5 +262,22 @@ export class UsageMetrics {
     }
 
     return null;
+  }
+
+  private static resolveUtcPeriodKey(periodStart: string, period: UsageAggregatePeriod): string {
+    const date = new Date(periodStart);
+    if (Number.isNaN(date.getTime())) {
+      return periodStart;
+    }
+
+    if (period === "month") {
+      return `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+    }
+
+    if (period === "day") {
+      return `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
+    }
+
+    return "total";
   }
 }

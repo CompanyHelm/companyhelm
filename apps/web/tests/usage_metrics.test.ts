@@ -59,3 +59,43 @@ test("returns an empty total aggregate when a scope has no recorded usage", () =
   assert.equal(aggregate.totalCostNanoUsd, 0);
   assert.equal(aggregate.totalTokens, 0);
 });
+
+test("finds current period aggregates and falls back to period-specific empty records", () => {
+  const monthlyStart = UsageMetrics.resolveUtcMonthStart(0);
+  const monthlyAggregate = UsageMetrics.emptyAggregate("company", "company-1", "month", monthlyStart);
+  monthlyAggregate.totalCostNanoUsd = 7_000_000_000;
+  monthlyAggregate.totalTokens = 900;
+
+  const resolvedMonthlyAggregate = UsageMetrics.findCurrentMonthAggregate(
+    [monthlyAggregate],
+    "company",
+    "company-1",
+  );
+  const missingDailyAggregate = UsageMetrics.findCurrentDayAggregate([], "company", "company-1");
+
+  assert.equal(resolvedMonthlyAggregate.totalCostNanoUsd, 7_000_000_000);
+  assert.equal(resolvedMonthlyAggregate.totalTokens, 900);
+  assert.equal(missingDailyAggregate.period, "day");
+  assert.equal(missingDailyAggregate.totalTokens, 0);
+});
+
+test("builds a continuous recent daily series for bar charts", () => {
+  const todayStart = UsageMetrics.resolveUtcDayStart(0);
+  const todayAggregate = UsageMetrics.emptyAggregate("provider", "credential-1", "day", todayStart);
+  todayAggregate.totalCostNanoUsd = 1_500_000_000;
+  todayAggregate.totalTokens = 42;
+
+  const rows = UsageMetrics.buildRecentDailyAggregates(
+    [todayAggregate],
+    "provider",
+    "credential-1",
+    3,
+  );
+
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0]?.period, "day");
+  assert.equal(rows[0]?.totalTokens, 0);
+  assert.equal(rows[2]?.periodStart, todayStart);
+  assert.equal(rows[2]?.totalCostNanoUsd, 1_500_000_000);
+  assert.equal(rows[2]?.totalTokens, 42);
+});
