@@ -1,6 +1,5 @@
 import { Suspense, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChartColumnIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
-import { formatProviderLabel } from "../model-provider-credentials/provider_label";
-import type { usagePageQuery } from "./__generated__/usagePageQuery.graphql";
+import { formatProviderCredentialType, formatProviderLabel } from "../model-provider-credentials/provider_label";
+import type { settingsUsageTabQuery } from "./__generated__/settingsUsageTabQuery.graphql";
 
-const usagePageQueryNode = graphql`
-  query usagePageQuery($dailyStart: String!, $monthlyStart: String!) {
+const settingsUsageTabQueryNode = graphql`
+  query settingsUsageTabQuery($dailyStart: String!, $monthlyStart: String!) {
     Me {
       company {
         id
@@ -102,13 +101,9 @@ const usagePageQueryNode = graphql`
   }
 `;
 
-function UsagePageFallback() {
+function SettingsUsageTabFallback() {
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-        <ChartColumnIcon className="size-4" />
-        <span>Usage</span>
-      </div>
+    <div className="grid gap-6">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Skeleton className="h-28 rounded-lg" />
         <Skeleton className="h-28 rounded-lg" />
@@ -116,14 +111,14 @@ function UsagePageFallback() {
         <Skeleton className="h-28 rounded-lg" />
       </div>
       <Skeleton className="h-80 rounded-lg" />
-    </main>
+    </div>
   );
 }
 
-function UsagePageContent() {
+function SettingsUsageTabContent() {
   const organizationSlug = useCurrentOrganizationSlug();
-  const data = useLazyLoadQuery<usagePageQuery>(
-    usagePageQueryNode,
+  const data = useLazyLoadQuery<settingsUsageTabQuery>(
+    settingsUsageTabQueryNode,
     {
       dailyStart: UsageMetrics.resolveUtcDayStart(29),
       monthlyStart: UsageMetrics.resolveUtcMonthStart(11),
@@ -156,20 +151,10 @@ function UsagePageContent() {
   }, [data.ModelProviderCredentials, providerTotals]);
 
   return (
-    <main className="flex flex-1 flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <ChartColumnIcon className="size-4" />
-          <span>Usage</span>
-        </div>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Company-wide LLM spend, token volume, and provider contribution for {data.Me.company.name}.
-        </p>
-      </div>
-
+    <div className="grid gap-6">
       <UsageSummaryPanel
         aggregates={companyAggregates}
-        description="Rollup across every agent session in the company. Daily and monthly buckets are UTC-aligned to match the aggregate ledger."
+        description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
         scopeId={data.Me.company.id}
         scopeType="company"
         title="Company usage"
@@ -197,12 +182,22 @@ function UsagePageContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {providerRows.length === 0 ? (
+                <TableRow>
+                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={6}>
+                    No provider credentials found.
+                  </TableCell>
+                </TableRow>
+              ) : null}
+
               {providerRows.map(({ credential, total }) => (
                 <TableRow key={credential.id}>
                   <TableCell>
                     <div className="flex min-w-0 flex-col gap-1">
                       <span className="truncate font-medium text-foreground">{credential.name}</span>
-                      <span className="text-xs text-muted-foreground">{credential.type === "oauth_token" ? "OAuth token" : "API key"}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatProviderCredentialType(String(credential.type))}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -253,14 +248,18 @@ function UsagePageContent() {
           </Table>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
-export function UsagePage() {
+/**
+ * Keeps the aggregate-heavy usage query scoped to the Settings usage tab, so normal settings
+ * visits do not also ask the API for company and provider usage rollups.
+ */
+export function SettingsUsageTab() {
   return (
-    <Suspense fallback={<UsagePageFallback />}>
-      <UsagePageContent />
+    <Suspense fallback={<SettingsUsageTabFallback />}>
+      <SettingsUsageTabContent />
     </Suspense>
   );
 }

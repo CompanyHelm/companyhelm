@@ -8,6 +8,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { SettingsUsageTab } from "./settings_usage_tab";
 import { TaskStageDialog } from "./task_stage_dialog";
 import type { settingsPageCreateTaskStageMutation } from "./__generated__/settingsPageCreateTaskStageMutation.graphql";
 import type { settingsPageDeleteTaskStageMutation } from "./__generated__/settingsPageDeleteTaskStageMutation.graphql";
@@ -15,7 +16,7 @@ import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphq
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
 type SettingsPageSearch = {
-  tab?: "tasks" | "AI";
+  tab?: "tasks" | "AI" | "usage";
 };
 
 const settingsPageQueryNode = graphql`
@@ -89,7 +90,7 @@ function SettingsPageFallback() {
             <span>Settings</span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Loading task and agent AI settings...
+            Loading task, usage, and agent AI settings...
           </p>
         </div>
         <div className="border-b border-border/60" />
@@ -125,7 +126,7 @@ function SettingsPageContent() {
   const [commitUpdateCompanySettings] = useMutation<settingsPageUpdateCompanySettingsMutation>(
     settingsPageUpdateCompanySettingsMutationNode,
   );
-  const selectedTab = search.tab === "AI" ? "AI" : "tasks";
+  const selectedTab = search.tab === "AI" || search.tab === "usage" ? search.tab : "tasks";
 
   return (
     <main className="flex flex-col gap-6">
@@ -136,7 +137,7 @@ function SettingsPageContent() {
             <span>Settings</span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage task lanes and the company-wide prompt inherited by all agent sessions.
+            Manage task lanes, company-wide LLM usage, and the prompt inherited by all agent sessions.
           </p>
         </div>
 
@@ -149,6 +150,10 @@ function SettingsPageContent() {
             {
               key: "AI" as const,
               label: "Agents / AI",
+            },
+            {
+              key: "usage" as const,
+              label: "Usage",
             },
           ]}
           onSelect={(tab) => {
@@ -350,6 +355,8 @@ function SettingsPageContent() {
         </Card>
       ) : null}
 
+      {selectedTab === "usage" ? <SettingsUsageTab /> : null}
+
       <TaskStageDialog
         errorMessage={isTaskStageDialogOpen ? taskErrorMessage : null}
         isOpen={isTaskStageDialogOpen}
@@ -398,7 +405,7 @@ function SettingsPageContent() {
 }
 
 /**
- * Hosts the company settings surface for task stages and shared agent AI configuration.
+ * Hosts the company settings surface for task stages, usage, and shared agent AI configuration.
  */
 export function SettingsPage() {
   return (

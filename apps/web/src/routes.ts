@@ -34,7 +34,6 @@ import { SettingsPage } from "./pages/settings/settings_page";
 import { ArtifactDetailPage } from "./pages/tasks/artifact_detail_page";
 import { TaskDetailPage } from "./pages/tasks/task_detail_page";
 import { TasksPage } from "./pages/tasks/tasks_page";
-import { UsagePage } from "./pages/usage/usage_page";
 import { WorkflowDetailPage } from "./pages/workflows/workflow_detail_page";
 import { WorkflowRunPage } from "./pages/workflows/workflow_run_page";
 import { WorkflowsPage } from "./pages/workflows/workflows_page";
@@ -85,7 +84,7 @@ type ConversationsRouteSearch = {
 };
 
 type SettingsRouteSearch = {
-  tab?: "tasks" | "AI";
+  tab?: "tasks" | "AI" | "usage";
 };
 
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
@@ -175,6 +174,12 @@ function validateSettingsRouteSearch(search: Record<string, unknown>): SettingsR
   if (search.tab === "AI") {
     return {
       tab: "AI",
+    };
+  }
+
+  if (search.tab === "usage") {
+    return {
+      tab: "usage",
     };
   }
 
@@ -279,12 +284,6 @@ const inboxRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/inbox"),
   component: InboxPage,
-});
-
-const usageRoute = createRoute({
-  getParentRoute: () => organizationRoute,
-  path: OrganizationPath.route("/usage"),
-  component: UsagePage,
 });
 
 const conversationsRoute = createRoute({
@@ -452,7 +451,6 @@ const routeTree = rootRoute.addChildren([
         computeProvidersRoute,
         chatsRoute,
         inboxRoute,
-        usageRoute,
         conversationsRoute,
         routinesRoute,
         workflowsRoute,
