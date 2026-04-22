@@ -56,21 +56,28 @@ test("CreateGithubInstallationUrlMutation builds an installation URL with encryp
   const stateService = {
     createState: vi.fn().mockReturnValue("opaque-state"),
   };
-  const mutation = new CreateGithubInstallationUrlMutation(githubClient as never, stateService as never);
+  const resolveForCompany = vi.fn().mockResolvedValue("acme");
+  const mutation = new CreateGithubInstallationUrlMutation(
+    githubClient as never,
+    stateService as never,
+    {
+      resolveForCompany,
+    } as never,
+  );
+  const context = createContext(async () => {
+    throw new Error("transaction should not be used by the mocked slug resolver");
+  });
 
   const payload = await mutation.execute(
     {},
-    {
-      input: {
-        organizationSlug: "acme",
-        returnPath: "/orgs/acme/repositories",
-      },
-    },
-    createContext(async () => {
-      throw new Error("transaction should not be used when creating the install URL");
-    }),
+    {},
+    context,
   );
 
+  assert.deepEqual(resolveForCompany.mock.calls, [[
+    (context as { app_runtime_transaction_provider: unknown }).app_runtime_transaction_provider,
+    "company-123",
+  ]]);
   assert.deepEqual(stateService.createState.mock.calls, [[{
     companyId: "company-123",
     organizationSlug: "acme",

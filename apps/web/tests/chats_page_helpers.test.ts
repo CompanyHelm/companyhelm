@@ -125,7 +125,7 @@ test("resolveGithubInstallationStartToolResult resolves a GitHub install system 
       sourceSessionId: "session-1",
       status: "waiting_for_user",
     })),
-    makeToolCallSummary({ id: "github.installation.start", input: { organizationSlug: "acme" } }),
+    makeToolCallSummary({ id: "github.installation.start" }),
   );
 
   assert.deepEqual(result, {

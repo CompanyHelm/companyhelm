@@ -65,7 +65,7 @@ type Query {
 type Mutation {
   AddAgent(input: AddAgentInput!): Agent!
   AddComputeProviderDefinition(input: AddComputeProviderDefinitionInput!): ComputeProviderDefinition!
-  CreateGithubInstallationUrl(input: CreateGithubInstallationUrlInput!): CreateGithubInstallationUrlPayload!
+  CreateGithubInstallationUrl: CreateGithubInstallationUrlPayload!
   CreateGithubRepositoryProvisioning(
     input: CreateGithubRepositoryProvisioningInput!
   ): GithubRepositoryProvisioning!
@@ -985,12 +985,6 @@ input AddGithubInstallationInput {
   state: String!
 }
 
-input CreateGithubInstallationUrlInput {
-  organizationSlug: String!
-  returnPath: String!
-  sourceSessionId: ID
-}
-
 input CreateGithubRepositoryProvisioningInput {
   githubRepositoryId: ID!
 }
@@ -1239,7 +1233,6 @@ input StartMcpServerOAuthInput {
   mcpServerId: ID!
   oauthClientId: String
   oauthClientSecret: String
-  organizationSlug: String!
   requestedScopes: [String!]
 }
 

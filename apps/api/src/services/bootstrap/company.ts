@@ -112,7 +112,6 @@ export class CompanyBootstrapService {
       "Explain that GitHub is foundational for CompanyHelm because repository access lets agents clone code, understand the stack, make changes, open pull requests, and keep future agents grounded in real implementation context.",
       "Ask whether the user has GitHub repositories for this company.",
       "If yes, activate the Manage GitHub installations system skill and call system_command with id \"github.installation.start\".",
-      "Use input {\"organizationSlug\":\"<current org slug>\"}, where the org slug comes from the current /orgs/:organizationSlug URL.",
       "Show the returned installationUrl to the user and wait for the GitHub callback or user confirmation before continuing.",
       "If the user says they do not use GitHub, explain that codebase discovery and pull request workflows will be limited, then ask whether to skip the GitHub-dependent steps.",
     ].join("\n"),

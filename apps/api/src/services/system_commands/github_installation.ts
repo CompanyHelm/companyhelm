@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { Config } from "../../config/schema.ts";
+import { ClerkOrganizationSlugResolver } from "../../auth/clerk/organization_slug_resolver.ts";
 import { agentSessions } from "../../db/schema.ts";
 import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
 import type { SystemCommandExecutionContext } from "../system_command_service.ts";
 import { AgentGithubInstallationService } from "../agent/session/pi-mono/tools/github/installation_service.ts";
-import { SystemCommandInputReader } from "./input_reader.ts";
 import { SystemCommandJsonSerializer } from "./json_serializer.ts";
 
 type SessionOwnerRow = {
@@ -30,16 +30,19 @@ type SelectableDatabase = {
 export class GithubInstallationSystemCommandService {
   private readonly githubClient: GithubClient;
   private readonly githubInstallationStateService: GithubInstallationStateService;
-  private readonly inputReader = new SystemCommandInputReader();
   private readonly jsonSerializer = new SystemCommandJsonSerializer();
+  private readonly organizationSlugResolver: ClerkOrganizationSlugResolver;
 
   constructor(
     githubClient: GithubClient = new GithubClient({} as Config),
     githubInstallationStateService: GithubInstallationStateService =
       new GithubInstallationStateService({} as Config),
+    organizationSlugResolver: ClerkOrganizationSlugResolver =
+      new ClerkOrganizationSlugResolver({} as Config),
   ) {
     this.githubClient = githubClient;
     this.githubInstallationStateService = githubInstallationStateService;
+    this.organizationSlugResolver = organizationSlugResolver;
   }
 
   async execute(
@@ -75,8 +78,11 @@ export class GithubInstallationSystemCommandService {
     input: unknown,
     context: SystemCommandExecutionContext,
   ): Promise<Record<string, unknown>> {
-    const payload = this.inputReader.requireRecord(input);
-    const organizationSlug = this.resolveOrganizationSlug(payload);
+    void input;
+    const organizationSlug = await this.organizationSlugResolver.resolveForCompany(
+      context.transactionProvider,
+      context.companyId,
+    );
     const returnPath = GithubInstallationSystemCommandService.createSourceSessionReturnPath(
       organizationSlug,
       context,
@@ -120,24 +126,6 @@ export class GithubInstallationSystemCommandService {
     }
 
     return normalizedOwnerUserId;
-  }
-
-  private resolveOrganizationSlug(payload: Record<string, unknown>): string {
-    const explicitOrganizationSlug = this.inputReader.optionalString(payload, "organizationSlug")?.trim();
-    if (explicitOrganizationSlug) {
-      return explicitOrganizationSlug;
-    }
-
-    const returnPath = this.inputReader.optionalString(payload, "returnPath")?.trim() ?? "";
-    const organizationSlugMatch = /^\/orgs\/([^/?#]+)/.exec(returnPath);
-    const organizationSlug = organizationSlugMatch?.[1]
-      ? decodeURIComponent(organizationSlugMatch[1])
-      : "";
-    if (!organizationSlug) {
-      throw new Error("organizationSlug is required to start a GitHub installation from a chat session.");
-    }
-
-    return organizationSlug;
   }
 
   private static createSourceSessionReturnPath(

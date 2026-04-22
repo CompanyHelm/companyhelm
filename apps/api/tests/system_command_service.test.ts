@@ -90,9 +90,7 @@ test("SystemCommandService rejects GitHub installation commands when manage_gith
   });
 
   await assert.rejects(
-    service.executeCommand("github.installation.start", {
-      organizationSlug: "acme",
-    }, {
+    service.executeCommand("github.installation.start", {}, {
       agentId: "agent-1",
       companyId: "company-123",
       sessionId: "session-1",
@@ -105,6 +103,7 @@ test("SystemCommandService rejects GitHub installation commands when manage_gith
 test("SystemCommandService starts GitHub installation flows when manage_github_installations is active", async () => {
   const createState = vi.fn().mockReturnValue("signed-state");
   const buildInstallationUrl = vi.fn().mockReturnValue("https://github.com/apps/companyhelm/installations/new?state=signed-state");
+  const resolveForCompany = vi.fn().mockResolvedValue("acme");
   const transactionProvider = {
     async transaction(callback: (tx: unknown) => Promise<unknown>) {
       return callback({
@@ -135,6 +134,9 @@ test("SystemCommandService starts GitHub installation flows when manage_github_i
     githubInstallationStateService: {
       createState,
     } as never,
+    organizationSlugResolver: {
+      resolveForCompany,
+    } as never,
     sessionSkillService: {
       async isSystemSkillActive(_transactionProvider: unknown, input: {
         systemSkillKey: string;
@@ -146,16 +148,14 @@ test("SystemCommandService starts GitHub installation flows when manage_github_i
     workflowService: {} as never,
   });
 
-  const result = await service.executeCommand("github.installation.start", {
-    organizationSlug: "acme",
-    returnPath: "/orgs/acme",
-  }, {
+  const result = await service.executeCommand("github.installation.start", {}, {
     agentId: "agent-1",
     companyId: "company-123",
     sessionId: "session-1",
     transactionProvider: transactionProvider as never,
   });
 
+  assert.deepEqual(resolveForCompany.mock.calls, [[transactionProvider, "company-123"]]);
   assert.deepEqual(createState.mock.calls, [[{
     companyId: "company-123",
     organizationSlug: "acme",

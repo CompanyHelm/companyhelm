@@ -1,17 +1,12 @@
 import { inject, injectable } from "inversify";
+import { ClerkOrganizationSlugResolver } from "../../auth/clerk/organization_slug_resolver.ts";
 import { Config } from "../../config/schema.ts";
 import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { Mutation } from "./mutation.ts";
 
-type CreateGithubInstallationUrlMutationArguments = {
-  input: {
-    organizationSlug: string;
-    returnPath: string;
-    sourceSessionId?: string | null;
-  };
-};
+type CreateGithubInstallationUrlMutationArguments = Record<string, never>;
 
 type GraphqlCreateGithubInstallationUrlPayload = {
   url: string;
@@ -28,31 +23,40 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
 > {
   private readonly githubClient: GithubClient;
   private readonly githubInstallationStateService: GithubInstallationStateService;
+  private readonly organizationSlugResolver: ClerkOrganizationSlugResolver;
 
   constructor(
     @inject(GithubClient) githubClient: GithubClient = new GithubClient({} as Config),
     @inject(GithubInstallationStateService)
     githubInstallationStateService: GithubInstallationStateService =
       new GithubInstallationStateService({} as Config),
+    @inject(ClerkOrganizationSlugResolver)
+    organizationSlugResolver: ClerkOrganizationSlugResolver =
+      new ClerkOrganizationSlugResolver({} as Config),
   ) {
     super();
     this.githubClient = githubClient;
     this.githubInstallationStateService = githubInstallationStateService;
+    this.organizationSlugResolver = organizationSlugResolver;
   }
 
   protected resolve = async (
-    arguments_: CreateGithubInstallationUrlMutationArguments,
+    _arguments_: CreateGithubInstallationUrlMutationArguments,
     context: GraphqlRequestContext,
   ): Promise<GraphqlCreateGithubInstallationUrlPayload> => {
-    if (!context.authSession?.company) {
+    if (!context.authSession?.company || !context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const organizationSlug = await this.organizationSlugResolver.resolveForCompany(
+      context.app_runtime_transaction_provider,
+      context.authSession.company.id,
+    );
 
     const state = this.githubInstallationStateService.createState({
       companyId: context.authSession.company.id,
-      organizationSlug: this.requireOrganizationSlug(arguments_.input.organizationSlug),
-      returnPath: this.requireReturnPath(arguments_.input.returnPath),
-      sourceSessionId: this.normalizeSourceSessionId(arguments_.input.sourceSessionId),
+      organizationSlug,
+      returnPath: CreateGithubInstallationUrlMutation.createRepositoriesReturnPath(organizationSlug),
+      sourceSessionId: null,
       userId: context.authSession.user.id,
     });
 
@@ -61,26 +65,7 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
     };
   };
 
-  private requireOrganizationSlug(organizationSlug: string): string {
-    const normalizedOrganizationSlug = String(organizationSlug || "").trim();
-    if (!normalizedOrganizationSlug) {
-      throw new Error("organizationSlug is required.");
-    }
-
-    return normalizedOrganizationSlug;
-  }
-
-  private requireReturnPath(returnPath: string): string {
-    const normalizedReturnPath = String(returnPath || "").trim();
-    if (!normalizedReturnPath) {
-      throw new Error("returnPath is required.");
-    }
-
-    return normalizedReturnPath;
-  }
-
-  private normalizeSourceSessionId(sourceSessionId: string | null | undefined): string | null {
-    const normalizedSourceSessionId = String(sourceSessionId || "").trim();
-    return normalizedSourceSessionId || null;
+  private static createRepositoriesReturnPath(organizationSlug: string): string {
+    return `/orgs/${encodeURIComponent(organizationSlug)}/repositories`;
   }
 }

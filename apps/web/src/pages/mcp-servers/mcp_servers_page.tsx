@@ -1,5 +1,4 @@
 import { Suspense, useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { PlusIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
@@ -256,10 +255,6 @@ function McpServersPageFallback() {
 }
 
 function McpServersPageContent() {
-  const routeParams = useParams({ strict: false }) as {
-    organizationSlug?: string;
-  };
-  const organizationSlug = String(routeParams.organizationSlug || "").trim();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
@@ -338,10 +333,6 @@ function McpServersPageContent() {
     oauthClientSecret?: string;
     requestedScopes: string[];
   }) => {
-    if (!organizationSlug) {
-      throw new Error("Organization slug is missing from the current route.");
-    }
-
     await new Promise<void>((resolve, reject) => {
       commitStartOauth({
         variables: {
@@ -349,7 +340,6 @@ function McpServersPageContent() {
             mcpServerId: input.mcpServerId,
             oauthClientId: input.oauthClientId ?? null,
             oauthClientSecret: input.oauthClientSecret ?? null,
-            organizationSlug,
             requestedScopes: input.requestedScopes,
           },
         },

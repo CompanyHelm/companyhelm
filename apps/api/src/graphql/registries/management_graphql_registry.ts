@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
+import { ClerkOrganizationSlugResolver } from "../../auth/clerk/organization_slug_resolver.ts";
 import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
 import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
@@ -131,6 +132,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new CreateGithubInstallationUrlMutation(
         new GithubClient({} as Config),
         new GithubInstallationStateService({} as Config),
+        new ClerkOrganizationSlugResolver({} as Config),
       ),
     @inject(AddGithubInstallationMutation)
     addGithubInstallationMutation: AddGithubInstallationMutation =
@@ -283,6 +285,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         {} as never,
         new SecretEncryptionService(config),
         {} as never,
+        new ClerkOrganizationSlugResolver(config),
       );
     this.skillGroupsQueryResolver = skillGroupsQueryResolver ?? new SkillGroupsQueryResolver(defaultSkillService);
     this.skillQueryResolver = skillQueryResolver ?? new SkillQueryResolver(defaultSkillService);

@@ -1,4 +1,5 @@
 import type { TransactionProviderInterface } from "../db/transaction_provider_interface.ts";
+import { ClerkOrganizationSlugResolver } from "../auth/clerk/organization_slug_resolver.ts";
 import { Config } from "../config/schema.ts";
 import { GithubClient } from "../github/client.ts";
 import { GithubInstallationStateService } from "../github/installation_state_service.ts";
@@ -51,6 +52,7 @@ export class SystemCommandService {
     computeProviderDefinitionService?: ComputeProviderDefinitionService;
     githubClient?: GithubClient;
     githubInstallationStateService?: GithubInstallationStateService;
+    organizationSlugResolver?: ClerkOrganizationSlugResolver;
     mcpService?: McpService;
     modelProviderService?: ModelProviderService;
     modelRegistry?: ModelRegistry;
@@ -76,6 +78,7 @@ export class SystemCommandService {
     this.githubInstallationCommandService = new GithubInstallationSystemCommandService(
       input.githubClient ?? new GithubClient({} as Config),
       input.githubInstallationStateService ?? new GithubInstallationStateService({} as Config),
+      input.organizationSlugResolver ?? new ClerkOrganizationSlugResolver({} as Config),
     );
     this.sessionSkillService = input.sessionSkillService ?? new SessionSkillService();
     this.skillManagementCommandService = new SkillManagementSystemCommandService(

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<23d741a50c762ee6bfd9b22c9c7a9ee8>>
+ * @generated SignedSource<<f5d769a226c88ae54302196a8b125a96>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,6 @@ export type StartMcpServerOAuthInput = {
   mcpServerId: string;
   oauthClientId?: string | null | undefined;
   oauthClientSecret?: string | null | undefined;
-  organizationSlug: string;
   requestedScopes?: ReadonlyArray<string> | null | undefined;
 };
 export type mcpServersPageStartOauthMutation$variables = {

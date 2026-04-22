@@ -20,6 +20,10 @@ function createLoggerMock() {
 test("StartMcpServerOauthMutation returns an authorization URL and stores a pending session", async () => {
   const insertedValues: Record<string, unknown>[] = [];
   const deletedWhereConditions: unknown[] = [];
+  const stateService = {
+    createState: vi.fn().mockReturnValue("opaque-state"),
+  };
+  const resolveForCompany = vi.fn().mockResolvedValue("acme");
   const mutation = new StartMcpServerOauthMutation(
     {
       webPublicUrl: "https://app.example.com",
@@ -67,9 +71,7 @@ test("StartMcpServerOauthMutation returns an authorization URL and stores a pend
         tokenEndpointAuthMethod: "client_secret_post",
       }),
     } as never,
-    {
-      createState: vi.fn().mockReturnValue("opaque-state"),
-    } as never,
+    stateService as never,
     {
       encrypt(value: string) {
         return {
@@ -79,6 +81,9 @@ test("StartMcpServerOauthMutation returns an authorization URL and stores a pend
       },
     } as never,
     createLoggerMock() as never,
+    {
+      resolveForCompany,
+    } as never,
   );
 
   const payload = await mutation.execute(
@@ -86,7 +91,6 @@ test("StartMcpServerOauthMutation returns an authorization URL and stores a pend
     {
       input: {
         mcpServerId: "mcp-server-123",
-        organizationSlug: "acme",
         requestedScopes: ["repo:read", "mcp:tools"],
       },
     },
@@ -151,6 +155,14 @@ test("StartMcpServerOauthMutation returns an authorization URL and stores a pend
   assert.equal(insertedValues[0]?.mcpServerId, "mcp-server-123");
   assert.deepEqual(insertedValues[0]?.requestedScopes, ["repo:read", "mcp:tools"]);
   assert.equal(deletedWhereConditions.length, 1);
+  assert.deepEqual(resolveForCompany.mock.calls[0]?.[1], "company-123");
+  assert.deepEqual(stateService.createState.mock.calls[0]?.[0], {
+    companyId: "company-123",
+    mcpServerId: "mcp-server-123",
+    organizationSlug: "acme",
+    sessionId: insertedValues[0]?.id,
+    userId: "user-123",
+  });
 });
 
 test("CompleteMcpServerOauthMutation uses the signed callback state to target the original company", async () => {

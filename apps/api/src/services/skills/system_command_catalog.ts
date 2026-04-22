@@ -536,15 +536,7 @@ export class SystemCommandCatalog {
     id: "github.installation.start",
     inputSchema: {
       additionalProperties: false,
-      anyOf: [{
-        required: ["organizationSlug"],
-      }, {
-        required: ["returnPath"],
-      }],
-      properties: {
-        organizationSlug: { type: "string" },
-        returnPath: { type: "string" },
-      },
+      properties: {},
       type: "object",
     },
     systemSkillKey: "manage_github_installations",

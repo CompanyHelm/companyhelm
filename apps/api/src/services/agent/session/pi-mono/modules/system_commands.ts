@@ -1,4 +1,5 @@
 import { SystemCommandService } from "../../../../system_command_service.ts";
+import { ClerkOrganizationSlugResolver } from "../../../../../auth/clerk/organization_slug_resolver.ts";
 import { GithubClient } from "../../../../../github/client.ts";
 import { GithubInstallationStateService } from "../../../../../github/installation_state_service.ts";
 import { ArtifactService } from "../../../../artifact_service.ts";
@@ -19,6 +20,7 @@ type SystemCommandsSessionModuleInput = {
   computeProviderDefinitionService: ComputeProviderDefinitionService;
   githubClient: GithubClient;
   githubInstallationStateService: GithubInstallationStateService;
+  organizationSlugResolver: ClerkOrganizationSlugResolver;
   mcpService: McpService;
   modelProviderService: ModelProviderService;
   modelRegistry: ModelRegistry;
@@ -36,6 +38,7 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly githubClient: GithubClient;
   private readonly githubInstallationStateService: GithubInstallationStateService;
+  private readonly organizationSlugResolver: ClerkOrganizationSlugResolver;
   private readonly mcpService: McpService;
   private readonly modelProviderService: ModelProviderService;
   private readonly modelRegistry: ModelRegistry;
@@ -49,6 +52,7 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
     this.computeProviderDefinitionService = input.computeProviderDefinitionService;
     this.githubClient = input.githubClient;
     this.githubInstallationStateService = input.githubInstallationStateService;
+    this.organizationSlugResolver = input.organizationSlugResolver;
     this.mcpService = input.mcpService;
     this.modelProviderService = input.modelProviderService;
     this.modelRegistry = input.modelRegistry;
@@ -74,6 +78,7 @@ export class SystemCommandsSessionModule extends AgentSessionModuleInterface {
           computeProviderDefinitionService: this.computeProviderDefinitionService,
           githubClient: this.githubClient,
           githubInstallationStateService: this.githubInstallationStateService,
+          organizationSlugResolver: this.organizationSlugResolver,
           mcpService: this.mcpService,
           modelProviderService: this.modelProviderService,
           modelRegistry: this.modelRegistry,

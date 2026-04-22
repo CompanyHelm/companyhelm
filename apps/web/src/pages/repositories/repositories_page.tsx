@@ -42,8 +42,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageTabs } from "@/components/ui/page_tabs";
-import { OrganizationPath } from "@/lib/organization_path";
-import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { repositoriesPageCreateGithubRepositoryProvisioningMutation } from "./__generated__/repositoriesPageCreateGithubRepositoryProvisioningMutation.graphql";
 import type { repositoriesPageCreateGithubInstallationUrlMutation } from "./__generated__/repositoriesPageCreateGithubInstallationUrlMutation.graphql";
 import type { repositoriesPageDeleteGithubInstallationMutation } from "./__generated__/repositoriesPageDeleteGithubInstallationMutation.graphql";
@@ -100,10 +98,8 @@ const repositoriesPageQueryNode = graphql`
 `;
 
 const repositoriesPageCreateGithubInstallationUrlMutationNode = graphql`
-  mutation repositoriesPageCreateGithubInstallationUrlMutation(
-    $input: CreateGithubInstallationUrlInput!
-  ) {
-    CreateGithubInstallationUrl(input: $input) {
+  mutation repositoriesPageCreateGithubInstallationUrlMutation {
+    CreateGithubInstallationUrl {
       url
     }
   }
@@ -277,7 +273,6 @@ function RepositoriesPageFallback() {
 }
 
 function RepositoriesPageContent() {
-  const organizationSlug = useCurrentOrganizationSlug();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [refreshedInstallationId, setRefreshedInstallationId] = useState<string | null>(null);
@@ -551,12 +546,7 @@ function RepositoriesPageContent() {
                 setErrorMessage(null);
                 setNoticeMessage(null);
                 commitCreateGithubInstallationUrl({
-                  variables: {
-                    input: {
-                      organizationSlug,
-                      returnPath: OrganizationPath.href(organizationSlug, "/repositories"),
-                    },
-                  },
+                  variables: {},
                   onCompleted: (response, errors) => {
                     const nextErrorMessage = String(errors?.[0]?.message || "").trim();
                     if (nextErrorMessage) {
