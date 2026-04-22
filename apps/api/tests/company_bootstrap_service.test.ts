@@ -2,16 +2,29 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
 import {
+  agentSkills,
   agents,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
   taskStages,
+  workflowDefinitions,
+  workflowStepDefinitions,
 } from "../src/db/schema.ts";
 import { CompanyHelmLlmProviderService } from "../src/services/ai_providers/companyhelm_service.ts";
 import { ModelRegistry } from "../src/services/ai_providers/model_registry.ts";
 import { CompanyBootstrapService } from "../src/services/bootstrap/company.ts";
 import { CompanyHelmComputeProviderService } from "../src/services/compute_provider_definitions/companyhelm_service.ts";
+
+const expectedSystemSkillKeys = [
+  "company_directory",
+  "execute_workflows",
+  "manage_agents",
+  "manage_artifacts",
+  "manage_github_installations",
+  "manage_skills",
+  "manage_workflows",
+];
 
 type BaseDefinitionRow = {
   companyId: string;
@@ -27,6 +40,7 @@ type BaseDefinitionRow = {
 type TaskStageRow = {
   companyId: string;
   createdAt: Date;
+  isDefault?: boolean;
   name: string;
   updatedAt: Date;
 };
@@ -69,26 +83,64 @@ type AgentRow = {
   updated_at: Date;
 };
 
+type AgentSkillRow = {
+  agentId: string;
+  companyId: string;
+  createdAt: Date;
+  createdByUserId: string | null;
+  skillId: string | null;
+  systemSkillKey: string | null;
+};
+
+type WorkflowDefinitionRow = {
+  companyId: string;
+  createdAt: Date;
+  createdByAgentId: string | null;
+  createdByUserId: string | null;
+  description: string | null;
+  id: string;
+  instructions_template: string | null;
+  isEnabled: boolean;
+  name: string;
+  updatedAt: Date;
+};
+
+type WorkflowStepDefinitionRow = {
+  createdAt: Date;
+  instructions_template: string | null;
+  name: string;
+  ordinal: number;
+  stepId: string;
+  workflowDefinitionId: string;
+};
+
 /**
  * Provides the narrow database surface needed to verify company default seeding without a real
  * database connection.
  */
 class CompanyBootstrapServiceTestHarness {
+  private readonly agentSkillRows: AgentSkillRow[];
   private readonly agentRows: AgentRow[];
   private readonly baseDefinitions: BaseDefinitionRow[];
   private readonly companyHelmOpenAiApiKey: string | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
   private readonly taskStageRows: TaskStageRow[];
+  private readonly workflowDefinitionRows: WorkflowDefinitionRow[];
+  private readonly workflowStepDefinitionRows: WorkflowStepDefinitionRow[];
 
   constructor(params?: {
+    agentSkillRows?: AgentSkillRow[];
     agentRows?: AgentRow[];
     baseDefinitions?: BaseDefinitionRow[];
     companyHelmOpenAiApiKey?: string | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
     taskStageRows?: TaskStageRow[];
+    workflowDefinitionRows?: WorkflowDefinitionRow[];
+    workflowStepDefinitionRows?: WorkflowStepDefinitionRow[];
   }) {
+    this.agentSkillRows = [...(params?.agentSkillRows ?? [])];
     this.agentRows = [...(params?.agentRows ?? [])];
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
     this.companyHelmOpenAiApiKey = params?.companyHelmOpenAiApiKey === undefined
@@ -97,6 +149,8 @@ class CompanyBootstrapServiceTestHarness {
     this.modelCredentialRows = [...(params?.modelCredentialRows ?? [])];
     this.modelRows = [...(params?.modelRows ?? [])];
     this.taskStageRows = [...(params?.taskStageRows ?? [])];
+    this.workflowDefinitionRows = [...(params?.workflowDefinitionRows ?? [])];
+    this.workflowStepDefinitionRows = [...(params?.workflowStepDefinitionRows ?? [])];
   }
 
   buildService(): CompanyBootstrapService {
@@ -131,11 +185,14 @@ class CompanyBootstrapServiceTestHarness {
   }
 
   buildTransaction() {
+    const agentSkillRows = this.agentSkillRows;
     const agentRows = this.agentRows;
     const baseDefinitions = this.baseDefinitions;
     const modelCredentialRows = this.modelCredentialRows;
     const modelRows = this.modelRows;
     const taskStageRows = this.taskStageRows;
+    const workflowDefinitionRows = this.workflowDefinitionRows;
+    const workflowStepDefinitionRows = this.workflowStepDefinitionRows;
     let modelCredentialSelectCount = 0;
 
     return {
@@ -167,6 +224,22 @@ class CompanyBootstrapServiceTestHarness {
                     model.reasoningSupported = value.reasoningSupported as boolean;
                   }
                   return;
+                }
+
+                if (table === taskStages) {
+                  if (value.isDefault === false) {
+                    taskStageRows.forEach((row) => {
+                      row.isDefault = false;
+                    });
+                    return;
+                  }
+                  if (value.isDefault === true) {
+                    const defaultStage = taskStageRows.find((row) => row.name === "Backlog");
+                    if (defaultStage) {
+                      defaultStage.isDefault = true;
+                    }
+                    return;
+                  }
                 }
 
                 throw new Error("Unexpected update table.");
@@ -275,11 +348,75 @@ class CompanyBootstrapServiceTestHarness {
                 defaultEnvironmentTemplateId: value.defaultEnvironmentTemplateId as string,
                 defaultModelProviderCredentialModelId: value.defaultModelProviderCredentialModelId as string,
                 default_reasoning_level: value.default_reasoning_level as string | null,
-                id: `agent-row-${agentRows.length + 1}`,
+                id: value.id as string,
                 name: value.name as string,
                 system_prompt: value.system_prompt as string | null,
                 updated_at: value.updated_at as Date,
               });
+
+              return {};
+            }
+
+            if (table === agentSkills) {
+              if (Array.isArray(value)) {
+                throw new Error("Unexpected agent skill batch insert.");
+              }
+
+              return {
+                onConflictDoNothing() {
+                  if (!agentSkillRows.some((row) => {
+                    return row.agentId === value.agentId
+                      && row.companyId === value.companyId
+                      && row.systemSkillKey === value.systemSkillKey;
+                  })) {
+                    agentSkillRows.push({
+                      agentId: value.agentId as string,
+                      companyId: value.companyId as string,
+                      createdAt: value.createdAt as Date,
+                      createdByUserId: value.createdByUserId as string | null,
+                      skillId: value.skillId as string | null,
+                      systemSkillKey: value.systemSkillKey as string | null,
+                    });
+                  }
+
+                  return this;
+                },
+              };
+            }
+
+            if (table === workflowDefinitions) {
+              if (Array.isArray(value)) {
+                throw new Error("Unexpected workflow definition batch insert.");
+              }
+
+              workflowDefinitionRows.push({
+                companyId: value.companyId as string,
+                createdAt: value.createdAt as Date,
+                createdByAgentId: value.createdByAgentId as string | null,
+                createdByUserId: value.createdByUserId as string | null,
+                description: value.description as string | null,
+                id: value.id as string,
+                instructions_template: value.instructions_template as string | null,
+                isEnabled: Boolean(value.isEnabled),
+                name: value.name as string,
+                updatedAt: value.updatedAt as Date,
+              });
+
+              return {};
+            }
+
+            if (table === workflowStepDefinitions) {
+              const values = Array.isArray(value) ? value : [value];
+              for (const stepValue of values) {
+                workflowStepDefinitionRows.push({
+                  createdAt: stepValue.createdAt as Date,
+                  instructions_template: stepValue.instructions_template as string | null,
+                  name: stepValue.name as string,
+                  ordinal: stepValue.ordinal as number,
+                  stepId: stepValue.stepId as string,
+                  workflowDefinitionId: stepValue.workflowDefinitionId as string,
+                });
+              }
 
               return {};
             }
@@ -298,6 +435,7 @@ class CompanyBootstrapServiceTestHarness {
                     taskStageRows.push({
                       companyId: value.companyId as string,
                       createdAt: value.createdAt as Date,
+                      isDefault: Boolean(value.isDefault),
                       name: value.name as string,
                       updatedAt: value.updatedAt as Date,
                     });
@@ -338,6 +476,11 @@ class CompanyBootstrapServiceTestHarness {
 
                       return modelCredentialRows.filter((row) => row.isDefault).slice(0, 1);
                     }
+                    if (table === workflowDefinitions) {
+                      return workflowDefinitionRows
+                        .filter((row) => row.name === CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME)
+                        .slice(0, 1);
+                    }
 
                     return [];
                   },
@@ -368,6 +511,20 @@ class CompanyBootstrapServiceTestHarness {
 
   listAgents(): AgentRow[] {
     return this.agentRows;
+  }
+
+  listAgentSystemSkillKeys(): string[] {
+    return this.agentSkillRows
+      .flatMap((row) => row.systemSkillKey ? [row.systemSkillKey] : [])
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  listWorkflowDefinitions(): WorkflowDefinitionRow[] {
+    return this.workflowDefinitionRows;
+  }
+
+  listWorkflowSteps(): WorkflowStepDefinitionRow[] {
+    return [...this.workflowStepDefinitionRows].sort((left, right) => left.ordinal - right.ordinal);
   }
 
   loadDefaultDefinition(): BaseDefinitionRow | null {
@@ -439,11 +596,38 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   assert.equal(defaultModel?.modelProviderCredentialId, managedCredential?.id);
   assert.equal(seedAgent?.default_reasoning_level, "high");
   assert.equal(seedAgent?.system_prompt, null);
+  assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
+
+  const [workflow] = harness.listWorkflowDefinitions();
+  assert.equal(workflow?.companyId, "company-1");
+  assert.equal(workflow?.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME);
+  assert.equal(workflow?.isEnabled, true);
+  assert.match(workflow?.description ?? "", /GitHub setup/);
+
+  const workflowSteps = harness.listWorkflowSteps();
+  assert.deepEqual(workflowSteps.map((step) => step.name), [
+    "Capture company intent",
+    "Connect GitHub",
+    "Map the tech stack",
+    "Propose starter agents",
+  ]);
+  assert.match(workflowSteps[0]?.instructions_template ?? "", /artifact\.markdown\.create/);
+  assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /clone_github_repository/);
+  assert.match(workflowSteps[3]?.instructions_template ?? "", /skill\.github\.import/);
 });
 
 test("CompanyBootstrapService does not duplicate seeded defaults when rerun", async () => {
   const now = new Date("2026-04-03T18:00:00.000Z");
   const harness = new CompanyBootstrapServiceTestHarness({
+    agentSkillRows: expectedSystemSkillKeys.map((systemSkillKey) => ({
+      agentId: "agent-row-1",
+      companyId: "company-1",
+      createdAt: now,
+      createdByUserId: null,
+      skillId: null,
+      systemSkillKey,
+    })),
     baseDefinitions: [{
       companyId: "company-1",
       createdAt: now,
@@ -505,6 +689,47 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       name: "Archive",
       updatedAt: now,
     }],
+    workflowDefinitionRows: [{
+      companyId: "company-1",
+      createdAt: now,
+      createdByAgentId: null,
+      createdByUserId: null,
+      description: "Guides a new company through mission capture, GitHub setup, codebase discovery, and first agent recommendations.",
+      id: "workflow-1",
+      instructions_template: "Run this workflow in the CEO onboarding chat for newly created companies.",
+      isEnabled: true,
+      name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
+      updatedAt: now,
+    }],
+    workflowStepDefinitionRows: [{
+      createdAt: now,
+      instructions_template: "Ask for mission.",
+      name: "Capture company intent",
+      ordinal: 1,
+      stepId: "capture-company-intent",
+      workflowDefinitionId: "workflow-1",
+    }, {
+      createdAt: now,
+      instructions_template: "Connect GitHub.",
+      name: "Connect GitHub",
+      ordinal: 2,
+      stepId: "connect-github",
+      workflowDefinitionId: "workflow-1",
+    }, {
+      createdAt: now,
+      instructions_template: "Map stack.",
+      name: "Map the tech stack",
+      ordinal: 3,
+      stepId: "map-tech-stack",
+      workflowDefinitionId: "workflow-1",
+    }, {
+      createdAt: now,
+      instructions_template: "Propose agents.",
+      name: "Propose starter agents",
+      ordinal: 4,
+      stepId: "propose-starter-agents",
+      workflowDefinitionId: "workflow-1",
+    }],
   });
   const service = harness.buildService();
 
@@ -520,5 +745,8 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
   assert.equal(harness.listModelCredentials().length, 1);
   assert.equal(harness.listModels().filter((model) => model.modelId === "gpt-5.4").length, 1);
   assert.equal(harness.listAgents().filter((agent) => agent.name === "CEO").length, 1);
+  assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
+  assert.equal(harness.listWorkflowDefinitions().length, 1);
+  assert.equal(harness.listWorkflowSteps().length, 4);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });

@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { DatabaseTransactionInterface } from "../../db/database_interface.ts";
 import {
+  agentSkills,
   agents,
   companies,
   companyMembers,
@@ -9,10 +11,13 @@ import {
   modelProviderCredentialModels,
   modelProviderCredentials,
   taskStages,
+  workflowDefinitions,
+  workflowStepDefinitions,
 } from "../../db/schema.ts";
 import type { ComputeProvider } from "../environments/providers/provider_interface.ts";
 import { CompanyHelmLlmProviderService } from "../ai_providers/companyhelm_service.ts";
 import { CompanyHelmComputeProviderService } from "../compute_provider_definitions/companyhelm_service.ts";
+import { SystemSkillRegistry } from "../skills/system_registry.ts";
 import { TaskStageService } from "../task_stage_service.ts";
 
 type CompanyRecord = {
@@ -82,9 +87,62 @@ export class CompanyBootstrapService {
   static readonly DEFAULT_TASK_STAGE_NAME = TaskStageService.DEFAULT_TASK_STAGE_NAME;
   static readonly SEEDED_TASK_STAGE_NAMES = [CompanyBootstrapService.DEFAULT_TASK_STAGE_NAME, "TODO", "Archive"] as const;
   static readonly SEED_AGENT_NAME = "CEO";
+  static readonly SEED_ONBOARDING_WORKFLOW_NAME = "Company onboarding";
   private static readonly SEED_AGENT_ENVIRONMENT_TEMPLATE_ID = "medium";
+  private static readonly SEED_ONBOARDING_WORKFLOW_DESCRIPTION =
+    "Guides a new company through mission capture, GitHub setup, codebase discovery, and first agent recommendations.";
+  private static readonly SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS = [
+    "Run this workflow in the CEO onboarding chat for newly created companies.",
+    "Keep the conversation focused and ask only one question at a time.",
+    "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
+    "Do not create agents or import skills without user confirmation.",
+  ].join("\n");
+  private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
+    instructions: [
+      "Ask one quick question: \"What is this company's mission, and what goals should its first agents help with?\"",
+      "After the user answers, activate the Manage artifacts system skill.",
+      "Call system_command with id \"artifact.markdown.create\" and input that creates an active company-scoped markdown artifact named \"Company mission and goals\".",
+      "The artifact content should include short sections for Mission, Near-term goals, Constraints, and Open questions.",
+      "Keep the saved document concise. Do not ask follow-up questions unless the answer is too vague to preserve.",
+    ].join("\n"),
+    name: "Capture company intent",
+    stepId: "capture-company-intent",
+  }, {
+    instructions: [
+      "Explain that GitHub is foundational for CompanyHelm because repository access lets agents clone code, understand the stack, make changes, open pull requests, and keep future agents grounded in real implementation context.",
+      "Ask whether the user has GitHub repositories for this company.",
+      "If yes, activate the Manage GitHub installations system skill and call system_command with id \"github.installation.start\".",
+      "Use input {\"organizationSlug\":\"<current org slug>\"}, where the org slug comes from the current /orgs/:organizationSlug URL.",
+      "Show the returned installationUrl to the user and wait for the GitHub callback or user confirmation before continuing.",
+      "If the user says they do not use GitHub, explain that codebase discovery and pull request workflows will be limited, then ask whether to skip the GitHub-dependent steps.",
+    ].join("\n"),
+    name: "Connect GitHub",
+    stepId: "connect-github",
+  }, {
+    instructions: [
+      "After GitHub setup completes, activate the Manage GitHub installations system skill and call system_command with id \"github.installation.list\".",
+      "Clone every non-archived repository returned by the installation list with clone_github_repository, using the repository fullName and installationId from the list output.",
+      "Explore each checkout for manifests, lockfiles, README files, package manager config, Dockerfiles, deployment files, CI config, database migrations, API boundaries, frontend frameworks, and test/build commands.",
+      "Activate the Manage artifacts system skill. Call artifact.list for scopeType \"company\" first so you do not duplicate an existing tech stack document.",
+      "Create or update an active company-scoped markdown artifact named \"Tech stack\" summarizing repositories scanned, languages, frameworks, runtime services, data stores, infrastructure, deployment path, important commands, and notable gaps.",
+      "If cloning fails for any repository, include the failure and continue with the repositories that are available.",
+    ].join("\n"),
+    name: "Map the tech stack",
+    stepId: "map-tech-stack",
+  }, {
+    instructions: [
+      "Look for connected repositories whose names or descriptions match Agency Agents, agency-agents, agents, or GStack/gstack. If the exact repositories are not visible, ask the user for the owner/name values or for expanded GitHub App repository access.",
+      "Clone the Agency Agents and GStack repositories when available and inspect their agent definitions, skills, prompts, setup docs, and examples.",
+      "Activate the Manage skills system skill. If the user approves importing Superpowers-style development skills, call system_command with id \"skill.github.import\" using repository \"obra/superpowers\", branchName \"main\", and selected skillDirectory values such as \"skills/using-superpowers\", \"skills/systematic-debugging\", \"skills/writing-plans\", \"skills/executing-plans\", \"skills/using-git-worktrees\", \"skills/test-driven-development\", and \"skills/verification-before-completion\".",
+      "Propose a small first team of 3 to 5 agents based on the mission and tech stack. For each proposed agent include name, responsibility, model/compute assumptions, useful skills, and the first task it should own.",
+      "Ask for confirmation before creating agents. After approval, activate the Manage agents system skill and use agent.create plus agent.skill.attach or agent.skill_group.attach as needed.",
+    ].join("\n"),
+    name: "Propose starter agents",
+    stepId: "propose-starter-agents",
+  }] as const;
   private readonly companyHelmComputeProviderService: CompanyHelmComputeProviderService;
   private readonly companyHelmLlmProviderService: CompanyHelmLlmProviderService;
+  private readonly systemSkillRegistry = new SystemSkillRegistry();
 
   constructor(
     @inject(CompanyHelmComputeProviderService)
@@ -175,18 +233,30 @@ export class CompanyBootstrapService {
       modelProviderCredential = await this.ensureCompanyHelmLlmProviderCredential(transaction, companyId);
     }
     await this.ensureDefaultTaskStages(transaction, companyId);
+    if (options.seedAgent) {
+      await this.ensureCompanyOnboardingWorkflow(transaction, companyId);
+    }
     if (options.seedAgent && modelProviderCredential) {
       const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, companyId);
       if (!computeProviderDefinition) {
         throw new Error("Failed to resolve CompanyHelm compute provider definition for the seed agent.");
       }
 
-      await this.ensureCompanyHelmSeedAgent(
+      const seedAgent = await this.ensureCompanyHelmSeedAgent(
         transaction,
         companyId,
         computeProviderDefinition.id,
         modelProviderCredential.id,
       );
+      await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, companyId, seedAgent.id);
+      return;
+    }
+
+    if (options.seedAgent) {
+      const existingSeedAgent = await this.findCompanyHelmSeedAgent(transaction, companyId);
+      if (existingSeedAgent) {
+        await this.ensureCompanyHelmSeedAgentSystemSkills(transaction, companyId, existingSeedAgent.id);
+      }
     }
   }
 
@@ -467,19 +537,10 @@ export class CompanyBootstrapService {
     companyId: string,
     computeProviderDefinitionId: string,
     modelProviderCredentialId: string,
-  ): Promise<void> {
-    const [existingAgent] = await transaction
-      .select({
-        id: agents.id,
-      })
-      .from(agents)
-      .where(and(
-        eq(agents.companyId, companyId),
-        eq(agents.name, CompanyBootstrapService.SEED_AGENT_NAME),
-      ))
-      .limit(1) as AgentRecord[];
+  ): Promise<AgentRecord> {
+    const existingAgent = await this.findCompanyHelmSeedAgent(transaction, companyId);
     if (existingAgent) {
-      return;
+      return existingAgent;
     }
 
     const defaultModel = await this.findCompanyHelmDefaultModel(
@@ -492,6 +553,7 @@ export class CompanyBootstrapService {
     }
 
     const now = new Date();
+    const seedAgentId = randomUUID();
     await (transaction as BootstrapInsertableDatabase)
       .insert(agents)
       .values({
@@ -501,10 +563,105 @@ export class CompanyBootstrapService {
         defaultEnvironmentTemplateId: CompanyBootstrapService.SEED_AGENT_ENVIRONMENT_TEMPLATE_ID,
         defaultModelProviderCredentialModelId: defaultModel.id,
         default_reasoning_level: this.resolveCompanyHelmDefaultReasoningLevel(defaultModel.reasoningLevels ?? []),
+        id: seedAgentId,
         name: CompanyBootstrapService.SEED_AGENT_NAME,
         system_prompt: null,
         updated_at: now,
       });
+
+    return { id: seedAgentId };
+  }
+
+  private async findCompanyHelmSeedAgent(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<AgentRecord | null> {
+    const [existingAgent] = await transaction
+      .select({
+        id: agents.id,
+      })
+      .from(agents)
+      .where(and(
+        eq(agents.companyId, companyId),
+        eq(agents.name, CompanyBootstrapService.SEED_AGENT_NAME),
+      ))
+      .limit(1) as AgentRecord[];
+
+    return existingAgent ?? null;
+  }
+
+  private async ensureCompanyHelmSeedAgentSystemSkills(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+    agentId: string,
+  ): Promise<void> {
+    const insertableDatabase = transaction as BootstrapInsertableDatabase;
+    const now = new Date();
+
+    for (const systemSkill of this.systemSkillRegistry.listSkills(companyId)) {
+      if (!systemSkill.systemKey) {
+        continue;
+      }
+
+      const insertOperation = insertableDatabase
+        .insert(agentSkills)
+        .values({
+          agentId,
+          companyId,
+          createdAt: now,
+          createdByUserId: null,
+          skillId: null,
+          systemSkillKey: systemSkill.systemKey,
+        }) as BootstrapInsertOperation;
+      await insertOperation.onConflictDoNothing();
+    }
+  }
+
+  private async ensureCompanyOnboardingWorkflow(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<void> {
+    const [existingWorkflow] = await transaction
+      .select({
+        id: workflowDefinitions.id,
+      })
+      .from(workflowDefinitions)
+      .where(and(
+        eq(workflowDefinitions.companyId, companyId),
+        eq(workflowDefinitions.name, CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME),
+      ))
+      .limit(1) as Array<{ id: string }>;
+    if (existingWorkflow) {
+      return;
+    }
+
+    const now = new Date();
+    const workflowDefinitionId = randomUUID();
+    const insertableDatabase = transaction as BootstrapInsertableDatabase;
+    await insertableDatabase
+      .insert(workflowDefinitions)
+      .values({
+        companyId,
+        createdAt: now,
+        createdByAgentId: null,
+        createdByUserId: null,
+        description: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_DESCRIPTION,
+        id: workflowDefinitionId,
+        instructions_template: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_INSTRUCTIONS,
+        isEnabled: true,
+        name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
+        updatedAt: now,
+      });
+    await insertableDatabase
+      .insert(workflowStepDefinitions)
+      .values(CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_STEPS.map((step, index) => ({
+        createdAt: now,
+        instructions_template: step.instructions,
+        name: step.name,
+        ordinal: index + 1,
+        stepId: step.stepId,
+        workflowDefinitionId,
+      })));
   }
 
   private async findCompanyHelmDefaultModel(
