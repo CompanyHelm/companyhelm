@@ -3,6 +3,7 @@ import {
   bigint,
   check,
   index,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -12,6 +13,19 @@ import {
   boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm/sql";
+
+export const companySubscriptionPlanEnum = pgEnum("company_subscription_plan", [
+  "free",
+  "starter",
+  "team",
+  "enterprise",
+]);
+export const companySubscriptionStatusEnum = pgEnum("company_subscription_status", [
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+]);
 
 export const companies = pgTable("companies", {
   id: uuid("id")
@@ -29,6 +43,15 @@ export const companySettings = pgTable("company_settings", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   base_system_prompt: text("base_system_prompt"),
+});
+
+export const companySubscriptions = pgTable("company_subscriptions", {
+  companyId: uuid("company_id")
+    .primaryKey()
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  plan: companySubscriptionPlanEnum("plan").notNull(),
+  status: companySubscriptionStatusEnum("status").notNull(),
 });
 
 export const users = pgTable("users", {
