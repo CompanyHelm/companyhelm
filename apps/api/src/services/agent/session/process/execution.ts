@@ -19,6 +19,7 @@ import { SessionProcessPubSubNames } from "./pub_sub_names.ts";
 import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
 import { CompanyHelmLlmProviderService } from "../../../ai_providers/companyhelm_service.ts";
+import { CompanyManagedLlmBudgetService } from "../../../ai_providers/company_managed_llm_budget_service.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
@@ -71,6 +72,7 @@ type SelectableDatabase = {
 export class SessionProcessExecutionService {
   private readonly appRuntimeDatabase: AppRuntimeDatabase;
   private readonly companyHelmLlmProviderService?: CompanyHelmLlmProviderService;
+  private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
   private readonly companySettingsService: CompanySettingsService;
   private readonly logger: PinoLogger;
   private readonly piMonoSessionManagerService: PiMonoSessionManagerService;
@@ -98,9 +100,12 @@ export class SessionProcessExecutionService {
     companySettingsService: CompanySettingsService = new CompanySettingsService(),
     @inject(CompanyHelmLlmProviderService)
     companyHelmLlmProviderService?: CompanyHelmLlmProviderService,
+    @inject(CompanyManagedLlmBudgetService)
+    companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
     this.companyHelmLlmProviderService = companyHelmLlmProviderService;
+    this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
     this.companySettingsService = companySettingsService;
     this.logger = logger.child({
       component: "session_process_execution_service",
@@ -152,6 +157,23 @@ export class SessionProcessExecutionService {
       if (!runtimeConfig) {
         await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
         return;
+      }
+      if (runtimeConfig.isCompanyHelmManagedCredential) {
+        const budgetStatus = await this.companyManagedLlmBudgetService.checkWithinBudget(transactionProvider, {
+          companyId,
+          modelProviderCredentialId: runtimeConfig.modelProviderCredentialId,
+        });
+        if (!budgetStatus.allowed) {
+          this.logger.info({
+            companyId,
+            limitCostNanoUsd: budgetStatus.limitCostNanoUsd,
+            period: budgetStatus.period,
+            sessionId,
+            usedCostNanoUsd: budgetStatus.usedCostNanoUsd,
+          }, "clearing queued session work because CompanyHelm managed LLM budget is exhausted");
+          await this.clearQueuedMessages(transactionProvider, redisCompanyScopedService, companyId, sessionId);
+          return;
+        }
       }
       const companySettings = await this.companySettingsService.getSettings(transactionProvider, companyId);
       runtime = await this.piMonoSessionManagerService.createRuntime(
@@ -446,8 +468,10 @@ export class SessionProcessExecutionService {
     baseUrl?: string | null;
     companyId: string;
     companyName: string;
+    isCompanyHelmManagedCredential: boolean;
     modelId: string;
     modelName?: string | null;
+    modelProviderCredentialId: string;
     providerId: string;
     reasoningSupported?: boolean | null;
     reasoningLevel: string;
@@ -537,8 +561,10 @@ export class SessionProcessExecutionService {
         ...(credentialRow.baseUrl ? { baseUrl: credentialRow.baseUrl } : {}),
         companyId,
         companyName: companyRow.name,
+        isCompanyHelmManagedCredential: Boolean(credentialRow.isManaged),
         modelId: modelRow.modelId,
         ...(modelRow.name ? { modelName: modelRow.name } : {}),
+        modelProviderCredentialId: modelRow.modelProviderCredentialId,
         providerId: credentialRow.modelProvider,
         ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
         reasoningLevel: sessionRow.currentReasoningLevel,

@@ -4,6 +4,7 @@ import type { TransactionProviderInterface } from "../../../db/transaction_provi
 import { agentInboxItems, agentSessions, agents, sessionMessages, sessionTurns } from "../../../db/schema.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
+import { CompanyManagedLlmBudgetService } from "../../ai_providers/company_managed_llm_budget_service.ts";
 import { AgentInboxPubSubNames } from "../../inbox/pub_sub_names.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
 import { SessionProcessQueuedNames } from "./process/queued_names.ts";
@@ -53,6 +54,7 @@ type LatestContextForkTurnRow = {
  */
 @injectable()
 export class SessionLifecycleService {
+  private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
   private readonly redisService: RedisService;
   private readonly sessionModelSelectionService: SessionModelSelectionService;
   private readonly sessionPromptService: SessionPromptService;
@@ -73,7 +75,10 @@ export class SessionLifecycleService {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(AgentInboxPubSubNames)
     inboxPubSubNames: AgentInboxPubSubNames = new AgentInboxPubSubNames(),
+    @inject(CompanyManagedLlmBudgetService)
+    companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
   ) {
+    this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
     this.redisService = redisService;
     this.sessionModelSelectionService = sessionModelSelectionService;
     this.sessionPromptService = sessionPromptService;
@@ -155,6 +160,10 @@ export class SessionLifecycleService {
       options.reasoningLevel,
       agentRecord.defaultReasoningLevel,
     );
+    await this.companyManagedLlmBudgetService.assertWithinBudgetInTransaction(selectableDatabase, {
+      companyId,
+      modelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
+    });
     const preparedPrompt = this.sessionPromptService.prepareQueuedPrompt(userMessage, options.images);
     const resolvedSessionId = String(options.sessionId || "").trim();
     const now = new Date();

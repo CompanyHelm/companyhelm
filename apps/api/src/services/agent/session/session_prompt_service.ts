@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 import { agentSessions } from "../../../db/schema.ts";
+import { CompanyManagedLlmBudgetService } from "../../ai_providers/company_managed_llm_budget_service.ts";
 import { RedisCompanyScopedService } from "../../redis/company_scoped_service.ts";
 import { RedisService } from "../../redis/service.ts";
 import { SessionProcessPubSubNames } from "./process/pub_sub_names.ts";
@@ -36,6 +37,7 @@ type PreparedSessionPrompt = {
  */
 @injectable()
 export class SessionPromptService {
+  private readonly companyManagedLlmBudgetService: CompanyManagedLlmBudgetService;
   private readonly redisService: RedisService;
   private readonly sessionModelSelectionService: SessionModelSelectionService;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
@@ -54,7 +56,10 @@ export class SessionPromptService {
     sessionProcessQueuedNames: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
     @inject(SessionQueuedMessageService)
     sessionQueuedMessageService: SessionQueuedMessageService = new SessionQueuedMessageService(),
+    @inject(CompanyManagedLlmBudgetService)
+    companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
   ) {
+    this.companyManagedLlmBudgetService = companyManagedLlmBudgetService;
     this.redisService = redisService;
     this.sessionModelSelectionService = sessionModelSelectionService;
     this.sessionProcessPubSubNames = sessionProcessPubSubNames;
@@ -144,6 +149,10 @@ export class SessionPromptService {
       options.reasoningLevel,
       existingSession.currentReasoningLevel,
     );
+    await this.companyManagedLlmBudgetService.assertWithinBudgetInTransaction(selectableDatabase, {
+      companyId,
+      modelProviderCredentialId: selectedModelRecord.modelProviderCredentialId,
+    });
     const preparedPrompt = this.prepareQueuedPrompt(userMessage, options.images);
     const now = new Date();
     const [updatedSessionRecord] = await updatableDatabase

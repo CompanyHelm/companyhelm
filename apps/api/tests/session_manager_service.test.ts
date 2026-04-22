@@ -46,6 +46,11 @@ class SessionManagerServiceTestHarness {
     const sessionModelSelectionService = new SessionModelSelectionService();
     const sessionProcessPubSubNames = input.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
     const sessionProcessQueuedNames = input.sessionProcessQueuedNames ?? new SessionProcessQueuedNames();
+    const companyManagedLlmBudgetService = {
+      async assertWithinBudgetInTransaction() {
+        return undefined;
+      },
+    };
     const sessionPromptService = new SessionPromptService(
       (input.redisService ?? {
         async getClient() {
@@ -80,6 +85,7 @@ class SessionManagerServiceTestHarness {
           throw new Error("markSteer was not expected in this test.");
         },
       }) as never,
+      companyManagedLlmBudgetService as never,
     );
     const sessionLifecycleService = new SessionLifecycleService(
       (input.redisService ?? {
@@ -103,6 +109,8 @@ class SessionManagerServiceTestHarness {
       }) as never,
       sessionProcessPubSubNames,
       sessionProcessQueuedNames,
+      undefined as never,
+      companyManagedLlmBudgetService as never,
     );
 
     return new SessionManagerService(
