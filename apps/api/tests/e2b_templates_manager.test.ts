@@ -27,8 +27,14 @@ test("E2bTemplatesManager adds nvm-backed Node 25 setup to every template", () =
   const smallRunCommands = smallBuild.template.instructions
     .filter((instruction) => instruction.type === "RUN")
     .map((instruction) => instruction.args[0] ?? "");
+  const mediumInstructions = JSON.stringify(mediumBuild.template.instructions);
+  const smallInstructions = JSON.stringify(smallBuild.template.instructions);
 
-  for (const runCommands of [mediumRunCommands, smallRunCommands]) {
+  for (const [instructions, runCommands] of [
+    [mediumInstructions, mediumRunCommands],
+    [smallInstructions, smallRunCommands],
+  ] as const) {
+    assert.match(instructions, /awscli/);
     assert.ok(runCommands.some((command) => command.includes("git config --global user.name 'CompanyHelm Agent'")));
     assert.ok(runCommands.some((command) => command.includes("git config --global user.email 'agent@companyhelm.internal'")));
     assert.ok(runCommands.includes("curl -fsSL https://get.docker.com | sudo sh"));
