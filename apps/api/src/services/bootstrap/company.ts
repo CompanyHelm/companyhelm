@@ -132,8 +132,11 @@ export class CompanyBootstrapService {
     stepId: "map-tech-stack",
   }, {
     instructions: [
-      "Look for connected repositories whose names or descriptions match Agency Agents, agency-agents, agents, or GStack/gstack. If the exact repositories are not visible, ask the user for the owner/name values or for expanded GitHub App repository access.",
-      "Clone the Agency Agents and GStack repositories when available and inspect their agent definitions, skills, prompts, setup docs, and examples.",
+      "Git clone repos:",
+      "- https://github.com/msitarzewski/agency-agents.git",
+      "- https://github.com/garrytan/gstack.git",
+      "Treat agency-agents, agents, GStack references as public repositories: no need for github installation access.",
+      "Clone those public repositories directly with a plain git clone of the public HTTPS repository URL, then inspect their agent definitions, skills, prompts, setup docs, and examples.",
       "Activate the Manage skills system skill. If the user approves importing Superpowers-style development skills, call system_command with id \"skill.github.import\" using repository \"obra/superpowers\", branchName \"main\", and selected skillDirectory values such as \"skills/using-superpowers\", \"skills/systematic-debugging\", \"skills/writing-plans\", \"skills/executing-plans\", \"skills/using-git-worktrees\", \"skills/test-driven-development\", and \"skills/verification-before-completion\".",
       "Propose a small first team of 3 to 5 agents based on the mission and tech stack. For each proposed agent include name, responsibility, model/compute assumptions, useful skills, and the first task it should own.",
       "Ask for confirmation before creating agents. After approval, activate the Manage agents system skill and use agent.create plus agent.skill.attach or agent.skill_group.attach as needed.",

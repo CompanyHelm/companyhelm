@@ -617,6 +617,8 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   assert.doesNotMatch(workflowSteps[1]?.instructions_template ?? "", /Show the returned installationUrl/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /clone_github_repository/);
   assert.match(workflowSteps[3]?.instructions_template ?? "", /skill\.github\.import/);
+  assert.match(workflowSteps[3]?.instructions_template ?? "", /public repositories/);
+  assert.match(workflowSteps[3]?.instructions_template ?? "", /plain git clone/);
 });
 
 test("CompanyBootstrapService does not duplicate seeded defaults when rerun", async () => {
