@@ -59,6 +59,13 @@ export type CommandToolArgumentsRecord = {
   yieldTimeMs: number | null;
 };
 
+export type GithubInstallationStartToolResultRecord = {
+  installationUrl: string;
+  returnPath: string | null;
+  sourceSessionId: string | null;
+  status: string;
+};
+
 type AssistantDisplayContentRecord = {
   text: string;
   type: "text" | "thinking";
@@ -255,6 +262,44 @@ function parseCommandToolArguments(argumentsValue: SessionMessageContentRecord["
 
 function isCommandToolName(toolName: string | null | undefined): boolean {
   return toolName === "execute_command" || toolName === "bash_exec" || toolName === "pty_exec";
+}
+
+function parseJsonRecord(value: unknown): Record<string, unknown> | null {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+
+  try {
+    const parsedValue = JSON.parse(value) as unknown;
+    return parsedValue && typeof parsedValue === "object" && !Array.isArray(parsedValue)
+      ? parsedValue as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsedUrl = new URL(value);
+    return parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function resolveTextToolResultPayload(message: SessionMessageRecord): Record<string, unknown> | null {
+  const textContent = message.contents.find((content) => {
+    return content.type === "text" && typeof content.text === "string" && content.text.trim().length > 0;
+  });
+
+  return parseJsonRecord(textContent?.text);
 }
 
 export function buildToolCallSummaryById(
@@ -879,6 +924,42 @@ export function resolveTerminalStructuredContent(
 
 export function isCommandTool(toolName: string | null | undefined): boolean {
   return isCommandToolName(toolName);
+}
+
+export function resolveGithubInstallationStartToolResult(
+  message: SessionMessageRecord,
+  toolCallSummary: ToolCallSummaryRecord | null,
+): GithubInstallationStartToolResultRecord | null {
+  const toolName = toolCallSummary?.toolName ?? message.toolName;
+  if (message.role !== "toolResult" || toolName !== "system_command") {
+    return null;
+  }
+
+  const argumentsRecord = parseJsonRecord(toolCallSummary?.argumentsValue);
+  if (argumentsRecord?.id !== "github.installation.start") {
+    return null;
+  }
+
+  const resultRecord = resolveTextToolResultPayload(message);
+  const installationUrl = typeof resultRecord?.installationUrl === "string"
+    ? resultRecord.installationUrl.trim()
+    : "";
+  if (!installationUrl || !isHttpUrl(installationUrl)) {
+    return null;
+  }
+
+  return {
+    installationUrl,
+    returnPath: typeof resultRecord?.returnPath === "string" && resultRecord.returnPath.trim().length > 0
+      ? resultRecord.returnPath.trim()
+      : null,
+    sourceSessionId: typeof resultRecord?.sourceSessionId === "string" && resultRecord.sourceSessionId.trim().length > 0
+      ? resultRecord.sourceSessionId.trim()
+      : null,
+    status: typeof resultRecord?.status === "string" && resultRecord.status.trim().length > 0
+      ? resultRecord.status.trim()
+      : "waiting_for_user",
+  };
 }
 
 export function hasVisibleMessage(

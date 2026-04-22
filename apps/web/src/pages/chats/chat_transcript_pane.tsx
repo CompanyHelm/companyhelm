@@ -4,7 +4,9 @@ import { Link } from "@tanstack/react-router";
 import {
   ArrowDownIcon,
   ChevronRightIcon,
+  ExternalLinkIcon,
   GitForkIcon,
+  GithubIcon,
   Loader2Icon,
   WrenchIcon,
 } from "lucide-react";
@@ -23,6 +25,7 @@ import {
   isRunningSession,
   resolveAssistantContentDisplay,
   resolveCommandToolArguments,
+  resolveGithubInstallationStartToolResult,
   resolveImageContentDisplay,
   resolveSessionTitle,
   resolveTerminalStructuredContent,
@@ -36,6 +39,64 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ te
 });
 
 AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
+
+type GithubInstallationStartToolCardProps = {
+  installationUrl: string;
+  isError: boolean;
+  status: string;
+};
+
+const GithubInstallationStartToolCard = memo(function GithubInstallationStartToolCard(
+  { installationUrl, isError, status }: GithubInstallationStartToolCardProps,
+) {
+  const normalizedStatus = status.trim().toLowerCase();
+  const statusLabel = isError
+    ? "Unavailable"
+    : normalizedStatus === "waiting_for_user"
+    ? "Ready"
+    : normalizedStatus.replace(/_/g, " ");
+
+  return (
+    <div className="min-w-0 w-full max-w-3xl overflow-hidden rounded-lg border border-border/70 bg-background shadow-sm">
+      <div className="grid gap-4 border-b border-border/60 bg-muted/20 px-4 py-4 sm:flex sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-foreground shadow-sm">
+            <GithubIcon className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">Connect GitHub</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Install the CompanyHelm GitHub App to connect repositories to this chat.
+            </p>
+          </div>
+        </div>
+        <span className="w-fit rounded-md border border-border/70 bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground">
+          {statusLabel}
+        </span>
+      </div>
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs leading-5 text-muted-foreground">
+          You&apos;ll return here after GitHub finishes.
+        </div>
+        {isError ? (
+          <Button disabled size="sm">
+            <GithubIcon />
+            Open GitHub
+            <ExternalLinkIcon className="size-3.5" />
+          </Button>
+        ) : (
+          <Button render={<a href={installationUrl} />} size="sm">
+            <GithubIcon />
+            Open GitHub
+            <ExternalLinkIcon className="size-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+GithubInstallationStartToolCard.displayName = "GithubInstallationStartToolCard";
 
 const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
@@ -69,6 +130,17 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   const commandToolYieldTimeMs = commandToolArguments?.yieldTimeMs ?? null;
   const isCommandToolCall = isCommandTool(toolCallSummary?.toolName ?? message.toolName) && commandToolArguments !== null;
   const collapsedSummary = isCommandToolCall ? commandToolArguments.command : defaultToolName;
+  const githubInstallationStartToolResult = resolveGithubInstallationStartToolResult(message, toolCallSummary);
+
+  if (githubInstallationStartToolResult) {
+    return (
+      <GithubInstallationStartToolCard
+        installationUrl={githubInstallationStartToolResult.installationUrl}
+        isError={message.isError}
+        status={githubInstallationStartToolResult.status}
+      />
+    );
+  }
 
   return (
     <div className="min-w-0 w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">

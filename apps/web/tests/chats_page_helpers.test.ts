@@ -1,9 +1,35 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  type ToolCallSummaryRecord,
+  resolveGithubInstallationStartToolResult,
   resolveSessionTitleOverride,
   shouldHydrateComposerSelection,
 } from "../src/pages/chats/chats_page_helpers";
+import type { SessionMessageRecord } from "../src/pages/chats/chats_page_data";
+
+function makeToolResultMessage(text: string): SessionMessageRecord {
+  return {
+    contents: [{
+      text,
+      type: "text",
+    }],
+    isError: false,
+    role: "toolResult",
+    status: "completed",
+    toolName: "system_command",
+  } as unknown as SessionMessageRecord;
+}
+
+function makeToolCallSummary(
+  argumentsValue: ToolCallSummaryRecord["argumentsValue"],
+): ToolCallSummaryRecord {
+  return {
+    argumentsText: null,
+    argumentsValue,
+    toolName: "system_command",
+  };
+}
 
 test("shouldHydrateComposerSelection returns true when the chat target changes", () => {
   const modelOptionById = new Map([["model-a", { id: "model-a" }]]);
@@ -83,4 +109,47 @@ test("resolveSessionTitleOverride keeps session fallback titles when no task is 
     ),
     "Optimistic session title",
   );
+});
+
+test("resolveGithubInstallationStartToolResult resolves a GitHub install system command result", () => {
+  const result = resolveGithubInstallationStartToolResult(
+    makeToolResultMessage(JSON.stringify({
+      installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+      returnPath: "/orgs/acme/chats?agentId=agent-1&sessionId=session-1",
+      sourceSessionId: "session-1",
+      status: "waiting_for_user",
+    })),
+    makeToolCallSummary({ id: "github.installation.start", input: { organizationSlug: "acme" } }),
+  );
+
+  assert.deepEqual(result, {
+    installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+    returnPath: "/orgs/acme/chats?agentId=agent-1&sessionId=session-1",
+    sourceSessionId: "session-1",
+    status: "waiting_for_user",
+  });
+});
+
+test("resolveGithubInstallationStartToolResult ignores other system commands", () => {
+  const result = resolveGithubInstallationStartToolResult(
+    makeToolResultMessage(JSON.stringify({
+      installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+      status: "waiting_for_user",
+    })),
+    makeToolCallSummary({ id: "github.installation.list" }),
+  );
+
+  assert.equal(result, null);
+});
+
+test("resolveGithubInstallationStartToolResult rejects non-http install urls", () => {
+  const result = resolveGithubInstallationStartToolResult(
+    makeToolResultMessage(JSON.stringify({
+      installationUrl: "javascript:alert(1)",
+      status: "waiting_for_user",
+    })),
+    makeToolCallSummary({ id: "github.installation.start" }),
+  );
+
+  assert.equal(result, null);
 });
