@@ -16,15 +16,7 @@ import { sql } from "drizzle-orm/sql";
 
 export const companySubscriptionPlanEnum = pgEnum("company_subscription_plan", [
   "free",
-  "starter",
-  "team",
-  "enterprise",
-]);
-export const companySubscriptionStatusEnum = pgEnum("company_subscription_status", [
-  "trialing",
-  "active",
-  "past_due",
-  "canceled",
+  "pro",
 ]);
 
 export const companies = pgTable("companies", {
@@ -33,6 +25,7 @@ export const companies = pgTable("companies", {
     .$defaultFn(() => randomUUID()),
   clerkOrganizationId: text("clerk_organization_id"),
   name: text("name").notNull(),
+  plan: companySubscriptionPlanEnum("plan").notNull(),
 }, (table) => ({
   clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
 }));
@@ -43,15 +36,6 @@ export const companySettings = pgTable("company_settings", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   base_system_prompt: text("base_system_prompt"),
-});
-
-export const companySubscriptions = pgTable("company_subscriptions", {
-  companyId: uuid("company_id")
-    .primaryKey()
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  plan: companySubscriptionPlanEnum("plan").notNull(),
-  status: companySubscriptionStatusEnum("status").notNull(),
 });
 
 export const users = pgTable("users", {
