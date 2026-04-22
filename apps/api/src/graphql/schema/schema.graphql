@@ -79,6 +79,7 @@ type Mutation {
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
   DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
+  EnsureCompanyOnboarding: CompanyOnboarding!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
@@ -120,6 +121,7 @@ type Mutation {
   DisconnectMcpServerOAuth(input: DisconnectMcpServerOAuthInput!): McpServer!
   DeleteSkill(input: DeleteSkillInput!): Skill!
   DeleteSkillGroup(input: DeleteSkillGroupInput!): SkillGroup!
+  SkipCompanyOnboarding: CompanyOnboarding!
   DetachSecretFromAgent(input: DetachSecretFromAgentInput!): Secret!
   DetachSecretGroupFromAgent(input: DetachSecretGroupFromAgentInput!): SecretGroup!
   AttachMcpServerToAgent(input: AttachMcpServerToAgentInput!): McpServer!
@@ -220,11 +222,34 @@ enum McpOauthConnectionStatus {
 type AuthenticatedCompany {
   id: ID!
   name: String!
+  onboarding: CompanyOnboarding!
 }
 
 enum CompanySubscriptionPlan {
   free
   pro
+}
+
+enum CompanyOnboardingStatus {
+  not_started
+  in_progress
+  completed
+  skipped
+}
+
+type CompanyOnboarding {
+  id: ID!
+  companyId: ID!
+  status: CompanyOnboardingStatus!
+  agentId: ID
+  sessionId: ID
+  workflowRunId: ID
+  startedAt: String
+  completedAt: String
+  skippedAt: String
+  skippedByUserId: ID
+  createdAt: String!
+  updatedAt: String!
 }
 
 type CompanySettings {

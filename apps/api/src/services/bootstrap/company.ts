@@ -7,6 +7,7 @@ import {
   agents,
   companies,
   companyMembers,
+  companyOnboardings,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
@@ -243,6 +244,7 @@ export class CompanyBootstrapService {
     await this.ensureDefaultTaskStages(transaction, companyId);
     if (options.seedAgent) {
       await this.ensureCompanyOnboardingWorkflow(transaction, companyId);
+      await this.ensureCompanyOnboardingState(transaction, companyId);
     }
     if (options.seedAgent && modelProviderCredential) {
       const computeProviderDefinition = await this.findCompanyHelmComputeProviderDefinition(transaction, companyId);
@@ -667,16 +669,41 @@ export class CompanyBootstrapService {
         name: CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_NAME,
         updatedAt: now,
       });
-    await insertableDatabase
-      .insert(workflowStepDefinitions)
-      .values(CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_STEPS.map((step, index) => ({
+    for (const [index, step] of CompanyBootstrapService.SEED_ONBOARDING_WORKFLOW_STEPS.entries()) {
+      await insertableDatabase
+        .insert(workflowStepDefinitions)
+        .values({
+          createdAt: now,
+          instructions_template: step.instructions,
+          name: step.name,
+          ordinal: index + 1,
+          stepId: step.stepId,
+          workflowDefinitionId,
+        });
+    }
+  }
+
+  private async ensureCompanyOnboardingState(
+    transaction: DatabaseTransactionInterface,
+    companyId: string,
+  ): Promise<void> {
+    const now = new Date();
+    const insertOperation = (transaction as BootstrapInsertableDatabase)
+      .insert(companyOnboardings)
+      .values({
+        agentId: null,
+        companyId,
+        completedAt: null,
         createdAt: now,
-        instructions_template: step.instructions,
-        name: step.name,
-        ordinal: index + 1,
-        stepId: step.stepId,
-        workflowDefinitionId,
-      })));
+        sessionId: null,
+        skippedAt: null,
+        skippedByUserId: null,
+        startedAt: null,
+        status: "not_started",
+        updatedAt: now,
+        workflowRunId: null,
+      }) as BootstrapInsertOperation;
+    await insertOperation.onConflictDoNothing();
   }
 
   private async findCompanyHelmDefaultModel(

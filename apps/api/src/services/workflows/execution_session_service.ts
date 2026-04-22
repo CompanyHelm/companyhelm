@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import {
+  companyOnboardings,
   workflowRuns,
   workflowRunSteps,
 } from "../../db/schema.ts";
@@ -237,6 +238,20 @@ export class WorkflowExecutionSessionService {
           eq(workflowRuns.companyId, this.companyId),
           eq(workflowRuns.id, runRow.id),
         ));
+      if (allStepsDone) {
+        await tx
+          .update(companyOnboardings)
+          .set({
+            completedAt: now,
+            status: "completed",
+            updatedAt: now,
+          })
+          .where(and(
+            eq(companyOnboardings.companyId, this.companyId),
+            eq(companyOnboardings.workflowRunId, runRow.id),
+            eq(companyOnboardings.status, "in_progress"),
+          ));
+      }
 
       return {
         allStepsDone,

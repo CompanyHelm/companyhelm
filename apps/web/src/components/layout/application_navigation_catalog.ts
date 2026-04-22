@@ -40,7 +40,26 @@ export class ApplicationNavigationCatalog {
    */
   public static buildMainGroups(input: {
     isComputeProvidersEnabled: boolean;
+    isOnboardingFocused?: boolean;
   }): readonly ApplicationNavigationGroupRecord[] {
+    if (input.isOnboardingFocused) {
+      return [{
+        items: [
+          {
+            icon: MessageSquareIcon,
+            label: "Onboarding",
+            to: "/chats",
+          },
+          {
+            icon: InboxIcon,
+            label: "Inbox",
+            to: "/inbox",
+          },
+        ],
+        label: "Setup",
+      }];
+    }
+
     const agentItems: ApplicationNavigationItemRecord[] = [
       {
         icon: BotIcon,

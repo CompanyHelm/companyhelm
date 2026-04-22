@@ -452,31 +452,53 @@ export class WorkflowService {
   ): Promise<WorkflowRunRecord> {
     let queuedSessionId: string | null = null;
     const workflowRunRecord = await transactionProvider.transaction(async (tx) => {
-      const preparedRun = await this.prepareWorkflowRun(tx, input);
-      const sessionRecord = await this.sessionManagerService.createSessionInTransaction(
-        tx as never,
-        tx as never,
-        input.companyId,
-        input.agentId,
-        preparedRun.prompt,
-        {
-          userId: input.startedByUserId ?? null,
-        },
-      );
-      queuedSessionId = sessionRecord.id;
-      return this.insertPreparedWorkflowRun(tx, input, sessionRecord.id, preparedRun);
+      const startedRun = await this.startWorkflowRunInTransaction(tx, input);
+      queuedSessionId = startedRun.queuedSessionId;
+      return startedRun.workflowRun;
     });
 
     if (queuedSessionId) {
-      await this.sessionSkillService.activateSkill(transactionProvider, {
-        companyId: input.companyId,
-        sessionId: queuedSessionId,
-        skillName: "Execute workflows",
-      });
-      await this.sessionManagerService.notifyQueuedSessionMessage(input.companyId, queuedSessionId, false);
+      await this.finalizeStartedWorkflowRun(transactionProvider, input.companyId, queuedSessionId);
     }
 
     return workflowRunRecord;
+  }
+
+  async startWorkflowRunInTransaction(
+    tx: AppRuntimeTransaction,
+    input: WorkflowRunCreateInput,
+  ): Promise<{
+    queuedSessionId: string;
+    workflowRun: WorkflowRunRecord;
+  }> {
+    const preparedRun = await this.prepareWorkflowRun(tx, input);
+    const sessionRecord = await this.sessionManagerService.createSessionInTransaction(
+      tx as never,
+      tx as never,
+      input.companyId,
+      input.agentId,
+      preparedRun.prompt,
+      {
+        userId: input.startedByUserId ?? null,
+      },
+    );
+    return {
+      queuedSessionId: sessionRecord.id,
+      workflowRun: await this.insertPreparedWorkflowRun(tx, input, sessionRecord.id, preparedRun),
+    };
+  }
+
+  async finalizeStartedWorkflowRun(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await this.sessionSkillService.activateSkill(transactionProvider, {
+      companyId,
+      sessionId,
+      skillName: "Execute workflows",
+    });
+    await this.sessionManagerService.notifyQueuedSessionMessage(companyId, sessionId, false);
   }
 
   async startLocalWorkflowRun(

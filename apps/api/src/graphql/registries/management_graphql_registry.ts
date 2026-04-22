@@ -28,8 +28,10 @@ import { DeleteSecretGroupMutation } from "../mutations/delete_secret_group.ts";
 import { DeleteMcpServerMutation } from "../mutations/delete_mcp_server.ts";
 import { DeleteSkillGroupMutation } from "../mutations/delete_skill_group.ts";
 import { DeleteSkillMutation } from "../mutations/delete_skill.ts";
+import { EnsureCompanyOnboardingMutation } from "../mutations/ensure_company_onboarding.ts";
 import { ImportGithubSkillsMutation } from "../mutations/import_github_skills.ts";
 import { RefreshGithubInstallationRepositoriesMutation } from "../mutations/refresh_github_installation_repositories.ts";
+import { SkipCompanyOnboardingMutation } from "../mutations/skip_company_onboarding.ts";
 import { StartMcpServerOauthMutation } from "../mutations/start_mcp_server_oauth.ts";
 import { UpdateCompanySettingsMutation } from "../mutations/update_company_settings.ts";
 import { UpdateSecretMutation } from "../mutations/update_secret.ts";
@@ -39,6 +41,7 @@ import { UpdateSkillFromRepositoryMutation } from "../mutations/update_skill_fro
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
 import { CompanyManagedLlmBudgetQueryResolver } from "../resolvers/company_managed_llm_budget.ts";
+import { CompanyOnboardingFieldResolver } from "../resolvers/company_onboarding.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
 import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
 import { GithubDiscoveredSkillsQueryResolver } from "../resolvers/github_discovered_skills.ts";
@@ -70,6 +73,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
   private readonly companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver;
+  private readonly companyOnboardingFieldResolver: CompanyOnboardingFieldResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly connectMcpServerOauthClientCredentialsMutation: ConnectMcpServerOauthClientCredentialsMutation;
   private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
@@ -89,6 +93,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly deleteCompanyMutation: DeleteCompanyMutation;
   private readonly deleteSkillMutation: DeleteSkillMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
+  private readonly ensureCompanyOnboardingMutation: EnsureCompanyOnboardingMutation;
   private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
   private readonly githubDiscoveredSkillsQueryResolver: GithubDiscoveredSkillsQueryResolver;
   private readonly githubInstallationsQueryResolver: GithubInstallationsQueryResolver;
@@ -105,6 +110,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
   private readonly mcpServersQueryResolver: McpServersQueryResolver;
   private readonly startMcpServerOauthMutation: StartMcpServerOauthMutation;
+  private readonly skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation;
   private readonly skillGroupsQueryResolver: SkillGroupsQueryResolver;
   private readonly skillQueryResolver: SkillQueryResolver;
   private readonly skillsQueryResolver: SkillsQueryResolver;
@@ -226,6 +232,12 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(CompanyManagedLlmBudgetQueryResolver)
     companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver =
       new CompanyManagedLlmBudgetQueryResolver(),
+    @inject(CompanyOnboardingFieldResolver)
+    companyOnboardingFieldResolver: CompanyOnboardingFieldResolver = new CompanyOnboardingFieldResolver(),
+    @inject(EnsureCompanyOnboardingMutation)
+    ensureCompanyOnboardingMutation: EnsureCompanyOnboardingMutation = new EnsureCompanyOnboardingMutation(),
+    @inject(SkipCompanyOnboardingMutation)
+    skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation = new SkipCompanyOnboardingMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -243,6 +255,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
     this.companyManagedLlmBudgetQueryResolver = companyManagedLlmBudgetQueryResolver;
+    this.companyOnboardingFieldResolver = companyOnboardingFieldResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.connectMcpServerOauthClientCredentialsMutation = connectMcpServerOauthClientCredentialsMutation
       ?? new ConnectMcpServerOauthClientCredentialsMutation(
@@ -268,6 +281,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.deleteCompanyMutation = deleteCompanyMutation;
     this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
+    this.ensureCompanyOnboardingMutation = ensureCompanyOnboardingMutation;
     this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
     this.githubDiscoveredSkillsQueryResolver = githubDiscoveredSkillsQueryResolver
       ?? new GithubDiscoveredSkillsQueryResolver(defaultSkillGithubCatalog);
@@ -287,6 +301,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.secretGroupsQueryResolver = secretGroupsQueryResolver ?? new SecretGroupsQueryResolver(defaultSecretService);
     this.mcpServersQueryResolver = mcpServersQueryResolver ?? new McpServersQueryResolver(defaultMcpService);
+    this.skipCompanyOnboardingMutation = skipCompanyOnboardingMutation;
     this.startMcpServerOauthMutation = startMcpServerOauthMutation
       ?? new StartMcpServerOauthMutation(
         config,
@@ -334,8 +349,10 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteMcpServer: this.deleteMcpServerMutation.execute,
         DeleteSkill: this.deleteSkillMutation.execute,
         DeleteSkillGroup: this.deleteSkillGroupMutation.execute,
+        EnsureCompanyOnboarding: this.ensureCompanyOnboardingMutation.execute,
         ImportGithubSkills: this.importGithubSkillsMutation.execute,
         RefreshGithubInstallationRepositories: this.refreshGithubInstallationRepositoriesMutation.execute,
+        SkipCompanyOnboarding: this.skipCompanyOnboardingMutation.execute,
         UpdateCompanySettings: this.updateCompanySettingsMutation.execute,
         UpdateSecret: this.updateSecretMutation.execute,
         UpdateSecretGroup: this.updateSecretGroupMutation.execute,
@@ -363,6 +380,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         Skill: this.skillQueryResolver.execute,
         SkillGroups: this.skillGroupsQueryResolver.execute,
         Skills: this.skillsQueryResolver.execute,
+      },
+      AuthenticatedCompany: {
+        onboarding: this.companyOnboardingFieldResolver.execute,
       },
     };
   }

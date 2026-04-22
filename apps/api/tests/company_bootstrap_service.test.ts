@@ -4,6 +4,7 @@ import type { Config } from "../src/config/schema.ts";
 import {
   agentSkills,
   agents,
+  companyOnboardings,
   computeProviderDefinitions,
   modelProviderCredentialModels,
   modelProviderCredentials,
@@ -114,6 +115,20 @@ type WorkflowStepDefinitionRow = {
   workflowDefinitionId: string;
 };
 
+type CompanyOnboardingRow = {
+  agentId: string | null;
+  companyId: string;
+  completedAt: Date | null;
+  createdAt: Date;
+  sessionId: string | null;
+  skippedAt: Date | null;
+  skippedByUserId: string | null;
+  startedAt: Date | null;
+  status: "not_started" | "in_progress" | "completed" | "skipped";
+  updatedAt: Date;
+  workflowRunId: string | null;
+};
+
 /**
  * Provides the narrow database surface needed to verify company default seeding without a real
  * database connection.
@@ -122,6 +137,7 @@ class CompanyBootstrapServiceTestHarness {
   private readonly agentSkillRows: AgentSkillRow[];
   private readonly agentRows: AgentRow[];
   private readonly baseDefinitions: BaseDefinitionRow[];
+  private readonly companyOnboardingRows: CompanyOnboardingRow[];
   private readonly companyHelmOpenAiApiKey: string | null;
   private readonly modelCredentialRows: ModelProviderCredentialRow[];
   private readonly modelRows: ModelProviderCredentialModelRow[];
@@ -133,6 +149,7 @@ class CompanyBootstrapServiceTestHarness {
     agentSkillRows?: AgentSkillRow[];
     agentRows?: AgentRow[];
     baseDefinitions?: BaseDefinitionRow[];
+    companyOnboardingRows?: CompanyOnboardingRow[];
     companyHelmOpenAiApiKey?: string | null;
     modelCredentialRows?: ModelProviderCredentialRow[];
     modelRows?: ModelProviderCredentialModelRow[];
@@ -143,6 +160,7 @@ class CompanyBootstrapServiceTestHarness {
     this.agentSkillRows = [...(params?.agentSkillRows ?? [])];
     this.agentRows = [...(params?.agentRows ?? [])];
     this.baseDefinitions = [...(params?.baseDefinitions ?? [])];
+    this.companyOnboardingRows = [...(params?.companyOnboardingRows ?? [])];
     this.companyHelmOpenAiApiKey = params?.companyHelmOpenAiApiKey === undefined
       ? "sk-local-api-key"
       : params.companyHelmOpenAiApiKey;
@@ -188,6 +206,7 @@ class CompanyBootstrapServiceTestHarness {
     const agentSkillRows = this.agentSkillRows;
     const agentRows = this.agentRows;
     const baseDefinitions = this.baseDefinitions;
+    const companyOnboardingRows = this.companyOnboardingRows;
     const modelCredentialRows = this.modelCredentialRows;
     const modelRows = this.modelRows;
     const taskStageRows = this.taskStageRows;
@@ -421,6 +440,34 @@ class CompanyBootstrapServiceTestHarness {
               return {};
             }
 
+            if (table === companyOnboardings) {
+              if (Array.isArray(value)) {
+                throw new Error("Unexpected company onboarding batch insert.");
+              }
+
+              return {
+                onConflictDoNothing() {
+                  if (!companyOnboardingRows.some((row) => row.companyId === value.companyId)) {
+                    companyOnboardingRows.push({
+                      agentId: value.agentId as string | null,
+                      companyId: value.companyId as string,
+                      completedAt: value.completedAt as Date | null,
+                      createdAt: value.createdAt as Date,
+                      sessionId: value.sessionId as string | null,
+                      skippedAt: value.skippedAt as Date | null,
+                      skippedByUserId: value.skippedByUserId as string | null,
+                      startedAt: value.startedAt as Date | null,
+                      status: value.status as "not_started",
+                      updatedAt: value.updatedAt as Date,
+                      workflowRunId: value.workflowRunId as string | null,
+                    });
+                  }
+
+                  return this;
+                },
+              };
+            }
+
             if (table === taskStages) {
               if (Array.isArray(value)) {
                 throw new Error("Unexpected task stage batch insert.");
@@ -527,6 +574,10 @@ class CompanyBootstrapServiceTestHarness {
     return [...this.workflowStepDefinitionRows].sort((left, right) => left.ordinal - right.ordinal);
   }
 
+  listCompanyOnboardings(): CompanyOnboardingRow[] {
+    return this.companyOnboardingRows;
+  }
+
   loadDefaultDefinition(): BaseDefinitionRow | null {
     return this.baseDefinitions[0] ?? null;
   }
@@ -619,6 +670,12 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   assert.match(workflowSteps[3]?.instructions_template ?? "", /skill\.github\.import/);
   assert.match(workflowSteps[3]?.instructions_template ?? "", /public repositories/);
   assert.match(workflowSteps[3]?.instructions_template ?? "", /plain git clone/);
+
+  const [onboarding] = harness.listCompanyOnboardings();
+  assert.equal(onboarding?.companyId, "company-1");
+  assert.equal(onboarding?.status, "not_started");
+  assert.equal(onboarding?.sessionId, null);
+  assert.equal(onboarding?.workflowRunId, null);
 });
 
 test("CompanyBootstrapService does not duplicate seeded defaults when rerun", async () => {
@@ -734,6 +791,19 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       stepId: "propose-starter-agents",
       workflowDefinitionId: "workflow-1",
     }],
+    companyOnboardingRows: [{
+      agentId: null,
+      companyId: "company-1",
+      completedAt: null,
+      createdAt: now,
+      sessionId: null,
+      skippedAt: null,
+      skippedByUserId: null,
+      startedAt: null,
+      status: "not_started",
+      updatedAt: now,
+      workflowRunId: null,
+    }],
   });
   const service = harness.buildService();
 
@@ -752,5 +822,6 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
   assert.deepEqual(harness.listAgentSystemSkillKeys(), expectedSystemSkillKeys);
   assert.equal(harness.listWorkflowDefinitions().length, 1);
   assert.equal(harness.listWorkflowSteps().length, 4);
+  assert.equal(harness.listCompanyOnboardings().length, 1);
   assert.deepEqual(harness.listTaskStageNames(), ["Backlog", "TODO", "Archive"]);
 });
