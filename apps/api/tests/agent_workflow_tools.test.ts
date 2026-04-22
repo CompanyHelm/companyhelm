@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { WorkflowExecutionSessionService } from "../src/services/workflows/execution_session_service.ts";
+import { WorkflowService } from "../src/services/workflows/service.ts";
 
 test("WorkflowExecutionSessionService only exposes enabled workflows", async () => {
   const transactionProvider = {
@@ -67,7 +68,7 @@ test("WorkflowExecutionSessionService only exposes enabled workflows", async () 
   }]);
 });
 
-test("WorkflowExecutionSessionService normalizes local kickoff inputs and records workflow lineage", async () => {
+test("WorkflowExecutionSessionService normalizes local kickoff inputs", async () => {
   const transactionProvider = {
     async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
       return callback({
@@ -76,9 +77,7 @@ test("WorkflowExecutionSessionService normalizes local kickoff inputs and record
             from() {
               return {
                 async where() {
-                  return [{
-                    id: "workflow-run-parent",
-                  }];
+                  return [];
                 },
               };
             },
@@ -151,15 +150,57 @@ test("WorkflowExecutionSessionService normalizes local kickoff inputs and record
       name: "notes",
       value: "",
     }],
-    parentWorkflowRunId: "workflow-run-parent",
+    parentWorkflowRunId: null,
     sessionId: "session-1",
     startedByAgentId: "agent-1",
     startedBySessionId: "session-1",
     workflowDefinitionId: "workflow-2",
   }]]);
   assert.match(result.executionInstructions ?? "", /Execute the following workflow run/);
-  assert.equal(result.parentWorkflowRunId, "workflow-run-parent");
+  assert.equal(result.parentWorkflowRunId, null);
   assert.equal(result.workflowRun.id, "workflow-run-2");
+});
+
+test("WorkflowExecutionSessionService rejects local kickoff when the current session has a running workflow", async () => {
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [{
+                    id: "workflow-run-existing",
+                  }];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const startLocalWorkflowRun = vi.fn(async () => {
+    throw new Error("startLocalWorkflowRun should not be called");
+  });
+  const service = new WorkflowExecutionSessionService(
+    transactionProvider as never,
+    "company-1",
+    "agent-1",
+    "session-1",
+    {
+      startLocalWorkflowRun,
+    } as never,
+  );
+
+  await assert.rejects(
+    service.startWorkflow({
+      workflowDefinitionId: "workflow-2",
+    }),
+    /This chat already has a running workflow\./u,
+  );
+  assert.equal(startLocalWorkflowRun.mock.calls.length, 0);
 });
 
 test("WorkflowExecutionSessionService starts delegated workflow runs with the requested agent", async () => {
@@ -171,7 +212,9 @@ test("WorkflowExecutionSessionService starts delegated workflow runs with the re
             from() {
               return {
                 async where() {
-                  return [];
+                  return [{
+                    id: "workflow-run-parent",
+                  }];
                 },
               };
             },
@@ -223,11 +266,46 @@ test("WorkflowExecutionSessionService starts delegated workflow runs with the re
       name: "branch",
       value: "main",
     }],
-    parentWorkflowRunId: null,
+    parentWorkflowRunId: "workflow-run-parent",
     startedByAgentId: "agent-1",
     startedBySessionId: "session-1",
     workflowDefinitionId: "workflow-3",
   }]]);
   assert.equal(result.executionInstructions, null);
+  assert.equal(result.parentWorkflowRunId, "workflow-run-parent");
   assert.equal(result.workflowRun.agentId, "agent-2");
+});
+
+test("WorkflowService rejects local workflow runs when the target session already has a running workflow", async () => {
+  const transactionProvider = {
+    async transaction<T>(callback: (tx: unknown) => Promise<T>): Promise<T> {
+      return callback({
+        select() {
+          return {
+            from() {
+              return {
+                async where() {
+                  return [{
+                    id: "workflow-run-existing",
+                  }];
+                },
+              };
+            },
+          };
+        },
+      });
+    },
+  };
+  const service = new WorkflowService({} as never);
+
+  await assert.rejects(
+    service.startLocalWorkflowRun(transactionProvider as never, {
+      agentId: "agent-1",
+      companyId: "company-1",
+      inputValues: [],
+      sessionId: "session-1",
+      workflowDefinitionId: "workflow-1",
+    }),
+    /This chat already has a running workflow\./u,
+  );
 });

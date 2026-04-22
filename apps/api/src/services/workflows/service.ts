@@ -484,6 +484,7 @@ export class WorkflowService {
     input: WorkflowLocalRunCreateInput,
   ): Promise<WorkflowLocalRunStartRecord> {
     return transactionProvider.transaction(async (tx) => {
+      await this.assertNoRunningWorkflowRunForSession(tx, input.companyId, input.sessionId);
       const preparedRun = await this.prepareWorkflowRun(tx, input);
       const workflowRun = await this.insertPreparedWorkflowRun(tx, input, input.sessionId, preparedRun);
       return {
@@ -729,6 +730,26 @@ export class WorkflowService {
       )) as Array<{ id: string }>;
     if (!agentRow) {
       throw new Error("Agent not found.");
+    }
+  }
+
+  private async assertNoRunningWorkflowRunForSession(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const [runningRunRow] = await tx
+      .select({
+        id: workflowRuns.id,
+      })
+      .from(workflowRuns)
+      .where(and(
+        eq(workflowRuns.companyId, companyId),
+        eq(workflowRuns.sessionId, sessionId),
+        eq(workflowRuns.status, "running"),
+      )) as Array<{ id: string }>;
+    if (runningRunRow) {
+      throw new Error("This chat already has a running workflow.");
     }
   }
 

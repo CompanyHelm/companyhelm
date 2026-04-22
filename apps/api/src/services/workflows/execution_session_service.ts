@@ -119,6 +119,10 @@ export class WorkflowExecutionSessionService {
     const executionMode = input.executionMode ?? "local";
     const parentWorkflowRunId = await this.transactionProvider.transaction(async (tx) => {
       const runRows = await this.loadRunningWorkflowRuns(tx);
+      if (executionMode === "local" && runRows.length > 0) {
+        throw new Error("This chat already has a running workflow.");
+      }
+
       return runRows[0]?.id ?? null;
     });
 
