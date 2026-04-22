@@ -18,8 +18,9 @@ class CompanyPlanMigrationTest {
 test("company plan migration stores free and pro plans directly on companies", () => {
   const migration = CompanyPlanMigrationTest.readMigration();
 
+  assert.match(migration, /pg_type\.typname = 'company_subscription_plan'/u);
   assert.match(migration, /CREATE TYPE "public"."company_subscription_plan" AS ENUM\('free', 'pro'\)/u);
-  assert.match(migration, /ALTER TABLE "companies" ADD COLUMN "plan" "company_subscription_plan"/u);
+  assert.match(migration, /ALTER TABLE "companies" ADD COLUMN IF NOT EXISTS "plan" "company_subscription_plan"/u);
   assert.match(migration, /UPDATE "companies" SET "plan" = 'free' WHERE "plan" IS NULL/u);
   assert.match(migration, /ALTER TABLE "companies" ALTER COLUMN "plan" SET NOT NULL/u);
   assert.doesNotMatch(migration, /company_subscriptions/u);
