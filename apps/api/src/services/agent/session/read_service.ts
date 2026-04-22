@@ -9,6 +9,9 @@ import {
   taskRuns,
   tasks,
   userSessionReads,
+  workflowDefinitions,
+  workflowRuns,
+  workflowRunSteps,
 } from "../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../db/transaction_provider_interface.ts";
 
@@ -38,6 +41,22 @@ type SessionAssociatedTaskGraphqlRecord = {
   status: string;
 };
 
+type SessionAssociatedWorkflowRunStepGraphqlRecord = {
+  id: string;
+  name: string;
+  ordinal: number;
+  status: string;
+  workflowRunId: string;
+};
+
+type SessionAssociatedWorkflowRunGraphqlRecord = {
+  id: string;
+  name: string;
+  status: string;
+  steps: SessionAssociatedWorkflowRunStepGraphqlRecord[];
+  workflowDefinitionId: string;
+};
+
 type SessionActiveTaskRunRow = {
   id: string;
   sessionId: string | null;
@@ -49,6 +68,27 @@ type SessionAssociatedTaskRow = {
   id: string;
   name: string;
   status: string;
+};
+
+type SessionWorkflowDefinitionRow = {
+  id: string;
+  name: string;
+};
+
+type SessionWorkflowRunRow = {
+  id: string;
+  sessionId: string;
+  status: string;
+  updatedAt: Date;
+  workflowDefinitionId: string | null;
+};
+
+type SessionWorkflowRunStepRow = {
+  id: string;
+  name: string;
+  ordinal: number;
+  status: string;
+  workflowRunId: string;
 };
 
 type SessionMessageRow = {
@@ -123,6 +163,7 @@ export type SessionGraphqlRecord = {
   id: string;
   agentId: string;
   associatedTask: SessionAssociatedTaskGraphqlRecord | null;
+  associatedWorkflowRun: SessionAssociatedWorkflowRunGraphqlRecord | null;
   currentContextTokens: number | null;
   forkedFromSessionAgentId: string | null;
   forkedFromSessionId: string | null;
@@ -288,6 +329,11 @@ export class SessionReadService {
         companyId,
         accessibleSessionRows.map((sessionRow) => sessionRow.id),
       );
+      const associatedWorkflowRunBySessionId = await this.loadAssociatedWorkflowRunBySessionId(
+        selectableDatabase,
+        companyId,
+        accessibleSessionRows.map((sessionRow) => sessionRow.id),
+      );
       const readSessionIds = await this.loadReadSessionIds(
         selectableDatabase,
         companyId,
@@ -301,6 +347,7 @@ export class SessionReadService {
           forkSourceBySessionId,
           modelOptionIdBySessionKey,
           associatedTaskBySessionId,
+          associatedWorkflowRunBySessionId,
           readSessionIds.has(sessionRow.id),
         ));
     });
@@ -360,12 +407,18 @@ export class SessionReadService {
         companyId,
         [sessionId],
       );
+      const associatedWorkflowRunBySessionId = await this.loadAssociatedWorkflowRunBySessionId(
+        selectableDatabase,
+        companyId,
+        [sessionId],
+      );
       const readSessionIds = await this.loadReadSessionIds(selectableDatabase, companyId, userId, [sessionId]);
       return this.serializeSession(
         sessionRow,
         forkSourceBySessionId,
         modelOptionIdBySessionKey,
         associatedTaskBySessionId,
+        associatedWorkflowRunBySessionId,
         readSessionIds.has(sessionId),
       );
     });
@@ -826,6 +879,137 @@ export class SessionReadService {
   }
 
   /**
+   * Picks one workflow run per chat for compact sidebar and transcript status. Sessions can create
+   * child workflow runs over time, so the most recently updated valid run is the best conversation
+   * context to surface without turning the chat list into workflow history.
+   */
+  private async loadAssociatedWorkflowRunBySessionId(
+    selectableDatabase: SelectableDatabase,
+    companyId: string,
+    sessionIds: ReadonlyArray<string>,
+  ): Promise<Map<string, SessionAssociatedWorkflowRunGraphqlRecord>> {
+    const uniqueSessionIds = [...new Set(sessionIds)];
+    if (uniqueSessionIds.length === 0) {
+      return new Map();
+    }
+
+    const workflowRunRows = await selectableDatabase
+      .select({
+        id: workflowRuns.id,
+        sessionId: workflowRuns.sessionId,
+        status: workflowRuns.status,
+        updatedAt: workflowRuns.updatedAt,
+        workflowDefinitionId: workflowRuns.workflowDefinitionId,
+      })
+      .from(workflowRuns)
+      .where(and(
+        eq(workflowRuns.companyId, companyId),
+        inArray(workflowRuns.sessionId, uniqueSessionIds),
+      )) as SessionWorkflowRunRow[];
+    if (workflowRunRows.length === 0) {
+      return new Map();
+    }
+
+    const sortedWorkflowRunRows = [...workflowRunRows].sort((leftRow, rightRow) => {
+      const updatedAtDelta = rightRow.updatedAt.getTime() - leftRow.updatedAt.getTime();
+      if (updatedAtDelta !== 0) {
+        return updatedAtDelta;
+      }
+
+      return rightRow.id.localeCompare(leftRow.id);
+    });
+    const workflowDefinitionIds = [...new Set(sortedWorkflowRunRows.flatMap((workflowRunRow) => {
+      return workflowRunRow.workflowDefinitionId ? [workflowRunRow.workflowDefinitionId] : [];
+    }))];
+    if (workflowDefinitionIds.length === 0) {
+      return new Map();
+    }
+
+    const workflowDefinitionRows = await selectableDatabase
+      .select({
+        id: workflowDefinitions.id,
+        name: workflowDefinitions.name,
+      })
+      .from(workflowDefinitions)
+      .where(and(
+        eq(workflowDefinitions.companyId, companyId),
+        inArray(workflowDefinitions.id, workflowDefinitionIds),
+      )) as SessionWorkflowDefinitionRow[];
+    const workflowDefinitionById = new Map(
+      workflowDefinitionRows.map((workflowDefinitionRow) => [workflowDefinitionRow.id, workflowDefinitionRow]),
+    );
+
+    const selectedWorkflowRunRows: SessionWorkflowRunRow[] = [];
+    const selectedWorkflowRunBySessionId = new Map<string, SessionWorkflowRunRow>();
+    for (const workflowRunRow of sortedWorkflowRunRows) {
+      const workflowDefinitionId = workflowRunRow.workflowDefinitionId;
+      if (
+        !workflowDefinitionId
+        || !workflowDefinitionById.has(workflowDefinitionId)
+        || selectedWorkflowRunBySessionId.has(workflowRunRow.sessionId)
+      ) {
+        continue;
+      }
+
+      selectedWorkflowRunBySessionId.set(workflowRunRow.sessionId, workflowRunRow);
+      selectedWorkflowRunRows.push(workflowRunRow);
+    }
+
+    if (selectedWorkflowRunRows.length === 0) {
+      return new Map();
+    }
+
+    const workflowRunStepRows = await selectableDatabase
+      .select({
+        id: workflowRunSteps.id,
+        name: workflowRunSteps.name,
+        ordinal: workflowRunSteps.ordinal,
+        status: workflowRunSteps.status,
+        workflowRunId: workflowRunSteps.workflowRunId,
+      })
+      .from(workflowRunSteps)
+      .where(and(
+        eq(workflowRunSteps.companyId, companyId),
+        inArray(workflowRunSteps.workflowRunId, selectedWorkflowRunRows.map((workflowRunRow) => workflowRunRow.id)),
+      )) as SessionWorkflowRunStepRow[];
+    const workflowRunStepsByRunId = new Map<string, SessionWorkflowRunStepRow[]>();
+    for (const workflowRunStepRow of workflowRunStepRows) {
+      const steps = workflowRunStepsByRunId.get(workflowRunStepRow.workflowRunId) ?? [];
+      steps.push(workflowRunStepRow);
+      workflowRunStepsByRunId.set(workflowRunStepRow.workflowRunId, steps);
+    }
+
+    const associatedWorkflowRunBySessionId = new Map<string, SessionAssociatedWorkflowRunGraphqlRecord>();
+    for (const workflowRunRow of selectedWorkflowRunRows) {
+      const workflowDefinitionId = workflowRunRow.workflowDefinitionId;
+      if (!workflowDefinitionId) {
+        continue;
+      }
+      const workflowDefinition = workflowDefinitionById.get(workflowDefinitionId);
+      if (!workflowDefinition) {
+        continue;
+      }
+
+      associatedWorkflowRunBySessionId.set(workflowRunRow.sessionId, {
+        id: workflowRunRow.id,
+        name: workflowDefinition.name,
+        status: workflowRunRow.status,
+        steps: [...(workflowRunStepsByRunId.get(workflowRunRow.id) ?? [])].sort((leftStep, rightStep) => {
+          const ordinalDelta = leftStep.ordinal - rightStep.ordinal;
+          if (ordinalDelta !== 0) {
+            return ordinalDelta;
+          }
+
+          return leftStep.id.localeCompare(rightStep.id);
+        }),
+        workflowDefinitionId,
+      });
+    }
+
+    return associatedWorkflowRunBySessionId;
+  }
+
+  /**
    * Resolves each forked session's immediate source session so the web app can render a lightweight
    * banner linking back to the source conversation without replaying ancestor transcript rows.
    */
@@ -911,6 +1095,7 @@ export class SessionReadService {
     forkSourceBySessionId: Map<string, SessionForkSourceRecord>,
     modelIdByModelRecordId: Map<string, string>,
     associatedTaskBySessionId: Map<string, SessionAssociatedTaskGraphqlRecord>,
+    associatedWorkflowRunBySessionId: Map<string, SessionAssociatedWorkflowRunGraphqlRecord>,
     isRead: boolean,
   ): SessionGraphqlRecord {
     const modelId = modelIdByModelRecordId.get(sessionRow.currentModelProviderCredentialModelId);
@@ -923,6 +1108,7 @@ export class SessionReadService {
       id: sessionRow.id,
       agentId: sessionRow.agentId,
       associatedTask: associatedTaskBySessionId.get(sessionRow.id) ?? null,
+      associatedWorkflowRun: associatedWorkflowRunBySessionId.get(sessionRow.id) ?? null,
       currentContextTokens: sessionRow.currentContextTokens,
       forkedFromSessionAgentId: forkSource?.agentId ?? null,
       forkedFromSessionId: forkSource?.sessionId ?? null,

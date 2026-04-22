@@ -11,9 +11,11 @@ import {
   WrenchIcon,
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrganizationPath } from "@/lib/organization_path";
+import { cn } from "@/lib/utils";
 import type { SessionMessageRecord, SessionRecord } from "./chats_page_data";
 import {
   type AssistantContentMode,
@@ -35,6 +37,7 @@ import {
   resolveToolExecutionDuration,
   sanitizeCommandOutput,
 } from "./chats_page_helpers";
+import { WorkflowRunPresenter } from "./workflow_run_presenter";
 
 const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ text }: { text: string }) {
   return <MarkdownContent content={text} />;
@@ -476,6 +479,101 @@ const ForkedSessionBanner = memo(function ForkedSessionBanner({
 
 ForkedSessionBanner.displayName = "ForkedSessionBanner";
 
+const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
+  organizationSlug,
+  session,
+}: {
+  organizationSlug: string;
+  session: SessionRecord;
+}) {
+  const workflowRun = session.associatedWorkflowRun ?? null;
+  if (!workflowRun) {
+    return null;
+  }
+
+  const progressLabel = WorkflowRunPresenter.formatProgress(workflowRun);
+  const statusLabel = WorkflowRunPresenter.formatStatus(workflowRun.status);
+  const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
+
+  return (
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} pr-4`}>
+      <div
+        aria-label="Workflow run progress"
+        className="w-full max-w-3xl rounded-lg border border-border/70 bg-muted/15 px-3 py-2.5"
+        role="group"
+      >
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <Link
+            className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground underline-offset-4 transition hover:text-primary hover:underline"
+            params={{
+              organizationSlug,
+              runId: workflowRun.id,
+              workflowId: workflowRun.workflowDefinitionId,
+            }}
+            title={workflowRun.name}
+            to={OrganizationPath.route("/workflows/$workflowId/runs/$runId")}
+          >
+            <span className="truncate">{workflowRun.name}</span>
+            <ExternalLinkIcon aria-hidden="true" className="size-3 shrink-0" />
+          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge
+              className="h-5 px-1.5 text-[0.625rem]"
+              variant={WorkflowRunPresenter.resolveRunBadgeVariant(workflowRun.status)}
+            >
+              {WorkflowRunPresenter.isRunning(workflowRun) ? (
+                <Loader2Icon aria-hidden="true" className="animate-spin" data-icon="inline-start" />
+              ) : null}
+              {statusLabel}
+            </Badge>
+            <span className="text-xs font-medium text-muted-foreground">{progressLabel} steps</span>
+          </div>
+        </div>
+
+        {visibleSteps.length > 0 ? (
+          <ol aria-label="Workflow steps" className="mt-2 grid gap-1">
+            {visibleSteps.map((step) => (
+              <li
+                className="grid min-w-0 grid-cols-[0.75rem_minmax(0,1fr)_auto] items-center gap-2 text-xs"
+                key={step.id}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "flex size-3 items-center justify-center rounded-full",
+                    step.status === "done"
+                      ? "bg-[var(--success-bg)] text-[var(--success)]"
+                      : step.status === "running"
+                      ? "bg-[var(--warning-bg)] text-[var(--warning)]"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {step.status === "running" ? (
+                    <Loader2Icon className="size-2.5 animate-spin" />
+                  ) : (
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        step.status === "done" ? "bg-[var(--success)]" : "bg-muted-foreground/45",
+                      )}
+                    />
+                  )}
+                </span>
+                <span className="min-w-0 truncate font-medium text-foreground">{step.name}</span>
+                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  {step.status}
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
+    </div>
+  );
+});
+
+WorkflowRunProgressStrip.displayName = "WorkflowRunProgressStrip";
+
 type ChatTranscriptPaneProps = {
   isTranscriptStuckToBottom: boolean;
   isLoadingOlderMessages: boolean;
@@ -542,6 +640,7 @@ function ChatTranscriptPaneComponent({
         onScroll={onScroll}
       >
         <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
+        <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
         {!hasVisibleTranscriptContent && !showTranscriptLoader ? (
           <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
             <div>

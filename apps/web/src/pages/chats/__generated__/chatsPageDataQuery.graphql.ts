@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9b494c49e155651fa918f387c08922b3>>
+ * @generated SignedSource<<6c5d36f3017d681a4be3c36e188c7fc1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -55,6 +55,19 @@ export type chatsPageDataQuery$data = {
       readonly id: string;
       readonly name: string;
       readonly status: string;
+    } | null | undefined;
+    readonly associatedWorkflowRun: {
+      readonly id: string;
+      readonly name: string;
+      readonly status: string;
+      readonly steps: ReadonlyArray<{
+        readonly id: string;
+        readonly name: string;
+        readonly ordinal: number;
+        readonly status: string;
+        readonly workflowRunId: string;
+      }>;
+      readonly workflowDefinitionId: string;
     } | null | undefined;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
@@ -341,6 +354,55 @@ v8 = [
       {
         "alias": null,
         "args": null,
+        "concreteType": "SessionAssociatedWorkflowRun",
+        "kind": "LinkedField",
+        "name": "associatedWorkflowRun",
+        "plural": false,
+        "selections": [
+          (v0/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "workflowDefinitionId",
+            "storageKey": null
+          },
+          (v1/*: any*/),
+          (v7/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "WorkflowRunStep",
+            "kind": "LinkedField",
+            "name": "steps",
+            "plural": true,
+            "selections": [
+              (v0/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "workflowRunId",
+                "storageKey": null
+              },
+              (v1/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "ordinal",
+                "storageKey": null
+              },
+              (v7/*: any*/)
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
         "kind": "ScalarField",
         "name": "hasUnread",
         "storageKey": null
@@ -463,16 +525,16 @@ return {
     "selections": (v8/*: any*/)
   },
   "params": {
-    "cacheID": "866405bdb47a3f7e4a7e02229df9e623",
+    "cacheID": "4b6235a1ec7c081debe20de3187eeb87",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "query chatsPageDataQuery {\n  Agents {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    reasoningLevel\n  }\n  AgentCreateOptions {\n    id\n    label\n    modelProvider\n    defaultModelId\n    defaultReasoningLevel\n    models {\n      id\n      modelProviderCredentialModelId\n      modelId\n      name\n      description\n      reasoningSupported\n      reasoningLevels\n    }\n  }\n  InboxHumanQuestions {\n    id\n    sessionId\n    title\n    questionText\n    allowCustomAnswer\n    createdAt\n    proposals {\n      id\n      answerText\n      rating\n    }\n  }\n  Sessions {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "cef14224da1c08e2bb6493cc87350407";
+(node as any).hash = "d9927d8a945cb79c7f1d710617b18365";
 
 export default node;

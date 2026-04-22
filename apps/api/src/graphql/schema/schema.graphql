@@ -536,6 +536,7 @@ type Session {
   id: ID!
   agentId: ID!
   associatedTask: SessionAssociatedTask
+  associatedWorkflowRun: SessionAssociatedWorkflowRun
   currentContextTokens: Int
   forkedFromSessionAgentId: ID
   forkedFromSessionId: ID
@@ -561,6 +562,14 @@ type SessionAssociatedTask {
   id: ID!
   name: String!
   status: String!
+}
+
+type SessionAssociatedWorkflowRun {
+  id: ID!
+  workflowDefinitionId: ID!
+  name: String!
+  status: String!
+  steps: [WorkflowRunStep!]!
 }
 
 type SessionEnvironmentInfo {

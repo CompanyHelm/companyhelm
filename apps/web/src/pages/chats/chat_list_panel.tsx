@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArchiveIcon, ChevronRightIcon, PlusIcon, XIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import {
   renderSessionListStatusIndicator,
   resolveSessionTitleOverride,
 } from "./chats_page_helpers";
+import { WorkflowRunPresenter } from "./workflow_run_presenter";
 
 export function ChatListPanel({
   panelMode,
@@ -162,6 +163,7 @@ export function ChatListPanel({
                   const isSessionRunning = isRunningSession(session);
                   const sessionListTitle = resolveSessionTitleOverride(session, sessionTitleOverridesById);
                   const hasAssociatedTask = Boolean(session.associatedTask);
+                  const associatedWorkflowRun = session.associatedWorkflowRun ?? null;
 
                   return (
                     <li key={session.id}>
@@ -203,6 +205,19 @@ export function ChatListPanel({
                                 variant="outline"
                               >
                                 Task
+                              </Badge>
+                            ) : null}
+                            {associatedWorkflowRun ? (
+                              <Badge
+                                aria-label={`Workflow-backed chat: ${WorkflowRunPresenter.getBadgeTitle(associatedWorkflowRun)}`}
+                                className="h-4 gap-0.5 px-1 text-[0.55rem] leading-none"
+                                title={WorkflowRunPresenter.getBadgeTitle(associatedWorkflowRun)}
+                                variant={WorkflowRunPresenter.resolveRunBadgeVariant(associatedWorkflowRun.status)}
+                              >
+                                {WorkflowRunPresenter.isRunning(associatedWorkflowRun) ? (
+                                  <Loader2Icon aria-hidden="true" className="animate-spin" data-icon="inline-start" />
+                                ) : null}
+                                Workflow {WorkflowRunPresenter.formatProgress(associatedWorkflowRun)}
                               </Badge>
                             ) : null}
                           </span>

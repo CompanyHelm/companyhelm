@@ -213,6 +213,81 @@ class SessionsQueryTestHarness {
                     async where() {
                       return [
                         {
+                          id: "workflow-run-older",
+                          sessionId: "session-older",
+                          status: "done",
+                          updatedAt: new Date("2026-03-24T08:02:00.000Z"),
+                          workflowDefinitionId: "workflow-older",
+                        },
+                        {
+                          id: "workflow-run-newest",
+                          sessionId: "session-older",
+                          status: "running",
+                          updatedAt: new Date("2026-03-24T08:06:00.000Z"),
+                          workflowDefinitionId: "workflow-newest",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 8) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          id: "workflow-older",
+                          name: "Older workflow",
+                        },
+                        {
+                          id: "workflow-newest",
+                          name: "Newest workflow",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 9) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
+                          id: "workflow-run-step-2",
+                          name: "Second step",
+                          ordinal: 2,
+                          status: "running",
+                          workflowRunId: "workflow-run-newest",
+                        },
+                        {
+                          id: "workflow-run-step-1",
+                          name: "First step",
+                          ordinal: 1,
+                          status: "done",
+                          workflowRunId: "workflow-run-newest",
+                        },
+                      ];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 10) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [
+                        {
                           sessionId: "session-older",
                         },
                       ];
@@ -268,7 +343,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     new AddModelProviderCredentialMutation(modelManager as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
-    new GraphqlRequestContextResolver(authProvider as never, database),
+    new GraphqlRequestContextResolver(authProvider as never, database as never),
     new HealthQueryResolver(),
     new MeQueryResolver(),
     new ModelProviderCredentialModelsQueryResolver(),
@@ -291,6 +366,19 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
               id
               name
               status
+            }
+            associatedWorkflowRun {
+              id
+              workflowDefinitionId
+              name
+              status
+              steps {
+                id
+                workflowRunId
+                name
+                ordinal
+                status
+              }
             }
             hasUnread
             currentContextTokens
@@ -321,6 +409,7 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
       id: "session-newer",
       agentId: "agent-2",
       associatedTask: null,
+      associatedWorkflowRun: null,
       hasUnread: true,
       currentContextTokens: null,
       forkedFromSessionAgentId: "agent-source",
@@ -344,6 +433,28 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
         id: "task-newest",
         name: "Newest linked task",
         status: "in_progress",
+      },
+      associatedWorkflowRun: {
+        id: "workflow-run-newest",
+        workflowDefinitionId: "workflow-newest",
+        name: "Newest workflow",
+        status: "running",
+        steps: [
+          {
+            id: "workflow-run-step-1",
+            workflowRunId: "workflow-run-newest",
+            name: "First step",
+            ordinal: 1,
+            status: "done",
+          },
+          {
+            id: "workflow-run-step-2",
+            workflowRunId: "workflow-run-newest",
+            name: "Second step",
+            ordinal: 2,
+            status: "running",
+          },
+        ],
       },
       hasUnread: false,
       currentContextTokens: 32000,

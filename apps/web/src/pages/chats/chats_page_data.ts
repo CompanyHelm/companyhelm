@@ -74,6 +74,19 @@ export const chatsPageQueryNode = graphql`
         name
         status
       }
+      associatedWorkflowRun {
+        id
+        workflowDefinitionId
+        name
+        status
+        steps {
+          id
+          workflowRunId
+          name
+          ordinal
+          status
+        }
+      }
       hasUnread
       currentContextTokens
       forkedFromSessionAgentId
@@ -476,6 +489,19 @@ export const chatsPageSessionUpdatedSubscriptionNode = graphql`
         id
         name
         status
+      }
+      associatedWorkflowRun {
+        id
+        workflowDefinitionId
+        name
+        status
+        steps {
+          id
+          workflowRunId
+          name
+          ordinal
+          status
+        }
       }
       hasUnread
       currentContextTokens

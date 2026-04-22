@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<22f95347c0fed454c3f375f0289a10db>>
+ * @generated SignedSource<<bacdbd72e31d3a8703f31e1f7b369fec>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,19 @@ export type chatsPageDataSessionUpdatedSubscription$data = {
       readonly id: string;
       readonly name: string;
       readonly status: string;
+    } | null | undefined;
+    readonly associatedWorkflowRun: {
+      readonly id: string;
+      readonly name: string;
+      readonly status: string;
+      readonly steps: ReadonlyArray<{
+        readonly id: string;
+        readonly name: string;
+        readonly ordinal: number;
+        readonly status: string;
+        readonly workflowRunId: string;
+      }>;
+      readonly workflowDefinitionId: string;
     } | null | undefined;
     readonly createdAt: string;
     readonly currentContextTokens: number | null | undefined;
@@ -57,10 +70,17 @@ v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "status",
   "storageKey": null
 },
-v2 = [
+v3 = [
   {
     "alias": null,
     "args": null,
@@ -86,14 +106,57 @@ v2 = [
         "plural": false,
         "selections": [
           (v0/*: any*/),
+          (v1/*: any*/),
+          (v2/*: any*/)
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "SessionAssociatedWorkflowRun",
+        "kind": "LinkedField",
+        "name": "associatedWorkflowRun",
+        "plural": false,
+        "selections": [
+          (v0/*: any*/),
           {
             "alias": null,
             "args": null,
             "kind": "ScalarField",
-            "name": "name",
+            "name": "workflowDefinitionId",
             "storageKey": null
           },
-          (v1/*: any*/)
+          (v1/*: any*/),
+          (v2/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "WorkflowRunStep",
+            "kind": "LinkedField",
+            "name": "steps",
+            "plural": true,
+            "selections": [
+              (v0/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "workflowRunId",
+                "storageKey": null
+              },
+              (v1/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "ordinal",
+                "storageKey": null
+              },
+              (v2/*: any*/)
+            ],
+            "storageKey": null
+          }
         ],
         "storageKey": null
       },
@@ -188,7 +251,7 @@ v2 = [
         "name": "isThinking",
         "storageKey": null
       },
-      (v1/*: any*/),
+      (v2/*: any*/),
       {
         "alias": null,
         "args": null,
@@ -234,7 +297,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataSessionUpdatedSubscription",
-    "selections": (v2/*: any*/),
+    "selections": (v3/*: any*/),
     "type": "Subscription",
     "abstractKey": null
   },
@@ -243,19 +306,19 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "chatsPageDataSessionUpdatedSubscription",
-    "selections": (v2/*: any*/)
+    "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "d14aa91bcd7a61c91ffd1770e4a97f6d",
+    "cacheID": "5ef3c06e70287f240d410cd55d7febc1",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionUpdatedSubscription {\n  SessionUpdated {\n    id\n    agentId\n    associatedTask {\n      id\n      name\n      status\n    }\n    associatedWorkflowRun {\n      id\n      workflowDefinitionId\n      name\n      status\n      steps {\n        id\n        workflowRunId\n        name\n        ordinal\n        status\n      }\n    }\n    hasUnread\n    currentContextTokens\n    forkedFromSessionAgentId\n    forkedFromSessionId\n    forkedFromSessionTitle\n    forkedFromTurnId\n    isCompacting\n    maxContextTokens\n    modelProviderCredentialModelId\n    modelId\n    reasoningLevel\n    inferredTitle\n    isThinking\n    status\n    thinkingText\n    createdAt\n    updatedAt\n    lastUserMessageAt\n    userSetTitle\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "284f64dc792fc186b5c19261043fefb3";
+(node as any).hash = "e0ed55e8e8bbb4190c3c4400be99c2f3";
 
 export default node;
