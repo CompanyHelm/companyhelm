@@ -12,14 +12,6 @@ import {
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { OrganizationPath } from "@/lib/organization_path";
 import type { SessionMessageRecord, SessionRecord } from "./chats_page_data";
 import {
@@ -52,7 +44,6 @@ AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
 const GithubInstallationStartTurnAction = memo(function GithubInstallationStartTurnAction(
   { action }: { action: GithubInstallationStartTurnActionRecord },
 ) {
-  const [isOpen, setIsOpen] = useState(false);
   const normalizedStatus = action.status.trim().toLowerCase();
   const statusLabel = action.isError
     ? "Unavailable"
@@ -61,58 +52,35 @@ const GithubInstallationStartTurnAction = memo(function GithubInstallationStartT
     : normalizedStatus.replace(/_/g, " ");
 
   return (
-    <Dialog onOpenChange={setIsOpen} open={isOpen}>
-      <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0 w-full`}>
-        <div className="flex min-w-0 w-full max-w-3xl flex-col gap-3 rounded-lg border border-border/70 bg-background px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-foreground">
-              <GithubIcon className="size-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">Connect GitHub</p>
-                <span className="rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                  {statusLabel}
-                </span>
-              </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Install the CompanyHelm GitHub App to connect repositories.
-              </p>
-            </div>
+    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0 w-full`}>
+      <div className="flex min-w-0 w-full max-w-3xl flex-col gap-3 rounded-lg border border-border/70 bg-background px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-foreground">
+            <GithubIcon className="size-4" />
           </div>
-          <Button disabled={action.isError} onClick={() => setIsOpen(true)} size="sm" type="button" variant="outline">
-            Review
-            <ChevronRightIcon className="size-3.5" />
-          </Button>
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">Connect GitHub</p>
+              <span className="rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                {statusLabel}
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Install the CompanyHelm GitHub App to connect repositories.
+            </p>
+          </div>
         </div>
+        <Button
+          disabled={action.isError}
+          render={action.isError ? undefined : <a href={action.installationUrl} />}
+          size="sm"
+          variant="outline"
+        >
+          Connect
+          <ExternalLinkIcon data-icon="inline-end" />
+        </Button>
       </div>
-      <DialogContent className="w-[min(92vw,34rem)] gap-5">
-        <DialogHeader>
-          <div className="mb-2 flex size-10 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-foreground">
-            <GithubIcon className="size-5" />
-          </div>
-          <DialogTitle>Connect GitHub</DialogTitle>
-          <DialogDescription>
-            Install the CompanyHelm GitHub App to let this workspace see the repositories you choose.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-3 text-xs leading-5 text-muted-foreground">
-          GitHub opens in this tab. After the installation finishes, GitHub redirects back to this chat session.
-        </div>
-        <DialogFooter>
-          <Button
-            data-primary-cta=""
-            disabled={action.isError}
-            render={action.isError ? undefined : <a href={action.installationUrl} />}
-            size="sm"
-          >
-            <GithubIcon />
-            Continue to GitHub
-            <ExternalLinkIcon className="size-3.5" />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 });
 

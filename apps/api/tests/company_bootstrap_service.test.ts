@@ -613,6 +613,8 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   ]);
   assert.match(workflowSteps[0]?.instructions_template ?? "", /artifact\.markdown\.create/);
   assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
+  assert.match(workflowSteps[1]?.instructions_template ?? "", /Connect GitHub card/);
+  assert.doesNotMatch(workflowSteps[1]?.instructions_template ?? "", /Show the returned installationUrl/);
   assert.match(workflowSteps[2]?.instructions_template ?? "", /clone_github_repository/);
   assert.match(workflowSteps[3]?.instructions_template ?? "", /skill\.github\.import/);
 });
