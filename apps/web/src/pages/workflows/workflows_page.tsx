@@ -1,5 +1,5 @@
 import { Suspense, useState } from "react";
-import { PlayIcon, PlusIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
+import { PlayIcon, PlusIcon, PowerIcon, PowerOffIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import type { RecordProxy } from "relay-runtime";
 import { useNavigate } from "@tanstack/react-router";
@@ -26,7 +26,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrganizationPath } from "@/lib/organization_path";
+import { cn } from "@/lib/utils";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { RunWorkflowDialog } from "./run_workflow_dialog";
 import { WorkflowDialog } from "./workflow_dialog";
@@ -35,6 +37,7 @@ import type { workflowsPageCreateMutation } from "./__generated__/workflowsPageC
 import type { workflowsPageDeleteMutation } from "./__generated__/workflowsPageDeleteMutation.graphql";
 import type { workflowsPageQuery } from "./__generated__/workflowsPageQuery.graphql";
 import type { workflowsPageStartRunMutation } from "./__generated__/workflowsPageStartRunMutation.graphql";
+import type { workflowsPageUpdateMutation } from "./__generated__/workflowsPageUpdateMutation.graphql";
 
 type WorkflowQueryRecord = workflowsPageQuery["response"]["Workflows"][number];
 type WorkflowDialogDraft = {
@@ -82,6 +85,36 @@ const workflowsPageQueryNode = graphql`
 const workflowsPageCreateMutationNode = graphql`
   mutation workflowsPageCreateMutation($input: CreateWorkflowInput!) {
     CreateWorkflow(input: $input) {
+      id
+      name
+      description
+      instructions
+      isEnabled
+      inputs {
+        id
+        name
+        description
+        isRequired
+        defaultValue
+        createdAt
+      }
+      steps {
+        id
+        stepId
+        name
+        instructions
+        ordinal
+        createdAt
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const workflowsPageUpdateMutationNode = graphql`
+  mutation workflowsPageUpdateMutation($input: UpdateWorkflowInput!) {
+    UpdateWorkflow(input: $input) {
       id
       name
       description
@@ -234,6 +267,7 @@ function WorkflowsPageContent() {
   const [runDialogErrorMessage, setRunDialogErrorMessage] = useState<string | null>(null);
   const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowRecord | null>(null);
   const [runningWorkflow, setRunningWorkflow] = useState<WorkflowRecord | null>(null);
+  const [togglingWorkflowId, setTogglingWorkflowId] = useState<string | null>(null);
   const data = useLazyLoadQuery<workflowsPageQuery>(
     workflowsPageQueryNode,
     {},
@@ -243,6 +277,9 @@ function WorkflowsPageContent() {
   );
   const [commitCreateWorkflow, isCreateWorkflowInFlight] = useMutation<workflowsPageCreateMutation>(
     workflowsPageCreateMutationNode,
+  );
+  const [commitUpdateWorkflow, isUpdateWorkflowInFlight] = useMutation<workflowsPageUpdateMutation>(
+    workflowsPageUpdateMutationNode,
   );
   const [commitStartWorkflowRun, isStartWorkflowRunInFlight] = useMutation<workflowsPageStartRunMutation>(
     workflowsPageStartRunMutationNode,
@@ -308,6 +345,40 @@ function WorkflowsPageContent() {
       setDialogOpen(false);
     } catch (error: unknown) {
       setDialogErrorMessage(getErrorMessage(error, "Failed to save workflow."));
+    }
+  }
+
+  async function updateWorkflowEnabled(workflow: WorkflowRecord, isEnabled: boolean): Promise<void> {
+    if (isUpdateWorkflowInFlight) {
+      return;
+    }
+
+    setPageErrorMessage(null);
+    setTogglingWorkflowId(workflow.id);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitUpdateWorkflow({
+          variables: {
+            input: {
+              id: workflow.id,
+              isEnabled,
+            },
+          },
+          onCompleted: (_response, errors) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+    } catch (error: unknown) {
+      setPageErrorMessage(getErrorMessage(error, "Failed to update workflow status."));
+    } finally {
+      setTogglingWorkflowId(null);
     }
   }
 
@@ -432,91 +503,146 @@ function WorkflowsPageContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Workflow</TableHead>
+                  <TableHead className="w-16">State</TableHead>
                   <TableHead>Inputs</TableHead>
                   <TableHead>Steps</TableHead>
                   <TableHead>Updated</TableHead>
-                  <TableHead className="w-24 text-right">Actions</TableHead>
+                  <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {workflows.map((workflow) => (
-                  <TableRow
-                    className="cursor-pointer"
-                    key={workflow.id}
-                    onClick={() => {
-                      openWorkflowDetail(workflow.id);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.target !== event.currentTarget) {
-                        return;
-                      }
+                {workflows.map((workflow) => {
+                  const workflowStatusLabel = workflow.isEnabled ? "Workflow enabled" : "Workflow disabled";
+                  const workflowToggleLabel = workflow.isEnabled
+                    ? `Disable ${workflow.name}`
+                    : `Enable ${workflow.name}`;
+                  const isWorkflowToggling = togglingWorkflowId === workflow.id;
 
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
+                  return (
+                    <TableRow
+                      className="cursor-pointer"
+                      key={workflow.id}
+                      onClick={() => {
                         openWorkflowDetail(workflow.id);
-                      }
-                    }}
-                    role="link"
-                    tabIndex={0}
-                  >
-                    <TableCell>
-                      <div className="grid gap-1">
-                        <span className="font-medium text-foreground">{workflow.name}</span>
-                        {workflow.description.length > 0 ? (
-                          <span className="line-clamp-2 max-w-xl text-xs text-muted-foreground">
-                            {workflow.description}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No description</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{workflow.inputs.length} inputs</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{workflow.steps.length} steps</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDateTime(workflow.updatedAt)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          aria-label={`Run ${workflow.name}`}
-                          disabled={agents.length === 0}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setRunDialogErrorMessage(null);
-                            setRunningWorkflow(workflow);
-                            setRunDialogOpen(true);
-                          }}
-                          size="icon-sm"
-                          title={`Run ${workflow.name}`}
-                          type="button"
-                          variant="ghost"
-                        >
-                          <PlayIcon />
-                        </Button>
-                        <Button
-                          aria-label={`Delete ${workflow.name}`}
-                          disabled={isDeleteWorkflowInFlight}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setPageErrorMessage(null);
-                            setDeletingWorkflow(workflow);
-                          }}
-                          size="icon-sm"
-                          title={`Delete ${workflow.name}`}
-                          type="button"
-                          variant="ghost"
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) {
+                          return;
+                        }
+
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openWorkflowDetail(workflow.id);
+                        }
+                      }}
+                      role="link"
+                      tabIndex={0}
+                    >
+                      <TableCell>
+                        <div className="grid gap-1">
+                          <span className="font-medium text-foreground">{workflow.name}</span>
+                          {workflow.description.length > 0 ? (
+                            <span className="line-clamp-2 max-w-xl text-xs text-muted-foreground">
+                              {workflow.description}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No description</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip>
+                          <TooltipTrigger
+                            aria-label={workflowStatusLabel}
+                            className="inline-flex size-6 cursor-help items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
+                            type="button"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "block size-2.5 rounded-full ring-2",
+                                workflow.isEnabled
+                                  ? "bg-[var(--success)] ring-[var(--success-bg)]"
+                                  : "bg-muted-foreground/40 ring-muted/60",
+                              )}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>{workflowStatusLabel}</TooltipContent>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{workflow.inputs.length} inputs</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{workflow.steps.length} steps</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateTime(workflow.updatedAt)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            aria-label={`Run ${workflow.name}`}
+                            disabled={agents.length === 0 || !workflow.isEnabled}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setRunDialogErrorMessage(null);
+                              setRunningWorkflow(workflow);
+                              setRunDialogOpen(true);
+                            }}
+                            size="icon-sm"
+                            title={workflow.isEnabled ? `Run ${workflow.name}` : "Enable this workflow before running it"}
+                            type="button"
+                            variant="ghost"
+                          >
+                            <PlayIcon />
+                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={(
+                                <Button
+                                  aria-label={workflowToggleLabel}
+                                  disabled={isUpdateWorkflowInFlight}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void updateWorkflowEnabled(workflow, !workflow.isEnabled);
+                                  }}
+                                  size="icon-sm"
+                                  title={isWorkflowToggling ? "Updating workflow status" : workflowToggleLabel}
+                                  type="button"
+                                  variant="ghost"
+                                >
+                                  {workflow.isEnabled ? <PowerOffIcon /> : <PowerIcon />}
+                                </Button>
+                              )}
+                            />
+                            <TooltipContent>
+                              {isWorkflowToggling ? "Updating workflow status" : workflowToggleLabel}
+                            </TooltipContent>
+                          </Tooltip>
+                          <Button
+                            aria-label={`Delete ${workflow.name}`}
+                            disabled={isDeleteWorkflowInFlight}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPageErrorMessage(null);
+                              setDeletingWorkflow(workflow);
+                            }}
+                            size="icon-sm"
+                            title={`Delete ${workflow.name}`}
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
