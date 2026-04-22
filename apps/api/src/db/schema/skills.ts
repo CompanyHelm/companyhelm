@@ -14,7 +14,7 @@ import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, githubRepositories, users } from "./company.ts";
-import { agentSessions } from "./conversations.ts";
+import { agentSessions } from "./sessions.ts";
 
 export const skillSourceTypeEnum = pgEnum("skill_source_type", ["manual", "public_git", "github_installation"]);
 

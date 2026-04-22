@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
-import { agentSessions } from "./conversations.ts";
+import { agentSessions } from "./sessions.ts";
 import { tasks } from "./tasks.ts";
 
 export const artifactScopeEnum = pgEnum("artifact_scope", ["company", "task", "session"]);

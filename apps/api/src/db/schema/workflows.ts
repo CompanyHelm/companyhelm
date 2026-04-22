@@ -17,7 +17,7 @@ import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
-import { agentSessions } from "./conversations.ts";
+import { agentSessions } from "./sessions.ts";
 
 export const workflowRunStatusEnum = pgEnum("workflow_run_status", [
   "running",

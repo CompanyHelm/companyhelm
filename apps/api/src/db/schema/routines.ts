@@ -14,7 +14,7 @@ import {
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
-import { agentSessions } from "./conversations.ts";
+import { agentSessions } from "./sessions.ts";
 
 export const routineOverlapPolicyEnum = pgEnum("routine_overlap_policy", ["skip"]);
 export const routineTriggerTypeEnum = pgEnum("routine_trigger_type", ["cron"]);

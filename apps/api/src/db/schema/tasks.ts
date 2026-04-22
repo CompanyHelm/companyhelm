@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
-import { agentSessions } from "./conversations.ts";
+import { agentSessions } from "./sessions.ts";
 
 export const taskStatusEnum = pgEnum("task_status", ["draft", "in_progress", "completed"]);
 export const taskRunStatusEnum = pgEnum("task_run_status", ["queued", "running", "completed", "failed", "canceled"]);

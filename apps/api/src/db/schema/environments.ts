@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm/sql";
 
 import { agents } from "./agents.ts";
 import { companies, users } from "./company.ts";
-import { agentSessions } from "./conversations.ts";
+import { agentSessions } from "./sessions.ts";
 
 export const agentEnvironmentPlatformEnum = pgEnum("agent_environment_platform", ["linux", "windows", "macos"]);
 export const agentEnvironmentLeaseStateEnum = pgEnum("agent_environment_lease_state", ["active", "idle", "released", "expired"]);
