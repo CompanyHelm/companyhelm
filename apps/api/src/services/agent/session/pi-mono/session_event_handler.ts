@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, ne } from "drizzle-orm";
 import pino, { type Logger as PinoLogger } from "pino";
-import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages, sessionTurns } from "../../../../db/schema.ts";
+import {
+  agentSessions,
+  messageContents,
+  modelProviderCredentialModels,
+  sessionMessages,
+  sessionQueuedMessages,
+  sessionTurns,
+} from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
@@ -118,6 +125,7 @@ type QueuedUserMessageDispatch = {
 type SessionAttribution = {
   agentId: string;
   companyId: string;
+  modelProviderCredentialId: string;
 };
 
 type PersistedSessionMessageReference = {
@@ -166,6 +174,7 @@ export class PiMonoSessionEventHandler {
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
   private agentId?: string;
+  private modelProviderCredentialId?: string;
   private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
@@ -269,6 +278,7 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: attribution.companyId,
+      modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt,
       sessionId: this.sessionId,
       turnId,
@@ -527,6 +537,7 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: persistedMessageReference.companyId,
+      modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt: persistedMessageReference.timestamp,
       sessionId: this.sessionId,
       turnId: persistedMessageReference.turnId,
@@ -1127,13 +1138,12 @@ export class PiMonoSessionEventHandler {
   }
 
   private async resolveSessionAttribution(): Promise<SessionAttribution> {
-    if (this.companyId) {
-      if (this.agentId) {
-        return {
-          agentId: this.agentId,
-          companyId: this.companyId,
-        };
-      }
+    if (this.companyId && this.agentId && this.modelProviderCredentialId) {
+      return {
+        agentId: this.agentId,
+        companyId: this.companyId,
+        modelProviderCredentialId: this.modelProviderCredentialId,
+      };
     }
 
     const attribution = await this.transactionProvider.transaction(async (tx) => {
@@ -1148,27 +1158,51 @@ export class PiMonoSessionEventHandler {
         .select({
           agentId: agentSessions.agentId,
           companyId: agentSessions.companyId,
+          currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
         })
         .from(agentSessions)
         .where(eq(agentSessions.id, this.sessionId));
+      const companyId = sessionRecord?.companyId;
+      const currentModelProviderCredentialModelId = sessionRecord?.currentModelProviderCredentialModelId;
+      if (typeof companyId !== "string" || typeof currentModelProviderCredentialModelId !== "string") {
+        return {
+          agentId: sessionRecord?.agentId,
+          companyId,
+          modelProviderCredentialId: undefined,
+        };
+      }
+
+      const [credentialModelRecord] = await selectableDatabase
+        .select({
+          modelProviderCredentialId: modelProviderCredentialModels.modelProviderCredentialId,
+        })
+        .from(modelProviderCredentialModels)
+        .where(and(
+          eq(modelProviderCredentialModels.companyId, companyId),
+          eq(modelProviderCredentialModels.id, currentModelProviderCredentialModelId),
+        ));
 
       return {
         agentId: sessionRecord?.agentId,
-        companyId: sessionRecord?.companyId,
+        companyId,
+        modelProviderCredentialId: credentialModelRecord?.modelProviderCredentialId,
       };
     });
 
     const companyId = attribution.companyId;
     const agentId = attribution.agentId;
-    if (typeof companyId !== "string" || typeof agentId !== "string") {
+    const modelProviderCredentialId = attribution.modelProviderCredentialId;
+    if (typeof companyId !== "string" || typeof agentId !== "string" || typeof modelProviderCredentialId !== "string") {
       throw new Error("Session attribution not found.");
     }
 
     this.companyId = companyId;
     this.agentId = agentId;
+    this.modelProviderCredentialId = modelProviderCredentialId;
     return {
       agentId,
       companyId,
+      modelProviderCredentialId,
     };
   }
 

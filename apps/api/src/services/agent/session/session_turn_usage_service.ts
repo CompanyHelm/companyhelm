@@ -22,6 +22,7 @@ export type SessionTurnUsagePayload = {
 export type SessionTurnUsageRecordInput = {
   agentId: string;
   companyId: string;
+  modelProviderCredentialId: string;
   recordedAt: Date;
   sessionId: string;
   turnId: string;
@@ -41,7 +42,7 @@ type NormalizedUsage = {
   totalTokens: number;
 };
 
-type AggregateScopeType = "company" | "agent" | "session";
+type AggregateScopeType = "company" | "provider" | "agent" | "session";
 type AggregatePeriod = "total" | "day" | "month";
 
 type AggregateRecord = {
@@ -221,6 +222,24 @@ export class SessionTurnUsageService {
         periodStart: monthPeriodStart,
         scopeId: input.agentId,
         scopeType: "agent",
+      },
+      {
+        period: "total",
+        periodStart: this.resolveTotalPeriodStart(),
+        scopeId: input.modelProviderCredentialId,
+        scopeType: "provider",
+      },
+      {
+        period: "day",
+        periodStart: dayPeriodStart,
+        scopeId: input.modelProviderCredentialId,
+        scopeType: "provider",
+      },
+      {
+        period: "month",
+        periodStart: monthPeriodStart,
+        scopeId: input.modelProviderCredentialId,
+        scopeType: "provider",
       },
       {
         period: "total",

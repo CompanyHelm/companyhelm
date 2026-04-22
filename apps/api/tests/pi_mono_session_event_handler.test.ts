@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import type { Logger as PinoLogger } from "pino";
-import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages, sessionTurns, userSessionReads } from "../src/db/schema.ts";
+import {
+  agentSessions,
+  messageContents,
+  modelProviderCredentialModels,
+  sessionMessages,
+  sessionQueuedMessages,
+  sessionTurns,
+  userSessionReads,
+} from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
 import type { SessionTurnUsageRecordInput } from "../src/services/agent/session/session_turn_usage_service.ts";
 
@@ -135,18 +143,29 @@ class PiMonoSessionEventHandlerTestHarness {
             select() {
               return {
                 from(table: unknown) {
-                  if (table !== agentSessions) {
-                    throw new Error("Unexpected select table.");
+                  if (table === agentSessions) {
+                    return {
+                      async where() {
+                        return [{
+                          agentId: "agent-1",
+                          companyId: "company-1",
+                          currentModelProviderCredentialModelId: "credential-model-1",
+                        }];
+                      },
+                    };
                   }
 
-                  return {
-                    async where() {
-                      return [{
-                        agentId: "agent-1",
-                        companyId: "company-1",
-                      }];
-                    },
-                  };
+                  if (table === modelProviderCredentialModels) {
+                    return {
+                      async where() {
+                        return [{
+                          modelProviderCredentialId: "provider-credential-1",
+                        }];
+                      },
+                    };
+                  }
+
+                  throw new Error("Unexpected select table.");
                 },
               };
             },
@@ -718,6 +737,7 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.turnId, messageRecord.turnId);
   assert.equal(usageRecords[0]?.recordedAt.getTime(), Date.parse("2026-04-20T16:30:00.000Z"));
@@ -813,6 +833,7 @@ test("PiMonoSessionEventHandler records current assistant usage when interrupted
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.recordedAt, interruptedAt);
   assert.equal(usageRecords[0]?.usage.totalTokens, 70);

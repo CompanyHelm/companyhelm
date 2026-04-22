@@ -24,7 +24,12 @@ export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "a
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["queued", "running", "stopped", "archived"]);
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
-export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", ["company", "agent", "session"]);
+export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", [
+  "company",
+  "provider",
+  "agent",
+  "session",
+]);
 export const llmUsageAggregatePeriodEnum = pgEnum("llm_usage_aggregate_period", ["total", "day", "month"]);
 // it will be deleted on completion of the message, so no completed or failed statuses
 // processing means the message got sent to the session using the session SDK e.g. pi mono

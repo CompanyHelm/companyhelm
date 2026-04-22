@@ -49,6 +49,7 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
     companyId: "00000000-0000-0000-0000-000000000001",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
     recordedAt: new Date("2026-04-20T23:30:00.000Z"),
     sessionId: "00000000-0000-0000-0000-000000000003",
     turnId: "00000000-0000-0000-0000-000000000004",
@@ -69,8 +70,8 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   });
 
   assert.equal(harness.turnUpdates.length, 1);
-  assert.equal(harness.aggregateRows.length, 7);
-  assert.equal(harness.aggregateConflictUpdates.length, 7);
+  assert.equal(harness.aggregateRows.length, 10);
+  assert.equal(harness.aggregateConflictUpdates.length, 10);
 
   const sessionTotal = harness.aggregateRows.find((row) => {
     return row.scopeType === "session" && row.period === "total";
@@ -80,6 +81,9 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   });
   const companyMonth = harness.aggregateRows.find((row) => {
     return row.scopeType === "company" && row.period === "month";
+  });
+  const providerDay = harness.aggregateRows.find((row) => {
+    return row.scopeType === "provider" && row.period === "day";
   });
 
   assert.ok(sessionTotal);
@@ -98,6 +102,9 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
 
   assert.ok(agentDay);
   assert.equal((agentDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
+  assert.ok(providerDay);
+  assert.equal(providerDay.scopeId, "00000000-0000-0000-0000-000000000005");
+  assert.equal((providerDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(companyMonth);
   assert.equal((companyMonth.periodStart as Date).toISOString(), "2026-04-01T00:00:00.000Z");
 });
@@ -109,6 +116,7 @@ test("SessionTurnUsageService skips empty usage payloads", async () => {
   await service.recordUsage(harness.createTransactionProvider() as never, {
     agentId: "00000000-0000-0000-0000-000000000002",
     companyId: "00000000-0000-0000-0000-000000000001",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
     recordedAt: new Date("2026-04-20T23:30:00.000Z"),
     sessionId: "00000000-0000-0000-0000-000000000003",
     turnId: "00000000-0000-0000-0000-000000000004",
