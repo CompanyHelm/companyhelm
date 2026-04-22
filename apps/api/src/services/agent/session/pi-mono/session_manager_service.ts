@@ -313,6 +313,16 @@ export class PiMonoSessionManagerService {
     );
   }
 
+  async recordInterruptedUsage(
+    runtime: AgentSessionRuntimeContext,
+    recordedAt: Date = new Date(),
+  ): Promise<void> {
+    await runtime.eventHandler.recordInterruptedAssistantUsage(
+      runtime.session.agent.state.streamingMessage,
+      recordedAt,
+    );
+  }
+
   async abort(runtime: AgentSessionRuntimeContext): Promise<void> {
     await runtime.session.abort();
   }

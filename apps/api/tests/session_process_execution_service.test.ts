@@ -1444,6 +1444,10 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
       async createRuntime() {
         return runtime;
       },
+      async recordInterruptedUsage(receivedRuntime: unknown) {
+        operationOrder.push("usage");
+        assert.equal(receivedRuntime, runtime);
+      },
       async persistRuntimeContextSnapshot(receivedRuntime: unknown, _transactionProvider: unknown, receivedSessionId: string) {
         operationOrder.push("persist-context");
         persistContextCalls.push({
@@ -1546,7 +1550,7 @@ test("SessionProcessExecutionService aborts the active prompt when an interrupt 
     runtime,
     sessionId: "session-1",
   }]);
-  assert.deepEqual(operationOrder, ["persist-context", "abort"]);
+  assert.deepEqual(operationOrder, ["usage", "persist-context", "abort"]);
   assert.deepEqual(abortCalls, [runtime]);
   assert.deepEqual(clearQueuedCalls, [{
     companyId: "company-1",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   check,
   index,
@@ -23,6 +24,8 @@ export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "a
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["queued", "running", "stopped", "archived"]);
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
+export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", ["company", "agent", "session"]);
+export const llmUsageAggregatePeriodEnum = pgEnum("llm_usage_aggregate_period", ["total", "day", "month"]);
 // it will be deleted on completion of the message, so no completed or failed statuses
 // processing means the message got sent to the session using the session SDK e.g. pi mono
 export const sessionQueuedMessageStatusEnum = pgEnum("session_queued_message_status", ["pending", "processing"]);
@@ -83,10 +86,52 @@ export const sessionTurns = pgTable("session_turns", {
     .notNull(),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
+  usageInputTokens: integer("usage_input_tokens").default(0).notNull(),
+  usageOutputTokens: integer("usage_output_tokens").default(0).notNull(),
+  usageCacheReadTokens: integer("usage_cache_read_tokens").default(0).notNull(),
+  usageCacheWriteTokens: integer("usage_cache_write_tokens").default(0).notNull(),
+  usageTotalTokens: integer("usage_total_tokens").default(0).notNull(),
+  usageInputCostNanoUsd: bigint("usage_input_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  usageOutputCostNanoUsd: bigint("usage_output_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  usageCacheReadCostNanoUsd: bigint("usage_cache_read_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  usageCacheWriteCostNanoUsd: bigint("usage_cache_write_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  usageTotalCostNanoUsd: bigint("usage_total_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  usageRecordedAt: timestamp("usage_recorded_at", { withTimezone: true }),
 }, (table) => ({
   companyIdIndex: index("session_turns_company_id_idx").on(table.companyId),
   sessionIdIndex: index("session_turns_session_id_idx").on(table.sessionId),
   sessionStartedAtIndex: index("session_turns_session_started_at_idx").on(table.sessionId, table.startedAt),
+}));
+
+export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  scopeType: llmUsageAggregateScopeEnum("scope_type").notNull(),
+  scopeId: uuid("scope_id").notNull(),
+  period: llmUsageAggregatePeriodEnum("period").notNull(),
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+  requestCount: bigint("request_count", { mode: "number" }).default(0).notNull(),
+  inputTokens: bigint("input_tokens", { mode: "number" }).default(0).notNull(),
+  outputTokens: bigint("output_tokens", { mode: "number" }).default(0).notNull(),
+  cacheReadTokens: bigint("cache_read_tokens", { mode: "number" }).default(0).notNull(),
+  cacheWriteTokens: bigint("cache_write_tokens", { mode: "number" }).default(0).notNull(),
+  totalTokens: bigint("total_tokens", { mode: "number" }).default(0).notNull(),
+  inputCostNanoUsd: bigint("input_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  outputCostNanoUsd: bigint("output_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  cacheReadCostNanoUsd: bigint("cache_read_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  cacheWriteCostNanoUsd: bigint("cache_write_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  totalCostNanoUsd: bigint("total_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companyScopeIndex: index("llm_usage_aggregates_company_scope_idx")
+    .on(table.companyId, table.scopeType, table.scopeId),
+  companyScopePeriodUnique: uniqueIndex("llm_usage_aggregates_company_scope_period_uidx")
+    .on(table.companyId, table.scopeType, table.scopeId, table.period, table.periodStart),
 }));
 
 export const userSessionReads = pgTable("user_session_reads", {

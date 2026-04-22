@@ -345,6 +345,16 @@ export class SessionProcessExecutionService {
     sessionId: string,
   ): Promise<void> {
     try {
+      await this.piMonoSessionManagerService.recordInterruptedUsage(runtime);
+    } catch (error) {
+      this.logger.error({
+        companyId,
+        error,
+        sessionId,
+      }, "failed to persist interrupted session usage");
+    }
+
+    try {
       await this.piMonoSessionManagerService.persistRuntimeContextSnapshot(
         runtime,
         transactionProvider,

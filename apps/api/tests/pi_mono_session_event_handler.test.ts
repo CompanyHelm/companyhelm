@@ -3,6 +3,7 @@ import { test, vi } from "vitest";
 import type { Logger as PinoLogger } from "pino";
 import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages, sessionTurns, userSessionReads } from "../src/db/schema.ts";
 import { PiMonoSessionEventHandler } from "../src/services/agent/session/pi-mono/session_event_handler.ts";
+import type { SessionTurnUsageRecordInput } from "../src/services/agent/session/session_turn_usage_service.ts";
 
 type SessionMessageRecord = Record<string, unknown> & {
   errorMessage?: string | null;
@@ -141,6 +142,7 @@ class PiMonoSessionEventHandlerTestHarness {
                   return {
                     async where() {
                       return [{
+                        agentId: "agent-1",
                         companyId: "company-1",
                       }];
                     },
@@ -666,6 +668,154 @@ test("PiMonoSessionEventHandler persists assistant messages across start update 
   );
   assert.equal(harness.sessionState.currentContextTokens, 12000);
   assert.equal(harness.sessionState.maxContextTokens, 200000);
+});
+
+test("PiMonoSessionEventHandler records assistant usage from completed messages", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const usageRecords: SessionTurnUsageRecordInput[] = [];
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      sessionTurnUsageService: {
+        async recordUsage(_transactionProvider: unknown, input: SessionTurnUsageRecordInput) {
+          usageRecords.push(input);
+        },
+      } as never,
+    },
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: "Done",
+        role: "assistant",
+        timestamp: Date.parse("2026-04-20T16:30:00.000Z"),
+        usage: {
+          cacheRead: 20,
+          cacheWrite: 30,
+          cost: {
+            cacheRead: 0.000002,
+            cacheWrite: 0.000003,
+            input: 0.000001,
+            output: 0.000004,
+            total: 0.000010,
+          },
+          input: 100,
+          output: 50,
+          totalTokens: 200,
+        },
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  assert.equal(usageRecords.length, 1);
+  assert.equal(usageRecords[0]?.agentId, "agent-1");
+  assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.sessionId, "session-1");
+  assert.equal(usageRecords[0]?.turnId, messageRecord.turnId);
+  assert.equal(usageRecords[0]?.recordedAt.getTime(), Date.parse("2026-04-20T16:30:00.000Z"));
+  assert.deepEqual(usageRecords[0]?.usage, {
+    cacheRead: 20,
+    cacheWrite: 30,
+    cost: {
+      cacheRead: 0.000002,
+      cacheWrite: 0.000003,
+      input: 0.000001,
+      output: 0.000004,
+      total: 0.000010,
+    },
+    input: 100,
+    output: 50,
+    totalTokens: 200,
+  });
+});
+
+test("PiMonoSessionEventHandler ignores completed assistant messages without usage", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      sessionTurnUsageService: {
+        async recordUsage() {
+          throw new Error("usage should not be recorded without a PI Mono usage payload.");
+        },
+      } as never,
+    },
+  );
+
+  try {
+    await handler.handle({
+      message: {
+        content: "Done",
+        role: "assistant",
+        timestamp: Date.parse("2026-04-20T16:30:00.000Z"),
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(harness.errorLogs.length, 0);
+  assert.equal(harness.sessionMessageRecords.size, 1);
+});
+
+test("PiMonoSessionEventHandler records current assistant usage when interrupted", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const usageRecords: SessionTurnUsageRecordInput[] = [];
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      sessionTurnUsageService: {
+        async recordUsage(_transactionProvider: unknown, input: SessionTurnUsageRecordInput) {
+          usageRecords.push(input);
+        },
+      } as never,
+    },
+  );
+  const interruptedAt = new Date("2026-04-20T16:31:00.000Z");
+
+  try {
+    const turnId = await handler.startPromptTurn(new Date("2026-04-20T16:30:00.000Z"));
+    await handler.recordInterruptedAssistantUsage({
+      role: "assistant",
+      timestamp: Date.parse("2026-04-20T16:30:30.000Z"),
+      usage: {
+        cacheRead: 5,
+        cacheWrite: 0,
+        cost: {
+          cacheRead: 0.000001,
+          input: 0.000002,
+          output: 0.000003,
+          total: 0.000006,
+        },
+        input: 40,
+        output: 25,
+        totalTokens: 70,
+      },
+    }, interruptedAt);
+    assert.equal(usageRecords[0]?.turnId, turnId);
+  } finally {
+    harness.restore();
+  }
+
+  assert.equal(usageRecords.length, 1);
+  assert.equal(usageRecords[0]?.agentId, "agent-1");
+  assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.sessionId, "session-1");
+  assert.equal(usageRecords[0]?.recordedAt, interruptedAt);
+  assert.equal(usageRecords[0]?.usage.totalTokens, 70);
 });
 
 test("PiMonoSessionEventHandler persists assistant error text on failed message end", async () => {

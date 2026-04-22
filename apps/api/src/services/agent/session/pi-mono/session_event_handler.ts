@@ -5,6 +5,10 @@ import { agentSessions, messageContents, sessionMessages, sessionQueuedMessages,
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { RedisCompanyScopedService } from "../../../redis/company_scoped_service.ts";
 import { RedisService } from "../../../redis/service.ts";
+import {
+  SessionTurnUsageService,
+  type SessionTurnUsagePayload,
+} from "../session_turn_usage_service.ts";
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
 import { UserSessionReadService } from "../user_session_read_service.ts";
 
@@ -78,6 +82,7 @@ type SessionMessage = {
   timestamp?: number;
   toolCallId?: string;
   toolName?: string;
+  usage?: SessionTurnUsagePayload;
 };
 
 type SessionEvent = {
@@ -110,12 +115,25 @@ type QueuedUserMessageDispatch = {
   timestamp: Date;
 };
 
+type SessionAttribution = {
+  agentId: string;
+  companyId: string;
+};
+
+type PersistedSessionMessageReference = {
+  companyId: string;
+  messageId: string;
+  timestamp: Date;
+  turnId: string;
+};
+
 type PiMonoSessionEventHandlerDependencies = {
   contextMessagesSnapshotProvider?: () => unknown;
   contextSnapshotProvider?: () => PiMonoSessionContextSnapshot;
   initialContextMessagesSnapshotAt?: Date | null;
   logger?: PinoLogger;
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
+  sessionTurnUsageService?: SessionTurnUsageService;
   userSessionReadService?: UserSessionReadService;
 };
 
@@ -135,6 +153,7 @@ export class PiMonoSessionEventHandler {
   private readonly sessionId: string;
   private readonly logger: PinoLogger;
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
+  private readonly sessionTurnUsageService: SessionTurnUsageService;
   private readonly userSessionReadService: UserSessionReadService;
   private readonly contextMessagesSnapshotProvider: () => unknown;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
@@ -146,6 +165,7 @@ export class PiMonoSessionEventHandler {
   private readonly completedToolExecutionKeys = new Set<string>();
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
+  private agentId?: string;
   private currentTurnId: string | null = null;
   private isThinking = false;
   private thinkingText = "";
@@ -174,6 +194,7 @@ export class PiMonoSessionEventHandler {
     }));
     this.lastContextMessagesSnapshotAtMilliseconds = dependencies.initialContextMessagesSnapshotAt?.getTime() ?? null;
     this.sessionProcessPubSubNames = dependencies.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
+    this.sessionTurnUsageService = dependencies.sessionTurnUsageService ?? new SessionTurnUsageService();
     this.userSessionReadService = dependencies.userSessionReadService ?? new UserSessionReadService();
   }
 
@@ -234,6 +255,25 @@ export class PiMonoSessionEventHandler {
     this.messageIdsByTurnId.delete(currentTurnId);
     this.currentTurnId = null;
     return currentTurnId;
+  }
+
+  async recordInterruptedAssistantUsage(message: unknown, recordedAt: Date = new Date()): Promise<void> {
+    await this.waitForIdle();
+    const sessionMessage = message as SessionMessage | undefined;
+    if (sessionMessage?.role !== "assistant" || !sessionMessage.usage) {
+      return;
+    }
+
+    const attribution = await this.resolveSessionAttribution();
+    const turnId = await this.resolveTurnId(attribution.companyId, recordedAt);
+    await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
+      agentId: attribution.agentId,
+      companyId: attribution.companyId,
+      recordedAt,
+      sessionId: this.sessionId,
+      turnId,
+      usage: sessionMessage.usage,
+    });
   }
 
   private async waitForIdle(): Promise<void> {
@@ -374,13 +414,17 @@ export class PiMonoSessionEventHandler {
         this.logDebug("pi mono user message completed", sessionEvent);
         return;
       }
-      case "assistant":
-        await this.upsertSessionMessage("completed", sessionEvent);
+      case "assistant": {
+        const persistedMessageReference = await this.upsertSessionMessage("completed", sessionEvent);
+        if (persistedMessageReference && sessionEvent.message) {
+          await this.recordAssistantUsage(sessionEvent.message, persistedMessageReference);
+        }
         await this.clearThinkingState(true, true);
         await this.persistContextMessagesSnapshot(snapshotTimestamp, false);
         this.persistedThinkingContent = "";
         this.logDebug("pi mono assistant message completed", sessionEvent);
         return;
+      }
       case "toolResult":
         if (this.hasTrackedToolExecutionMessage(sessionEvent.message)) {
           this.logDebug("ignoring pi mono tool result end after tool execution events", sessionEvent);
@@ -399,11 +443,11 @@ export class PiMonoSessionEventHandler {
     status: "running" | "completed",
     sessionEvent: SessionEvent,
     timestampOverride?: Date,
-  ): Promise<void> {
+  ): Promise<PersistedSessionMessageReference | null> {
     const eventMessage = sessionEvent.message;
     if (!eventMessage?.role) {
       this.logError("cannot persist pi mono message without role", sessionEvent);
-      return;
+      return null;
     }
 
     const messageId = await this.resolveMessageId(sessionEvent);
@@ -462,6 +506,32 @@ export class PiMonoSessionEventHandler {
       this.contentIdsByMessageId.delete(messageId);
       this.persistedMessageIds.delete(messageId);
     }
+
+    return {
+      companyId,
+      messageId,
+      timestamp,
+      turnId,
+    };
+  }
+
+  private async recordAssistantUsage(
+    message: SessionMessage,
+    persistedMessageReference: PersistedSessionMessageReference,
+  ): Promise<void> {
+    if (!message.usage) {
+      return;
+    }
+
+    const attribution = await this.resolveSessionAttribution();
+    await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
+      agentId: attribution.agentId,
+      companyId: persistedMessageReference.companyId,
+      recordedAt: persistedMessageReference.timestamp,
+      sessionId: this.sessionId,
+      turnId: persistedMessageReference.turnId,
+      usage: message.usage,
+    });
   }
 
   private async handleToolExecutionStart(sessionEvent: SessionEvent): Promise<void> {
@@ -1052,11 +1122,21 @@ export class PiMonoSessionEventHandler {
   }
 
   private async resolveCompanyId(): Promise<string> {
+    const attribution = await this.resolveSessionAttribution();
+    return attribution.companyId;
+  }
+
+  private async resolveSessionAttribution(): Promise<SessionAttribution> {
     if (this.companyId) {
-      return this.companyId;
+      if (this.agentId) {
+        return {
+          agentId: this.agentId,
+          companyId: this.companyId,
+        };
+      }
     }
 
-    const companyId = await this.transactionProvider.transaction(async (tx) => {
+    const attribution = await this.transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as {
         select(selection: Record<string, unknown>): {
           from(table: unknown): {
@@ -1066,20 +1146,30 @@ export class PiMonoSessionEventHandler {
       };
       const [sessionRecord] = await selectableDatabase
         .select({
+          agentId: agentSessions.agentId,
           companyId: agentSessions.companyId,
         })
         .from(agentSessions)
         .where(eq(agentSessions.id, this.sessionId));
 
-      return sessionRecord?.companyId;
+      return {
+        agentId: sessionRecord?.agentId,
+        companyId: sessionRecord?.companyId,
+      };
     });
 
-    if (typeof companyId !== "string") {
-      throw new Error("Session company not found.");
+    const companyId = attribution.companyId;
+    const agentId = attribution.agentId;
+    if (typeof companyId !== "string" || typeof agentId !== "string") {
+      throw new Error("Session attribution not found.");
     }
 
     this.companyId = companyId;
-    return companyId;
+    this.agentId = agentId;
+    return {
+      agentId,
+      companyId,
+    };
   }
 
   private async resolveMessageId(sessionEvent: SessionEvent): Promise<string> {

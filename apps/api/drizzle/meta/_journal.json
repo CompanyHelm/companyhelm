@@ -827,6 +827,13 @@
       "when": 1776810259384,
       "tag": "0117_regular_kid_colt",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1776838591532,
+      "tag": "0118_youthful_red_ghost",
+      "breakpoints": true
     }
   ]
 }
