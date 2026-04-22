@@ -13,6 +13,7 @@ import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
 import { AgentArchivedChatsTab } from "./agent_archived_chats_tab";
+import { AgentDetailProviderSelection } from "./agent_detail_provider_selection";
 import { AgentSecretDefaultsCard } from "./agent_secret_defaults_card";
 import { AgentMcpServerDefaultsCard } from "./agent_mcp_server_defaults_card";
 import { AgentSkillDefaultsCard } from "./agent_skill_defaults_card";
@@ -659,11 +660,8 @@ function AgentDetailPageContent() {
                         reasoningLevel: resolveReasoningLevel(nextProviderOption, nextModelOption, null),
                       });
                     }}
-                    options={providerOptions.map((option) => ({
-                      label: option.label,
-                      value: option.id,
-                    }))}
-                    value={selectedProviderOption?.id ?? ""}
+                    options={AgentDetailProviderSelection.toFieldOptions(providerOptions)}
+                    value={AgentDetailProviderSelection.resolveFieldValue(selectedProviderOption)}
                     variant="plain"
                   />
 
