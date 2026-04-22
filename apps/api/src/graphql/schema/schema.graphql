@@ -167,6 +167,7 @@ type Mutation {
   TriggerRoutine(input: TriggerRoutineInput!): RoutineRun!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
   CreateWorkflowCronTrigger(input: CreateWorkflowCronTriggerInput!): WorkflowCronTrigger!
+  DeleteWorkflow(input: DeleteWorkflowInput!): Workflow!
   DeleteWorkflowTrigger(input: DeleteWorkflowTriggerInput!): WorkflowCronTrigger!
   StartWorkflowRun(input: StartWorkflowRunInput!): WorkflowRun!
   UpdateWorkflowCronTrigger(input: UpdateWorkflowCronTriggerInput!): WorkflowCronTrigger!
@@ -1457,6 +1458,10 @@ input UpdateWorkflowInput {
   isEnabled: Boolean
   inputs: [WorkflowInputDraftInput!]
   steps: [WorkflowStepDraftInput!]
+}
+
+input DeleteWorkflowInput {
+  id: ID!
 }
 
 input CreateWorkflowCronTriggerInput {

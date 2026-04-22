@@ -237,6 +237,24 @@ export class WorkflowService {
     });
   }
 
+  async deleteWorkflow(
+    transactionProvider: TransactionProviderInterface,
+    companyId: string,
+    workflowDefinitionId: string,
+  ): Promise<WorkflowRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const workflowRow = await this.requireWorkflowDefinitionRow(tx, companyId, workflowDefinitionId);
+      const [workflowRecord] = await this.hydrateWorkflowRows(tx, companyId, [workflowRow]);
+      await tx
+        .delete(workflowDefinitions)
+        .where(and(
+          eq(workflowDefinitions.companyId, companyId),
+          eq(workflowDefinitions.id, workflowDefinitionId),
+        ));
+      return workflowRecord!;
+    });
+  }
+
   async createCronTrigger(
     transactionProvider: TransactionProviderInterface,
     input: WorkflowCronTriggerCreateInput,

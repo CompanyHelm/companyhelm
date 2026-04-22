@@ -2,6 +2,7 @@ import { inject, injectable } from "inversify";
 import { WorkflowService } from "../../services/workflows/service.ts";
 import { CreateWorkflowCronTriggerMutation } from "../mutations/create_workflow_cron_trigger.ts";
 import { CreateWorkflowMutation } from "../mutations/create_workflow.ts";
+import { DeleteWorkflowMutation } from "../mutations/delete_workflow.ts";
 import { DeleteWorkflowTriggerMutation } from "../mutations/delete_workflow_trigger.ts";
 import { StartWorkflowRunMutation } from "../mutations/start_workflow_run.ts";
 import { UpdateWorkflowCronTriggerMutation } from "../mutations/update_workflow_cron_trigger.ts";
@@ -37,6 +38,9 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(CreateWorkflowCronTriggerMutation)
     private readonly createWorkflowCronTriggerMutation: CreateWorkflowCronTriggerMutation =
       new CreateWorkflowCronTriggerMutation(WorkflowGraphqlRegistry.createMissingWorkflowService(), {} as never),
+    @inject(DeleteWorkflowMutation)
+    private readonly deleteWorkflowMutation: DeleteWorkflowMutation =
+      new DeleteWorkflowMutation(WorkflowGraphqlRegistry.createMissingWorkflowService(), {} as never),
     @inject(DeleteWorkflowTriggerMutation)
     private readonly deleteWorkflowTriggerMutation: DeleteWorkflowTriggerMutation =
       new DeleteWorkflowTriggerMutation(WorkflowGraphqlRegistry.createMissingWorkflowService(), {} as never),
@@ -56,6 +60,7 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
       Mutation: {
         CreateWorkflowCronTrigger: this.createWorkflowCronTriggerMutation.execute,
         CreateWorkflow: this.createWorkflowMutation.execute,
+        DeleteWorkflow: this.deleteWorkflowMutation.execute,
         DeleteWorkflowTrigger: this.deleteWorkflowTriggerMutation.execute,
         StartWorkflowRun: this.startWorkflowRunMutation.execute,
         UpdateWorkflowCronTrigger: this.updateWorkflowCronTriggerMutation.execute,
@@ -79,6 +84,9 @@ export class WorkflowGraphqlRegistry implements GraphqlRegistryInterface {
         throw new Error("Workflow service is not configured.");
       },
       async deleteTrigger() {
+        throw new Error("Workflow service is not configured.");
+      },
+      async deleteWorkflow() {
         throw new Error("Workflow service is not configured.");
       },
       async getCronTriggerSchedule() {

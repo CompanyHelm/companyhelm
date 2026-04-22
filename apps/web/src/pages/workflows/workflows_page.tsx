@@ -1,11 +1,23 @@
 import { Suspense, useState } from "react";
-import { PlayIcon, PlusIcon, WorkflowIcon } from "lucide-react";
+import { PlayIcon, PlusIcon, Trash2Icon, WorkflowIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import type { RecordProxy } from "relay-runtime";
 import { useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogActionButton,
+  AlertDialogCancelAction,
+  AlertDialogCancelButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPrimaryAction,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -20,6 +32,7 @@ import { RunWorkflowDialog } from "./run_workflow_dialog";
 import { WorkflowDialog } from "./workflow_dialog";
 import type { WorkflowRecord } from "./workflow_types";
 import type { workflowsPageCreateMutation } from "./__generated__/workflowsPageCreateMutation.graphql";
+import type { workflowsPageDeleteMutation } from "./__generated__/workflowsPageDeleteMutation.graphql";
 import type { workflowsPageQuery } from "./__generated__/workflowsPageQuery.graphql";
 import type { workflowsPageStartRunMutation } from "./__generated__/workflowsPageStartRunMutation.graphql";
 
@@ -107,6 +120,14 @@ const workflowsPageStartRunMutationNode = graphql`
       startedAt
       createdAt
       updatedAt
+    }
+  }
+`;
+
+const workflowsPageDeleteMutationNode = graphql`
+  mutation workflowsPageDeleteMutation($input: DeleteWorkflowInput!) {
+    DeleteWorkflow(input: $input) {
+      id
     }
   }
 `;
@@ -207,9 +228,11 @@ function WorkflowsPageContent() {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
   const [dialogErrorMessage, setDialogErrorMessage] = useState<string | null>(null);
+  const [pageErrorMessage, setPageErrorMessage] = useState<string | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [isRunDialogOpen, setRunDialogOpen] = useState(false);
   const [runDialogErrorMessage, setRunDialogErrorMessage] = useState<string | null>(null);
+  const [deletingWorkflow, setDeletingWorkflow] = useState<WorkflowRecord | null>(null);
   const [runningWorkflow, setRunningWorkflow] = useState<WorkflowRecord | null>(null);
   const data = useLazyLoadQuery<workflowsPageQuery>(
     workflowsPageQueryNode,
@@ -224,6 +247,9 @@ function WorkflowsPageContent() {
   const [commitStartWorkflowRun, isStartWorkflowRunInFlight] = useMutation<workflowsPageStartRunMutation>(
     workflowsPageStartRunMutationNode,
   );
+  const [commitDeleteWorkflow, isDeleteWorkflowInFlight] = useMutation<workflowsPageDeleteMutation>(
+    workflowsPageDeleteMutationNode,
+  );
   const workflows = data.Workflows.map(toWorkflowRecord);
   const agents = data.Agents.map((agent) => ({
     id: agent.id,
@@ -232,6 +258,7 @@ function WorkflowsPageContent() {
 
   function openCreateDialog(): void {
     setDialogErrorMessage(null);
+    setPageErrorMessage(null);
     setDialogOpen(true);
   }
 
@@ -323,6 +350,51 @@ function WorkflowsPageContent() {
     }
   }
 
+  async function deleteWorkflow(workflowId: string): Promise<void> {
+    if (isDeleteWorkflowInFlight) {
+      return;
+    }
+
+    setPageErrorMessage(null);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        commitDeleteWorkflow({
+          variables: {
+            input: {
+              id: workflowId,
+            },
+          },
+          updater: (store) => {
+            const deletedWorkflow = store.getRootField("DeleteWorkflow");
+            if (!deletedWorkflow) {
+              return;
+            }
+
+            const deletedWorkflowId = deletedWorkflow.getDataID();
+            const rootRecord = store.getRoot();
+            const currentWorkflows = filterStoreRecords(rootRecord.getLinkedRecords("Workflows") || []);
+            rootRecord.setLinkedRecords(
+              currentWorkflows.filter((record) => record.getDataID() !== deletedWorkflowId),
+              "Workflows",
+            );
+          },
+          onCompleted: (_response, errors) => {
+            const nextErrorMessage = errors?.[0]?.message;
+            if (nextErrorMessage) {
+              reject(new Error(nextErrorMessage));
+              return;
+            }
+            resolve();
+          },
+          onError: reject,
+        });
+      });
+      setDeletingWorkflow(null);
+    } catch (error: unknown) {
+      setPageErrorMessage(getErrorMessage(error, "Failed to delete workflow."));
+    }
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6">
       <Card variant="page">
@@ -339,6 +411,12 @@ function WorkflowsPageContent() {
         </CardHeader>
 
         <CardContent className="px-0">
+          {pageErrorMessage ? (
+            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {pageErrorMessage}
+            </div>
+          ) : null}
+
           {workflows.length === 0 ? (
             <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 text-center">
               <WorkflowIcon className="size-8 text-muted-foreground" />
@@ -420,6 +498,21 @@ function WorkflowsPageContent() {
                         >
                           <PlayIcon />
                         </Button>
+                        <Button
+                          aria-label={`Delete ${workflow.name}`}
+                          disabled={isDeleteWorkflowInFlight}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPageErrorMessage(null);
+                            setDeletingWorkflow(workflow);
+                          }}
+                          size="icon-sm"
+                          title={`Delete ${workflow.name}`}
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Trash2Icon />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -459,6 +552,53 @@ function WorkflowsPageContent() {
         onRun={runWorkflow}
         workflow={runningWorkflow}
       />
+
+      <AlertDialog
+        open={deletingWorkflow !== null}
+        onOpenChange={(open) => {
+          if (!open && !isDeleteWorkflowInFlight) {
+            setDeletingWorkflow(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workflow</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingWorkflow ? (
+                <>
+                  Delete <span className="font-medium text-foreground">{deletingWorkflow.name}</span>? This
+                  removes the workflow definition, inputs, steps, and schedules. Existing runs keep their
+                  history.
+                </>
+              ) : (
+                "Delete this workflow? Existing runs keep their history."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancelAction asChild>
+              <AlertDialogCancelButton disabled={isDeleteWorkflowInFlight} variant="outline">
+                Cancel
+              </AlertDialogCancelButton>
+            </AlertDialogCancelAction>
+            <AlertDialogPrimaryAction asChild>
+              <AlertDialogActionButton
+                disabled={isDeleteWorkflowInFlight || !deletingWorkflow}
+                onClick={async () => {
+                  if (!deletingWorkflow) {
+                    return;
+                  }
+                  await deleteWorkflow(deletingWorkflow.id);
+                }}
+                variant="destructive"
+              >
+                Delete
+              </AlertDialogActionButton>
+            </AlertDialogPrimaryAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
