@@ -397,6 +397,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         description: skillOption.description,
         id: skillOption.id,
         label: skillOption.name,
+        metaLabel: skillOption.skillType === "system" ? "Built-in" : null,
       }));
   }, [props.skillOptions, selectedSkillIds]);
   const availableSkillOptions = useMemo(() => {
@@ -407,6 +408,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
         description: skillOption.description,
         id: skillOption.id,
         label: skillOption.name,
+        metaLabel: skillOption.skillType === "system" ? "Built-in" : null,
       }));
   }, [props.skillOptions, selectedSkillIds]);
   const selectedMcpServerOptions = useMemo(() => {
@@ -725,6 +727,12 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                     setSelectedSkillGroupIds((currentValue) => currentValue.filter((value) => value !== skillGroupId));
                   }}
                   placeholder="Select a skill group"
+                  searchDialog={{
+                    description: "Search company skill groups by name and add one to the new agent.",
+                    noResultsMessage: "No skill groups match your search.",
+                    searchPlaceholder: "Search skill groups",
+                    title: "Add skill group",
+                  }}
                   selectedOptions={selectedSkillGroupOptions}
                 />
 
@@ -741,6 +749,12 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                     setSelectedSkillIds((currentValue) => currentValue.filter((value) => value !== skillId));
                   }}
                   placeholder="Select a skill"
+                  searchDialog={{
+                    description: "Search company skills by name and add one directly to the new agent.",
+                    noResultsMessage: "No skills match your search.",
+                    searchPlaceholder: "Search skills",
+                    title: "Add individual skill",
+                  }}
                   selectedOptions={selectedSkillOptions}
                 />
 

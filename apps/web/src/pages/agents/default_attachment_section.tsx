@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2Icon, XIcon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, XIcon } from "lucide-react";
+import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -27,6 +28,12 @@ interface DefaultAttachmentSectionProps {
   onAdd(optionId: string): Promise<void> | void;
   onRemove(optionId: string): Promise<void> | void;
   placeholder: string;
+  searchDialog?: {
+    description: string;
+    noResultsMessage: string;
+    searchPlaceholder: string;
+    title: string;
+  };
   selectedOptions: DefaultAttachmentSectionOption[];
 }
 
@@ -37,43 +44,88 @@ interface DefaultAttachmentSectionProps {
  */
 export function DefaultAttachmentSection(props: DefaultAttachmentSectionProps) {
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const isDisabled = props.disabled === true;
+  const isAddDisabled = isDisabled || props.availableOptions.length === 0;
+  const searchableItems = props.availableOptions.map((option) => ({
+    description: [option.metaLabel, option.description].filter((value): value is string => Boolean(value)).join(" • "),
+    id: option.id,
+    searchText: [option.label, option.metaLabel ?? "", option.description ?? ""].join(" "),
+    title: option.label,
+  }));
+
+  const addOption = async (optionId: string) => {
+    setPendingSelection(optionId);
+    try {
+      await props.onAdd(optionId);
+    } finally {
+      setPendingSelection(null);
+    }
+  };
 
   return (
     <div className="grid gap-2">
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{props.addLabel}</p>
-      <Select
-        disabled={isDisabled || props.availableOptions.length === 0}
-        items={props.availableOptions.map((option) => ({
-          label: option.label,
-          value: option.id,
-        }))}
-        onValueChange={async (value) => {
-          if (typeof value !== "string" || value.length === 0) {
-            setPendingSelection(null);
-            return;
-          }
+      {props.searchDialog ? (
+        <>
+          <button
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-input/20 px-3 text-left text-sm outline-none transition hover:bg-input/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
+            disabled={isAddDisabled}
+            onClick={() => {
+              setIsSearchDialogOpen(true);
+            }}
+            type="button"
+          >
+            <span className={props.availableOptions.length > 0 ? "truncate text-foreground" : "truncate text-muted-foreground"}>
+              {props.availableOptions.length > 0 ? props.placeholder : props.availableEmptyLabel}
+            </span>
+            <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+          <SearchableSelectionDialog
+            description={props.searchDialog.description}
+            items={searchableItems}
+            noItemsMessage={props.availableEmptyLabel}
+            noResultsMessage={props.searchDialog.noResultsMessage}
+            onOpenChange={setIsSearchDialogOpen}
+            onSelect={(optionId) => {
+              setIsSearchDialogOpen(false);
+              void addOption(optionId);
+            }}
+            open={isSearchDialogOpen}
+            searchPlaceholder={props.searchDialog.searchPlaceholder}
+            selectedItemId={pendingSelection}
+            title={props.searchDialog.title}
+          />
+        </>
+      ) : (
+        <Select
+          disabled={isAddDisabled}
+          items={props.availableOptions.map((option) => ({
+            label: option.label,
+            value: option.id,
+          }))}
+          onValueChange={async (value) => {
+            if (typeof value !== "string" || value.length === 0) {
+              setPendingSelection(null);
+              return;
+            }
 
-          setPendingSelection(value);
-          try {
-            await props.onAdd(value);
-          } finally {
-            setPendingSelection(null);
-          }
-        }}
-        value={pendingSelection ?? undefined}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder={props.availableOptions.length > 0 ? props.placeholder : props.availableEmptyLabel} />
-        </SelectTrigger>
-        <SelectContent>
-          {props.availableOptions.map((option) => (
-            <SelectItem key={option.id} value={option.id}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            await addOption(value);
+          }}
+          value={pendingSelection ?? undefined}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={props.availableOptions.length > 0 ? props.placeholder : props.availableEmptyLabel} />
+          </SelectTrigger>
+          <SelectContent>
+            {props.availableOptions.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <div className="grid gap-2">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{props.currentLabel}</p>

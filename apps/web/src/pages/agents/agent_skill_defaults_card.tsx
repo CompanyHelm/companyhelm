@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { Layers3Icon, Loader2Icon, XIcon } from "lucide-react";
+import { ChevronDownIcon, Layers3Icon, Loader2Icon, XIcon } from "lucide-react";
 import type { RecordSourceSelectorProxy } from "relay-runtime";
 import { graphql, useMutation } from "react-relay";
+import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,13 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/components/toast_provider";
 import type { agentSkillDefaultsCardAttachSkillGroupToAgentMutation } from "./__generated__/agentSkillDefaultsCardAttachSkillGroupToAgentMutation.graphql";
 import type { agentSkillDefaultsCardAttachSkillToAgentMutation } from "./__generated__/agentSkillDefaultsCardAttachSkillToAgentMutation.graphql";
@@ -153,8 +147,8 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [busySkillId, setBusySkillId] = useState<string | null>(null);
   const [busySkillGroupId, setBusySkillGroupId] = useState<string | null>(null);
-  const [pendingSkillGroupSelection, setPendingSkillGroupSelection] = useState<string | null>(null);
-  const [pendingSkillSelection, setPendingSkillSelection] = useState<string | null>(null);
+  const [isSkillGroupDialogOpen, setIsSkillGroupDialogOpen] = useState(false);
+  const [isSkillDialogOpen, setIsSkillDialogOpen] = useState(false);
   const [openSkillGroupId, setOpenSkillGroupId] = useState<string | null>(null);
   const toast = useToast();
   const [commitAttachSkillGroup, isAttachSkillGroupInFlight] =
@@ -215,6 +209,22 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
         metaLabel: skill.skillType === "system" ? "Built-in" : null,
       }));
   }, [attachedSkillIds, props.companySkills]);
+  const availableSkillGroupSelectionItems = useMemo(() => {
+    return availableSkillGroupOptions.map((option) => ({
+      description: "",
+      id: option.id,
+      searchText: option.label,
+      title: option.label,
+    }));
+  }, [availableSkillGroupOptions]);
+  const availableSkillSelectionItems = useMemo(() => {
+    return availableSkillOptions.map((option) => ({
+      description: [option.metaLabel, option.description].filter((value): value is string => Boolean(value)).join(" • "),
+      id: option.id,
+      searchText: [option.label, option.metaLabel ?? "", option.description].join(" "),
+      title: option.label,
+    }));
+  }, [availableSkillOptions]);
   const fieldArguments = useMemo(() => ({
     agentId: props.agentId,
   }), [props.agentId]);
@@ -395,84 +405,70 @@ export function AgentSkillDefaultsCard(props: AgentSkillDefaultsCardProps) {
           <label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Add skill group
           </label>
-          <Select
+          <button
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-input/20 px-3 text-left text-sm outline-none transition hover:bg-input/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
             disabled={isMutating || availableSkillGroupOptions.length === 0}
-            items={availableSkillGroupOptions.map((option) => ({
-              label: option.label,
-              value: option.id,
-            }))}
-            onValueChange={async (value) => {
-              if (typeof value !== "string" || value.length === 0) {
-                setPendingSkillGroupSelection(null);
-                return;
-              }
-
-              setPendingSkillGroupSelection(value);
-              try {
-                await attachSkillGroup(value);
-              } finally {
-                setPendingSkillGroupSelection(null);
-              }
+            onClick={() => {
+              setIsSkillGroupDialogOpen(true);
             }}
-            value={pendingSkillGroupSelection ?? undefined}
+            type="button"
           >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={availableSkillGroupOptions.length > 0
-                  ? "Select a skill group"
-                  : "All skill groups already added"}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {availableSkillGroupOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className={availableSkillGroupOptions.length > 0 ? "truncate text-foreground" : "truncate text-muted-foreground"}>
+              {availableSkillGroupOptions.length > 0 ? "Search skill groups" : "All skill groups already added"}
+            </span>
+            <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+          </button>
         </div>
 
         <div className="grid gap-2">
           <label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Add individual skill
           </label>
-          <Select
+          <button
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-input/20 px-3 text-left text-sm outline-none transition hover:bg-input/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50"
             disabled={isMutating || availableSkillOptions.length === 0}
-            items={availableSkillOptions.map((option) => ({
-              label: option.label,
-              value: option.id,
-            }))}
-            onValueChange={async (value) => {
-              if (typeof value !== "string" || value.length === 0) {
-                setPendingSkillSelection(null);
-                return;
-              }
-
-              setPendingSkillSelection(value);
-              try {
-                await attachSkill(value);
-              } finally {
-                setPendingSkillSelection(null);
-              }
+            onClick={() => {
+              setIsSkillDialogOpen(true);
             }}
-            value={pendingSkillSelection ?? undefined}
+            type="button"
           >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={availableSkillOptions.length > 0 ? "Select a skill" : "All skills already added"}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {availableSkillOptions.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <span className={availableSkillOptions.length > 0 ? "truncate text-foreground" : "truncate text-muted-foreground"}>
+              {availableSkillOptions.length > 0 ? "Search skills" : "All skills already added"}
+            </span>
+            <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+          </button>
         </div>
       </div>
+
+      <SearchableSelectionDialog
+        description="Search company skill groups by name and attach one to this agent."
+        items={availableSkillGroupSelectionItems}
+        noItemsMessage="All skill groups are already attached to this agent."
+        noResultsMessage="No skill groups match your search."
+        onOpenChange={setIsSkillGroupDialogOpen}
+        onSelect={(skillGroupId) => {
+          setIsSkillGroupDialogOpen(false);
+          void attachSkillGroup(skillGroupId);
+        }}
+        open={isSkillGroupDialogOpen}
+        searchPlaceholder="Search skill groups"
+        title="Add skill group"
+      />
+
+      <SearchableSelectionDialog
+        description="Search company skills by name and attach one directly to this agent."
+        items={availableSkillSelectionItems}
+        noItemsMessage="All skills are already attached to this agent."
+        noResultsMessage="No skills match your search."
+        onOpenChange={setIsSkillDialogOpen}
+        onSelect={(skillId) => {
+          setIsSkillDialogOpen(false);
+          void attachSkill(skillId);
+        }}
+        open={isSkillDialogOpen}
+        searchPlaceholder="Search skills"
+        title="Add individual skill"
+      />
 
       <div className="grid gap-3">
         <div className="flex items-center justify-between gap-3">
