@@ -2,21 +2,27 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   type ToolCallSummaryRecord,
+  resolveGithubInstallationStartTurnActions,
   resolveGithubInstallationStartToolResult,
   resolveSessionTitleOverride,
   shouldHydrateComposerSelection,
 } from "../src/pages/chats/chats_page_helpers";
 import type { SessionMessageRecord } from "../src/pages/chats/chats_page_data";
 
-function makeToolResultMessage(text: string): SessionMessageRecord {
+function makeToolResultMessage(
+  text: string,
+  overrides: Partial<Pick<SessionMessageRecord, "id" | "toolCallId">> = {},
+): SessionMessageRecord {
   return {
     contents: [{
       text,
       type: "text",
     }],
+    id: overrides.id ?? "message-1",
     isError: false,
     role: "toolResult",
     status: "completed",
+    toolCallId: overrides.toolCallId ?? "tool-call-1",
     toolName: "system_command",
   } as unknown as SessionMessageRecord;
 }
@@ -152,4 +158,45 @@ test("resolveGithubInstallationStartToolResult rejects non-http install urls", (
   );
 
   assert.equal(result, null);
+});
+
+test("resolveGithubInstallationStartTurnActions promotes install command results into turn actions", () => {
+  const message = makeToolResultMessage(JSON.stringify({
+    installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+    returnPath: "/orgs/acme/chats?agentId=agent-1&sessionId=session-1",
+    sourceSessionId: "session-1",
+    status: "waiting_for_user",
+  }), {
+    id: "message-install",
+    toolCallId: "tool-call-install",
+  });
+  const actions = resolveGithubInstallationStartTurnActions(
+    [message],
+    new Map([[
+      "tool-call-install",
+      makeToolCallSummary({ id: "github.installation.start" }),
+    ]]),
+  );
+
+  assert.deepEqual(actions, [{
+    installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+    isError: false,
+    messageId: "message-install",
+    returnPath: "/orgs/acme/chats?agentId=agent-1&sessionId=session-1",
+    sourceSessionId: "session-1",
+    status: "waiting_for_user",
+    toolCallId: "tool-call-install",
+  }]);
+});
+
+test("resolveGithubInstallationStartTurnActions skips install results without the source tool call", () => {
+  const actions = resolveGithubInstallationStartTurnActions(
+    [makeToolResultMessage(JSON.stringify({
+      installationUrl: "https://github.com/apps/companyhelm/installations/new?state=signed-state",
+      status: "waiting_for_user",
+    }))],
+    new Map(),
+  );
+
+  assert.deepEqual(actions, []);
 });

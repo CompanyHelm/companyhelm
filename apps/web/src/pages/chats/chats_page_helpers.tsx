@@ -66,6 +66,12 @@ export type GithubInstallationStartToolResultRecord = {
   status: string;
 };
 
+export type GithubInstallationStartTurnActionRecord = GithubInstallationStartToolResultRecord & {
+  isError: boolean;
+  messageId: string;
+  toolCallId: string | null;
+};
+
 type AssistantDisplayContentRecord = {
   text: string;
   type: "text" | "thinking";
@@ -960,6 +966,30 @@ export function resolveGithubInstallationStartToolResult(
       ? resultRecord.status.trim()
       : "waiting_for_user",
   };
+}
+
+export function resolveGithubInstallationStartTurnActions(
+  messages: ReadonlyArray<SessionMessageRecord>,
+  toolCallSummaryById: ReadonlyMap<string, ToolCallSummaryRecord>,
+): GithubInstallationStartTurnActionRecord[] {
+  return messages.flatMap((message) => {
+    const toolCallId = typeof message.toolCallId === "string" && message.toolCallId.length > 0
+      ? message.toolCallId
+      : null;
+    const result = resolveGithubInstallationStartToolResult(
+      message,
+      toolCallId ? toolCallSummaryById.get(toolCallId) ?? null : null,
+    );
+
+    return result
+      ? [{
+        ...result,
+        isError: message.isError,
+        messageId: message.id,
+        toolCallId,
+      }]
+      : [];
+  });
 }
 
 export function hasVisibleMessage(

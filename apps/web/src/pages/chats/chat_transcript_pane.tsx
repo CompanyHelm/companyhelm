@@ -12,10 +12,19 @@ import {
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { OrganizationPath } from "@/lib/organization_path";
 import type { SessionMessageRecord, SessionRecord } from "./chats_page_data";
 import {
   type AssistantContentMode,
+  type GithubInstallationStartTurnActionRecord,
   type ToolCallSummaryRecord,
   buildToolCallSummaryById,
   buildTranscriptTurns,
@@ -25,7 +34,7 @@ import {
   isRunningSession,
   resolveAssistantContentDisplay,
   resolveCommandToolArguments,
-  resolveGithubInstallationStartToolResult,
+  resolveGithubInstallationStartTurnActions,
   resolveImageContentDisplay,
   resolveSessionTitle,
   resolveTerminalStructuredContent,
@@ -40,63 +49,74 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ te
 
 AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
 
-type GithubInstallationStartToolCardProps = {
-  installationUrl: string;
-  isError: boolean;
-  status: string;
-};
-
-const GithubInstallationStartToolCard = memo(function GithubInstallationStartToolCard(
-  { installationUrl, isError, status }: GithubInstallationStartToolCardProps,
+const GithubInstallationStartTurnAction = memo(function GithubInstallationStartTurnAction(
+  { action }: { action: GithubInstallationStartTurnActionRecord },
 ) {
-  const normalizedStatus = status.trim().toLowerCase();
-  const statusLabel = isError
+  const [isOpen, setIsOpen] = useState(false);
+  const normalizedStatus = action.status.trim().toLowerCase();
+  const statusLabel = action.isError
     ? "Unavailable"
     : normalizedStatus === "waiting_for_user"
     ? "Ready"
     : normalizedStatus.replace(/_/g, " ");
 
   return (
-    <div className="min-w-0 w-full max-w-3xl overflow-hidden rounded-lg border border-border/70 bg-background shadow-sm">
-      <div className="grid gap-4 border-b border-border/60 bg-muted/20 px-4 py-4 sm:flex sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/70 bg-background text-foreground shadow-sm">
+    <Dialog onOpenChange={setIsOpen} open={isOpen}>
+      <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} min-w-0 w-full`}>
+        <div className="flex min-w-0 w-full max-w-3xl flex-col gap-3 rounded-lg border border-border/70 bg-background px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-foreground">
+              <GithubIcon className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">Connect GitHub</p>
+                <span className="rounded-md border border-border/70 bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {statusLabel}
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Install the CompanyHelm GitHub App to connect repositories.
+              </p>
+            </div>
+          </div>
+          <Button disabled={action.isError} onClick={() => setIsOpen(true)} size="sm" type="button" variant="outline">
+            Review
+            <ChevronRightIcon className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+      <DialogContent className="w-[min(92vw,34rem)] gap-5">
+        <DialogHeader>
+          <div className="mb-2 flex size-10 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-foreground">
             <GithubIcon className="size-5" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">Connect GitHub</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Install the CompanyHelm GitHub App to connect repositories to this chat.
-            </p>
-          </div>
+          <DialogTitle>Connect GitHub</DialogTitle>
+          <DialogDescription>
+            Install the CompanyHelm GitHub App to let this workspace see the repositories you choose.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-3 text-xs leading-5 text-muted-foreground">
+          GitHub opens in this tab. After the installation finishes, GitHub redirects back to this chat session.
         </div>
-        <span className="w-fit rounded-md border border-border/70 bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground">
-          {statusLabel}
-        </span>
-      </div>
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs leading-5 text-muted-foreground">
-          You&apos;ll return here after GitHub finishes.
-        </div>
-        {isError ? (
-          <Button disabled size="sm">
+        <DialogFooter>
+          <Button
+            data-primary-cta=""
+            disabled={action.isError}
+            render={action.isError ? undefined : <a href={action.installationUrl} />}
+            size="sm"
+          >
             <GithubIcon />
-            Open GitHub
+            Continue to GitHub
             <ExternalLinkIcon className="size-3.5" />
           </Button>
-        ) : (
-          <Button render={<a href={installationUrl} />} size="sm">
-            <GithubIcon />
-            Open GitHub
-            <ExternalLinkIcon className="size-3.5" />
-          </Button>
-        )}
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 });
 
-GithubInstallationStartToolCard.displayName = "GithubInstallationStartToolCard";
+GithubInstallationStartTurnAction.displayName = "GithubInstallationStartTurnAction";
 
 const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   { message, toolCallSummary }: { message: SessionMessageRecord; toolCallSummary: ToolCallSummaryRecord | null },
@@ -130,17 +150,6 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
   const commandToolYieldTimeMs = commandToolArguments?.yieldTimeMs ?? null;
   const isCommandToolCall = isCommandTool(toolCallSummary?.toolName ?? message.toolName) && commandToolArguments !== null;
   const collapsedSummary = isCommandToolCall ? commandToolArguments.command : defaultToolName;
-  const githubInstallationStartToolResult = resolveGithubInstallationStartToolResult(message, toolCallSummary);
-
-  if (githubInstallationStartToolResult) {
-    return (
-      <GithubInstallationStartToolCard
-        installationUrl={githubInstallationStartToolResult.installationUrl}
-        isError={message.isError}
-        status={githubInstallationStartToolResult.status}
-      />
-    );
-  }
 
   return (
     <div className="min-w-0 w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
@@ -548,6 +557,11 @@ function ChatTranscriptPaneComponent({
         ) : null}
         {transcriptTurns.map((turn) => {
           if (turn.isRunning) {
+            const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
+              turn.inlineMessages,
+              toolCallSummaryById,
+            );
+
             return (
               <div key={turn.turnId} className="grid gap-3">
                 {turn.inlineMessages.map((message) => (
@@ -557,6 +571,9 @@ function ChatTranscriptPaneComponent({
                     message={message}
                     toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                   />
+                ))}
+                {githubInstallationStartActions.map((action) => (
+                  <GithubInstallationStartTurnAction action={action} key={action.messageId} />
                 ))}
               </div>
             );
@@ -568,6 +585,10 @@ function ChatTranscriptPaneComponent({
           const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
           const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
           const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
+          const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
+            [...turn.inlineMessages, ...turn.hiddenMessages],
+            toolCallSummaryById,
+          );
 
           return (
             <div key={turn.turnId} className="grid gap-3">
@@ -617,6 +638,9 @@ function ChatTranscriptPaneComponent({
                   message={message}
                   toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                 />
+              ))}
+              {githubInstallationStartActions.map((action) => (
+                <GithubInstallationStartTurnAction action={action} key={action.messageId} />
               ))}
             </div>
           );
