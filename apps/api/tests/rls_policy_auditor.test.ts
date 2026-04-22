@@ -20,6 +20,7 @@ test("RlsPolicyAuditor reports no missing policies for the current migration set
   const report = auditor.audit(resolve(import.meta.dirname, "../drizzle"));
 
   assert.deepEqual(report.missingPolicyTables, []);
+  assert.deepEqual(report.nonPublicPolicyTargets, []);
   assert.ok(report.rlsEnabledTables.includes("session_queued_message_contents"));
   assert.ok(report.policyTables.includes("session_queued_message_contents"));
   assert.ok(report.rlsEnabledTables.includes("user_session_reads"));
@@ -40,6 +41,35 @@ test("RlsPolicyAuditor flags tables that enable row-level security without defin
     const report = auditor.audit(tempDirectoryPath);
 
     assert.deepEqual(report.missingPolicyTables, ["example_table"]);
+  } finally {
+    RlsPolicyAuditorTestHarness.removeTempMigrationDirectory(tempDirectoryPath);
+  }
+});
+
+test("RlsPolicyAuditor flags policies that target a specific runtime role", () => {
+  const tempDirectoryPath = RlsPolicyAuditorTestHarness.createTempMigrationDirectory();
+
+  try {
+    writeFileSync(join(tempDirectoryPath, "0001_role_target.sql"), [
+      'ALTER TABLE "example_table" ENABLE ROW LEVEL SECURITY;',
+      '--> statement-breakpoint',
+      'CREATE POLICY "example_policy"',
+      'ON "example_table"',
+      'FOR ALL',
+      'TO "app_runtime"',
+      'USING (true)',
+      'WITH CHECK (true);',
+    ].join("\n"));
+
+    const auditor = new RlsPolicyAuditor();
+    const report = auditor.audit(tempDirectoryPath);
+
+    assert.deepEqual(report.nonPublicPolicyTargets, [{
+      migrationFileName: "0001_role_target.sql",
+      policyName: "example_policy",
+      tableName: "example_table",
+      target: "app_runtime",
+    }]);
   } finally {
     RlsPolicyAuditorTestHarness.removeTempMigrationDirectory(tempDirectoryPath);
   }

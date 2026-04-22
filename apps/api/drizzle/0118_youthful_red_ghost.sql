@@ -39,7 +39,8 @@ CREATE UNIQUE INDEX "llm_usage_aggregates_company_scope_period_uidx" ON "llm_usa
 ALTER TABLE "llm_usage_aggregates" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE POLICY "llm_usage_aggregates_company_scope_policy"
 ON "llm_usage_aggregates"
+AS PERMISSIVE
 FOR ALL
-TO "app_runtime"
+TO public
 USING ("company_id" = current_setting('app.current_company_id', true)::uuid)
 WITH CHECK ("company_id" = current_setting('app.current_company_id', true)::uuid);
