@@ -148,6 +148,8 @@ redis:
   username: ""
   password: ""
 workers:
+  company_deletions:
+    concurrency: 5
   github_webhooks:
     concurrency: 3
   routine_triggers:
@@ -235,6 +237,9 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
     password: "",
   });
   assert.deepEqual(document.workers, {
+    company_deletions: {
+      concurrency: 5,
+    },
     github_webhooks: {
       concurrency: 3,
     },
@@ -313,6 +318,9 @@ test("AppConfig defaults newer worker queue concurrency when deployment config l
   });
 
   assert.deepEqual(parsedDocument.workers, {
+    company_deletions: {
+      concurrency: 10,
+    },
     github_webhooks: {
       concurrency: 10,
     },

@@ -19,6 +19,7 @@ import { CreateSkillGroupMutation } from "../mutations/create_skill_group.ts";
 import { CreateSkillMutation } from "../mutations/create_skill.ts";
 import { ConnectMcpServerOauthClientCredentialsMutation } from "../mutations/connect_mcp_server_oauth_client_credentials.ts";
 import { CompleteMcpServerOauthMutation } from "../mutations/complete_mcp_server_oauth.ts";
+import { DeleteCompanyMutation } from "../mutations/delete_company.ts";
 import { DeleteGithubInstallationMutation } from "../mutations/delete_github_installation.ts";
 import { DeleteGithubRepositoryProvisioningMutation } from "../mutations/delete_github_repository_provisioning.ts";
 import { DisconnectMcpServerOauthMutation } from "../mutations/disconnect_mcp_server_oauth.ts";
@@ -83,6 +84,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly deleteSecretMutation: DeleteSecretMutation;
   private readonly deleteSecretGroupMutation: DeleteSecretGroupMutation;
   private readonly deleteMcpServerMutation: DeleteMcpServerMutation;
+  private readonly deleteCompanyMutation: DeleteCompanyMutation;
   private readonly deleteSkillMutation: DeleteSkillMutation;
   private readonly deleteSkillGroupMutation: DeleteSkillGroupMutation;
   private readonly githubAppConfigQueryResolver: GithubAppConfigQueryResolver;
@@ -217,6 +219,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     @inject(DeleteGithubRepositoryProvisioningMutation)
     deleteGithubRepositoryProvisioningMutation: DeleteGithubRepositoryProvisioningMutation =
       new DeleteGithubRepositoryProvisioningMutation(),
+    @inject(DeleteCompanyMutation)
+    deleteCompanyMutation: DeleteCompanyMutation = new DeleteCompanyMutation(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -255,6 +259,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.deleteSecretMutation = deleteSecretMutation ?? new DeleteSecretMutation(defaultSecretService);
     this.deleteSecretGroupMutation = deleteSecretGroupMutation ?? new DeleteSecretGroupMutation(defaultSecretService);
     this.deleteMcpServerMutation = deleteMcpServerMutation ?? new DeleteMcpServerMutation(defaultMcpService);
+    this.deleteCompanyMutation = deleteCompanyMutation;
     this.deleteSkillMutation = deleteSkillMutation ?? new DeleteSkillMutation(defaultSkillService);
     this.deleteSkillGroupMutation = deleteSkillGroupMutation ?? new DeleteSkillGroupMutation(defaultSkillService);
     this.githubAppConfigQueryResolver = githubAppConfigQueryResolver;
@@ -317,6 +322,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteGithubInstallation: this.deleteGithubInstallationMutation.execute,
         DeleteGithubRepositoryProvisioning: this.deleteGithubRepositoryProvisioningMutation.execute,
         DisconnectMcpServerOAuth: this.disconnectMcpServerOauthMutation.execute,
+        DeleteCompany: this.deleteCompanyMutation.execute,
         DeleteSecret: this.deleteSecretMutation.execute,
         DeleteSecretGroup: this.deleteSecretGroupMutation.execute,
         DeleteMcpServer: this.deleteMcpServerMutation.execute,

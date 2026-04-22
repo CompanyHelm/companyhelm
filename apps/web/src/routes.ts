@@ -84,7 +84,7 @@ type ConversationsRouteSearch = {
 };
 
 type SettingsRouteSearch = {
-  tab?: "tasks" | "AI" | "usage";
+  tab?: "tasks" | "AI" | "usage" | "company";
 };
 
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
@@ -180,6 +180,12 @@ function validateSettingsRouteSearch(search: Record<string, unknown>): SettingsR
   if (search.tab === "usage") {
     return {
       tab: "usage",
+    };
+  }
+
+  if (search.tab === "company") {
+    return {
+      tab: "company",
     };
   }
 

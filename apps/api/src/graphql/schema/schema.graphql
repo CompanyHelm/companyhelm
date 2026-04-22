@@ -77,6 +77,7 @@ type Mutation {
   GetEnvironmentVncUrl(input: GetEnvironmentVncUrlInput!): EnvironmentVncUrl!
   StartEnvironment(input: StartEnvironmentInput!): Environment!
   StopEnvironment(input: StopEnvironmentInput!): Environment!
+  DeleteCompany(input: DeleteCompanyInput!): CompanyDeletionRequest!
   UpdateCompanySettings(input: UpdateCompanySettingsInput!): CompanySettings!
   AddGithubInstallation(input: AddGithubInstallationInput!): AddGithubInstallationPayload!
   AddModelProviderCredential(input: AddModelProviderCredentialInput!): ModelProviderCredential!
@@ -223,6 +224,23 @@ type AuthenticatedCompany {
 type CompanySettings {
   companyId: ID!
   baseSystemPrompt: String
+}
+
+enum CompanyDeletionRequestStatus {
+  requested
+  processing
+  completed
+  failed
+}
+
+type CompanyDeletionRequest {
+  id: ID!
+  companyId: ID!
+  companyName: String!
+  status: CompanyDeletionRequestStatus!
+  requestedAt: String!
+  completedAt: String
+  lastError: String
 }
 
 type GithubAppConfig {
@@ -1017,6 +1035,10 @@ input UpdateAgentInput {
 
 input UpdateCompanySettingsInput {
   baseSystemPrompt: String
+}
+
+input DeleteCompanyInput {
+  confirmationName: String!
 }
 
 input DeleteModelProviderCredentialInput {

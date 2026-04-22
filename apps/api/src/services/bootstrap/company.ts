@@ -23,6 +23,7 @@ import { TaskStageService } from "../task_stage_service.ts";
 type CompanyRecord = {
   id: string;
   clerk_organization_id: string | null;
+  deletion_status: "active" | "deletion_requested";
   name: string;
   wasCreated: boolean;
 };
@@ -165,6 +166,7 @@ export class CompanyBootstrapService {
       params.providerSubject,
     );
     if (existingCompany) {
+      this.assertCompanyCanAuthenticate(existingCompany);
       return existingCompany;
     }
 
@@ -174,12 +176,14 @@ export class CompanyBootstrapService {
       .values({
         clerkOrganizationId: params.providerSubject,
         name: params.name,
+        plan: "free",
       }) as BootstrapInsertOperation;
     const insertResult = insertOperation
       .onConflictDoNothing()
       .returning?.({
         id: companies.id,
         clerk_organization_id: companies.clerkOrganizationId,
+        deletion_status: companies.deletionStatus,
         name: companies.name,
       });
     const createdRows = insertResult ? await insertResult as CompanyRecord[] : [];
@@ -193,6 +197,7 @@ export class CompanyBootstrapService {
         throw new Error("Failed to provision Clerk company.");
       }
 
+      this.assertCompanyCanAuthenticate(concurrentCompany);
       return concurrentCompany;
     }
 
@@ -267,6 +272,7 @@ export class CompanyBootstrapService {
       .select({
         id: companies.id,
         clerk_organization_id: companies.clerkOrganizationId,
+        deletion_status: companies.deletionStatus,
         name: companies.name,
       })
       .from(companies)
@@ -279,6 +285,12 @@ export class CompanyBootstrapService {
         wasCreated: false,
       }
       : null;
+  }
+
+  private assertCompanyCanAuthenticate(company: CompanyRecord): void {
+    if (company.deletion_status !== "active") {
+      throw new Error("Company deletion has already been requested.");
+    }
   }
 
   private async ensureCompanyHelmComputeProviderDefinition(

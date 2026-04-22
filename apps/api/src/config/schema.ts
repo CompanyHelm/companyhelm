@@ -59,6 +59,7 @@ export const ConfigDocument = z.object({
     password: z.string(),
   }),
   workers: z.object({
+    company_deletions: DefaultWorkerConcurrencySchema,
     github_webhooks: DefaultWorkerConcurrencySchema,
     routine_triggers: DefaultWorkerConcurrencySchema,
     session_process: z.object({

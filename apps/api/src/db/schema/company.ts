@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   bigint,
+  integer,
   check,
   index,
   pgEnum,
@@ -19,11 +20,21 @@ export const companySubscriptionPlanEnum = pgEnum("company_subscription_plan", [
   "pro",
 ]);
 
+export const companyDeletionStatusEnum = pgEnum("company_deletion_status", ["active", "deletion_requested"]);
+export const companyDeletionRequestStatusEnum = pgEnum("company_deletion_request_status", [
+  "requested",
+  "processing",
+  "completed",
+  "failed",
+]);
+
 export const companies = pgTable("companies", {
   id: uuid("id")
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   clerkOrganizationId: text("clerk_organization_id"),
+  deletionStatus: companyDeletionStatusEnum("deletion_status").notNull().default("active"),
+  deletionRequestedAt: timestamp("deletion_requested_at", { withTimezone: true }),
   name: text("name").notNull(),
   plan: companySubscriptionPlanEnum("plan").notNull(),
 }, (table) => ({
@@ -69,6 +80,34 @@ export const companyMembers = pgTable("company_members", {
   pk: primaryKey({ columns: [table.companyId, table.userId] }),
   companyIdIndex: index("company_members_company_id_idx").on(table.companyId),
   userIdIndex: index("company_members_user_id_idx").on(table.userId),
+}));
+
+export const companyDeletionRequests = pgTable("company_deletion_requests", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id").notNull(),
+  clerkOrganizationId: text("clerk_organization_id"),
+  companyName: text("company_name").notNull(),
+  requestedByUserId: uuid("requested_by_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  status: companyDeletionRequestStatusEnum("status").notNull().default("requested"),
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+  lockedAt: timestamp("locked_at", { withTimezone: true }),
+  lockedBy: text("locked_by"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companyIdIndex: index("company_deletion_requests_company_id_idx").on(table.companyId),
+  statusNextAttemptIndex: index("company_deletion_requests_status_next_attempt_idx")
+    .on(table.status, table.nextAttemptAt),
+  openCompanyUnique: uniqueIndex("company_deletion_requests_company_open_uidx")
+    .on(table.companyId)
+    .where(sql`${table.status} IN ('requested', 'processing', 'failed')`),
 }));
 
 export const secret_groups = pgTable("secret_groups", {

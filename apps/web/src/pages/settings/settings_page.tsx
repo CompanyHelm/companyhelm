@@ -1,6 +1,6 @@
 import { Suspense, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Loader2Icon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
+import { Building2Icon, Loader2Icon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { EditableField } from "@/components/editable_field";
 import { Button } from "@/components/ui/button";
@@ -8,19 +8,27 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { DeleteCompanyDialog } from "./delete_company_dialog";
 import { SettingsUsageTab } from "./settings_usage_tab";
 import { TaskStageDialog } from "./task_stage_dialog";
 import type { settingsPageCreateTaskStageMutation } from "./__generated__/settingsPageCreateTaskStageMutation.graphql";
+import type { settingsPageDeleteCompanyMutation } from "./__generated__/settingsPageDeleteCompanyMutation.graphql";
 import type { settingsPageDeleteTaskStageMutation } from "./__generated__/settingsPageDeleteTaskStageMutation.graphql";
 import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphql";
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
 type SettingsPageSearch = {
-  tab?: "tasks" | "AI" | "usage";
+  tab?: "tasks" | "AI" | "usage" | "company";
 };
 
 const settingsPageQueryNode = graphql`
   query settingsPageQuery {
+    Me {
+      company {
+        id
+        name
+      }
+    }
     CompanySettings {
       companyId
       baseSystemPrompt
@@ -71,6 +79,20 @@ const settingsPageUpdateCompanySettingsMutationNode = graphql`
   }
 `;
 
+const settingsPageDeleteCompanyMutationNode = graphql`
+  mutation settingsPageDeleteCompanyMutation($input: DeleteCompanyInput!) {
+    DeleteCompany(input: $input) {
+      id
+      companyId
+      companyName
+      status
+      requestedAt
+      completedAt
+      lastError
+    }
+  }
+`;
+
 function filterStoreRecords(records: ReadonlyArray<unknown>): Array<{ getDataID(): string }> {
   return records.filter((record): record is { getDataID(): string } => {
     return typeof record === "object"
@@ -108,7 +130,10 @@ function SettingsPageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
   const search = useSearch({ strict: false }) as SettingsPageSearch;
   const [taskErrorMessage, setTaskErrorMessage] = useState<string | null>(null);
+  const [companyErrorMessage, setCompanyErrorMessage] = useState<string | null>(null);
+  const [companyDeletionStatus, setCompanyDeletionStatus] = useState<string | null>(null);
   const [isTaskStageDialogOpen, setTaskStageDialogOpen] = useState(false);
+  const [isDeleteCompanyDialogOpen, setDeleteCompanyDialogOpen] = useState(false);
   const [deletingTaskStageId, setDeletingTaskStageId] = useState<string | null>(null);
   const data = useLazyLoadQuery<settingsPageQuery>(
     settingsPageQueryNode,
@@ -126,7 +151,13 @@ function SettingsPageContent() {
   const [commitUpdateCompanySettings] = useMutation<settingsPageUpdateCompanySettingsMutation>(
     settingsPageUpdateCompanySettingsMutationNode,
   );
-  const selectedTab = search.tab === "AI" || search.tab === "usage" ? search.tab : "tasks";
+  const [commitDeleteCompany, isDeleteCompanyInFlight] = useMutation<settingsPageDeleteCompanyMutation>(
+    settingsPageDeleteCompanyMutationNode,
+  );
+  const selectedTab = search.tab === "AI" || search.tab === "usage" || search.tab === "company"
+    ? search.tab
+    : "tasks";
+  const companyName = data.Me.company.name;
 
   return (
     <main className="flex flex-col gap-6">
@@ -154,6 +185,10 @@ function SettingsPageContent() {
             {
               key: "usage" as const,
               label: "Usage",
+            },
+            {
+              key: "company" as const,
+              label: "Company",
             },
           ]}
           onSelect={(tab) => {
@@ -357,6 +392,66 @@ function SettingsPageContent() {
 
       {selectedTab === "usage" ? <SettingsUsageTab /> : null}
 
+      {selectedTab === "company" ? (
+        <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
+          <CardHeader>
+            <div className="min-w-0">
+              <CardTitle>Company</CardTitle>
+              <CardDescription>
+                Manage the current Clerk organization and CompanyHelm workspace.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-background/90 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border/70 bg-muted/30 text-muted-foreground">
+                  <Building2Icon className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{companyName}</p>
+                  <p className="text-xs text-muted-foreground">Current organization</p>
+                </div>
+              </div>
+            </div>
+
+            {companyDeletionStatus ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Company deletion request created. Status: {companyDeletionStatus}
+              </div>
+            ) : null}
+
+            {companyErrorMessage ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {companyErrorMessage}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Delete company</p>
+                <p className="mt-1 text-xs/relaxed text-muted-foreground">
+                  Remove the Clerk organization and schedule all CompanyHelm company data for cleanup.
+                </p>
+              </div>
+              <Button
+                className="w-full sm:w-auto"
+                disabled={companyDeletionStatus !== null}
+                onClick={() => {
+                  setCompanyErrorMessage(null);
+                  setDeleteCompanyDialogOpen(true);
+                }}
+                type="button"
+                variant="destructive"
+              >
+                <Trash2Icon />
+                Delete company
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <TaskStageDialog
         errorMessage={isTaskStageDialogOpen ? taskErrorMessage : null}
         isOpen={isTaskStageDialogOpen}
@@ -399,6 +494,41 @@ function SettingsPageContent() {
           });
         }}
         onOpenChange={setTaskStageDialogOpen}
+      />
+      <DeleteCompanyDialog
+        companyName={companyName}
+        errorMessage={isDeleteCompanyDialogOpen ? companyErrorMessage : null}
+        isDeleting={isDeleteCompanyInFlight}
+        isOpen={isDeleteCompanyDialogOpen}
+        onDelete={async (confirmationName) => {
+          setCompanyErrorMessage(null);
+
+          await new Promise<void>((resolve, reject) => {
+            commitDeleteCompany({
+              variables: {
+                input: {
+                  confirmationName,
+                },
+              },
+              onCompleted: (response, errors) => {
+                const nextErrorMessage = errors?.[0]?.message;
+                if (nextErrorMessage) {
+                  reject(new Error(nextErrorMessage));
+                  return;
+                }
+
+                setCompanyDeletionStatus(response.DeleteCompany.status);
+                resolve();
+              },
+              onError: reject,
+            });
+          }).then(() => {
+            setDeleteCompanyDialogOpen(false);
+          }).catch((error: unknown) => {
+            setCompanyErrorMessage(error instanceof Error ? error.message : "Failed to delete company.");
+          });
+        }}
+        onOpenChange={setDeleteCompanyDialogOpen}
       />
     </main>
   );

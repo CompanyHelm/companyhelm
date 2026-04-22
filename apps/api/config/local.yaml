@@ -34,6 +34,8 @@ redis:
   username: ""
   password: ""
 workers:
+  company_deletions:
+    concurrency: 2
   github_webhooks:
     concurrency: 10
   routine_triggers:
