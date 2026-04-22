@@ -532,15 +532,19 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_github_installations",
   }, {
-    description: "Start a GitHub App installation flow and return a user-facing install URL.",
+    description: "Start a GitHub App installation flow for the current chat session and return a user-facing install URL.",
     id: "github.installation.start",
     inputSchema: {
       additionalProperties: false,
+      anyOf: [{
+        required: ["organizationSlug"],
+      }, {
+        required: ["returnPath"],
+      }],
       properties: {
         organizationSlug: { type: "string" },
         returnPath: { type: "string" },
       },
-      required: ["returnPath"],
       type: "object",
     },
     systemSkillKey: "manage_github_installations",

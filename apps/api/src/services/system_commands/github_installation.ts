@@ -76,8 +76,11 @@ export class GithubInstallationSystemCommandService {
     context: SystemCommandExecutionContext,
   ): Promise<Record<string, unknown>> {
     const payload = this.inputReader.requireRecord(input);
-    const returnPath = this.inputReader.requireString(payload, "returnPath");
-    const organizationSlug = this.resolveOrganizationSlug(payload, returnPath);
+    const organizationSlug = this.resolveOrganizationSlug(payload);
+    const returnPath = GithubInstallationSystemCommandService.createSourceSessionReturnPath(
+      organizationSlug,
+      context,
+    );
     const sourceUserId = await this.loadSourceSessionUserId(context);
     const state = this.githubInstallationStateService.createState({
       companyId: context.companyId,
@@ -119,20 +122,33 @@ export class GithubInstallationSystemCommandService {
     return normalizedOwnerUserId;
   }
 
-  private resolveOrganizationSlug(payload: Record<string, unknown>, returnPath: string): string {
+  private resolveOrganizationSlug(payload: Record<string, unknown>): string {
     const explicitOrganizationSlug = this.inputReader.optionalString(payload, "organizationSlug")?.trim();
     if (explicitOrganizationSlug) {
       return explicitOrganizationSlug;
     }
 
+    const returnPath = this.inputReader.optionalString(payload, "returnPath")?.trim() ?? "";
     const organizationSlugMatch = /^\/orgs\/([^/?#]+)/.exec(returnPath);
     const organizationSlug = organizationSlugMatch?.[1]
       ? decodeURIComponent(organizationSlugMatch[1])
       : "";
     if (!organizationSlug) {
-      throw new Error("organizationSlug is required when returnPath is not under /orgs/:organizationSlug.");
+      throw new Error("organizationSlug is required to start a GitHub installation from a chat session.");
     }
 
     return organizationSlug;
+  }
+
+  private static createSourceSessionReturnPath(
+    organizationSlug: string,
+    context: SystemCommandExecutionContext,
+  ): string {
+    const query = new URLSearchParams({
+      agentId: context.agentId,
+      sessionId: context.sessionId,
+    });
+
+    return `/orgs/${encodeURIComponent(organizationSlug)}/chats?${query.toString()}`;
   }
 }
