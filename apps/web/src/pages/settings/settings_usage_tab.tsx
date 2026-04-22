@@ -1,6 +1,7 @@
 import { Suspense, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
+import { CompanyManagedLlmBudgetPanel } from "@/components/usage/company_managed_llm_budget_panel";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,28 @@ const settingsUsageTabQueryNode = graphql`
       company {
         id
         name
+      }
+    }
+    CompanyManagedLlmBudget {
+      plan
+      managedCredentialId
+      daily {
+        exhausted
+        limitCostNanoUsd
+        overageCostNanoUsd
+        period
+        periodStart
+        remainingCostNanoUsd
+        usedCostNanoUsd
+      }
+      monthly {
+        exhausted
+        limitCostNanoUsd
+        overageCostNanoUsd
+        period
+        periodStart
+        remainingCostNanoUsd
+        usedCostNanoUsd
       }
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
@@ -152,6 +175,11 @@ function SettingsUsageTabContent() {
 
   return (
     <div className="grid gap-6">
+      <CompanyManagedLlmBudgetPanel
+        budget={data.CompanyManagedLlmBudget}
+        description="Subscription level and included CompanyHelm-managed LLM budget for the current UTC day and month."
+      />
+
       <UsageSummaryPanel
         aggregates={companyAggregates}
         description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}

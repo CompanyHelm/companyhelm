@@ -7,6 +7,7 @@ type CompanyManagedLlmBudgetServiceHarnessInput = {
   companyPlan?: "free" | "pro";
   credentialIsManaged?: boolean;
   dayCostNanoUsd?: number;
+  managedCredentialId?: string | null;
   monthCostNanoUsd?: number;
 };
 
@@ -31,7 +32,12 @@ class CompanyManagedLlmBudgetServiceTestHarness {
             return {
               where: async () => {
                 if (table === modelProviderCredentials) {
+                  if (this.input.managedCredentialId === null) {
+                    return [];
+                  }
+
                   return [{
+                    id: this.input.managedCredentialId ?? "00000000-0000-0000-0000-000000000002",
                     isManaged: this.input.credentialIsManaged ?? true,
                   }];
                 }
@@ -119,10 +125,12 @@ test("CompanyManagedLlmBudgetService blocks free companies at the monthly manage
   }
 });
 
-test("CompanyManagedLlmBudgetService allows pro companies without aggregate reads", async () => {
+test("CompanyManagedLlmBudgetService allows pro companies below the managed-provider cap", async () => {
   const service = new CompanyManagedLlmBudgetService();
   const harness = new CompanyManagedLlmBudgetServiceTestHarness({
     companyPlan: "pro",
+    dayCostNanoUsd: 19_000_000_000,
+    monthCostNanoUsd: 99_000_000_000,
   });
 
   const status = await service.checkWithinBudgetInTransaction(harness.createDatabase() as never, {
@@ -134,5 +142,63 @@ test("CompanyManagedLlmBudgetService allows pro companies without aggregate read
   assert.deepEqual(status, {
     allowed: true,
   });
-  assert.deepEqual(harness.selectedTables, [modelProviderCredentials, companies]);
+  assert.deepEqual(harness.selectedTables, [
+    modelProviderCredentials,
+    companies,
+    llmUsageAggregates,
+    llmUsageAggregates,
+  ]);
+});
+
+test("CompanyManagedLlmBudgetService returns remaining and overage values for managed usage", async () => {
+  const service = new CompanyManagedLlmBudgetService();
+  const harness = new CompanyManagedLlmBudgetServiceTestHarness({
+    dayCostNanoUsd: 1_250_000_000,
+    monthCostNanoUsd: 10_500_000_000,
+  });
+
+  const snapshot = await service.getBudgetSnapshotInTransaction(harness.createDatabase() as never, {
+    companyId: "00000000-0000-0000-0000-000000000001",
+    now: new Date("2026-04-22T12:00:00.000Z"),
+  });
+
+  assert.equal(snapshot.plan, "free");
+  assert.equal(snapshot.managedCredentialId, "00000000-0000-0000-0000-000000000002");
+  assert.deepEqual(snapshot.daily, {
+    exhausted: false,
+    limitCostNanoUsd: 2_000_000_000,
+    overageCostNanoUsd: 0,
+    period: "day",
+    periodStart: new Date("2026-04-22T00:00:00.000Z"),
+    remainingCostNanoUsd: 750_000_000,
+    usedCostNanoUsd: 1_250_000_000,
+  });
+  assert.deepEqual(snapshot.monthly, {
+    exhausted: true,
+    limitCostNanoUsd: 10_000_000_000,
+    overageCostNanoUsd: 500_000_000,
+    period: "month",
+    periodStart: new Date("2026-04-01T00:00:00.000Z"),
+    remainingCostNanoUsd: 0,
+    usedCostNanoUsd: 10_500_000_000,
+  });
+});
+
+test("CompanyManagedLlmBudgetService returns zero usage when the managed credential is not provisioned", async () => {
+  const service = new CompanyManagedLlmBudgetService();
+  const harness = new CompanyManagedLlmBudgetServiceTestHarness({
+    managedCredentialId: null,
+  });
+
+  const snapshot = await service.getBudgetSnapshotInTransaction(harness.createDatabase() as never, {
+    companyId: "00000000-0000-0000-0000-000000000001",
+    now: new Date("2026-04-22T12:00:00.000Z"),
+  });
+
+  assert.equal(snapshot.managedCredentialId, null);
+  assert.equal(snapshot.daily.usedCostNanoUsd, 0);
+  assert.equal(snapshot.daily.remainingCostNanoUsd, 2_000_000_000);
+  assert.equal(snapshot.monthly.usedCostNanoUsd, 0);
+  assert.equal(snapshot.monthly.remainingCostNanoUsd, 10_000_000_000);
+  assert.deepEqual(harness.selectedTables, [companies, modelProviderCredentials]);
 });

@@ -19,6 +19,7 @@ type Query {
   GithubSkillBranches(source: GitSkillSourceInput!): [GithubSkillBranch!]!
   GithubDiscoveredSkills(source: GitSkillSourceInput!, branchName: String!): [GithubDiscoveredSkill!]!
   InboxHumanQuestions: [InboxHumanQuestion!]!
+  CompanyManagedLlmBudget: CompanyManagedLlmBudget!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
@@ -219,6 +220,11 @@ enum McpOauthConnectionStatus {
 type AuthenticatedCompany {
   id: ID!
   name: String!
+}
+
+enum CompanySubscriptionPlan {
+  free
+  pro
 }
 
 type CompanySettings {
@@ -627,6 +633,23 @@ type LlmUsageAggregate {
   totalCostNanoUsd: Float!
   createdAt: String!
   updatedAt: String!
+}
+
+type CompanyManagedLlmBudgetPeriod {
+  period: LlmUsageAggregatePeriod!
+  periodStart: String!
+  limitCostNanoUsd: Float
+  usedCostNanoUsd: Float!
+  remainingCostNanoUsd: Float
+  overageCostNanoUsd: Float!
+  exhausted: Boolean!
+}
+
+type CompanyManagedLlmBudget {
+  plan: CompanySubscriptionPlan!
+  managedCredentialId: ID
+  daily: CompanyManagedLlmBudgetPeriod!
+  monthly: CompanyManagedLlmBudgetPeriod!
 }
 
 type SessionQueuedMessage {

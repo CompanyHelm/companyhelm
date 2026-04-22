@@ -3,12 +3,17 @@ import { injectable } from "inversify";
 import { companies, llmUsageAggregates, modelProviderCredentials } from "../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 
-type CompanySubscriptionPlan = "free" | "pro";
+export type CompanySubscriptionPlan = "free" | "pro";
 type LlmUsageAggregatePeriod = "day" | "month";
 
 type CompanyManagedLlmBudgetInput = {
   companyId: string;
   modelProviderCredentialId: string;
+  now?: Date;
+};
+
+type CompanyManagedLlmBudgetSnapshotInput = {
+  companyId: string;
   now?: Date;
 };
 
@@ -28,8 +33,29 @@ export type CompanyManagedLlmBudgetStatus = {
   usedCostNanoUsd: number;
 };
 
+export type CompanyManagedLlmBudgetPeriodSnapshot = {
+  exhausted: boolean;
+  limitCostNanoUsd: number | null;
+  overageCostNanoUsd: number;
+  period: LlmUsageAggregatePeriod;
+  periodStart: Date;
+  remainingCostNanoUsd: number | null;
+  usedCostNanoUsd: number;
+};
+
+export type CompanyManagedLlmBudgetSnapshot = {
+  daily: CompanyManagedLlmBudgetPeriodSnapshot;
+  managedCredentialId: string | null;
+  monthly: CompanyManagedLlmBudgetPeriodSnapshot;
+  plan: CompanySubscriptionPlan;
+};
+
 type CredentialRecord = {
   isManaged: boolean;
+};
+
+type ManagedCredentialRecord = {
+  id: string;
 };
 
 type CompanyRecord = {
@@ -114,27 +140,74 @@ export class CompanyManagedLlmBudgetService {
     const dayPeriodStart = this.resolveUtcDayPeriodStart(now);
     const monthPeriodStart = this.resolveUtcMonthPeriodStart(now);
 
-    const dailyStatus = await this.checkPeriodBudget(database, {
+    const dailyBudget = await this.loadPeriodBudget(database, {
       capNanoUsd: entitlements.dailyCapNanoUsd,
       companyId: input.companyId,
       modelProviderCredentialId: input.modelProviderCredentialId,
       period: "day",
       periodStart: dayPeriodStart,
     });
-    if (!dailyStatus.allowed) {
-      return dailyStatus;
+    if (dailyBudget.exhausted) {
+      return this.toBudgetLimitStatus(dailyBudget);
     }
 
-    return this.checkPeriodBudget(database, {
+    const monthlyBudget = await this.loadPeriodBudget(database, {
       capNanoUsd: entitlements.monthlyCapNanoUsd,
       companyId: input.companyId,
       modelProviderCredentialId: input.modelProviderCredentialId,
       period: "month",
       periodStart: monthPeriodStart,
     });
+    if (monthlyBudget.exhausted) {
+      return this.toBudgetLimitStatus(monthlyBudget);
+    }
+
+    return {
+      allowed: true,
+    };
   }
 
-  private async checkPeriodBudget(
+  async getBudgetSnapshot(
+    transactionProvider: TransactionProviderInterface,
+    input: CompanyManagedLlmBudgetSnapshotInput,
+  ): Promise<CompanyManagedLlmBudgetSnapshot> {
+    return transactionProvider.transaction(async (tx) => {
+      return this.getBudgetSnapshotInTransaction(tx as unknown as SelectableDatabase, input);
+    });
+  }
+
+  async getBudgetSnapshotInTransaction(
+    database: SelectableDatabase,
+    input: CompanyManagedLlmBudgetSnapshotInput,
+  ): Promise<CompanyManagedLlmBudgetSnapshot> {
+    const company = await this.loadCompany(database, input.companyId);
+    const managedCredentialId = await this.loadManagedCredentialId(database, input.companyId);
+    const entitlements = this.resolveEntitlements(company.plan);
+    const now = input.now ?? new Date();
+    const dailyPeriodStart = this.resolveUtcDayPeriodStart(now);
+    const monthlyPeriodStart = this.resolveUtcMonthPeriodStart(now);
+
+    return {
+      daily: await this.loadOptionalCredentialPeriodBudget(database, {
+        capNanoUsd: entitlements.dailyCapNanoUsd,
+        companyId: input.companyId,
+        modelProviderCredentialId: managedCredentialId,
+        period: "day",
+        periodStart: dailyPeriodStart,
+      }),
+      managedCredentialId,
+      monthly: await this.loadOptionalCredentialPeriodBudget(database, {
+        capNanoUsd: entitlements.monthlyCapNanoUsd,
+        companyId: input.companyId,
+        modelProviderCredentialId: managedCredentialId,
+        period: "month",
+        periodStart: monthlyPeriodStart,
+      }),
+      plan: company.plan,
+    };
+  }
+
+  private async loadPeriodBudget(
     database: SelectableDatabase,
     input: {
       capNanoUsd: number | null;
@@ -143,28 +216,29 @@ export class CompanyManagedLlmBudgetService {
       period: LlmUsageAggregatePeriod;
       periodStart: Date;
     },
-  ): Promise<CompanyManagedLlmBudgetStatus> {
-    if (input.capNanoUsd === null) {
-      return {
-        allowed: true,
-      };
-    }
-
+  ): Promise<CompanyManagedLlmBudgetPeriodSnapshot> {
     const usedCostNanoUsd = await this.loadPeriodCostNanoUsd(database, input);
-    if (usedCostNanoUsd < input.capNanoUsd) {
-      return {
-        allowed: true,
-      };
+    return this.buildPeriodSnapshot(input.period, input.periodStart, input.capNanoUsd, usedCostNanoUsd);
+  }
+
+  private async loadOptionalCredentialPeriodBudget(
+    database: SelectableDatabase,
+    input: {
+      capNanoUsd: number | null;
+      companyId: string;
+      modelProviderCredentialId: string | null;
+      period: LlmUsageAggregatePeriod;
+      periodStart: Date;
+    },
+  ): Promise<CompanyManagedLlmBudgetPeriodSnapshot> {
+    if (!input.modelProviderCredentialId) {
+      return this.buildPeriodSnapshot(input.period, input.periodStart, input.capNanoUsd, 0);
     }
 
-    return {
-      allowed: false,
-      limitCostNanoUsd: input.capNanoUsd,
-      message: this.resolveLimitMessage(input.period),
-      period: input.period,
-      periodStart: input.periodStart,
-      usedCostNanoUsd,
-    };
+    return this.loadPeriodBudget(database, {
+      ...input,
+      modelProviderCredentialId: input.modelProviderCredentialId,
+    });
   }
 
   private async loadCredential(
@@ -186,6 +260,23 @@ export class CompanyManagedLlmBudgetService {
     }
 
     return credential;
+  }
+
+  private async loadManagedCredentialId(
+    database: SelectableDatabase,
+    companyId: string,
+  ): Promise<string | null> {
+    const [credential] = await database
+      .select({
+        id: modelProviderCredentials.id,
+      })
+      .from(modelProviderCredentials)
+      .where(and(
+        eq(modelProviderCredentials.companyId, companyId),
+        eq(modelProviderCredentials.isManaged, true),
+      )) as ManagedCredentialRecord[];
+
+    return credential?.id ?? null;
   }
 
   private async loadCompany(
@@ -232,6 +323,52 @@ export class CompanyManagedLlmBudgetService {
 
   private resolveEntitlements(plan: CompanySubscriptionPlan): CompanyManagedLlmBudgetEntitlements {
     return CompanyManagedLlmBudgetService.entitlementsByPlan[plan];
+  }
+
+  private buildPeriodSnapshot(
+    period: LlmUsageAggregatePeriod,
+    periodStart: Date,
+    limitCostNanoUsd: number | null,
+    usedCostNanoUsd: number,
+  ): CompanyManagedLlmBudgetPeriodSnapshot {
+    if (limitCostNanoUsd === null) {
+      return {
+        exhausted: false,
+        limitCostNanoUsd,
+        overageCostNanoUsd: 0,
+        period,
+        periodStart,
+        remainingCostNanoUsd: null,
+        usedCostNanoUsd,
+      };
+    }
+
+    return {
+      exhausted: usedCostNanoUsd >= limitCostNanoUsd,
+      limitCostNanoUsd,
+      overageCostNanoUsd: Math.max(usedCostNanoUsd - limitCostNanoUsd, 0),
+      period,
+      periodStart,
+      remainingCostNanoUsd: Math.max(limitCostNanoUsd - usedCostNanoUsd, 0),
+      usedCostNanoUsd,
+    };
+  }
+
+  private toBudgetLimitStatus(periodBudget: CompanyManagedLlmBudgetPeriodSnapshot): CompanyManagedLlmBudgetStatus {
+    if (periodBudget.limitCostNanoUsd === null) {
+      return {
+        allowed: true,
+      };
+    }
+
+    return {
+      allowed: false,
+      limitCostNanoUsd: periodBudget.limitCostNanoUsd,
+      message: this.resolveLimitMessage(periodBudget.period),
+      period: periodBudget.period,
+      periodStart: periodBudget.periodStart,
+      usedCostNanoUsd: periodBudget.usedCostNanoUsd,
+    };
   }
 
   private resolveLimitMessage(period: LlmUsageAggregatePeriod): string {

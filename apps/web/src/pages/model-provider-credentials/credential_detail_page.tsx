@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { RefreshCcwIcon, StarIcon } from "lucide-react";
 import { graphql, useLazyLoadQuery, useMutation } from "react-relay";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { CompanyManagedLlmBudgetPanel } from "@/components/usage/company_managed_llm_budget_panel";
 import { UsageSummaryPanel } from "@/components/usage/usage_summary_panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,28 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       errorMessage
       refreshedAt
       updatedAt
+    }
+    CompanyManagedLlmBudget {
+      plan
+      managedCredentialId
+      daily {
+        exhausted
+        limitCostNanoUsd
+        overageCostNanoUsd
+        period
+        periodStart
+        remainingCostNanoUsd
+        usedCostNanoUsd
+      }
+      monthly {
+        exhausted
+        limitCostNanoUsd
+        overageCostNanoUsd
+        period
+        periodStart
+        remainingCostNanoUsd
+        usedCostNanoUsd
+      }
     }
     ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
       id
@@ -399,13 +422,22 @@ function ModelProviderCredentialDetailPageContent() {
             </div>
           ) : null}
           {selectedTab === "usage" ? (
-            <UsageSummaryPanel
-              aggregates={providerUsageAggregates}
-              description="Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."
-              scopeId={normalizedCredentialId}
-              scopeType="provider"
-              title={`${currentCredential?.name ?? providerLabel} usage`}
-            />
+            <div className="grid gap-6">
+              {isManagedCredential ? (
+                <CompanyManagedLlmBudgetPanel
+                  budget={data.CompanyManagedLlmBudget}
+                  description="Included CompanyHelm-managed LLM budget for this provider, using the same daily and monthly caps enforced before new agent work starts."
+                  title="Included usage for this provider"
+                />
+              ) : null}
+              <UsageSummaryPanel
+                aggregates={providerUsageAggregates}
+                description="Provider-specific rollup for this credential, including day and month trends from the live usage aggregate table."
+                scopeId={normalizedCredentialId}
+                scopeType="provider"
+                title={`${currentCredential?.name ?? providerLabel} usage`}
+              />
+            </div>
           ) : data.ModelProviderCredentialModels.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
               <p className="text-sm font-medium text-foreground">No models returned</p>

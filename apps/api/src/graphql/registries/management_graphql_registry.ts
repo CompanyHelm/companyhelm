@@ -38,6 +38,7 @@ import { UpdateMcpServerMutation } from "../mutations/update_mcp_server.ts";
 import { UpdateSkillFromRepositoryMutation } from "../mutations/update_skill_from_repository.ts";
 import { UpdateSkillMutation } from "../mutations/update_skill.ts";
 import { UpdateSkillGroupMutation } from "../mutations/update_skill_group.ts";
+import { CompanyManagedLlmBudgetQueryResolver } from "../resolvers/company_managed_llm_budget.ts";
 import { CompanySettingsQueryResolver } from "../resolvers/company_settings.ts";
 import { GithubAppConfigQueryResolver } from "../resolvers/github_app_config.ts";
 import { GithubDiscoveredSkillsQueryResolver } from "../resolvers/github_discovered_skills.ts";
@@ -68,6 +69,7 @@ import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphq
 @injectable()
 export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly addGithubInstallationMutation: AddGithubInstallationMutation;
+  private readonly companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver;
   private readonly companySettingsQueryResolver: CompanySettingsQueryResolver;
   private readonly connectMcpServerOauthClientCredentialsMutation: ConnectMcpServerOauthClientCredentialsMutation;
   private readonly createGithubInstallationUrlMutation: CreateGithubInstallationUrlMutation;
@@ -221,6 +223,9 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
       new DeleteGithubRepositoryProvisioningMutation(),
     @inject(DeleteCompanyMutation)
     deleteCompanyMutation: DeleteCompanyMutation = new DeleteCompanyMutation(),
+    @inject(CompanyManagedLlmBudgetQueryResolver)
+    companyManagedLlmBudgetQueryResolver: CompanyManagedLlmBudgetQueryResolver =
+      new CompanyManagedLlmBudgetQueryResolver(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -237,6 +242,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     const defaultSkillGithubCatalog = new SkillGithubCatalog(new SkillGithubPublicClient(config), new GithubClient(config));
 
     this.addGithubInstallationMutation = addGithubInstallationMutation;
+    this.companyManagedLlmBudgetQueryResolver = companyManagedLlmBudgetQueryResolver;
     this.companySettingsQueryResolver = companySettingsQueryResolver;
     this.connectMcpServerOauthClientCredentialsMutation = connectMcpServerOauthClientCredentialsMutation
       ?? new ConnectMcpServerOauthClientCredentialsMutation(
@@ -339,6 +345,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         UpdateSkillGroup: this.updateSkillGroupMutation.execute,
       },
       Query: {
+        CompanyManagedLlmBudget: this.companyManagedLlmBudgetQueryResolver.execute,
         CompanySettings: this.companySettingsQueryResolver.execute,
         GithubAppConfig: this.githubAppConfigQueryResolver.execute,
         GithubDiscoveredSkills: this.githubDiscoveredSkillsQueryResolver.execute,
