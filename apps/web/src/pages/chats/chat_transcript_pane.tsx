@@ -58,8 +58,6 @@ class ChatTranscriptTimestampPresenter {
       hour: "numeric",
       minute: "2-digit",
       month: "short",
-      second: "2-digit",
-      timeZoneName: "short",
       year: "numeric",
     }).format(value);
   }
@@ -327,6 +325,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
     >
       <Tooltip>
         <TooltipTrigger
+          delay={1000}
           render={(
             <div
               className={`${
@@ -377,7 +376,11 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
             </div>
           )}
         </TooltipTrigger>
-        <TooltipContent side={isUserMessage ? "left" : "top"} sideOffset={8}>
+        <TooltipContent
+          className="rounded-sm border border-border/70 bg-popover px-2 py-0.5 text-[10px] font-medium leading-4 text-popover-foreground shadow-sm [&>div:last-child]:bg-popover [&>div:last-child]:fill-popover"
+          side={isUserMessage ? "left" : "top"}
+          sideOffset={6}
+        >
           <time dateTime={message.createdAt}>{timestampLabel}</time>
         </TooltipContent>
       </Tooltip>
