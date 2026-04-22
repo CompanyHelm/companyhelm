@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OrganizationPath } from "@/lib/organization_path";
 import type { SessionMessageRecord, SessionRecord } from "./chats_page_data";
 import {
@@ -40,6 +41,29 @@ const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ te
 });
 
 AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
+
+/**
+ * Formats persisted transcript timestamps for hover-only display, keeping message rows visually
+ * quiet while still exposing the exact local send time when the operator needs it.
+ */
+class ChatTranscriptTimestampPresenter {
+  static formatMessageTimestamp(timestamp: string): string {
+    const value = new Date(timestamp);
+    if (Number.isNaN(value.getTime())) {
+      return "Unknown time";
+    }
+
+    return new Intl.DateTimeFormat("en-US", {
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      second: "2-digit",
+      timeZoneName: "short",
+      year: "numeric",
+    }).format(value);
+  }
+}
 
 const GithubInstallationStartTurnAction = memo(function GithubInstallationStartTurnAction(
   { action }: { action: GithubInstallationStartTurnActionRecord },
@@ -294,59 +318,69 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   const assistantDisplayContents = !isUserMessage && !isToolMessage
     ? resolveAssistantContentDisplay(message, { contentMode: assistantContentMode })
     : [];
+  const timestampLabel = ChatTranscriptTimestampPresenter.formatMessageTimestamp(message.createdAt);
 
   return (
     <div
       data-transcript-message-id={message.id}
       className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : useLeftGutter ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS : ""}`}
     >
-      <div
-        className={`${
-          isUserMessage
-            ? "min-w-0 max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
-            : isToolMessage
-            ? "min-w-0 w-full px-0 py-0 text-foreground"
-            : "min-w-0 w-full px-0 py-0 text-foreground"
-        }`}
-      >
-        {isUserMessage ? (
-          <div className="grid min-w-0 w-full max-w-full gap-2">
-            {message.text.trim().length > 0 ? (
-              <p className="min-w-0 max-w-full whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">
-                {message.text}
-              </p>
-            ) : null}
-            {userImageContents.length > 0 ? (
-              <div className="grid justify-items-end gap-2">
-                {userImageContents.map((content, contentIndex) => (
-                  <img
-                    key={`${message.id}-user-image-${contentIndex}`}
-                    alt="Uploaded attachment"
-                    className="max-h-[20rem] max-w-full rounded-xl border border-primary-foreground/20 object-contain"
-                    src={`data:${content.mimeType};base64,${content.data}`}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : isToolMessage ? (
-          <ToolTranscriptMessage
-            message={message}
-            toolCallSummary={message.toolCallId ? toolCallSummary : null}
-          />
-        ) : (
-          <div className="grid min-w-0 w-full gap-4 text-left">
-            {assistantDisplayContents.map((content, contentIndex) => (
-              <div
-                key={`${message.id}-assistant-content-${contentIndex}`}
-                className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
-              >
-                <AssistantTranscriptMessage text={content.text} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <div
+              className={`${
+                isUserMessage
+                  ? "min-w-0 max-w-[80%] rounded-2xl bg-primary px-4 py-3 text-right text-primary-foreground"
+                  : isToolMessage
+                  ? "min-w-0 w-full px-0 py-0 text-foreground"
+                  : "min-w-0 w-full px-0 py-0 text-foreground"
+              }`}
+            />
+          )}
+        >
+          {isUserMessage ? (
+            <div className="grid min-w-0 w-full max-w-full gap-2">
+              {message.text.trim().length > 0 ? (
+                <p className="min-w-0 max-w-full whitespace-pre-wrap break-words text-right text-sm [overflow-wrap:anywhere]">
+                  {message.text}
+                </p>
+              ) : null}
+              {userImageContents.length > 0 ? (
+                <div className="grid justify-items-end gap-2">
+                  {userImageContents.map((content, contentIndex) => (
+                    <img
+                      key={`${message.id}-user-image-${contentIndex}`}
+                      alt="Uploaded attachment"
+                      className="max-h-[20rem] max-w-full rounded-xl border border-primary-foreground/20 object-contain"
+                      src={`data:${content.mimeType};base64,${content.data}`}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : isToolMessage ? (
+            <ToolTranscriptMessage
+              message={message}
+              toolCallSummary={message.toolCallId ? toolCallSummary : null}
+            />
+          ) : (
+            <div className="grid min-w-0 w-full gap-4 text-left">
+              {assistantDisplayContents.map((content, contentIndex) => (
+                <div
+                  key={`${message.id}-assistant-content-${contentIndex}`}
+                  className={`min-w-0 ${content.type === "thinking" ? "opacity-80" : ""}`}
+                >
+                  <AssistantTranscriptMessage text={content.text} />
+                </div>
+              ))}
+            </div>
+          )}
+        </TooltipTrigger>
+        <TooltipContent side={isUserMessage ? "left" : "top"} sideOffset={8}>
+          <time dateTime={message.createdAt}>{timestampLabel}</time>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 });
