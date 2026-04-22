@@ -5,6 +5,7 @@ import {
   agentSessions,
   messageContents,
   modelProviderCredentialModels,
+  modelProviderCredentials,
   sessionMessages,
   sessionQueuedMessages,
   sessionTurns,
@@ -14,6 +15,7 @@ import { RedisCompanyScopedService } from "../../../redis/company_scoped_service
 import { RedisService } from "../../../redis/service.ts";
 import {
   SessionTurnUsageService,
+  type SessionTurnUsageCostKind,
   type SessionTurnUsagePayload,
 } from "../session_turn_usage_service.ts";
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
@@ -125,6 +127,7 @@ type QueuedUserMessageDispatch = {
 type SessionAttribution = {
   agentId: string;
   companyId: string;
+  costKind: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
 };
 
@@ -174,6 +177,7 @@ export class PiMonoSessionEventHandler {
   private eventChain: Promise<void> = Promise.resolve();
   private companyId?: string;
   private agentId?: string;
+  private modelProviderCredentialCostKind?: SessionTurnUsageCostKind;
   private modelProviderCredentialId?: string;
   private currentTurnId: string | null = null;
   private isThinking = false;
@@ -278,6 +282,7 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: attribution.companyId,
+      costKind: attribution.costKind,
       modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt,
       sessionId: this.sessionId,
@@ -537,6 +542,7 @@ export class PiMonoSessionEventHandler {
     await this.sessionTurnUsageService.recordUsage(this.transactionProvider, {
       agentId: attribution.agentId,
       companyId: persistedMessageReference.companyId,
+      costKind: attribution.costKind,
       modelProviderCredentialId: attribution.modelProviderCredentialId,
       recordedAt: persistedMessageReference.timestamp,
       sessionId: this.sessionId,
@@ -1138,10 +1144,11 @@ export class PiMonoSessionEventHandler {
   }
 
   private async resolveSessionAttribution(): Promise<SessionAttribution> {
-    if (this.companyId && this.agentId && this.modelProviderCredentialId) {
+    if (this.companyId && this.agentId && this.modelProviderCredentialId && this.modelProviderCredentialCostKind) {
       return {
         agentId: this.agentId,
         companyId: this.companyId,
+        costKind: this.modelProviderCredentialCostKind,
         modelProviderCredentialId: this.modelProviderCredentialId,
       };
     }
@@ -1168,6 +1175,7 @@ export class PiMonoSessionEventHandler {
         return {
           agentId: sessionRecord?.agentId,
           companyId,
+          costKind: undefined,
           modelProviderCredentialId: undefined,
         };
       }
@@ -1181,29 +1189,68 @@ export class PiMonoSessionEventHandler {
           eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.id, currentModelProviderCredentialModelId),
         ));
+      const modelProviderCredentialId = credentialModelRecord?.modelProviderCredentialId;
+      if (typeof modelProviderCredentialId !== "string") {
+        return {
+          agentId: sessionRecord?.agentId,
+          companyId,
+          costKind: undefined,
+          modelProviderCredentialId,
+        };
+      }
+
+      const [credentialRecord] = await selectableDatabase
+        .select({
+          isManaged: modelProviderCredentials.isManaged,
+          type: modelProviderCredentials.type,
+        })
+        .from(modelProviderCredentials)
+        .where(and(
+          eq(modelProviderCredentials.companyId, companyId),
+          eq(modelProviderCredentials.id, modelProviderCredentialId),
+        ));
 
       return {
         agentId: sessionRecord?.agentId,
         companyId,
-        modelProviderCredentialId: credentialModelRecord?.modelProviderCredentialId,
+        costKind: credentialRecord
+          ? PiMonoSessionEventHandler.resolveCredentialCostKind(credentialRecord)
+          : undefined,
+        modelProviderCredentialId,
       };
     });
 
     const companyId = attribution.companyId;
     const agentId = attribution.agentId;
+    const costKind = attribution.costKind;
     const modelProviderCredentialId = attribution.modelProviderCredentialId;
-    if (typeof companyId !== "string" || typeof agentId !== "string" || typeof modelProviderCredentialId !== "string") {
+    if (
+      typeof companyId !== "string"
+      || typeof agentId !== "string"
+      || typeof costKind !== "string"
+      || typeof modelProviderCredentialId !== "string"
+    ) {
       throw new Error("Session attribution not found.");
     }
 
     this.companyId = companyId;
     this.agentId = agentId;
+    this.modelProviderCredentialCostKind = costKind;
     this.modelProviderCredentialId = modelProviderCredentialId;
     return {
       agentId,
       companyId,
+      costKind,
       modelProviderCredentialId,
     };
+  }
+
+  private static resolveCredentialCostKind(credential: Record<string, unknown> | undefined): SessionTurnUsageCostKind {
+    if (credential?.isManaged === true || credential?.type === "oauth_token") {
+      return "virtual";
+    }
+
+    return "actual";
   }
 
   private async resolveMessageId(sessionEvent: SessionEvent): Promise<string> {

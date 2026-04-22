@@ -46,12 +46,16 @@ const settingsUsageTabQueryNode = graphql`
     }
     companyTotal: LlmUsageAggregates(input: { scopeType: company, period: total }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -59,16 +63,21 @@ const settingsUsageTabQueryNode = graphql`
       scopeId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     companyDaily: LlmUsageAggregates(input: { scopeType: company, period: day, periodStartAfter: $dailyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -76,16 +85,21 @@ const settingsUsageTabQueryNode = graphql`
       scopeId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     companyMonthly: LlmUsageAggregates(input: { scopeType: company, period: month, periodStartAfter: $monthlyStart }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -93,16 +107,21 @@ const settingsUsageTabQueryNode = graphql`
       scopeId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     providerTotals: LlmUsageAggregates(input: { scopeType: provider, period: total }) {
       cacheReadCostNanoUsd
+      cacheReadCostNanoVirtualUsd
       cacheReadTokens
       cacheWriteCostNanoUsd
+      cacheWriteCostNanoVirtualUsd
       cacheWriteTokens
       inputCostNanoUsd
+      inputCostNanoVirtualUsd
       inputTokens
       outputCostNanoUsd
+      outputCostNanoVirtualUsd
       outputTokens
       period
       periodStart
@@ -110,6 +129,7 @@ const settingsUsageTabQueryNode = graphql`
       scopeId
       scopeType
       totalCostNanoUsd
+      totalCostNanoVirtualUsd
       totalTokens
     }
     ModelProviderCredentials {
@@ -169,7 +189,7 @@ function SettingsUsageTabContent() {
         total,
       };
     }).sort((left, right) => {
-      return right.total.totalCostNanoUsd - left.total.totalCostNanoUsd;
+      return UsageMetrics.resolveCombinedCostNanoUsd(right.total) - UsageMetrics.resolveCombinedCostNanoUsd(left.total);
     });
   }, [data.ModelProviderCredentials, providerTotals]);
 
@@ -185,6 +205,7 @@ function SettingsUsageTabContent() {
         description={`Company-wide LLM spend, token volume, and request count for ${data.Me.company.name}. Daily and monthly buckets are UTC-aligned to match the aggregate ledger.`}
         scopeId={data.Me.company.id}
         scopeType="company"
+        spendKind="mixed"
         title="Company usage"
       />
 
@@ -193,7 +214,7 @@ function SettingsUsageTabContent() {
           <div className="min-w-0">
             <CardTitle>Provider breakdown</CardTitle>
             <CardDescription>
-              Spend and token volume grouped by model provider credential.
+              Actual spend, virtual spend, and token volume grouped by model provider credential.
             </CardDescription>
           </div>
         </CardHeader>
@@ -203,7 +224,8 @@ function SettingsUsageTabContent() {
               <TableRow>
                 <TableHead>Credential</TableHead>
                 <TableHead>Provider</TableHead>
-                <TableHead className="text-right">Spend</TableHead>
+                <TableHead className="text-right">Actual spend</TableHead>
+                <TableHead className="text-right">Virtual spend</TableHead>
                 <TableHead className="text-right">Tokens</TableHead>
                 <TableHead className="text-right">Requests</TableHead>
                 <TableHead className="w-24 text-right">Usage</TableHead>
@@ -212,7 +234,7 @@ function SettingsUsageTabContent() {
             <TableBody>
               {providerRows.length === 0 ? (
                 <TableRow>
-                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={6}>
+                  <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={7}>
                     No provider credentials found.
                   </TableCell>
                 </TableRow>
@@ -243,6 +265,9 @@ function SettingsUsageTabContent() {
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {UsageMetrics.formatUsdFromNano(total.totalCostNanoUsd)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {UsageMetrics.formatUsdFromNano(total.totalCostNanoVirtualUsd)}
                   </TableCell>
                   <TableCell className="text-right">
                     {UsageMetrics.formatTokenCount(total.totalTokens)}

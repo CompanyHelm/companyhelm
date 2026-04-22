@@ -101,6 +101,11 @@ export const sessionTurns = pgTable("session_turns", {
   usageCacheReadCostNanoUsd: bigint("usage_cache_read_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   usageCacheWriteCostNanoUsd: bigint("usage_cache_write_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   usageTotalCostNanoUsd: bigint("usage_total_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  usageInputCostNanoVirtualUsd: bigint("usage_input_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  usageOutputCostNanoVirtualUsd: bigint("usage_output_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  usageCacheReadCostNanoVirtualUsd: bigint("usage_cache_read_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  usageCacheWriteCostNanoVirtualUsd: bigint("usage_cache_write_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  usageTotalCostNanoVirtualUsd: bigint("usage_total_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
   usageRecordedAt: timestamp("usage_recorded_at", { withTimezone: true }),
 }, (table) => ({
   companyIdIndex: index("session_turns_company_id_idx").on(table.companyId),
@@ -130,6 +135,11 @@ export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
   cacheReadCostNanoUsd: bigint("cache_read_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   cacheWriteCostNanoUsd: bigint("cache_write_cost_nano_usd", { mode: "number" }).default(0).notNull(),
   totalCostNanoUsd: bigint("total_cost_nano_usd", { mode: "number" }).default(0).notNull(),
+  inputCostNanoVirtualUsd: bigint("input_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  outputCostNanoVirtualUsd: bigint("output_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  cacheReadCostNanoVirtualUsd: bigint("cache_read_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  cacheWriteCostNanoVirtualUsd: bigint("cache_write_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
+  totalCostNanoVirtualUsd: bigint("total_cost_nano_virtual_usd", { mode: "number" }).default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({

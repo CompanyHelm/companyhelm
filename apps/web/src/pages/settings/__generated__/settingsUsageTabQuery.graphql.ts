@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4a79958faf85af8e4b5d26d2f8022456>>
+ * @generated SignedSource<<16a991e77c772de2f834b2bad3c576a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -56,12 +56,16 @@ export type settingsUsageTabQuery$data = {
   }>;
   readonly companyDaily: ReadonlyArray<{
     readonly cacheReadCostNanoUsd: number;
+    readonly cacheReadCostNanoVirtualUsd: number;
     readonly cacheReadTokens: number;
     readonly cacheWriteCostNanoUsd: number;
+    readonly cacheWriteCostNanoVirtualUsd: number;
     readonly cacheWriteTokens: number;
     readonly inputCostNanoUsd: number;
+    readonly inputCostNanoVirtualUsd: number;
     readonly inputTokens: number;
     readonly outputCostNanoUsd: number;
+    readonly outputCostNanoVirtualUsd: number;
     readonly outputTokens: number;
     readonly period: LlmUsageAggregatePeriod;
     readonly periodStart: string;
@@ -69,16 +73,21 @@ export type settingsUsageTabQuery$data = {
     readonly scopeId: string;
     readonly scopeType: LlmUsageAggregateScope;
     readonly totalCostNanoUsd: number;
+    readonly totalCostNanoVirtualUsd: number;
     readonly totalTokens: number;
   }>;
   readonly companyMonthly: ReadonlyArray<{
     readonly cacheReadCostNanoUsd: number;
+    readonly cacheReadCostNanoVirtualUsd: number;
     readonly cacheReadTokens: number;
     readonly cacheWriteCostNanoUsd: number;
+    readonly cacheWriteCostNanoVirtualUsd: number;
     readonly cacheWriteTokens: number;
     readonly inputCostNanoUsd: number;
+    readonly inputCostNanoVirtualUsd: number;
     readonly inputTokens: number;
     readonly outputCostNanoUsd: number;
+    readonly outputCostNanoVirtualUsd: number;
     readonly outputTokens: number;
     readonly period: LlmUsageAggregatePeriod;
     readonly periodStart: string;
@@ -86,16 +95,21 @@ export type settingsUsageTabQuery$data = {
     readonly scopeId: string;
     readonly scopeType: LlmUsageAggregateScope;
     readonly totalCostNanoUsd: number;
+    readonly totalCostNanoVirtualUsd: number;
     readonly totalTokens: number;
   }>;
   readonly companyTotal: ReadonlyArray<{
     readonly cacheReadCostNanoUsd: number;
+    readonly cacheReadCostNanoVirtualUsd: number;
     readonly cacheReadTokens: number;
     readonly cacheWriteCostNanoUsd: number;
+    readonly cacheWriteCostNanoVirtualUsd: number;
     readonly cacheWriteTokens: number;
     readonly inputCostNanoUsd: number;
+    readonly inputCostNanoVirtualUsd: number;
     readonly inputTokens: number;
     readonly outputCostNanoUsd: number;
+    readonly outputCostNanoVirtualUsd: number;
     readonly outputTokens: number;
     readonly period: LlmUsageAggregatePeriod;
     readonly periodStart: string;
@@ -103,16 +117,21 @@ export type settingsUsageTabQuery$data = {
     readonly scopeId: string;
     readonly scopeType: LlmUsageAggregateScope;
     readonly totalCostNanoUsd: number;
+    readonly totalCostNanoVirtualUsd: number;
     readonly totalTokens: number;
   }>;
   readonly providerTotals: ReadonlyArray<{
     readonly cacheReadCostNanoUsd: number;
+    readonly cacheReadCostNanoVirtualUsd: number;
     readonly cacheReadTokens: number;
     readonly cacheWriteCostNanoUsd: number;
+    readonly cacheWriteCostNanoVirtualUsd: number;
     readonly cacheWriteTokens: number;
     readonly inputCostNanoUsd: number;
+    readonly inputCostNanoVirtualUsd: number;
     readonly inputTokens: number;
     readonly outputCostNanoUsd: number;
+    readonly outputCostNanoVirtualUsd: number;
     readonly outputTokens: number;
     readonly period: LlmUsageAggregatePeriod;
     readonly periodStart: string;
@@ -120,6 +139,7 @@ export type settingsUsageTabQuery$data = {
     readonly scopeId: string;
     readonly scopeType: LlmUsageAggregateScope;
     readonly totalCostNanoUsd: number;
+    readonly totalCostNanoVirtualUsd: number;
     readonly totalTokens: number;
   }>;
 };
@@ -298,87 +318,122 @@ v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "cacheReadTokens",
+  "name": "cacheReadCostNanoVirtualUsd",
   "storageKey": null
 },
 v11 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "cacheWriteCostNanoUsd",
+  "name": "cacheReadTokens",
   "storageKey": null
 },
 v12 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "cacheWriteTokens",
+  "name": "cacheWriteCostNanoUsd",
   "storageKey": null
 },
 v13 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "inputCostNanoUsd",
+  "name": "cacheWriteCostNanoVirtualUsd",
   "storageKey": null
 },
 v14 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "inputTokens",
+  "name": "cacheWriteTokens",
   "storageKey": null
 },
 v15 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "outputCostNanoUsd",
+  "name": "inputCostNanoUsd",
   "storageKey": null
 },
 v16 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "outputTokens",
+  "name": "inputCostNanoVirtualUsd",
   "storageKey": null
 },
 v17 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "requestCount",
+  "name": "inputTokens",
   "storageKey": null
 },
 v18 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "scopeId",
+  "name": "outputCostNanoUsd",
   "storageKey": null
 },
 v19 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "scopeType",
+  "name": "outputCostNanoVirtualUsd",
   "storageKey": null
 },
 v20 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "totalCostNanoUsd",
+  "name": "outputTokens",
   "storageKey": null
 },
 v21 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "requestCount",
+  "storageKey": null
+},
+v22 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "scopeId",
+  "storageKey": null
+},
+v23 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "scopeType",
+  "storageKey": null
+},
+v24 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "totalCostNanoUsd",
+  "storageKey": null
+},
+v25 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "totalCostNanoVirtualUsd",
+  "storageKey": null
+},
+v26 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "totalTokens",
   "storageKey": null
 },
-v22 = [
+v27 = [
   (v9/*: any*/),
   (v10/*: any*/),
   (v11/*: any*/),
@@ -387,20 +442,25 @@ v22 = [
   (v14/*: any*/),
   (v15/*: any*/),
   (v16/*: any*/),
-  (v4/*: any*/),
-  (v5/*: any*/),
   (v17/*: any*/),
   (v18/*: any*/),
   (v19/*: any*/),
   (v20/*: any*/),
-  (v21/*: any*/)
+  (v4/*: any*/),
+  (v5/*: any*/),
+  (v21/*: any*/),
+  (v22/*: any*/),
+  (v23/*: any*/),
+  (v24/*: any*/),
+  (v25/*: any*/),
+  (v26/*: any*/)
 ],
-v23 = {
+v28 = {
   "kind": "Literal",
   "name": "scopeType",
   "value": "company"
 },
-v24 = [
+v29 = [
   {
     "fields": [
       {
@@ -413,13 +473,13 @@ v24 = [
         "name": "periodStartAfter",
         "variableName": "dailyStart"
       },
-      (v23/*: any*/)
+      (v28/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v25 = [
+v30 = [
   {
     "fields": [
       {
@@ -432,13 +492,13 @@ v25 = [
         "name": "periodStartAfter",
         "variableName": "monthlyStart"
       },
-      (v23/*: any*/)
+      (v28/*: any*/)
     ],
     "kind": "ObjectValue",
     "name": "input"
   }
 ],
-v26 = [
+v31 = [
   {
     "kind": "Literal",
     "name": "input",
@@ -448,7 +508,7 @@ v26 = [
     }
   }
 ],
-v27 = {
+v32 = {
   "alias": null,
   "args": null,
   "concreteType": "ModelProviderCredential",
@@ -496,7 +556,7 @@ v27 = {
   ],
   "storageKey": null
 },
-v28 = [
+v33 = [
   (v9/*: any*/),
   (v10/*: any*/),
   (v11/*: any*/),
@@ -505,13 +565,18 @@ v28 = [
   (v14/*: any*/),
   (v15/*: any*/),
   (v16/*: any*/),
-  (v4/*: any*/),
-  (v5/*: any*/),
   (v17/*: any*/),
   (v18/*: any*/),
   (v19/*: any*/),
   (v20/*: any*/),
+  (v4/*: any*/),
+  (v5/*: any*/),
   (v21/*: any*/),
+  (v22/*: any*/),
+  (v23/*: any*/),
+  (v24/*: any*/),
+  (v25/*: any*/),
+  (v26/*: any*/),
   (v1/*: any*/)
 ];
 return {
@@ -530,40 +595,40 @@ return {
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v22/*: any*/),
+        "selections": (v27/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"company\"})"
       },
       {
         "alias": "companyDaily",
-        "args": (v24/*: any*/),
+        "args": (v29/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v22/*: any*/),
+        "selections": (v27/*: any*/),
         "storageKey": null
       },
       {
         "alias": "companyMonthly",
-        "args": (v25/*: any*/),
+        "args": (v30/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v22/*: any*/),
+        "selections": (v27/*: any*/),
         "storageKey": null
       },
       {
         "alias": "providerTotals",
-        "args": (v26/*: any*/),
+        "args": (v31/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v22/*: any*/),
+        "selections": (v27/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"provider\"})"
       },
-      (v27/*: any*/)
+      (v32/*: any*/)
     ],
     "type": "Query",
     "abstractKey": null
@@ -583,53 +648,53 @@ return {
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v28/*: any*/),
+        "selections": (v33/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"company\"})"
       },
       {
         "alias": "companyDaily",
-        "args": (v24/*: any*/),
+        "args": (v29/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v28/*: any*/),
+        "selections": (v33/*: any*/),
         "storageKey": null
       },
       {
         "alias": "companyMonthly",
-        "args": (v25/*: any*/),
+        "args": (v30/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v28/*: any*/),
+        "selections": (v33/*: any*/),
         "storageKey": null
       },
       {
         "alias": "providerTotals",
-        "args": (v26/*: any*/),
+        "args": (v31/*: any*/),
         "concreteType": "LlmUsageAggregate",
         "kind": "LinkedField",
         "name": "LlmUsageAggregates",
         "plural": true,
-        "selections": (v28/*: any*/),
+        "selections": (v33/*: any*/),
         "storageKey": "LlmUsageAggregates(input:{\"period\":\"total\",\"scopeType\":\"provider\"})"
       },
-      (v27/*: any*/)
+      (v32/*: any*/)
     ]
   },
   "params": {
-    "cacheID": "3349259dfaf3210d2376518591f98d9b",
+    "cacheID": "380dc0dc1312ea3ac9b4de93ccb62cd5",
     "id": null,
     "metadata": {},
     "name": "settingsUsageTabQuery",
     "operationKind": "query",
-    "text": "query settingsUsageTabQuery(\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  CompanyManagedLlmBudget {\n    plan\n    managedCredentialId\n    daily {\n      exhausted\n      limitCostNanoUsd\n      overageCostNanoUsd\n      period\n      periodStart\n      remainingCostNanoUsd\n      usedCostNanoUsd\n    }\n    monthly {\n      exhausted\n      limitCostNanoUsd\n      overageCostNanoUsd\n      period\n      periodStart\n      remainingCostNanoUsd\n      usedCostNanoUsd\n    }\n  }\n  companyTotal: LlmUsageAggregates(input: {scopeType: company, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  companyDaily: LlmUsageAggregates(input: {scopeType: company, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  companyMonthly: LlmUsageAggregates(input: {scopeType: company, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  providerTotals: LlmUsageAggregates(input: {scopeType: provider, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputTokens\n    outputCostNanoUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalTokens\n    id\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isManaged\n    name\n    modelProvider\n    status\n    type\n  }\n}\n"
+    "text": "query settingsUsageTabQuery(\n  $dailyStart: String!\n  $monthlyStart: String!\n) {\n  Me {\n    company {\n      id\n      name\n    }\n  }\n  CompanyManagedLlmBudget {\n    plan\n    managedCredentialId\n    daily {\n      exhausted\n      limitCostNanoUsd\n      overageCostNanoUsd\n      period\n      periodStart\n      remainingCostNanoUsd\n      usedCostNanoUsd\n    }\n    monthly {\n      exhausted\n      limitCostNanoUsd\n      overageCostNanoUsd\n      period\n      periodStart\n      remainingCostNanoUsd\n      usedCostNanoUsd\n    }\n  }\n  companyTotal: LlmUsageAggregates(input: {scopeType: company, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  companyDaily: LlmUsageAggregates(input: {scopeType: company, period: day, periodStartAfter: $dailyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  companyMonthly: LlmUsageAggregates(input: {scopeType: company, period: month, periodStartAfter: $monthlyStart}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  providerTotals: LlmUsageAggregates(input: {scopeType: provider, period: total}) {\n    cacheReadCostNanoUsd\n    cacheReadCostNanoVirtualUsd\n    cacheReadTokens\n    cacheWriteCostNanoUsd\n    cacheWriteCostNanoVirtualUsd\n    cacheWriteTokens\n    inputCostNanoUsd\n    inputCostNanoVirtualUsd\n    inputTokens\n    outputCostNanoUsd\n    outputCostNanoVirtualUsd\n    outputTokens\n    period\n    periodStart\n    requestCount\n    scopeId\n    scopeType\n    totalCostNanoUsd\n    totalCostNanoVirtualUsd\n    totalTokens\n    id\n  }\n  ModelProviderCredentials {\n    id\n    baseUrl\n    isManaged\n    name\n    modelProvider\n    status\n    type\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "2b9e4b4c69ca4a5f2ed2f3eaa4a89885";
+(node as any).hash = "09e261074cd39a8b89689db67a8ec210";
 
 export default node;

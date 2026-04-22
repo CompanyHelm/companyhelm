@@ -5,12 +5,14 @@ import { UsageMetrics, type UsageAggregateRecord } from "@/lib/usage_metrics";
 import { cn } from "@/lib/utils";
 
 type UsageMetricView = "tokens" | "spend";
+type UsageSpendKind = "actual" | "mixed" | "virtual";
 
 type UsageSummaryPanelProps = {
   aggregates: ReadonlyArray<UsageAggregateRecord>;
   description: string;
   scopeId: string;
   scopeType: string;
+  spendKind?: UsageSpendKind;
   title: string;
 };
 
@@ -24,6 +26,7 @@ type UsageDailyBarChartProps = {
   emptyLabel: string;
   metric: UsageMetricView;
   rows: ReadonlyArray<UsageAggregateRecord>;
+  spendNoun: string;
   title: string;
 };
 
@@ -38,8 +41,10 @@ function UsageStatTile(props: UsageStatTileProps) {
 }
 
 function UsageDailyBarChart(props: UsageDailyBarChartProps) {
+  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
   const maxValue = Math.max(...props.rows.map((row) => resolveMetricValue(row, props.metric)), 0);
   const hasUsage = maxValue > 0;
+  const activeRow = typeof activeRowIndex === "number" ? props.rows[activeRowIndex] : null;
 
   return (
     <section className="rounded-lg border border-border/70 bg-background/80 p-4">
@@ -55,22 +60,56 @@ function UsageDailyBarChart(props: UsageDailyBarChartProps) {
       ) : (
         <div
           aria-label={props.title}
-          className="mt-4 flex h-56 items-end gap-1 overflow-x-auto rounded-lg border border-border/60 bg-muted/20 p-3"
+          className="relative mt-4 flex h-64 items-end gap-1 overflow-x-auto rounded-lg border border-border/60 bg-muted/20 p-3 pt-16"
+          onPointerLeave={() => {
+            setActiveRowIndex(null);
+          }}
           role="list"
         >
+          {activeRow ? (
+            <div className="pointer-events-none absolute left-3 top-3 rounded-md border border-border/70 bg-background px-3 py-2 text-xs shadow-sm">
+              <p className="font-medium text-foreground">{formatDailyTooltipDate(activeRow.periodStart)}</p>
+              <p className="mt-1 text-muted-foreground">
+                {formatMetricValue(activeRow, props.metric)} {props.metric === "tokens" ? "tokens" : props.spendNoun}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {formatDailyTooltipDetail(activeRow, props.metric)}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                {UsageMetrics.formatRequestCount(activeRow.requestCount)} requests
+              </p>
+            </div>
+          ) : null}
           {props.rows.map((row, index) => {
             const value = resolveMetricValue(row, props.metric);
             const formattedValue = formatMetricValue(row, props.metric);
             const dateLabel = UsageMetrics.formatPeriodLabel(row.periodStart, "day");
             const showAxisLabel = index === 0 || index === props.rows.length - 1 || index % 5 === 0;
+            const isActive = activeRowIndex === index;
 
             return (
               <div
                 aria-label={`${dateLabel}: ${formattedValue}`}
-                className="flex min-w-4 flex-1 flex-col justify-end gap-2"
+                className="relative flex min-w-4 flex-1 flex-col justify-end gap-2 outline-none"
                 key={row.periodStart}
+                onBlur={() => {
+                  setActiveRowIndex(null);
+                }}
+                onFocus={() => {
+                  setActiveRowIndex(index);
+                }}
+                onPointerEnter={() => {
+                  setActiveRowIndex(index);
+                }}
                 role="listitem"
+                tabIndex={0}
               >
+                {isActive ? (
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-foreground/70"
+                  />
+                ) : null}
                 <div className="flex h-40 items-end">
                   <div
                     aria-hidden="true"
@@ -109,7 +148,9 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
   const dailyRows = useMemo(() => {
     return UsageMetrics.buildRecentDailyAggregates(props.aggregates, props.scopeType, props.scopeId, 30);
   }, [props.aggregates, props.scopeId, props.scopeType]);
-  const metricNoun = selectedMetric === "tokens" ? "tokens" : "spend";
+  const spendKind = props.spendKind ?? "mixed";
+  const spendNoun = resolveSpendNoun(total, spendKind);
+  const chartNoun = selectedMetric === "tokens" ? "tokens" : spendNoun;
 
   return (
     <section className="flex flex-col gap-5">
@@ -138,34 +179,57 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
 
       <div className="grid gap-3 md:grid-cols-3">
         <UsageStatTile
-          label={selectedMetric === "tokens" ? "Tokens today" : "Spend today"}
-          supportingText={formatMetricSupportingText(today, selectedMetric)}
+          label={selectedMetric === "tokens" ? "Tokens today" : `${capitalizeLabel(resolveSpendNoun(today, spendKind))} today`}
+          supportingText={formatMetricSupportingText(today, selectedMetric, spendKind)}
           value={formatMetricValue(today, selectedMetric)}
         />
         <UsageStatTile
-          label={selectedMetric === "tokens" ? "Tokens this month" : "Spend this month"}
-          supportingText={formatMetricSupportingText(currentMonth, selectedMetric)}
+          label={selectedMetric === "tokens" ? "Tokens this month" : `${capitalizeLabel(resolveSpendNoun(currentMonth, spendKind))} this month`}
+          supportingText={formatMetricSupportingText(currentMonth, selectedMetric, spendKind)}
           value={formatMetricValue(currentMonth, selectedMetric)}
         />
         <UsageStatTile
-          label={selectedMetric === "tokens" ? "All-time tokens" : "All-time spend"}
-          supportingText={formatMetricSupportingText(total, selectedMetric)}
+          label={selectedMetric === "tokens" ? "All-time tokens" : `All-time ${spendNoun}`}
+          supportingText={formatMetricSupportingText(total, selectedMetric, spendKind)}
           value={formatMetricValue(total, selectedMetric)}
         />
       </div>
 
       <UsageDailyBarChart
-        emptyLabel={`No daily ${metricNoun} recorded over the past month.`}
+        emptyLabel={`No daily ${chartNoun} recorded over the past month.`}
         metric={selectedMetric}
         rows={dailyRows}
-        title={`Daily ${metricNoun}`}
+        spendNoun={spendNoun}
+        title={selectedMetric === "tokens" ? "Daily tokens" : `Daily ${spendNoun}`}
       />
     </section>
   );
 }
 
+function formatDailyTooltipDate(periodStart: string): string {
+  const date = new Date(periodStart);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown day";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDailyTooltipDetail(aggregate: UsageAggregateRecord, metric: UsageMetricView): string {
+  if (metric === "tokens") {
+    return UsageMetrics.formatTokenBreakdown(aggregate);
+  }
+
+  return UsageMetrics.formatCostBreakdown(aggregate);
+}
+
 function resolveMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricView): number {
-  return metric === "tokens" ? aggregate.totalTokens : aggregate.totalCostNanoUsd;
+  return metric === "tokens" ? aggregate.totalTokens : UsageMetrics.resolveCombinedCostNanoUsd(aggregate);
 }
 
 function formatMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricView): string {
@@ -173,15 +237,27 @@ function formatMetricValue(aggregate: UsageAggregateRecord, metric: UsageMetricV
     return UsageMetrics.formatTokenCount(aggregate.totalTokens);
   }
 
-  return UsageMetrics.formatUsdFromNano(aggregate.totalCostNanoUsd);
+  return UsageMetrics.formatUsdFromNano(UsageMetrics.resolveCombinedCostNanoUsd(aggregate));
 }
 
-function formatMetricSupportingText(aggregate: UsageAggregateRecord, metric: UsageMetricView): string {
+function formatMetricSupportingText(
+  aggregate: UsageAggregateRecord,
+  metric: UsageMetricView,
+  spendKind: UsageSpendKind,
+): string {
   if (metric === "tokens") {
     return UsageMetrics.formatTokenBreakdown(aggregate);
   }
 
-  return `${UsageMetrics.formatRequestCount(aggregate.requestCount)} requests`;
+  const requestsLabel = `${UsageMetrics.formatRequestCount(aggregate.requestCount)} requests`;
+  if (resolveSpendKind(aggregate, spendKind) === "virtual") {
+    return `${requestsLabel}, subscription-equivalent virtual spend`;
+  }
+  if (aggregate.totalCostNanoUsd > 0 && aggregate.totalCostNanoVirtualUsd > 0) {
+    return `${UsageMetrics.formatCostBreakdown(aggregate)}, ${requestsLabel}`;
+  }
+
+  return requestsLabel;
 }
 
 function formatDailyAxisLabel(periodStart: string): string {
@@ -191,4 +267,23 @@ function formatDailyAxisLabel(periodStart: string): string {
   }
 
   return String(date.getUTCDate());
+}
+
+function resolveSpendKind(aggregate: UsageAggregateRecord, preferredKind: UsageSpendKind): UsageSpendKind {
+  if (preferredKind !== "mixed") {
+    return preferredKind;
+  }
+  if (aggregate.totalCostNanoVirtualUsd > 0 && aggregate.totalCostNanoUsd === 0) {
+    return "virtual";
+  }
+
+  return "actual";
+}
+
+function resolveSpendNoun(aggregate: UsageAggregateRecord, preferredKind: UsageSpendKind): string {
+  return resolveSpendKind(aggregate, preferredKind) === "virtual" ? "virtual spend" : "spend";
+}
+
+function capitalizeLabel(value: string): string {
+  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
 }

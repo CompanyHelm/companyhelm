@@ -98,6 +98,11 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.equal(sessionTotal.cacheReadCostNanoUsd, 3);
   assert.equal(sessionTotal.cacheWriteCostNanoUsd, 4);
   assert.equal(sessionTotal.totalCostNanoUsd, 10);
+  assert.equal(sessionTotal.inputCostNanoVirtualUsd, 0);
+  assert.equal(sessionTotal.outputCostNanoVirtualUsd, 0);
+  assert.equal(sessionTotal.cacheReadCostNanoVirtualUsd, 0);
+  assert.equal(sessionTotal.cacheWriteCostNanoVirtualUsd, 0);
+  assert.equal(sessionTotal.totalCostNanoVirtualUsd, 0);
   assert.equal((sessionTotal.periodStart as Date).toISOString(), "1970-01-01T00:00:00.000Z");
 
   assert.ok(agentDay);
@@ -107,6 +112,52 @@ test("SessionTurnUsageService stores nano USD costs and UTC aggregate buckets", 
   assert.equal((providerDay.periodStart as Date).toISOString(), "2026-04-20T00:00:00.000Z");
   assert.ok(companyMonth);
   assert.equal((companyMonth.periodStart as Date).toISOString(), "2026-04-01T00:00:00.000Z");
+});
+
+test("SessionTurnUsageService stores subscription costs as virtual spend", async () => {
+  const harness = new SessionTurnUsageServiceTestHarness();
+  const service = new SessionTurnUsageService();
+
+  await service.recordUsage(harness.createTransactionProvider() as never, {
+    agentId: "00000000-0000-0000-0000-000000000002",
+    companyId: "00000000-0000-0000-0000-000000000001",
+    costKind: "virtual",
+    modelProviderCredentialId: "00000000-0000-0000-0000-000000000005",
+    recordedAt: new Date("2026-04-20T23:30:00.000Z"),
+    sessionId: "00000000-0000-0000-0000-000000000003",
+    turnId: "00000000-0000-0000-0000-000000000004",
+    usage: {
+      cacheRead: 30,
+      cacheWrite: 40,
+      cost: {
+        cacheRead: 0.000000003,
+        cacheWrite: 0.000000004,
+        input: 0.000000001,
+        output: 0.000000002,
+        total: 0.000000010,
+      },
+      input: 100,
+      output: 50,
+      totalTokens: 220,
+    },
+  });
+
+  const sessionTotal = harness.aggregateRows.find((row) => {
+    return row.scopeType === "session" && row.period === "total";
+  });
+
+  assert.ok(sessionTotal);
+  assert.equal(sessionTotal.inputCostNanoUsd, 0);
+  assert.equal(sessionTotal.outputCostNanoUsd, 0);
+  assert.equal(sessionTotal.cacheReadCostNanoUsd, 0);
+  assert.equal(sessionTotal.cacheWriteCostNanoUsd, 0);
+  assert.equal(sessionTotal.totalCostNanoUsd, 0);
+  assert.equal(sessionTotal.inputCostNanoVirtualUsd, 1);
+  assert.equal(sessionTotal.outputCostNanoVirtualUsd, 2);
+  assert.equal(sessionTotal.cacheReadCostNanoVirtualUsd, 3);
+  assert.equal(sessionTotal.cacheWriteCostNanoVirtualUsd, 4);
+  assert.equal(sessionTotal.totalCostNanoVirtualUsd, 10);
+  assert.equal(sessionTotal.totalTokens, 220);
 });
 
 test("SessionTurnUsageService skips empty usage payloads", async () => {

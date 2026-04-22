@@ -48,10 +48,10 @@ class CompanyManagedLlmBudgetServiceTestHarness {
                 }
                 if (table === llmUsageAggregates) {
                   const aggregateCallCount = this.selectedTables.filter((selectedTable) => selectedTable === llmUsageAggregates).length;
-                  const totalCostNanoUsd = aggregateCallCount === 1
+                  const totalCostNanoVirtualUsd = aggregateCallCount === 1
                     ? (this.input.dayCostNanoUsd ?? 0)
                     : (this.input.monthCostNanoUsd ?? 0);
-                  return totalCostNanoUsd > 0 ? [{ totalCostNanoUsd }] : [];
+                  return totalCostNanoVirtualUsd > 0 ? [{ totalCostNanoVirtualUsd }] : [];
                 }
 
                 throw new Error("Unexpected table.");

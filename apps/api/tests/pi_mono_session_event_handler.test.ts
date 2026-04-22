@@ -5,6 +5,7 @@ import {
   agentSessions,
   messageContents,
   modelProviderCredentialModels,
+  modelProviderCredentials,
   sessionMessages,
   sessionQueuedMessages,
   sessionTurns,
@@ -37,8 +38,13 @@ type SessionQueuedMessageRecord = Record<string, unknown> & {
   status: string;
 };
 
+type PiMonoSessionEventHandlerTestHarnessInput = {
+  credentialIsManaged?: boolean;
+  credentialType?: "api_key" | "oauth_token";
+};
+
 class PiMonoSessionEventHandlerTestHarness {
-  static create() {
+  static create(input: PiMonoSessionEventHandlerTestHarnessInput = {}) {
     const sessionStatusUpdates: Array<Record<string, unknown>> = [];
     const sessionMessageRecords = new Map<string, SessionMessageRecord>();
     const sessionTurnRecords = new Map<string, SessionTurnRecord>();
@@ -160,6 +166,17 @@ class PiMonoSessionEventHandlerTestHarness {
                       async where() {
                         return [{
                           modelProviderCredentialId: "provider-credential-1",
+                        }];
+                      },
+                    };
+                  }
+
+                  if (table === modelProviderCredentials) {
+                    return {
+                      async where() {
+                        return [{
+                          isManaged: input.credentialIsManaged ?? false,
+                          type: input.credentialType ?? "api_key",
                         }];
                       },
                     };
@@ -737,6 +754,7 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.costKind, "actual");
   assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.turnId, messageRecord.turnId);
@@ -756,6 +774,62 @@ test("PiMonoSessionEventHandler records assistant usage from completed messages"
     totalTokens: 200,
   });
 });
+
+for (const scenario of [
+  {
+    description: "oauth subscription credentials",
+    input: {
+      credentialType: "oauth_token" as const,
+    },
+  },
+  {
+    description: "managed CompanyHelm credentials",
+    input: {
+      credentialIsManaged: true,
+    },
+  },
+]) {
+  test(`PiMonoSessionEventHandler marks ${scenario.description} as virtual cost`, async () => {
+    const harness = PiMonoSessionEventHandlerTestHarness.create(scenario.input);
+    const usageRecords: SessionTurnUsageRecordInput[] = [];
+    const handler = new PiMonoSessionEventHandler(
+      harness.transactionProvider as never,
+      "session-1",
+      harness.redisService as never,
+      {
+        sessionTurnUsageService: {
+          async recordUsage(_transactionProvider: unknown, input: SessionTurnUsageRecordInput) {
+            usageRecords.push(input);
+          },
+        } as never,
+      },
+    );
+
+    try {
+      await handler.handle({
+        message: {
+          content: "Done",
+          role: "assistant",
+          timestamp: Date.parse("2026-04-20T16:30:00.000Z"),
+          usage: {
+            cost: {
+              input: 0.000001,
+              total: 0.000001,
+            },
+            input: 100,
+            totalTokens: 100,
+          },
+        },
+        type: "message_end",
+      });
+    } finally {
+      harness.restore();
+    }
+
+    assert.equal(usageRecords.length, 1);
+    assert.equal(usageRecords[0]?.costKind, "virtual");
+  });
+}
 
 test("PiMonoSessionEventHandler ignores completed assistant messages without usage", async () => {
   const harness = PiMonoSessionEventHandlerTestHarness.create();
@@ -833,6 +907,7 @@ test("PiMonoSessionEventHandler records current assistant usage when interrupted
   assert.equal(usageRecords.length, 1);
   assert.equal(usageRecords[0]?.agentId, "agent-1");
   assert.equal(usageRecords[0]?.companyId, "company-1");
+  assert.equal(usageRecords[0]?.costKind, "actual");
   assert.equal(usageRecords[0]?.modelProviderCredentialId, "provider-credential-1");
   assert.equal(usageRecords[0]?.sessionId, "session-1");
   assert.equal(usageRecords[0]?.recordedAt, interruptedAt);

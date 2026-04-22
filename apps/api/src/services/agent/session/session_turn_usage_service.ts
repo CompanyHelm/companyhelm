@@ -22,6 +22,7 @@ export type SessionTurnUsagePayload = {
 export type SessionTurnUsageRecordInput = {
   agentId: string;
   companyId: string;
+  costKind?: SessionTurnUsageCostKind;
   modelProviderCredentialId: string;
   recordedAt: Date;
   sessionId: string;
@@ -29,16 +30,23 @@ export type SessionTurnUsageRecordInput = {
   usage: SessionTurnUsagePayload;
 };
 
+export type SessionTurnUsageCostKind = "actual" | "virtual";
+
 type NormalizedUsage = {
   cacheReadCostNanoUsd: number;
+  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
+  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   inputCostNanoUsd: number;
+  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
+  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd: number;
   totalTokens: number;
 };
 
@@ -55,7 +63,8 @@ type AggregateRecord = {
 /**
  * Applies one assistant-usage payload to the turn ledger and to the live usage rollups. The service
  * keeps the write path deterministic: PI Mono reports dollar-denominated costs, while CompanyHelm
- * stores integer nano-USD values so later UI and limit checks never depend on floating point math.
+ * stores actual and subscription-equivalent virtual nano-USD values separately so billing UI and
+ * limit checks never depend on floating point math or blended spend semantics.
  */
 export class SessionTurnUsageService {
   private static readonly nanoUsdPerUsd = 1_000_000_000;
@@ -64,7 +73,7 @@ export class SessionTurnUsageService {
     transactionProvider: TransactionProviderInterface,
     input: SessionTurnUsageRecordInput,
   ): Promise<void> {
-    const usage = this.normalizeUsage(input.usage);
+    const usage = this.normalizeUsage(input.usage, input.costKind ?? "actual");
     if (!this.hasUsage(usage)) {
       return;
     }
@@ -74,15 +83,20 @@ export class SessionTurnUsageService {
         .update(sessionTurns)
         .set({
           usageCacheReadCostNanoUsd: sql`${sessionTurns.usageCacheReadCostNanoUsd} + ${usage.cacheReadCostNanoUsd}`,
+          usageCacheReadCostNanoVirtualUsd: sql`${sessionTurns.usageCacheReadCostNanoVirtualUsd} + ${usage.cacheReadCostNanoVirtualUsd}`,
           usageCacheReadTokens: sql`${sessionTurns.usageCacheReadTokens} + ${usage.cacheReadTokens}`,
           usageCacheWriteCostNanoUsd: sql`${sessionTurns.usageCacheWriteCostNanoUsd} + ${usage.cacheWriteCostNanoUsd}`,
+          usageCacheWriteCostNanoVirtualUsd: sql`${sessionTurns.usageCacheWriteCostNanoVirtualUsd} + ${usage.cacheWriteCostNanoVirtualUsd}`,
           usageCacheWriteTokens: sql`${sessionTurns.usageCacheWriteTokens} + ${usage.cacheWriteTokens}`,
           usageInputCostNanoUsd: sql`${sessionTurns.usageInputCostNanoUsd} + ${usage.inputCostNanoUsd}`,
+          usageInputCostNanoVirtualUsd: sql`${sessionTurns.usageInputCostNanoVirtualUsd} + ${usage.inputCostNanoVirtualUsd}`,
           usageInputTokens: sql`${sessionTurns.usageInputTokens} + ${usage.inputTokens}`,
           usageOutputCostNanoUsd: sql`${sessionTurns.usageOutputCostNanoUsd} + ${usage.outputCostNanoUsd}`,
+          usageOutputCostNanoVirtualUsd: sql`${sessionTurns.usageOutputCostNanoVirtualUsd} + ${usage.outputCostNanoVirtualUsd}`,
           usageOutputTokens: sql`${sessionTurns.usageOutputTokens} + ${usage.outputTokens}`,
           usageRecordedAt: input.recordedAt,
           usageTotalCostNanoUsd: sql`${sessionTurns.usageTotalCostNanoUsd} + ${usage.totalCostNanoUsd}`,
+          usageTotalCostNanoVirtualUsd: sql`${sessionTurns.usageTotalCostNanoVirtualUsd} + ${usage.totalCostNanoVirtualUsd}`,
           usageTotalTokens: sql`${sessionTurns.usageTotalTokens} + ${usage.totalTokens}`,
         })
         .where(and(
@@ -96,15 +110,19 @@ export class SessionTurnUsageService {
           .insert(llmUsageAggregates)
           .values({
             cacheReadCostNanoUsd: usage.cacheReadCostNanoUsd,
+            cacheReadCostNanoVirtualUsd: usage.cacheReadCostNanoVirtualUsd,
             cacheReadTokens: usage.cacheReadTokens,
             cacheWriteCostNanoUsd: usage.cacheWriteCostNanoUsd,
+            cacheWriteCostNanoVirtualUsd: usage.cacheWriteCostNanoVirtualUsd,
             cacheWriteTokens: usage.cacheWriteTokens,
             companyId: input.companyId,
             createdAt: input.recordedAt,
             id: randomUUID(),
             inputCostNanoUsd: usage.inputCostNanoUsd,
+            inputCostNanoVirtualUsd: usage.inputCostNanoVirtualUsd,
             inputTokens: usage.inputTokens,
             outputCostNanoUsd: usage.outputCostNanoUsd,
+            outputCostNanoVirtualUsd: usage.outputCostNanoVirtualUsd,
             outputTokens: usage.outputTokens,
             period: aggregateRecord.period,
             periodStart: aggregateRecord.periodStart,
@@ -112,6 +130,7 @@ export class SessionTurnUsageService {
             scopeId: aggregateRecord.scopeId,
             scopeType: aggregateRecord.scopeType,
             totalCostNanoUsd: usage.totalCostNanoUsd,
+            totalCostNanoVirtualUsd: usage.totalCostNanoVirtualUsd,
             totalTokens: usage.totalTokens,
             updatedAt: input.recordedAt,
           })
@@ -125,15 +144,20 @@ export class SessionTurnUsageService {
             ],
             set: {
               cacheReadCostNanoUsd: sql`${llmUsageAggregates.cacheReadCostNanoUsd} + ${usage.cacheReadCostNanoUsd}`,
+              cacheReadCostNanoVirtualUsd: sql`${llmUsageAggregates.cacheReadCostNanoVirtualUsd} + ${usage.cacheReadCostNanoVirtualUsd}`,
               cacheReadTokens: sql`${llmUsageAggregates.cacheReadTokens} + ${usage.cacheReadTokens}`,
               cacheWriteCostNanoUsd: sql`${llmUsageAggregates.cacheWriteCostNanoUsd} + ${usage.cacheWriteCostNanoUsd}`,
+              cacheWriteCostNanoVirtualUsd: sql`${llmUsageAggregates.cacheWriteCostNanoVirtualUsd} + ${usage.cacheWriteCostNanoVirtualUsd}`,
               cacheWriteTokens: sql`${llmUsageAggregates.cacheWriteTokens} + ${usage.cacheWriteTokens}`,
               inputCostNanoUsd: sql`${llmUsageAggregates.inputCostNanoUsd} + ${usage.inputCostNanoUsd}`,
+              inputCostNanoVirtualUsd: sql`${llmUsageAggregates.inputCostNanoVirtualUsd} + ${usage.inputCostNanoVirtualUsd}`,
               inputTokens: sql`${llmUsageAggregates.inputTokens} + ${usage.inputTokens}`,
               outputCostNanoUsd: sql`${llmUsageAggregates.outputCostNanoUsd} + ${usage.outputCostNanoUsd}`,
+              outputCostNanoVirtualUsd: sql`${llmUsageAggregates.outputCostNanoVirtualUsd} + ${usage.outputCostNanoVirtualUsd}`,
               outputTokens: sql`${llmUsageAggregates.outputTokens} + ${usage.outputTokens}`,
               requestCount: sql`${llmUsageAggregates.requestCount} + 1`,
               totalCostNanoUsd: sql`${llmUsageAggregates.totalCostNanoUsd} + ${usage.totalCostNanoUsd}`,
+              totalCostNanoVirtualUsd: sql`${llmUsageAggregates.totalCostNanoVirtualUsd} + ${usage.totalCostNanoVirtualUsd}`,
               totalTokens: sql`${llmUsageAggregates.totalTokens} + ${usage.totalTokens}`,
               updatedAt: input.recordedAt,
             },
@@ -142,7 +166,7 @@ export class SessionTurnUsageService {
     });
   }
 
-  private normalizeUsage(usage: SessionTurnUsagePayload): NormalizedUsage {
+  private normalizeUsage(usage: SessionTurnUsagePayload, costKind: SessionTurnUsageCostKind): NormalizedUsage {
     const inputTokens = this.resolveTokenCount(usage.input);
     const outputTokens = this.resolveTokenCount(usage.output);
     const cacheReadTokens = this.resolveTokenCount(usage.cacheRead);
@@ -150,26 +174,32 @@ export class SessionTurnUsageService {
     const derivedTotalTokens = inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens;
     const totalTokens = this.resolveTokenCount(usage.totalTokens) || derivedTotalTokens;
 
-    const inputCostNanoUsd = this.resolveNanoUsd(usage.cost?.input);
-    const outputCostNanoUsd = this.resolveNanoUsd(usage.cost?.output);
-    const cacheReadCostNanoUsd = this.resolveNanoUsd(usage.cost?.cacheRead);
-    const cacheWriteCostNanoUsd = this.resolveNanoUsd(usage.cost?.cacheWrite);
-    const derivedTotalCostNanoUsd = inputCostNanoUsd
-      + outputCostNanoUsd
-      + cacheReadCostNanoUsd
-      + cacheWriteCostNanoUsd;
-    const totalCostNanoUsd = this.resolveNanoUsd(usage.cost?.total) || derivedTotalCostNanoUsd;
+    const resolvedInputCostNanoUsd = this.resolveNanoUsd(usage.cost?.input);
+    const resolvedOutputCostNanoUsd = this.resolveNanoUsd(usage.cost?.output);
+    const resolvedCacheReadCostNanoUsd = this.resolveNanoUsd(usage.cost?.cacheRead);
+    const resolvedCacheWriteCostNanoUsd = this.resolveNanoUsd(usage.cost?.cacheWrite);
+    const derivedTotalCostNanoUsd = resolvedInputCostNanoUsd
+      + resolvedOutputCostNanoUsd
+      + resolvedCacheReadCostNanoUsd
+      + resolvedCacheWriteCostNanoUsd;
+    const resolvedTotalCostNanoUsd = this.resolveNanoUsd(usage.cost?.total) || derivedTotalCostNanoUsd;
+    const isVirtualCost = costKind === "virtual";
 
     return {
-      cacheReadCostNanoUsd,
+      cacheReadCostNanoUsd: isVirtualCost ? 0 : resolvedCacheReadCostNanoUsd,
+      cacheReadCostNanoVirtualUsd: isVirtualCost ? resolvedCacheReadCostNanoUsd : 0,
       cacheReadTokens,
-      cacheWriteCostNanoUsd,
+      cacheWriteCostNanoUsd: isVirtualCost ? 0 : resolvedCacheWriteCostNanoUsd,
+      cacheWriteCostNanoVirtualUsd: isVirtualCost ? resolvedCacheWriteCostNanoUsd : 0,
       cacheWriteTokens,
-      inputCostNanoUsd,
+      inputCostNanoUsd: isVirtualCost ? 0 : resolvedInputCostNanoUsd,
+      inputCostNanoVirtualUsd: isVirtualCost ? resolvedInputCostNanoUsd : 0,
       inputTokens,
-      outputCostNanoUsd,
+      outputCostNanoUsd: isVirtualCost ? 0 : resolvedOutputCostNanoUsd,
+      outputCostNanoVirtualUsd: isVirtualCost ? resolvedOutputCostNanoUsd : 0,
       outputTokens,
-      totalCostNanoUsd,
+      totalCostNanoUsd: isVirtualCost ? 0 : resolvedTotalCostNanoUsd,
+      totalCostNanoVirtualUsd: isVirtualCost ? resolvedTotalCostNanoUsd : 0,
       totalTokens,
     };
   }
@@ -191,7 +221,7 @@ export class SessionTurnUsageService {
   }
 
   private hasUsage(usage: NormalizedUsage): boolean {
-    return usage.totalTokens > 0 || usage.totalCostNanoUsd > 0;
+    return usage.totalTokens > 0 || usage.totalCostNanoUsd > 0 || usage.totalCostNanoVirtualUsd > 0;
   }
 
   private buildAggregateRecords(input: SessionTurnUsageRecordInput): AggregateRecord[] {

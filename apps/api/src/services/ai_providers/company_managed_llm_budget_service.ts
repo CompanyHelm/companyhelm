@@ -63,7 +63,7 @@ type CompanyRecord = {
 };
 
 type UsageAggregateRecord = {
-  totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd: number;
 };
 
 type SelectableDatabase = {
@@ -307,7 +307,7 @@ export class CompanyManagedLlmBudgetService {
   ): Promise<number> {
     const [aggregate] = await database
       .select({
-        totalCostNanoUsd: llmUsageAggregates.totalCostNanoUsd,
+        totalCostNanoVirtualUsd: llmUsageAggregates.totalCostNanoVirtualUsd,
       })
       .from(llmUsageAggregates)
       .where(and(
@@ -318,7 +318,7 @@ export class CompanyManagedLlmBudgetService {
         eq(llmUsageAggregates.periodStart, input.periodStart),
       )) as UsageAggregateRecord[];
 
-    return aggregate?.totalCostNanoUsd ?? 0;
+    return aggregate?.totalCostNanoVirtualUsd ?? 0;
   }
 
   private resolveEntitlements(plan: CompanySubscriptionPlan): CompanyManagedLlmBudgetEntitlements {

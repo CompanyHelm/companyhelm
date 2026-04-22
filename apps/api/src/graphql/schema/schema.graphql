@@ -636,10 +636,15 @@ type LlmUsageAggregate {
   cacheWriteTokens: Float!
   totalTokens: Float!
   inputCostNanoUsd: Float!
+  inputCostNanoVirtualUsd: Float!
   outputCostNanoUsd: Float!
+  outputCostNanoVirtualUsd: Float!
   cacheReadCostNanoUsd: Float!
+  cacheReadCostNanoVirtualUsd: Float!
   cacheWriteCostNanoUsd: Float!
+  cacheWriteCostNanoVirtualUsd: Float!
   totalCostNanoUsd: Float!
+  totalCostNanoVirtualUsd: Float!
   createdAt: String!
   updatedAt: String!
 }

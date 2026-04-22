@@ -19,15 +19,19 @@ type LlmUsageAggregatesArguments = {
 
 type LlmUsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
+  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
+  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   companyId: string;
   createdAt: Date;
   id: string;
   inputCostNanoUsd: number;
+  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
+  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: LlmUsageAggregatePeriod;
   periodStart: Date;
@@ -35,21 +39,26 @@ type LlmUsageAggregateRecord = {
   scopeId: string;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd: number;
   totalTokens: number;
   updatedAt: Date;
 };
 
 type GraphqlLlmUsageAggregateRecord = {
   cacheReadCostNanoUsd: number;
+  cacheReadCostNanoVirtualUsd: number;
   cacheReadTokens: number;
   cacheWriteCostNanoUsd: number;
+  cacheWriteCostNanoVirtualUsd: number;
   cacheWriteTokens: number;
   companyId: string;
   createdAt: string;
   id: string;
   inputCostNanoUsd: number;
+  inputCostNanoVirtualUsd: number;
   inputTokens: number;
   outputCostNanoUsd: number;
+  outputCostNanoVirtualUsd: number;
   outputTokens: number;
   period: LlmUsageAggregatePeriod;
   periodStart: string;
@@ -57,6 +66,7 @@ type GraphqlLlmUsageAggregateRecord = {
   scopeId: string;
   scopeType: LlmUsageAggregateScopeType;
   totalCostNanoUsd: number;
+  totalCostNanoVirtualUsd: number;
   totalTokens: number;
   updatedAt: string;
 };
@@ -113,15 +123,19 @@ export class LlmUsageAggregatesQueryResolver {
       const rows = await selectableDatabase
         .select({
           cacheReadCostNanoUsd: llmUsageAggregates.cacheReadCostNanoUsd,
+          cacheReadCostNanoVirtualUsd: llmUsageAggregates.cacheReadCostNanoVirtualUsd,
           cacheReadTokens: llmUsageAggregates.cacheReadTokens,
           cacheWriteCostNanoUsd: llmUsageAggregates.cacheWriteCostNanoUsd,
+          cacheWriteCostNanoVirtualUsd: llmUsageAggregates.cacheWriteCostNanoVirtualUsd,
           cacheWriteTokens: llmUsageAggregates.cacheWriteTokens,
           companyId: llmUsageAggregates.companyId,
           createdAt: llmUsageAggregates.createdAt,
           id: llmUsageAggregates.id,
           inputCostNanoUsd: llmUsageAggregates.inputCostNanoUsd,
+          inputCostNanoVirtualUsd: llmUsageAggregates.inputCostNanoVirtualUsd,
           inputTokens: llmUsageAggregates.inputTokens,
           outputCostNanoUsd: llmUsageAggregates.outputCostNanoUsd,
+          outputCostNanoVirtualUsd: llmUsageAggregates.outputCostNanoVirtualUsd,
           outputTokens: llmUsageAggregates.outputTokens,
           period: llmUsageAggregates.period,
           periodStart: llmUsageAggregates.periodStart,
@@ -129,6 +143,7 @@ export class LlmUsageAggregatesQueryResolver {
           scopeId: llmUsageAggregates.scopeId,
           scopeType: llmUsageAggregates.scopeType,
           totalCostNanoUsd: llmUsageAggregates.totalCostNanoUsd,
+          totalCostNanoVirtualUsd: llmUsageAggregates.totalCostNanoVirtualUsd,
           totalTokens: llmUsageAggregates.totalTokens,
           updatedAt: llmUsageAggregates.updatedAt,
         })
