@@ -50,7 +50,7 @@ function UsageDailyBarChart(props: UsageDailyBarChartProps) {
     <section className="rounded-lg border border-border/70 bg-background/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">{props.title}</h3>
-        <Badge variant="outline">Last 30 UTC days</Badge>
+        <Badge variant="outline">Last 30 days</Badge>
       </div>
 
       {!hasUsage ? (
@@ -150,6 +150,7 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
   }, [props.aggregates, props.scopeId, props.scopeType]);
   const spendKind = props.spendKind ?? "mixed";
   const spendNoun = resolveSpendNoun(total, spendKind);
+  const spendTabLabel = capitalizeLabel(resolveSpendNoun(total, spendKind));
   const chartNoun = selectedMetric === "tokens" ? "tokens" : spendNoun;
 
   return (
@@ -169,7 +170,7 @@ export function UsageSummaryPanel(props: UsageSummaryPanelProps) {
             },
             {
               key: "spend" as const,
-              label: "Spend",
+              label: spendTabLabel,
             },
           ]}
           onSelect={setSelectedMetric}
