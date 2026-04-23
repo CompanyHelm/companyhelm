@@ -50,11 +50,6 @@ export class ApplicationNavigationCatalog {
             label: "Onboarding",
             to: "/onboarding",
           },
-          {
-            icon: InboxIcon,
-            label: "Inbox",
-            to: "/inbox",
-          },
         ],
         label: "Setup",
       }];

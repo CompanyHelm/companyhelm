@@ -193,6 +193,7 @@ function OnboardingPageContent() {
         selectedAgentId={onboarding.agentId}
         selectedSessionId={onboarding.sessionId}
         showChatList={false}
+        showSettingsButton={false}
       />
     );
   }

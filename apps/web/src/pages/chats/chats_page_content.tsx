@@ -152,6 +152,7 @@ export type ChatsPageContentProps = {
   selectedAgentId?: string;
   selectedSessionId?: string;
   showChatList?: boolean;
+  showSettingsButton?: boolean;
 };
 
 export function ChatsPageContent(props: ChatsPageContentProps = {}) {
@@ -166,6 +167,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const routeSessionId = props.selectedSessionId ?? search.sessionId;
   const isFixedSessionMode = Boolean(props.selectedAgentId && props.selectedSessionId);
   const shouldShowSessionNavigation = props.showChatList ?? true;
+  const shouldShowSettingsButton = props.showSettingsButton ?? true;
   const canForkLatestSession = props.canForkLatestSession ?? true;
   const isMobile = useIsMobile();
   const [draftMessage, setDraftMessage] = useState("");
@@ -1982,7 +1984,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
       );
     }
 
-    if (selectedSession || (shouldUseCompactComposerSettings && selectedAgent)) {
+    if (shouldShowSettingsButton && (selectedSession || (shouldUseCompactComposerSettings && selectedAgent))) {
       actions.push(
         <Button
           key="environment-panel"
@@ -2005,7 +2007,15 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     }
 
     return <>{actions}</>;
-  }, [isMobile, selectedAgent, selectedSession, shouldShowChatListButton, shouldUseCompactComposerSettings, showChatList]);
+  }, [
+    isMobile,
+    selectedAgent,
+    selectedSession,
+    shouldShowChatListButton,
+    shouldShowSettingsButton,
+    shouldUseCompactComposerSettings,
+    showChatList,
+  ]);
   const headerContent = useMemo(() => {
     const shouldShowTaskSessionSubtitle = !props.headerSubtitle && selectedSessionTask
       && selectedSessionTitle.trim().length > 0
