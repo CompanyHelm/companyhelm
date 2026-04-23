@@ -116,3 +116,35 @@ test("timestamp tooltip boundary uses the viewport top after the workflow chrome
     y: 100,
   });
 });
+
+test("timestamp tooltip does not open above a row without room inside the message boundary", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.canShowTooltipForTrigger({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      side: "top",
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 250, width: 640 }),
+    }),
+    false,
+  );
+});
+
+test("timestamp tooltip opens above a row when the popup can stay inside the message boundary", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.canShowTooltipForTrigger({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      side: "top",
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 280, width: 640 }),
+    }),
+    true,
+  );
+});

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, UIEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -51,6 +51,9 @@ AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
  * workflow status chrome that shares the same scroll container.
  */
 export class ChatTranscriptTimestampPresenter {
+  private static readonly TOP_TOOLTIP_CLEARANCE = 32;
+  private static readonly LEFT_TOOLTIP_CLEARANCE = 180;
+
   static formatMessageTimestamp(timestamp: string): string {
     const value = new Date(timestamp);
     if (Number.isNaN(value.getTime())) {
@@ -102,6 +105,24 @@ export class ChatTranscriptTimestampPresenter {
       y: top,
     };
   }
+
+  static canShowTooltipForTrigger(options: {
+    boundary: ChatTranscriptTimestampTooltipBoundary;
+    side: ChatTranscriptTimestampTooltipSide;
+    triggerRect: DOMRectReadOnly;
+  }): boolean {
+    const boundaryBottom = options.boundary.y + options.boundary.height;
+
+    if (options.side === "top") {
+      return options.triggerRect.top - options.boundary.y >= ChatTranscriptTimestampPresenter.TOP_TOOLTIP_CLEARANCE
+        && options.triggerRect.top <= boundaryBottom;
+    }
+
+    const triggerCenterY = options.triggerRect.top + options.triggerRect.height / 2;
+    return options.triggerRect.left - options.boundary.x >= ChatTranscriptTimestampPresenter.LEFT_TOOLTIP_CLEARANCE
+      && triggerCenterY >= options.boundary.y
+      && triggerCenterY <= boundaryBottom;
+  }
 }
 
 const CHAT_TRANSCRIPT_TIMESTAMP_TOOLTIP_COLLISION_AVOIDANCE = {
@@ -116,6 +137,8 @@ type ChatTranscriptTimestampTooltipBoundary = {
   x: number;
   y: number;
 };
+
+type ChatTranscriptTimestampTooltipSide = "left" | "top";
 
 const GithubInstallationStartTurnAction = memo(function GithubInstallationStartTurnAction(
   { action }: { action: GithubInstallationStartTurnActionRecord },
@@ -362,17 +385,38 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
   toolCallSummary: ToolCallSummaryRecord | null;
   useLeftGutter?: boolean;
 }) {
-  if (!hasVisibleMessage(message, { assistantContentMode })) {
-    return null;
-  }
-
   const isUserMessage = message.role === "user";
   const isToolMessage = message.role === "toolResult";
   const userImageContents = isUserMessage ? resolveImageContentDisplay(message) : [];
   const assistantDisplayContents = !isUserMessage && !isToolMessage
     ? resolveAssistantContentDisplay(message, { contentMode: assistantContentMode })
     : [];
+  const timestampTooltipSide = isUserMessage ? "left" : "top";
+  const timestampTooltipTriggerRef = useRef<HTMLDivElement | null>(null);
+  const [isTimestampTooltipOpen, setIsTimestampTooltipOpen] = useState(false);
   const timestampLabel = ChatTranscriptTimestampPresenter.formatMessageTimestamp(message.createdAt);
+  const canOpenTimestampTooltip = useCallback(() => {
+    const triggerElement = timestampTooltipTriggerRef.current;
+    if (!timestampTooltipBoundary || !triggerElement) {
+      return false;
+    }
+
+    return ChatTranscriptTimestampPresenter.canShowTooltipForTrigger({
+      boundary: timestampTooltipBoundary,
+      side: timestampTooltipSide,
+      triggerRect: triggerElement.getBoundingClientRect(),
+    });
+  }, [timestampTooltipBoundary, timestampTooltipSide]);
+
+  useEffect(() => {
+    if (isTimestampTooltipOpen && !canOpenTimestampTooltip()) {
+      setIsTimestampTooltipOpen(false);
+    }
+  }, [canOpenTimestampTooltip, isTimestampTooltipOpen]);
+
+  if (!hasVisibleMessage(message, { assistantContentMode })) {
+    return null;
+  }
 
   return (
     <div
@@ -380,7 +424,13 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
       className={`min-w-0 w-full ${isUserMessage ? "flex justify-end" : useLeftGutter ? CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS : ""}`}
     >
       <TooltipProvider delay={500} timeout={0}>
-        <Tooltip>
+        <Tooltip
+          disabled={!timestampTooltipBoundary}
+          onOpenChange={(open) => {
+            setIsTimestampTooltipOpen(open && canOpenTimestampTooltip());
+          }}
+          open={isTimestampTooltipOpen}
+        >
           <TooltipTrigger
             render={(
               <div
@@ -391,6 +441,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                     ? "min-w-0 w-full px-0 py-0 text-foreground"
                     : "min-w-0 w-full px-0 py-0 text-foreground"
                 }`}
+                ref={timestampTooltipTriggerRef}
               />
             )}
           >
@@ -438,7 +489,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
               collisionAvoidance={CHAT_TRANSCRIPT_TIMESTAMP_TOOLTIP_COLLISION_AVOIDANCE}
               collisionBoundary={timestampTooltipBoundary}
               collisionPadding={8}
-              side={isUserMessage ? "left" : "top"}
+              side={timestampTooltipSide}
               sideOffset={6}
             >
               <time dateTime={message.createdAt}>{timestampLabel}</time>
