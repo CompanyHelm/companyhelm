@@ -683,7 +683,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
 
   return (
-    <div className="sticky top-0 z-10 -mt-3 -mr-1 -mb-3 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5 backdrop-blur">
+    <div className="sticky top-0 z-10 -mt-3 -mr-1 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5 backdrop-blur">
       <div
         aria-label="Workflow run progress"
         className="min-w-0"
@@ -903,39 +903,115 @@ function ChatTranscriptPaneComponent({
         onScroll={handleTranscriptScroll}
       >
         <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
-        <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
-        {!hasVisibleTranscriptContent && !showTranscriptLoader ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
-              </p>
-              <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                {isRunningSession(session)
-                  ? "The session is running, but the user and assistant transcript has not been persisted yet."
-                  : `No transcript messages have been persisted for ${fallbackTitle}.`}
-              </p>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
+          {!hasVisibleTranscriptContent && !showTranscriptLoader ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {isRunningSession(session) ? "Waiting for transcript..." : "No messages yet"}
+                </p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                  {isRunningSession(session)
+                    ? "The session is running, but the user and assistant transcript has not been persisted yet."
+                    : `No transcript messages have been persisted for ${fallbackTitle}.`}
+                </p>
+              </div>
             </div>
-          </div>
-        ) : null}
-        {showTranscriptLoader ? (
-          <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex h-9 shrink-0 items-end pt-2`}>
-            <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
-          </div>
-        ) : null}
-        <div ref={setTranscriptMessageList} className="grid gap-3">
-          {transcriptTurns.map((turn) => {
-            if (turn.isRunning) {
+          ) : null}
+          {showTranscriptLoader ? (
+            <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} flex h-9 shrink-0 items-end pt-2`}>
+              <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : null}
+          <div ref={setTranscriptMessageList} className="grid gap-3">
+            {transcriptTurns.map((turn) => {
+              if (turn.isRunning) {
+                const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
+                  turn.inlineMessages,
+                  toolCallSummaryById,
+                );
+
+                return (
+                  <div key={turn.turnId} className="grid gap-3">
+                    {turn.inlineMessages.map((message) => (
+                      <TranscriptMessageRow
+                        assistantContentMode="all"
+                        key={message.id}
+                        message={message}
+                        session={session}
+                        timestampTooltipBoundary={timestampTooltipBoundary}
+                        toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                      />
+                    ))}
+                    {githubInstallationStartActions.map((action) => (
+                      <GithubInstallationStartTurnAction action={action} key={action.messageId} />
+                    ))}
+                  </div>
+                );
+              }
+
+              const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
+              const isExpanded = expandedTurnIds[turn.turnId] === true;
+              const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
+              const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
+              const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
+              const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
               const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
-                turn.inlineMessages,
+                [...turn.inlineMessages, ...turn.hiddenMessages],
                 toolCallSummaryById,
               );
 
               return (
                 <div key={turn.turnId} className="grid gap-3">
-                  {turn.inlineMessages.map((message) => (
+                  {inlineMessagesBeforeWorkedFor.map((message) => (
                     <TranscriptMessageRow
-                      assistantContentMode="all"
+                      assistantContentMode="text-only"
+                      key={message.id}
+                      message={message}
+                      session={session}
+                      timestampTooltipBoundary={timestampTooltipBoundary}
+                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                    />
+                  ))}
+                  <TranscriptTurnSummaryRow
+                    durationLabel={turn.durationLabel}
+                    hasHiddenMessages={hasHiddenMessages}
+                    isExpanded={isExpanded}
+                    onToggleHiddenMessages={() => {
+                      setExpandedTurnIds((currentExpandedTurnIds) => ({
+                        ...currentExpandedTurnIds,
+                        [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
+                      }));
+                    }}
+                  />
+                  {hasHiddenMessages && isExpanded ? (
+                    <>
+                      {turn.hiddenMessages.map((message) => (
+                        <TranscriptMessageRow
+                          assistantContentMode="all"
+                          key={message.id}
+                          message={message}
+                          session={session}
+                          timestampTooltipBoundary={timestampTooltipBoundary}
+                          toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                        />
+                      ))}
+                      {turn.hiddenThinkingMessages.map((message) => (
+                        <TranscriptMessageRow
+                          assistantContentMode="thinking-only"
+                          key={`${message.id}-thinking`}
+                          message={message}
+                          session={session}
+                          timestampTooltipBoundary={timestampTooltipBoundary}
+                          toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                        />
+                      ))}
+                    </>
+                  ) : null}
+                  {inlineMessagesAfterWorkedFor.map((message) => (
+                    <TranscriptMessageRow
+                      assistantContentMode="text-only"
                       key={message.id}
                       message={message}
                       session={session}
@@ -948,82 +1024,8 @@ function ChatTranscriptPaneComponent({
                   ))}
                 </div>
               );
-            }
-
-            const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
-            const isExpanded = expandedTurnIds[turn.turnId] === true;
-            const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
-            const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
-            const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
-            const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
-            const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
-              [...turn.inlineMessages, ...turn.hiddenMessages],
-              toolCallSummaryById,
-            );
-
-            return (
-              <div key={turn.turnId} className="grid gap-3">
-                {inlineMessagesBeforeWorkedFor.map((message) => (
-                  <TranscriptMessageRow
-                    assistantContentMode="text-only"
-                    key={message.id}
-                    message={message}
-                    session={session}
-                    timestampTooltipBoundary={timestampTooltipBoundary}
-                    toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                  />
-                ))}
-                <TranscriptTurnSummaryRow
-                  durationLabel={turn.durationLabel}
-                  hasHiddenMessages={hasHiddenMessages}
-                  isExpanded={isExpanded}
-                  onToggleHiddenMessages={() => {
-                    setExpandedTurnIds((currentExpandedTurnIds) => ({
-                      ...currentExpandedTurnIds,
-                      [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
-                    }));
-                  }}
-                />
-                {hasHiddenMessages && isExpanded ? (
-                  <>
-                    {turn.hiddenMessages.map((message) => (
-                      <TranscriptMessageRow
-                        assistantContentMode="all"
-                        key={message.id}
-                        message={message}
-                        session={session}
-                        timestampTooltipBoundary={timestampTooltipBoundary}
-                        toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                      />
-                    ))}
-                    {turn.hiddenThinkingMessages.map((message) => (
-                      <TranscriptMessageRow
-                        assistantContentMode="thinking-only"
-                        key={`${message.id}-thinking`}
-                        message={message}
-                        session={session}
-                        timestampTooltipBoundary={timestampTooltipBoundary}
-                        toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                      />
-                    ))}
-                  </>
-                ) : null}
-                {inlineMessagesAfterWorkedFor.map((message) => (
-                  <TranscriptMessageRow
-                    assistantContentMode="text-only"
-                    key={message.id}
-                    message={message}
-                    session={session}
-                    timestampTooltipBoundary={timestampTooltipBoundary}
-                    toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                  />
-                ))}
-                {githubInstallationStartActions.map((action) => (
-                  <GithubInstallationStartTurnAction action={action} key={action.messageId} />
-                ))}
-              </div>
-            );
-          })}
+            })}
+          </div>
         </div>
       </div>
       {showJumpToLatestButton ? (
