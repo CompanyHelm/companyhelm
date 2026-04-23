@@ -485,7 +485,7 @@ export function ChatComposerPane({
             <textarea
               id="chat-draft-message"
               ref={draftTextareaRef}
-              className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-2.5 pt-1.5 pb-0 text-sm leading-5 outline-none"
+              className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-2.5 pt-2 pb-0 text-sm leading-5 outline-none"
               onChange={(event) => {
                 onDraftMessageChange(event.target.value);
               }}
