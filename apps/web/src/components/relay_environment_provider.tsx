@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/components/auth/auth_provider";
 import { RelayEnvironmentProvider } from "react-relay";
 import { AmplitudeAnalytics } from "@/lib/amplitude_analytics";
 import type { GraphqlSubscriptionConnectionStatus } from "@/lib/graphql_subscription_connection_store";

@@ -24,6 +24,7 @@ import { SkillRepositoryUpdateWorker } from "../workers/skill_repository_updates
 import { WorkflowTriggerWorker } from "../workers/workflow_triggers.ts";
 import { EnvironmentTerminalWebsocketRoute } from "./environment_terminal_websocket_route.ts";
 import { GithubWebhookRoute } from "./github_webhook_route.ts";
+import { LocalAuthRoute } from "./local_auth_route.ts";
 
 /**
  * Builds and starts the Fastify API with its transport dependencies attached.
@@ -42,6 +43,7 @@ export class ApiServer {
   private readonly githubWebhookRoute: GithubWebhookRoute;
   private readonly githubWebhookWorker: GithubWebhookWorker;
   private readonly llmOauthRefreshWorker: LlmOauthRefreshWorker;
+  private readonly localAuthRoute: LocalAuthRoute;
   private readonly logger: ApiLogger;
   private readonly environmentTerminalWebsocketRoute: EnvironmentTerminalWebsocketRoute;
   private readonly queuePolicyValidator: QueuePolicyValidator;
@@ -98,6 +100,10 @@ export class ApiServer {
       start() {},
       async stop() {},
     } as never,
+    @inject(LocalAuthRoute)
+    localAuthRoute: LocalAuthRoute = {
+      register() {},
+    } as never,
     @inject(SkillRepositoryUpdateWorker)
     skillRepositoryUpdateWorker: SkillRepositoryUpdateWorker = {
       start() {},
@@ -136,6 +142,7 @@ export class ApiServer {
     this.githubWebhookRoute = githubWebhookRoute;
     this.githubWebhookWorker = githubWebhookWorker;
     this.logger = logger;
+    this.localAuthRoute = localAuthRoute;
     this.environmentTerminalWebsocketRoute = environmentTerminalWebsocketRoute;
     this.queuePolicyValidator = queuePolicyValidator;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
@@ -175,6 +182,7 @@ export class ApiServer {
     });
 
     await this.graphqlApplication.register(this.app as never);
+    this.localAuthRoute.register(this.app as never);
     this.githubWebhookRoute.register(this.app as never);
     this.environmentTerminalWebsocketRoute.register(this.app as never);
 

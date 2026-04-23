@@ -1,5 +1,5 @@
 import { Suspense, useMemo } from "react";
-import { useOrganization } from "@clerk/react";
+import { useOrganization } from "@/components/auth/auth_provider";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import { AgentsSection, type DashboardAgentRecord } from "./agents_section";
 import { CredentialsSection, type DashboardCredentialRecord } from "./credentials_section";

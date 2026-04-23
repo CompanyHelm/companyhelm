@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "@tanstack/react-router";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/components/auth/auth_provider";
 
 export function AuthenticatedRoute() {
   const navigate = useNavigate();

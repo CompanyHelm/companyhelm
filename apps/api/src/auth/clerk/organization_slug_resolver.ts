@@ -4,6 +4,7 @@ import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
 import type { TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
 import { companies } from "../../db/schema.ts";
+import { OrganizationSlugResolver } from "../organization_slug_resolver.ts";
 
 type ClerkOrganizationRecord = {
   slug: string | null;
@@ -26,12 +27,19 @@ type CompanyClerkOrganizationRecord = {
  * org-scoped return URLs but should not depend on user-provided route parameters.
  */
 @injectable()
-export class ClerkOrganizationSlugResolver {
-  private readonly config: Config;
+export class ClerkOrganizationSlugResolver extends OrganizationSlugResolver {
+  private readonly config: Extract<Config["auth"], {
+    provider: "clerk";
+  }>;
   private clerkClient: ClerkOrganizationClient | null = null;
 
   constructor(@inject(Config) config: Config) {
-    this.config = config;
+    super();
+    if (config.auth.provider !== "clerk") {
+      throw new Error("Clerk organization slug resolver requires Clerk auth configuration.");
+    }
+
+    this.config = config.auth;
   }
 
   static createForTest(
@@ -62,8 +70,8 @@ export class ClerkOrganizationSlugResolver {
   private getClerkClient(): ClerkOrganizationClient {
     if (!this.clerkClient) {
       this.clerkClient = createClerkClient({
-        publishableKey: this.config.auth.clerk.publishable_key,
-        secretKey: this.config.auth.clerk.secret_key,
+        publishableKey: this.config.clerk.publishable_key,
+        secretKey: this.config.clerk.secret_key,
       }) as unknown as ClerkOrganizationClient;
     }
 

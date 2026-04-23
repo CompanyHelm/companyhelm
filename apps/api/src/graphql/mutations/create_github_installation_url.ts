@@ -1,5 +1,6 @@
 import { inject, injectable } from "inversify";
-import { ClerkOrganizationSlugResolver } from "../../auth/clerk/organization_slug_resolver.ts";
+import { OrganizationSlugResolver } from "../../auth/organization_slug_resolver.ts";
+import { OrganizationSlugResolverFactory } from "../../auth/organization_slug_resolver_factory.ts";
 import { Config } from "../../config/schema.ts";
 import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
@@ -23,16 +24,16 @@ export class CreateGithubInstallationUrlMutation extends Mutation<
 > {
   private readonly githubClient: GithubClient;
   private readonly githubInstallationStateService: GithubInstallationStateService;
-  private readonly organizationSlugResolver: ClerkOrganizationSlugResolver;
+  private readonly organizationSlugResolver: OrganizationSlugResolver;
 
   constructor(
     @inject(GithubClient) githubClient: GithubClient = new GithubClient({} as Config),
     @inject(GithubInstallationStateService)
     githubInstallationStateService: GithubInstallationStateService =
       new GithubInstallationStateService({} as Config),
-    @inject(ClerkOrganizationSlugResolver)
-    organizationSlugResolver: ClerkOrganizationSlugResolver =
-      new ClerkOrganizationSlugResolver({} as Config),
+    @inject(OrganizationSlugResolver)
+    organizationSlugResolver: OrganizationSlugResolver =
+      OrganizationSlugResolverFactory.create({} as Config),
   ) {
     super();
     this.githubClient = githubClient;

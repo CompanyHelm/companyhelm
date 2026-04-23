@@ -14,6 +14,10 @@ export class ClerkJwtKeyLoader {
   private readonly jwksUrl: string;
 
   constructor(@inject(Config) config: Config) {
+    if (config.auth.provider !== "clerk") {
+      throw new Error("Clerk JWT key loader requires Clerk auth configuration.");
+    }
+
     this.jwksUrl = config.auth.clerk.jwks_url;
   }
 
@@ -22,7 +26,7 @@ export class ClerkJwtKeyLoader {
     const jwksDocument = await this.fetchJwksDocument();
     const jwk = this.selectJwk(jwksDocument.keys, keyId);
     const publicKey = await importJWK(jwk, "RS256");
-    return exportSPKI(publicKey);
+    return exportSPKI(publicKey as never);
   }
 
   private resolveKeyId(token: string): string | null {

@@ -1,4 +1,4 @@
-import { OrganizationSwitcher, UserButton, useUser } from "@clerk/react";
+import { OrganizationSwitcher, UserButton, useUser } from "@/components/auth/auth_provider";
 import { Suspense } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";

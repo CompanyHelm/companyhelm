@@ -1,4 +1,4 @@
-import { SignIn, SignUp } from "@clerk/react";
+import { SignIn, SignUp } from "@/components/auth/auth_provider";
 
 export type ClerkPageMode = "signIn" | "signUp";
 

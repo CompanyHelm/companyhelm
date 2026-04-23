@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { OrganizationList, useOrganization, useOrganizationList } from "@clerk/react";
+import { OrganizationList, useOrganization, useOrganizationList } from "@/components/auth/auth_provider";
 import { useNavigate } from "@tanstack/react-router";
 import { OrganizationPath } from "@/lib/organization_path";
 

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/components/auth/auth_provider";
 import { useNavigate } from "@tanstack/react-router";
 import { ClerkPage } from "./page";
 import type { ClerkPageMode } from "./page";

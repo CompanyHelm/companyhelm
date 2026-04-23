@@ -46,6 +46,10 @@ type JwtKeyLoaderDependency = {
   load(token: string): Promise<unknown>;
 };
 
+type ClerkAuthConfig = Extract<Config["auth"], {
+  provider: "clerk";
+}>["clerk"];
+
 /**
  * Verifies Clerk session tokens, resolves Clerk profile fields, and then hands local provisioning to
  * the dedicated bootstrap services so auth transport code stays focused on Clerk-specific concerns.
@@ -56,7 +60,7 @@ export class ClerkAuthProvider extends AuthProvider {
   private clerkClient: ClerkClientDependency;
   private jwtKeyLoader: JwtKeyLoaderDependency;
   private readonly companyBootstrapService: CompanyBootstrapService;
-  private readonly config: NonNullable<Config["auth"]["clerk"]>;
+  private readonly config: ClerkAuthConfig;
   private readonly userBootstrapService: UserBootstrapService;
 
   constructor(
@@ -65,6 +69,10 @@ export class ClerkAuthProvider extends AuthProvider {
     @inject(CompanyBootstrapService) companyBootstrapService: CompanyBootstrapService,
   ) {
     super();
+    if (config.auth.provider !== "clerk") {
+      throw new Error("Clerk auth provider requires Clerk auth configuration.");
+    }
+
     this.config = config.auth.clerk;
     this.userBootstrapService = userBootstrapService;
     this.companyBootstrapService = companyBootstrapService;

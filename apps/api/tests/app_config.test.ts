@@ -345,6 +345,27 @@ test("AppConfig loads Clerk auth settings from local.yaml", () => {
   assert.equal(document.log.json, false);
 });
 
+test("AppConfig accepts local auth settings", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+  const parsedDocument = ConfigDocument.parse({
+    ...document,
+    auth: {
+      local: {
+        password_pepper: "companyhelm-local-pepper",
+        session_duration_hours: 72,
+        session_issuer: "companyhelm.local",
+        session_secret: "companyhelm-local-session-secret",
+      },
+      provider: "local",
+    },
+  });
+
+  assert.equal(parsedDocument.auth.provider, "local");
+  assert.equal(parsedDocument.auth.local.session_duration_hours, 72);
+  assert.equal(parsedDocument.auth.local.session_issuer, "companyhelm.local");
+});
+
 test("AppConfig explains how to provide missing environment variables", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const originalGithubClientId = process.env[fixture.githubClientVariableName];

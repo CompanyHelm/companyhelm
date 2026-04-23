@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { OrganizationList, useOrganization, useOrganizationList } from "@clerk/react";
+import { OrganizationList, useOrganization, useOrganizationList } from "@/components/auth/auth_provider";
 import { Outlet, useParams } from "@tanstack/react-router";
 import { Loader2Icon } from "lucide-react";
 

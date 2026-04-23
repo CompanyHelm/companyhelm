@@ -29,7 +29,7 @@ import { RuntimeSessionModule } from "./runtime.ts";
 import { SecretsSessionModule } from "./secrets.ts";
 import { SkillsSessionModule } from "./skills.ts";
 import { SystemCommandsSessionModule } from "./system_commands.ts";
-import { ClerkOrganizationSlugResolver } from "../../../../../auth/clerk/organization_slug_resolver.ts";
+import { OrganizationSlugResolverFactory } from "../../../../../auth/organization_slug_resolver_factory.ts";
 import { TasksSessionModule } from "./tasks.ts";
 import { TerminalSessionModule } from "./terminal.ts";
 import { WebSessionModule } from "./web.ts";
@@ -71,7 +71,7 @@ export class DefaultAgentSessionModuleRegistry {
         computeProviderDefinitionService: input.computeProviderDefinitionService,
         githubClient: input.githubClient,
         githubInstallationStateService: new GithubInstallationStateService(input.config),
-        organizationSlugResolver: new ClerkOrganizationSlugResolver(input.config),
+        organizationSlugResolver: OrganizationSlugResolverFactory.create(input.config),
         mcpService: input.mcpService,
         modelProviderService: input.modelProviderService,
         modelRegistry: input.modelRegistry,

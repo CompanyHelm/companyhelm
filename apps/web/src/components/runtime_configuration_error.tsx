@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/error_state";
  * failures stay actionable instead of collapsing into an empty shell.
  */
 export function RuntimeConfigurationError() {
-  const missingClerkPublishableKey = config.clerkPublishableKey.length === 0;
+  const missingClerkPublishableKey = config.authProvider === "clerk" && config.clerkPublishableKey.length === 0;
   const message = missingClerkPublishableKey
     ? "Set VITE_CLERK_PUBLISHABLE_KEY for local Vite development or inject clerkPublishableKey into /runtime-config.js before loading the web app."
     : "The web app is missing required runtime configuration.";

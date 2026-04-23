@@ -1,12 +1,14 @@
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 
+export type AuthProviderName = "clerk" | "local";
+
 export type AuthenticatedUser = {
   id: string;
   email: string;
   firstName: string;
   isPlatformAdmin?: boolean;
   lastName: string | null;
-  provider: "clerk";
+  provider: AuthProviderName;
   providerSubject: string;
 };
 
@@ -28,7 +30,7 @@ export type AuthenticateBearerTokenHeaders = Record<string, unknown>;
  * configured provider singleton.
  */
 export abstract class AuthProvider {
-  abstract readonly name: "clerk";
+  abstract readonly name: AuthProviderName;
   abstract authenticateBearerToken(
     database: AppRuntimeDatabase,
     token: string,

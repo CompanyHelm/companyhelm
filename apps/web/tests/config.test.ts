@@ -11,6 +11,7 @@ test("falls back to the local HTTP GraphQL endpoint by default", () => {
 
     const document = Config.getDocument();
 
+    assert.equal(document.authProvider, "clerk");
     assert.equal(document.graphqlUrl, "http://localhost:4000/graphql");
     assert.equal(document.privacyPolicyUrl, "");
     assert.equal(document.termsOfServiceUrl, "");
@@ -31,6 +32,7 @@ test("prefers injected runtime configuration over local defaults", () => {
   try {
     globalThis.window = {
       __COMPANYHELM_CONFIG__: {
+        authProvider: "local",
         clerkPublishableKey: "pk_test_runtime",
         graphqlUrl: "http://127.0.0.1:4100/graphql",
         privacyPolicyUrl: "https://companyhelm.example/privacy",
@@ -46,6 +48,7 @@ test("prefers injected runtime configuration over local defaults", () => {
 
     const document = Config.getDocument();
 
+    assert.equal(document.authProvider, "local");
     assert.equal(document.clerkPublishableKey, "pk_test_runtime");
     assert.equal(document.graphqlUrl, "http://127.0.0.1:4100/graphql");
     assert.equal(document.privacyPolicyUrl, "https://companyhelm.example/privacy");

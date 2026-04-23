@@ -1,7 +1,10 @@
 import { Container } from "inversify";
 import { AuthProvider } from "./auth/auth_provider.ts";
 import { ClerkAuthProvider } from "./auth/clerk/clerk_auth_provider.ts";
+import { LocalAuthProvider } from "./auth/local/local_auth_provider.ts";
 import { LocalDevAuthProvider } from "./auth/local_dev/local_dev_auth_provider.ts";
+import { OrganizationSlugResolver } from "./auth/organization_slug_resolver.ts";
+import { OrganizationSlugResolverFactory } from "./auth/organization_slug_resolver_factory.ts";
 import { Config } from "./config/schema.ts";
 
 /**
@@ -9,10 +12,14 @@ import { Config } from "./config/schema.ts";
  * constructor metadata instead of manual wiring.
  */
 export class ApiContainer {
-  static resolveAuthProviderClass(): typeof ClerkAuthProvider | typeof LocalDevAuthProvider {
+  static resolveAuthProviderClass(
+    config: Config,
+  ): typeof ClerkAuthProvider | typeof LocalAuthProvider | typeof LocalDevAuthProvider {
     return String(process.env.COMPANYHELM_LOCAL_DEV_AUTH_BYPASS || "").trim() === "true"
       ? LocalDevAuthProvider
-      : ClerkAuthProvider;
+      : config.auth.provider === "local"
+        ? LocalAuthProvider
+        : ClerkAuthProvider;
   }
 
   build(config: Config): Container {
@@ -22,7 +29,8 @@ export class ApiContainer {
     });
 
     container.bind(Config).toConstantValue(config);
-    container.bind(AuthProvider).to(ApiContainer.resolveAuthProviderClass() as never);
+    container.bind(AuthProvider).to(ApiContainer.resolveAuthProviderClass(config) as never);
+    container.bind(OrganizationSlugResolver).to(OrganizationSlugResolverFactory.resolveClass(config) as never);
 
     return container;
   }

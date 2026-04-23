@@ -25,6 +25,16 @@ const ClerkAuthSchema = z.object({
   }),
 });
 
+const LocalAuthSchema = z.object({
+  provider: z.literal("local"),
+  local: z.object({
+    password_pepper: z.string().default(""),
+    session_duration_hours: PositiveIntegerSchema.default(168),
+    session_issuer: NonEmptyStringSchema,
+    session_secret: NonEmptyStringSchema,
+  }),
+});
+
 export const ConfigDocument = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
@@ -103,6 +113,7 @@ export const ConfigDocument = z.object({
   }),
   auth: z.discriminatedUnion("provider", [
     ClerkAuthSchema,
+    LocalAuthSchema,
   ]),
   security: z.object({
     encryption: z.object({

@@ -1,7 +1,8 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { ClerkOrganizationSlugResolver } from "../../auth/clerk/organization_slug_resolver.ts";
+import { OrganizationSlugResolver } from "../../auth/organization_slug_resolver.ts";
+import { OrganizationSlugResolverFactory } from "../../auth/organization_slug_resolver_factory.ts";
 import { Config } from "../../config/schema.ts";
 import { mcpOauthConnections, mcpOauthSessions } from "../../db/schema.ts";
 import { ApiLogger } from "../../log/api_logger.ts";
@@ -84,7 +85,7 @@ export class StartMcpServerOauthMutation extends Mutation<
   private readonly encryptionService: SecretEncryptionService;
   private readonly logger: ApiLogger;
   private readonly mcpService: McpService;
-  private readonly organizationSlugResolver: ClerkOrganizationSlugResolver;
+  private readonly organizationSlugResolver: OrganizationSlugResolver;
   private readonly stateService: McpOauthStateService;
 
   constructor(
@@ -96,9 +97,9 @@ export class StartMcpServerOauthMutation extends Mutation<
     @inject(McpOauthStateService) stateService: McpOauthStateService,
     @inject(SecretEncryptionService) encryptionService: SecretEncryptionService,
     @inject(ApiLogger) logger: ApiLogger,
-    @inject(ClerkOrganizationSlugResolver)
-    organizationSlugResolver: ClerkOrganizationSlugResolver =
-      new ClerkOrganizationSlugResolver({} as Config),
+    @inject(OrganizationSlugResolver)
+    organizationSlugResolver: OrganizationSlugResolver =
+      OrganizationSlugResolverFactory.create({} as Config),
   ) {
     super();
     this.clientRegistrationService = clientRegistrationService;

@@ -4,7 +4,7 @@ import { AuthProvider, type AuthSession, type AuthenticateBearerTokenHeaders } f
 import { Config } from "../../config/schema.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import type { DatabaseClientInterface } from "../../db/database_interface.ts";
-import { users } from "../../db/schema.ts";
+import { companies, users } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import { UserBootstrapService } from "../../services/bootstrap/user.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
@@ -14,6 +14,7 @@ import { LocalDevPreviewSeedService } from "./local_dev_preview_seed_service.ts"
 
 const LOCAL_DEV_COMPANY_NAME = "CompanyHelm Local Dev";
 const LOCAL_DEV_COMPANY_SUBJECT = "companyhelm-local-dev-org";
+const LOCAL_DEV_COMPANY_SLUG = "local-dev";
 const LOCAL_DEV_USER_EMAIL = "local-dev@companyhelm.local";
 const LOCAL_DEV_USER_FIRST_NAME = "Local";
 const LOCAL_DEV_USER_LAST_NAME = "Developer";
@@ -74,7 +75,7 @@ export class LocalDevAuthProvider extends AuthProvider {
         }),
         providerSubject: LOCAL_DEV_USER_SUBJECT,
       });
-      await (transaction as UpdatableDatabase)
+      await (transaction as unknown as UpdatableDatabase)
         .update(users)
         .set({
           isPlatformAdmin: true,
@@ -85,6 +86,12 @@ export class LocalDevAuthProvider extends AuthProvider {
         name: LOCAL_DEV_COMPANY_NAME,
         providerSubject: LOCAL_DEV_COMPANY_SUBJECT,
       });
+      await (transaction as unknown as UpdatableDatabase)
+        .update(companies)
+        .set({
+          slug: LOCAL_DEV_COMPANY_SLUG,
+        })
+        .where(eq(companies.id, company.id));
       await database.applyCompanyContext(transaction as DatabaseClientInterface, company.id);
       await this.companyBootstrapService.ensureMembership(transaction, {
         companyId: company.id,

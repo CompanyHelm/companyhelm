@@ -1,4 +1,4 @@
-import { useOrganization } from "@clerk/react";
+import { useOrganization } from "@/components/auth/auth_provider";
 import { useParams } from "@tanstack/react-router";
 
 /**

@@ -14,13 +14,15 @@ type ClerkClientDependency = {
  */
 @injectable()
 export class ClerkOrganizationDeletionService {
-  private clerkClient: ClerkClientDependency;
+  private clerkClient: ClerkClientDependency | null = null;
 
   constructor(@inject(Config) config: Config) {
-    this.clerkClient = createClerkClient({
-      publishableKey: config.auth.clerk.publishable_key,
-      secretKey: config.auth.clerk.secret_key,
-    }) as unknown as ClerkClientDependency;
+    if (config.auth.provider === "clerk") {
+      this.clerkClient = createClerkClient({
+        publishableKey: config.auth.clerk.publishable_key,
+        secretKey: config.auth.clerk.secret_key,
+      }) as unknown as ClerkClientDependency;
+    }
   }
 
   static createForTest(clerkClient: ClerkClientDependency): ClerkOrganizationDeletionService {
@@ -40,7 +42,7 @@ export class ClerkOrganizationDeletionService {
   }
 
   async deleteOrganization(organizationId: string | null): Promise<void> {
-    if (!organizationId) {
+    if (!this.clerkClient || !organizationId) {
       return;
     }
 

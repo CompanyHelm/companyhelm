@@ -79,6 +79,12 @@ auth:
     authorized_parties:
       - "http://localhost:5173"
       - "http://localhost:4000"
+  # To enable local auth instead of Clerk, switch provider to "local" and use:
+  # local:
+  #   password_pepper: "${LOCAL_AUTH_PASSWORD_PEPPER}"
+  #   session_duration_hours: 168
+  #   session_issuer: "companyhelm.local"
+  #   session_secret: "${LOCAL_AUTH_SESSION_SECRET}"
 security:
   encryption:
     key: "companyhelm-local-encryption-key"

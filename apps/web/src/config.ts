@@ -22,6 +22,7 @@ type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "analytics">> & {
  * back to Vite environment variables for local development.
  */
 export type ConfigDocument = {
+  authProvider: "clerk" | "local";
   appVersion: string;
   clerkPublishableKey: string;
   graphqlUrl: string;
@@ -42,6 +43,10 @@ export class Config {
     const runtimeDocument = Config.getRuntimeDocument();
 
     return {
+      authProvider: Config.resolveAuthProvider(
+        runtimeDocument.authProvider,
+        importMetaEnv?.VITE_AUTH_PROVIDER,
+      ),
       appVersion: Config.resolveAppVersion(),
       clerkPublishableKey: Config.resolveRuntimeRequiredStringValue(
         runtimeDocument.clerkPublishableKey,
@@ -121,6 +126,17 @@ export class Config {
     }
 
     return Config.resolveBooleanValue(fallbackSourceValue, fallbackValue);
+  }
+
+  private static resolveAuthProvider(
+    runtimeValue: unknown,
+    fallbackSourceValue: unknown,
+  ): "clerk" | "local" {
+    const resolvedValue = Config.resolveRequiredStringValue(fallbackSourceValue, "clerk");
+    const provider = typeof runtimeValue === "string" && runtimeValue.trim().length > 0
+      ? runtimeValue.trim()
+      : resolvedValue;
+    return provider === "local" ? "local" : "clerk";
   }
 
   private static getRuntimeDocument(): RuntimeConfigDocument {

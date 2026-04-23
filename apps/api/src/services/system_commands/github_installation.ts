@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { Config } from "../../config/schema.ts";
-import { ClerkOrganizationSlugResolver } from "../../auth/clerk/organization_slug_resolver.ts";
+import { OrganizationSlugResolver } from "../../auth/organization_slug_resolver.ts";
+import { OrganizationSlugResolverFactory } from "../../auth/organization_slug_resolver_factory.ts";
 import { agentSessions } from "../../db/schema.ts";
 import { GithubClient } from "../../github/client.ts";
 import { GithubInstallationStateService } from "../../github/installation_state_service.ts";
@@ -31,14 +32,14 @@ export class GithubInstallationSystemCommandService {
   private readonly githubClient: GithubClient;
   private readonly githubInstallationStateService: GithubInstallationStateService;
   private readonly jsonSerializer = new SystemCommandJsonSerializer();
-  private readonly organizationSlugResolver: ClerkOrganizationSlugResolver;
+  private readonly organizationSlugResolver: OrganizationSlugResolver;
 
   constructor(
     githubClient: GithubClient = new GithubClient({} as Config),
     githubInstallationStateService: GithubInstallationStateService =
       new GithubInstallationStateService({} as Config),
-    organizationSlugResolver: ClerkOrganizationSlugResolver =
-      new ClerkOrganizationSlugResolver({} as Config),
+    organizationSlugResolver: OrganizationSlugResolver =
+      OrganizationSlugResolverFactory.create({} as Config),
   ) {
     this.githubClient = githubClient;
     this.githubInstallationStateService = githubInstallationStateService;

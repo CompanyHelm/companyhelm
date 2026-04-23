@@ -33,12 +33,14 @@ export const companies = pgTable("companies", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   clerkOrganizationId: text("clerk_organization_id"),
+  slug: text("slug"),
   deletionStatus: companyDeletionStatusEnum("deletion_status").notNull().default("active"),
   deletionRequestedAt: timestamp("deletion_requested_at", { withTimezone: true }),
   name: text("name").notNull(),
   plan: companySubscriptionPlanEnum("plan").notNull(),
 }, (table) => ({
   clerkOrganizationIdUnique: uniqueIndex("companies_clerk_organization_id_uidx").on(table.clerkOrganizationId),
+  slugUnique: uniqueIndex("companies_slug_uidx").on(table.slug),
 }));
 
 export const companySettings = pgTable("company_settings", {
