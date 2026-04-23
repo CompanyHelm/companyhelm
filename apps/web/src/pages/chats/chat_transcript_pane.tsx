@@ -683,7 +683,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
 
   return (
-    <div className="-mr-1 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5">
+    <div className="-mt-2 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5">
       <div
         aria-label="Workflow run progress"
         className="min-w-0"
@@ -839,7 +839,7 @@ function ChatTranscriptPaneComponent({
     return turn.inlineMessages.length > 0 || turn.hiddenMessages.length > 0;
   });
   const showJumpToLatestButton = sessionMessages.length > 0 && !isTranscriptStuckToBottom;
-  const transcriptViewportClassName = "no-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [overflow-anchor:none]";
+  const transcriptViewportClassName = "no-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto pt-3 pr-1 [overflow-anchor:none]";
 
   useEffect(() => {
     setExpandedTurnIds({});
@@ -896,7 +896,7 @@ function ChatTranscriptPaneComponent({
   }, [onScroll, updateTimestampTooltipBoundary]);
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden">
       <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
       <div
         ref={setTranscriptScrollElement}
