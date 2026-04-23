@@ -9,15 +9,9 @@ const rootDir = fileURLToPath(new URL(".", import.meta.url));
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, "");
   const graphqlProxyTarget = String(env.VITE_GRAPHQL_PROXY_TARGET || "").trim();
-  const isLocalDevAuthBypassEnabled = String(env.VITE_LOCAL_DEV_AUTH_BYPASS || "").trim() === "true";
   const resolveAlias = {
     "@": new URL("./src", import.meta.url).pathname,
     "@radix-ui/react-alert-dialog": resolve(rootDir, "../../node_modules/@radix-ui/react-alert-dialog"),
-    ...(isLocalDevAuthBypassEnabled
-      ? {
-          "@clerk/react": resolve(rootDir, "./src/components/local_dev/local_dev_clerk.tsx"),
-        }
-      : {}),
   };
 
   return {
