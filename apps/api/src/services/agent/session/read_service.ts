@@ -839,7 +839,7 @@ export class SessionReadService {
       return new Map();
     }
 
-    const activeTaskRunRows = await selectableDatabase
+    const taskRunRows = await selectableDatabase
       .select({
         id: taskRuns.id,
         sessionId: taskRuns.sessionId,
@@ -850,10 +850,8 @@ export class SessionReadService {
       .where(and(
         eq(taskRuns.companyId, companyId),
         inArray(taskRuns.sessionId, uniqueSessionIds),
-        isNull(taskRuns.finishedAt),
-        inArray(taskRuns.status, ["queued", "running"]),
       )) as SessionActiveTaskRunRow[];
-    if (activeTaskRunRows.length === 0) {
+    if (taskRunRows.length === 0) {
       return new Map();
     }
 
@@ -866,13 +864,16 @@ export class SessionReadService {
       .from(tasks)
       .where(and(
         eq(tasks.companyId, companyId),
-        inArray(tasks.id, [...new Set(activeTaskRunRows.map((taskRunRow) => taskRunRow.taskId))]),
+        inArray(tasks.id, [...new Set(taskRunRows.map((taskRunRow) => taskRunRow.taskId))]),
       )) as SessionAssociatedTaskRow[];
     const associatedTaskById = new Map(
       associatedTaskRows.map((associatedTaskRow) => [associatedTaskRow.id, associatedTaskRow]),
     );
 
-    const sortedActiveTaskRunRows = [...activeTaskRunRows].sort((leftRow, rightRow) => {
+    // Sessions should keep their task badge even after the linked task run completes, so prefer
+    // the most recently updated task run for each session instead of limiting the association to
+    // only open queued/running runs.
+    const sortedTaskRunRows = [...taskRunRows].sort((leftRow, rightRow) => {
       const updatedAtDelta = rightRow.updatedAt.getTime() - leftRow.updatedAt.getTime();
       if (updatedAtDelta !== 0) {
         return updatedAtDelta;
@@ -882,13 +883,13 @@ export class SessionReadService {
     });
 
     const associatedTaskBySessionId = new Map<string, SessionAssociatedTaskGraphqlRecord>();
-    for (const activeTaskRunRow of sortedActiveTaskRunRows) {
-      const sessionId = activeTaskRunRow.sessionId;
+    for (const taskRunRow of sortedTaskRunRows) {
+      const sessionId = taskRunRow.sessionId;
       if (!sessionId || associatedTaskBySessionId.has(sessionId)) {
         continue;
       }
 
-      const associatedTask = associatedTaskById.get(activeTaskRunRow.taskId);
+      const associatedTask = associatedTaskById.get(taskRunRow.taskId);
       if (!associatedTask) {
         continue;
       }
