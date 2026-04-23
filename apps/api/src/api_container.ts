@@ -1,6 +1,7 @@
 import { Container } from "inversify";
 import { AuthProvider } from "./auth/auth_provider.ts";
 import { ClerkAuthProvider } from "./auth/clerk/clerk_auth_provider.ts";
+import { LocalDevAuthProvider } from "./auth/local_dev/local_dev_auth_provider.ts";
 import { Config } from "./config/schema.ts";
 
 /**
@@ -8,6 +9,12 @@ import { Config } from "./config/schema.ts";
  * constructor metadata instead of manual wiring.
  */
 export class ApiContainer {
+  static resolveAuthProviderClass(): typeof ClerkAuthProvider | typeof LocalDevAuthProvider {
+    return String(process.env.COMPANYHELM_LOCAL_DEV_AUTH_BYPASS || "").trim() === "true"
+      ? LocalDevAuthProvider
+      : ClerkAuthProvider;
+  }
+
   build(config: Config): Container {
     const container = new Container({
       autobind: true,
@@ -15,7 +22,7 @@ export class ApiContainer {
     });
 
     container.bind(Config).toConstantValue(config);
-    container.bind(AuthProvider).to(ClerkAuthProvider);
+    container.bind(AuthProvider).to(ApiContainer.resolveAuthProviderClass() as never);
 
     return container;
   }
