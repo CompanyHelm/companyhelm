@@ -183,6 +183,21 @@ export class SystemCommandCatalog {
     },
     systemSkillKey: "manage_workflows",
   }, {
+    description: "Update one existing step on a workflow definition without replacing the rest of the steps.",
+    id: "workflow.steps.update",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        instructions: { type: ["string", "null"] },
+        name: { type: "string" },
+        stepId: { type: "string" },
+        workflowDefinitionId: { type: "string" },
+      },
+      required: ["workflowDefinitionId", "stepId"],
+      type: "object",
+    },
+    systemSkillKey: "manage_workflows",
+  }, {
     description: "Delete one step from an existing workflow definition.",
     id: "workflow.steps.delete",
     inputSchema: {

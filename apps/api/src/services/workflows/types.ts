@@ -90,6 +90,20 @@ export type WorkflowUpdateInput = {
   workflowDefinitionId: string;
 };
 
+export type WorkflowStepUpdateInput = {
+  companyId: string;
+  instructions?: string | null;
+  name?: string | null;
+  stepId: string;
+  workflowDefinitionId: string;
+};
+
+export type WorkflowStepDeleteInput = {
+  companyId: string;
+  stepId: string;
+  workflowDefinitionId: string;
+};
+
 export type WorkflowRunInputValue = {
   name: string;
   value: string;

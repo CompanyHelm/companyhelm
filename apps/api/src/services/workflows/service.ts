@@ -34,8 +34,10 @@ import type {
   WorkflowRunRecord,
   WorkflowRunStatus,
   WorkflowRunStepRecord,
+  WorkflowStepDeleteInput,
   WorkflowStepDefinitionRecord,
   WorkflowStepDraft,
+  WorkflowStepUpdateInput,
   WorkflowUpdateInput,
 } from "./types.ts";
 
@@ -234,6 +236,74 @@ export class WorkflowService {
 
       const workflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
       return (await this.hydrateWorkflowRows(tx, input.companyId, [workflowRow]))[0]!;
+    });
+  }
+
+  async updateWorkflowStep(
+    transactionProvider: TransactionProviderInterface,
+    input: WorkflowStepUpdateInput,
+  ): Promise<WorkflowRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      const workflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+      const steps = await this.requireWorkflowDefinitionSteps(tx, input.workflowDefinitionId);
+      const targetStep = this.requireWorkflowStep(steps, input.stepId);
+
+      const values: Record<string, unknown> = {};
+      if (input.name !== undefined) {
+        this.assertText(input.name ?? "", "step name is required.");
+        values.name = input.name;
+      }
+      if (input.instructions !== undefined) {
+        this.assertText(input.instructions ?? "", "step instructions are required.");
+        values.instructions_template = input.instructions;
+      }
+      if (Object.keys(values).length === 0) {
+        return (await this.hydrateWorkflowRows(tx, input.companyId, [workflowRow]))[0]!;
+      }
+
+      await tx
+        .update(workflowStepDefinitions)
+        .set(values)
+        .where(eq(workflowStepDefinitions.id, targetStep.id));
+      await this.touchWorkflowDefinition(tx, input.companyId, input.workflowDefinitionId);
+      const updatedWorkflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+
+      return (await this.hydrateWorkflowRows(tx, input.companyId, [updatedWorkflowRow]))[0]!;
+    });
+  }
+
+  async deleteWorkflowStep(
+    transactionProvider: TransactionProviderInterface,
+    input: WorkflowStepDeleteInput,
+  ): Promise<WorkflowRecord> {
+    return transactionProvider.transaction(async (tx) => {
+      await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+      const steps = await this.requireWorkflowDefinitionSteps(tx, input.workflowDefinitionId);
+      if (steps.length <= 1) {
+        throw new Error("At least one workflow step is required.");
+      }
+
+      const targetStep = this.requireWorkflowStep(steps, input.stepId);
+
+      await tx
+        .delete(workflowStepDefinitions)
+        .where(eq(workflowStepDefinitions.id, targetStep.id));
+
+      for (const step of steps) {
+        if (step.ordinal <= targetStep.ordinal) {
+          continue;
+        }
+
+        await tx
+          .update(workflowStepDefinitions)
+          .set({ ordinal: step.ordinal - 1 })
+          .where(eq(workflowStepDefinitions.id, step.id));
+      }
+
+      await this.touchWorkflowDefinition(tx, input.companyId, input.workflowDefinitionId);
+      const updatedWorkflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+
+      return (await this.hydrateWorkflowRows(tx, input.companyId, [updatedWorkflowRow]))[0]!;
     });
   }
 
@@ -1099,6 +1169,48 @@ export class WorkflowService {
         stepId: randomUUID(),
         workflowDefinitionId,
       })));
+  }
+
+  /**
+   * Step mutations need the already-ordered persisted step rows so they can update one step or
+   * renumber remaining ordinals without regenerating ids for untouched steps.
+   */
+  private async requireWorkflowDefinitionSteps(
+    tx: AppRuntimeTransaction,
+    workflowDefinitionId: string,
+  ): Promise<WorkflowStepDefinitionRow[]> {
+    return (await this.loadStepsByWorkflowDefinitionId(tx, [workflowDefinitionId])).get(workflowDefinitionId) ?? [];
+  }
+
+  /**
+   * Workflow step callers may hold either the database row id or the stable stepId that is exposed
+   * in serialized workflow records. Accepting both keeps targeted mutations compatible with either
+   * identifier shape.
+   */
+  private requireWorkflowStep(
+    steps: WorkflowStepDefinitionRow[],
+    stepId: string,
+  ): WorkflowStepDefinitionRow {
+    const step = steps.find((candidate) => candidate.id === stepId || candidate.stepId === stepId);
+    if (!step) {
+      throw new Error(`Workflow step ${stepId} not found.`);
+    }
+
+    return step;
+  }
+
+  private async touchWorkflowDefinition(
+    tx: AppRuntimeTransaction,
+    companyId: string,
+    workflowDefinitionId: string,
+  ): Promise<void> {
+    await tx
+      .update(workflowDefinitions)
+      .set({ updatedAt: new Date() })
+      .where(and(
+        eq(workflowDefinitions.companyId, companyId),
+        eq(workflowDefinitions.id, workflowDefinitionId),
+      ));
   }
 
   private resolveTemplateValues(

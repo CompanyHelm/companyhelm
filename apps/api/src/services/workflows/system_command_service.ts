@@ -41,6 +41,8 @@ export class WorkflowSystemCommandService {
         return this.serializeWorkflow(await this.updateWorkflow(input, context));
       case "workflow.steps.add":
         return this.serializeWorkflow(await this.addStep(input, context));
+      case "workflow.steps.update":
+        return this.serializeWorkflow(await this.updateStep(input, context));
       case "workflow.steps.delete":
         return this.serializeWorkflow(await this.deleteStep(input, context));
       case "workflow.inputs.add":
@@ -112,30 +114,30 @@ export class WorkflowSystemCommandService {
     });
   }
 
+  private async updateStep(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
+    const payload = this.requireRecord(input);
+    return this.workflowService.updateWorkflowStep(
+      context.transactionProvider,
+      {
+        companyId: context.companyId,
+        instructions: this.readOptionalNullableString(payload, "instructions"),
+        name: this.readOptionalString(payload, "name"),
+        stepId: this.readRequiredString(payload, "stepId"),
+        workflowDefinitionId: this.readRequiredString(payload, "workflowDefinitionId"),
+      },
+    );
+  }
+
   private async deleteStep(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
     const payload = this.requireRecord(input);
-    const workflowDefinitionId = this.readRequiredString(payload, "workflowDefinitionId");
-    const stepId = this.readRequiredString(payload, "stepId");
-    const workflow = await this.workflowService.getWorkflow(
+    return this.workflowService.deleteWorkflowStep(
       context.transactionProvider,
-      context.companyId,
-      workflowDefinitionId,
+      {
+        companyId: context.companyId,
+        stepId: this.readRequiredString(payload, "stepId"),
+        workflowDefinitionId: this.readRequiredString(payload, "workflowDefinitionId"),
+      },
     );
-    const nextSteps = workflow.steps
-      .filter((step) => step.id !== stepId)
-      .map((step) => ({
-        instructions: step.instructions,
-        name: step.name,
-      }));
-    if (nextSteps.length === workflow.steps.length) {
-      throw new Error(`Workflow step ${stepId} not found.`);
-    }
-
-    return this.workflowService.updateWorkflow(context.transactionProvider, {
-      companyId: context.companyId,
-      steps: nextSteps,
-      workflowDefinitionId,
-    });
   }
 
   private async addInput(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
