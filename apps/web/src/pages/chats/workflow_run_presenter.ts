@@ -33,15 +33,16 @@ export class WorkflowRunPresenter {
     return Math.min(reachedStepCount, workflowRun.steps.length);
   }
 
-  static getVisibleSteps(workflowRun: AssociatedWorkflowRunRecord): AssociatedWorkflowRunStepRecord[] {
-    return [...workflowRun.steps].sort((leftStep, rightStep) => {
-      const ordinalDelta = leftStep.ordinal - rightStep.ordinal;
-      if (ordinalDelta !== 0) {
-        return ordinalDelta;
-      }
+  static getCurrentStep(workflowRun: AssociatedWorkflowRunRecord): AssociatedWorkflowRunStepRecord | null {
+    const orderedSteps = this.getOrderedSteps(workflowRun);
+    return orderedSteps.find((step) => step.status === "running")
+      ?? orderedSteps.find((step) => step.status === "pending")
+      ?? orderedSteps[orderedSteps.length - 1]
+      ?? null;
+  }
 
-      return leftStep.id.localeCompare(rightStep.id);
-    }).slice(0, 5);
+  static getVisibleSteps(workflowRun: AssociatedWorkflowRunRecord): AssociatedWorkflowRunStepRecord[] {
+    return this.getOrderedSteps(workflowRun).slice(0, 5);
   }
 
   static isRunning(workflowRun: AssociatedWorkflowRunRecord): boolean {
@@ -60,5 +61,16 @@ export class WorkflowRunPresenter {
     }
 
     return "outline";
+  }
+
+  private static getOrderedSteps(workflowRun: AssociatedWorkflowRunRecord): AssociatedWorkflowRunStepRecord[] {
+    return [...workflowRun.steps].sort((leftStep, rightStep) => {
+      const ordinalDelta = leftStep.ordinal - rightStep.ordinal;
+      if (ordinalDelta !== 0) {
+        return ordinalDelta;
+      }
+
+      return leftStep.id.localeCompare(rightStep.id);
+    });
   }
 }

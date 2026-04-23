@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArchiveIcon, ChevronRightIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
+import { ArchiveIcon, ChevronRightIcon, PlusIcon, XIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -210,14 +210,11 @@ export function ChatListPanel({
                             {associatedWorkflowRun ? (
                               <Badge
                                 aria-label={`Workflow-backed chat: ${WorkflowRunPresenter.getBadgeTitle(associatedWorkflowRun)}`}
-                                className="h-4 gap-0.5 px-1 text-[0.55rem] leading-none"
+                                className="h-4 px-1 text-[0.55rem] leading-none"
                                 title={WorkflowRunPresenter.getBadgeTitle(associatedWorkflowRun)}
                                 variant={WorkflowRunPresenter.resolveRunBadgeVariant(associatedWorkflowRun.status)}
                               >
-                                {WorkflowRunPresenter.isRunning(associatedWorkflowRun) ? (
-                                  <Loader2Icon aria-hidden="true" className="animate-spin" data-icon="inline-start" />
-                                ) : null}
-                                Workflow {WorkflowRunPresenter.formatProgress(associatedWorkflowRun)}
+                                {WorkflowRunPresenter.formatProgress(associatedWorkflowRun)}
                               </Badge>
                             ) : null}
                           </span>

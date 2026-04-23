@@ -487,12 +487,21 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   session: SessionRecord;
 }) {
   const workflowRun = session.associatedWorkflowRun ?? null;
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [workflowRun?.id]);
+
   if (!workflowRun) {
     return null;
   }
 
   const progressLabel = WorkflowRunPresenter.formatProgress(workflowRun);
   const statusLabel = WorkflowRunPresenter.formatStatus(workflowRun.status);
+  const currentStep = WorkflowRunPresenter.getCurrentStep(workflowRun);
+  const currentStepName = currentStep?.name ?? "No current step";
+  const stepListId = `workflow-run-steps-${workflowRun.id}`;
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
 
   return (
@@ -502,20 +511,43 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
         className="min-w-0"
         role="group"
       >
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <Link
-            className="inline-flex min-w-0 items-center gap-1 text-sm font-semibold text-foreground underline-offset-4 transition hover:text-primary hover:underline"
-            params={{
-              organizationSlug,
-              runId: workflowRun.id,
-              workflowId: workflowRun.workflowDefinitionId,
+        <div className="flex min-h-6 min-w-0 items-center gap-2">
+          <Button
+            aria-controls={stepListId}
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? "Collapse workflow progress" : "Expand workflow progress"}
+            className="-ml-1"
+            onClick={() => {
+              setIsExpanded((currentIsExpanded) => !currentIsExpanded);
             }}
-            title={workflowRun.name}
-            to={OrganizationPath.route("/workflows/$workflowId/runs/$runId")}
+            size="icon-sm"
+            title={isExpanded ? "Collapse workflow progress" : "Expand workflow progress"}
+            type="button"
+            variant="ghost"
           >
-            <span className="truncate">{workflowRun.name}</span>
-            <ExternalLinkIcon aria-hidden="true" className="size-3 shrink-0" />
-          </Link>
+            <ChevronRightIcon className={cn("transition-transform", isExpanded ? "rotate-90" : "")} />
+          </Button>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Link
+              className="inline-flex min-w-[4rem] max-w-[45%] items-center gap-1 truncate text-sm font-semibold text-foreground underline-offset-4 transition hover:text-primary hover:underline"
+              params={{
+                organizationSlug,
+                runId: workflowRun.id,
+                workflowId: workflowRun.workflowDefinitionId,
+              }}
+              title={workflowRun.name}
+              to={OrganizationPath.route("/workflows/$workflowId/runs/$runId")}
+            >
+              <span className="truncate">{workflowRun.name}</span>
+              <ExternalLinkIcon aria-hidden="true" className="size-3 shrink-0" />
+            </Link>
+            <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground">
+              /
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground" title={currentStepName}>
+              {currentStepName}
+            </span>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             <Badge
               className="h-5 px-1.5 text-[0.625rem]"
@@ -530,8 +562,8 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
           </div>
         </div>
 
-        {visibleSteps.length > 0 ? (
-          <ol aria-label="Workflow steps" className="mt-2 grid gap-1">
+        {isExpanded && visibleSteps.length > 0 ? (
+          <ol aria-label="Workflow steps" className="mt-2 grid gap-1" id={stepListId}>
             {visibleSteps.map((step) => (
               <li
                 className="grid min-w-0 grid-cols-[0.75rem_minmax(0,1fr)_auto] items-center gap-2 text-xs"
