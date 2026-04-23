@@ -106,6 +106,11 @@ export class ApplicationNavigationCatalog {
             label: "Chats",
             to: "/chats",
           },
+          {
+            icon: InboxIcon,
+            label: "Inbox",
+            to: "/inbox",
+          },
         ],
         label: null,
       },
@@ -115,11 +120,6 @@ export class ApplicationNavigationCatalog {
             icon: LayoutDashboardIcon,
             label: "Dashboard",
             to: "/",
-          },
-          {
-            icon: InboxIcon,
-            label: "Inbox",
-            to: "/inbox",
           },
           {
             icon: MessagesSquareIcon,
