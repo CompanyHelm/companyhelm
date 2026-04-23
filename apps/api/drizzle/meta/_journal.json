@@ -883,6 +883,13 @@
       "when": 1776908814423,
       "tag": "0126_session_message_principals",
       "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1776923504207,
+      "tag": "0127_existing_company_onboardings_completed",
+      "breakpoints": true
     }
   ]
 }

@@ -97,7 +97,7 @@ export class CompanyBootstrapService {
     "Run this workflow in the CEO onboarding chat for newly created companies.",
     "Keep the conversation focused and ask only one question at a time.",
     "Use chat for intent gathering, and use system commands or product tools for durable setup actions.",
-    "Do not create agents or import skills without user confirmation.",
+    "Do not create agents or import skills without user confirmation. Explain the user what you will do as next step before doing it.",
   ].join("\n");
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
@@ -116,31 +116,19 @@ export class CompanyBootstrapService {
       "Ask whether the user has GitHub repositories for this company.",
       "If yes, activate the Manage GitHub installations system skill and call system_command with id \"github.installation.start\".",
       "Do not show or paste the returned installationUrl in chat because the chat UI renders a Connect GitHub card from the system command result.",
-      "Tell the user to click Connect in the card, then wait for the GitHub callback or user confirmation before continuing.",
+      "Tell the user to click Connect in the card, then wait for the GitHub callback. No user confirmation is needed, the sytem will continue when the callback is received.",
       "If the user says they do not use GitHub, explain that codebase discovery and pull request workflows will be limited, then ask whether to skip the GitHub-dependent steps.",
     ].join("\n"),
     name: "Connect GitHub",
     stepId: "connect-github",
   }, {
     instructions: [
-      "After GitHub setup completes, activate the Manage GitHub installations system skill and call system_command with id \"github.installation.list\".",
-      "Clone every non-archived repository returned by the installation list with clone_github_repository, using the repository fullName and installationId from the list output.",
-      "Explore each checkout for manifests, lockfiles, README files, package manager config, Dockerfiles, deployment files, CI config, database migrations, API boundaries, frontend frameworks, and test/build commands.",
-      "Activate the Manage artifacts system skill. Call artifact.list for scopeType \"company\" first so you do not duplicate an existing tech stack document.",
-      "Create or update an active company-scoped markdown artifact named \"Tech stack\" summarizing repositories scanned, languages, frameworks, runtime services, data stores, infrastructure, deployment path, important commands, and notable gaps.",
-      "If cloning fails for any repository, include the failure and continue with the repositories that are available.",
-    ].join("\n"),
-    name: "Map the tech stack",
-    stepId: "map-tech-stack",
-  }, {
-    instructions: [
       "Git clone repos:",
       "- https://github.com/msitarzewski/agency-agents.git",
-      "- https://github.com/garrytan/gstack.git",
-      "Treat agency-agents, agents, GStack references as public repositories: no need for github installation access.",
+      "Treat agency-agents as public repositories: no need for github installation access.",
       "Clone those public repositories directly with a plain git clone of the public HTTPS repository URL, then inspect their agent definitions, skills, prompts, setup docs, and examples.",
       "Activate the Manage skills system skill. If the user approves importing Superpowers-style development skills, call system_command with id \"skill.github.import\" using repository \"obra/superpowers\", branchName \"main\", and selected skillDirectory values such as \"skills/using-superpowers\", \"skills/systematic-debugging\", \"skills/writing-plans\", \"skills/executing-plans\", \"skills/using-git-worktrees\", \"skills/test-driven-development\", and \"skills/verification-before-completion\".",
-      "Propose a small first team of 3 to 5 agents based on the mission and tech stack. For each proposed agent include name, responsibility, model/compute assumptions, useful skills, and the first task it should own.",
+      "Propose a small first team of 3 to 5 agents based on the mission and tech stack and based on the agency agents repository. For each proposed agent include name, responsibility, model/compute assumptions, useful skills, and the first task it should own.",
       "Ask for confirmation before creating agents. After approval, activate the Manage agents system skill and use agent.create plus agent.skill.attach or agent.skill_group.attach as needed.",
     ].join("\n"),
     name: "Propose starter agents",
