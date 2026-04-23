@@ -15,6 +15,38 @@ import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class SessionsQueryTestHarness {
+  static stringifyQueryChunk(value: unknown): string {
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.stringifyQueryChunk(entry)).join(" ");
+    }
+
+    if (!value || typeof value !== "object") {
+      return typeof value === "string" ? value : "";
+    }
+
+    if ("value" in value && Array.isArray((value as { value?: unknown }).value)) {
+      return (value as { value: unknown[] }).value
+        .map((entry) => this.stringifyQueryChunk(entry))
+        .join(" ");
+    }
+
+    if ("name" in value && typeof (value as { name?: unknown }).name === "string") {
+      return (value as { name: string }).name;
+    }
+
+    if ("queryChunks" in value && Array.isArray((value as { queryChunks?: unknown }).queryChunks)) {
+      return (value as { queryChunks: unknown[] }).queryChunks
+        .map((entry) => this.stringifyQueryChunk(entry))
+        .join(" ");
+    }
+
+    return "";
+  }
+
+  static conditionIncludes(value: unknown, searchText: string): boolean {
+    return this.stringifyQueryChunk(value).includes(searchText);
+  }
+
   static createConfigMock(): Config {
     return {
       graphql: {
@@ -162,7 +194,25 @@ class SessionsQueryTestHarness {
               return {
                 from() {
                   return {
-                    async where() {
+                    async where(condition: unknown) {
+                      if (SessionsQueryTestHarness.conditionIncludes(condition, "finished_at")
+                        || SessionsQueryTestHarness.conditionIncludes(condition, "status")) {
+                        return [
+                          {
+                            id: "task-run-older",
+                            sessionId: "session-older",
+                            taskId: "task-older",
+                            updatedAt: new Date("2026-03-24T08:03:00.000Z"),
+                          },
+                          {
+                            id: "task-run-newest",
+                            sessionId: "session-older",
+                            taskId: "task-newest",
+                            updatedAt: new Date("2026-03-24T08:04:00.000Z"),
+                          },
+                        ];
+                      }
+
                       return [
                         {
                           id: "task-run-older",
@@ -175,6 +225,12 @@ class SessionsQueryTestHarness {
                           sessionId: "session-older",
                           taskId: "task-newest",
                           updatedAt: new Date("2026-03-24T08:04:00.000Z"),
+                        },
+                        {
+                          id: "task-run-completed-session",
+                          sessionId: "session-newer",
+                          taskId: "task-completed",
+                          updatedAt: new Date("2026-03-24T09:29:00.000Z"),
                         },
                       ];
                     },
@@ -198,6 +254,11 @@ class SessionsQueryTestHarness {
                           id: "task-newest",
                           name: "Newest linked task",
                           status: "in_progress",
+                        },
+                        {
+                          id: "task-completed",
+                          name: "Completed linked task",
+                          status: "completed",
                         },
                       ];
                     },
@@ -408,7 +469,11 @@ test("GraphQL Sessions query lists company sessions ordered by most recently upd
     {
       id: "session-newer",
       agentId: "agent-2",
-      associatedTask: null,
+      associatedTask: {
+        id: "task-completed",
+        name: "Completed linked task",
+        status: "completed",
+      },
       associatedWorkflowRun: null,
       hasUnread: true,
       currentContextTokens: null,
