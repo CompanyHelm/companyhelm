@@ -683,7 +683,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
 
   return (
-    <div className="sticky -top-3 z-10 -mt-3 -mr-1 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5 backdrop-blur">
+    <div className="-mr-1 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5">
       <div
         aria-label="Workflow run progress"
         className="min-w-0"
@@ -896,7 +896,8 @@ function ChatTranscriptPaneComponent({
   }, [onScroll, updateTimestampTooltipBoundary]);
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
       <div
         ref={setTranscriptScrollElement}
         className={transcriptViewportClassName}
@@ -904,7 +905,6 @@ function ChatTranscriptPaneComponent({
       >
         <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
           {!hasVisibleTranscriptContent && !showTranscriptLoader ? (
             <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl bg-muted/20 px-4 py-10 text-center">
               <div>
