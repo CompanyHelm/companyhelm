@@ -148,3 +148,44 @@ test("timestamp tooltip opens above a row when the popup can stay inside the mes
     true,
   );
 });
+
+test("timestamp tooltip open changes are rejected when the boundary is unavailable", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldApplyOpenChange({
+      boundary: null,
+      open: true,
+      side: "top",
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 280, width: 640 }),
+    }),
+    false,
+  );
+});
+
+test("timestamp tooltip close changes still apply without a boundary", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldApplyOpenChange({
+      boundary: null,
+      open: false,
+      side: "top",
+      triggerRect: null,
+    }),
+    true,
+  );
+});
+
+test("timestamp tooltip open changes are allowed when the trigger fits inside the boundary", () => {
+  assert.equal(
+    ChatTranscriptTimestampPresenter.shouldApplyOpenChange({
+      boundary: {
+        height: 400,
+        width: 640,
+        x: 0,
+        y: 240,
+      },
+      open: true,
+      side: "top",
+      triggerRect: buildDomRect({ height: 160, left: 0, top: 280, width: 640 }),
+    }),
+    true,
+  );
+});

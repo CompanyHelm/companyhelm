@@ -126,6 +126,32 @@ export class ChatTranscriptTimestampPresenter {
       && triggerCenterY >= options.boundary.y
       && triggerCenterY <= boundaryBottom;
   }
+
+  /**
+   * Lets the tooltip stay uncontrolled while still rejecting opens that would immediately render
+   * outside the transcript-safe boundary. Close transitions must always be allowed so Base UI can
+   * clean up hover state during scroll, streaming transcript updates, and other layout changes.
+   */
+  static shouldApplyOpenChange(options: {
+    boundary: ChatTranscriptTimestampTooltipBoundary | null;
+    open: boolean;
+    side: ChatTranscriptTimestampTooltipSide;
+    triggerRect: DOMRectReadOnly | null;
+  }): boolean {
+    if (!options.open) {
+      return true;
+    }
+
+    if (!options.boundary || !options.triggerRect) {
+      return false;
+    }
+
+    return ChatTranscriptTimestampPresenter.canShowTooltipForTrigger({
+      boundary: options.boundary,
+      side: options.side,
+      triggerRect: options.triggerRect,
+    });
+  }
 }
 
 const CHAT_TRANSCRIPT_TIMESTAMP_TOOLTIP_COLLISION_AVOIDANCE = {
@@ -460,26 +486,7 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
     : [];
   const timestampTooltipSide = isUserMessage ? "left" : "top";
   const timestampTooltipTriggerRef = useRef<HTMLDivElement | null>(null);
-  const [isTimestampTooltipOpen, setIsTimestampTooltipOpen] = useState(false);
   const timestampLabel = ChatTranscriptTimestampPresenter.formatMessageTimestamp(message.createdAt);
-  const canOpenTimestampTooltip = useCallback(() => {
-    const triggerElement = timestampTooltipTriggerRef.current;
-    if (!timestampTooltipBoundary || !triggerElement) {
-      return false;
-    }
-
-    return ChatTranscriptTimestampPresenter.canShowTooltipForTrigger({
-      boundary: timestampTooltipBoundary,
-      side: timestampTooltipSide,
-      triggerRect: triggerElement.getBoundingClientRect(),
-    });
-  }, [timestampTooltipBoundary, timestampTooltipSide]);
-
-  useEffect(() => {
-    if (isTimestampTooltipOpen && !canOpenTimestampTooltip()) {
-      setIsTimestampTooltipOpen(false);
-    }
-  }, [canOpenTimestampTooltip, isTimestampTooltipOpen]);
 
   if (!hasVisibleMessage(message, { assistantContentMode })) {
     return null;
@@ -493,10 +500,16 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
       <TooltipProvider delay={500} timeout={0}>
         <Tooltip
           disabled={!timestampTooltipBoundary}
-          onOpenChange={(open) => {
-            setIsTimestampTooltipOpen(open && canOpenTimestampTooltip());
+          onOpenChange={(open, eventDetails) => {
+            if (!ChatTranscriptTimestampPresenter.shouldApplyOpenChange({
+              boundary: timestampTooltipBoundary,
+              open,
+              side: timestampTooltipSide,
+              triggerRect: timestampTooltipTriggerRef.current?.getBoundingClientRect() ?? null,
+            })) {
+              eventDetails.cancel();
+            }
           }}
-          open={isTimestampTooltipOpen}
         >
           <TooltipTrigger
             render={(
