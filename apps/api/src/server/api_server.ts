@@ -22,6 +22,7 @@ import { RoutineTriggerWorker } from "../workers/routine_triggers.ts";
 import { SessionProcessWorker } from "../workers/session_process.ts";
 import { SkillRepositoryUpdateWorker } from "../workers/skill_repository_updates.ts";
 import { WorkflowTriggerWorker } from "../workers/workflow_triggers.ts";
+import { DevAuthRoute } from "./dev_auth_route.ts";
 import { EnvironmentTerminalWebsocketRoute } from "./environment_terminal_websocket_route.ts";
 import { GithubWebhookRoute } from "./github_webhook_route.ts";
 import { LocalAuthRoute } from "./local_auth_route.ts";
@@ -38,6 +39,7 @@ export class ApiServer {
   private readonly companyDeletionSweepWorker: CompanyDeletionSweepWorker;
   private readonly companyDeletionWorker: CompanyDeletionWorker;
   private readonly database: AppRuntimeDatabase;
+  private readonly devAuthRoute: DevAuthRoute;
   private readonly graphqlApplication: GraphqlApplication;
   private readonly githubWebhookQueueService: GithubWebhookQueueService;
   private readonly githubWebhookRoute: GithubWebhookRoute;
@@ -104,6 +106,10 @@ export class ApiServer {
     localAuthRoute: LocalAuthRoute = {
       register() {},
     } as never,
+    @inject(DevAuthRoute)
+    devAuthRoute: DevAuthRoute = {
+      register() {},
+    } as never,
     @inject(SkillRepositoryUpdateWorker)
     skillRepositoryUpdateWorker: SkillRepositoryUpdateWorker = {
       start() {},
@@ -143,6 +149,7 @@ export class ApiServer {
     this.githubWebhookWorker = githubWebhookWorker;
     this.logger = logger;
     this.localAuthRoute = localAuthRoute;
+    this.devAuthRoute = devAuthRoute;
     this.environmentTerminalWebsocketRoute = environmentTerminalWebsocketRoute;
     this.queuePolicyValidator = queuePolicyValidator;
     this.llmOauthRefreshWorker = llmOauthRefreshWorker;
@@ -183,6 +190,7 @@ export class ApiServer {
 
     await this.graphqlApplication.register(this.app as never);
     this.localAuthRoute.register(this.app as never);
+    this.devAuthRoute.register(this.app as never);
     this.githubWebhookRoute.register(this.app as never);
     this.environmentTerminalWebsocketRoute.register(this.app as never);
 

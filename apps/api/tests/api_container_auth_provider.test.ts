@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiContainer } from "../src/api_container.ts";
 import { ClerkAuthProvider } from "../src/auth/clerk/clerk_auth_provider.ts";
+import { DevAuthProvider } from "../src/auth/dev/dev_auth_provider.ts";
 import { LocalAuthProvider } from "../src/auth/local/local_auth_provider.ts";
 
 describe("ApiContainer auth provider selection", () => {
@@ -30,5 +31,18 @@ describe("ApiContainer auth provider selection", () => {
         provider: "local",
       },
     } as never)).toBe(LocalAuthProvider);
+  });
+
+  it("uses the dev auth provider when dev auth is configured", () => {
+    expect(ApiContainer.resolveAuthProviderClass({
+      auth: {
+        dev: {
+          session_duration_hours: 168,
+          session_issuer: "companyhelm.dev",
+          session_secret: "dev-session-secret",
+        },
+        provider: "dev",
+      },
+    } as never)).toBe(DevAuthProvider);
   });
 });

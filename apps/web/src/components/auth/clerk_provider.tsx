@@ -43,6 +43,7 @@ function ClerkAuthContextBridge(props: {
           isSignedIn: auth.isSignedIn === true,
           userId: auth.userId || null,
         },
+        devAuth: null,
         localAuth: null,
         organization: {
           isLoaded: organization.isLoaded,

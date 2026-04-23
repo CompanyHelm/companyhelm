@@ -366,6 +366,26 @@ test("AppConfig accepts local auth settings", () => {
   assert.equal(parsedDocument.auth.local.session_issuer, "companyhelm.local");
 });
 
+test("AppConfig accepts dev auth settings", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+  const parsedDocument = ConfigDocument.parse({
+    ...document,
+    auth: {
+      dev: {
+        session_duration_hours: 72,
+        session_issuer: "companyhelm.dev",
+        session_secret: "companyhelm-dev-session-secret",
+      },
+      provider: "dev",
+    },
+  });
+
+  assert.equal(parsedDocument.auth.provider, "dev");
+  assert.equal(parsedDocument.auth.dev.session_duration_hours, 72);
+  assert.equal(parsedDocument.auth.dev.session_issuer, "companyhelm.dev");
+});
+
 test("AppConfig explains how to provide missing environment variables", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const originalGithubClientId = process.env[fixture.githubClientVariableName];

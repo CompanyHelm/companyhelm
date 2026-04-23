@@ -11,6 +11,15 @@ import {
   ClerkUserButton,
 } from "./clerk_provider";
 import {
+  CompanyHelmDevProvider,
+  DevCreateCompany,
+  DevOrganizationList,
+  DevOrganizationSwitcher,
+  DevSignIn,
+  DevSignUp,
+  DevUserButton,
+} from "./dev_provider";
+import {
   CompanyHelmLocalProvider,
   LocalOrganizationList,
   LocalOrganizationSwitcher,
@@ -26,9 +35,15 @@ import {
 export function CompanyHelmAuthProvider(props: {
   children: ReactNode;
 }) {
-  return config.authProvider === "local"
-    ? <CompanyHelmLocalProvider>{props.children}</CompanyHelmLocalProvider>
-    : <CompanyHelmClerkProvider>{props.children}</CompanyHelmClerkProvider>;
+  if (config.authProvider === "local") {
+    return <CompanyHelmLocalProvider>{props.children}</CompanyHelmLocalProvider>;
+  }
+
+  if (config.authProvider === "dev") {
+    return <CompanyHelmDevProvider>{props.children}</CompanyHelmDevProvider>;
+  }
+
+  return <CompanyHelmClerkProvider>{props.children}</CompanyHelmClerkProvider>;
 }
 
 export function useAuth() {
@@ -56,6 +71,8 @@ export function OrganizationSwitcher(props: {
   void props.afterSelectOrganizationUrl;
   return config.authProvider === "local"
     ? <LocalOrganizationSwitcher />
+    : config.authProvider === "dev"
+      ? <DevOrganizationSwitcher />
     : <ClerkOrganizationSwitcher {...props} />;
 }
 
@@ -69,6 +86,8 @@ export function OrganizationList(props: {
   void props.hidePersonal;
   return config.authProvider === "local"
     ? <LocalOrganizationList />
+    : config.authProvider === "dev"
+      ? <DevOrganizationList />
     : <ClerkOrganizationList {...props} />;
 }
 
@@ -79,6 +98,8 @@ export function SignIn(props: {
 }) {
   return config.authProvider === "local"
     ? <LocalSignIn />
+    : config.authProvider === "dev"
+      ? <DevSignIn />
     : <ClerkSignIn {...props} />;
 }
 
@@ -89,12 +110,22 @@ export function SignUp(props: {
 }) {
   return config.authProvider === "local"
     ? <LocalSignUp />
+    : config.authProvider === "dev"
+      ? <DevSignUp />
     : <ClerkSignUp {...props} />;
+}
+
+export function CreateCompany() {
+  return config.authProvider === "dev"
+    ? <DevCreateCompany />
+    : null;
 }
 
 export function UserButton() {
   return config.authProvider === "local"
     ? <LocalUserButton />
+    : config.authProvider === "dev"
+      ? <DevUserButton />
     : <ClerkUserButton />;
 }
 

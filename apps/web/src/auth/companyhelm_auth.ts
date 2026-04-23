@@ -1,6 +1,6 @@
 import { createContext } from "react";
 
-export type CompanyHelmAuthProviderName = "clerk" | "local";
+export type CompanyHelmAuthProviderName = "clerk" | "dev" | "local";
 
 export type CompanyHelmOrganization = {
   id: string;
@@ -62,12 +62,38 @@ export type LocalSignUpInput = {
   password: string;
 };
 
+export type DevSignInInput = {
+  email?: string;
+  userId?: string;
+};
+
+export type DevSignUpInput = {
+  companyName: string;
+  email: string;
+  firstName: string;
+  lastName?: string;
+};
+
+export type DevCreateCompanyInput = {
+  companyName: string;
+  email?: string;
+  userId?: string;
+};
+
 export type CompanyHelmAuthContextValue = {
   auth: CompanyHelmAuthState;
   localAuth: {
     signIn(input: LocalSignInInput): Promise<void>;
     signOut(): Promise<void>;
     signUp(input: LocalSignUpInput): Promise<void>;
+  } | null;
+  devAuth: {
+    createCompany(input: DevCreateCompanyInput): Promise<void>;
+    errorMessage?: string | null;
+    prefilledEmail?: string;
+    signIn(input: DevSignInInput): Promise<void>;
+    signOut(): Promise<void>;
+    signUp(input: DevSignUpInput): Promise<void>;
   } | null;
   organization: CompanyHelmOrganizationState;
   organizationList: CompanyHelmOrganizationListState;

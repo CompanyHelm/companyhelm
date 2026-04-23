@@ -318,6 +318,7 @@ export function CompanyHelmLocalProvider(props: {
           isSignedIn: session !== null,
           userId: session?.user.id ?? null,
         },
+        devAuth: null,
         localAuth: {
           signIn,
           signOut,

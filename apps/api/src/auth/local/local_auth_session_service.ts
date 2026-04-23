@@ -9,21 +9,24 @@ export type LocalAuthTokenClaims = {
 };
 
 /**
- * Signs and verifies local auth bearer tokens so the web app can use the same Authorization header
- * flow as Clerk-backed sessions while the database retains revocation control.
+ * Signs and verifies bearer tokens for the first-party CompanyHelm auth providers so the web app
+ * can use the same Authorization header flow as Clerk-backed sessions while the database retains
+ * revocation control.
  */
 @injectable()
 export class LocalAuthSessionService {
   private readonly config: Extract<Config["auth"], {
-    provider: "local";
+    provider: "dev" | "local";
   }> | null;
 
   constructor(@inject(Config) config: Config) {
-    this.config = config.auth.provider === "local" ? config.auth : null;
+    this.config = config.auth.provider === "local" || config.auth.provider === "dev"
+      ? config.auth
+      : null;
   }
 
   async createSessionToken(input: LocalAuthTokenClaims): Promise<string> {
-    const config = this.requireLocalConfig();
+    const sessionConfig = this.requireSessionConfig();
     return new SignJWT({
       companyId: input.companyId,
       sessionId: input.sessionId,
@@ -32,18 +35,18 @@ export class LocalAuthSessionService {
         alg: "HS256",
         typ: "JWT",
       })
-      .setExpirationTime(`${config.local.session_duration_hours}h`)
+      .setExpirationTime(`${sessionConfig.session_duration_hours}h`)
       .setIssuedAt()
-      .setIssuer(config.local.session_issuer)
+      .setIssuer(sessionConfig.session_issuer)
       .setJti(input.sessionId)
       .setSubject(input.userId)
       .sign(this.resolveSecret());
   }
 
   async verifySessionToken(token: string): Promise<LocalAuthTokenClaims> {
-    const config = this.requireLocalConfig();
+    const sessionConfig = this.requireSessionConfig();
     const verifiedToken = await jwtVerify(token, this.resolveSecret(), {
-      issuer: config.local.session_issuer,
+      issuer: sessionConfig.session_issuer,
     });
     const companyId = String(verifiedToken.payload.companyId || "").trim();
     const sessionId = String(verifiedToken.payload.sessionId || verifiedToken.payload.jti || "").trim();
@@ -61,16 +64,20 @@ export class LocalAuthSessionService {
   }
 
   private resolveSecret(): Uint8Array {
-    return new TextEncoder().encode(this.requireLocalConfig().local.session_secret);
+    return new TextEncoder().encode(this.requireSessionConfig().session_secret);
   }
 
-  private requireLocalConfig(): Extract<Config["auth"], {
-    provider: "local";
-  }> {
+  private requireSessionConfig(): {
+    session_duration_hours: number;
+    session_issuer: string;
+    session_secret: string;
+  } {
     if (!this.config) {
-      throw new Error("Local auth session service requires local auth configuration.");
+      throw new Error("CompanyHelm auth session service requires local or dev auth configuration.");
     }
 
-    return this.config;
+    return this.config.provider === "local"
+      ? this.config.local
+      : this.config.dev;
   }
 }

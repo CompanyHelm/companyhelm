@@ -22,7 +22,7 @@ type RuntimeConfigDocument = Partial<Omit<ConfigDocument, "analytics">> & {
  * back to Vite environment variables for local development.
  */
 export type ConfigDocument = {
-  authProvider: "clerk" | "local";
+  authProvider: "clerk" | "dev" | "local";
   appVersion: string;
   clerkPublishableKey: string;
   graphqlUrl: string;
@@ -131,11 +131,15 @@ export class Config {
   private static resolveAuthProvider(
     runtimeValue: unknown,
     fallbackSourceValue: unknown,
-  ): "clerk" | "local" {
+  ): "clerk" | "dev" | "local" {
     const resolvedValue = Config.resolveRequiredStringValue(fallbackSourceValue, "clerk");
     const provider = typeof runtimeValue === "string" && runtimeValue.trim().length > 0
       ? runtimeValue.trim()
       : resolvedValue;
+    if (provider === "dev") {
+      return "dev";
+    }
+
     return provider === "local" ? "local" : "clerk";
   }
 

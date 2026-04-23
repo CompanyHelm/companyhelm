@@ -35,6 +35,15 @@ const LocalAuthSchema = z.object({
   }),
 });
 
+const DevAuthSchema = z.object({
+  provider: z.literal("dev"),
+  dev: z.object({
+    session_duration_hours: PositiveIntegerSchema.default(168),
+    session_issuer: NonEmptyStringSchema,
+    session_secret: NonEmptyStringSchema,
+  }),
+});
+
 export const ConfigDocument = z.object({
   host: NonEmptyStringSchema,
   port: PositiveIntegerSchema,
@@ -113,6 +122,7 @@ export const ConfigDocument = z.object({
   }),
   auth: z.discriminatedUnion("provider", [
     ClerkAuthSchema,
+    DevAuthSchema,
     LocalAuthSchema,
   ]),
   security: z.object({

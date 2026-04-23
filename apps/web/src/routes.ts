@@ -9,6 +9,7 @@ import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AdminDashboardPage } from "./pages/admin/dashboard_page";
 import { AdminUsersPage } from "./pages/admin/users_page";
+import { CreateCompanyRoute } from "./pages/auth/create_company_route";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
@@ -198,6 +199,10 @@ function SignInRoute() {
 
 function SignUpRoute() {
   return createElement(AuthenticationRoute, { mode: "signUp" });
+}
+
+function CreateCompanyAuthRoute() {
+  return createElement(CreateCompanyRoute);
 }
 
 const rootRoute = createRootRoute({
@@ -467,6 +472,12 @@ const signUpRoute = createRoute({
   component: SignUpRoute,
 });
 
+const createCompanyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/create-company",
+  component: CreateCompanyAuthRoute,
+});
+
 const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     pageContainerRoute.addChildren([
@@ -514,6 +525,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   signInRoute,
   signUpRoute,
+  createCompanyRoute,
 ]);
 
 export const applicationRouter = createRouter({

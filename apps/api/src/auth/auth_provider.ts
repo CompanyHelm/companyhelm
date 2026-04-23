@@ -1,6 +1,6 @@
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 
-export type AuthProviderName = "clerk" | "local";
+export type AuthProviderName = "clerk" | "dev" | "local";
 
 export type AuthenticatedUser = {
   id: string;

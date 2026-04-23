@@ -85,6 +85,11 @@ auth:
   #   session_duration_hours: 168
   #   session_issuer: "companyhelm.local"
   #   session_secret: "${LOCAL_AUTH_SESSION_SECRET}"
+  # To enable passwordless dev auth instead of Clerk, switch provider to "dev" and use:
+  # dev:
+  #   session_duration_hours: 168
+  #   session_issuer: "companyhelm.dev"
+  #   session_secret: "${DEV_AUTH_SESSION_SECRET}"
 security:
   encryption:
     key: "companyhelm-local-encryption-key"

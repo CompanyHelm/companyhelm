@@ -1,6 +1,7 @@
 import { Container } from "inversify";
 import { AuthProvider } from "./auth/auth_provider.ts";
 import { ClerkAuthProvider } from "./auth/clerk/clerk_auth_provider.ts";
+import { DevAuthProvider } from "./auth/dev/dev_auth_provider.ts";
 import { LocalAuthProvider } from "./auth/local/local_auth_provider.ts";
 import { OrganizationSlugResolver } from "./auth/organization_slug_resolver.ts";
 import { OrganizationSlugResolverFactory } from "./auth/organization_slug_resolver_factory.ts";
@@ -13,10 +14,16 @@ import { Config } from "./config/schema.ts";
 export class ApiContainer {
   static resolveAuthProviderClass(
     config: Config,
-  ): typeof ClerkAuthProvider | typeof LocalAuthProvider {
-    return config.auth.provider === "local"
-      ? LocalAuthProvider
-      : ClerkAuthProvider;
+  ): typeof ClerkAuthProvider | typeof DevAuthProvider | typeof LocalAuthProvider {
+    if (config.auth.provider === "local") {
+      return LocalAuthProvider;
+    }
+
+    if (config.auth.provider === "dev") {
+      return DevAuthProvider;
+    }
+
+    return ClerkAuthProvider;
   }
 
   build(config: Config): Container {

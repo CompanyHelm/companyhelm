@@ -63,3 +63,25 @@ test("prefers injected runtime configuration over local defaults", () => {
     }
   }
 });
+
+test("accepts dev auth as a runtime auth provider", () => {
+  const originalWindow = globalThis.window;
+
+  try {
+    globalThis.window = {
+      __COMPANYHELM_CONFIG__: {
+        authProvider: "dev",
+      },
+    } as Window;
+
+    const document = Config.getDocument();
+
+    assert.equal(document.authProvider, "dev");
+  } finally {
+    if (originalWindow) {
+      globalThis.window = originalWindow;
+    } else {
+      delete (globalThis as typeof globalThis & { window?: unknown }).window;
+    }
+  }
+});
