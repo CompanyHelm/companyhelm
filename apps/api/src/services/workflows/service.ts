@@ -266,8 +266,9 @@ export class WorkflowService {
         .set(values)
         .where(eq(workflowStepDefinitions.id, targetStep.id));
       await this.touchWorkflowDefinition(tx, input.companyId, input.workflowDefinitionId);
+      const updatedWorkflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
 
-      return (await this.hydrateWorkflowRows(tx, input.companyId, [workflowRow]))[0]!;
+      return (await this.hydrateWorkflowRows(tx, input.companyId, [updatedWorkflowRow]))[0]!;
     });
   }
 
@@ -276,7 +277,7 @@ export class WorkflowService {
     input: WorkflowStepDeleteInput,
   ): Promise<WorkflowRecord> {
     return transactionProvider.transaction(async (tx) => {
-      const workflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
+      await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
       const steps = await this.requireWorkflowDefinitionSteps(tx, input.workflowDefinitionId);
       if (steps.length <= 1) {
         throw new Error("At least one workflow step is required.");
@@ -300,8 +301,9 @@ export class WorkflowService {
       }
 
       await this.touchWorkflowDefinition(tx, input.companyId, input.workflowDefinitionId);
+      const updatedWorkflowRow = await this.requireWorkflowDefinitionRow(tx, input.companyId, input.workflowDefinitionId);
 
-      return (await this.hydrateWorkflowRows(tx, input.companyId, [workflowRow]))[0]!;
+      return (await this.hydrateWorkflowRows(tx, input.companyId, [updatedWorkflowRow]))[0]!;
     });
   }
 

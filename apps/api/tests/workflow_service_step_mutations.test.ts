@@ -25,8 +25,12 @@ test("WorkflowService updates one step without deleting or reinserting untouched
     name: "Release workflow",
     updatedAt: new Date("2026-04-20T12:00:00.000Z"),
   };
-  const hydratedWorkflow = {
+  const updatedWorkflowRow = {
     ...workflowRow,
+    updatedAt: new Date("2026-04-20T12:10:00.000Z"),
+  };
+  const hydratedWorkflow = {
+    ...updatedWorkflowRow,
     inputs: [],
     steps: [{
       createdAt: new Date("2026-04-20T12:00:00.000Z"),
@@ -48,7 +52,9 @@ test("WorkflowService updates one step without deleting or reinserting untouched
     triggers: [],
   };
 
-  service.requireWorkflowDefinitionRow = vi.fn().mockResolvedValue(workflowRow);
+  service.requireWorkflowDefinitionRow = vi.fn()
+    .mockResolvedValueOnce(workflowRow)
+    .mockResolvedValueOnce(updatedWorkflowRow);
   service.requireWorkflowDefinitionSteps = vi.fn().mockResolvedValue([{
     createdAt: new Date("2026-04-20T12:00:00.000Z"),
     id: "step-row-1",
@@ -113,6 +119,8 @@ test("WorkflowService updates one step without deleting or reinserting untouched
   assert.equal(operations[1]?.kind, "update");
   assert.equal(operations[1]?.table, workflowDefinitions);
   assert.ok(operations[1]?.values.updatedAt instanceof Date);
+  assert.equal(service.requireWorkflowDefinitionRow.mock.calls.length, 2);
+  assert.equal(result.updatedAt, updatedWorkflowRow.updatedAt);
 });
 
 test("WorkflowService deletes one step, renumbers remaining ordinals, and preserves remaining step ids", async () => {
@@ -127,8 +135,12 @@ test("WorkflowService deletes one step, renumbers remaining ordinals, and preser
     name: "Release workflow",
     updatedAt: new Date("2026-04-20T12:00:00.000Z"),
   };
-  const hydratedWorkflow = {
+  const updatedWorkflowRow = {
     ...workflowRow,
+    updatedAt: new Date("2026-04-20T12:10:00.000Z"),
+  };
+  const hydratedWorkflow = {
+    ...updatedWorkflowRow,
     inputs: [],
     steps: [{
       createdAt: new Date("2026-04-20T12:05:00.000Z"),
@@ -142,7 +154,9 @@ test("WorkflowService deletes one step, renumbers remaining ordinals, and preser
     triggers: [],
   };
 
-  service.requireWorkflowDefinitionRow = vi.fn().mockResolvedValue(workflowRow);
+  service.requireWorkflowDefinitionRow = vi.fn()
+    .mockResolvedValueOnce(workflowRow)
+    .mockResolvedValueOnce(updatedWorkflowRow);
   service.requireWorkflowDefinitionSteps = vi.fn().mockResolvedValue([{
     createdAt: new Date("2026-04-20T12:00:00.000Z"),
     id: "step-row-1",
@@ -211,4 +225,6 @@ test("WorkflowService deletes one step, renumbers remaining ordinals, and preser
   assert.equal(operations[2]?.kind, "update");
   assert.equal(operations[2]?.table, workflowDefinitions);
   assert.ok(operations[2]?.values?.updatedAt instanceof Date);
+  assert.equal(service.requireWorkflowDefinitionRow.mock.calls.length, 2);
+  assert.equal(result.updatedAt, updatedWorkflowRow.updatedAt);
 });
