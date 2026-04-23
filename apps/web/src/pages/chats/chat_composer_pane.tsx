@@ -571,7 +571,7 @@ export function ChatComposerPane({
               ) : null}
               <Button
                 aria-label={draftSubmitAriaLabel}
-                className="h-8 w-8 shrink-0 rounded-full px-0"
+                className="size-7 shrink-0 rounded-full px-0"
                 disabled={shouldShowInterruptComposerAction ? !canInterruptSelectedSession : !canSubmitDraft}
                 onClick={onSubmitDraft}
                 title={draftSubmitAriaLabel}
