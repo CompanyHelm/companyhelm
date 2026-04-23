@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE,
   type ToolCallSummaryRecord,
   resolveGithubInstallationStartTurnActions,
   resolveGithubInstallationStartToolResult,
@@ -264,4 +265,9 @@ test("resolvePrincipalExecutionMessageDisplay formats workflow execution user me
     summaryLabel: "Ship release",
     title: "Execute workflow",
   });
+});
+
+test("thinking indicator gradient uses theme foreground colors so it stays visible in light mode", () => {
+  assert.match(CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE, /var\(--foreground\)/);
+  assert.doesNotMatch(CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE, /rgba\(250,250,250/);
 });

@@ -19,6 +19,7 @@ import type {
 } from "./chats_page_data";
 import {
   CHATS_THINKING_GRADIENT_KEYFRAMES,
+  CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE,
   CHAT_DRAFT_MIN_LINES,
   CHAT_IMAGE_INPUT_ACCEPT,
   normalizeQueuedMessageStatus,
@@ -46,7 +47,7 @@ function ChatsThinkingIndicator({
           style={{
             animation: "chats-thinking-gradient 2.2s linear infinite",
             backgroundClip: "text",
-            backgroundImage: "linear-gradient(90deg, rgba(250,250,250,0.32) 0%, rgba(250,250,250,0.95) 48%, rgba(250,250,250,0.32) 100%)",
+            backgroundImage: CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE,
             backgroundSize: "200% 100%",
             WebkitBackgroundClip: "text",
           }}
