@@ -1,7 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { MutableRefObject } from "react";
-import { areChatTranscriptPanePropsEqual } from "../src/pages/chats/chat_transcript_pane";
+import { ChatTranscriptTimestampPresenter, areChatTranscriptPanePropsEqual } from "../src/pages/chats/chat_transcript_pane";
+
+function buildDomRect(properties: { height: number; left: number; top: number; width: number }): DOMRectReadOnly {
+  return {
+    bottom: properties.top + properties.height,
+    height: properties.height,
+    left: properties.left,
+    right: properties.left + properties.width,
+    top: properties.top,
+    width: properties.width,
+    x: properties.left,
+    y: properties.top,
+    toJSON: () => ({}),
+  };
+}
 
 function buildTranscriptPaneProps() {
   const session = {
@@ -73,4 +87,32 @@ test("areChatTranscriptPanePropsEqual rerenders when transcript loading state ch
   };
 
   assert.equal(areChatTranscriptPanePropsEqual(previousProps, nextProps), false);
+});
+
+test("timestamp tooltip boundary starts below visible workflow chrome", () => {
+  const boundary = ChatTranscriptTimestampPresenter.resolveTooltipBoundary(
+    buildDomRect({ height: 500, left: 0, top: 100, width: 640 }),
+    buildDomRect({ height: 1200, left: 0, top: 240, width: 640 }),
+  );
+
+  assert.deepEqual(boundary, {
+    height: 360,
+    width: 640,
+    x: 0,
+    y: 240,
+  });
+});
+
+test("timestamp tooltip boundary uses the viewport top after the workflow chrome scrolls away", () => {
+  const boundary = ChatTranscriptTimestampPresenter.resolveTooltipBoundary(
+    buildDomRect({ height: 500, left: 0, top: 100, width: 640 }),
+    buildDomRect({ height: 1200, left: 0, top: 40, width: 640 }),
+  );
+
+  assert.deepEqual(boundary, {
+    height: 500,
+    width: 640,
+    x: 0,
+    y: 100,
+  });
 });

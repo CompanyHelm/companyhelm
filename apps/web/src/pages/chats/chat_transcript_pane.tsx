@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { MutableRefObject, UIEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -47,9 +47,10 @@ AssistantTranscriptMessage.displayName = "AssistantTranscriptMessage";
 
 /**
  * Formats persisted transcript timestamps for hover-only display, keeping message rows visually
- * quiet while still exposing the exact local send time when the operator needs it.
+ * quiet while also keeping the hover popup inside the visible message transcript, away from
+ * workflow status chrome that shares the same scroll container.
  */
-class ChatTranscriptTimestampPresenter {
+export class ChatTranscriptTimestampPresenter {
   static formatMessageTimestamp(timestamp: string): string {
     const value = new Date(timestamp);
     if (Number.isNaN(value.getTime())) {
@@ -64,7 +65,57 @@ class ChatTranscriptTimestampPresenter {
       year: "numeric",
     }).format(value);
   }
+
+  static areTooltipBoundariesEqual(
+    firstBoundary: ChatTranscriptTimestampTooltipBoundary | null,
+    secondBoundary: ChatTranscriptTimestampTooltipBoundary | null,
+  ): boolean {
+    if (firstBoundary === null || secondBoundary === null) {
+      return firstBoundary === secondBoundary;
+    }
+
+    return firstBoundary.height === secondBoundary.height
+      && firstBoundary.width === secondBoundary.width
+      && firstBoundary.x === secondBoundary.x
+      && firstBoundary.y === secondBoundary.y;
+  }
+
+  static resolveTooltipBoundary(
+    viewportRect: DOMRectReadOnly,
+    messageListRect: DOMRectReadOnly,
+  ): ChatTranscriptTimestampTooltipBoundary | null {
+    const left = Math.max(viewportRect.left, messageListRect.left);
+    const right = Math.min(viewportRect.right, messageListRect.right);
+    const top = Math.max(viewportRect.top, messageListRect.top);
+    const bottom = Math.min(viewportRect.bottom, messageListRect.bottom);
+    const width = right - left;
+    const height = bottom - top;
+
+    if (width <= 0 || height <= 0) {
+      return null;
+    }
+
+    return {
+      height,
+      width,
+      x: left,
+      y: top,
+    };
+  }
 }
+
+const CHAT_TRANSCRIPT_TIMESTAMP_TOOLTIP_COLLISION_AVOIDANCE = {
+  align: "shift",
+  fallbackAxisSide: "none",
+  side: "flip",
+} as const;
+
+type ChatTranscriptTimestampTooltipBoundary = {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+};
 
 const GithubInstallationStartTurnAction = memo(function GithubInstallationStartTurnAction(
   { action }: { action: GithubInstallationStartTurnActionRecord },
@@ -301,11 +352,13 @@ ToolTranscriptMessage.displayName = "ToolTranscriptMessage";
 const TranscriptMessageRow = memo(function TranscriptMessageRow({
   assistantContentMode,
   message,
+  timestampTooltipBoundary,
   toolCallSummary,
   useLeftGutter = true,
 }: {
   assistantContentMode: AssistantContentMode;
   message: SessionMessageRecord;
+  timestampTooltipBoundary: ChatTranscriptTimestampTooltipBoundary | null;
   toolCallSummary: ToolCallSummaryRecord | null;
   useLeftGutter?: boolean;
 }) {
@@ -379,13 +432,18 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
               </div>
             )}
           </TooltipTrigger>
-          <TooltipContent
-            className="rounded-sm border border-border/70 bg-popover px-2 py-0.5 text-[10px] font-medium leading-4 text-popover-foreground shadow-sm [&>div:last-child]:bg-popover [&>div:last-child]:fill-popover"
-            side={isUserMessage ? "left" : "top"}
-            sideOffset={6}
-          >
-            <time dateTime={message.createdAt}>{timestampLabel}</time>
-          </TooltipContent>
+          {timestampTooltipBoundary ? (
+            <TooltipContent
+              className="rounded-sm border border-border/70 bg-popover px-2 py-0.5 text-[10px] font-medium leading-4 text-popover-foreground shadow-sm [&>div:last-child]:bg-popover [&>div:last-child]:fill-popover"
+              collisionAvoidance={CHAT_TRANSCRIPT_TIMESTAMP_TOOLTIP_COLLISION_AVOIDANCE}
+              collisionBoundary={timestampTooltipBoundary}
+              collisionPadding={8}
+              side={isUserMessage ? "left" : "top"}
+              sideOffset={6}
+            >
+              <time dateTime={message.createdAt}>{timestampLabel}</time>
+            </TooltipContent>
+          ) : null}
         </Tooltip>
       </TooltipProvider>
     </div>
@@ -652,6 +710,9 @@ function ChatTranscriptPaneComponent({
     return buildTranscriptTurns(sessionMessages);
   }, [sessionMessages]);
   const [expandedTurnIds, setExpandedTurnIds] = useState<Record<string, boolean>>({});
+  const [transcriptViewport, setTranscriptViewport] = useState<HTMLDivElement | null>(null);
+  const [transcriptMessageList, setTranscriptMessageList] = useState<HTMLDivElement | null>(null);
+  const [timestampTooltipBoundary, setTimestampTooltipBoundary] = useState<ChatTranscriptTimestampTooltipBoundary | null>(null);
   const fallbackTitle = resolveSessionTitle(session, sessionMessages);
   const showTranscriptLoader = isLoadingTranscript || isLoadingOlderMessages;
   const hasVisibleTranscriptContent = transcriptTurns.some((turn) => {
@@ -664,12 +725,62 @@ function ChatTranscriptPaneComponent({
     setExpandedTurnIds({});
   }, [session.id]);
 
+  const setTranscriptScrollElement = useCallback((element: HTMLDivElement | null) => {
+    transcriptScrollRef.current = element;
+    setTranscriptViewport(element);
+  }, [transcriptScrollRef]);
+
+  const updateTimestampTooltipBoundary = useCallback(() => {
+    const nextBoundary = transcriptViewport && transcriptMessageList
+      ? ChatTranscriptTimestampPresenter.resolveTooltipBoundary(
+        transcriptViewport.getBoundingClientRect(),
+        transcriptMessageList.getBoundingClientRect(),
+      )
+      : null;
+
+    setTimestampTooltipBoundary((currentBoundary) => (
+      ChatTranscriptTimestampPresenter.areTooltipBoundariesEqual(currentBoundary, nextBoundary)
+        ? currentBoundary
+        : nextBoundary
+    ));
+  }, [transcriptMessageList, transcriptViewport]);
+
+  useEffect(() => {
+    updateTimestampTooltipBoundary();
+
+    if (!transcriptViewport || !transcriptMessageList) {
+      return;
+    }
+
+    window.addEventListener("resize", updateTimestampTooltipBoundary);
+
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        window.removeEventListener("resize", updateTimestampTooltipBoundary);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(updateTimestampTooltipBoundary);
+    resizeObserver.observe(transcriptViewport);
+    resizeObserver.observe(transcriptMessageList);
+
+    return () => {
+      window.removeEventListener("resize", updateTimestampTooltipBoundary);
+      resizeObserver.disconnect();
+    };
+  }, [transcriptMessageList, transcriptViewport, updateTimestampTooltipBoundary]);
+
+  const handleTranscriptScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
+    onScroll(event);
+    updateTimestampTooltipBoundary();
+  }, [onScroll, updateTimestampTooltipBoundary]);
+
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
       <div
-        ref={transcriptScrollRef}
+        ref={setTranscriptScrollElement}
         className={transcriptViewportClassName}
-        onScroll={onScroll}
+        onScroll={handleTranscriptScroll}
       >
         <ForkedSessionBanner organizationSlug={organizationSlug} session={session} />
         <WorkflowRunProgressStrip organizationSlug={organizationSlug} session={session} />
@@ -692,20 +803,93 @@ function ChatTranscriptPaneComponent({
             <Loader2Icon aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />
           </div>
         ) : null}
-        {transcriptTurns.map((turn) => {
-          if (turn.isRunning) {
+        <div ref={setTranscriptMessageList} className="grid gap-3">
+          {transcriptTurns.map((turn) => {
+            if (turn.isRunning) {
+              const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
+                turn.inlineMessages,
+                toolCallSummaryById,
+              );
+
+              return (
+                <div key={turn.turnId} className="grid gap-3">
+                  {turn.inlineMessages.map((message) => (
+                    <TranscriptMessageRow
+                      assistantContentMode="all"
+                      key={message.id}
+                      message={message}
+                      timestampTooltipBoundary={timestampTooltipBoundary}
+                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                    />
+                  ))}
+                  {githubInstallationStartActions.map((action) => (
+                    <GithubInstallationStartTurnAction action={action} key={action.messageId} />
+                  ))}
+                </div>
+              );
+            }
+
+            const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
+            const isExpanded = expandedTurnIds[turn.turnId] === true;
+            const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
+            const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
+            const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
+            const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
             const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
-              turn.inlineMessages,
+              [...turn.inlineMessages, ...turn.hiddenMessages],
               toolCallSummaryById,
             );
 
             return (
               <div key={turn.turnId} className="grid gap-3">
-                {turn.inlineMessages.map((message) => (
+                {inlineMessagesBeforeWorkedFor.map((message) => (
                   <TranscriptMessageRow
-                    assistantContentMode="all"
+                    assistantContentMode="text-only"
                     key={message.id}
                     message={message}
+                    timestampTooltipBoundary={timestampTooltipBoundary}
+                    toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                  />
+                ))}
+                <TranscriptTurnSummaryRow
+                  durationLabel={turn.durationLabel}
+                  hasHiddenMessages={hasHiddenMessages}
+                  isExpanded={isExpanded}
+                  onToggleHiddenMessages={() => {
+                    setExpandedTurnIds((currentExpandedTurnIds) => ({
+                      ...currentExpandedTurnIds,
+                      [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
+                    }));
+                  }}
+                />
+                {hasHiddenMessages && isExpanded ? (
+                  <>
+                    {turn.hiddenMessages.map((message) => (
+                      <TranscriptMessageRow
+                        assistantContentMode="all"
+                        key={message.id}
+                        message={message}
+                        timestampTooltipBoundary={timestampTooltipBoundary}
+                        toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                      />
+                    ))}
+                    {turn.hiddenThinkingMessages.map((message) => (
+                      <TranscriptMessageRow
+                        assistantContentMode="thinking-only"
+                        key={`${message.id}-thinking`}
+                        message={message}
+                        timestampTooltipBoundary={timestampTooltipBoundary}
+                        toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
+                      />
+                    ))}
+                  </>
+                ) : null}
+                {inlineMessagesAfterWorkedFor.map((message) => (
+                  <TranscriptMessageRow
+                    assistantContentMode="text-only"
+                    key={message.id}
+                    message={message}
+                    timestampTooltipBoundary={timestampTooltipBoundary}
                     toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                   />
                 ))}
@@ -714,74 +898,8 @@ function ChatTranscriptPaneComponent({
                 ))}
               </div>
             );
-          }
-
-          const hasHiddenMessages = turn.hiddenMessages.length > 0 || turn.hiddenThinkingMessages.length > 0;
-          const isExpanded = expandedTurnIds[turn.turnId] === true;
-          const assistantInlineIndex = turn.inlineMessages.findIndex((message) => message.role === "assistant");
-          const workedForInsertionIndex = assistantInlineIndex >= 0 ? assistantInlineIndex : turn.inlineMessages.length;
-          const inlineMessagesBeforeWorkedFor = turn.inlineMessages.slice(0, workedForInsertionIndex);
-          const inlineMessagesAfterWorkedFor = turn.inlineMessages.slice(workedForInsertionIndex);
-          const githubInstallationStartActions = resolveGithubInstallationStartTurnActions(
-            [...turn.inlineMessages, ...turn.hiddenMessages],
-            toolCallSummaryById,
-          );
-
-          return (
-            <div key={turn.turnId} className="grid gap-3">
-              {inlineMessagesBeforeWorkedFor.map((message) => (
-                <TranscriptMessageRow
-                  assistantContentMode="text-only"
-                  key={message.id}
-                  message={message}
-                  toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                />
-              ))}
-              <TranscriptTurnSummaryRow
-                durationLabel={turn.durationLabel}
-                hasHiddenMessages={hasHiddenMessages}
-                isExpanded={isExpanded}
-                onToggleHiddenMessages={() => {
-                  setExpandedTurnIds((currentExpandedTurnIds) => ({
-                    ...currentExpandedTurnIds,
-                    [turn.turnId]: !currentExpandedTurnIds[turn.turnId],
-                  }));
-                }}
-              />
-              {hasHiddenMessages && isExpanded ? (
-                <>
-                  {turn.hiddenMessages.map((message) => (
-                    <TranscriptMessageRow
-                      assistantContentMode="all"
-                      key={message.id}
-                      message={message}
-                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                    />
-                  ))}
-                  {turn.hiddenThinkingMessages.map((message) => (
-                    <TranscriptMessageRow
-                      assistantContentMode="thinking-only"
-                      key={`${message.id}-thinking`}
-                      message={message}
-                      toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                    />
-                  ))}
-                </>
-              ) : null}
-              {inlineMessagesAfterWorkedFor.map((message) => (
-                <TranscriptMessageRow
-                  assistantContentMode="text-only"
-                  key={message.id}
-                  message={message}
-                  toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
-                />
-              ))}
-              {githubInstallationStartActions.map((action) => (
-                <GithubInstallationStartTurnAction action={action} key={action.messageId} />
-              ))}
-            </div>
-          );
-        })}
+          })}
+        </div>
       </div>
       {showJumpToLatestButton ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
