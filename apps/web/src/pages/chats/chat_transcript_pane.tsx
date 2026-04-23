@@ -37,6 +37,7 @@ import {
   resolveToolExecutionDuration,
   sanitizeCommandOutput,
 } from "./chats_page_helpers";
+import { ChatsPagePreferenceStorage } from "./chats_page_preference_storage";
 import { WorkflowRunPresenter } from "./workflow_run_presenter";
 
 const AssistantTranscriptMessage = memo(function AssistantTranscriptMessage({ text }: { text: string }) {
@@ -596,11 +597,11 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   session: SessionRecord;
 }) {
   const workflowRun = session.associatedWorkflowRun ?? null;
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(ChatsPagePreferenceStorage.loadWorkflowStatusExpanded);
 
   useEffect(() => {
-    setIsExpanded(false);
-  }, [workflowRun?.id]);
+    ChatsPagePreferenceStorage.saveWorkflowStatusExpanded(isExpanded);
+  }, [isExpanded]);
 
   if (!workflowRun) {
     return null;

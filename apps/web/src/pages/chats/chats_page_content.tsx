@@ -80,6 +80,7 @@ import {
   chatsPageStopEnvironmentMutationNode,
   chatsPageUpdateSessionTitleMutationNode,
 } from "./chats_page_data";
+import { ChatsPagePreferenceStorage } from "./chats_page_preference_storage";
 import { ChatEnvironmentPanel } from "./chat_environment_panel";
 import {
   CHAT_LIST_DEFAULT_WIDTH,
@@ -180,7 +181,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     null,
   );
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
-  const [isChatListHidden, setIsChatListHidden] = useState(false);
+  const [isChatListHidden, setIsChatListHidden] = useState(ChatsPagePreferenceStorage.loadChatListHidden);
   const [isMobileChatListOpen, setIsMobileChatListOpen] = useState(false);
   const [isEnvironmentPanelOpen, setIsEnvironmentPanelOpen] = useState(false);
   const [isLoadingSessionEnvironment, setIsLoadingSessionEnvironment] = useState(false);
@@ -203,7 +204,9 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [deletingQueuedMessageId, setDeletingQueuedMessageId] = useState<string | null>(null);
   const [isComposerDragActive, setIsComposerDragActive] = useState(false);
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
-  const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>({});
+  const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>(
+    ChatsPagePreferenceStorage.loadCollapsedAgentIds,
+  );
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   const resizeStartXRef = useRef(0);
   const resizeStartWidthRef = useRef(CHAT_LIST_DEFAULT_WIDTH);
@@ -525,6 +528,14 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
 
     window.localStorage.setItem(CHAT_LIST_WIDTH_STORAGE_KEY, String(chatListWidth));
   }, [chatListWidth]);
+
+  useEffect(() => {
+    ChatsPagePreferenceStorage.saveChatListHidden(isChatListHidden);
+  }, [isChatListHidden]);
+
+  useEffect(() => {
+    ChatsPagePreferenceStorage.saveCollapsedAgentIds(collapsedChatListAgentIds);
+  }, [collapsedChatListAgentIds]);
 
   useEffect(() => {
     if (isFixedSessionMode || !shouldShowSessionNavigation || routeAgentId || routeSessionId || !latestActiveSession) {
@@ -1274,10 +1285,18 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   }, [navigate, organizationSlug, routePath]);
 
   const toggleChatListAgentExpanded = useCallback((agentId: string) => {
-    setCollapsedChatListAgentIds((current) => ({
-      ...current,
-      [agentId]: current[agentId] !== true,
-    }));
+    setCollapsedChatListAgentIds((current) => {
+      if (current[agentId] === true) {
+        const nextCollapsedAgentIds = { ...current };
+        delete nextCollapsedAgentIds[agentId];
+        return nextCollapsedAgentIds;
+      }
+
+      return {
+        ...current,
+        [agentId]: true,
+      };
+    });
   }, []);
 
   const expandChatListAgent = useCallback((agentId: string) => {
@@ -1286,10 +1305,9 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         return current;
       }
 
-      return {
-        ...current,
-        [agentId]: false,
-      };
+      const nextCollapsedAgentIds = { ...current };
+      delete nextCollapsedAgentIds[agentId];
+      return nextCollapsedAgentIds;
     });
   }, []);
 
