@@ -14,7 +14,11 @@ test("builds the approved sidebar group structure when compute providers are ena
     })),
     [
       {
-        items: ["Dashboard", "Inbox", "Chats", "Agent Conversations", "Tasks"],
+        items: ["Chats"],
+        label: null,
+      },
+      {
+        items: ["Dashboard", "Inbox", "Agent Conversations", "Tasks", "Usage"],
         label: "Operate",
       },
       {

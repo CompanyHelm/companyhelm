@@ -48,27 +48,29 @@ export function ApplicationHeader(props: {
     ? "Skills"
     : normalizedPathname.startsWith("/chats")
       ? "Chats"
-      : normalizedPathname.startsWith("/conversations")
-        ? "Agent Conversations"
-      : normalizedPathname.startsWith("/routines")
-        ? "Routines"
-      : normalizedPathname.startsWith("/repositories")
-        ? "Repositories"
-        : normalizedPathname.startsWith("/knowledge-base")
-          ? "Knowledge Base"
-          : normalizedPathname.startsWith("/inbox")
-            ? "Inbox"
-          : normalizedPathname.startsWith("/tasks")
-            ? "Tasks"
-            : normalizedPathname.startsWith("/flags")
-              ? "Feature Flags"
-              : normalizedPathname.startsWith("/settings")
-                ? "Settings"
-                : normalizedPathname.startsWith("/agents")
-                  ? "Agents"
-                  : normalizedPathname.startsWith("/workflows")
-                    ? "Workflows"
-                    : "Dashboard";
+      : normalizedPathname.startsWith("/usage")
+        ? "Usage"
+        : normalizedPathname.startsWith("/conversations")
+          ? "Agent Conversations"
+          : normalizedPathname.startsWith("/routines")
+            ? "Routines"
+            : normalizedPathname.startsWith("/repositories")
+              ? "Repositories"
+              : normalizedPathname.startsWith("/knowledge-base")
+                ? "Knowledge Base"
+                : normalizedPathname.startsWith("/inbox")
+                  ? "Inbox"
+                  : normalizedPathname.startsWith("/tasks")
+                    ? "Tasks"
+                    : normalizedPathname.startsWith("/flags")
+                      ? "Feature Flags"
+                      : normalizedPathname.startsWith("/settings")
+                        ? "Settings"
+                        : normalizedPathname.startsWith("/agents")
+                          ? "Agents"
+                          : normalizedPathname.startsWith("/workflows")
+                            ? "Workflows"
+                            : "Dashboard";
   const detailPageTitle = detailLabel
     || (isAgentDetailPage
       ? "Agent"

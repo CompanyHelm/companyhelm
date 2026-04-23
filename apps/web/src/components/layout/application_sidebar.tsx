@@ -133,8 +133,8 @@ export function ApplicationSidebar(props: {
 
       <SidebarContent>
         {navigationGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroup key={group.label ?? group.items.map((item) => item.to).join(":")}>
+            {group.label ? <SidebarGroupLabel>{group.label}</SidebarGroupLabel> : null}
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {

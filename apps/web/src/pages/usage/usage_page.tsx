@@ -12,10 +12,10 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { formatProviderCredentialType, formatProviderLabel } from "../model-provider-credentials/provider_label";
-import type { settingsUsageTabQuery } from "./__generated__/settingsUsageTabQuery.graphql";
+import type { usagePageQuery } from "./__generated__/usagePageQuery.graphql";
 
-const settingsUsageTabQueryNode = graphql`
-  query settingsUsageTabQuery($dailyStart: String!, $monthlyStart: String!) {
+const usagePageQueryNode = graphql`
+  query usagePageQuery($dailyStart: String!, $monthlyStart: String!) {
     Me {
       company {
         id
@@ -144,7 +144,7 @@ const settingsUsageTabQueryNode = graphql`
   }
 `;
 
-function SettingsUsageTabFallback() {
+function UsagePageFallback() {
   return (
     <div className="grid gap-6">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -158,10 +158,10 @@ function SettingsUsageTabFallback() {
   );
 }
 
-function SettingsUsageTabContent() {
+function UsagePageContent() {
   const organizationSlug = useCurrentOrganizationSlug();
-  const data = useLazyLoadQuery<settingsUsageTabQuery>(
-    settingsUsageTabQueryNode,
+  const data = useLazyLoadQuery<usagePageQuery>(
+    usagePageQueryNode,
     {
       dailyStart: UsageMetrics.resolveUtcDayStart(29),
       monthlyStart: UsageMetrics.resolveUtcMonthStart(11),
@@ -306,13 +306,13 @@ function SettingsUsageTabContent() {
 }
 
 /**
- * Keeps the aggregate-heavy usage query scoped to the Settings usage tab, so normal settings
- * visits do not also ask the API for company and provider usage rollups.
+ * Hosts company-level LLM usage as a dedicated operation page, keeping aggregate-heavy queries
+ * outside the normal settings surface.
  */
-export function SettingsUsageTab() {
+export function UsagePage() {
   return (
-    <Suspense fallback={<SettingsUsageTabFallback />}>
-      <SettingsUsageTabContent />
+    <Suspense fallback={<UsagePageFallback />}>
+      <UsagePageContent />
     </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 import {
   BotIcon,
   BookOpenIcon,
+  ChartPieIcon,
   FolderGit2Icon,
   InboxIcon,
   KeyRoundIcon,
@@ -20,7 +21,7 @@ import type { LucideIcon } from "lucide-react";
 
 export type ApplicationNavigationGroupRecord = Readonly<{
   items: readonly ApplicationNavigationItemRecord[];
-  label: string;
+  label: string | null;
 }>;
 
 export type ApplicationNavigationItemRecord = Readonly<{
@@ -101,6 +102,16 @@ export class ApplicationNavigationCatalog {
       {
         items: [
           {
+            icon: MessageSquareIcon,
+            label: "Chats",
+            to: "/chats",
+          },
+        ],
+        label: null,
+      },
+      {
+        items: [
+          {
             icon: LayoutDashboardIcon,
             label: "Dashboard",
             to: "/",
@@ -111,11 +122,6 @@ export class ApplicationNavigationCatalog {
             to: "/inbox",
           },
           {
-            icon: MessageSquareIcon,
-            label: "Chats",
-            to: "/chats",
-          },
-          {
             icon: MessagesSquareIcon,
             label: "Agent Conversations",
             to: "/conversations",
@@ -124,6 +130,11 @@ export class ApplicationNavigationCatalog {
             icon: ListTodoIcon,
             label: "Tasks",
             to: "/tasks",
+          },
+          {
+            icon: ChartPieIcon,
+            label: "Usage",
+            to: "/usage",
           },
         ],
         label: "Operate",

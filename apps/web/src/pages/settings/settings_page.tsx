@@ -9,7 +9,6 @@ import { PageTabs } from "@/components/ui/page_tabs";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { DeleteCompanyDialog } from "./delete_company_dialog";
-import { SettingsUsageTab } from "./settings_usage_tab";
 import { TaskStageDialog } from "./task_stage_dialog";
 import type { settingsPageCreateTaskStageMutation } from "./__generated__/settingsPageCreateTaskStageMutation.graphql";
 import type { settingsPageDeleteCompanyMutation } from "./__generated__/settingsPageDeleteCompanyMutation.graphql";
@@ -18,7 +17,7 @@ import type { settingsPageQuery } from "./__generated__/settingsPageQuery.graphq
 import type { settingsPageUpdateCompanySettingsMutation } from "./__generated__/settingsPageUpdateCompanySettingsMutation.graphql";
 
 type SettingsPageSearch = {
-  tab?: "tasks" | "AI" | "usage" | "company";
+  tab?: "tasks" | "AI" | "company";
 };
 
 const settingsPageQueryNode = graphql`
@@ -112,7 +111,7 @@ function SettingsPageFallback() {
             <span>Settings</span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Loading task, usage, and agent AI settings...
+            Loading task, company, and agent AI settings...
           </p>
         </div>
         <div className="border-b border-border/60" />
@@ -154,7 +153,7 @@ function SettingsPageContent() {
   const [commitDeleteCompany, isDeleteCompanyInFlight] = useMutation<settingsPageDeleteCompanyMutation>(
     settingsPageDeleteCompanyMutationNode,
   );
-  const selectedTab = search.tab === "AI" || search.tab === "usage" || search.tab === "company"
+  const selectedTab = search.tab === "AI" || search.tab === "company"
     ? search.tab
     : "tasks";
   const companyName = data.Me.company.name;
@@ -168,7 +167,7 @@ function SettingsPageContent() {
             <span>Settings</span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage task lanes, company-wide LLM usage, and the prompt inherited by all agent sessions.
+            Manage task lanes, company details, and the prompt inherited by all agent sessions.
           </p>
         </div>
 
@@ -181,10 +180,6 @@ function SettingsPageContent() {
             {
               key: "AI" as const,
               label: "Agents / AI",
-            },
-            {
-              key: "usage" as const,
-              label: "Usage",
             },
             {
               key: "company" as const,
@@ -390,8 +385,6 @@ function SettingsPageContent() {
         </Card>
       ) : null}
 
-      {selectedTab === "usage" ? <SettingsUsageTab /> : null}
-
       {selectedTab === "company" ? (
         <Card variant="page" className="rounded-2xl border border-border/60 shadow-sm">
           <CardHeader>
@@ -535,7 +528,8 @@ function SettingsPageContent() {
 }
 
 /**
- * Hosts the company settings surface for task stages, usage, and shared agent AI configuration.
+ * Hosts the company settings surface for task stages, company details, and shared agent AI
+ * configuration.
  */
 export function SettingsPage() {
   return (
