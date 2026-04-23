@@ -42,7 +42,18 @@ export class WorkflowRunPresenter {
   }
 
   static getVisibleSteps(workflowRun: AssociatedWorkflowRunRecord): AssociatedWorkflowRunStepRecord[] {
-    return this.getOrderedSteps(workflowRun).slice(0, 5);
+    return this.getOrderedSteps(workflowRun);
+  }
+
+  static getExpandedScrollTargetStepId(workflowRun: AssociatedWorkflowRunRecord): string | null {
+    const orderedSteps = this.getOrderedSteps(workflowRun);
+    const latestRunningStep = [...orderedSteps].reverse().find((step) => step.status === "running");
+    if (latestRunningStep) {
+      return latestRunningStep.id;
+    }
+
+    const latestCompletedStep = [...orderedSteps].reverse().find((step) => step.status === "done");
+    return latestCompletedStep?.id ?? null;
   }
 
   static isRunning(workflowRun: AssociatedWorkflowRunRecord): boolean {

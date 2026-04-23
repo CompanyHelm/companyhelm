@@ -36,3 +36,23 @@ test("adds a GraphQL proxy when VITE_GRAPHQL_PROXY_TARGET is provided", () => {
 
   delete process.env.VITE_GRAPHQL_PROXY_TARGET;
 });
+
+test("aliases Clerk to the local dev auth shim when the bypass flag is enabled", () => {
+  process.env.VITE_LOCAL_DEV_AUTH_BYPASS = "true";
+
+  const resolvedConfig = typeof viteConfig === "function" ? viteConfig({
+    command: "serve",
+    isPreview: false,
+    mode: "test",
+  }) : viteConfig;
+  const resolveConfig = "resolve" in resolvedConfig ? resolvedConfig.resolve : undefined;
+  const aliasConfig = resolveConfig?.alias;
+  const clerkAlias = aliasConfig && !Array.isArray(aliasConfig)
+    ? aliasConfig["@clerk/react"]
+    : undefined;
+
+  assert.equal(typeof clerkAlias, "string");
+  assert.match(clerkAlias || "", /local_dev_clerk\.tsx$/);
+
+  delete process.env.VITE_LOCAL_DEV_AUTH_BYPASS;
+});
