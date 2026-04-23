@@ -1,6 +1,7 @@
 # CompanyHelm - Distributed Coding Agent Orchestrator
 
-<a href="https://discord.gg/YueY3dQM9Q"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
+<a href="https://discord.gg/YueY3dQM9Q"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a> [![SPONSORED BY E2B FOR STARTUPS](https://img.shields.io/badge/SPONSORED%20BY-E2B%20FOR%20STARTUPS-ff8800?style=for-the-badge)](https://e2b.dev/startups)
+
 
 CompanyHelm is an open-source control plane for running AI coding agent in dedicated environments. Each agent session is completely isolated and allows to run coding tasks in a distributed fashion.
 Agents are model agnostic and multiple model providers are supported (OpenAi, Anthropic, OpenRouter). Agents can be customized with MCP, Skills and custom instructions.
@@ -17,8 +18,6 @@ A few things it can do today:
 [CompanyHelm Cloud (Free)](https://www.companyhelm.com/) · [Discord](https://discord.gg/YueY3dQM9Q)
 
 <img width="1695" height="874" alt="companyHelm-screenshot" src="https://github.com/user-attachments/assets/9f3c6f3f-5e1f-4065-989d-44cfad587e5f" />
-
-[![SPONSORED BY E2B FOR STARTUPS](https://img.shields.io/badge/SPONSORED%20BY-E2B%20FOR%20STARTUPS-ff8800?style=for-the-badge)](https://e2b.dev/startups)
 
 Monorepo with:
 
