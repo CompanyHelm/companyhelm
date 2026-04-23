@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useApplicationBreadcrumb } from "@/components/layout/application_breadcrumb_context";
+import { OnboardingSkipAction, type OnboardingSkipActionProps } from "@/components/layout/onboarding_skip_action";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-export function ApplicationHeader() {
+export function ApplicationHeader(props: {
+  onboardingSkipAction?: OnboardingSkipActionProps | null;
+}) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -138,9 +141,10 @@ export function ApplicationHeader() {
           )}
         </div>
       </div>
-      {headerActions ? (
+      {headerActions || props.onboardingSkipAction ? (
         <div className="flex shrink-0 items-center justify-end gap-2">
           {headerActions}
+          {props.onboardingSkipAction ? <OnboardingSkipAction {...props.onboardingSkipAction} /> : null}
         </div>
       ) : null}
     </header>

@@ -3,8 +3,6 @@ import { Suspense } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { graphql, useLazyLoadQuery } from "react-relay";
 import {
-  FastForwardIcon,
-  Loader2Icon,
   MoonIcon,
   Settings2Icon,
   SunIcon,
@@ -14,19 +12,6 @@ import { ApplicationNavigationCatalog } from "@/components/layout/application_na
 import { ErrorBoundary } from "@/components/error_boundary";
 import { useTheme } from "@/components/theme_provider";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogActionButton,
-  AlertDialogCancelAction,
-  AlertDialogCancelButton,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPrimaryAction,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useFeatureFlags } from "@/contextes/feature_flag_context";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
@@ -56,11 +41,6 @@ const applicationSidebarInboxCountQueryNode = graphql`
     }
   }
 `;
-
-export type ApplicationSidebarOnboardingFocus = {
-  isSkipInFlight: boolean;
-  onSkip(): void;
-};
 
 function isNavigationItemActive(pathname: string, itemPath: string): boolean {
   if (itemPath === "/") {
@@ -98,57 +78,8 @@ function ApplicationSidebarInboxBadge() {
   );
 }
 
-function ApplicationSidebarSkipOnboardingAction(props: {
-  isSkipInFlight: boolean;
-  onSkip(): void;
-}) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          className="app-shell-sidebar__meta h-8 justify-start gap-2 px-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 [&_svg]:size-3.5"
-          disabled={props.isSkipInFlight}
-          size="default"
-          variant="ghost"
-        >
-          {props.isSkipInFlight ? (
-            <Loader2Icon className="animate-spin" data-icon="inline-start" />
-          ) : (
-            <FastForwardIcon data-icon="inline-start" />
-          )}
-          <span className="leading-none group-data-[collapsible=icon]:hidden">Skip setup</span>
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Skip company setup?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will unlock the full workspace now. The CEO onboarding chat and workflow history
-            will remain available if setup needs to be resumed later.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancelAction>
-            <AlertDialogCancelButton variant="outline">Keep setup</AlertDialogCancelButton>
-          </AlertDialogCancelAction>
-          <AlertDialogPrimaryAction>
-            <AlertDialogActionButton
-              disabled={props.isSkipInFlight}
-              onClick={props.onSkip}
-              variant="destructive"
-            >
-              <FastForwardIcon data-icon="inline-start" />
-              Skip setup
-            </AlertDialogActionButton>
-          </AlertDialogPrimaryAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
 export function ApplicationSidebar(props: {
-  onboardingFocus?: ApplicationSidebarOnboardingFocus | null;
+  isOnboardingFocused?: boolean;
 }) {
   const userState = useUser();
   const featureFlags = useFeatureFlags();
@@ -163,9 +94,9 @@ export function ApplicationSidebar(props: {
   const ThemeIcon = isDarkTheme ? SunIcon : MoonIcon;
   const navigationGroups = ApplicationNavigationCatalog.buildMainGroups({
     isComputeProvidersEnabled: featureFlags.isEnabled("computer_providers"),
-    isOnboardingFocused: Boolean(props.onboardingFocus),
+    isOnboardingFocused: Boolean(props.isOnboardingFocused),
   });
-  const homeTarget = props.onboardingFocus ? "/onboarding" : "/";
+  const homeTarget = props.isOnboardingFocused ? "/onboarding" : "/";
 
   function handleNavigationClick() {
     if (!sidebarState.isMobile) {
@@ -257,13 +188,6 @@ export function ApplicationSidebar(props: {
               {isDarkTheme ? "Dark theme" : "Light theme"}
             </span>
           </Button>
-
-          {props.onboardingFocus ? (
-            <ApplicationSidebarSkipOnboardingAction
-              isSkipInFlight={props.onboardingFocus.isSkipInFlight}
-              onSkip={props.onboardingFocus.onSkip}
-            />
-          ) : null}
 
           <SidebarMenu>
             <SidebarMenuItem>

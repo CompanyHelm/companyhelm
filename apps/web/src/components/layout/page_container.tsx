@@ -4,7 +4,8 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
 import { ApplicationBreadcrumbProvider } from "@/components/layout/application_breadcrumb_context";
 import { ApplicationHeader } from "@/components/layout/application_header";
-import { ApplicationSidebar, type ApplicationSidebarOnboardingFocus } from "@/components/layout/application_sidebar";
+import { ApplicationSidebar } from "@/components/layout/application_sidebar";
+import type { OnboardingSkipActionProps } from "@/components/layout/onboarding_skip_action";
 import { ErrorBoundary } from "@/components/error_boundary";
 import { ErrorState } from "@/components/error_state";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -101,7 +102,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   const tasksViewType = currentLocation.searchParams.get("viewType");
   const isTasksBoardPage = normalizedPathname === "/tasks" && tasksViewType !== "list";
   const isFullHeightPage = isChatsPage || isOnboardingPage || isConversationsPage || isTasksBoardPage;
-  const onboardingFocus: ApplicationSidebarOnboardingFocus | null = isOnboardingFocused
+  const onboardingSkipAction: OnboardingSkipActionProps | null = isOnboardingFocused
     ? {
         isSkipInFlight: isSkipCompanyOnboardingInFlight,
         onSkip: () => {
@@ -195,14 +196,14 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   return (
     <ApplicationBreadcrumbProvider>
       <SidebarProvider defaultOpen>
-        <ApplicationSidebar onboardingFocus={onboardingFocus} />
+        <ApplicationSidebar isOnboardingFocused={isOnboardingFocused} />
         <SidebarInset
           className={cn(
             "min-h-svh",
             isFullHeightPage && "h-svh min-h-0 max-h-svh overflow-hidden md:peer-data-[variant=inset]:my-0",
           )}
         >
-          <ApplicationHeader />
+          <ApplicationHeader onboardingSkipAction={onboardingSkipAction} />
           <div
             className={cn(
               "flex flex-1 flex-col",
