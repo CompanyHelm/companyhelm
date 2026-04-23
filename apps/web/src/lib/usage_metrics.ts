@@ -270,18 +270,22 @@ export class UsageMetrics {
     }
 
     if (period === "month") {
-      return new Intl.DateTimeFormat("en-US", {
+      const formattedMonth = new Intl.DateTimeFormat("en-US", {
         month: "short",
         timeZone: "UTC",
         year: "numeric",
       }).format(date);
+
+      return `${formattedMonth} (UTC)`;
     }
 
-    return new Intl.DateTimeFormat("en-US", {
+    const formattedDay = new Intl.DateTimeFormat("en-US", {
       day: "numeric",
       month: "short",
       timeZone: "UTC",
     }).format(date);
+
+    return `${formattedDay} (UTC)`;
   }
 
   static resolveBarWidth(value: number, maxValue: number): string {

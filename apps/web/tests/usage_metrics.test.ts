@@ -19,6 +19,11 @@ test("formats token breakdowns with cache tokens when they contribute to the tot
   assert.equal(UsageMetrics.formatTokenBreakdown(aggregate), "264K input, 22K output, 1.5M cache");
 });
 
+test("formats usage period labels with explicit UTC markers", () => {
+  assert.equal(UsageMetrics.formatPeriodLabel("2026-04-20T00:00:00.000Z", "day"), "Apr 20 (UTC)");
+  assert.equal(UsageMetrics.formatPeriodLabel("2026-04-01T00:00:00.000Z", "month"), "Apr 2026 (UTC)");
+});
+
 test("formats actual and virtual cost breakdowns separately", () => {
   const aggregate = UsageMetrics.emptyAggregate("provider", "credential-1");
   aggregate.totalCostNanoUsd = 2_500_000_000;

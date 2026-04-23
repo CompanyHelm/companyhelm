@@ -50,7 +50,7 @@ function UsageDailyBarChart(props: UsageDailyBarChartProps) {
     <section className="rounded-lg border border-border/70 bg-background/80 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">{props.title}</h3>
-        <Badge variant="outline">Last 30 days</Badge>
+        <Badge variant="outline">Last 30 days (UTC)</Badge>
       </div>
 
       {!hasUsage ? (
@@ -123,8 +123,13 @@ function UsageDailyBarChart(props: UsageDailyBarChartProps) {
                     title={`${dateLabel}: ${formattedValue}`}
                   />
                 </div>
-                <span className="h-4 text-center text-[10px] leading-4 text-muted-foreground">
-                  {showAxisLabel ? formatDailyAxisLabel(row.periodStart) : ""}
+                <span className="flex h-7 flex-col items-center justify-start gap-0.5 text-center text-[10px] leading-none text-muted-foreground">
+                  {showAxisLabel ? (
+                    <>
+                      <span>{formatDailyAxisLabel(row.periodStart)}</span>
+                      <span className="text-[9px]">UTC</span>
+                    </>
+                  ) : null}
                 </span>
               </div>
             );
@@ -213,12 +218,14 @@ function formatDailyTooltipDate(periodStart: string): string {
     return "Unknown day";
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  const formattedDate = new Intl.DateTimeFormat("en-US", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
     year: "numeric",
   }).format(date);
+
+  return `${formattedDate} (UTC)`;
 }
 
 function formatDailyTooltipDetail(aggregate: UsageAggregateRecord, metric: UsageMetricView): string {
