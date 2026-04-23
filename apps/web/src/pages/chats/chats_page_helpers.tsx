@@ -38,6 +38,7 @@ export const CHATS_THINKING_GRADIENT_KEYFRAMES = `
   }
 }
 `;
+export const CHATS_THINKING_INDICATOR_BACKGROUND_IMAGE = "linear-gradient(90deg, color-mix(in srgb, var(--foreground) 32%, transparent) 0%, color-mix(in srgb, var(--foreground) 95%, transparent) 48%, color-mix(in srgb, var(--foreground) 32%, transparent) 100%)";
 
 type TerminalStructuredContentRecord = {
   type: "terminal";
