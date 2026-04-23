@@ -16,17 +16,14 @@ export type LocalAuthTokenClaims = {
 export class LocalAuthSessionService {
   private readonly config: Extract<Config["auth"], {
     provider: "local";
-  }>;
+  }> | null;
 
   constructor(@inject(Config) config: Config) {
-    if (config.auth.provider !== "local") {
-      throw new Error("Local auth session service requires local auth configuration.");
-    }
-
-    this.config = config.auth;
+    this.config = config.auth.provider === "local" ? config.auth : null;
   }
 
   async createSessionToken(input: LocalAuthTokenClaims): Promise<string> {
+    const config = this.requireLocalConfig();
     return new SignJWT({
       companyId: input.companyId,
       sessionId: input.sessionId,
@@ -35,17 +32,18 @@ export class LocalAuthSessionService {
         alg: "HS256",
         typ: "JWT",
       })
-      .setExpirationTime(`${this.config.local.session_duration_hours}h`)
+      .setExpirationTime(`${config.local.session_duration_hours}h`)
       .setIssuedAt()
-      .setIssuer(this.config.local.session_issuer)
+      .setIssuer(config.local.session_issuer)
       .setJti(input.sessionId)
       .setSubject(input.userId)
       .sign(this.resolveSecret());
   }
 
   async verifySessionToken(token: string): Promise<LocalAuthTokenClaims> {
+    const config = this.requireLocalConfig();
     const verifiedToken = await jwtVerify(token, this.resolveSecret(), {
-      issuer: this.config.local.session_issuer,
+      issuer: config.local.session_issuer,
     });
     const companyId = String(verifiedToken.payload.companyId || "").trim();
     const sessionId = String(verifiedToken.payload.sessionId || verifiedToken.payload.jti || "").trim();
@@ -63,6 +61,16 @@ export class LocalAuthSessionService {
   }
 
   private resolveSecret(): Uint8Array {
-    return new TextEncoder().encode(this.config.local.session_secret);
+    return new TextEncoder().encode(this.requireLocalConfig().local.session_secret);
+  }
+
+  private requireLocalConfig(): Extract<Config["auth"], {
+    provider: "local";
+  }> {
+    if (!this.config) {
+      throw new Error("Local auth session service requires local auth configuration.");
+    }
+
+    return this.config;
   }
 }

@@ -83,7 +83,7 @@ export class LocalAuthService {
   private readonly companyBootstrapService: CompanyBootstrapService;
   private readonly config: Extract<Config["auth"], {
     provider: "local";
-  }>;
+  }> | null;
   private readonly database: AppRuntimeDatabase;
   private readonly passwordService: LocalAuthPasswordService;
   private readonly sessionService: LocalAuthSessionService;
@@ -95,12 +95,8 @@ export class LocalAuthService {
     @inject(LocalAuthSessionService) sessionService: LocalAuthSessionService,
     @inject(CompanyBootstrapService) companyBootstrapService: CompanyBootstrapService,
   ) {
-    if (config.auth.provider !== "local") {
-      throw new Error("Local auth service requires local auth configuration.");
-    }
-
     this.companyBootstrapService = companyBootstrapService;
-    this.config = config.auth;
+    this.config = config.auth.provider === "local" ? config.auth : null;
     this.database = database;
     this.passwordService = passwordService;
     this.sessionService = sessionService;
@@ -113,6 +109,7 @@ export class LocalAuthService {
     lastName?: string | null;
     password: string;
   }): Promise<LocalAuthSessionDocument> {
+    const config = this.requireLocalConfig();
     const db = this.database.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
@@ -125,7 +122,7 @@ export class LocalAuthService {
     const password = this.normalizePassword(input.password);
     const passwordHashRecord = await this.passwordService.createPasswordHash(
       password,
-      this.config.local.password_pepper,
+      config.local.password_pepper,
     );
 
     return db.transaction(async (transaction) => {
@@ -204,6 +201,7 @@ export class LocalAuthService {
     email: string;
     password: string;
   }): Promise<LocalAuthSessionDocument> {
+    const config = this.requireLocalConfig();
     const db = this.database.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
@@ -222,7 +220,7 @@ export class LocalAuthService {
         password,
         passwordHash: credentialRecord.passwordHash,
         passwordSalt: credentialRecord.passwordSalt,
-        pepper: this.config.local.password_pepper,
+        pepper: config.local.password_pepper,
       });
       if (!isValidPassword) {
         throw new Error("Invalid email or password.");
@@ -293,9 +291,10 @@ export class LocalAuthService {
       slug: string;
     },
   ): Promise<LocalAuthSessionDocument> {
+    const config = this.requireLocalConfig();
     const sessionId = randomUUID();
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + (this.config.local.session_duration_hours * 60 * 60 * 1000));
+    const expiresAt = new Date(now.getTime() + (config.local.session_duration_hours * 60 * 60 * 1000));
     const insertableDatabase = transaction as InsertableDatabase;
 
     await insertableDatabase
@@ -583,5 +582,15 @@ export class LocalAuthService {
     }
 
     return normalizedPassword;
+  }
+
+  private requireLocalConfig(): Extract<Config["auth"], {
+    provider: "local";
+  }> {
+    if (!this.config) {
+      throw new Error("Local auth service requires local auth configuration.");
+    }
+
+    return this.config;
   }
 }
