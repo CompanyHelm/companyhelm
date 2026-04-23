@@ -2198,7 +2198,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
         shouldUseCompactComposerSettings={shouldUseCompactComposerSettings}
       />
 
-      <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent shadow-none ring-0">
+      <Card className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border-0 bg-transparent !pb-px shadow-none ring-0">
         <ChatsReconnectBanner visible={isReconnectingLiveUpdates} />
 
         {errorMessage ? (
