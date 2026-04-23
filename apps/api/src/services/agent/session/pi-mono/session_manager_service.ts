@@ -36,6 +36,7 @@ import { AgentSessionRuntimeContext } from "./runtime_context.ts";
 import { Config } from "../../../../config/schema.ts";
 import { McpService } from "../../../mcp/service.ts";
 import { WorkflowService } from "../../../workflows/service.ts";
+import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 
 type SessionRuntimeConfig = {
   agentId: string;
@@ -99,6 +100,7 @@ export class PiMonoSessionManagerService {
   private readonly appModelRegistry: ModelRegistry;
   private readonly mcpService: McpService;
   private readonly sessionModuleRegistry: DefaultAgentSessionModuleRegistry;
+  private readonly enhancedLoggingService: EnhancedLoggingService;
 
   constructor(
     @inject(Config) config: Config,
@@ -132,6 +134,8 @@ export class PiMonoSessionManagerService {
         throw new Error("workflow runs should not be started during createRuntime");
       },
     } as never,
+    @inject(EnhancedLoggingService)
+    enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
   ) {
     this.logger = logger.child({
       component: "pi_mono_session_manager_service",
@@ -149,6 +153,7 @@ export class PiMonoSessionManagerService {
     this.openRouterCatalogService = openRouterCatalogService;
     this.appModelRegistry = appModelRegistry;
     this.mcpService = mcpService;
+    this.enhancedLoggingService = enhancedLoggingService;
     this.sessionModuleRegistry = new DefaultAgentSessionModuleRegistry({
       agentConversationService: this.agentConversationService,
       config,
@@ -232,6 +237,7 @@ export class PiMonoSessionManagerService {
       {
         contextMessagesSnapshotProvider: () => session.agent.state.messages,
         contextSnapshotProvider: () => this.buildContextSnapshot(session),
+        enhancedLoggingService: this.enhancedLoggingService,
         initialContextMessagesSnapshotAt: storedContextMessagesSnapshot.contextMessagesSnapshotAt,
         logger: this.logger,
       },
@@ -273,18 +279,38 @@ export class PiMonoSessionManagerService {
     await runtime.eventHandler.startPromptTurn(new Date());
     let completedTurnAt: Date;
     try {
+      const promptStartedAtMilliseconds = Date.now();
       await session.prompt(message, images && images.length > 0 ? { images } : undefined);
+      this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_call_end", {
+        durationMs: Date.now() - promptStartedAtMilliseconds,
+        pendingMessageCount: session.pendingMessageCount,
+      });
       // `steer()` only queues a user message. If it lands after PI Mono's last steering poll for
       // the current run, `prompt()` can return with pending messages still enqueued and not yet
       // emitted as transcripted `message_end` events, so drain the queue before closing the turn.
+      const pendingDrainStartedAtMilliseconds = Date.now();
+      let drainIterations = 0;
       while (session.pendingMessageCount > 0) {
+        drainIterations += 1;
         await session.agent.continue();
       }
+      this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_pending_drain_end", {
+        drainIterations,
+        durationMs: Date.now() - pendingDrainStartedAtMilliseconds,
+      });
     } finally {
       completedTurnAt = new Date();
+      const finishPromptTurnStartedAtMilliseconds = Date.now();
       await runtime.eventHandler.finishPromptTurn(completedTurnAt);
+      this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_finish_turn_end", {
+        durationMs: Date.now() - finishPromptTurnStartedAtMilliseconds,
+      });
     }
+    const snapshotStartedAtMilliseconds = Date.now();
     await this.persistRuntimeContextSnapshot(runtime, transactionProvider, sessionId, completedTurnAt);
+    this.logEnhanced(runtime.getCompanyId(), sessionId, "session_prompt_tail", "session_prompt_snapshot_end", {
+      durationMs: Date.now() - snapshotStartedAtMilliseconds,
+    });
   }
 
   async steer(
@@ -344,10 +370,39 @@ export class PiMonoSessionManagerService {
 
   async disposeRuntime(runtime: AgentSessionRuntimeContext): Promise<void> {
     try {
+      const cleanupToolsStartedAtMilliseconds = Date.now();
       await runtime.toolsService.cleanupTools();
+      this.logEnhanced(runtime.getCompanyId(), runtime.bootstrapContext.sessionId, "session_process_cleanup", "session_runtime_cleanup_tools_end", {
+        durationMs: Date.now() - cleanupToolsStartedAtMilliseconds,
+      });
     } finally {
+      const sessionDisposeStartedAtMilliseconds = Date.now();
       runtime.session.dispose();
+      this.logEnhanced(runtime.getCompanyId(), runtime.bootstrapContext.sessionId, "session_process_cleanup", "session_runtime_dispose_end", {
+        durationMs: Date.now() - sessionDisposeStartedAtMilliseconds,
+      });
     }
+  }
+
+  private logEnhanced(
+    companyId: string,
+    sessionId: string,
+    diagnosticComponent: string,
+    diagnosticEvent: string,
+    fields: Record<string, unknown>,
+  ): void {
+    if (!this.enhancedLoggingService.shouldLogEnhanced(companyId, diagnosticComponent, sessionId)) {
+      return;
+    }
+
+    this.logger.info({
+      ...fields,
+      companyId,
+      diagnostic: "enhanced",
+      diagnosticComponent,
+      diagnosticEvent,
+      sessionId,
+    }, "enhanced diagnostic log");
   }
 
   private async createBootstrapContext(

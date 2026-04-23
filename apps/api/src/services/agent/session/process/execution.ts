@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
@@ -20,6 +21,7 @@ import { SessionProcessQueueService } from "./queue.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
 import { CompanyHelmLlmProviderService } from "../../../ai_providers/companyhelm_service.ts";
 import { CompanyManagedLlmBudgetService } from "../../../ai_providers/company_managed_llm_budget_service.ts";
+import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 
 type SessionRuntimeRow = {
   agentId: string;
@@ -87,6 +89,7 @@ export class SessionProcessExecutionService {
   private readonly sessionProcessQueueService: SessionProcessQueueService;
   private readonly sessionProcessQueuedNames: SessionProcessQueuedNames;
   private readonly sessionQueuedMessageService: SessionQueuedMessageService;
+  private readonly enhancedLoggingService: EnhancedLoggingService;
 
   constructor(
     @inject(AppRuntimeDatabase) appRuntimeDatabase: AppRuntimeDatabase,
@@ -107,6 +110,8 @@ export class SessionProcessExecutionService {
     companyHelmLlmProviderService?: CompanyHelmLlmProviderService,
     @inject(CompanyManagedLlmBudgetService)
     companyManagedLlmBudgetService: CompanyManagedLlmBudgetService = new CompanyManagedLlmBudgetService(),
+    @inject(EnhancedLoggingService)
+    enhancedLoggingService: EnhancedLoggingService = new EnhancedLoggingService(),
   ) {
     this.appRuntimeDatabase = appRuntimeDatabase;
     this.companyHelmLlmProviderService = companyHelmLlmProviderService;
@@ -122,9 +127,12 @@ export class SessionProcessExecutionService {
     this.sessionProcessQueueService = sessionProcessQueueService;
     this.sessionProcessQueuedNames = sessionProcessQueuedNames;
     this.sessionQueuedMessageService = sessionQueuedMessageService;
+    this.enhancedLoggingService = enhancedLoggingService;
   }
 
   async execute(companyId: string, sessionId: string): Promise<void> {
+    const wakeRunId = randomUUID();
+    const wakeStartedAtMilliseconds = Date.now();
     const lease = await this.sessionLeaseService.acquire(companyId, sessionId);
     if (!lease) {
       await this.enqueueDelayedWakeIfPending(companyId, sessionId);
@@ -317,6 +325,11 @@ export class SessionProcessExecutionService {
         throw error;
       }
     } finally {
+      const finalizeStartedAtMilliseconds = Date.now();
+      this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_finalize_start", {
+        sinceWakeStartMs: finalizeStartedAtMilliseconds - wakeStartedAtMilliseconds,
+        wakeRunId,
+      });
       if (interruptSubscription) {
         await interruptSubscription.unsubscribe();
       }
@@ -329,6 +342,7 @@ export class SessionProcessExecutionService {
       await interruptDeliveryPromise;
 
       try {
+        const requeueStartedAtMilliseconds = Date.now();
         const requeuedUndispatchedSteerIds = await this.sessionQueuedMessageService.requeueUndispatchedProcessingSteer?.(
           transactionProvider,
           companyId,
@@ -340,6 +354,12 @@ export class SessionProcessExecutionService {
           shouldEnqueueFollowUpWake = true;
           await this.publishQueuedMessagesUpdate(redisCompanyScopedService, sessionId);
         }
+        this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_requeue_undispatched_steers_end", {
+          durationMs: Date.now() - requeueStartedAtMilliseconds,
+          requeuedCount: requeuedUndispatchedSteerIds.length,
+          sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
+          wakeRunId,
+        });
       } catch (error) {
         this.logger.error({
           companyId,
@@ -350,20 +370,79 @@ export class SessionProcessExecutionService {
 
       try {
         if (runtime) {
+          const disposeStartedAtMilliseconds = Date.now();
+          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_dispose_runtime_start", {
+            sinceWakeStartMs: disposeStartedAtMilliseconds - wakeStartedAtMilliseconds,
+            wakeRunId,
+          });
           await this.piMonoSessionManagerService.disposeRuntime(runtime);
+          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_dispose_runtime_end", {
+            durationMs: Date.now() - disposeStartedAtMilliseconds,
+            sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
+            wakeRunId,
+          });
         }
       } finally {
         try {
+          const releaseStartedAtMilliseconds = Date.now();
+          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_release_lease_start", {
+            sinceWakeStartMs: releaseStartedAtMilliseconds - wakeStartedAtMilliseconds,
+            wakeRunId,
+          });
           await this.sessionLeaseService.release(lease);
+          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_release_lease_end", {
+            durationMs: Date.now() - releaseStartedAtMilliseconds,
+            sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
+            wakeRunId,
+          });
         } finally {
+          const disconnectStartedAtMilliseconds = Date.now();
           await redisCompanyScopedService.disconnect();
+          this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_disconnect_redis_end", {
+            durationMs: Date.now() - disconnectStartedAtMilliseconds,
+            sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
+            wakeRunId,
+          });
         }
       }
 
       if (shouldEnqueueFollowUpWake) {
+        const followUpWakeStartedAtMilliseconds = Date.now();
         await this.sessionProcessQueueService.enqueueSessionWake(companyId, sessionId);
+        this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_follow_up_wake_end", {
+          durationMs: Date.now() - followUpWakeStartedAtMilliseconds,
+          sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
+          wakeRunId,
+        });
       }
+
+      this.logEnhanced(companyId, sessionId, "session_process_cleanup", "session_process_finalize_end", {
+        durationMs: Date.now() - finalizeStartedAtMilliseconds,
+        sinceWakeStartMs: Date.now() - wakeStartedAtMilliseconds,
+        wakeRunId,
+      });
     }
+  }
+
+  private logEnhanced(
+    companyId: string,
+    sessionId: string,
+    diagnosticComponent: string,
+    diagnosticEvent: string,
+    fields: Record<string, unknown>,
+  ): void {
+    if (!this.enhancedLoggingService.shouldLogEnhanced(companyId, diagnosticComponent, sessionId)) {
+      return;
+    }
+
+    this.logger.info({
+      ...fields,
+      companyId,
+      diagnostic: "enhanced",
+      diagnosticComponent,
+      diagnosticEvent,
+      sessionId,
+    }, "enhanced diagnostic log");
   }
 
   private async persistInterruptedRuntimeContext(
