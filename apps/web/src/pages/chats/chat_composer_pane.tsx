@@ -407,7 +407,7 @@ export function ChatComposerPane({
   isForkingLatestSession: boolean;
 }) {
   return (
-    <div className="relative shrink-0 border-t border-border/60 px-2 pt-2 pb-0 md:px-3 md:pt-2 md:pb-0">
+    <div className="relative shrink-0 px-1 pt-1 pb-0 md:px-2 md:pt-1 md:pb-0">
       <button
         aria-label="Resize message input"
         className="absolute inset-x-0 -top-2 z-10 h-4 cursor-move bg-transparent"
@@ -415,10 +415,10 @@ export function ChatComposerPane({
         type="button"
       />
       <div
-        className={`relative overflow-hidden rounded-[1.35rem] bg-input/20 ring-1 transition focus-within:ring-ring/40 ${
+        className={`relative overflow-hidden rounded-[1.1rem] bg-input/20 transition focus-within:bg-input/25 ${
           isComposerDragActive
-            ? "bg-primary/8 ring-primary/50"
-            : "ring-input"
+            ? "bg-primary/8"
+            : ""
         }`}
         onDragEnter={onComposerDragEnter}
         onDragLeave={onComposerDragLeave}
@@ -426,7 +426,7 @@ export function ChatComposerPane({
         onDrop={onComposerDrop}
       >
         {isComposerDragActive ? (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[1.35rem] border border-dashed border-primary/60 bg-primary/10 px-6 text-center">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[1.1rem] bg-primary/10 px-6 text-center">
             <div className="grid gap-1">
               <p className="text-sm font-medium text-foreground">Drop JPEG or PNG images here</p>
               <p className="text-xs text-muted-foreground">They&apos;ll be attached to your next message.</p>
@@ -485,7 +485,7 @@ export function ChatComposerPane({
             <textarea
               id="chat-draft-message"
               ref={draftTextareaRef}
-              className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-3 pt-2 pb-1.5 text-sm leading-5 outline-none"
+              className="min-h-[2.25rem] max-h-[15rem] w-full resize-none bg-transparent px-2.5 pt-1.5 pb-0 text-sm leading-5 outline-none"
               onChange={(event) => {
                 onDraftMessageChange(event.target.value);
               }}
@@ -507,7 +507,7 @@ export function ChatComposerPane({
               value={draftMessage}
             />
           </div>
-          <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2 px-1.5 pt-0 pb-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <Button
                 aria-label="Add images"
