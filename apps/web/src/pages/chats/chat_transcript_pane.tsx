@@ -726,9 +726,9 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
               {currentStepName}
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex h-6 shrink-0 items-center gap-2">
             <Badge
-              className="h-5 px-1.5 text-[0.625rem]"
+              className="h-5 px-1.5 text-[0.625rem] leading-none"
               variant={WorkflowRunPresenter.resolveRunBadgeVariant(workflowRun.status)}
             >
               {WorkflowRunPresenter.isRunning(workflowRun) ? (
@@ -736,7 +736,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
               ) : null}
               {statusLabel}
             </Badge>
-            <span className="text-xs font-medium text-muted-foreground">{progressLabel} steps</span>
+            <span className="inline-flex h-5 items-center text-xs font-medium leading-none text-muted-foreground">{progressLabel} steps</span>
           </div>
         </div>
 
