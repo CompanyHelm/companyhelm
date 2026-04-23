@@ -116,72 +116,28 @@ export class WorkflowSystemCommandService {
 
   private async updateStep(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
     const payload = this.requireRecord(input);
-    const workflowDefinitionId = this.readRequiredString(payload, "workflowDefinitionId");
-    const stepId = this.readRequiredString(payload, "stepId");
-    const workflow = await this.workflowService.getWorkflow(
+    return this.workflowService.updateWorkflowStep(
       context.transactionProvider,
-      context.companyId,
-      workflowDefinitionId,
+      {
+        companyId: context.companyId,
+        instructions: this.readOptionalNullableString(payload, "instructions"),
+        name: this.readOptionalString(payload, "name"),
+        stepId: this.readRequiredString(payload, "stepId"),
+        workflowDefinitionId: this.readRequiredString(payload, "workflowDefinitionId"),
+      },
     );
-
-    let foundStep = false;
-    const nextSteps = workflow.steps.map((step) => {
-      if (!this.stepMatchesIdentifier(step, stepId)) {
-        return {
-          instructions: step.instructions,
-          name: step.name,
-        };
-      }
-
-      foundStep = true;
-      const nextInstructions = Object.prototype.hasOwnProperty.call(payload, "instructions")
-        ? this.readOptionalNullableString(payload, "instructions") ?? null
-        : step.instructions;
-      const nextName = Object.prototype.hasOwnProperty.call(payload, "name")
-        ? this.readRequiredString(payload, "name")
-        : step.name;
-
-      return {
-        instructions: nextInstructions,
-        name: nextName,
-      };
-    });
-
-    if (!foundStep) {
-      throw new Error(`Workflow step ${stepId} not found.`);
-    }
-
-    return this.workflowService.updateWorkflow(context.transactionProvider, {
-      companyId: context.companyId,
-      steps: nextSteps,
-      workflowDefinitionId,
-    });
   }
 
   private async deleteStep(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
     const payload = this.requireRecord(input);
-    const workflowDefinitionId = this.readRequiredString(payload, "workflowDefinitionId");
-    const stepId = this.readRequiredString(payload, "stepId");
-    const workflow = await this.workflowService.getWorkflow(
+    return this.workflowService.deleteWorkflowStep(
       context.transactionProvider,
-      context.companyId,
-      workflowDefinitionId,
+      {
+        companyId: context.companyId,
+        stepId: this.readRequiredString(payload, "stepId"),
+        workflowDefinitionId: this.readRequiredString(payload, "workflowDefinitionId"),
+      },
     );
-    const nextSteps = workflow.steps
-      .filter((step) => !this.stepMatchesIdentifier(step, stepId))
-      .map((step) => ({
-        instructions: step.instructions,
-        name: step.name,
-      }));
-    if (nextSteps.length === workflow.steps.length) {
-      throw new Error(`Workflow step ${stepId} not found.`);
-    }
-
-    return this.workflowService.updateWorkflow(context.transactionProvider, {
-      companyId: context.companyId,
-      steps: nextSteps,
-      workflowDefinitionId,
-    });
   }
 
   private async addInput(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
@@ -311,19 +267,6 @@ export class WorkflowSystemCommandService {
     }
 
     return value;
-  }
-
-  /**
-   * Workflow tools surface both the database row id and the stable workflow step id, while the
-   * management system commands accept a generic `stepId` field. Accepting either identifier keeps
-   * command callers aligned with the serialized workflow shape and preserves compatibility with any
-   * callers that already captured the row id from prior responses.
-   */
-  private stepMatchesIdentifier(
-    step: Pick<WorkflowRecord["steps"][number], "id" | "stepId">,
-    stepId: string,
-  ): boolean {
-    return step.id === stepId || step.stepId === stepId;
   }
 
   private readOptionalString(payload: Record<string, unknown>, key: string): string | undefined {

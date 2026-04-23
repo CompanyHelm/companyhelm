@@ -213,44 +213,18 @@ test("SystemCommandService updates workflow steps when manage_workflows is activ
       },
     } as never,
     workflowService: {
-      async getWorkflow(_transactionProvider: unknown, companyId: string, workflowDefinitionId: string) {
-        assert.equal(companyId, "company-123");
-        assert.equal(workflowDefinitionId, "workflow-1");
-        return {
-          ...workflowRecord,
-          steps: [{
-            createdAt: new Date("2026-04-20T12:00:00.000Z"),
-            id: "step-row-1",
-            instructions: "Old instructions",
-            name: "Old step",
-            ordinal: 1,
-            stepId: "step-1",
-            workflowDefinitionId: "workflow-1",
-          }, {
-            createdAt: new Date("2026-04-20T12:05:00.000Z"),
-            id: "step-row-2",
-            instructions: "Keep this",
-            name: "Second step",
-            ordinal: 2,
-            stepId: "step-2",
-            workflowDefinitionId: "workflow-1",
-          }],
-        };
-      },
-      async updateWorkflow(_transactionProvider: unknown, input: {
+      async updateWorkflowStep(_transactionProvider: unknown, input: {
         companyId: string;
-        steps?: Array<{ instructions?: string | null; name: string }> | null;
+        instructions?: string | null;
+        name?: string | null;
+        stepId: string;
         workflowDefinitionId: string;
       }) {
         assert.equal(input.companyId, "company-123");
         assert.equal(input.workflowDefinitionId, "workflow-1");
-        assert.deepEqual(input.steps, [{
-          instructions: "New instructions",
-          name: "Updated step",
-        }, {
-          instructions: "Keep this",
-          name: "Second step",
-        }]);
+        assert.equal(input.stepId, "step-1");
+        assert.equal(input.instructions, "New instructions");
+        assert.equal(input.name, "Updated step");
 
         return {
           ...workflowRecord,
@@ -305,7 +279,18 @@ test("SystemCommandService updates workflow steps when manage_workflows is activ
 });
 
 test("SystemCommandService rejects workflow step updates when the target step does not exist", async () => {
-  const updateWorkflow = vi.fn();
+  const updateWorkflowStep = vi.fn(async (_transactionProvider: unknown, input: {
+    companyId: string;
+    instructions?: string | null;
+    name?: string | null;
+    stepId: string;
+    workflowDefinitionId: string;
+  }) => {
+    assert.equal(input.companyId, "company-123");
+    assert.equal(input.workflowDefinitionId, "workflow-1");
+    assert.equal(input.stepId, "missing-step");
+    throw new Error("Workflow step missing-step not found.");
+  });
   const service = new SystemCommandService({
     sessionSkillService: {
       async isSystemSkillActive() {
@@ -313,21 +298,7 @@ test("SystemCommandService rejects workflow step updates when the target step do
       },
     } as never,
     workflowService: {
-      async getWorkflow() {
-        return {
-          ...workflowRecord,
-          steps: [{
-            createdAt: new Date("2026-04-20T12:00:00.000Z"),
-            id: "step-row-1",
-            instructions: "Old instructions",
-            name: "Old step",
-            ordinal: 1,
-            stepId: "step-1",
-            workflowDefinitionId: "workflow-1",
-          }],
-        };
-      },
-      updateWorkflow,
+      updateWorkflowStep,
     } as never,
   });
 
@@ -343,7 +314,7 @@ test("SystemCommandService rejects workflow step updates when the target step do
     }),
     /Workflow step missing-step not found\./,
   );
-  assert.equal(updateWorkflow.mock.calls.length, 0);
+  assert.equal(updateWorkflowStep.mock.calls.length, 1);
 });
 
 test("SystemCommandService deletes workflow steps when the stable workflow step id is provided", async () => {
@@ -354,39 +325,14 @@ test("SystemCommandService deletes workflow steps when the stable workflow step 
       },
     } as never,
     workflowService: {
-      async getWorkflow() {
-        return {
-          ...workflowRecord,
-          steps: [{
-            createdAt: new Date("2026-04-20T12:00:00.000Z"),
-            id: "step-row-1",
-            instructions: "Old instructions",
-            name: "Old step",
-            ordinal: 1,
-            stepId: "step-1",
-            workflowDefinitionId: "workflow-1",
-          }, {
-            createdAt: new Date("2026-04-20T12:05:00.000Z"),
-            id: "step-row-2",
-            instructions: "Keep this",
-            name: "Second step",
-            ordinal: 2,
-            stepId: "step-2",
-            workflowDefinitionId: "workflow-1",
-          }],
-        };
-      },
-      async updateWorkflow(_transactionProvider: unknown, input: {
+      async deleteWorkflowStep(_transactionProvider: unknown, input: {
         companyId: string;
-        steps?: Array<{ instructions?: string | null; name: string }> | null;
+        stepId: string;
         workflowDefinitionId: string;
       }) {
         assert.equal(input.companyId, "company-123");
         assert.equal(input.workflowDefinitionId, "workflow-1");
-        assert.deepEqual(input.steps, [{
-          instructions: "Keep this",
-          name: "Second step",
-        }]);
+        assert.equal(input.stepId, "step-1");
 
         return {
           ...workflowRecord,
