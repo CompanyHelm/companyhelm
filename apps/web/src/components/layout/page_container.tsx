@@ -21,6 +21,9 @@ interface PageContainerProps {
 const pageContainerCompanyOnboardingQueryNode = graphql`
   query pageContainerCompanyOnboardingQuery {
     Me {
+      user {
+        isPlatformAdmin
+      }
       company {
         id
         onboarding {
@@ -93,8 +96,11 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
     );
   const [onboardingErrorMessage, setOnboardingErrorMessage] = useState<string | null>(null);
   const onboarding = data.Me.company.onboarding;
+  const isPlatformAdmin = data.Me.user.isPlatformAdmin;
   const isOnboardingFocused = onboarding.status === "not_started" || onboarding.status === "in_progress";
   const normalizedPathname = OrganizationPath.stripPrefix(props.pathname);
+  const isAdminPage = normalizedPathname === "/admin" || normalizedPathname.startsWith("/admin/");
+  const shouldFocusOnboarding = isOnboardingFocused && !isAdminPage;
   const isChatsPage = normalizedPathname.startsWith("/chats");
   const isOnboardingPage = normalizedPathname.startsWith("/onboarding");
   const isConversationsPage = normalizedPathname.startsWith("/conversations");
@@ -102,7 +108,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   const tasksViewType = currentLocation.searchParams.get("viewType");
   const isTasksBoardPage = normalizedPathname === "/tasks" && tasksViewType !== "list";
   const isFullHeightPage = isChatsPage || isOnboardingPage || isConversationsPage || isTasksBoardPage;
-  const onboardingSkipAction: OnboardingSkipActionProps | null = isOnboardingFocused
+  const onboardingSkipAction: OnboardingSkipActionProps | null = shouldFocusOnboarding
     ? {
         isSkipInFlight: isSkipCompanyOnboardingInFlight,
         onSkip: () => {
@@ -149,7 +155,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
     : props.children;
 
   useEffect(() => {
-    if (!isOnboardingFocused) {
+    if (!shouldFocusOnboarding) {
       return;
     }
     if (isOnboardingPage || normalizedPathname.startsWith("/inbox") || normalizedPathname.startsWith("/settings")) {
@@ -164,7 +170,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
       to: OrganizationPath.route("/onboarding"),
     });
   }, [
-    isOnboardingFocused,
+    shouldFocusOnboarding,
     isOnboardingPage,
     navigate,
     normalizedPathname,
@@ -196,7 +202,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   return (
     <ApplicationBreadcrumbProvider>
       <SidebarProvider defaultOpen={false}>
-        <ApplicationSidebar isOnboardingFocused={isOnboardingFocused} />
+        <ApplicationSidebar isOnboardingFocused={shouldFocusOnboarding} isPlatformAdmin={isPlatformAdmin} />
         <SidebarInset
           className={cn(
             "min-h-svh",

@@ -7,6 +7,8 @@ import {
 } from "@tanstack/react-router";
 import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
+import { AdminDashboardPage } from "./pages/admin/dashboard_page";
+import { AdminUsersPage } from "./pages/admin/users_page";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
@@ -239,6 +241,18 @@ const organizationDashboardRoute = createRoute({
   component: DashboardPage,
 });
 
+const adminDashboardRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/admin"),
+  component: AdminDashboardPage,
+});
+
+const adminUsersRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/admin/users"),
+  component: AdminUsersPage,
+});
+
 const flagsRoute = createRoute({
   getParentRoute: () => pageContainerRoute,
   path: "/flags",
@@ -459,6 +473,8 @@ const routeTree = rootRoute.addChildren([
       rootIndexRoute,
       organizationRoute.addChildren([
         organizationDashboardRoute,
+        adminDashboardRoute,
+        adminUsersRoute,
         flagsRoute,
         agentsRoute,
         environmentsRoute,

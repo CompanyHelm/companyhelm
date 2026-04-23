@@ -4,6 +4,7 @@ export type AuthenticatedUser = {
   id: string;
   email: string;
   firstName: string;
+  isPlatformAdmin?: boolean;
   lastName: string | null;
   provider: "clerk";
   providerSubject: string;

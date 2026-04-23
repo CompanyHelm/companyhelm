@@ -54,6 +54,7 @@ export const users = pgTable("users", {
     .primaryKey()
     .$defaultFn(() => randomUUID()),
   clerkUserId: text("clerk_user_id"),
+  isPlatformAdmin: boolean("is_platform_admin").notNull().default(false),
   first_name: text("first_name").notNull(),
   last_name: text("last_name"),
   email: text("email").notNull(),

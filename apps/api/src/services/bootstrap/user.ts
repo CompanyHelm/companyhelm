@@ -8,6 +8,7 @@ type UserRecord = {
   clerk_user_id: string | null;
   email: string;
   first_name: string;
+  is_platform_admin: boolean;
   last_name: string | null;
 };
 
@@ -84,6 +85,7 @@ export class UserBootstrapService {
         clerk_user_id: users.clerkUserId,
         email: users.email,
         first_name: users.first_name,
+        is_platform_admin: users.isPlatformAdmin,
         last_name: users.last_name,
       });
     const createdRows = insertResult ? await insertResult as UserRecord[] : [];
@@ -119,6 +121,7 @@ export class UserBootstrapService {
         clerk_user_id: users.clerkUserId,
         email: users.email,
         first_name: users.first_name,
+        is_platform_admin: users.isPlatformAdmin,
         last_name: users.last_name,
       })
       .from(users)

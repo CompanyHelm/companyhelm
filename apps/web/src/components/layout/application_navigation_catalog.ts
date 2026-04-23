@@ -11,8 +11,10 @@ import {
   MessageSquareIcon,
   MessagesSquareIcon,
   PlugIcon,
+  ShieldCheckIcon,
   ServerIcon,
   SparklesIcon,
+  UsersIcon,
   WorkflowIcon,
   WrenchIcon,
   CalendarClockIcon,
@@ -41,6 +43,7 @@ export class ApplicationNavigationCatalog {
    */
   public static buildMainGroups(input: {
     isComputeProvidersEnabled: boolean;
+    isPlatformAdmin?: boolean;
     isOnboardingFocused?: boolean;
   }): readonly ApplicationNavigationGroupRecord[] {
     if (input.isOnboardingFocused) {
@@ -173,6 +176,23 @@ export class ApplicationNavigationCatalog {
         ],
         label: "Sources",
       },
+      ...(input.isPlatformAdmin
+        ? [{
+          items: [
+            {
+              icon: ShieldCheckIcon,
+              label: "Admin",
+              to: "/admin",
+            },
+            {
+              icon: UsersIcon,
+              label: "Users",
+              to: "/admin/users",
+            },
+          ],
+          label: "Platform",
+        } satisfies ApplicationNavigationGroupRecord]
+        : []),
     ];
   }
 }

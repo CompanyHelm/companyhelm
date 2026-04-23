@@ -80,6 +80,7 @@ function ApplicationSidebarInboxBadge() {
 
 export function ApplicationSidebar(props: {
   isOnboardingFocused?: boolean;
+  isPlatformAdmin?: boolean;
 }) {
   const userState = useUser();
   const featureFlags = useFeatureFlags();
@@ -95,6 +96,7 @@ export function ApplicationSidebar(props: {
   const navigationGroups = ApplicationNavigationCatalog.buildMainGroups({
     isComputeProvidersEnabled: featureFlags.isEnabled("computer_providers"),
     isOnboardingFocused: Boolean(props.isOnboardingFocused),
+    isPlatformAdmin: props.isPlatformAdmin,
   });
   const homeTarget = props.isOnboardingFocused ? "/onboarding" : "/";
 

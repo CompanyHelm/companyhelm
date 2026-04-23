@@ -21,6 +21,7 @@ type Query {
   InboxHumanQuestions: [InboxHumanQuestion!]!
   CompanyManagedLlmBudget: CompanyManagedLlmBudget!
   LlmUsageAggregates(input: LlmUsageAggregatesInput!): [LlmUsageAggregate!]!
+  PlatformAdminUsers(page: Int!, pageSize: Int!): PlatformAdminUserPage!
   Skill(id: ID!): Skill!
   SkillGroups: [SkillGroup!]!
   Skills: [Skill!]!
@@ -451,6 +452,7 @@ type MeUser {
   id: ID!
   email: String!
   firstName: String!
+  isPlatformAdmin: Boolean!
   lastName: String
 }
 
@@ -458,6 +460,25 @@ type Me {
   user: MeUser!
   company: AuthenticatedCompany!
   serverVersion: String!
+}
+
+type PlatformAdminUser {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String
+  isPlatformAdmin: Boolean!
+  companyCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type PlatformAdminUserPage {
+  nodes: [PlatformAdminUser!]!
+  page: Int!
+  pageSize: Int!
+  totalCount: Int!
+  totalPages: Int!
 }
 
 type Agent {

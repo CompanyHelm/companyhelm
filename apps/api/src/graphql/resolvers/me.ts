@@ -25,7 +25,10 @@ export class MeQueryResolver extends Resolver<MeQueryResult> {
     return {
       company: context.authSession.company,
       serverVersion: MeQueryResolver.serverVersion,
-      user: context.authSession.user,
+      user: {
+        ...context.authSession.user,
+        isPlatformAdmin: context.authSession.user.isPlatformAdmin === true,
+      },
     };
   };
 

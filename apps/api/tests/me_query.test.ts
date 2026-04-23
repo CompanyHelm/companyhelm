@@ -56,6 +56,7 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
           id: "user-123",
           email: "user@example.com",
           firstName: "User",
+          isPlatformAdmin: true,
           lastName: "Example",
           provider: "clerk" as const,
           providerSubject: "user_clerk_123",
@@ -94,6 +95,7 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
               id
               email
               firstName
+              isPlatformAdmin
               lastName
             }
             company {
@@ -114,6 +116,7 @@ test("GraphQL Me query returns the authenticated user and company", async () => 
       id: "user-123",
       email: "user@example.com",
       firstName: "User",
+      isPlatformAdmin: true,
       lastName: "Example",
     },
     company: {

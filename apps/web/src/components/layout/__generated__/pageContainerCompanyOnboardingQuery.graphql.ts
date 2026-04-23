@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4330fdaeea4a4a4275950b2613834425>>
+ * @generated SignedSource<<90b08db15862e23429f0efa282bc969b>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,9 @@ export type pageContainerCompanyOnboardingQuery$data = {
         readonly status: CompanyOnboardingStatus;
       };
     };
+    readonly user: {
+      readonly isPlatformAdmin: boolean;
+    };
   };
 };
 export type pageContainerCompanyOnboardingQuery = {
@@ -32,60 +35,79 @@ var v0 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "isPlatformAdmin",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v1 = [
-  {
-    "alias": null,
-    "args": null,
-    "concreteType": "Me",
-    "kind": "LinkedField",
-    "name": "Me",
-    "plural": false,
-    "selections": [
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "AuthenticatedCompany",
-        "kind": "LinkedField",
-        "name": "company",
-        "plural": false,
-        "selections": [
-          (v0/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "concreteType": "CompanyOnboarding",
-            "kind": "LinkedField",
-            "name": "onboarding",
-            "plural": false,
-            "selections": [
-              (v0/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "status",
-                "storageKey": null
-              }
-            ],
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      }
-    ],
-    "storageKey": null
-  }
-];
+v2 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "AuthenticatedCompany",
+  "kind": "LinkedField",
+  "name": "company",
+  "plural": false,
+  "selections": [
+    (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "CompanyOnboarding",
+      "kind": "LinkedField",
+      "name": "onboarding",
+      "plural": false,
+      "selections": [
+        (v1/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "status",
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+};
 return {
   "fragment": {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
     "name": "pageContainerCompanyOnboardingQuery",
-    "selections": (v1/*: any*/),
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "Me",
+        "kind": "LinkedField",
+        "name": "Me",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "MeUser",
+            "kind": "LinkedField",
+            "name": "user",
+            "plural": false,
+            "selections": [
+              (v0/*: any*/)
+            ],
+            "storageKey": null
+          },
+          (v2/*: any*/)
+        ],
+        "storageKey": null
+      }
+    ],
     "type": "Query",
     "abstractKey": null
   },
@@ -94,19 +116,45 @@ return {
     "argumentDefinitions": [],
     "kind": "Operation",
     "name": "pageContainerCompanyOnboardingQuery",
-    "selections": (v1/*: any*/)
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "concreteType": "Me",
+        "kind": "LinkedField",
+        "name": "Me",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "MeUser",
+            "kind": "LinkedField",
+            "name": "user",
+            "plural": false,
+            "selections": [
+              (v0/*: any*/),
+              (v1/*: any*/)
+            ],
+            "storageKey": null
+          },
+          (v2/*: any*/)
+        ],
+        "storageKey": null
+      }
+    ]
   },
   "params": {
-    "cacheID": "64e3c1eb8bb2fc3826aeccdf862cb958",
+    "cacheID": "bf86ff029a20f63f16de40ad4c3d0c43",
     "id": null,
     "metadata": {},
     "name": "pageContainerCompanyOnboardingQuery",
     "operationKind": "query",
-    "text": "query pageContainerCompanyOnboardingQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        status\n      }\n    }\n  }\n}\n"
+    "text": "query pageContainerCompanyOnboardingQuery {\n  Me {\n    user {\n      isPlatformAdmin\n      id\n    }\n    company {\n      id\n      onboarding {\n        id\n        status\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "8f4d0a0826bfa949e5d906974c757700";
+(node as any).hash = "7f235b01d18560bb0df81d36068d3052";
 
 export default node;

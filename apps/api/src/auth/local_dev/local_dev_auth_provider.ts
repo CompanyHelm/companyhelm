@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import { AuthProvider, type AuthSession, type AuthenticateBearerTokenHeaders } from "../auth_provider.ts";
 import { Config } from "../../config/schema.ts";
 import { AppRuntimeDatabase } from "../../db/app_runtime_database.ts";
 import type { DatabaseClientInterface } from "../../db/database_interface.ts";
+import { users } from "../../db/schema.ts";
 import { CompanyBootstrapService } from "../../services/bootstrap/company.ts";
 import { UserBootstrapService } from "../../services/bootstrap/user.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.ts";
@@ -16,6 +18,14 @@ const LOCAL_DEV_USER_EMAIL = "local-dev@companyhelm.local";
 const LOCAL_DEV_USER_FIRST_NAME = "Local";
 const LOCAL_DEV_USER_LAST_NAME = "Developer";
 const LOCAL_DEV_USER_SUBJECT = "companyhelm-local-dev-user";
+
+type UpdatableDatabase = DatabaseClientInterface & {
+  update(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): Promise<unknown>;
+    };
+  };
+};
 
 /**
  * Replaces Clerk token verification during local preview sessions, provisions one deterministic
@@ -64,6 +74,13 @@ export class LocalDevAuthProvider extends AuthProvider {
         }),
         providerSubject: LOCAL_DEV_USER_SUBJECT,
       });
+      await (transaction as UpdatableDatabase)
+        .update(users)
+        .set({
+          isPlatformAdmin: true,
+          updated_at: new Date(),
+        })
+        .where(eq(users.id, user.id));
       const company = await this.companyBootstrapService.findOrCreateCompany(transaction, {
         name: LOCAL_DEV_COMPANY_NAME,
         providerSubject: LOCAL_DEV_COMPANY_SUBJECT,
@@ -87,6 +104,7 @@ export class LocalDevAuthProvider extends AuthProvider {
           email: user.email,
           firstName: user.first_name,
           id: user.id,
+          isPlatformAdmin: true,
           lastName: user.last_name,
           provider: "clerk",
           providerSubject: LOCAL_DEV_USER_SUBJECT,

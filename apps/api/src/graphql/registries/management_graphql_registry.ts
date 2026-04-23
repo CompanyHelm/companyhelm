@@ -53,6 +53,7 @@ import { HealthQueryResolver } from "../resolvers/health.ts";
 import { LlmUsageAggregatesQueryResolver } from "../resolvers/llm_usage_aggregates.ts";
 import { MeQueryResolver } from "../resolvers/me.ts";
 import { McpServerAuthTypeQueryResolver } from "../resolvers/mcp_server_auth_type.ts";
+import { PlatformAdminUsersQueryResolver } from "../resolvers/platform_admin_users.ts";
 import { SecretsQueryResolver } from "../resolvers/secrets.ts";
 import { SecretGroupsQueryResolver } from "../resolvers/secret_groups.ts";
 import { McpServersQueryResolver } from "../resolvers/mcp_servers.ts";
@@ -106,6 +107,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly mcpServerAuthTypeQueryResolver: McpServerAuthTypeQueryResolver;
   private readonly meQueryResolver: MeQueryResolver;
   private readonly refreshGithubInstallationRepositoriesMutation: RefreshGithubInstallationRepositoriesMutation;
+  private readonly platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver;
   private readonly secretsQueryResolver: SecretsQueryResolver;
   private readonly secretGroupsQueryResolver: SecretGroupsQueryResolver;
   private readonly mcpServersQueryResolver: McpServersQueryResolver;
@@ -238,6 +240,8 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     ensureCompanyOnboardingMutation: EnsureCompanyOnboardingMutation = new EnsureCompanyOnboardingMutation(),
     @inject(SkipCompanyOnboardingMutation)
     skipCompanyOnboardingMutation: SkipCompanyOnboardingMutation = new SkipCompanyOnboardingMutation(),
+    @inject(PlatformAdminUsersQueryResolver)
+    platformAdminUsersQueryResolver: PlatformAdminUsersQueryResolver = new PlatformAdminUsersQueryResolver(),
   ) {
     const defaultSecretService = new SecretService(new SecretEncryptionService(config));
     const defaultSkillService = new SkillService();
@@ -297,6 +301,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
     this.mcpServerAuthTypeQueryResolver = mcpServerAuthTypeQueryResolver
       ?? new McpServerAuthTypeQueryResolver(defaultMcpAuthTypeDetectionService);
     this.meQueryResolver = meQueryResolver;
+    this.platformAdminUsersQueryResolver = platformAdminUsersQueryResolver;
     this.refreshGithubInstallationRepositoriesMutation = refreshGithubInstallationRepositoriesMutation;
     this.secretsQueryResolver = secretsQueryResolver ?? new SecretsQueryResolver(defaultSecretService);
     this.secretGroupsQueryResolver = secretGroupsQueryResolver ?? new SecretGroupsQueryResolver(defaultSecretService);
@@ -374,6 +379,7 @@ export class ManagementGraphqlRegistry implements GraphqlRegistryInterface {
         LlmUsageAggregates: this.llmUsageAggregatesQueryResolver.execute,
         Me: this.meQueryResolver.execute,
         McpServerAuthType: this.mcpServerAuthTypeQueryResolver.execute,
+        PlatformAdminUsers: this.platformAdminUsersQueryResolver.execute,
         Secrets: this.secretsQueryResolver.execute,
         SecretGroups: this.secretGroupsQueryResolver.execute,
         McpServers: this.mcpServersQueryResolver.execute,

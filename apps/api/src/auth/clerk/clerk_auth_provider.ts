@@ -172,6 +172,7 @@ export class ClerkAuthProvider extends AuthProvider {
           id: user.id,
           email: user.email,
           firstName: user.first_name,
+          isPlatformAdmin: user.is_platform_admin,
           lastName: user.last_name,
           provider: "clerk",
           providerSubject,
