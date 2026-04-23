@@ -10,26 +10,29 @@ export class ChatsPagePreferenceStorage {
   private static readonly workflowStatusExpandedStorageKey = "companyhelm.chats.workflowStatusExpanded";
 
   static loadChatListHidden(): boolean {
-    return LocalStoragePreference.readBoolean(this.chatListHiddenStorageKey, false);
+    return LocalStoragePreference.readBoolean(ChatsPagePreferenceStorage.chatListHiddenStorageKey, false);
   }
 
   static saveChatListHidden(isHidden: boolean): void {
-    LocalStoragePreference.writeBoolean(this.chatListHiddenStorageKey, isHidden);
+    LocalStoragePreference.writeBoolean(ChatsPagePreferenceStorage.chatListHiddenStorageKey, isHidden);
   }
 
   static loadCollapsedAgentIds(): Record<string, boolean> {
-    return LocalStoragePreference.readBooleanRecord(this.collapsedAgentIdsStorageKey);
+    return LocalStoragePreference.readBooleanRecord(ChatsPagePreferenceStorage.collapsedAgentIdsStorageKey);
   }
 
   static saveCollapsedAgentIds(collapsedAgentIds: Readonly<Record<string, boolean>>): void {
-    LocalStoragePreference.writeBooleanRecord(this.collapsedAgentIdsStorageKey, collapsedAgentIds);
+    LocalStoragePreference.writeBooleanRecord(
+      ChatsPagePreferenceStorage.collapsedAgentIdsStorageKey,
+      collapsedAgentIds,
+    );
   }
 
   static loadWorkflowStatusExpanded(): boolean {
-    return LocalStoragePreference.readBoolean(this.workflowStatusExpandedStorageKey, false);
+    return LocalStoragePreference.readBoolean(ChatsPagePreferenceStorage.workflowStatusExpandedStorageKey, false);
   }
 
   static saveWorkflowStatusExpanded(isExpanded: boolean): void {
-    LocalStoragePreference.writeBoolean(this.workflowStatusExpandedStorageKey, isExpanded);
+    LocalStoragePreference.writeBoolean(ChatsPagePreferenceStorage.workflowStatusExpandedStorageKey, isExpanded);
   }
 }

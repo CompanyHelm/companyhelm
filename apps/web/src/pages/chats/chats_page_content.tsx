@@ -181,7 +181,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
     null,
   );
   const [chatListWidth, setChatListWidth] = useState(loadChatListWidth);
-  const [isChatListHidden, setIsChatListHidden] = useState(ChatsPagePreferenceStorage.loadChatListHidden);
+  const [isChatListHidden, setIsChatListHidden] = useState(() => ChatsPagePreferenceStorage.loadChatListHidden());
   const [isMobileChatListOpen, setIsMobileChatListOpen] = useState(false);
   const [isEnvironmentPanelOpen, setIsEnvironmentPanelOpen] = useState(false);
   const [isLoadingSessionEnvironment, setIsLoadingSessionEnvironment] = useState(false);
@@ -205,7 +205,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const [isComposerDragActive, setIsComposerDragActive] = useState(false);
   const [reconnectingSessionId, setReconnectingSessionId] = useState<string | null>(null);
   const [collapsedChatListAgentIds, setCollapsedChatListAgentIds] = useState<Record<string, boolean>>(
-    ChatsPagePreferenceStorage.loadCollapsedAgentIds,
+    () => ChatsPagePreferenceStorage.loadCollapsedAgentIds(),
   );
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   const resizeStartXRef = useRef(0);

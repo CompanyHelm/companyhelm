@@ -24,16 +24,12 @@ export function OnboardingSkipAction(props: OnboardingSkipActionProps) {
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
-          className="gap-2"
           disabled={props.isSkipInFlight}
-          size="sm"
-          variant="outline"
+          variant="ghost"
         >
           {props.isSkipInFlight ? (
             <Loader2Icon className="animate-spin" data-icon="inline-start" />
-          ) : (
-            <FastForwardIcon data-icon="inline-start" />
-          )}
+          ) : null}
           Skip setup
         </Button>
       </AlertDialogTrigger>

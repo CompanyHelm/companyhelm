@@ -665,7 +665,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   session: SessionRecord;
 }) {
   const workflowRun = session.associatedWorkflowRun ?? null;
-  const [isExpanded, setIsExpanded] = useState(ChatsPagePreferenceStorage.loadWorkflowStatusExpanded);
+  const [isExpanded, setIsExpanded] = useState(() => ChatsPagePreferenceStorage.loadWorkflowStatusExpanded());
 
   useEffect(() => {
     ChatsPagePreferenceStorage.saveWorkflowStatusExpanded(isExpanded);
