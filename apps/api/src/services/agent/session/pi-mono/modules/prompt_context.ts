@@ -22,6 +22,7 @@ export class AgentSessionModulePromptContext {
   readonly modelProviderId: string;
   readonly reasoningLevel: string | null;
   readonly sessionId: string;
+  readonly userFirstName: string | null;
 
   constructor(context: AgentSessionBootstrapContext) {
     this.agentId = context.agentId;
@@ -40,5 +41,6 @@ export class AgentSessionModulePromptContext {
     this.modelProviderId = context.modelProviderId;
     this.reasoningLevel = context.reasoningLevel;
     this.sessionId = context.sessionId;
+    this.userFirstName = context.userFirstName;
   }
 }

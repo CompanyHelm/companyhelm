@@ -29,6 +29,7 @@ test("skills session module prompt includes the materialized skill directory pat
     reasoningLevel: null,
     sessionId: "session-1",
     transactionProvider: {} as never,
+    userFirstName: "Andrea",
   });
 
   class TestSkillsSessionModule extends SkillsSessionModule {

@@ -51,6 +51,7 @@ type SessionRuntimeConfig = {
   providerId: string;
   reasoningSupported?: boolean | null;
   reasoningLevel?: string | null;
+  userFirstName?: string | null;
 };
 
 const DEFAULT_PI_WORKING_DIRECTORY = AgentEnvironmentWorkspacePath.get();
@@ -384,6 +385,7 @@ export class PiMonoSessionManagerService {
       reasoningLevel: runtimeConfig.reasoningLevel ?? null,
       sessionId,
       transactionProvider,
+      userFirstName: runtimeConfig.userFirstName ?? null,
     });
   }
 

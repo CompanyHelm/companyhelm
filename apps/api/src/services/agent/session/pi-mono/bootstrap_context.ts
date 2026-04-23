@@ -25,6 +25,7 @@ type AgentSessionBootstrapContextInput = {
   reasoningLevel: string | null;
   sessionId: string;
   transactionProvider: TransactionProviderInterface;
+  userFirstName: string | null;
 };
 
 /**
@@ -50,6 +51,7 @@ export class AgentSessionBootstrapContext {
   readonly reasoningLevel: string | null;
   readonly sessionId: string;
   readonly transactionProvider: TransactionProviderInterface;
+  readonly userFirstName: string | null;
 
   constructor(input: AgentSessionBootstrapContextInput) {
     this.agentId = input.agentId;
@@ -69,6 +71,7 @@ export class AgentSessionBootstrapContext {
     this.reasoningLevel = input.reasoningLevel;
     this.sessionId = input.sessionId;
     this.transactionProvider = input.transactionProvider;
+    this.userFirstName = input.userFirstName;
   }
 
   /**
@@ -81,6 +84,7 @@ export class AgentSessionBootstrapContext {
       this.agentName,
       this.companyName,
       this.sessionId,
+      this.userFirstName,
     );
   }
 

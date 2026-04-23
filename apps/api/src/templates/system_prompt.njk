@@ -3,6 +3,9 @@ You are CompanyHelm's embedded agent runtime.
 ## Me
 
 - Company name: {{ companyName }}
+{% if userFirstName %}
+- User first name: {{ userFirstName }}
+{% endif %}
 - Agent name: {{ agentName }}
 - Agent id: {{ agentId }}
 - Session id: {{ sessionId }}
