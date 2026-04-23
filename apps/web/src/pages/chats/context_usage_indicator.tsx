@@ -24,10 +24,7 @@ export function ChatsContextUsageIndicator(props: ChatsContextUsageIndicatorProp
   const maxContextTokens = props.maxContextTokens;
   const usageRatio = Math.min(Math.max(currentContextTokens / maxContextTokens, 0), 1);
   const usagePercent = Math.round(usageRatio * 100);
-  const indicatorColor = ChatsContextUsageIndicatorPresenter.resolveIndicatorColor(usageRatio, props.isCompacting);
-  const indicatorStyle = {
-    background: `conic-gradient(${indicatorColor} ${usageRatio * 360}deg, rgba(255, 255, 255, 0.12) ${usageRatio * 360}deg 360deg)`,
-  } satisfies CSSProperties;
+  const indicatorStyle = ChatsContextUsageIndicatorPresenter.resolveIndicatorStyle(usageRatio);
 
   return (
     <Tooltip>
@@ -59,7 +56,13 @@ export function ChatsContextUsageIndicator(props: ChatsContextUsageIndicatorProp
   );
 }
 
-class ChatsContextUsageIndicatorPresenter {
+/**
+ * Keeps the compact visual treatment for context usage separate from tooltip copy, so capacity
+ * changes can update the filled arc without turning the composer control into an alert state.
+ */
+export class ChatsContextUsageIndicatorPresenter {
+  private static readonly INDICATOR_COLOR = "rgb(59 130 246)";
+
   static formatTokenCount(value: number): string {
     if (value >= 1_000_000) {
       return ChatsContextUsageIndicatorPresenter.formatScaledValue(value / 1_000_000, "M");
@@ -72,20 +75,12 @@ class ChatsContextUsageIndicatorPresenter {
     return String(Math.round(value));
   }
 
-  static resolveIndicatorColor(usageRatio: number, isCompacting: boolean): string {
-    if (isCompacting) {
-      return "rgb(245 158 11)";
-    }
+  static resolveIndicatorStyle(usageRatio: number): CSSProperties {
+    const filledDegrees = usageRatio * 360;
 
-    if (usageRatio >= 0.9) {
-      return "rgb(244 63 94)";
-    }
-
-    if (usageRatio >= 0.8) {
-      return "rgb(245 158 11)";
-    }
-
-    return "rgb(59 130 246)";
+    return {
+      background: `conic-gradient(${ChatsContextUsageIndicatorPresenter.INDICATOR_COLOR} ${filledDegrees}deg, rgba(255, 255, 255, 0.12) ${filledDegrees}deg 360deg)`,
+    };
   }
 
   private static formatScaledValue(value: number, suffix: string): string {
