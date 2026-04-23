@@ -325,6 +325,7 @@ export function ChatComposerPane({
   isDismissInboxHumanQuestionInFlight,
   isForkingLatestSession,
   isResolveInboxHumanQuestionInFlight,
+  canForkLatestSession,
   shouldUseCompactComposerSettings,
   composerModelOptions,
   composerModelOptionId,
@@ -367,6 +368,7 @@ export function ChatComposerPane({
   queuedMessages: ReadonlyArray<QueuedMessageRecord>;
   isDismissInboxHumanQuestionInFlight: boolean;
   isResolveInboxHumanQuestionInFlight: boolean;
+  canForkLatestSession: boolean;
   shouldUseCompactComposerSettings: boolean;
   composerModelOptions: ReadonlyArray<ChatComposerModelOption>;
   composerModelOptionId: string;
@@ -533,17 +535,19 @@ export function ChatComposerPane({
                     isCompacting={selectedSession.isCompacting}
                     maxContextTokens={selectedSession.maxContextTokens ?? null}
                   />
-                  <Button
-                    aria-label="Fork latest context"
-                    className="h-7 w-7 shrink-0 rounded-full bg-background/60 px-0 text-muted-foreground shadow-none hover:bg-background/80 hover:text-foreground"
-                    disabled={isForkingLatestSession}
-                    onClick={onForkLatestSession}
-                    title="Fork latest context"
-                    type="button"
-                    variant="ghost"
-                  >
-                    {isForkingLatestSession ? <Loader2Icon className="size-3.5 animate-spin" /> : <GitForkIcon className="size-3.5" />}
-                  </Button>
+                  {canForkLatestSession ? (
+                    <Button
+                      aria-label="Fork latest context"
+                      className="h-7 w-7 shrink-0 rounded-full bg-background/60 px-0 text-muted-foreground shadow-none hover:bg-background/80 hover:text-foreground"
+                      disabled={isForkingLatestSession}
+                      onClick={onForkLatestSession}
+                      title="Fork latest context"
+                      type="button"
+                      variant="ghost"
+                    >
+                      {isForkingLatestSession ? <Loader2Icon className="size-3.5 animate-spin" /> : <GitForkIcon className="size-3.5" />}
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>

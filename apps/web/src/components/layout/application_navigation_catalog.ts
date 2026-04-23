@@ -48,7 +48,7 @@ export class ApplicationNavigationCatalog {
           {
             icon: MessageSquareIcon,
             label: "Onboarding",
-            to: "/chats",
+            to: "/onboarding",
           },
           {
             icon: InboxIcon,

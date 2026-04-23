@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6caa1b44e21d1a0082cdae9cc6749d23>>
+ * @generated SignedSource<<889db47d917e1ae00d08f87bde2fb736>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,8 +10,8 @@
 
 import { ConcreteRequest } from 'relay-runtime';
 export type CompanyOnboardingStatus = "completed" | "in_progress" | "not_started" | "skipped" | "%future added value";
-export type pageContainerEnsureCompanyOnboardingMutation$variables = Record<PropertyKey, never>;
-export type pageContainerEnsureCompanyOnboardingMutation$data = {
+export type onboardingPageEnsureCompanyOnboardingMutation$variables = Record<PropertyKey, never>;
+export type onboardingPageEnsureCompanyOnboardingMutation$data = {
   readonly EnsureCompanyOnboarding: {
     readonly agentId: string | null | undefined;
     readonly companyId: string;
@@ -22,9 +22,9 @@ export type pageContainerEnsureCompanyOnboardingMutation$data = {
     readonly workflowRunId: string | null | undefined;
   };
 };
-export type pageContainerEnsureCompanyOnboardingMutation = {
-  response: pageContainerEnsureCompanyOnboardingMutation$data;
-  variables: pageContainerEnsureCompanyOnboardingMutation$variables;
+export type onboardingPageEnsureCompanyOnboardingMutation = {
+  response: onboardingPageEnsureCompanyOnboardingMutation$data;
+  variables: onboardingPageEnsureCompanyOnboardingMutation$variables;
 };
 
 const node: ConcreteRequest = (function(){
@@ -95,7 +95,7 @@ return {
     "argumentDefinitions": [],
     "kind": "Fragment",
     "metadata": null,
-    "name": "pageContainerEnsureCompanyOnboardingMutation",
+    "name": "onboardingPageEnsureCompanyOnboardingMutation",
     "selections": (v0/*: any*/),
     "type": "Mutation",
     "abstractKey": null
@@ -104,20 +104,20 @@ return {
   "operation": {
     "argumentDefinitions": [],
     "kind": "Operation",
-    "name": "pageContainerEnsureCompanyOnboardingMutation",
+    "name": "onboardingPageEnsureCompanyOnboardingMutation",
     "selections": (v0/*: any*/)
   },
   "params": {
-    "cacheID": "63f1a61848724522a67838e54b6e7887",
+    "cacheID": "84c716762359599d5a0d0c9f30e8a572",
     "id": null,
     "metadata": {},
-    "name": "pageContainerEnsureCompanyOnboardingMutation",
+    "name": "onboardingPageEnsureCompanyOnboardingMutation",
     "operationKind": "mutation",
-    "text": "mutation pageContainerEnsureCompanyOnboardingMutation {\n  EnsureCompanyOnboarding {\n    id\n    companyId\n    status\n    agentId\n    sessionId\n    workflowRunId\n    updatedAt\n  }\n}\n"
+    "text": "mutation onboardingPageEnsureCompanyOnboardingMutation {\n  EnsureCompanyOnboarding {\n    id\n    companyId\n    status\n    agentId\n    sessionId\n    workflowRunId\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "4e3152b189b709f583dfe07748573496";
+(node as any).hash = "4ea45d1e9212cff06ea3de69746120b1";
 
 export default node;

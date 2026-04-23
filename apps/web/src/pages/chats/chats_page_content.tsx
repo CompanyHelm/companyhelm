@@ -144,13 +144,29 @@ function ChatsReconnectBanner({ visible }: { visible: boolean }) {
   );
 }
 
-export function ChatsPageContent() {
+export type ChatsPageContentProps = {
+  canForkLatestSession?: boolean;
+  headerSubtitle?: string | null;
+  headerTitle?: string;
+  routePath?: string;
+  selectedAgentId?: string;
+  selectedSessionId?: string;
+  showChatList?: boolean;
+};
+
+export function ChatsPageContent(props: ChatsPageContentProps = {}) {
   const navigate = useNavigate();
   const organizationSlug = useCurrentOrganizationSlug();
   const environment = useRelayEnvironment();
   const subscriptionConnectionStatus = useGraphqlSubscriptionConnectionStatus();
   const sessionTranscriptRetentionStore = useSessionTranscriptRetentionStore();
   const search = useSearch({ strict: false }) as ChatsPageSearch;
+  const routePath = props.routePath ?? "/chats";
+  const routeAgentId = props.selectedAgentId ?? search.agentId;
+  const routeSessionId = props.selectedSessionId ?? search.sessionId;
+  const isFixedSessionMode = Boolean(props.selectedAgentId && props.selectedSessionId);
+  const shouldShowSessionNavigation = props.showChatList ?? true;
+  const canForkLatestSession = props.canForkLatestSession ?? true;
   const isMobile = useIsMobile();
   const [draftMessage, setDraftMessage] = useState("");
   const [draftImages, setDraftImages] = useState<DraftComposerImageRecord[]>([]);
@@ -334,8 +350,8 @@ export function ChatsPageContent() {
     return new Set(inboxHumanQuestions.map((question) => question.sessionId));
   }, [inboxHumanQuestions]);
 
-  const resolvedSelectedSession = search.sessionId ? sessionById.get(search.sessionId) ?? null : null;
-  const resolvedSelectedAgentId = search.agentId ?? resolvedSelectedSession?.agentId ?? "";
+  const resolvedSelectedSession = routeSessionId ? sessionById.get(routeSessionId) ?? null : null;
+  const resolvedSelectedAgentId = routeAgentId ?? resolvedSelectedSession?.agentId ?? "";
   const selectedAgent = sortedAgents.find((agent) => agent.id === resolvedSelectedAgentId) ?? null;
   const selectedSession = resolvedSelectedSession && resolvedSelectedSession.agentId === selectedAgent?.id
     ? resolvedSelectedSession
@@ -509,7 +525,7 @@ export function ChatsPageContent() {
   }, [chatListWidth]);
 
   useEffect(() => {
-    if (search.agentId || search.sessionId || !latestActiveSession) {
+    if (isFixedSessionMode || !shouldShowSessionNavigation || routeAgentId || routeSessionId || !latestActiveSession) {
       return;
     }
 
@@ -518,16 +534,30 @@ export function ChatsPageContent() {
         organizationSlug,
       },
       replace: true,
-      to: OrganizationPath.route("/chats"),
+      to: OrganizationPath.route(routePath),
       search: {
         agentId: latestActiveSession.agentId,
         sessionId: latestActiveSession.id,
       },
     });
-  }, [latestActiveSession, navigate, organizationSlug, search.agentId, search.sessionId]);
+  }, [
+    isFixedSessionMode,
+    latestActiveSession,
+    navigate,
+    organizationSlug,
+    routeAgentId,
+    routePath,
+    routeSessionId,
+    shouldShowSessionNavigation,
+  ]);
 
   useEffect(() => {
-    const hasSelectedChatTarget = Boolean(search.agentId || search.sessionId);
+    if (!shouldShowSessionNavigation) {
+      setIsMobileChatListOpen(false);
+      return;
+    }
+
+    const hasSelectedChatTarget = Boolean(routeAgentId || routeSessionId);
 
     if (isMobile) {
       setIsMobileChatListOpen(!hasSelectedChatTarget);
@@ -535,7 +565,7 @@ export function ChatsPageContent() {
     }
 
     setIsMobileChatListOpen(false);
-  }, [isMobile, search.agentId, search.sessionId]);
+  }, [isMobile, routeAgentId, routeSessionId, shouldShowSessionNavigation]);
 
   useEffect(() => {
     if (!selectedSession?.hasUnread) {
@@ -891,13 +921,16 @@ export function ChatsPageContent() {
   }, [isEnvironmentPanelOpen, loadSessionEnvironmentInfo, selectedSession?.id]);
 
   useEffect(() => {
-    if (!search.agentId || !search.sessionId || selectedSession) {
+    if (isFixedSessionMode) {
+      return;
+    }
+    if (!routeAgentId || !routeSessionId || selectedSession) {
       if (selectedSession && pendingCreatedSessionId === selectedSession.id) {
         setPendingCreatedSessionId(null);
       }
       return;
     }
-    if (pendingCreatedSessionId && search.sessionId === pendingCreatedSessionId) {
+    if (pendingCreatedSessionId && routeSessionId === pendingCreatedSessionId) {
       return;
     }
 
@@ -906,12 +939,21 @@ export function ChatsPageContent() {
         organizationSlug,
       },
       replace: true,
-      to: OrganizationPath.route("/chats"),
+      to: OrganizationPath.route(routePath),
       search: {
-        agentId: search.agentId,
+        agentId: routeAgentId,
       },
     });
-  }, [navigate, organizationSlug, pendingCreatedSessionId, search.agentId, search.sessionId, selectedSession]);
+  }, [
+    isFixedSessionMode,
+    navigate,
+    organizationSlug,
+    pendingCreatedSessionId,
+    routeAgentId,
+    routePath,
+    routeSessionId,
+    selectedSession,
+  ]);
 
   useEffect(() => {
     if (!selectedSession || pendingCreatedSessionTranscriptReloadId !== selectedSession.id) {
@@ -1207,12 +1249,12 @@ export function ChatsPageContent() {
       params: {
         organizationSlug,
       },
-      to: OrganizationPath.route("/chats"),
+      to: OrganizationPath.route(routePath),
       search: {
         agentId,
       },
     });
-  }, [navigate, organizationSlug]);
+  }, [navigate, organizationSlug, routePath]);
 
   const openSession = useCallback(async (agentId: string, sessionId: string) => {
     setErrorMessage(null);
@@ -1221,13 +1263,13 @@ export function ChatsPageContent() {
       params: {
         organizationSlug,
       },
-      to: OrganizationPath.route("/chats"),
+      to: OrganizationPath.route(routePath),
       search: {
         agentId,
         sessionId,
       },
     });
-  }, [navigate, organizationSlug]);
+  }, [navigate, organizationSlug, routePath]);
 
   const toggleChatListAgentExpanded = useCallback((agentId: string) => {
     setCollapsedChatListAgentIds((current) => ({
@@ -1342,7 +1384,7 @@ export function ChatsPageContent() {
       params: {
         organizationSlug,
       },
-      to: OrganizationPath.route("/chats"),
+      to: OrganizationPath.route(routePath),
       search: {
         agentId: selectedAgent.id,
         sessionId: nextSessionId,
@@ -1396,12 +1438,12 @@ export function ChatsPageContent() {
 
           try {
             setPendingCreatedSessionId(null);
-            if (search.sessionId !== createdSession.id || search.agentId !== createdSession.agentId) {
+            if (routeSessionId !== createdSession.id || routeAgentId !== createdSession.agentId) {
               await navigate({
                 params: {
                   organizationSlug,
                 },
-                to: OrganizationPath.route("/chats"),
+                to: OrganizationPath.route(routePath),
                 search: {
                   agentId: createdSession.agentId,
                   sessionId: createdSession.id,
@@ -1426,8 +1468,9 @@ export function ChatsPageContent() {
     draftMessage,
     navigate,
     organizationSlug,
-    search.agentId,
-    search.sessionId,
+    routeAgentId,
+    routePath,
+    routeSessionId,
     selectedAgent,
     selectedComposerModelOption,
   ]);
@@ -1477,12 +1520,12 @@ export function ChatsPageContent() {
           }
 
           try {
-            if (search.sessionId !== forkedSession.id || search.agentId !== forkedSession.agentId) {
+            if (routeSessionId !== forkedSession.id || routeAgentId !== forkedSession.agentId) {
               await navigate({
                 params: {
                   organizationSlug,
                 },
-                to: OrganizationPath.route("/chats"),
+                to: OrganizationPath.route(routePath),
                 search: {
                   agentId: forkedSession.agentId,
                   sessionId: forkedSession.id,
@@ -1501,7 +1544,16 @@ export function ChatsPageContent() {
     }).finally(() => {
       setIsForkingLatestSession(false);
     });
-  }, [commitForkSession, isForkingLatestSession, navigate, organizationSlug, search.agentId, search.sessionId, selectedSession]);
+  }, [
+    commitForkSession,
+    isForkingLatestSession,
+    navigate,
+    organizationSlug,
+    routeAgentId,
+    routePath,
+    routeSessionId,
+    selectedSession,
+  ]);
 
   const archiveSession = useCallback(async (session: SessionRecord) => {
     setErrorMessage(null);
@@ -1900,17 +1952,17 @@ export function ChatsPageContent() {
       ? "Creating chat"
       : "Start chat";
   const queueDraftAriaLabel = isPromptSessionInFlight ? "Queueing message" : "Queue message";
-  const isDesktopChatListVisible = !isMobile && !isChatListHidden;
-  const shouldShowChatListButton = isMobile ? !isMobileChatListOpen : isChatListHidden;
+  const isDesktopChatListVisible = shouldShowSessionNavigation && !isMobile && !isChatListHidden;
+  const shouldShowChatListButton = shouldShowSessionNavigation && (isMobile ? !isMobileChatListOpen : isChatListHidden);
   const selectedSessionTitle = selectedSession
     ? resolveSessionTitle(selectedSession, selectedSessionMessages)
     : "Untitled chat";
   const selectedSessionTask = selectedSession?.associatedTask ?? null;
-  const chatsHeaderTitle = selectedSession
+  const chatsHeaderTitle = props.headerTitle ?? (selectedSession
     ? selectedSessionTask?.name ?? selectedSessionTitle
     : selectedAgent
       ? selectedAgent.name
-      : "Chat";
+      : "Chat");
   const headerAction = useMemo(() => {
     const actions: JSX.Element[] = [];
 
@@ -1955,13 +2007,18 @@ export function ChatsPageContent() {
     return <>{actions}</>;
   }, [isMobile, selectedAgent, selectedSession, shouldShowChatListButton, shouldUseCompactComposerSettings, showChatList]);
   const headerContent = useMemo(() => {
-    const shouldShowTaskSessionSubtitle = selectedSessionTask
+    const shouldShowTaskSessionSubtitle = !props.headerSubtitle && selectedSessionTask
       && selectedSessionTitle.trim().length > 0
       && selectedSessionTitle !== selectedSessionTask.name;
 
     return (
       <div className="min-w-0">
-        {selectedSessionTask ? (
+        {props.headerSubtitle ? (
+          <>
+            <p className="truncate text-sm font-medium text-foreground">{chatsHeaderTitle}</p>
+            <p className="truncate pt-0.5 text-xs text-muted-foreground">{props.headerSubtitle}</p>
+          </>
+        ) : selectedSessionTask ? (
           <>
             <div className="flex min-w-0 items-center gap-2">
               <Badge className="shrink-0" variant="outline">
@@ -1988,14 +2045,14 @@ export function ChatsPageContent() {
         )}
       </div>
     );
-  }, [chatsHeaderTitle, organizationSlug, selectedSessionTask, selectedSessionTitle]);
+  }, [chatsHeaderTitle, organizationSlug, props.headerSubtitle, selectedSessionTask, selectedSessionTitle]);
   useApplicationHeader({
     actions: headerAction,
     className: "min-h-12",
     content: headerContent,
   });
 
-  const mobileChatListOverlay = isMobile ? (
+  const mobileChatListOverlay = shouldShowSessionNavigation && isMobile ? (
     <Sheet open={isMobileChatListOpen} onOpenChange={setIsMobileChatListOpen}>
       <SheetContent
         data-sidebar="sidebar"
@@ -2040,7 +2097,7 @@ export function ChatsPageContent() {
     </Sheet>
   ) : null;
 
-  const newChatDialog = (
+  const newChatDialog = shouldShowSessionNavigation ? (
     <SearchableSelectionDialog
       description="Pick an agent to open a fresh draft chat."
       items={newChatAgentItems}
@@ -2057,7 +2114,7 @@ export function ChatsPageContent() {
       selectedItemId={selectedAgent?.id ?? null}
       title="Start a new chat"
     />
-  );
+  ) : null;
 
   return (
     <main className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -2138,23 +2195,34 @@ export function ChatsPageContent() {
         {selectedAgent && !selectedSession ? (
           <CardContent className="flex flex-1 items-center justify-center px-2 md:px-3">
             <div className="max-w-xl text-center">
-              <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
-              <p className="mt-2 text-sm/relaxed text-muted-foreground">
-                Sending this message creates the session and moves this page to the session URL.
-              </p>
-              <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
-                <p className="mt-3 text-sm font-medium text-foreground">{selectedAgent.name}</p>
-                <p className="mt-2 text-xs/relaxed text-muted-foreground">
-                  {selectedComposerModelOption
-                    ? [
-                      selectedComposerModelOption.providerLabel,
-                      selectedComposerModelOption.name,
-                      composerReasoningLevel || null,
-                    ].filter(Boolean).join(" • ")
-                    : formatAgentMeta(selectedAgent)}
-                </p>
-              </div>
+              {isFixedSessionMode ? (
+                <>
+                  <p className="text-sm font-medium text-foreground">Opening chat</p>
+                  <p className="mt-2 text-sm/relaxed text-muted-foreground">
+                    Waiting for the selected session to become available.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-foreground">Start a new chat with {selectedAgent.name}</p>
+                  <p className="mt-2 text-sm/relaxed text-muted-foreground">
+                    Sending this message creates the session and moves this page to the session URL.
+                  </p>
+                  <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-left">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected agent</p>
+                    <p className="mt-3 text-sm font-medium text-foreground">{selectedAgent.name}</p>
+                    <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                      {selectedComposerModelOption
+                        ? [
+                          selectedComposerModelOption.providerLabel,
+                          selectedComposerModelOption.name,
+                          composerReasoningLevel || null,
+                        ].filter(Boolean).join(" • ")
+                        : formatAgentMeta(selectedAgent)}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         ) : null}
@@ -2175,8 +2243,9 @@ export function ChatsPageContent() {
           </CardContent>
         ) : null}
 
-        {selectedAgent ? (
+        {selectedAgent && (!isFixedSessionMode || selectedSession) ? (
           <ChatComposerPane
+            canForkLatestSession={canForkLatestSession}
             canInterruptSelectedSession={canInterruptSelectedSession}
             canSubmitDraft={canSubmitDraft}
             composerModelOptionId={composerModelOptionId}

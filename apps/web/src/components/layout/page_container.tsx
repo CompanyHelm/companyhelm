@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { fetchQuery, graphql, useLazyLoadQuery, useMutation, useRelayEnvironment } from "react-relay";
@@ -11,7 +11,6 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { cn } from "@/lib/utils";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import type { pageContainerCompanyOnboardingQuery } from "./__generated__/pageContainerCompanyOnboardingQuery.graphql";
-import type { pageContainerEnsureCompanyOnboardingMutation } from "./__generated__/pageContainerEnsureCompanyOnboardingMutation.graphql";
 import type { pageContainerSkipCompanyOnboardingMutation } from "./__generated__/pageContainerSkipCompanyOnboardingMutation.graphql";
 
 interface PageContainerProps {
@@ -25,28 +24,9 @@ const pageContainerCompanyOnboardingQueryNode = graphql`
         id
         onboarding {
           id
-          companyId
           status
-          agentId
-          sessionId
-          workflowRunId
-          updatedAt
         }
       }
-    }
-  }
-`;
-
-const pageContainerEnsureCompanyOnboardingMutationNode = graphql`
-  mutation pageContainerEnsureCompanyOnboardingMutation {
-    EnsureCompanyOnboarding {
-      id
-      companyId
-      status
-      agentId
-      sessionId
-      workflowRunId
-      updatedAt
     }
   }
 `;
@@ -106,32 +86,23 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
       fetchPolicy: "store-or-network",
     },
   );
-  const [commitEnsureCompanyOnboarding, isEnsureCompanyOnboardingInFlight] =
-    useMutation<pageContainerEnsureCompanyOnboardingMutation>(
-      pageContainerEnsureCompanyOnboardingMutationNode,
-    );
   const [commitSkipCompanyOnboarding, isSkipCompanyOnboardingInFlight] =
     useMutation<pageContainerSkipCompanyOnboardingMutation>(
       pageContainerSkipCompanyOnboardingMutationNode,
     );
   const [onboardingErrorMessage, setOnboardingErrorMessage] = useState<string | null>(null);
-  const ensureRequestKeyRef = useRef<string | null>(null);
   const onboarding = data.Me.company.onboarding;
-  const needsOnboardingStart = onboarding.status === "not_started"
-    || (onboarding.status === "in_progress" && (!onboarding.agentId || !onboarding.sessionId));
   const isOnboardingFocused = onboarding.status === "not_started" || onboarding.status === "in_progress";
   const normalizedPathname = OrganizationPath.stripPrefix(props.pathname);
   const isChatsPage = normalizedPathname.startsWith("/chats");
+  const isOnboardingPage = normalizedPathname.startsWith("/onboarding");
   const isConversationsPage = normalizedPathname.startsWith("/conversations");
   const currentLocation = new URL(props.locationHref, "https://companyhelm.local");
   const tasksViewType = currentLocation.searchParams.get("viewType");
-  const currentSessionId = currentLocation.searchParams.get("sessionId");
-  const currentAgentId = currentLocation.searchParams.get("agentId");
   const isTasksBoardPage = normalizedPathname === "/tasks" && tasksViewType !== "list";
-  const isFullHeightPage = isChatsPage || isConversationsPage || isTasksBoardPage;
+  const isFullHeightPage = isChatsPage || isOnboardingPage || isConversationsPage || isTasksBoardPage;
   const onboardingFocus: ApplicationSidebarOnboardingFocus | null = isOnboardingFocused
     ? {
-        agentId: onboarding.agentId ?? null,
         isSkipInFlight: isSkipCompanyOnboardingInFlight,
         onSkip: () => {
           setOnboardingErrorMessage(null);
@@ -160,7 +131,6 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
             },
           });
         },
-        sessionId: onboarding.sessionId ?? null,
       }
     : null;
   const contentNode = onboardingErrorMessage
@@ -175,86 +145,13 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
           />
         </div>
       )
-    : needsOnboardingStart || isEnsureCompanyOnboardingInFlight
-      ? (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-2xl rounded-lg border border-border/70 bg-card/80 px-6 py-6 text-sm text-muted-foreground shadow-sm">
-              Preparing the CEO onboarding chat for this company.
-            </div>
-          </div>
-      )
-      : props.children;
+    : props.children;
 
   useEffect(() => {
-    if (!needsOnboardingStart || isEnsureCompanyOnboardingInFlight) {
+    if (!isOnboardingFocused) {
       return;
     }
-
-    const requestKey = `${onboarding.companyId}:${onboarding.status}:${onboarding.updatedAt}`;
-    if (ensureRequestKeyRef.current === requestKey) {
-      return;
-    }
-
-    ensureRequestKeyRef.current = requestKey;
-    setOnboardingErrorMessage(null);
-    commitEnsureCompanyOnboarding({
-      variables: {},
-      onCompleted: (response, errors) => {
-        const nextErrorMessage = String(errors?.[0]?.message || "").trim();
-        if (nextErrorMessage.length > 0) {
-          ensureRequestKeyRef.current = null;
-          setOnboardingErrorMessage(nextErrorMessage);
-          return;
-        }
-
-        const ensuredOnboarding = response.EnsureCompanyOnboarding;
-        if (!ensuredOnboarding.agentId || !ensuredOnboarding.sessionId) {
-          ensureRequestKeyRef.current = null;
-          setOnboardingErrorMessage("Company onboarding did not return a CEO chat.");
-          return;
-        }
-
-        void navigate({
-          params: {
-            organizationSlug,
-          },
-          replace: true,
-          search: {
-            agentId: ensuredOnboarding.agentId,
-            sessionId: ensuredOnboarding.sessionId,
-          },
-          to: OrganizationPath.route("/chats"),
-        });
-      },
-      onError: (error) => {
-        ensureRequestKeyRef.current = null;
-        setOnboardingErrorMessage(error.message || "Failed to start company onboarding.");
-      },
-    });
-  }, [
-    commitEnsureCompanyOnboarding,
-    isEnsureCompanyOnboardingInFlight,
-    navigate,
-    needsOnboardingStart,
-    onboarding.companyId,
-    onboarding.status,
-    onboarding.updatedAt,
-    organizationSlug,
-  ]);
-
-  useEffect(() => {
-    if (onboarding.status !== "in_progress" || !onboarding.agentId || !onboarding.sessionId) {
-      return;
-    }
-    if (normalizedPathname.startsWith("/inbox") || normalizedPathname.startsWith("/settings")) {
-      return;
-    }
-
-    if (
-      normalizedPathname.startsWith("/chats")
-      && currentSessionId === onboarding.sessionId
-      && currentAgentId === onboarding.agentId
-    ) {
+    if (isOnboardingPage || normalizedPathname.startsWith("/inbox") || normalizedPathname.startsWith("/settings")) {
       return;
     }
 
@@ -263,20 +160,13 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
         organizationSlug,
       },
       replace: true,
-      search: {
-        agentId: onboarding.agentId,
-        sessionId: onboarding.sessionId,
-      },
-      to: OrganizationPath.route("/chats"),
+      to: OrganizationPath.route("/onboarding"),
     });
   }, [
-    currentAgentId,
-    currentSessionId,
+    isOnboardingFocused,
+    isOnboardingPage,
     navigate,
     normalizedPathname,
-    onboarding.agentId,
-    onboarding.sessionId,
-    onboarding.status,
     organizationSlug,
   ]);
 
@@ -316,7 +206,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
           <div
             className={cn(
               "flex flex-1 flex-col",
-              (isChatsPage || isConversationsPage)
+              (isChatsPage || isOnboardingPage || isConversationsPage)
                 ? "min-h-0 overflow-hidden px-0 pb-0 pt-0"
                 : isTasksBoardPage
                   ? "min-h-0 overflow-hidden px-3 pb-3 pt-3 md:px-4 md:pb-4 md:pt-4 lg:px-5"

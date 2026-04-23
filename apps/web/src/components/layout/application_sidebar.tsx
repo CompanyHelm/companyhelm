@@ -58,10 +58,8 @@ const applicationSidebarInboxCountQueryNode = graphql`
 `;
 
 export type ApplicationSidebarOnboardingFocus = {
-  agentId: string | null;
   isSkipInFlight: boolean;
   onSkip(): void;
-  sessionId: string | null;
 };
 
 function isNavigationItemActive(pathname: string, itemPath: string): boolean {
@@ -167,13 +165,7 @@ export function ApplicationSidebar(props: {
     isComputeProvidersEnabled: featureFlags.isEnabled("computer_providers"),
     isOnboardingFocused: Boolean(props.onboardingFocus),
   });
-  const onboardingSearch = props.onboardingFocus?.agentId && props.onboardingFocus.sessionId
-    ? {
-        agentId: props.onboardingFocus.agentId,
-        sessionId: props.onboardingFocus.sessionId,
-      }
-    : undefined;
-  const homeTarget = props.onboardingFocus ? "/chats" : "/";
+  const homeTarget = props.onboardingFocus ? "/onboarding" : "/";
 
   function handleNavigationClick() {
     if (!sidebarState.isMobile) {
@@ -191,7 +183,6 @@ export function ApplicationSidebar(props: {
             className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-2 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
             onClick={handleNavigationClick}
             params={{ organizationSlug }}
-            search={homeTarget === "/chats" ? onboardingSearch : undefined}
             to={OrganizationPath.route(homeTarget)}
           >
             <img className="size-7 rounded-md" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
@@ -226,7 +217,6 @@ export function ApplicationSidebar(props: {
                         render={
                           <Link
                             params={{ organizationSlug }}
-                            search={item.to === "/chats" ? onboardingSearch : undefined}
                             to={OrganizationPath.route(item.to)}
                           />
                         }

@@ -22,6 +22,7 @@ import { McpOauthCallbackPage } from "./pages/mcp-servers/mcp_oauth_callback_pag
 import { ModelProviderCredentialDetailPage } from "./pages/model-provider-credentials/credential_detail_page";
 import { McpServersPage } from "./pages/mcp-servers/mcp_servers_page";
 import { ModelProviderCredentialsPage } from "./pages/model-provider-credentials/model_provider_credentials_page";
+import { OnboardingPage } from "./pages/onboarding/onboarding_page";
 import { GithubInstallCallbackPage } from "./pages/repositories/github_install_callback_page";
 import { RepositoriesPage } from "./pages/repositories/repositories_page";
 import { RoutinesPage } from "./pages/routines/routines_page";
@@ -286,6 +287,12 @@ const chatsRoute = createRoute({
   component: ChatsPage,
 });
 
+const onboardingRoute = createRoute({
+  getParentRoute: () => organizationRoute,
+  path: OrganizationPath.route("/onboarding"),
+  component: OnboardingPage,
+});
+
 const inboxRoute = createRoute({
   getParentRoute: () => organizationRoute,
   path: OrganizationPath.route("/inbox"),
@@ -456,6 +463,7 @@ const routeTree = rootRoute.addChildren([
         environmentsRoute,
         computeProvidersRoute,
         chatsRoute,
+        onboardingRoute,
         inboxRoute,
         conversationsRoute,
         routinesRoute,

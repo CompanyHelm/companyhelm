@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<77a9f65331d757c48b2bb3bebeeaca22>>
+ * @generated SignedSource<<4330fdaeea4a4a4275950b2613834425>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,13 +16,8 @@ export type pageContainerCompanyOnboardingQuery$data = {
     readonly company: {
       readonly id: string;
       readonly onboarding: {
-        readonly agentId: string | null | undefined;
-        readonly companyId: string;
         readonly id: string;
-        readonly sessionId: string | null | undefined;
         readonly status: CompanyOnboardingStatus;
-        readonly updatedAt: string;
-        readonly workflowRunId: string | null | undefined;
       };
     };
   };
@@ -71,42 +66,7 @@ v1 = [
                 "alias": null,
                 "args": null,
                 "kind": "ScalarField",
-                "name": "companyId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
                 "name": "status",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "agentId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "sessionId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "workflowRunId",
-                "storageKey": null
-              },
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "updatedAt",
                 "storageKey": null
               }
             ],
@@ -137,16 +97,16 @@ return {
     "selections": (v1/*: any*/)
   },
   "params": {
-    "cacheID": "e7a0162f6137eb7ea5f4b9089235cd09",
+    "cacheID": "64e3c1eb8bb2fc3826aeccdf862cb958",
     "id": null,
     "metadata": {},
     "name": "pageContainerCompanyOnboardingQuery",
     "operationKind": "query",
-    "text": "query pageContainerCompanyOnboardingQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        companyId\n        status\n        agentId\n        sessionId\n        workflowRunId\n        updatedAt\n      }\n    }\n  }\n}\n"
+    "text": "query pageContainerCompanyOnboardingQuery {\n  Me {\n    company {\n      id\n      onboarding {\n        id\n        status\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a2d6189b1e83c14e3a59cf19f2e43a40";
+(node as any).hash = "8f4d0a0826bfa949e5d906974c757700";
 
 export default node;

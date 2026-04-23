@@ -182,6 +182,7 @@ function ChatPerformanceHarness() {
 
             <div className="mt-auto">
               <ChatComposerPane
+                canForkLatestSession={true}
                 canInterruptSelectedSession={false}
                 canSubmitDraft={draftHasInput}
                 composerModelOptionId={modelOptions[0].id}
