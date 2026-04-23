@@ -507,7 +507,7 @@ export function ChatComposerPane({
               value={draftMessage}
             />
           </div>
-          <div className="flex items-center justify-between gap-2 px-1.5 pt-0 pb-1">
+          <div className="flex items-center justify-between gap-2 px-1.5 pt-0 pb-px">
             <div className="flex min-w-0 items-center gap-1.5">
               <Button
                 aria-label="Add images"
