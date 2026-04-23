@@ -195,7 +195,7 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
   const locationKey = props.locationHref;
   return (
     <ApplicationBreadcrumbProvider>
-      <SidebarProvider defaultOpen>
+      <SidebarProvider defaultOpen={false}>
         <ApplicationSidebar isOnboardingFocused={isOnboardingFocused} />
         <SidebarInset
           className={cn(
