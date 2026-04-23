@@ -496,10 +496,10 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
 
   return (
-    <div className={`${CHAT_TRANSCRIPT_LEFT_GUTTER_CLASS} pr-4`}>
+    <div className="sticky top-0 z-10 -mr-1 -mb-3 border-b border-border/70 bg-background/95 px-3 py-2.5 backdrop-blur">
       <div
         aria-label="Workflow run progress"
-        className="w-full max-w-3xl rounded-lg border border-border/70 bg-muted/15 px-3 py-2.5"
+        className="min-w-0"
         role="group"
       >
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
