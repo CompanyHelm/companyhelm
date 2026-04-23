@@ -205,6 +205,224 @@ test("SystemCommandService executes workflow commands when manage_workflows is a
   assert.equal(result.name, "Release workflow");
 });
 
+test("SystemCommandService updates workflow steps when manage_workflows is active", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    workflowService: {
+      async getWorkflow(_transactionProvider: unknown, companyId: string, workflowDefinitionId: string) {
+        assert.equal(companyId, "company-123");
+        assert.equal(workflowDefinitionId, "workflow-1");
+        return {
+          ...workflowRecord,
+          steps: [{
+            createdAt: new Date("2026-04-20T12:00:00.000Z"),
+            id: "step-row-1",
+            instructions: "Old instructions",
+            name: "Old step",
+            ordinal: 1,
+            stepId: "step-1",
+            workflowDefinitionId: "workflow-1",
+          }, {
+            createdAt: new Date("2026-04-20T12:05:00.000Z"),
+            id: "step-row-2",
+            instructions: "Keep this",
+            name: "Second step",
+            ordinal: 2,
+            stepId: "step-2",
+            workflowDefinitionId: "workflow-1",
+          }],
+        };
+      },
+      async updateWorkflow(_transactionProvider: unknown, input: {
+        companyId: string;
+        steps?: Array<{ instructions?: string | null; name: string }> | null;
+        workflowDefinitionId: string;
+      }) {
+        assert.equal(input.companyId, "company-123");
+        assert.equal(input.workflowDefinitionId, "workflow-1");
+        assert.deepEqual(input.steps, [{
+          instructions: "New instructions",
+          name: "Updated step",
+        }, {
+          instructions: "Keep this",
+          name: "Second step",
+        }]);
+
+        return {
+          ...workflowRecord,
+          steps: [{
+            createdAt: new Date("2026-04-20T12:00:00.000Z"),
+            id: "step-row-1",
+            instructions: "New instructions",
+            name: "Updated step",
+            ordinal: 1,
+            stepId: "step-1",
+            workflowDefinitionId: "workflow-1",
+          }, {
+            createdAt: new Date("2026-04-20T12:05:00.000Z"),
+            id: "step-row-2",
+            instructions: "Keep this",
+            name: "Second step",
+            ordinal: 2,
+            stepId: "step-2",
+            workflowDefinitionId: "workflow-1",
+          }],
+        };
+      },
+    } as never,
+  });
+
+  const result = await service.executeCommand("workflow.steps.update", {
+    instructions: "New instructions",
+    name: "Updated step",
+    stepId: "step-1",
+    workflowDefinitionId: "workflow-1",
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.equal(result.id, "workflow-1");
+  assert.deepEqual(result.steps, [{
+    id: "step-row-1",
+    instructions: "New instructions",
+    name: "Updated step",
+    ordinal: 1,
+    stepId: "step-1",
+  }, {
+    id: "step-row-2",
+    instructions: "Keep this",
+    name: "Second step",
+    ordinal: 2,
+    stepId: "step-2",
+  }]);
+});
+
+test("SystemCommandService rejects workflow step updates when the target step does not exist", async () => {
+  const updateWorkflow = vi.fn();
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    workflowService: {
+      async getWorkflow() {
+        return {
+          ...workflowRecord,
+          steps: [{
+            createdAt: new Date("2026-04-20T12:00:00.000Z"),
+            id: "step-row-1",
+            instructions: "Old instructions",
+            name: "Old step",
+            ordinal: 1,
+            stepId: "step-1",
+            workflowDefinitionId: "workflow-1",
+          }],
+        };
+      },
+      updateWorkflow,
+    } as never,
+  });
+
+  await assert.rejects(
+    service.executeCommand("workflow.steps.update", {
+      stepId: "missing-step",
+      workflowDefinitionId: "workflow-1",
+    }, {
+      agentId: "agent-1",
+      companyId: "company-123",
+      sessionId: "session-1",
+      transactionProvider: {} as never,
+    }),
+    /Workflow step missing-step not found\./,
+  );
+  assert.equal(updateWorkflow.mock.calls.length, 0);
+});
+
+test("SystemCommandService deletes workflow steps when the stable workflow step id is provided", async () => {
+  const service = new SystemCommandService({
+    sessionSkillService: {
+      async isSystemSkillActive() {
+        return true;
+      },
+    } as never,
+    workflowService: {
+      async getWorkflow() {
+        return {
+          ...workflowRecord,
+          steps: [{
+            createdAt: new Date("2026-04-20T12:00:00.000Z"),
+            id: "step-row-1",
+            instructions: "Old instructions",
+            name: "Old step",
+            ordinal: 1,
+            stepId: "step-1",
+            workflowDefinitionId: "workflow-1",
+          }, {
+            createdAt: new Date("2026-04-20T12:05:00.000Z"),
+            id: "step-row-2",
+            instructions: "Keep this",
+            name: "Second step",
+            ordinal: 2,
+            stepId: "step-2",
+            workflowDefinitionId: "workflow-1",
+          }],
+        };
+      },
+      async updateWorkflow(_transactionProvider: unknown, input: {
+        companyId: string;
+        steps?: Array<{ instructions?: string | null; name: string }> | null;
+        workflowDefinitionId: string;
+      }) {
+        assert.equal(input.companyId, "company-123");
+        assert.equal(input.workflowDefinitionId, "workflow-1");
+        assert.deepEqual(input.steps, [{
+          instructions: "Keep this",
+          name: "Second step",
+        }]);
+
+        return {
+          ...workflowRecord,
+          steps: [{
+            createdAt: new Date("2026-04-20T12:05:00.000Z"),
+            id: "step-row-2",
+            instructions: "Keep this",
+            name: "Second step",
+            ordinal: 1,
+            stepId: "step-2",
+            workflowDefinitionId: "workflow-1",
+          }],
+        };
+      },
+    } as never,
+  });
+
+  const result = await service.executeCommand("workflow.steps.delete", {
+    stepId: "step-1",
+    workflowDefinitionId: "workflow-1",
+  }, {
+    agentId: "agent-1",
+    companyId: "company-123",
+    sessionId: "session-1",
+    transactionProvider: {} as never,
+  });
+
+  assert.deepEqual(result.steps, [{
+    id: "step-row-2",
+    instructions: "Keep this",
+    name: "Second step",
+    ordinal: 1,
+    stepId: "step-2",
+  }]);
+});
+
 test("SystemCommandService executes skill-management commands when manage_skills is active", async () => {
   const service = new SystemCommandService({
     sessionSkillService: {

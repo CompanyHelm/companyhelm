@@ -41,6 +41,8 @@ export class WorkflowSystemCommandService {
         return this.serializeWorkflow(await this.updateWorkflow(input, context));
       case "workflow.steps.add":
         return this.serializeWorkflow(await this.addStep(input, context));
+      case "workflow.steps.update":
+        return this.serializeWorkflow(await this.updateStep(input, context));
       case "workflow.steps.delete":
         return this.serializeWorkflow(await this.deleteStep(input, context));
       case "workflow.inputs.add":
@@ -112,6 +114,50 @@ export class WorkflowSystemCommandService {
     });
   }
 
+  private async updateStep(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
+    const payload = this.requireRecord(input);
+    const workflowDefinitionId = this.readRequiredString(payload, "workflowDefinitionId");
+    const stepId = this.readRequiredString(payload, "stepId");
+    const workflow = await this.workflowService.getWorkflow(
+      context.transactionProvider,
+      context.companyId,
+      workflowDefinitionId,
+    );
+
+    let foundStep = false;
+    const nextSteps = workflow.steps.map((step) => {
+      if (!this.stepMatchesIdentifier(step, stepId)) {
+        return {
+          instructions: step.instructions,
+          name: step.name,
+        };
+      }
+
+      foundStep = true;
+      const nextInstructions = Object.prototype.hasOwnProperty.call(payload, "instructions")
+        ? this.readOptionalNullableString(payload, "instructions") ?? null
+        : step.instructions;
+      const nextName = Object.prototype.hasOwnProperty.call(payload, "name")
+        ? this.readRequiredString(payload, "name")
+        : step.name;
+
+      return {
+        instructions: nextInstructions,
+        name: nextName,
+      };
+    });
+
+    if (!foundStep) {
+      throw new Error(`Workflow step ${stepId} not found.`);
+    }
+
+    return this.workflowService.updateWorkflow(context.transactionProvider, {
+      companyId: context.companyId,
+      steps: nextSteps,
+      workflowDefinitionId,
+    });
+  }
+
   private async deleteStep(input: unknown, context: WorkflowSystemCommandContext): Promise<WorkflowRecord> {
     const payload = this.requireRecord(input);
     const workflowDefinitionId = this.readRequiredString(payload, "workflowDefinitionId");
@@ -122,7 +168,7 @@ export class WorkflowSystemCommandService {
       workflowDefinitionId,
     );
     const nextSteps = workflow.steps
-      .filter((step) => step.id !== stepId)
+      .filter((step) => !this.stepMatchesIdentifier(step, stepId))
       .map((step) => ({
         instructions: step.instructions,
         name: step.name,
@@ -265,6 +311,19 @@ export class WorkflowSystemCommandService {
     }
 
     return value;
+  }
+
+  /**
+   * Workflow tools surface both the database row id and the stable workflow step id, while the
+   * management system commands accept a generic `stepId` field. Accepting either identifier keeps
+   * command callers aligned with the serialized workflow shape and preserves compatibility with any
+   * callers that already captured the row id from prior responses.
+   */
+  private stepMatchesIdentifier(
+    step: Pick<WorkflowRecord["steps"][number], "id" | "stepId">,
+    stepId: string,
+  ): boolean {
+    return step.id === stepId || step.stepId === stepId;
   }
 
   private readOptionalString(payload: Record<string, unknown>, key: string): string | undefined {
