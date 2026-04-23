@@ -683,7 +683,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
 
   return (
-    <div className="-mt-2 border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5">
+    <div className="border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5">
       <div
         aria-label="Workflow run progress"
         className="min-w-0"
