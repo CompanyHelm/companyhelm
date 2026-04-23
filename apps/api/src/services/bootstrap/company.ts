@@ -101,7 +101,8 @@ export class CompanyBootstrapService {
   ].join("\n");
   private static readonly SEED_ONBOARDING_WORKFLOW_STEPS = [{
     instructions: [
-      "Ask one quick question: \"What is this company's mission, and what goals should its first agents help with?\"",
+      "Welcome the user to CompanyHelm. \"Hi {user.name}, welcome to CompanyHelm! I am your virtual CEO my first task is to onboard you to CompanyHelm and help you achieve your goals faster and more efficiently.\"",
+      "Ask one quick question: \"What is this company's or business's mission or/and goals?\"",
       "After the user answers, activate the Manage artifacts system skill.",
       "Call system_command with id \"artifact.markdown.create\" and input that creates an active company-scoped markdown artifact named \"Company mission and goals\".",
       "The artifact content should include short sections for Mission, Near-term goals, Constraints, and Open questions.",
