@@ -10,6 +10,7 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
     "My Agent",
     "My Organization",
     "session-1",
+    "Andrea",
   );
   const loader = new CompanyHelmResourceLoader(promptContext);
 
@@ -37,6 +38,7 @@ test("CompanyHelmResourceLoader keeps PI Mono resources in memory and disables l
   const systemPrompt = loader.getSystemPrompt() ?? "";
   assert.equal(systemPrompt, new SystemPromptTemplate().render(promptContext));
   assert.match(systemPrompt, /Company name: My Organization/u);
+  assert.match(systemPrompt, /User first name: Andrea/u);
   assert.match(systemPrompt, /## Repository Instruction Discovery/u);
   assert.match(systemPrompt, /AGENTS\.md files are repository-local operating instructions/u);
 });
@@ -47,6 +49,7 @@ test("CompanyHelmResourceLoader keeps company and agent prompt overrides as sepa
     "My Agent",
     "My Organization",
     "session-1",
+    "Andrea",
   );
   const loader = new CompanyHelmResourceLoader(promptContext, [
     "Always align work with company priorities.",

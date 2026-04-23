@@ -180,6 +180,7 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
                         agentId: "agent-1",
                         currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
+                        ownerUserId: "user-1",
                         status: "queued",
                       }];
                     },
@@ -194,7 +195,7 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
                   return {
                     async where() {
                       return [{
-                        name: "Support Agent",
+                        firstName: "Andrea",
                       }];
                     },
                   };
@@ -208,7 +209,7 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
                   return {
                     async where() {
                       return [{
-                        name: "My Organization",
+                        name: "Support Agent",
                       }];
                     },
                   };
@@ -217,6 +218,20 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
             }
 
             if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -231,7 +246,7 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 6) {
               return {
                 from() {
                   return {
@@ -246,7 +261,7 @@ test("SessionProcessExecutionService does not replay an in-flight row when anoth
               };
             }
 
-            if (selectCallCount === 6) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -403,6 +418,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                         agentId: "agent-1",
                         currentModelProviderCredentialModelId: "model-row-1",
                         currentReasoningLevel: "high",
+                        ownerUserId: "user-1",
                         status: "queued",
                       }];
                     },
@@ -417,7 +433,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                   return {
                     async where() {
                       return [{
-                        name: "Support Agent",
+                        firstName: "Andrea",
                       }];
                     },
                   };
@@ -431,7 +447,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
                   return {
                     async where() {
                       return [{
-                        name: "My Organization",
+                        name: "Support Agent",
                       }];
                     },
                   };
@@ -440,6 +456,20 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
             }
 
             if (selectCallCount === 4) {
+              return {
+                from() {
+                  return {
+                    async where() {
+                      return [{
+                        name: "My Organization",
+                      }];
+                    },
+                  };
+                },
+              };
+            }
+
+            if (selectCallCount === 5) {
               return {
                 from() {
                   return {
@@ -454,7 +484,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
               };
             }
 
-            if (selectCallCount === 5) {
+            if (selectCallCount === 6) {
               return {
                 from() {
                   return {
@@ -469,7 +499,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
               };
             }
 
-            if (selectCallCount === 6) {
+            if (selectCallCount === 7) {
               return {
                 from() {
                   return {
@@ -608,6 +638,7 @@ test("SessionProcessExecutionService prompts one queued turn, releases the lease
       modelProviderCredentialId: "credential-1",
       providerId: "openai",
       reasoningLevel: "high",
+      userFirstName: "Andrea",
     },
     sessionId: "session-1",
   }]);

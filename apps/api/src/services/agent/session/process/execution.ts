@@ -3,7 +3,7 @@ import { inject, injectable } from "inversify";
 import type { Logger as PinoLogger } from "pino";
 import { AppRuntimeDatabase } from "../../../../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../../../../db/app_runtime_transaction_provider.ts";
-import { agentSessions, agents, companies, modelProviderCredentialModels, modelProviderCredentials } from "../../../../db/schema.ts";
+import { agentSessions, agents, companies, modelProviderCredentialModels, modelProviderCredentials, users } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
 import { ApiLogger } from "../../../../log/api_logger.ts";
 import { CompanySettingsService } from "../../../company_settings_service.ts";
@@ -25,6 +25,7 @@ type SessionRuntimeRow = {
   agentId: string;
   currentModelProviderCredentialModelId: string;
   currentReasoningLevel: string;
+  ownerUserId: string | null;
   status: string;
 };
 
@@ -53,6 +54,10 @@ type CredentialRow = {
 
 type SessionStatusRow = {
   status: string;
+};
+
+type UserRow = {
+  firstName: string;
 };
 
 type SelectableDatabase = {
@@ -477,6 +482,7 @@ export class SessionProcessExecutionService {
     providerId: string;
     reasoningSupported?: boolean | null;
     reasoningLevel: string;
+    userFirstName?: string;
   } | null> {
     return transactionProvider.transaction(async (tx) => {
       const selectableDatabase = tx as SelectableDatabase;
@@ -485,6 +491,7 @@ export class SessionProcessExecutionService {
           agentId: agentSessions.agentId,
           currentModelProviderCredentialModelId: agentSessions.currentModelProviderCredentialModelId,
           currentReasoningLevel: agentSessions.currentReasoningLevel,
+          ownerUserId: agentSessions.ownerUserId,
           status: agentSessions.status,
         })
         .from(agentSessions)
@@ -498,6 +505,8 @@ export class SessionProcessExecutionService {
       if (!this.isProcessableStatus(sessionRow.status)) {
         return null;
       }
+
+      const userFirstName = await this.loadUserFirstName(selectableDatabase, sessionRow.ownerUserId);
 
       const [agentRow] = await selectableDatabase
         .select({
@@ -570,8 +579,27 @@ export class SessionProcessExecutionService {
         providerId: credentialRow.modelProvider,
         ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
         reasoningLevel: sessionRow.currentReasoningLevel,
+        ...(userFirstName ? { userFirstName } : {}),
       };
     });
+  }
+
+  private async loadUserFirstName(selectableDatabase: SelectableDatabase, ownerUserId: string | null): Promise<string | null> {
+    if (!ownerUserId) {
+      return null;
+    }
+
+    const [userRow] = await selectableDatabase
+      .select({
+        firstName: users.first_name,
+      })
+      .from(users)
+      .where(eq(users.id, ownerUserId)) as UserRow[];
+    if (!userRow) {
+      throw new Error("Session owner user not found.");
+    }
+
+    return userRow.firstName;
   }
 
   private async isSessionProcessable(

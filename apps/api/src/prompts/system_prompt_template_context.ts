@@ -7,11 +7,13 @@ export class SystemPromptTemplateContext {
   readonly agentName: string;
   readonly companyName: string;
   readonly sessionId: string;
+  readonly userFirstName: string | null;
 
-  constructor(agentId: string, agentName: string, companyName: string, sessionId: string) {
+  constructor(agentId: string, agentName: string, companyName: string, sessionId: string, userFirstName: string | null) {
     this.agentId = agentId;
     this.agentName = agentName;
     this.companyName = companyName;
     this.sessionId = sessionId;
+    this.userFirstName = userFirstName;
   }
 }
