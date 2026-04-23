@@ -24,18 +24,21 @@ export function OnboardingSkipAction(props: OnboardingSkipActionProps) {
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
+          className="font-sans text-xs font-medium leading-none"
           disabled={props.isSkipInFlight}
           variant="ghost"
         >
           {props.isSkipInFlight ? (
             <Loader2Icon className="animate-spin" data-icon="inline-start" />
-          ) : null}
-          Skip setup
+          ) : (
+            <FastForwardIcon data-icon="inline-start" />
+          )}
+          Skip onboarding
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Skip company setup?</AlertDialogTitle>
+          <AlertDialogTitle>Skip onboarding?</AlertDialogTitle>
           <AlertDialogDescription>
             This will unlock the full workspace now. The CEO onboarding chat and workflow history
             will remain available if setup needs to be resumed later.
@@ -52,7 +55,7 @@ export function OnboardingSkipAction(props: OnboardingSkipActionProps) {
               variant="destructive"
             >
               <FastForwardIcon data-icon="inline-start" />
-              Skip setup
+              Skip onboarding
             </AlertDialogActionButton>
           </AlertDialogPrimaryAction>
         </AlertDialogFooter>
