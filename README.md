@@ -18,6 +18,7 @@ A few things it can do today:
 
 <img width="1695" height="874" alt="companyHelm-screenshot" src="https://github.com/user-attachments/assets/9f3c6f3f-5e1f-4065-989d-44cfad587e5f" />
 
+[![SPONSORED BY E2B FOR STARTUPS](https://img.shields.io/badge/SPONSORED%20BY-E2B%20FOR%20STARTUPS-ff8800?style=for-the-badge)](https://e2b.dev/startups)
 
 Monorepo with:
 
