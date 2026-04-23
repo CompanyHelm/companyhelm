@@ -681,6 +681,41 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   const currentStepName = currentStep?.name ?? "No current step";
   const stepListId = `workflow-run-steps-${workflowRun.id}`;
   const visibleSteps = WorkflowRunPresenter.getVisibleSteps(workflowRun);
+  const expandedStepListRef = useRef<HTMLOListElement | null>(null);
+  const wasExpandedRef = useRef(isExpanded);
+
+  useEffect(() => {
+    if (!isExpanded || wasExpandedRef.current) {
+      wasExpandedRef.current = isExpanded;
+      return;
+    }
+
+    const expandedStepList = expandedStepListRef.current;
+    const targetStepId = WorkflowRunPresenter.getExpandedScrollTargetStepId(workflowRun);
+    if (!expandedStepList || !targetStepId) {
+      wasExpandedRef.current = isExpanded;
+      return;
+    }
+
+    const animationFrameHandle = window.requestAnimationFrame(() => {
+      const targetStep = expandedStepList.querySelector<HTMLElement>(`[data-workflow-step-id="${targetStepId}"]`);
+      if (!targetStep) {
+        return;
+      }
+
+      const centeredScrollTop = targetStep.offsetTop - expandedStepList.clientHeight / 2 + targetStep.clientHeight / 2;
+      expandedStepList.scrollTo({
+        behavior: "smooth",
+        top: Math.max(centeredScrollTop, 0),
+      });
+    });
+
+    wasExpandedRef.current = isExpanded;
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameHandle);
+    };
+  }, [isExpanded, workflowRun]);
 
   return (
     <div className="border-b border-border/70 bg-background/95 px-3 pt-0 pb-1.5">
@@ -741,10 +776,16 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
         </div>
 
         {isExpanded && visibleSteps.length > 0 ? (
-          <ol aria-label="Workflow steps" className="mt-2 grid gap-1" id={stepListId}>
+          <ol
+            aria-label="Workflow steps"
+            className="mt-2 grid max-h-52 gap-1 overflow-y-auto pr-1"
+            id={stepListId}
+            ref={expandedStepListRef}
+          >
             {visibleSteps.map((step) => (
               <li
                 className="grid min-w-0 grid-cols-[0.75rem_minmax(0,1fr)_auto] items-center gap-2 text-xs"
+                data-workflow-step-id={step.id}
                 key={step.id}
               >
                 <span

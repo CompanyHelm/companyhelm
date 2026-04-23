@@ -24,7 +24,7 @@ test("WorkflowRunPresenter counts a running step as reached in compact progress"
   assert.equal(WorkflowRunPresenter.formatProgress(workflowRun), "2/5");
 });
 
-test("WorkflowRunPresenter caps the visible transcript step list at five ordered steps", () => {
+test("WorkflowRunPresenter returns every ordered step for the expanded transcript preview", () => {
   const workflowRun = {
     ...buildWorkflowRun(["done", "done", "running", "pending", "pending", "pending"]),
     steps: [
@@ -34,8 +34,27 @@ test("WorkflowRunPresenter caps the visible transcript step list at five ordered
 
   assert.deepEqual(
     WorkflowRunPresenter.getVisibleSteps(workflowRun).map((step) => step.ordinal),
-    [1, 2, 3, 4, 5],
+    [1, 2, 3, 4, 5, 6],
   );
+});
+
+test("WorkflowRunPresenter targets the latest running step for expansion auto scroll", () => {
+  const workflowRun = {
+    ...buildWorkflowRun(["done", "running", "done", "running", "pending"]),
+    steps: [
+      ...buildWorkflowRun(["done", "running", "done", "running", "pending"]).steps,
+    ].reverse(),
+  };
+
+  assert.equal(WorkflowRunPresenter.getExpandedScrollTargetStepId(workflowRun), "step-4");
+});
+
+test("WorkflowRunPresenter falls back to the latest completed step for expansion auto scroll", () => {
+  const workflowRun = buildWorkflowRun(["done", "done", "pending", "pending"]);
+
+  workflowRun.status = "pending";
+
+  assert.equal(WorkflowRunPresenter.getExpandedScrollTargetStepId(workflowRun), "step-2");
 });
 
 test("WorkflowRunPresenter uses the running step as the current collapsed step", () => {
