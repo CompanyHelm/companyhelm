@@ -13,6 +13,7 @@ import type {
   SessionRecord,
   SessionTranscriptConnection,
 } from "./chats_page_data";
+import { WorkflowRunPresenter } from "./workflow_run_presenter";
 
 export const CHAT_LIST_MIN_WIDTH = 280;
 export const CHAT_LIST_MAX_WIDTH = 520;
@@ -78,6 +79,14 @@ type AssistantDisplayContentRecord = {
 };
 
 export type AssistantContentMode = "all" | "text-only" | "thinking-only";
+
+export type PrincipalExecutionMessageDisplayRecord = {
+  detailLabel: string | null;
+  executionType: "task" | "workflow";
+  statusLabel: string | null;
+  summaryLabel: string;
+  title: string;
+};
 
 export type TranscriptScrollRestoreRecord = {
   anchorMessageId: string | null;
@@ -576,6 +585,40 @@ function hasVisibleTranscriptMessage(
     && (message.text.trim().length > 0 || resolveImageDisplayContents(message).length > 0);
 }
 
+function resolvePrincipalExecutionMessageDisplayRecord(
+  message: SessionMessageRecord,
+  session: SessionRecord,
+): PrincipalExecutionMessageDisplayRecord | null {
+  if (message.role !== "user") {
+    return null;
+  }
+
+  if (message.principalType === "task") {
+    return {
+      detailLabel: message.taskRunId ? `Task run ${message.taskRunId}` : null,
+      executionType: "task",
+      statusLabel: session.associatedTask?.status ?? null,
+      summaryLabel: session.associatedTask?.name ?? message.taskRunId ?? "Task execution",
+      title: "Execute task",
+    };
+  }
+
+  if (message.principalType === "workflow") {
+    const workflowRun = session.associatedWorkflowRun;
+    return {
+      detailLabel: message.workflowRunId ? `Workflow run ${message.workflowRunId}` : null,
+      executionType: "workflow",
+      statusLabel: workflowRun
+        ? `${WorkflowRunPresenter.formatStatus(workflowRun.status)} · ${WorkflowRunPresenter.formatProgress(workflowRun)}`
+        : null,
+      summaryLabel: workflowRun?.name ?? message.workflowRunId ?? "Workflow execution",
+      title: "Execute workflow",
+    };
+  }
+
+  return null;
+}
+
 function formatTurnDuration(milliseconds: number): string {
   if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
     return "<1s";
@@ -997,4 +1040,11 @@ export function hasVisibleMessage(
   options: { assistantContentMode?: AssistantContentMode } = {},
 ): boolean {
   return hasVisibleTranscriptMessage(message, options);
+}
+
+export function resolvePrincipalExecutionMessageDisplay(
+  message: SessionMessageRecord,
+  session: SessionRecord,
+): PrincipalExecutionMessageDisplayRecord | null {
+  return resolvePrincipalExecutionMessageDisplayRecord(message, session);
 }

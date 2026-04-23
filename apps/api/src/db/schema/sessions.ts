@@ -23,6 +23,7 @@ import { companySecrets, companies, users } from "./company.ts";
 export const sessionMessageRoleEnum = pgEnum("session_message_role", ["user", "assistant", "toolResult"]);
 export const messageContentTypeEnum = pgEnum("message_content_type", ["text", "image", "toolCall", "thinking"]);
 export const agentSessionStatusEnum = pgEnum("agent_session_status", ["queued", "running", "stopped", "archived"]);
+export const sessionMessagePrincipalTypeEnum = pgEnum("session_message_principal_type", ["user", "task", "workflow", "agent_message"]);
 export const sessionMessageStatusEnum = pgEnum("session_message_status", ["running", "completed"]);
 export const llmUsageAggregateScopeEnum = pgEnum("llm_usage_aggregate_scope", [
   "company",
@@ -203,6 +204,13 @@ export const sessionMessages = pgTable("session_messages", {
   status: sessionMessageStatusEnum("status").notNull(),
   toolCallId: text("tool_call_id"),
   toolName: text("tool_name"),
+  principalType: sessionMessagePrincipalTypeEnum("principal_type").notNull().default("user"),
+  principalAgentId: uuid("principal_agent_id")
+    .references(() => agents.id, { onDelete: "set null" }),
+  principalSessionId: uuid("principal_session_id")
+    .references((): AnyPgColumn => agentSessions.id, { onDelete: "set null" }),
+  taskRunId: uuid("task_run_id"),
+  workflowRunId: uuid("workflow_run_id"),
   isError: boolean("is_error").notNull(),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -211,6 +219,11 @@ export const sessionMessages = pgTable("session_messages", {
   companyIdIndex: index("session_messages_company_id_idx").on(table.companyId),
   companySessionCreatedIdIndex: index("session_messages_company_session_created_id_idx")
     .on(table.companyId, table.sessionId, table.createdAt, table.id),
+  principalAgentIdIndex: index("session_messages_principal_agent_id_idx").on(table.principalAgentId),
+  principalSessionIdIndex: index("session_messages_principal_session_id_idx").on(table.principalSessionId),
+  principalTypeIndex: index("session_messages_principal_type_idx").on(table.principalType),
+  taskRunIdIndex: index("session_messages_task_run_id_idx").on(table.taskRunId),
+  workflowRunIdIndex: index("session_messages_workflow_run_id_idx").on(table.workflowRunId),
   sessionIdIndex: index("session_messages_session_id_idx").on(table.sessionId),
   sessionTurnIdIndex: index("session_messages_session_turn_id_idx").on(table.sessionId, table.turnId),
 }));
@@ -252,6 +265,13 @@ export const sessionQueuedMessages = pgTable("session_queued_messages", {
     .notNull(),
   shouldSteer: boolean("should_steer").notNull(),
   status: sessionQueuedMessageStatusEnum("status").notNull(),
+  principalType: sessionMessagePrincipalTypeEnum("principal_type").notNull().default("user"),
+  principalAgentId: uuid("principal_agent_id")
+    .references(() => agents.id, { onDelete: "set null" }),
+  principalSessionId: uuid("principal_session_id")
+    .references((): AnyPgColumn => agentSessions.id, { onDelete: "set null" }),
+  taskRunId: uuid("task_run_id"),
+  workflowRunId: uuid("workflow_run_id"),
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),

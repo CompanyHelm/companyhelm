@@ -58,9 +58,18 @@ export type SessionPromptImageInput = {
   mimeType: string;
 };
 
+export type SessionMessagePrincipalMetadata = {
+  principalAgentId?: string | null;
+  principalSessionId?: string | null;
+  principalType?: "agent_message" | "task" | "user" | "workflow";
+  taskRunId?: string | null;
+  workflowRunId?: string | null;
+};
+
 export type SessionManagerCreateSessionOptions = {
   images?: SessionPromptImageInput[];
   modelProviderCredentialModelId?: string | null;
+  principalMetadata?: SessionMessagePrincipalMetadata;
   reasoningLevel?: string | null;
   sessionId?: string | null;
   shouldSteer?: boolean;
@@ -70,6 +79,7 @@ export type SessionManagerCreateSessionOptions = {
 export type SessionManagerQueuePromptOptions = {
   images?: SessionPromptImageInput[];
   modelProviderCredentialModelId?: string | null;
+  principalMetadata?: SessionMessagePrincipalMetadata;
   reasoningLevel?: string | null;
   shouldSteer?: boolean;
   userId?: string | null;

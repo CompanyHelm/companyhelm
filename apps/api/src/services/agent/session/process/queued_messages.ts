@@ -6,6 +6,7 @@ import {
   sessionQueuedMessages,
 } from "../../../../db/schema.ts";
 import type { TransactionProviderInterface } from "../../../../db/transaction_provider_interface.ts";
+import type { SessionMessagePrincipalMetadata } from "../session_manager_service_types.ts";
 
 type SessionQueuedMessageStatus = (typeof sessionQueuedMessageStatusEnum.enumValues)[number];
 
@@ -15,10 +16,15 @@ type QueuedMessageRow = {
   createdAt: Date;
   dispatchedAt: Date | null;
   id: string;
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: "agent_message" | "task" | "user" | "workflow";
   sessionId: string;
   shouldSteer: boolean;
   status: SessionQueuedMessageStatus;
+  taskRunId: string | null;
   updatedAt: Date;
+  workflowRunId: string | null;
 };
 
 type QueuedMessageContentRow = {
@@ -49,11 +55,16 @@ export type QueuedSessionMessageRecord = {
   dispatchedAt: Date | null;
   id: string;
   images: QueuedSessionMessageImageRecord[];
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: "agent_message" | "task" | "user" | "workflow";
   sessionId: string;
   shouldSteer: boolean;
   status: SessionQueuedMessageStatus;
+  taskRunId: string | null;
   text: string;
   updatedAt: Date;
+  workflowRunId: string | null;
 };
 
 type SelectableDatabase = {
@@ -98,6 +109,7 @@ export class SessionQueuedMessageService {
     input: {
       companyId: string;
       images?: Array<{ base64EncodedImage: string; mimeType: string }>;
+      principalMetadata?: SessionMessagePrincipalMetadata;
       sessionId: string;
       shouldSteer: boolean;
       text: string;
@@ -113,6 +125,7 @@ export class SessionQueuedMessageService {
     input: {
       companyId: string;
       images?: Array<{ base64EncodedImage: string; mimeType: string }>;
+      principalMetadata?: SessionMessagePrincipalMetadata;
       sessionId: string;
       shouldSteer: boolean;
       text: string;
@@ -124,7 +137,12 @@ export class SessionQueuedMessageService {
       input.companyId,
       input.sessionId,
     );
-    if (latestQueuedMessage?.status === "pending" && latestQueuedMessage.shouldSteer === input.shouldSteer) {
+    const normalizedPrincipalMetadata = this.normalizePrincipalMetadata(input.principalMetadata);
+    if (
+      latestQueuedMessage?.status === "pending"
+      && latestQueuedMessage.shouldSteer === input.shouldSteer
+      && this.arePrincipalMetadataEqual(latestQueuedMessage, normalizedPrincipalMetadata)
+    ) {
       const contentRecords = this.buildContentRecords(latestQueuedMessage.id, input, timestamp);
       if (contentRecords.length > 0) {
         await database.insert(sessionQueuedMessageContents).values(contentRecords);
@@ -151,10 +169,15 @@ export class SessionQueuedMessageService {
       createdAt: timestamp,
       dispatchedAt: null,
       id: queuedMessageId,
+      principalAgentId: normalizedPrincipalMetadata.principalAgentId,
+      principalSessionId: normalizedPrincipalMetadata.principalSessionId,
+      principalType: normalizedPrincipalMetadata.principalType,
       sessionId: input.sessionId,
       shouldSteer: input.shouldSteer,
       status: "pending",
+      taskRunId: normalizedPrincipalMetadata.taskRunId,
       updatedAt: timestamp,
+      workflowRunId: normalizedPrincipalMetadata.workflowRunId,
     });
 
     const contentRecords = this.buildContentRecords(queuedMessageId, input, timestamp);
@@ -444,6 +467,7 @@ export class SessionQueuedMessageService {
     input: {
       companyId: string;
       images?: Array<{ base64EncodedImage: string; mimeType: string }>;
+      principalMetadata?: SessionMessagePrincipalMetadata;
       text: string;
     },
     timestamp: Date,
@@ -504,10 +528,15 @@ export class SessionQueuedMessageService {
           createdAt: sessionQueuedMessages.createdAt,
           dispatchedAt: sessionQueuedMessages.dispatchedAt,
           id: sessionQueuedMessages.id,
+          principalAgentId: sessionQueuedMessages.principalAgentId,
+          principalSessionId: sessionQueuedMessages.principalSessionId,
+          principalType: sessionQueuedMessages.principalType,
           sessionId: sessionQueuedMessages.sessionId,
           shouldSteer: sessionQueuedMessages.shouldSteer,
           status: sessionQueuedMessages.status,
+          taskRunId: sessionQueuedMessages.taskRunId,
           updatedAt: sessionQueuedMessages.updatedAt,
+          workflowRunId: sessionQueuedMessages.workflowRunId,
         })
         .from(sessionQueuedMessages)
         .where(and(
@@ -547,10 +576,15 @@ export class SessionQueuedMessageService {
         createdAt: sessionQueuedMessages.createdAt,
         dispatchedAt: sessionQueuedMessages.dispatchedAt,
         id: sessionQueuedMessages.id,
+        principalAgentId: sessionQueuedMessages.principalAgentId,
+        principalSessionId: sessionQueuedMessages.principalSessionId,
+        principalType: sessionQueuedMessages.principalType,
         sessionId: sessionQueuedMessages.sessionId,
         shouldSteer: sessionQueuedMessages.shouldSteer,
         status: sessionQueuedMessages.status,
+        taskRunId: sessionQueuedMessages.taskRunId,
         updatedAt: sessionQueuedMessages.updatedAt,
+        workflowRunId: sessionQueuedMessages.workflowRunId,
       })
       .from(sessionQueuedMessages)
       .where(and(
@@ -573,10 +607,15 @@ export class SessionQueuedMessageService {
         createdAt: sessionQueuedMessages.createdAt,
         dispatchedAt: sessionQueuedMessages.dispatchedAt,
         id: sessionQueuedMessages.id,
+        principalAgentId: sessionQueuedMessages.principalAgentId,
+        principalSessionId: sessionQueuedMessages.principalSessionId,
+        principalType: sessionQueuedMessages.principalType,
         sessionId: sessionQueuedMessages.sessionId,
         shouldSteer: sessionQueuedMessages.shouldSteer,
         status: sessionQueuedMessages.status,
+        taskRunId: sessionQueuedMessages.taskRunId,
         updatedAt: sessionQueuedMessages.updatedAt,
+        workflowRunId: sessionQueuedMessages.workflowRunId,
       })
       .from(sessionQueuedMessages)
       .where(and(
@@ -688,11 +727,39 @@ export class SessionQueuedMessageService {
       dispatchedAt: queuedMessage.dispatchedAt,
       id: queuedMessage.id,
       images,
+      principalAgentId: queuedMessage.principalAgentId,
+      principalSessionId: queuedMessage.principalSessionId,
+      principalType: queuedMessage.principalType,
       sessionId: queuedMessage.sessionId,
       shouldSteer: queuedMessage.shouldSteer,
       status: queuedMessage.status,
+      taskRunId: queuedMessage.taskRunId,
       text: textParts.join("\n\n"),
       updatedAt: queuedMessage.updatedAt,
+      workflowRunId: queuedMessage.workflowRunId,
     };
+  }
+
+  private normalizePrincipalMetadata(
+    principalMetadata?: SessionMessagePrincipalMetadata,
+  ): Required<SessionMessagePrincipalMetadata> {
+    return {
+      principalAgentId: principalMetadata?.principalAgentId ?? null,
+      principalSessionId: principalMetadata?.principalSessionId ?? null,
+      principalType: principalMetadata?.principalType ?? "user",
+      taskRunId: principalMetadata?.taskRunId ?? null,
+      workflowRunId: principalMetadata?.workflowRunId ?? null,
+    };
+  }
+
+  private arePrincipalMetadataEqual(
+    queuedMessage: Pick<QueuedMessageRow, "principalAgentId" | "principalSessionId" | "principalType" | "taskRunId" | "workflowRunId">,
+    principalMetadata: Required<SessionMessagePrincipalMetadata>,
+  ): boolean {
+    return queuedMessage.principalAgentId === principalMetadata.principalAgentId
+      && queuedMessage.principalSessionId === principalMetadata.principalSessionId
+      && queuedMessage.principalType === principalMetadata.principalType
+      && queuedMessage.taskRunId === principalMetadata.taskRunId
+      && queuedMessage.workflowRunId === principalMetadata.workflowRunId;
   }
 }

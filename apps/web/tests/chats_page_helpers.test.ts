@@ -4,10 +4,12 @@ import {
   type ToolCallSummaryRecord,
   resolveGithubInstallationStartTurnActions,
   resolveGithubInstallationStartToolResult,
+  resolvePrincipalExecutionMessageDisplay,
   resolveSessionTitleOverride,
   shouldHydrateComposerSelection,
 } from "../src/pages/chats/chats_page_helpers";
 import type { SessionMessageRecord } from "../src/pages/chats/chats_page_data";
+import type { SessionRecord } from "../src/pages/chats/chats_page_data";
 
 function makeToolResultMessage(
   text: string,
@@ -199,4 +201,67 @@ test("resolveGithubInstallationStartTurnActions skips install results without th
   );
 
   assert.deepEqual(actions, []);
+});
+
+test("resolvePrincipalExecutionMessageDisplay formats task execution user messages", () => {
+  const display = resolvePrincipalExecutionMessageDisplay(
+    {
+      principalType: "task",
+      role: "user",
+      taskRunId: "task-run-1",
+    } as unknown as SessionMessageRecord,
+    {
+      associatedTask: {
+        id: "task-1",
+        name: "Prepare launch brief",
+        status: "in_progress",
+      },
+    } as unknown as SessionRecord,
+  );
+
+  assert.deepEqual(display, {
+    detailLabel: "Task run task-run-1",
+    executionType: "task",
+    statusLabel: "in_progress",
+    summaryLabel: "Prepare launch brief",
+    title: "Execute task",
+  });
+});
+
+test("resolvePrincipalExecutionMessageDisplay formats workflow execution user messages", () => {
+  const display = resolvePrincipalExecutionMessageDisplay(
+    {
+      principalType: "workflow",
+      role: "user",
+      workflowRunId: "workflow-run-1",
+    } as unknown as SessionMessageRecord,
+    {
+      associatedWorkflowRun: {
+        id: "workflow-run-1",
+        name: "Ship release",
+        status: "running",
+        steps: [{
+          id: "step-1",
+          name: "Build",
+          ordinal: 1,
+          status: "done",
+          workflowRunId: "workflow-run-1",
+        }, {
+          id: "step-2",
+          name: "Deploy",
+          ordinal: 2,
+          status: "pending",
+          workflowRunId: "workflow-run-1",
+        }],
+      },
+    } as unknown as SessionRecord,
+  );
+
+  assert.deepEqual(display, {
+    detailLabel: "Workflow run workflow-run-1",
+    executionType: "workflow",
+    statusLabel: "running · 1/2",
+    summaryLabel: "Ship release",
+    title: "Execute workflow",
+  });
 });

@@ -18,6 +18,7 @@ import type {
   ExistingSessionRow,
   InsertableDatabase,
   SelectableDatabase,
+  SessionMessagePrincipalMetadata,
   SessionManagerQueuePromptOptions,
   SessionPromptImageInput,
   SessionRecord,
@@ -180,6 +181,7 @@ export class SessionPromptService {
       userMessage,
       preparedPrompt,
       options.shouldSteer ?? false,
+      options.principalMetadata,
     );
 
     return {
@@ -207,12 +209,14 @@ export class SessionPromptService {
     userMessage: string,
     preparedPrompt: PreparedSessionPrompt,
     shouldSteer: boolean,
+    principalMetadata?: SessionMessagePrincipalMetadata,
   ): Promise<void> {
     await this.sessionQueuedMessageService.enqueueInTransaction(
       insertableDatabase as unknown as SelectableDatabase & InsertableDatabase & UpdatableDatabase,
       {
         companyId,
         images: preparedPrompt.queuedImages,
+        principalMetadata,
         sessionId,
         shouldSteer,
         text: userMessage,

@@ -479,6 +479,10 @@ export class WorkflowService {
       input.agentId,
       preparedRun.prompt,
       {
+        principalMetadata: {
+          principalType: "workflow",
+          workflowRunId: preparedRun.workflowRunId,
+        },
         userId: input.startedByUserId ?? null,
       },
     );

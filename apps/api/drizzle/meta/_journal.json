@@ -876,6 +876,13 @@
       "when": 1776900070124,
       "tag": "0125_company_onboardings",
       "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1776908814423,
+      "tag": "0126_session_message_principals",
+      "breakpoints": true
     }
   ]
 }

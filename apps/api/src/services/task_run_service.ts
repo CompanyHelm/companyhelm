@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import type { AppRuntimeTransaction } from "../db/transaction_provider_interface.ts";
@@ -161,6 +162,7 @@ export class TaskRunService {
       }
 
       const taskStageName = await this.loadTaskStageName(tx, input.companyId, taskRow.taskStageId);
+      const taskRunId = randomUUID();
       const sessionRecord = await this.sessionManagerService.createSessionInTransaction(
         tx as never,
         tx as never,
@@ -173,6 +175,10 @@ export class TaskRunService {
           taskStageName,
         }),
         {
+          principalMetadata: {
+            principalType: "task",
+            taskRunId,
+          },
           userId: input.userId,
         },
       );
@@ -188,6 +194,7 @@ export class TaskRunService {
           createdByUserId: input.userId,
           endedReason: null,
           finishedAt: null,
+          id: taskRunId,
           lastActivityAt: now,
           sessionId: sessionRecord.id,
           startedAt: now,

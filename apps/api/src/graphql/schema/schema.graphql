@@ -612,6 +612,11 @@ type SessionMessage {
   status: String!
   toolCallId: String
   toolName: String
+  principalType: String!
+  principalAgentId: ID
+  principalSessionId: ID
+  taskRunId: ID
+  workflowRunId: ID
   contents: [SessionMessageContent!]!
   text: String!
   isError: Boolean!

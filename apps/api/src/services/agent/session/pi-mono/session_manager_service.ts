@@ -256,9 +256,16 @@ export class PiMonoSessionManagerService {
     images?: ImageContent[],
     userMessageCreatedAt?: Date,
     queuedMessageId?: string,
+    principalMetadata?: {
+      principalAgentId: string | null;
+      principalSessionId: string | null;
+      principalType: "agent_message" | "task" | "user" | "workflow";
+      taskRunId: string | null;
+      workflowRunId: string | null;
+    },
   ): Promise<void> {
     if (userMessageCreatedAt) {
-      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId);
+      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId, principalMetadata);
     }
 
     const session = runtime.session;
@@ -287,9 +294,16 @@ export class PiMonoSessionManagerService {
     images?: ImageContent[],
     userMessageCreatedAt?: Date,
     queuedMessageId?: string,
+    principalMetadata?: {
+      principalAgentId: string | null;
+      principalSessionId: string | null;
+      principalType: "agent_message" | "task" | "user" | "workflow";
+      taskRunId: string | null;
+      workflowRunId: string | null;
+    },
   ): Promise<void> {
     if (userMessageCreatedAt) {
-      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId);
+      runtime.eventHandler.queueUserMessageTimestamp(userMessageCreatedAt, queuedMessageId, principalMetadata);
     }
 
     const session = runtime.session;

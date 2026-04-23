@@ -8,6 +8,7 @@ import {
   GitForkIcon,
   GithubIcon,
   Loader2Icon,
+  ListTodoIcon,
   WrenchIcon,
 } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
@@ -31,6 +32,7 @@ import {
   resolveCommandToolArguments,
   resolveGithubInstallationStartTurnActions,
   resolveImageContentDisplay,
+  resolvePrincipalExecutionMessageDisplay,
   resolveSessionTitle,
   resolveTerminalStructuredContent,
   resolveToolCallDisplay,
@@ -373,20 +375,84 @@ const ToolTranscriptMessage = memo(function ToolTranscriptMessage(
 
 ToolTranscriptMessage.displayName = "ToolTranscriptMessage";
 
+const PrincipalExecutionTranscriptMessage = memo(function PrincipalExecutionTranscriptMessage(
+  { message, session }: { message: SessionMessageRecord; session: SessionRecord },
+) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const display = resolvePrincipalExecutionMessageDisplay(message, session);
+  if (!display) {
+    return null;
+  }
+
+  const Icon = display.executionType === "task" ? ListTodoIcon : GitForkIcon;
+  const rawInstructions = message.text.trim();
+
+  return (
+    <div className="min-w-0 w-full max-w-3xl rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-sm font-medium text-foreground">{display.title}</span>
+            <span className="truncate text-sm text-foreground" title={display.summaryLabel}>
+              {display.summaryLabel}
+            </span>
+            {display.statusLabel ? (
+              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+                {display.statusLabel}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <button
+          aria-expanded={isExpanded}
+          className="inline-flex shrink-0 items-center rounded-md p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground"
+          onClick={() => setIsExpanded((value) => !value)}
+          type="button"
+        >
+          <ChevronRightIcon className={`size-4 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+        </button>
+      </div>
+      {isExpanded ? (
+        <div className="mt-3 grid gap-3">
+          {display.detailLabel ? (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <span>{display.detailLabel}</span>
+            </div>
+          ) : null}
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-background/60">
+            <div className="border-b border-border/60 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Instructions
+            </div>
+            <pre className="no-scrollbar max-h-[calc(30*1.5rem)] overflow-y-auto whitespace-pre-wrap break-words px-3 py-3 font-mono text-[13px] leading-6 text-foreground [overflow-wrap:anywhere]">
+              {rawInstructions.length > 0 ? rawInstructions : "No instructions were persisted."}
+            </pre>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
+PrincipalExecutionTranscriptMessage.displayName = "PrincipalExecutionTranscriptMessage";
+
 const TranscriptMessageRow = memo(function TranscriptMessageRow({
   assistantContentMode,
   message,
+  session,
   timestampTooltipBoundary,
   toolCallSummary,
   useLeftGutter = true,
 }: {
   assistantContentMode: AssistantContentMode;
   message: SessionMessageRecord;
+  session: SessionRecord;
   timestampTooltipBoundary: ChatTranscriptTimestampTooltipBoundary | null;
   toolCallSummary: ToolCallSummaryRecord | null;
   useLeftGutter?: boolean;
 }) {
-  const isUserMessage = message.role === "user";
+  const principalExecutionDisplay = resolvePrincipalExecutionMessageDisplay(message, session);
+  const isUserMessage = message.role === "user" && principalExecutionDisplay === null;
   const isToolMessage = message.role === "toolResult";
   const userImageContents = isUserMessage ? resolveImageContentDisplay(message) : [];
   const assistantDisplayContents = !isUserMessage && !isToolMessage
@@ -466,6 +532,8 @@ const TranscriptMessageRow = memo(function TranscriptMessageRow({
                   </div>
                 ) : null}
               </div>
+            ) : principalExecutionDisplay ? (
+              <PrincipalExecutionTranscriptMessage message={message} session={session} />
             ) : isToolMessage ? (
               <ToolTranscriptMessage
                 message={message}
@@ -870,6 +938,7 @@ function ChatTranscriptPaneComponent({
                       assistantContentMode="all"
                       key={message.id}
                       message={message}
+                      session={session}
                       timestampTooltipBoundary={timestampTooltipBoundary}
                       toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                     />
@@ -899,6 +968,7 @@ function ChatTranscriptPaneComponent({
                     assistantContentMode="text-only"
                     key={message.id}
                     message={message}
+                    session={session}
                     timestampTooltipBoundary={timestampTooltipBoundary}
                     toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                   />
@@ -921,6 +991,7 @@ function ChatTranscriptPaneComponent({
                         assistantContentMode="all"
                         key={message.id}
                         message={message}
+                        session={session}
                         timestampTooltipBoundary={timestampTooltipBoundary}
                         toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                       />
@@ -930,6 +1001,7 @@ function ChatTranscriptPaneComponent({
                         assistantContentMode="thinking-only"
                         key={`${message.id}-thinking`}
                         message={message}
+                        session={session}
                         timestampTooltipBoundary={timestampTooltipBoundary}
                         toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                       />
@@ -941,6 +1013,7 @@ function ChatTranscriptPaneComponent({
                     assistantContentMode="text-only"
                     key={message.id}
                     message={message}
+                    session={session}
                     timestampTooltipBoundary={timestampTooltipBoundary}
                     toolCallSummary={message.toolCallId ? toolCallSummaryById.get(message.toolCallId) ?? null : null}
                   />

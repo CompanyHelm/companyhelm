@@ -208,6 +208,7 @@ export class SessionLifecycleService {
       userMessage,
       preparedPrompt,
       options.shouldSteer ?? false,
+      options.principalMetadata,
     );
 
     return {

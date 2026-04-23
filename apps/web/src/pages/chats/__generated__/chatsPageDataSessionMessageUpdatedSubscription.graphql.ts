@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<39a674eb26dd0152383e76b8a99ade5f>>
+ * @generated SignedSource<<0dbf2334a9550be2a41b92d7ff4259f8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,9 +28,13 @@ export type chatsPageDataSessionMessageUpdatedSubscription$data = {
     readonly errorMessage: string | null | undefined;
     readonly id: string;
     readonly isError: boolean;
+    readonly principalAgentId: string | null | undefined;
+    readonly principalSessionId: string | null | undefined;
+    readonly principalType: string;
     readonly role: string;
     readonly sessionId: string;
     readonly status: string;
+    readonly taskRunId: string | null | undefined;
     readonly text: string;
     readonly toolCallId: string | null | undefined;
     readonly toolName: string | null | undefined;
@@ -42,6 +46,7 @@ export type chatsPageDataSessionMessageUpdatedSubscription$data = {
     };
     readonly turnId: string;
     readonly updatedAt: string;
+    readonly workflowRunId: string | null | undefined;
   };
 };
 export type chatsPageDataSessionMessageUpdatedSubscription = {
@@ -162,6 +167,41 @@ v6 = [
       {
         "alias": null,
         "args": null,
+        "kind": "ScalarField",
+        "name": "principalType",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "principalAgentId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "principalSessionId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "taskRunId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "workflowRunId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
         "concreteType": "SessionMessageContent",
         "kind": "LinkedField",
         "name": "contents",
@@ -259,16 +299,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "92fb7229290e821c45f561022b9b61d0",
+    "cacheID": "a052ea9f9db91f4100f45b978100a902",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionMessageUpdatedSubscription",
     "operationKind": "subscription",
-    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "subscription chatsPageDataSessionMessageUpdatedSubscription(\n  $sessionId: ID!\n) {\n  SessionMessageUpdated(sessionId: $sessionId) {\n    id\n    sessionId\n    turnId\n    turn {\n      id\n      sessionId\n      startedAt\n      endedAt\n    }\n    role\n    status\n    toolCallId\n    toolName\n    principalType\n    principalAgentId\n    principalSessionId\n    taskRunId\n    workflowRunId\n    contents {\n      type\n      text\n      data\n      mimeType\n      structuredContent\n      arguments\n      toolCallId\n      toolName\n    }\n    text\n    isError\n    errorMessage\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "5f0ff09469a70d3fe3a88d91022d9569";
+(node as any).hash = "5f0fbac45e75f908a4f3e254732fc770";
 
 export default node;

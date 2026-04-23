@@ -278,6 +278,7 @@ export class SessionProcessExecutionService {
           this.toImageContents(primaryQueuedMessage),
           primaryQueuedMessage.createdAt,
           primaryQueuedMessage.id,
+          this.toPrincipalMetadata(primaryQueuedMessage),
         );
         await steeringDeliveryPromise;
         if (leaseLossError) {
@@ -421,6 +422,7 @@ export class SessionProcessExecutionService {
           this.toImageContents(steerMessage),
           steerMessage.createdAt,
           steerMessage.id,
+          this.toPrincipalMetadata(steerMessage),
         );
       } catch (error) {
         await this.sessionQueuedMessageService.markPending(transactionProvider, companyId, [steerMessage.id]);
@@ -629,6 +631,24 @@ export class SessionProcessExecutionService {
       mimeType: image.mimeType,
       type: "image" as const,
     }));
+  }
+
+  private toPrincipalMetadata(
+    queuedMessage: QueuedSessionMessageRecord,
+  ): {
+    principalAgentId: string | null;
+    principalSessionId: string | null;
+    principalType: "agent_message" | "task" | "user" | "workflow";
+    taskRunId: string | null;
+    workflowRunId: string | null;
+  } {
+    return {
+      principalAgentId: queuedMessage.principalAgentId,
+      principalSessionId: queuedMessage.principalSessionId,
+      principalType: queuedMessage.principalType,
+      taskRunId: queuedMessage.taskRunId,
+      workflowRunId: queuedMessage.workflowRunId,
+    };
   }
 
   private startLeaseHeartbeat(

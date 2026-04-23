@@ -129,6 +129,11 @@ export const chatsPageTranscriptQueryNode = graphql`
           status
           toolCallId
           toolName
+          principalType
+          principalAgentId
+          principalSessionId
+          taskRunId
+          workflowRunId
           contents {
             type
             text
@@ -597,6 +602,11 @@ export const chatsPageSessionMessageUpdatedSubscriptionNode = graphql`
       status
       toolCallId
       toolName
+      principalType
+      principalAgentId
+      principalSessionId
+      taskRunId
+      workflowRunId
       contents {
         type
         text

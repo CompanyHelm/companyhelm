@@ -121,7 +121,12 @@ type PiMonoSessionContextSnapshot = {
 type QueuedUserMessageDispatch = {
   dispatched: boolean;
   queuedMessageId: string | null;
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: "agent_message" | "task" | "user" | "workflow";
+  taskRunId: string | null;
   timestamp: Date;
+  workflowRunId: string | null;
 };
 
 type SessionAttribution = {
@@ -219,11 +224,26 @@ export class PiMonoSessionEventHandler {
     return queuedEvent;
   }
 
-  queueUserMessageTimestamp(timestamp: Date, queuedMessageId?: string | null): void {
+  queueUserMessageTimestamp(
+    timestamp: Date,
+    queuedMessageId?: string | null,
+    principalMetadata?: {
+      principalAgentId: string | null;
+      principalSessionId: string | null;
+      principalType: "agent_message" | "task" | "user" | "workflow";
+      taskRunId: string | null;
+      workflowRunId: string | null;
+    },
+  ): void {
     this.queuedUserMessageDispatches.push({
       dispatched: false,
       queuedMessageId: queuedMessageId ? String(queuedMessageId).trim() : null,
+      principalAgentId: principalMetadata?.principalAgentId ?? null,
+      principalSessionId: principalMetadata?.principalSessionId ?? null,
+      principalType: principalMetadata?.principalType ?? "user",
+      taskRunId: principalMetadata?.taskRunId ?? null,
       timestamp,
+      workflowRunId: principalMetadata?.workflowRunId ?? null,
     });
   }
 
@@ -421,7 +441,7 @@ export class PiMonoSessionEventHandler {
         const queuedUserMessageDispatch = this.shiftQueuedUserMessageDispatch();
         const userMessageTimestamp = queuedUserMessageDispatch?.timestamp
           ?? this.resolveMessageTimestamp(sessionEvent.message.timestamp);
-        await this.upsertSessionMessage("completed", sessionEvent, userMessageTimestamp);
+        await this.upsertSessionMessage("completed", sessionEvent, userMessageTimestamp, queuedUserMessageDispatch);
         if (queuedUserMessageDispatch?.queuedMessageId) {
           await this.deleteQueuedUserMessage(queuedUserMessageDispatch.queuedMessageId);
         }
@@ -458,6 +478,7 @@ export class PiMonoSessionEventHandler {
     status: "running" | "completed",
     sessionEvent: SessionEvent,
     timestampOverride?: Date,
+    principalMetadata?: Pick<QueuedUserMessageDispatch, "principalAgentId" | "principalSessionId" | "principalType" | "taskRunId" | "workflowRunId">,
   ): Promise<PersistedSessionMessageReference | null> {
     const eventMessage = sessionEvent.message;
     if (!eventMessage?.role) {
@@ -478,6 +499,7 @@ export class PiMonoSessionEventHandler {
       eventMessage,
       timestamp,
       turnId,
+      principalMetadata,
     );
 
     await this.transactionProvider.transaction(async (tx) => {
@@ -627,6 +649,7 @@ export class PiMonoSessionEventHandler {
     message: SessionMessage,
     timestamp: Date,
     turnId: string,
+    principalMetadata?: Pick<QueuedUserMessageDispatch, "principalAgentId" | "principalSessionId" | "principalType" | "taskRunId" | "workflowRunId">,
   ): Record<string, unknown> {
     return {
       companyId,
@@ -634,13 +657,18 @@ export class PiMonoSessionEventHandler {
       errorMessage: this.resolveMessageErrorMessage(message),
       id: messageId,
       isError: this.resolveIsError(message),
+      principalAgentId: principalMetadata?.principalAgentId ?? null,
+      principalSessionId: principalMetadata?.principalSessionId ?? null,
+      principalType: principalMetadata?.principalType ?? "user",
       role: message.role,
       sessionId: this.sessionId,
       status,
+      taskRunId: principalMetadata?.taskRunId ?? null,
       toolCallId: this.resolveMessageToolCallId(message),
       toolName: this.resolveMessageToolName(message),
       turnId,
       updatedAt: timestamp,
+      workflowRunId: principalMetadata?.workflowRunId ?? null,
     };
   }
 

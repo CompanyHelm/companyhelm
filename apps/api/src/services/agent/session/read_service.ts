@@ -99,6 +99,11 @@ type SessionMessageRow = {
   status: string;
   toolCallId: string | null;
   toolName: string | null;
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: "agent_message" | "task" | "user" | "workflow";
+  taskRunId: string | null;
+  workflowRunId: string | null;
   isError: boolean;
   errorMessage: string | null;
   createdAt: Date;
@@ -194,6 +199,11 @@ export type SessionMessageGraphqlRecord = {
   status: string;
   toolCallId: string | null;
   toolName: string | null;
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: string;
+  taskRunId: string | null;
+  workflowRunId: string | null;
   contents: SessionMessageContentGraphqlRecord[];
   text: string;
   isError: boolean;
@@ -486,6 +496,11 @@ export class SessionReadService {
           status: sessionMessages.status,
           toolCallId: sessionMessages.toolCallId,
           toolName: sessionMessages.toolName,
+          principalAgentId: sessionMessages.principalAgentId,
+          principalSessionId: sessionMessages.principalSessionId,
+          principalType: sessionMessages.principalType,
+          taskRunId: sessionMessages.taskRunId,
+          workflowRunId: sessionMessages.workflowRunId,
           isError: sessionMessages.isError,
           errorMessage: sessionMessages.errorMessage,
           createdAt: sessionMessages.createdAt,
@@ -554,6 +569,11 @@ export class SessionReadService {
           status: sessionMessages.status,
           toolCallId: sessionMessages.toolCallId,
           toolName: sessionMessages.toolName,
+          principalAgentId: sessionMessages.principalAgentId,
+          principalSessionId: sessionMessages.principalSessionId,
+          principalType: sessionMessages.principalType,
+          taskRunId: sessionMessages.taskRunId,
+          workflowRunId: sessionMessages.workflowRunId,
           isError: sessionMessages.isError,
           errorMessage: sessionMessages.errorMessage,
           createdAt: sessionMessages.createdAt,
@@ -602,6 +622,11 @@ export class SessionReadService {
         status: sessionMessages.status,
         toolCallId: sessionMessages.toolCallId,
         toolName: sessionMessages.toolName,
+        principalAgentId: sessionMessages.principalAgentId,
+        principalSessionId: sessionMessages.principalSessionId,
+        principalType: sessionMessages.principalType,
+        taskRunId: sessionMessages.taskRunId,
+        workflowRunId: sessionMessages.workflowRunId,
         isError: sessionMessages.isError,
         errorMessage: sessionMessages.errorMessage,
         createdAt: sessionMessages.createdAt,
@@ -1157,6 +1182,11 @@ export class SessionReadService {
       status: messageRow.status,
       toolCallId: messageRow.toolCallId,
       toolName: messageRow.toolName,
+      principalAgentId: messageRow.principalAgentId ?? null,
+      principalSessionId: messageRow.principalSessionId ?? null,
+      principalType: messageRow.principalType ?? "user",
+      taskRunId: messageRow.taskRunId ?? null,
+      workflowRunId: messageRow.workflowRunId ?? null,
       text,
       isError: messageRow.isError,
       errorMessage: messageRow.errorMessage,

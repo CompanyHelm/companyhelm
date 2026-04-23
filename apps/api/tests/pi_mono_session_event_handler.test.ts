@@ -17,9 +17,14 @@ import type { SessionTurnUsageRecordInput } from "../src/services/agent/session/
 type SessionMessageRecord = Record<string, unknown> & {
   errorMessage?: string | null;
   id: string;
+  principalAgentId?: string | null;
+  principalSessionId?: string | null;
+  principalType?: string;
   role: string;
   sessionId: string;
   status: string;
+  taskRunId?: string | null;
+  workflowRunId?: string | null;
 };
 
 type MessageContentRecord = Record<string, unknown> & {
@@ -1704,6 +1709,41 @@ test("PiMonoSessionEventHandler uses the queued user message timestamp when pers
   assert.ok(messageRecord);
   assert.equal((messageRecord.createdAt as Date).toISOString(), queuedTimestamp.toISOString());
   assert.equal((messageRecord.updatedAt as Date).toISOString(), queuedTimestamp.toISOString());
+});
+
+test("PiMonoSessionEventHandler persists queued user message principal metadata", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+  );
+  const queuedTimestamp = new Date("2026-03-27T18:05:00.000Z");
+
+  try {
+    handler.queueUserMessageTimestamp(queuedTimestamp, "queued-1", {
+      principalAgentId: null,
+      principalSessionId: null,
+      principalType: "workflow",
+      taskRunId: null,
+      workflowRunId: "workflow-run-1",
+    });
+    await handler.handle({
+      message: {
+        content: "Execute the workflow.",
+        role: "user",
+        timestamp: 9999999999999,
+      },
+      type: "message_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  const [messageRecord] = Array.from(harness.sessionMessageRecords.values());
+  assert.ok(messageRecord);
+  assert.equal(messageRecord.principalType, "workflow");
+  assert.equal(messageRecord.workflowRunId, "workflow-run-1");
 });
 
 test("PiMonoSessionEventHandler marks queued rows dispatched on user start and removes them on user completion", async () => {

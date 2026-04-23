@@ -89,6 +89,11 @@ export class ConversationDeliveryPlanner {
         targetSession.id,
         deliveryText,
         {
+          principalMetadata: {
+            principalAgentId: input.sourceAgentId,
+            principalSessionId: input.sourceSessionId,
+            principalType: "agent_message",
+          },
           shouldSteer: true,
         },
       );
@@ -122,6 +127,11 @@ export class ConversationDeliveryPlanner {
         reusableTarget.targetSessionId,
         deliveryText,
         {
+          principalMetadata: {
+            principalAgentId: input.sourceAgentId,
+            principalSessionId: input.sourceSessionId,
+            principalType: "agent_message",
+          },
           shouldSteer: true,
         },
       );
@@ -140,6 +150,13 @@ export class ConversationDeliveryPlanner {
       input.companyId,
       targetAgentId,
       deliveryText,
+      {
+        principalMetadata: {
+          principalAgentId: input.sourceAgentId,
+          principalSessionId: input.sourceSessionId,
+          principalType: "agent_message",
+        },
+      },
     );
 
     return {

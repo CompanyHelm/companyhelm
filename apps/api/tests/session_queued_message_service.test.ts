@@ -9,10 +9,15 @@ type QueuedMessageRecord = Record<string, unknown> & {
   createdAt: Date;
   dispatchedAt: Date | null;
   id: string;
+  principalAgentId: string | null;
+  principalSessionId: string | null;
+  principalType: string;
   sessionId: string;
   shouldSteer: boolean;
   status: string;
+  taskRunId: string | null;
   updatedAt: Date;
+  workflowRunId: string | null;
 };
 
 type QueuedContentRecord = Record<string, unknown> & {
@@ -312,6 +317,29 @@ test("SessionQueuedMessageService stores text and image parts in queued contents
   assert.equal(harness.queuedContents[1]?.type, "image");
   assert.equal(harness.queuedContents[1]?.data, "encoded-image");
   assert.equal(harness.queuedContents[1]?.mimeType, "image/png");
+});
+
+test("SessionQueuedMessageService stores principal metadata on queued rows", async () => {
+  const harness = SessionQueuedMessageServiceTestHarness.create();
+  const service = new SessionQueuedMessageService();
+
+  await service.enqueue(harness.transactionProvider as never, {
+    companyId: "company-1",
+    principalMetadata: {
+      principalType: "task",
+      taskRunId: "task-run-1",
+    },
+    sessionId: "session-1",
+    shouldSteer: false,
+    text: "Execute the task.",
+  });
+
+  const queuedMessages = await service.listQueued(harness.transactionProvider as never, "company-1", "session-1");
+
+  assert.equal(harness.queuedMessages[0]?.principalType, "task");
+  assert.equal(harness.queuedMessages[0]?.taskRunId, "task-run-1");
+  assert.equal(queuedMessages[0]?.principalType, "task");
+  assert.equal(queuedMessages[0]?.taskRunId, "task-run-1");
 });
 
 test("SessionQueuedMessageService marks queued rows processing, records claim and dispatch timestamps, and deletes processed rows", async () => {
