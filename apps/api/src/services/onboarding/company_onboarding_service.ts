@@ -218,13 +218,6 @@ export class CompanyOnboardingService {
             throw new Error("Add a third-party model provider credential before continuing.");
           }
         }
-        if (input.llmSetupStatus === "company_managed") {
-          const hasManagedCredential = await this.hasManagedCredential(tx, input.companyId);
-          if (!hasManagedCredential) {
-            throw new Error("CompanyHelm-managed model access is not configured for this company.");
-          }
-        }
-
         if (input.llmSetupStatus === "skipped") {
           values.llmCompletedAt = null;
           values.llmSkippedAt = new Date();
@@ -465,21 +458,6 @@ export class CompanyOnboardingService {
       .where(and(
         eq(modelProviderCredentials.companyId, companyId),
         eq(modelProviderCredentials.isManaged, false),
-      ))
-      .limit(1) as ExistenceRow[];
-
-    return Boolean(credential);
-  }
-
-  private async hasManagedCredential(tx: AppRuntimeTransaction, companyId: string): Promise<boolean> {
-    const [credential] = await tx
-      .select({
-        id: modelProviderCredentials.id,
-      })
-      .from(modelProviderCredentials)
-      .where(and(
-        eq(modelProviderCredentials.companyId, companyId),
-        eq(modelProviderCredentials.isManaged, true),
       ))
       .limit(1) as ExistenceRow[];
 

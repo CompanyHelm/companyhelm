@@ -190,7 +190,7 @@ function ModelProviderPageContent() {
                   onClick={() => {
                     controller.clearErrorMessage();
                     void controller.updateOnboarding({
-                      llmSetupStatus: "skipped",
+                      llmSetupStatus: "company_managed",
                     }).then(() => {
                       navigateToOnboardingStep({
                         navigate,

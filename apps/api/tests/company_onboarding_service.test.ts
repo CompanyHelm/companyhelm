@@ -285,6 +285,21 @@ test("CompanyOnboardingService saves static setup choices before the CEO chat st
   assert.ok(onboarding.llmCompletedAt instanceof Date);
 });
 
+test("CompanyOnboardingService records CompanyHelm-managed setup without requiring a preexisting credential", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness();
+  const service = harness.buildService();
+
+  await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
+  const onboarding = await service.updateSetup(harness.buildTransactionProvider() as never, {
+    companyId: "company-1",
+    llmSetupStatus: "company_managed",
+  });
+
+  assert.equal(onboarding.llmSetupStatus, "company_managed");
+  assert.ok(onboarding.llmCompletedAt instanceof Date);
+  assert.equal(onboarding.llmSkippedAt, null);
+});
+
 test("CompanyOnboardingService blocks CEO provisioning until the static steps are resolved", async () => {
   const harness = new CompanyOnboardingServiceTestHarness();
   const service = harness.buildService();

@@ -739,7 +739,7 @@ test("CompanyBootstrapService creates the CEO onboarding assets lazily", async (
     harness.buildTransaction() as never,
     {
       companyId: "company-1",
-      llmSetupStatus: "third_party",
+      llmSetupStatus: "company_managed",
     },
   );
 

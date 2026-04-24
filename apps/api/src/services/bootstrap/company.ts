@@ -871,6 +871,7 @@ export class CompanyBootstrapService {
 
     if (input.llmSetupStatus === "company_managed") {
       return this.selectPreferredCredential(managedCredentials)
+        ?? await this.ensureManagedCredentialForFallback(transaction, input.companyId)
         ?? this.selectPreferredCredential(thirdPartyCredentials);
     }
     if (input.llmSetupStatus === "third_party") {
