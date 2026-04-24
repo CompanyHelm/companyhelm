@@ -26,7 +26,7 @@ export class ClerkJwtKeyLoader {
     const jwksDocument = await this.fetchJwksDocument();
     const jwk = this.selectJwk(jwksDocument.keys, keyId);
     const publicKey = await importJWK(jwk, "RS256");
-    return exportSPKI(publicKey as never);
+    return exportSPKI(publicKey as CryptoKey);
   }
 
   private resolveKeyId(token: string): string | null {

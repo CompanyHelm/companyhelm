@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentMcpRemoteTool } from "./remote_tool.ts";
 import type { AgentMcpToolDescriptor } from "./service.ts";
@@ -21,7 +20,7 @@ export class AgentMcpToolProvider extends AgentToolProviderInterface {
     this.descriptors = descriptors;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return this.descriptors.map((descriptor) => {
       return new AgentMcpRemoteTool(this.toolService, descriptor).createDefinition();
     });

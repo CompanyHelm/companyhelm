@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentRuntimeToolService } from "./service.ts";
 import { AgentRuntimeWaitTool } from "./wait.ts";
@@ -15,7 +14,7 @@ export class AgentRuntimeToolProvider extends AgentToolProviderInterface {
     this.toolService = toolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentRuntimeWaitTool(this.toolService).createDefinition(),
     ];

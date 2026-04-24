@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { inject, injectable } from "inversify";
-import { AuthProvider, type AuthSession } from "../auth/auth_provider.ts";
+import { AuthProvider, type AuthRuntimeDatabase, type AuthSession } from "../auth/auth_provider.ts";
 import { AuthProviderFactory } from "../auth/auth_provider_factory.ts";
 import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
 import { AppRuntimeTransactionProvider } from "../db/app_runtime_transaction_provider.ts";
@@ -20,11 +20,15 @@ export type GraphqlRequestContext = {
 @injectable()
 export class GraphqlRequestContextResolver {
   private readonly authProvider: AuthProvider;
-  private readonly database: AppRuntimeDatabase;
+  private readonly database: AuthRuntimeDatabase & {
+    withCompanyContext<T>(companyId: string, callback: (tx: unknown) => Promise<T>): Promise<T>;
+  };
 
   constructor(
     @inject(AuthProvider) authProvider: AuthProvider,
-    @inject(AppRuntimeDatabase) database: AppRuntimeDatabase,
+    @inject(AppRuntimeDatabase) database: AuthRuntimeDatabase & {
+      withCompanyContext<T>(companyId: string, callback: (tx: unknown) => Promise<T>): Promise<T>;
+    },
   ) {
     this.authProvider = authProvider;
     this.database = database;
@@ -49,7 +53,9 @@ export class GraphqlRequestContextResolver {
     return {
       authSession,
       app_runtime_transaction_provider: authSession.company
-        ? new AppRuntimeTransactionProvider(this.database, authSession.company.id)
+        ? new AppRuntimeTransactionProvider(this.database as {
+          withCompanyContext<T>(companyId: string, callback: (tx: unknown) => Promise<T>): Promise<T>;
+        }, authSession.company.id)
         : null,
       redisCompanyScopedService: null,
       resolveSubscriptionContext: null,

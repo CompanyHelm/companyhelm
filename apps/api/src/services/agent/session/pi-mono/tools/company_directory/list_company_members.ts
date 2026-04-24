@@ -26,6 +26,7 @@ export class AgentListCompanyMembersTool {
             text: AgentCompanyDirectoryResultFormatter.formatMembers(members),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "list_company_members",

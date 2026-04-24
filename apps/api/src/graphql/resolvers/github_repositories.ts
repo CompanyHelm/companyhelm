@@ -66,13 +66,14 @@ export class GithubRepositoriesQueryResolver {
     const normalizedInstallationId = arguments_.installationId
       ? GithubClient.validateInstallationId(arguments_.installationId)
       : null;
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const whereCondition = normalizedInstallationId == null
-        ? eq(githubRepositories.companyId, context.authSession.company.id)
+        ? eq(githubRepositories.companyId, companyId)
         : and(
-          eq(githubRepositories.companyId, context.authSession.company.id),
+          eq(githubRepositories.companyId, companyId),
           eq(githubRepositories.installationId, normalizedInstallationId),
         );
       const repositories = await selectableDatabase

@@ -20,7 +20,10 @@ export class AgentEnvironmentTemplateResolver {
   constructor(
     @inject(AgentEnvironmentTemplateService)
     templateService: AgentEnvironmentTemplateService = {
-      async resolveTemplateForProvider(_transactionProvider, input) {
+      async resolveTemplateForProvider(
+        _transactionProvider: unknown,
+        input: { templateId: string },
+      ) {
         return {
           computerUse: true,
           cpuCount: 4,
@@ -49,12 +52,13 @@ export class AgentEnvironmentTemplateResolver {
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
     if (!agent.defaultComputeProviderDefinitionId) {
       throw new Error("Agent environment provider is required.");
     }
 
     return this.templateService.resolveTemplateForProvider(context.app_runtime_transaction_provider, {
-      companyId: context.authSession.company.id,
+      companyId,
       providerDefinitionId: agent.defaultComputeProviderDefinitionId,
       templateId: agent.defaultEnvironmentTemplateId,
     });

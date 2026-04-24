@@ -38,6 +38,7 @@ export class AgentPtySendInputTool {
             text: AgentTerminalResultFormatter.formatCommandResult(result),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "pty_send_input",

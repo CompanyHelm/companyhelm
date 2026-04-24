@@ -26,6 +26,7 @@ export class AgentListAvailableSecretsTool {
             text: AgentSecretResultFormatter.formatAvailableSecrets(secrets),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "list_available_secrets",

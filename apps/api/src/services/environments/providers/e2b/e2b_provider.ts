@@ -103,7 +103,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       apiKey: definition.apiKey,
       lifecycle: {
         autoResume: true,
-        onTimeout: "pause",
+        onTimeout: "pause" as const,
       },
       metadata: {
         agentId: request.agentId,
@@ -470,7 +470,8 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
   }
 
   private isDesktopBinaryMissingError(error: unknown): boolean {
-    return error instanceof CommandExitError && error.result.exitCode === 127;
+    return error instanceof CommandExitError
+      && (error as unknown as { result?: { exitCode?: number } }).result?.exitCode === 127;
   }
 
   private isDesktopRuntimeStartupError(error: unknown): boolean {

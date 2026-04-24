@@ -25,6 +25,7 @@ export class AgentListGithubInstallationsTool {
             text: AgentGithubResultFormatter.formatInstallationList(installations),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "list_github_installations",

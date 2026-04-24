@@ -26,6 +26,7 @@ export class AgentListCompanyAgentsTool {
             text: AgentCompanyDirectoryResultFormatter.formatAgents(agents),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "list_company_agents",

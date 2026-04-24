@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentWebFetchTool } from "./fetch.ts";
 import { AgentWebSearchTool } from "./search.ts";
@@ -16,7 +15,7 @@ export class AgentWebToolProvider extends AgentToolProviderInterface {
     this.webToolService = webToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentWebSearchTool(this.webToolService).createDefinition(),
       new AgentWebFetchTool(this.webToolService).createDefinition(),

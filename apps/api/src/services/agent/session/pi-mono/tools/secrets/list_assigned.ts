@@ -26,6 +26,7 @@ export class AgentListAssignedSecretsTool {
             text: AgentSecretResultFormatter.formatAssignedSecrets(secrets),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "list_assigned_secrets",

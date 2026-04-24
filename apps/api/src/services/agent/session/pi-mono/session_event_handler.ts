@@ -43,26 +43,26 @@ type DeletableDatabase = {
 };
 
 type TextContent = {
-  type?: string;
-  text?: string;
+  type: "text";
+  text: string;
 };
 
 type ImageContent = {
-  type?: string;
-  data?: string;
-  mimeType?: string;
+  type: "image";
+  data: string;
+  mimeType: string;
 };
 
 type ThinkingContent = {
-  type?: string;
-  thinking?: string;
+  type: "thinking";
+  thinking: string;
 };
 
 type ToolCallContent = {
-  type?: string;
-  arguments?: unknown;
-  id?: string;
-  name?: string;
+  type: "toolCall";
+  arguments: unknown;
+  id: string;
+  name: string;
 };
 
 type MessageContent = TextContent | ImageContent | ThinkingContent | ToolCallContent;
@@ -259,7 +259,7 @@ export class PiMonoSessionEventHandler {
     const companyId = await this.resolveCompanyId();
     const turnId = randomUUID();
     await this.transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
+      const insertableDatabase = tx as unknown as InsertableDatabase;
       await insertableDatabase.insert(sessionTurns).values({
         companyId,
         endedAt: null,
@@ -280,7 +280,7 @@ export class PiMonoSessionEventHandler {
 
     await this.waitForIdle();
     await this.transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       await updatableDatabase
         .update(sessionTurns)
         .set({
@@ -519,8 +519,8 @@ export class PiMonoSessionEventHandler {
     );
 
     await this.transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
+      const insertableDatabase = tx as unknown as InsertableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
 
       if (this.persistedMessageIds.has(messageId)) {
         await updatableDatabase
@@ -614,9 +614,9 @@ export class PiMonoSessionEventHandler {
   ): Promise<void> {
     const contentRecords = this.buildMessageContentRecords(companyId, messageId, message, timestamp);
     await this.transactionProvider.transaction(async (tx) => {
-      const insertableDatabase = tx as InsertableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
-      const deletableDatabase = tx as DeletableDatabase;
+      const insertableDatabase = tx as unknown as InsertableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
+      const deletableDatabase = tx as unknown as DeletableDatabase;
       const trackedContentIds = [...(this.contentIdsByMessageId.get(messageId) ?? [])];
 
       for (const [contentIndex, contentRecord] of contentRecords.entries()) {
@@ -710,7 +710,7 @@ export class PiMonoSessionEventHandler {
       : null;
 
     return messageContent
-      .flatMap((contentBlock, contentIndex) => {
+      .flatMap<Record<string, unknown>>((contentBlock, contentIndex) => {
         const contentStructuredContent = contentIndex === 0 ? structuredContent : null;
         if (contentBlock.type === "text") {
           return [{
@@ -857,7 +857,7 @@ export class PiMonoSessionEventHandler {
       return [];
     }
 
-    return rawContent.flatMap((contentBlock) => {
+    return rawContent.flatMap<MessageContent>((contentBlock) => {
       if (!contentBlock || typeof contentBlock !== "object") {
         return [];
       }
@@ -1027,7 +1027,7 @@ export class PiMonoSessionEventHandler {
     }
 
     await this.transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       await updatableDatabase
         .update(agentSessions)
         .set({
@@ -1050,7 +1050,7 @@ export class PiMonoSessionEventHandler {
     includeContextSnapshot: boolean,
   ): Promise<void> {
     await this.transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       await updatableDatabase
         .update(agentSessions)
         .set({
@@ -1145,9 +1145,10 @@ export class PiMonoSessionEventHandler {
     }
 
     const companyId = await this.resolveCompanyId();
+    const queuedMessageId = queuedUserMessageDispatch.queuedMessageId;
     const dispatchedAt = this.resolveMessageTimestamp(sessionEvent.message?.timestamp);
     await this.transactionProvider.transaction(async (tx) => {
-      const updatableDatabase = tx as UpdatableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       await updatableDatabase
         .update(sessionQueuedMessages)
         .set({
@@ -1159,7 +1160,7 @@ export class PiMonoSessionEventHandler {
         })
         .where(and(
           eq(sessionQueuedMessages.companyId, companyId),
-          eq(sessionQueuedMessages.id, queuedUserMessageDispatch.queuedMessageId),
+          eq(sessionQueuedMessages.id, queuedMessageId),
           eq(sessionQueuedMessages.status, "processing"),
         ));
     });
@@ -1170,7 +1171,7 @@ export class PiMonoSessionEventHandler {
   private async deleteQueuedUserMessage(queuedMessageId: string): Promise<void> {
     const companyId = await this.resolveCompanyId();
     await this.transactionProvider.transaction(async (tx) => {
-      const deletableDatabase = tx as DeletableDatabase;
+      const deletableDatabase = tx as unknown as DeletableDatabase;
       await deletableDatabase
         .delete(sessionQueuedMessages)
         .where(and(

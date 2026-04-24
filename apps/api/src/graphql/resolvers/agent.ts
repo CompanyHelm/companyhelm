@@ -87,9 +87,10 @@ export class AgentQueryResolver {
     if (arguments_.id.length === 0) {
       throw new Error("id is required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const [agentRecord] = await selectableDatabase
         .select({
           id: agents.id,
@@ -104,7 +105,7 @@ export class AgentQueryResolver {
         })
         .from(agents)
         .where(and(
-          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.companyId, companyId),
           eq(agents.id, arguments_.id),
         )) as AgentRecord[];
       if (!agentRecord) {

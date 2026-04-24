@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentCreateTaskTool } from "./create_task.ts";
 import { AgentListAssignedTasksTool } from "./list_assigned_tasks.ts";
@@ -18,7 +17,7 @@ export class AgentTaskToolProvider extends AgentToolProviderInterface {
     this.taskToolService = taskToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentListTasksTool(this.taskToolService).createDefinition(),
       new AgentListAssignedTasksTool(this.taskToolService).createDefinition(),

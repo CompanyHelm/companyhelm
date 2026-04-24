@@ -58,9 +58,10 @@ export class ModelProviderCredentialModelsQueryResolver {
     if (!credentialId) {
       throw new Error("modelProviderCredentialId is required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const models = await selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,
@@ -74,7 +75,7 @@ export class ModelProviderCredentialModelsQueryResolver {
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.modelProviderCredentialId, credentialId),
         ));
 

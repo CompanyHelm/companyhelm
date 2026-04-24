@@ -25,7 +25,9 @@ export class AgentToolsService {
       return this.initializedTools;
     }
 
-    this.initializedTools = this.toolProviders.flatMap((toolProvider) => toolProvider.createToolDefinitions());
+    this.initializedTools = this.toolProviders.flatMap((toolProvider) => {
+      return toolProvider.createToolDefinitions();
+    }) as ToolDefinition[];
 
     return this.initializedTools;
   }

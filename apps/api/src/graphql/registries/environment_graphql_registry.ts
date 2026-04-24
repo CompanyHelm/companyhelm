@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { inject, injectable } from "inversify";
 import { AgentEnvironmentTemplateService } from "../../services/environments/template_service.ts";
 import { AddComputeProviderDefinitionMutation } from "../mutations/add_compute_provider_definition.ts";
@@ -25,11 +26,11 @@ import { SessionEnvironmentQueryResolver } from "../resolvers/session_environmen
 import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
 
 type EnvironmentsQueryResolverLike = {
-  execute: (...arguments_: never[]) => unknown;
+  execute: (...arguments_: any[]) => unknown;
 };
 
 type MutationLike = {
-  execute: (...arguments_: never[]) => unknown;
+  execute: (...arguments_: any[]) => unknown;
 };
 
 /**

@@ -30,6 +30,7 @@ export class AgentPtyKillTool {
             text: `Killed PTY ${params.pty_id}.`,
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "pty_kill",

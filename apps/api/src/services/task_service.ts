@@ -302,7 +302,7 @@ export class TaskService {
         : await this.taskStageService.resolveTaskStageRecord(tx, input.companyId, input.taskStageId);
       const nextTaskStageId = input.taskStageId === undefined
         ? existingTaskRow.taskStageId
-        : taskStageRecord.id;
+        : taskStageRecord?.id ?? null;
       const assignee = input.assignedAgentId === undefined && input.assignedUserId === undefined
         ? null
         : await this.resolveAssignee(tx, {
@@ -335,7 +335,7 @@ export class TaskService {
           description: nextDescription,
           name: nextName,
           status: nextStatus,
-          taskStageId: nextTaskStageId,
+          taskStageId: nextTaskStageId ?? undefined,
           updatedAt: now,
         })
         .where(and(

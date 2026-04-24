@@ -2,6 +2,7 @@ import {
   type ResourceLoader,
   createExtensionRuntime,
 } from "@mariozechner/pi-coding-agent";
+import type { ResourceDiagnostic } from "@mariozechner/pi-coding-agent";
 import { SystemPromptTemplate } from "../../../../prompts/system_prompt_template.ts";
 import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_template_context.ts";
 
@@ -12,6 +13,7 @@ import { SystemPromptTemplateContext } from "../../../../prompts/system_prompt_t
  * product template separate from the append-system-prompt layers contributed by session modules.
  */
 export class CompanyHelmResourceLoader implements ResourceLoader {
+  private static readonly emptyDiagnostics: ResourceDiagnostic[] = [];
   private readonly appendSystemPrompt: string[];
   private readonly agentsFiles = {
     agentsFiles: [] as Array<{
@@ -28,25 +30,16 @@ export class CompanyHelmResourceLoader implements ResourceLoader {
     runtime: createExtensionRuntime(),
   };
   private readonly prompts = {
-    diagnostics: [] as Array<{
-      error: string;
-      path: string;
-    }>,
+    diagnostics: CompanyHelmResourceLoader.emptyDiagnostics,
     prompts: [],
   };
   private readonly skills = {
-    diagnostics: [] as Array<{
-      error: string;
-      path: string;
-    }>,
+    diagnostics: CompanyHelmResourceLoader.emptyDiagnostics,
     skills: [],
   };
   private readonly systemPrompt: string;
   private readonly themes = {
-    diagnostics: [] as Array<{
-      error: string;
-      path: string;
-    }>,
+    diagnostics: CompanyHelmResourceLoader.emptyDiagnostics,
     themes: [],
   };
 

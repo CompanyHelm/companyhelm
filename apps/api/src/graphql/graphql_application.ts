@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import mercurius from "mercurius";
 import type { FastifyInstance } from "fastify";
 import GraphQLJSON from "graphql-type-json";
@@ -143,7 +144,7 @@ import { WorkflowGraphqlRegistry } from "./registries/workflow_graphql_registry.
 import { GraphqlSchema } from "./schema/graphql_schema.ts";
 
 type ResolverExecutorLike = {
-  execute: (...arguments_: never[]) => unknown;
+  execute: (...arguments_: any[]) => unknown;
 };
 
 /**
@@ -170,6 +171,7 @@ export class GraphqlApplication {
    * Preserves the long-standing positional test factory API while routing those dependencies
    * through the new domain registries.
    */
+  static fromResolvers(config: Config, ...resolvers: unknown[]): GraphqlApplication;
   static fromResolvers(
     config: Config,
     addModelProviderCredentialMutation: AddModelProviderCredentialMutation,

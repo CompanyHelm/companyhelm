@@ -1,5 +1,5 @@
 import { inject, injectable } from "inversify";
-import IORedis from "ioredis";
+import { Redis } from "ioredis";
 import { Queue } from "bullmq";
 import { Config } from "../../../../config/schema.ts";
 import { SessionProcessQueuedNames } from "./queued_names.ts";
@@ -23,14 +23,14 @@ export type SessionWakeQueueOptions = {
 export class SessionProcessQueueService {
   private readonly names: SessionProcessQueuedNames;
   private readonly queue: Queue<SessionWakeJobPayload>;
-  private readonly connection: IORedis;
+  private readonly connection: Redis;
 
   constructor(
     @inject(Config) config: Config,
     @inject(SessionProcessQueuedNames) names: SessionProcessQueuedNames = new SessionProcessQueuedNames(),
   ) {
     this.names = names;
-    this.connection = new IORedis({
+    this.connection = new Redis({
       host: config.redis.host,
       maxRetriesPerRequest: null,
       password: config.redis.password || undefined,

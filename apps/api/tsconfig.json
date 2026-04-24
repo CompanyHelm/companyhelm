@@ -15,6 +15,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "tests/**/*.ts"
-, "scripts/build-e2b-templates.ts"  ]
+    "scripts/build-e2b-templates.ts"
+  ]
 }

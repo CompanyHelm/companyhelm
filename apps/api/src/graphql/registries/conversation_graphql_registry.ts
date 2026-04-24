@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { inject, injectable } from "inversify";
 import { Config } from "../../config/schema.ts";
 import { SecretEncryptionService } from "../../services/secrets/encryption.ts";
@@ -35,11 +36,11 @@ import { SessionUpdatedSubscriptionResolver } from "../resolvers/session_updated
 import type { GraphqlResolverFragment, GraphqlRegistryInterface } from "./graphql_registry_interface.ts";
 
 type ArchiveSessionMutationLike = {
-  execute: (...arguments_: unknown[]) => unknown;
+  execute: (...arguments_: any[]) => unknown;
 };
 
 type UpdateSessionTitleMutationLike = {
-  execute: (...arguments_: unknown[]) => unknown;
+  execute: (...arguments_: any[]) => unknown;
 };
 
 /**
