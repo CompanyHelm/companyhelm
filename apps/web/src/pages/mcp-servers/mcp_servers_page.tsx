@@ -222,7 +222,7 @@ function normalizeAuthType(value: string): EditableMcpServerRecord["authType"] {
 }
 
 function normalizeOauthConnectionStatus(value: string | null | undefined): EditableMcpServerRecord["oauthConnectionStatus"] {
-  if (value === "connected" || value === "degraded" || value === "not_connected") {
+  if (value === "connected" || value === "error" || value === "not_connected" || value === "reauth_required") {
     return value;
   }
 
@@ -292,6 +292,7 @@ function McpServersPageContent() {
     id: server.id,
     name: server.name,
     oauthConnectionStatus: normalizeOauthConnectionStatus(server.oauthConnectionStatus),
+    oauthLastError: server.oauthLastError ?? null,
     updatedAt: server.updatedAt,
     url: server.url,
   }));

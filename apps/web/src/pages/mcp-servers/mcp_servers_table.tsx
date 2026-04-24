@@ -17,7 +17,8 @@ export type McpServersTableRecord = {
   headersText: string;
   id: string;
   name: string;
-  oauthConnectionStatus: "connected" | "degraded" | "not_connected" | null;
+  oauthConnectionStatus: "connected" | "error" | "not_connected" | "reauth_required" | null;
+  oauthLastError: string | null;
   updatedAt: string;
   url: string;
 };
@@ -47,15 +48,19 @@ function formatAuthLabel(record: McpServersTableRecord): string {
   if (record.authType === "oauth_authorization_code") {
     return record.oauthConnectionStatus === "connected"
       ? "oauth code connected"
-      : record.oauthConnectionStatus === "degraded"
-        ? "oauth code degraded"
+      : record.oauthConnectionStatus === "reauth_required"
+        ? "oauth code reauth required"
+        : record.oauthConnectionStatus === "error"
+          ? "oauth code error"
         : "oauth code";
   }
   if (record.authType === "oauth_client_credentials") {
     return record.oauthConnectionStatus === "connected"
       ? "client creds connected"
-      : record.oauthConnectionStatus === "degraded"
-        ? "client creds degraded"
+      : record.oauthConnectionStatus === "reauth_required"
+        ? "client creds reauth required"
+        : record.oauthConnectionStatus === "error"
+          ? "client creds error"
         : "client creds";
   }
   if (record.authType === "authorization_header") {
@@ -74,7 +79,13 @@ function getAuthBadgeVariant(record: McpServersTableRecord) {
   }
   if (
     (record.authType === "oauth_authorization_code" || record.authType === "oauth_client_credentials")
-    && record.oauthConnectionStatus === "degraded"
+    && record.oauthConnectionStatus === "reauth_required"
+  ) {
+    return "destructive";
+  }
+  if (
+    (record.authType === "oauth_authorization_code" || record.authType === "oauth_client_credentials")
+    && record.oauthConnectionStatus === "error"
   ) {
     return "warning";
   }
@@ -130,9 +141,16 @@ export function McpServersTable(props: McpServersTableProps) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getAuthBadgeVariant(mcpServer)}>
-                    {formatAuthLabel(mcpServer)}
-                  </Badge>
+                  <div className="grid gap-1">
+                    <Badge variant={getAuthBadgeVariant(mcpServer)}>
+                      {formatAuthLabel(mcpServer)}
+                    </Badge>
+                    {mcpServer.oauthLastError ? (
+                      <span className="max-w-xs text-xs text-muted-foreground">
+                        {mcpServer.oauthLastError}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <span className="block max-w-md truncate font-mono text-xs text-muted-foreground">

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<23d4c5821cde613531dee48f939fb680>>
+ * @generated SignedSource<<e8a814051874c51aa98dc5420a26c982>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
+export type McpOauthConnectionStatus = "connected" | "error" | "not_connected" | "reauth_required" | "%future added value";
 export type chatsPageDataSessionEnvironmentQuery$variables = {
   sessionId: string;
 };
@@ -36,6 +37,13 @@ export type chatsPageDataSessionEnvironmentQuery$data = {
       readonly providerEnvironmentId: string;
       readonly status: string;
     } | null | undefined;
+    readonly mcpWarnings: ReadonlyArray<{
+      readonly errorMessage: string;
+      readonly recommendedAction: string;
+      readonly serverId: string;
+      readonly serverName: string;
+      readonly status: McpOauthConnectionStatus;
+    }>;
   };
 };
 export type chatsPageDataSessionEnvironmentQuery = {
@@ -69,10 +77,17 @@ v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "status",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "provider",
   "storageKey": null
 },
-v4 = [
+v5 = [
   {
     "alias": null,
     "args": [
@@ -110,6 +125,46 @@ v4 = [
       {
         "alias": null,
         "args": null,
+        "concreteType": "SessionMcpWarning",
+        "kind": "LinkedField",
+        "name": "mcpWarnings",
+        "plural": true,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "serverId",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "serverName",
+            "storageKey": null
+          },
+          (v3/*: any*/),
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "errorMessage",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "recommendedAction",
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
         "concreteType": "Environment",
         "kind": "LinkedField",
         "name": "currentEnvironment",
@@ -123,7 +178,7 @@ v4 = [
             "name": "displayName",
             "storageKey": null
           },
-          (v3/*: any*/),
+          (v4/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -138,13 +193,7 @@ v4 = [
             "name": "providerEnvironmentId",
             "storageKey": null
           },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "status",
-            "storageKey": null
-          },
+          (v3/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -186,7 +235,7 @@ v4 = [
         "selections": [
           (v1/*: any*/),
           (v2/*: any*/),
-          (v3/*: any*/)
+          (v4/*: any*/)
         ],
         "storageKey": null
       }
@@ -200,7 +249,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "chatsPageDataSessionEnvironmentQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v5/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -209,19 +258,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "chatsPageDataSessionEnvironmentQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v5/*: any*/)
   },
   "params": {
-    "cacheID": "029ca93abc4bb8d45e71c90a200ebf7b",
+    "cacheID": "9eff603ae41c478f7180d0fedb6ce389",
     "id": null,
     "metadata": {},
     "name": "chatsPageDataSessionEnvironmentQuery",
     "operationKind": "query",
-    "text": "query chatsPageDataSessionEnvironmentQuery(\n  $sessionId: ID!\n) {\n  SessionEnvironment(sessionId: $sessionId) {\n    activeSkills {\n      id\n      name\n      description\n    }\n    currentEnvironment {\n      id\n      displayName\n      provider\n      providerDefinitionName\n      providerEnvironmentId\n      status\n      platform\n      cpuCount\n      memoryGb\n      diskSpaceGb\n    }\n    agentDefaultComputeProviderDefinition {\n      id\n      name\n      provider\n    }\n  }\n}\n"
+    "text": "query chatsPageDataSessionEnvironmentQuery(\n  $sessionId: ID!\n) {\n  SessionEnvironment(sessionId: $sessionId) {\n    activeSkills {\n      id\n      name\n      description\n    }\n    mcpWarnings {\n      serverId\n      serverName\n      status\n      errorMessage\n      recommendedAction\n    }\n    currentEnvironment {\n      id\n      displayName\n      provider\n      providerDefinitionName\n      providerEnvironmentId\n      status\n      platform\n      cpuCount\n      memoryGb\n      diskSpaceGb\n    }\n    agentDefaultComputeProviderDefinition {\n      id\n      name\n      provider\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9c4eee9ef94032306e408c2387623d91";
+(node as any).hash = "bc0e23439d57ad24af4d5c0c2c32989e";
 
 export default node;

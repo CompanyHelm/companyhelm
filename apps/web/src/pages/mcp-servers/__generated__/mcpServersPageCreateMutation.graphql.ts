@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b39f24dd5941a47e5b57615b71fcf940>>
+ * @generated SignedSource<<76ac68e273abee0d3a36467eac7be60f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest } from 'relay-runtime';
-export type McpOauthConnectionStatus = "connected" | "degraded" | "not_connected" | "%future added value";
+export type McpOauthConnectionStatus = "connected" | "error" | "not_connected" | "reauth_required" | "%future added value";
 export type McpServerAuthType = "authorization_header" | "none" | "oauth_authorization_code" | "oauth_client_credentials" | "%future added value";
 export type CreateMcpServerInput = {
   authType?: McpServerAuthType | null | undefined;

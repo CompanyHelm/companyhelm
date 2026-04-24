@@ -4,7 +4,7 @@ export type McpServerAuthType =
   | "oauth_client_credentials"
   | "oauth_authorization_code";
 
-export type McpOauthConnectionStatus = "connected" | "degraded" | "not_connected";
+export type McpOauthConnectionStatus = "connected" | "error" | "not_connected" | "reauth_required";
 
 export type McpSupportedOauthAuthType = "oauth_client_credentials" | "oauth_authorization_code";
 

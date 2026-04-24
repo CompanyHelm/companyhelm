@@ -2,11 +2,37 @@ import { ChevronRightIcon, Loader2Icon, XIcon } from "lucide-react";
 import { EditableField } from "@/components/editable_field";
 import { EditableModelField } from "@/components/editable_model_field";
 import { EnvironmentActions } from "@/components/environment_actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { ChatComposerModelOption } from "./chat_composer_model_picker";
 import type { AgentRecord, SessionEnvironmentInfoRecord, SessionRecord } from "./chats_page_data";
 import { formatComputeProviderLabel } from "./chats_page_helpers";
+
+function formatMcpWarningStatus(status: string): string {
+  if (status === "reauth_required") {
+    return "reauth required";
+  }
+  if (status === "error") {
+    return "error";
+  }
+  if (status === "connected") {
+    return "connected";
+  }
+
+  return "not connected";
+}
+
+function getMcpWarningBadgeVariant(status: string): "destructive" | "outline" | "warning" {
+  if (status === "reauth_required") {
+    return "destructive";
+  }
+  if (status === "error") {
+    return "warning";
+  }
+
+  return "outline";
+}
 
 export function ChatEnvironmentPanel({
   isMobile,
@@ -99,6 +125,41 @@ export function ChatEnvironmentPanel({
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {sessionEnvironmentErrorMessage}
             </div>
+          ) : null}
+
+          {selectedSession && sessionEnvironmentInfo?.mcpWarnings.length ? (
+            <section className="grid gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  MCP server issues
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  CompanyHelm could not expose tools from these attached MCP servers when this chat session bootstrapped.
+                </p>
+              </div>
+
+              <div className="grid gap-2 rounded-xl border border-amber-200/70 bg-amber-50/70 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                {sessionEnvironmentInfo.mcpWarnings.map((warning) => (
+                  <div
+                    className="grid gap-2 rounded-lg border border-amber-200/60 bg-background/80 px-3 py-3 dark:border-amber-500/20"
+                    key={warning.serverId}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{warning.serverName}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{warning.errorMessage}</p>
+                      </div>
+                      <Badge variant={getMcpWarningBadgeVariant(warning.status)}>
+                        {formatMcpWarningStatus(warning.status)}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Recommended action: {warning.recommendedAction}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
           ) : null}
 
           {shouldUseCompactComposerSettings ? (
