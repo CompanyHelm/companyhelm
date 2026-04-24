@@ -30,10 +30,12 @@ test("OpenAiCodexModelAdapter returns PI mono models without calling the models 
       "gpt-5.3-codex-spark",
       "gpt-5.4",
       "gpt-5.4-mini",
+      "gpt-5.5",
     ]);
+    assert.ok(models.some((model) => model.modelId === "gpt-5.5"));
     assert.equal(models.find((model) => model.modelId === "gpt-5.4")?.description, "Latest frontier agentic coding model.");
     assert.deepEqual(
-      models.find((model) => model.modelId === "gpt-5.4")?.reasoningLevels,
+      models.find((model) => model.modelId === "gpt-5.5")?.reasoningLevels,
       ["low", "medium", "high", "xhigh"],
     );
   } finally {

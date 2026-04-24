@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { SystemCommandService } from "../../../../../system_command_service.ts";
 import { AgentSessionBootstrapContext } from "../../bootstrap_context.ts";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";

@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import type { TSchema } from "@sinclair/typebox";
+import type { TSchema } from "typebox";
 import { AgentMcpResultFormatter } from "./result_formatter.ts";
 import type { AgentMcpToolDescriptor } from "./service.ts";
 import { AgentMcpToolService } from "./service.ts";

@@ -5,7 +5,7 @@ import type {
   ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import type { ImageContent, TextContent } from "@mariozechner/pi-ai";
-import type { Static, TSchema } from "@sinclair/typebox";
+import type { Static, TSchema } from "typebox";
 
 type LegacyAgentToolResult<TDetails> = {
   content: Array<TextContent | ImageContent>;

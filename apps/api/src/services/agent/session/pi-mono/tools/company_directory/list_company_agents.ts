@@ -19,14 +19,18 @@ export class AgentListCompanyAgentsTool {
   createDefinition(): ToolDefinition<typeof AgentListCompanyAgentsTool.parameters> {
     return {
       description: "List the company agents with their ids and names.",
-      execute: async () => {
+      execute: async (_toolCallId, _params, _signal?, _onUpdate?, _ctx?) => {
+        void [_toolCallId, _params, _signal, _onUpdate, _ctx];
         const agents = await this.companyDirectoryToolService.listCompanyAgents();
         return {
           content: [{
             text: AgentCompanyDirectoryResultFormatter.formatAgents(agents),
             type: "text",
           }],
-          details: undefined,
+          details: {
+            agents,
+            type: "company_directory_agents",
+          },
         };
       },
       label: "list_company_agents",

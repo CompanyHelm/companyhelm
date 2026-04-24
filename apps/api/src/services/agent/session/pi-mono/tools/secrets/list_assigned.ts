@@ -19,14 +19,18 @@ export class AgentListAssignedSecretsTool {
     return {
       description:
         "List the secrets attached to this chat session. These secrets are available as environment variables when using exec-style command tools. Returns only the name, description, and env variable name, never the secret values.",
-      execute: async () => {
+      execute: async (_toolCallId, _params, _signal?, _onUpdate?, _ctx?) => {
+        void [_toolCallId, _params, _signal, _onUpdate, _ctx];
         const secrets = await this.secretToolService.listAssignedSecrets();
         return {
           content: [{
             text: AgentSecretResultFormatter.formatAssignedSecrets(secrets),
             type: "text",
           }],
-          details: undefined,
+          details: {
+            secrets,
+            type: "assigned_secrets",
+          },
         };
       },
       label: "list_assigned_secrets",

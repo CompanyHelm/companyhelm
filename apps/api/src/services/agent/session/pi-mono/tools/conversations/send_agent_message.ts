@@ -1,5 +1,5 @@
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { AgentToolParameterSchema } from "../parameter_schema.ts";
 import { AgentConversationResultFormatter } from "./result_formatter.ts";
 import { AgentConversationToolService } from "./service.ts";

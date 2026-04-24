@@ -24,9 +24,9 @@
     "@e2b/desktop": "^2.2.2",
     "@fastify/cors": "^11.2.0",
     "@fastify/websocket": "^11.2.0",
-    "@mariozechner/pi-agent-core": "^0.67.1",
-    "@mariozechner/pi-ai": "^0.67.1",
-    "@mariozechner/pi-coding-agent": "^0.67.1",
+    "@mariozechner/pi-agent-core": "^0.70.2",
+    "@mariozechner/pi-ai": "^0.70.2",
+    "@mariozechner/pi-coding-agent": "^0.70.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@octokit/webhooks": "^14.2.0",
     "@redis/client": "^5.11.0",
@@ -52,6 +52,7 @@
     "postgres": "^3.4.8",
     "redis": "^5.11.0",
     "reflect-metadata": "^0.2.2",
+    "typebox": "^1.1.33",
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
   }

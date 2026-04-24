@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import Fastify from "fastify";
 import { test } from "vitest";
 import type { Config } from "../src/config/schema.ts";
+import { modelProviderCredentialModels, modelProviderCredentials } from "../src/db/schema.ts";
 import { GraphqlApplication } from "../src/graphql/graphql_application.ts";
 import { GraphqlRequestContextResolver } from "../src/graphql/graphql_request_context.ts";
 import { AddModelProviderCredentialMutation } from "../src/graphql/mutations/add_model_provider_credential.ts";
@@ -12,6 +13,8 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import { CompanyHelmLlmProviderService } from "../src/services/ai_providers/companyhelm_service.ts";
+import { ModelRegistry } from "../src/services/ai_providers/model_registry.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class ModelProviderCredentialModelsQueryTestHarness {
@@ -31,8 +34,29 @@ class ModelProviderCredentialModelsQueryTestHarness {
     } as Config;
   }
 
-  static createDatabaseMock() {
-    const rows = [{
+  static createDatabaseMock(params?: {
+    credential?: {
+      id: string;
+      isManaged: boolean;
+      modelProvider: string;
+    };
+    rows?: Array<{
+      id: string;
+      isDefault: boolean;
+      modelProviderCredentialId: string;
+      modelId: string;
+      name: string;
+      description: string;
+      reasoningSupported: boolean;
+      reasoningLevels: string[];
+    }>;
+  }) {
+    const credential = params?.credential ?? {
+      id: "credential-1",
+      isManaged: false,
+      modelProvider: "openai",
+    };
+    const rows = params?.rows ?? [{
       id: "model-1",
       isDefault: true,
       modelProviderCredentialId: "credential-1",
@@ -50,9 +74,15 @@ class ModelProviderCredentialModelsQueryTestHarness {
         return {
           select() {
             return {
-              from() {
+              from(table: unknown) {
                 return {
                   async where() {
+                    if (table === modelProviderCredentials) {
+                      return [credential];
+                    }
+                    if (table === modelProviderCredentialModels) {
+                      return rows;
+                    }
                     return rows;
                   },
                 };
@@ -98,6 +128,14 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
     },
   };
 
+  const companyHelmLlmProviderService = new CompanyHelmLlmProviderService({
+    companyhelm: {
+      e2b: {
+        api_key: "e2b-local-api-key",
+      },
+    },
+  } as never, new ModelRegistry());
+
   await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
@@ -106,7 +144,7 @@ test("GraphQL ModelProviderCredentialModels query lists models for the credentia
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(companyHelmLlmProviderService),
     new ModelProviderCredentialsQueryResolver(),
   ).register(app);
 
@@ -169,6 +207,14 @@ test("GraphQL ModelProviderCredentialModels query rejects unauthenticated reques
     },
   };
 
+  const companyHelmLlmProviderService = new CompanyHelmLlmProviderService({
+    companyhelm: {
+      e2b: {
+        api_key: "e2b-local-api-key",
+      },
+    },
+  } as never, new ModelRegistry());
+
   await GraphqlApplication.fromResolvers(
     config,
     new AddModelProviderCredentialMutation(modelManager as never),
@@ -177,7 +223,7 @@ test("GraphQL ModelProviderCredentialModels query rejects unauthenticated reques
     new GraphqlRequestContextResolver(authProvider as never, database),
     new HealthQueryResolver(),
     new MeQueryResolver(),
-    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(companyHelmLlmProviderService),
     new ModelProviderCredentialsQueryResolver(),
   ).register(app);
 
@@ -202,6 +248,118 @@ test("GraphQL ModelProviderCredentialModels query rejects unauthenticated reques
   const document = response.json();
   assert.equal(document.data, null);
   assert.equal(document.errors?.[0]?.message, "Authentication required.");
+
+  await app.close();
+});
+
+test("GraphQL ModelProviderCredentialModels query hides unavailable CompanyHelm-managed models", async () => {
+  const app = Fastify();
+  const config = ModelProviderCredentialModelsQueryTestHarness.createConfigMock();
+  const database = ModelProviderCredentialModelsQueryTestHarness.createDatabaseMock({
+    credential: {
+      id: "credential-1",
+      isManaged: true,
+      modelProvider: "companyhelm",
+    },
+    rows: [{
+      id: "model-1",
+      isDefault: true,
+      modelProviderCredentialId: "credential-1",
+      modelId: "gpt-5.4",
+      name: "GPT-5.4",
+      description: "Latest frontier agentic coding model.",
+      reasoningSupported: true,
+      reasoningLevels: ["low", "medium"],
+    }, {
+      id: "model-2",
+      isDefault: false,
+      modelProviderCredentialId: "credential-1",
+      modelId: "gpt-5.5",
+      name: "GPT-5.5",
+      description: "Frontier agentic coding model with expanded context support.",
+      reasoningSupported: true,
+      reasoningLevels: ["low", "medium", "high", "xhigh"],
+    }],
+  });
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      return [];
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+  const companyHelmLlmProviderService = new CompanyHelmLlmProviderService({
+    companyhelm: {
+      e2b: {
+        api_key: "e2b-local-api-key",
+      },
+      llm: {
+        openai_api_key: "sk-companyhelm-managed",
+      },
+    },
+  } as never, new ModelRegistry());
+  await companyHelmLlmProviderService.refreshAvailableSeedModels({
+    async fetchModels() {
+      return new ModelRegistry().getModelsForProvider("openai").filter((model) => model.modelId !== "gpt-5.5");
+    },
+  } as never, {
+    warn() {},
+  });
+
+  await GraphqlApplication.fromResolvers(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(companyHelmLlmProviderService),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        query CredentialModels($credentialId: ID!) {
+          ModelProviderCredentialModels(modelProviderCredentialId: $credentialId) {
+            modelId
+          }
+        }
+      `,
+      variables: {
+        credentialId: "credential-1",
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.deepEqual(document.data.ModelProviderCredentialModels, [{
+    modelId: "gpt-5.4",
+  }]);
 
   await app.close();
 });

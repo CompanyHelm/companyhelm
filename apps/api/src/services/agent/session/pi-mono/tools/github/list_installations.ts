@@ -18,14 +18,18 @@ export class AgentListGithubInstallationsTool {
   createDefinition(): ToolDefinition<typeof AgentListGithubInstallationsTool.parameters> {
     return {
       description: "List the GitHub installations linked to this company together with their repositories.",
-      execute: async () => {
+      execute: async (_toolCallId, _params, _signal?, _onUpdate?, _ctx?) => {
+        void [_toolCallId, _params, _signal, _onUpdate, _ctx];
         const installations = await this.installationService.listInstallations();
         return {
           content: [{
             text: AgentGithubResultFormatter.formatInstallationList(installations),
             type: "text",
           }],
-          details: undefined,
+          details: {
+            installations,
+            type: "github_installations",
+          },
         };
       },
       label: "list_github_installations",

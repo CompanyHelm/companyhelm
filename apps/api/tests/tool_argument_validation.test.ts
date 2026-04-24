@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { Type } from "@sinclair/typebox";
+import { Type } from "typebox";
 import { validateToolArguments } from "@mariozechner/pi-ai";
 import { AgentToolParameterSchema } from "../src/services/agent/session/pi-mono/tools/parameter_schema.ts";
 
@@ -28,7 +28,7 @@ test("validateToolArguments names unexpected root properties in validation error
       type: "toolCall",
     }),
     (error) => {
-      assert.match(String(error), /timeoutMs: must NOT have additional properties/);
+      assert.match(String(error), /timeoutMs: must not have additional properties/);
       return true;
     },
   );
@@ -58,7 +58,7 @@ test("validateToolArguments names unexpected nested properties in validation err
       type: "toolCall",
     }),
     (error) => {
-      assert.match(String(error), /environment\.timeoutMs: must NOT have additional properties/);
+      assert.match(String(error), /environment\.timeoutMs: must not have additional properties/);
       return true;
     },
   );
