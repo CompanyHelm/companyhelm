@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { test } from "vitest";
 import { ConfigLoader } from "../src/config/config_loader.ts";
 import { ConfigDocument } from "../src/config/schema.ts";
@@ -84,6 +84,112 @@ class AppConfigTestHarness {
       githubUrlVariableName,
       githubWebhookSecretVariableName,
       exaApiKeyVariableName,
+    };
+  }
+
+  static createIncludedFixtureConfigPath(): {
+    configPath: string;
+  } {
+    const fixture = AppConfigTestHarness.createFixtureConfigPath();
+    const includedConfigPath = join(dirname(fixture.configPath), "local-dev.yaml");
+
+    writeFileSync(
+      includedConfigPath,
+      `
+include: "./local.yaml"
+port: 4100
+workers:
+  session_process:
+    concurrency: 11
+log:
+  level: "info"
+`.trimStart(),
+      "utf8",
+    );
+
+    return {
+      configPath: includedConfigPath,
+    };
+  }
+
+  static createIncludedFixtureConfigPathWithDotEnv(): {
+    configPath: string;
+  } {
+    const fixturePath = mkdtempSync(join(tmpdir(), "companyhelm-config-"));
+    const configDirectoryPath = join(fixturePath, "config");
+    const fixtureSuffix = basename(fixturePath).replaceAll(/[^A-Za-z0-9]/g, "_").toUpperCase();
+    const configPath = join(configDirectoryPath, "local-dev.yaml");
+    const baseConfigPath = join(configDirectoryPath, "local.yaml");
+    const baseDotEnvPath = join(fixturePath, ".env.local");
+    const overrideDotEnvPath = join(fixturePath, ".env.local-dev");
+    const clerkSecretKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_CLERK_SECRET_KEY`;
+    const clerkPublishableKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_CLERK_PUBLISHABLE_KEY`;
+    const clerkJwksUrlVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_CLERK_JWKS_URL`;
+    const githubClientVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_CLIENT`;
+    const githubKeyIdVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_KEY_ID`;
+    const githubKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_KEY`;
+    const githubUrlVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_URL`;
+    const githubWebhookSecretVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_GITHUB_WEBHOOK_SECRET`;
+    const exaApiKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_EXA_API_KEY`;
+    const companyHelmE2bApiKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_E2B_API_KEY`;
+    const companyHelmOpenAiApiKeyVariableName = `COMPANYHELM_TEST_${fixtureSuffix}_OPENAI_API_KEY`;
+
+    mkdirSync(configDirectoryPath, { recursive: true });
+    writeFileSync(
+      baseConfigPath,
+      AppConfigTestHarness.createConfigDocument({
+        companyHelmE2bApiKeyVariableName,
+        companyHelmOpenAiApiKeyVariableName,
+        githubClientVariableName,
+        githubKeyIdVariableName,
+        githubKeyVariableName,
+        githubUrlVariableName,
+        githubWebhookSecretVariableName,
+        exaApiKeyVariableName,
+        clerkSecretKeyVariableName,
+        clerkPublishableKeyVariableName,
+        clerkJwksUrlVariableName,
+      }),
+      "utf8",
+    );
+    writeFileSync(
+      configPath,
+      `
+include: "./local.yaml"
+port: 4200
+log:
+  level: "warn"
+`.trimStart(),
+      "utf8",
+    );
+    writeFileSync(
+      baseDotEnvPath,
+      `
+${clerkSecretKeyVariableName}=dotenv-base-clerk-secret-key
+${clerkPublishableKeyVariableName}=dotenv-base-clerk-publishable-key
+${clerkJwksUrlVariableName}=https://dotenv-base-clerk.example/.well-known/jwks.json
+${githubClientVariableName}=dotenv-base-client-id
+${githubKeyIdVariableName}=dotenv-base-github-state-key
+${githubKeyVariableName}=dotenv-base-private-key-pem
+${githubUrlVariableName}=https://dotenv-base-github.example/app
+${githubWebhookSecretVariableName}=dotenv-base-github-webhook-secret
+${exaApiKeyVariableName}=dotenv-base-exa-local-api-key
+${companyHelmE2bApiKeyVariableName}=dotenv-base-e2b-local-api-key
+${companyHelmOpenAiApiKeyVariableName}=dotenv-base-sk-local-api-key
+`.trimStart(),
+      "utf8",
+    );
+    writeFileSync(
+      overrideDotEnvPath,
+      `
+${githubClientVariableName}=dotenv-override-client-id
+${companyHelmOpenAiApiKeyVariableName}=dotenv-override-sk-local-api-key
+`.trimStart(),
+      "utf8",
+    );
+
+    return {
+      configPath,
     };
   }
 
@@ -276,6 +382,42 @@ test("AppConfig loads Fastify runtime settings from local.yaml", () => {
   assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
 });
 
+test("AppConfig allows local override files to include local.yaml", () => {
+  const fixture = AppConfigTestHarness.createIncludedFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+
+  assert.equal(document.port, 4100);
+  assert.equal(document.log.level, "info");
+  assert.deepEqual(document.workers, {
+    company_deletions: {
+      concurrency: 5,
+    },
+    github_webhooks: {
+      concurrency: 3,
+    },
+    routine_triggers: {
+      concurrency: 2,
+    },
+    session_process: {
+      concurrency: 11,
+    },
+  });
+  assert.equal(document.github.app_client_id, "client-id");
+  assert.equal(document.auth.clerk?.secret_key, "clerk-secret-key");
+});
+
+test("AppConfig loads both shared and override dotenv files for local override config files", () => {
+  const fixture = AppConfigTestHarness.createIncludedFixtureConfigPathWithDotEnv();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+
+  assert.equal(document.port, 4200);
+  assert.equal(document.log.level, "warn");
+  assert.equal(document.github.app_client_id, "dotenv-override-client-id");
+  assert.equal(document.companyhelm.e2b.api_key, "dotenv-base-e2b-local-api-key");
+  assert.equal(document.companyhelm.llm?.openai_api_key, "dotenv-override-sk-local-api-key");
+  assert.equal(document.auth.clerk?.secret_key, "dotenv-base-clerk-secret-key");
+});
+
 test("AppConfig allows CompanyHelm LLM settings to be omitted", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
@@ -402,4 +544,30 @@ test("AppConfig explains how to provide missing environment variables", () => {
       process.env[fixture.githubClientVariableName] = originalGithubClientId;
     }
   }
+});
+
+test("AppConfig rejects recursive config includes", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const configDirectoryPath = dirname(fixture.configPath);
+  const overrideConfigPath = join(configDirectoryPath, "local-dev.yaml");
+
+  writeFileSync(
+    fixture.configPath,
+    `
+include: "./local-dev.yaml"
+`.trimStart(),
+    "utf8",
+  );
+  writeFileSync(
+    overrideConfigPath,
+    `
+include: "./local.yaml"
+`.trimStart(),
+    "utf8",
+  );
+
+  assert.throws(
+    () => ConfigLoader.load(fixture.configPath, ConfigDocument),
+    /Config include cycle detected:/,
+  );
 });

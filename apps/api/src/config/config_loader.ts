@@ -1,8 +1,6 @@
-import { readFileSync } from "node:fs";
 import { type ZodType } from "zod";
-import { parse } from "yaml";
 import { ConfigPathResolver } from "./config_path_resolver.ts";
-import { DotEnvLoader } from "./dot_env_loader.ts";
+import { ConfigIncludeLoader } from "./config_include_loader.ts";
 import { EnvironmentPlaceholderResolver } from "./environment_placeholder_resolver.ts";
 
 /**
@@ -17,9 +15,7 @@ export class ConfigLoader {
     schema: ZodType<TConfig>,
   ): TConfig {
     const resolvedConfigPath = ConfigPathResolver.resolve(configPath, process.cwd());
-    DotEnvLoader.loadForConfigPath(resolvedConfigPath);
-    const rawConfig = readFileSync(resolvedConfigPath, "utf8");
-    const parsedConfig = parse(rawConfig) as unknown;
+    const parsedConfig = ConfigIncludeLoader.load(resolvedConfigPath);
     const resolvedConfig = EnvironmentPlaceholderResolver.resolve(parsedConfig);
     return schema.parse(resolvedConfig);
   }
