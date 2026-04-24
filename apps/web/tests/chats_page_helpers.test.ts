@@ -307,6 +307,29 @@ test("resolveAssistantContentDisplay removes leaked system command lines from as
   assert.equal(hasVisibleMessage(message), true);
 });
 
+test("resolveAssistantContentDisplay removes inline leaked system command spans from assistant prose", () => {
+  const message = {
+    contents: [{
+      text: [
+        "I won't import public skills yet.",
+        "to=system_command novitdas={\"id\":\"agent.create\",\"input\":{\"name\":\"Product Lead\",\"description\":\"Owns release planning.\",\"instructions\":\"Create scope with {braces} inside text.\"}}",
+        "RTLUassistant to=system_command g0305ary={\"id\":\"agent.create\",\"input\":{\"name\":\"Builder\",\"description\":\"Owns implementation.\",\"instructions\":\"Ship the first slice.\"}}",
+        "Done — I created these starter agents.",
+      ].join(" "),
+      type: "text",
+    }],
+    errorMessage: null,
+    role: "assistant",
+    text: "",
+  } as unknown as SessionMessageRecord;
+
+  assert.deepEqual(resolveAssistantContentDisplay(message), [{
+    text: "I won't import public skills yet. Done — I created these starter agents.",
+    type: "text",
+  }]);
+  assert.equal(hasVisibleMessage(message), true);
+});
+
 test("resolveAssistantContentDisplay keeps regular assistant text next to a tool call", () => {
   const message = {
     contents: [{

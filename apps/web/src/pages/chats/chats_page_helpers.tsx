@@ -333,11 +333,87 @@ function isSerializedToolInvocationLine(line: string): boolean {
   return serializedJson !== null && isSerializedToolInvocationRecord(serializedJson);
 }
 
-function removeSerializedToolInvocationLines(text: string): string {
-  return text
+function findJsonObjectEnd(text: string, startIndex: number): number {
+  let depth = 0;
+  let isEscaped = false;
+  let isInsideString = false;
+
+  for (let index = startIndex; index < text.length; index += 1) {
+    const character = text[index];
+    if (isEscaped) {
+      isEscaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      isEscaped = true;
+      continue;
+    }
+    if (character === "\"") {
+      isInsideString = !isInsideString;
+      continue;
+    }
+    if (isInsideString) {
+      continue;
+    }
+    if (character === "{") {
+      depth += 1;
+      continue;
+    }
+    if (character !== "}") {
+      continue;
+    }
+
+    depth -= 1;
+    if (depth === 0) {
+      return index + 1;
+    }
+  }
+
+  return -1;
+}
+
+function removeInlineSerializedToolInvocations(text: string): string {
+  const invocationPattern = /(?:\b[A-Za-z0-9_-]*assistant\s+)?to=system_command(?:\s+\S+)?=\{/gu;
+  let nextText = text;
+  let match = invocationPattern.exec(nextText);
+  while (match) {
+    const jsonStartIndex = invocationPattern.lastIndex - 1;
+    const jsonEndIndex = findJsonObjectEnd(nextText, jsonStartIndex);
+    if (jsonEndIndex < 0) {
+      match = invocationPattern.exec(nextText);
+      continue;
+    }
+
+    const serializedJson = nextText.slice(jsonStartIndex, jsonEndIndex);
+    if (!isSerializedToolInvocationRecord(serializedJson)) {
+      match = invocationPattern.exec(nextText);
+      continue;
+    }
+
+    const previousCharacter = match.index > 0 ? nextText[match.index - 1] : "";
+    const nextCharacter = jsonEndIndex < nextText.length ? nextText[jsonEndIndex] : "";
+    const needsSeparator = previousCharacter.length > 0
+      && nextCharacter.length > 0
+      && !/\s/u.test(previousCharacter)
+      && !/\s/u.test(nextCharacter);
+    const nextTextStartIndex = /\s/u.test(previousCharacter) && /[ \t]/u.test(nextCharacter)
+      ? jsonEndIndex + 1
+      : jsonEndIndex;
+    nextText = `${nextText.slice(0, match.index)}${needsSeparator ? " " : ""}${nextText.slice(nextTextStartIndex)}`;
+    invocationPattern.lastIndex = match.index;
+    match = invocationPattern.exec(nextText);
+  }
+
+  return nextText;
+}
+
+function removeSerializedToolInvocationText(text: string): string {
+  const textWithoutStandaloneInvocations = text
     .split(/\r?\n/u)
     .filter((line) => !isSerializedToolInvocationLine(line))
-    .join("\n")
+    .join("\n");
+
+  return removeInlineSerializedToolInvocations(textWithoutStandaloneInvocations)
     .trim();
 }
 
@@ -395,7 +471,7 @@ function resolveAssistantDisplayContents(
       return [];
     }
     const displayText = content.type === "text"
-      ? removeSerializedToolInvocationLines(content.text)
+      ? removeSerializedToolInvocationText(content.text)
       : content.text;
     if (displayText.trim().length === 0) {
       return [];
@@ -421,7 +497,7 @@ function resolveAssistantDisplayContents(
   if (message.contents.length > 0) {
     return [];
   }
-  const displayText = removeSerializedToolInvocationLines(message.text);
+  const displayText = removeSerializedToolInvocationText(message.text);
   if (displayText.trim().length === 0) {
     return [];
   }
