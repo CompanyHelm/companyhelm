@@ -12,6 +12,7 @@ import { HealthQueryResolver } from "../src/graphql/resolvers/health.ts";
 import { MeQueryResolver } from "../src/graphql/resolvers/me.ts";
 import { ModelProviderCredentialModelsQueryResolver } from "../src/graphql/resolvers/model_provider_credential_models.ts";
 import { ModelProviderCredentialsQueryResolver } from "../src/graphql/resolvers/model_provider_credentials.ts";
+import { ModelProvidersQueryResolver } from "../src/graphql/resolvers/model_providers.ts";
 import type { ModelProviderModel } from "../src/services/ai_providers/model_service.js";
 
 class ModelProvidersQueryTestHarness {
@@ -88,6 +89,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
         query ModelProviders {
           ModelProviders {
             id
+            isAvailable
             name
             type
             authorizationInstructionsMarkdown
@@ -102,12 +104,14 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   assert.deepEqual(document.data.ModelProviders, [
     {
       id: "companyhelm",
+      isAvailable: false,
       name: "CompanyHelm",
       type: "api_key",
       authorizationInstructionsMarkdown: "Included and managed by CompanyHelm.",
     },
     {
       id: "openai",
+      isAvailable: true,
       name: "OpenAI",
       type: "api_key",
       authorizationInstructionsMarkdown:
@@ -115,6 +119,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
     },
     {
       id: "anthropic",
+      isAvailable: true,
       name: "Anthropic",
       type: "api_key",
       authorizationInstructionsMarkdown:
@@ -122,6 +127,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
     },
     {
       id: "openrouter",
+      isAvailable: true,
       name: "OpenRouter",
       type: "api_key",
       authorizationInstructionsMarkdown:
@@ -129,6 +135,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
     },
     {
       id: "openai-compatible",
+      isAvailable: true,
       name: "OpenAI-compatible API",
       type: "api_key",
       authorizationInstructionsMarkdown:
@@ -136,6 +143,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
     },
     {
       id: "openai-codex",
+      isAvailable: true,
       name: "OpenAI Codex",
       type: "oauth",
       authorizationInstructionsMarkdown: [
@@ -147,6 +155,7 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
     },
     {
       id: "google-gemini-cli",
+      isAvailable: true,
       name: "Google Gemini CLI",
       type: "oauth",
       authorizationInstructionsMarkdown: [
@@ -159,6 +168,25 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   ]);
 
   await app.close();
+});
+
+test("ModelProviders resolver marks CompanyHelm available when the runtime key is configured", async () => {
+  const resolver = new ModelProvidersQueryResolver(undefined, {
+    hasRuntimeApiKey: () => true,
+  });
+
+  const providers = await resolver.execute({}, {}, {
+    authSession: {
+      company: {
+        id: "company-123",
+        name: "Example Org",
+      },
+    },
+  } as never);
+
+  const companyHelmProvider = providers.find((provider) => provider.id === "companyhelm");
+
+  assert.equal(companyHelmProvider?.isAvailable, true);
 });
 
 test("GraphQL ModelProviders query rejects unauthenticated requests", async () => {

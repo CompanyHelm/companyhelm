@@ -39,16 +39,19 @@ class CompanyOnboardingServiceTestHarness {
   }> = [];
   private finalizeCount = 0;
   private readonly githubInstallations: Array<{ companyId: string }>;
+  private readonly hasManagedLlmProvider: boolean;
   private readonly modelCredentials: ModelCredentialRow[];
   private readonly onboardingRows: CompanyOnboardingRow[];
   private readonly workflowCalls: OnboardingWorkflowCall[] = [];
 
   constructor(params: {
     githubInstallations?: Array<{ companyId: string }>;
+    hasManagedLlmProvider?: boolean;
     modelCredentials?: ModelCredentialRow[];
     onboardingRows?: CompanyOnboardingRow[];
   } = {}) {
     this.githubInstallations = [...(params.githubInstallations ?? [])];
+    this.hasManagedLlmProvider = params.hasManagedLlmProvider ?? true;
     this.modelCredentials = [...(params.modelCredentials ?? [])];
     this.onboardingRows = [...(params.onboardingRows ?? [])];
   }
@@ -81,6 +84,9 @@ class CompanyOnboardingServiceTestHarness {
             llmSetupStatus: input.llmSetupStatus,
           });
         },
+      },
+      {
+        hasRuntimeApiKey: () => this.hasManagedLlmProvider,
       },
     );
   }
@@ -298,6 +304,24 @@ test("CompanyOnboardingService records CompanyHelm-managed setup without requiri
   assert.equal(onboarding.llmSetupStatus, "company_managed");
   assert.ok(onboarding.llmCompletedAt instanceof Date);
   assert.equal(onboarding.llmSkippedAt, null);
+});
+
+test("CompanyOnboardingService requires third-party LLM credentials when managed access is unavailable", async () => {
+  const harness = new CompanyOnboardingServiceTestHarness({
+    hasManagedLlmProvider: false,
+  });
+  const service = harness.buildService();
+
+  await service.getOnboarding(harness.buildTransactionProvider() as never, "company-1");
+
+  await assert.rejects(
+    service.updateSetup(harness.buildTransactionProvider() as never, {
+      companyId: "company-1",
+      llmSetupStatus: "company_managed",
+    }),
+    /Add an LLM provider credential before continuing/,
+  );
+  assert.equal(harness.loadOnboarding()?.llmSetupStatus, "pending");
 });
 
 test("CompanyOnboardingService blocks CEO provisioning until the static steps are resolved", async () => {

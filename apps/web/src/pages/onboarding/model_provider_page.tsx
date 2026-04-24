@@ -93,7 +93,9 @@ function ModelProviderPageContent() {
     <>
       <OnboardingStepFrame
         currentStep="model-provider"
-        description="Add your own LLM provider for broader model support. If you skip, CompanyHelm will use its managed provider."
+        description={controller.hasManagedLlmProvider
+          ? "Add your own LLM provider for broader model support. If you skip, CompanyHelm will use its managed provider."
+          : "Add an LLM provider credential to continue onboarding."}
         errorMessage={controller.errorMessage}
         helperText=""
         title="Model provider setup"
@@ -123,8 +125,9 @@ function ModelProviderPageContent() {
             </div>
           ) : (
             <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-900 dark:text-amber-200">
-              CompanyHelm-managed access currently has low token limits and higher prices.
-              Using your own provider is strongly recommended.
+              {controller.hasManagedLlmProvider
+                ? "CompanyHelm-managed access currently has low token limits and higher prices. Using your own provider is strongly recommended."
+                : "Add an LLM provider credential to continue with onboarding."}
             </p>
           )}
           <div className="text-center">
@@ -184,7 +187,7 @@ function ModelProviderPageContent() {
           )}
           rightControls={(
             <>
-              {controller.hasThirdPartyCredential ? null : (
+              {controller.hasThirdPartyCredential || !controller.hasManagedLlmProvider ? null : (
                 <Button
                   disabled={controller.isUpdateCompanyOnboardingInFlight}
                   onClick={() => {

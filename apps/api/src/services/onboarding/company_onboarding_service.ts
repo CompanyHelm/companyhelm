@@ -8,6 +8,7 @@ import {
   workflowDefinitions,
 } from "../../db/schema.ts";
 import type { AppRuntimeTransaction, TransactionProviderInterface } from "../../db/transaction_provider_interface.ts";
+import { CompanyHelmLlmProviderService } from "../ai_providers/companyhelm_service.ts";
 import { CompanyBootstrapService } from "../bootstrap/company.ts";
 import { WorkflowService } from "../workflows/service.ts";
 import type { WorkflowRunCreateInput, WorkflowRunInputValue, WorkflowRunRecord } from "../workflows/types.ts";
@@ -63,6 +64,10 @@ type CompanyOnboardingBootstrapService = {
   ): Promise<void>;
 };
 
+type CompanyOnboardingManagedLlmProviderService = {
+  hasRuntimeApiKey(): boolean;
+};
+
 type CompanyOnboardingRow = CompanyOnboardingRecord;
 
 type AgentRow = {
@@ -102,6 +107,9 @@ export class CompanyOnboardingService {
     @inject(CompanyBootstrapService)
     private readonly companyBootstrapService: CompanyOnboardingBootstrapService =
       CompanyOnboardingService.createMissingBootstrapService(),
+    @inject(CompanyHelmLlmProviderService)
+    private readonly companyHelmLlmProviderService: CompanyOnboardingManagedLlmProviderService =
+      CompanyOnboardingService.createUnavailableManagedLlmProviderService(),
   ) {}
 
   async getOnboarding(
@@ -217,6 +225,9 @@ export class CompanyOnboardingService {
           if (!hasThirdPartyCredential) {
             throw new Error("Add a third-party model provider credential before continuing.");
           }
+        }
+        if (input.llmSetupStatus === "company_managed" && !this.companyHelmLlmProviderService.hasRuntimeApiKey()) {
+          throw new Error("Add an LLM provider credential before continuing.");
         }
         if (input.llmSetupStatus === "skipped") {
           values.llmCompletedAt = null;
@@ -504,6 +515,12 @@ export class CompanyOnboardingService {
       async ensureOnboardingAssets() {
         throw new Error("CompanyBootstrapService is required.");
       },
+    };
+  }
+
+  private static createUnavailableManagedLlmProviderService(): CompanyOnboardingManagedLlmProviderService {
+    return {
+      hasRuntimeApiKey: () => false,
     };
   }
 }

@@ -50,6 +50,7 @@ const onboardingPageQueryNode = graphql`
     }
     ModelProviders {
       id
+      isAvailable
       name
       type
       authorizationInstructionsMarkdown
@@ -174,7 +175,7 @@ export interface OnboardingFlowController {
   }>;
   githubResolved: boolean;
   hasGithubInstallation: boolean;
-  hasManagedCredential: boolean;
+  hasManagedLlmProvider: boolean;
   hasThirdPartyCredential: boolean;
   isAddModelProviderCredentialInFlight: boolean;
   isCreateGithubInstallationUrlInFlight: boolean;
@@ -285,7 +286,9 @@ export function useOnboardingFlowController(options?: {
       modelProvider: credential.modelProvider,
       name: credential.name,
     }));
-  const hasManagedCredential = data.ModelProviderCredentials.some((credential) => credential.isManaged);
+  const hasManagedLlmProvider = data.ModelProviders.some((provider) => (
+    provider.id === "companyhelm" && provider.isAvailable
+  ));
   const hasThirdPartyCredential = data.ModelProviderCredentials.some((credential) => !credential.isManaged);
   const thirdPartyProviders = useMemo(() => {
     return ModelProviderCredentialCatalog.toDialogProviders(
@@ -537,7 +540,7 @@ export function useOnboardingFlowController(options?: {
     githubInstallations,
     githubResolved,
     hasGithubInstallation,
-    hasManagedCredential,
+    hasManagedLlmProvider,
     hasThirdPartyCredential,
     isAddModelProviderCredentialInFlight,
     isCreateGithubInstallationUrlInFlight,

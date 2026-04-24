@@ -913,6 +913,7 @@ type ModelProviderCredentialModel {
 
 type ModelProvider {
   id: ID!
+  isAvailable: Boolean!
   name: String!
   type: String!
   authorizationInstructionsMarkdown: String
