@@ -432,6 +432,38 @@ test("AppConfig allows CompanyHelm LLM settings to be omitted", () => {
   assert.equal(parsedDocument.companyhelm.llm, undefined);
 });
 
+test("AppConfig treats null CompanyHelm LLM settings as omitted", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+
+  const parsedDocument = ConfigDocument.parse({
+    ...document,
+    companyhelm: {
+      e2b: document.companyhelm.e2b,
+      llm: null,
+    },
+  });
+
+  assert.equal(parsedDocument.companyhelm.llm, undefined);
+});
+
+test("AppConfig treats null CompanyHelm OpenAI key as omitted", () => {
+  const fixture = AppConfigTestHarness.createFixtureConfigPath();
+  const document = ConfigLoader.load(fixture.configPath, ConfigDocument);
+
+  const parsedDocument = ConfigDocument.parse({
+    ...document,
+    companyhelm: {
+      e2b: document.companyhelm.e2b,
+      llm: {
+        openai_api_key: null,
+      },
+    },
+  });
+
+  assert.equal(parsedDocument.companyhelm.llm?.openai_api_key, undefined);
+});
+
 test("AppConfig allows GitHub webhook secret to be omitted", () => {
   const fixture = AppConfigTestHarness.createFixtureConfigPath();
   const originalWebhookSecret = process.env[fixture.githubWebhookSecretVariableName];
