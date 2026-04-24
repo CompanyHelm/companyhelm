@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ModelProviderCredentialCatalog } from "../src/pages/model-provider-credentials/provider_catalog";
 
-test("adds NVIDIA as a web-only OpenAI-compatible credential option", () => {
+test("adds NVIDIA as the web-only OpenAI-compatible credential option", () => {
   const providers = ModelProviderCredentialCatalog.toDialogProviders([
     {
       authorizationInstructionsMarkdown: "Use an OpenAI-compatible endpoint.",
@@ -12,12 +12,67 @@ test("adds NVIDIA as a web-only OpenAI-compatible credential option", () => {
     },
   ]);
 
-  assert.deepEqual(providers.map((provider) => provider.id), ["openai-compatible", "nvidia"]);
-  assert.equal(providers[1]?.submittedProviderId, "openai-compatible");
-  assert.equal(providers[1]?.baseUrl, "https://integrate.api.nvidia.com/v1");
+  assert.deepEqual(providers.map((provider) => provider.id), ["nvidia"]);
+  assert.equal(providers[0]?.authorizationLabel, "API key");
+  assert.equal(providers[0]?.name, "NVIDIA");
+  assert.equal(providers[0]?.submittedProviderId, "openai-compatible");
+  assert.equal(providers[0]?.baseUrl, "https://integrate.api.nvidia.com/v1");
   assert.match(
-    providers[1]?.authorizationInstructionsMarkdown ?? "",
+    providers[0]?.authorizationInstructionsMarkdown ?? "",
     /https:\/\/build\.nvidia\.com\/settings\/api-keys/,
+  );
+});
+
+test("orders and labels dialog providers for the credential picker", () => {
+  const providers = ModelProviderCredentialCatalog.toDialogProviders([
+    {
+      authorizationInstructionsMarkdown: null,
+      id: "openai",
+      name: "OpenAI (API key)",
+      type: "api_key",
+    },
+    {
+      authorizationInstructionsMarkdown: null,
+      id: "openrouter",
+      name: "OpenRouter (API key)",
+      type: "api_key",
+    },
+    {
+      authorizationInstructionsMarkdown: null,
+      id: "openai-codex",
+      name: "OpenAI Codex",
+      type: "oauth",
+    },
+    {
+      authorizationInstructionsMarkdown: null,
+      id: "google-gemini-cli",
+      name: "Google Gemini CLI",
+      type: "oauth",
+    },
+    {
+      authorizationInstructionsMarkdown: null,
+      id: "anthropic",
+      name: "Anthropic (API key)",
+      type: "api_key",
+    },
+    {
+      authorizationInstructionsMarkdown: null,
+      id: "openai-compatible",
+      name: "OpenAI-compatible API",
+      type: "api_key",
+    },
+  ]);
+
+  assert.deepEqual(
+    providers.map((provider) => [provider.id, provider.name, provider.authorizationLabel]),
+    [
+      ["openai-codex", "Codex", "Subscription"],
+      ["anthropic", "Anthropic", "API key"],
+      ["openai", "OpenAI", "API key"],
+      ["google-gemini-cli", "Gemini", "Subscription"],
+      ["openrouter", "OpenRouter", "API key"],
+      ["nvidia", "NVIDIA", "API key"],
+    ],
   );
 });
 

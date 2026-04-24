@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown_content";
 import { ModelProviderIcon } from "@/components/model_provider_icon";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,13 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { OauthCredentialFileParser } from "./oauth_credential_file_parser";
 import {
@@ -53,6 +47,34 @@ function extractFirstFencedCodeBlock(value: string): string | null {
 
 function removeFirstFencedCodeBlock(value: string): string {
   return value.replace(/```(?:[a-zA-Z0-9_-]+)?\n[\s\S]*?```/, "").trim();
+}
+
+function ProviderOptionCard(props: {
+  isSelected: boolean;
+  onSelect(): void;
+  provider: ModelProviderCredentialDialogProvider;
+}) {
+  return (
+    <button
+      className={cn(
+        "flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-3 text-center transition hover:border-border hover:bg-muted/40",
+        props.isSelected ? "border-primary/70 bg-primary/10 text-foreground" : "text-muted-foreground",
+      )}
+      onClick={props.onSelect}
+      type="button"
+    >
+      <ModelProviderIcon
+        className="size-8 rounded-lg"
+        imageClassName="size-5"
+        label={props.provider.name}
+        providerId={props.provider.id}
+      />
+      <span className="text-sm font-medium text-foreground">{props.provider.name}</span>
+      <Badge className="h-4 px-1.5 text-[0.58rem]" variant="outline">
+        {props.provider.authorizationLabel}
+      </Badge>
+    </button>
+  );
 }
 
 export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
@@ -103,41 +125,24 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             <label className="text-xs font-medium text-foreground" htmlFor="model-provider">
               Provider
             </label>
-            <Select
-              items={props.providers.map((provider) => ({
-                label: provider.name,
-                value: provider.id,
-              }))}
-              onValueChange={(value) => {
-                const nextProvider = props.providers.find((provider) => provider.id === value) ?? null;
-                setAuthFileContents("");
-                setApiKey("");
-                setBaseUrl(nextProvider?.baseUrl ?? "");
-                setIsInstructionCommandCopied(false);
-                setLocalErrorMessage(null);
-                setModelProvider(value ?? "");
-              }}
-              value={modelProvider}
-            >
-              <SelectTrigger id="model-provider">
-                <SelectValue placeholder="Select a provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {props.providers.map((provider) => (
-                  <SelectItem key={provider.id} value={provider.id}>
-                    <span className="inline-flex items-center gap-2">
-                      <ModelProviderIcon
-                        className="size-5 rounded-sm"
-                        imageClassName="size-3.5"
-                        label={provider.name}
-                        providerId={provider.id}
-                      />
-                      {provider.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {props.providers.map((provider) => (
+                <ProviderOptionCard
+                  isSelected={provider.id === modelProvider}
+                  key={provider.id}
+                  onSelect={() => {
+                    const nextProvider = provider;
+                    setAuthFileContents("");
+                    setApiKey("");
+                    setBaseUrl(nextProvider.baseUrl ?? "");
+                    setIsInstructionCommandCopied(false);
+                    setLocalErrorMessage(null);
+                    setModelProvider(nextProvider.id);
+                  }}
+                  provider={provider}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-2">
@@ -186,7 +191,8 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                       {instructionCommand}
                     </code>
                     <Button
-                      className="shrink-0"
+                      aria-label={isInstructionCommandCopied ? "Command copied" : "Copy command"}
+                      className="shrink-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                       onClick={async () => {
                         setLocalErrorMessage(null);
                         try {
@@ -196,16 +202,15 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                           setLocalErrorMessage("Failed to copy the command.");
                         }
                       }}
-                      size="sm"
+                      size="icon-sm"
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                     >
                       {isInstructionCommandCopied ? (
-                        <CheckIcon className="mr-1.5 size-3.5" />
+                        <CheckIcon className="size-3.5" />
                       ) : (
-                        <CopyIcon className="mr-1.5 size-3.5" />
+                        <CopyIcon className="size-3.5" />
                       )}
-                      {isInstructionCommandCopied ? "Copied" : "Copy"}
                     </Button>
                   </div>
                 </div>
