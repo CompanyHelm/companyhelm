@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentAskHumanQuestionTool } from "./ask_human_question.ts";
 import { AgentInboxToolService } from "./service.ts";
@@ -15,7 +14,7 @@ export class AgentInboxToolProvider extends AgentToolProviderInterface {
     this.inboxToolService = inboxToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentAskHumanQuestionTool(this.inboxToolService).createDefinition(),
     ];

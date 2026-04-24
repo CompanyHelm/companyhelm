@@ -1,6 +1,14 @@
 import type { SearchResponse } from "exa-js";
 import { ExaWebClient, type ExaWebFetchFormat } from "../../../../../../services/web_search/exa_client.ts";
 
+type ExaContentsOptions = {
+  extras?: Record<string, unknown>;
+  highlights?: true | Record<string, unknown>;
+  subpages?: number;
+  summary?: true | Record<string, unknown>;
+  text?: true | { maxCharacters?: number };
+};
+
 export type AgentWebSearchResult = {
   publishedDate: string | null;
   text: string | null;
@@ -35,7 +43,7 @@ type ExaStatusRecord = {
   status: string;
 };
 
-type SearchResponseWithStatuses<T> = SearchResponse<T> & {
+type SearchResponseWithStatuses = SearchResponse<ExaContentsOptions> & {
   statuses?: ExaStatusRecord[];
 };
 
@@ -70,11 +78,7 @@ export class AgentWebToolService {
         urls: input.urls,
       });
 
-    AgentWebToolService.assertSuccessfulStatuses(response as SearchResponseWithStatuses<{
-      text: {
-        maxCharacters: number;
-      };
-    }>);
+    AgentWebToolService.assertSuccessfulStatuses(response as SearchResponseWithStatuses);
 
     return {
       pages: response.results.map((result) => ({
@@ -118,26 +122,25 @@ export class AgentWebToolService {
   }
 
   private static assertSuccessfulStatuses(
-    response: SearchResponseWithStatuses<{
-      text: {
-        maxCharacters: number;
-      };
-    }>,
+    response: SearchResponseWithStatuses,
   ): void {
-    const failedStatuses = (response.statuses ?? []).filter((status) => status.status !== "success");
+    const failedStatuses = (response.statuses ?? []).filter((status: ExaStatusRecord) => {
+      return status.status !== "success";
+    });
     if (failedStatuses.length === 0) {
       return;
     }
 
     throw new Error([
       "Exa failed to load one or more pages:",
-      ...failedStatuses.map((status) => {
-        if (!status.error) {
+      ...failedStatuses.map((status: ExaStatusRecord) => {
+        const statusError = status.error;
+        if (!statusError) {
           return `- ${status.id}: ${status.status}`;
         }
 
-        const tag = status.error.tag ?? status.status;
-        const httpStatusCode = status.error.httpStatusCode ? ` (${status.error.httpStatusCode})` : "";
+        const tag = statusError.tag ?? status.status;
+        const httpStatusCode = statusError.httpStatusCode ? ` (${statusError.httpStatusCode})` : "";
         return `- ${status.id}: ${tag}${httpStatusCode}`;
       }),
     ].join("\n"));

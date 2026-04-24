@@ -26,6 +26,7 @@ export class AgentPtyListTool {
             text: AgentTerminalResultFormatter.formatPtyList(ptys),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "pty_list",

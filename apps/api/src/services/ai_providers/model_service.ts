@@ -112,10 +112,10 @@ export class ModelService {
     });
 
     return input.transactionProvider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const insertableDatabase = tx as InsertableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
-      const deletableDatabase = tx as DeletableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
+      const insertableDatabase = tx as unknown as InsertableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
+      const deletableDatabase = tx as unknown as DeletableDatabase;
       const existingModels = await selectableDatabase
         .select({
           id: modelProviderCredentialModels.id,

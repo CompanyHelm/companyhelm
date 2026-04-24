@@ -70,10 +70,11 @@ export class SetDefaultModelProviderCredentialModelMutation extends Mutation<
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
-      const updatableDatabase = tx as UpdatableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
+      const updatableDatabase = tx as unknown as UpdatableDatabase;
       const [model] = await selectableDatabase
         .select({
           description: modelProviderCredentialModels.description,
@@ -87,7 +88,7 @@ export class SetDefaultModelProviderCredentialModelMutation extends Mutation<
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.id, modelRowId),
         )) as ModelProviderCredentialModelRecord[];
       if (!model) {
@@ -100,7 +101,7 @@ export class SetDefaultModelProviderCredentialModelMutation extends Mutation<
           isDefault: false,
         })
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.modelProviderCredentialId, model.modelProviderCredentialId),
         ));
       await updatableDatabase
@@ -109,7 +110,7 @@ export class SetDefaultModelProviderCredentialModelMutation extends Mutation<
           isDefault: true,
         })
         .where(and(
-          eq(modelProviderCredentialModels.companyId, context.authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.id, model.id),
         ));
 

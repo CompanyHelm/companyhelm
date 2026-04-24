@@ -4,12 +4,26 @@ export type DatabaseTransactionInterface = {
   select(selection: Record<string, unknown>): {
     from(table: unknown): {
       where(condition: unknown): {
+        orderBy?(...arguments_: unknown[]): Promise<unknown[]>;
         limit(limit: number): Promise<unknown[]>;
       };
     };
   };
   insert(table: unknown): {
-    values(value: Record<string, unknown>): {
+    values(value: Record<string, unknown> | ReadonlyArray<Record<string, unknown>>): {
+      onConflictDoNothing?(): Promise<unknown>;
+      returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
+    };
+  };
+  update?(table: unknown): {
+    set(value: Record<string, unknown>): {
+      where(condition: unknown): Promise<unknown> | {
+        returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
+      };
+    };
+  };
+  delete?(table: unknown): {
+    where(condition: unknown): Promise<unknown> | {
       returning?(selection?: Record<string, unknown>): Promise<unknown[]>;
     };
   };

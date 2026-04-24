@@ -117,7 +117,7 @@ export function serializeStoredMcpOauthToken(value: {
   tokenType?: string | null;
 }): string {
   return JSON.stringify({
-    accessToken: normalizeNonEmptyString(value.accessToken),
+    accessToken: value.accessToken,
     expiresAt: value.expiresAt ? value.expiresAt.toISOString() : null,
     rawResponse: value.rawResponse,
     refreshToken: normalizeNonEmptyString(value.refreshToken),

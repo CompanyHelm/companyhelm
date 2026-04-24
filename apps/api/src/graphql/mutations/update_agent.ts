@@ -103,7 +103,10 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
   constructor(
     @inject(AgentEnvironmentTemplateService)
     templateService: AgentEnvironmentTemplateService = {
-      async resolveTemplateForProvider(_transactionProvider, input) {
+      async resolveTemplateForProvider(
+        _transactionProvider: unknown,
+        input: { templateId: string },
+      ) {
         return {
           computerUse: false,
           cpuCount: 4,
@@ -149,9 +152,10 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     }
     const authSession = context.authSession;
     const runtimeTransactionProvider = context.app_runtime_transaction_provider;
+    const companyId = authSession.company!.id;
 
     return runtimeTransactionProvider.transaction(async (tx) => {
-      const databaseTransaction = tx as DatabaseTransaction;
+      const databaseTransaction = tx as unknown as DatabaseTransaction;
       const transactionProvider = {
         async transaction<T>(transaction: (databaseTransaction: DatabaseTransaction) => Promise<T>): Promise<T> {
           return transaction(databaseTransaction);
@@ -163,7 +167,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(agents)
         .where(and(
-          eq(agents.companyId, authSession.company.id),
+          eq(agents.companyId, companyId),
           eq(agents.id, arguments_.input.id),
         )) as ExistingAgentRecord[];
       if (!existingAgent) {
@@ -177,7 +181,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(modelProviderCredentials)
         .where(and(
-          eq(modelProviderCredentials.companyId, authSession.company.id),
+          eq(modelProviderCredentials.companyId, companyId),
           eq(modelProviderCredentials.id, arguments_.input.modelProviderCredentialId),
         )) as CredentialRecord[];
       if (!credentialRecord) {
@@ -193,7 +197,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(modelProviderCredentialModels)
         .where(and(
-          eq(modelProviderCredentialModels.companyId, authSession.company.id),
+          eq(modelProviderCredentialModels.companyId, companyId),
           eq(modelProviderCredentialModels.id, arguments_.input.modelProviderCredentialModelId),
         )) as ModelRecord[];
       if (!modelRecord) {
@@ -211,7 +215,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         })
         .from(computeProviderDefinitions)
         .where(and(
-          eq(computeProviderDefinitions.companyId, authSession.company.id),
+          eq(computeProviderDefinitions.companyId, companyId),
           eq(computeProviderDefinitions.id, arguments_.input.defaultComputeProviderDefinitionId),
         )) as ComputeProviderDefinitionRecord[];
       if (!computeProviderDefinitionRecord) {
@@ -220,7 +224,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       const environmentTemplate = await this.templateService.resolveTemplateForProvider(
         transactionProvider as never,
         {
-          companyId: authSession.company.id,
+          companyId,
           providerDefinitionId: computeProviderDefinitionRecord.id,
           templateId: arguments_.input.defaultEnvironmentTemplateId,
         },
@@ -241,7 +245,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           updated_at: new Date(),
         })
         .where(and(
-          eq(agents.companyId, authSession.company.id),
+          eq(agents.companyId, companyId),
           eq(agents.id, existingAgent.id),
         ))
         .returning?.({

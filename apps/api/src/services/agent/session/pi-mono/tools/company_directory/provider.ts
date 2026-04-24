@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentListCompanyAgentsTool } from "./list_company_agents.ts";
 import { AgentListCompanyMembersTool } from "./list_company_members.ts";
@@ -16,7 +15,7 @@ export class AgentCompanyDirectoryToolProvider extends AgentToolProviderInterfac
     this.companyDirectoryToolService = companyDirectoryToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentListCompanyMembersTool(this.companyDirectoryToolService).createDefinition(),
       new AgentListCompanyAgentsTool(this.companyDirectoryToolService).createDefinition(),

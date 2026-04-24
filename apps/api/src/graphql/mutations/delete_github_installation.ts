@@ -47,13 +47,14 @@ export class DeleteGithubInstallationMutation extends Mutation<
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     const [deletedInstallation] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const deletableDatabase = tx as DeletableDatabase;
+      const deletableDatabase = tx as unknown as DeletableDatabase;
       return deletableDatabase
         .delete(companyGithubInstallations)
         .where(and(
-          eq(companyGithubInstallations.companyId, context.authSession.company.id),
+          eq(companyGithubInstallations.companyId, companyId),
           eq(companyGithubInstallations.installationId, installationId),
         ))
         .returning({

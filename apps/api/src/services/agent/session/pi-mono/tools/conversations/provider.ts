@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentSendAgentMessageTool } from "./send_agent_message.ts";
 import { AgentConversationToolService } from "./service.ts";
@@ -15,7 +14,7 @@ export class AgentConversationToolProvider extends AgentToolProviderInterface {
     this.conversationToolService = conversationToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentSendAgentMessageTool(this.conversationToolService).createDefinition(),
     ];

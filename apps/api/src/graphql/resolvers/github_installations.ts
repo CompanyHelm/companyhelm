@@ -37,16 +37,17 @@ export class GithubInstallationsQueryResolver extends Resolver<GraphqlGithubInst
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const installations = await selectableDatabase
         .select({
           installationId: companyGithubInstallations.installationId,
           createdAt: companyGithubInstallations.createdAt,
         })
         .from(companyGithubInstallations)
-        .where(eq(companyGithubInstallations.companyId, context.authSession.company.id))
+        .where(eq(companyGithubInstallations.companyId, companyId))
         .orderBy(asc(companyGithubInstallations.installationId));
 
       return installations.map((installation) => ({

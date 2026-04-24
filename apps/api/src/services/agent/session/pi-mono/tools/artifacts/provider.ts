@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentArchiveArtifactTool } from "./archive_artifact.ts";
 import { AgentCreateExternalLinkArtifactTool } from "./create_external_link_artifact.ts";
@@ -23,7 +22,7 @@ export class AgentArtifactToolProvider extends AgentToolProviderInterface {
     this.artifactToolService = artifactToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentListArtifactsTool(this.artifactToolService).createDefinition(),
       new AgentGetArtifactTool(this.artifactToolService).createDefinition(),

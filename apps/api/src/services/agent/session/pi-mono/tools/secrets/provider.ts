@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentListAssignedSecretsTool } from "./list_assigned.ts";
 import { AgentListAvailableSecretsTool } from "./list_available.ts";
@@ -17,7 +16,7 @@ export class AgentSecretToolProvider extends AgentToolProviderInterface {
     this.secretToolService = secretToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentListAssignedSecretsTool(this.secretToolService).createDefinition(),
       new AgentReadSecretTool(this.secretToolService).createDefinition(),

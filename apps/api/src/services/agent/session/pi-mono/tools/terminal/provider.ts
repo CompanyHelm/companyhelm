@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import type { Logger as PinoLogger } from "pino";
 import { AgentEnvironmentPromptScope } from "../../../../../environments/prompt_scope.ts";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
@@ -34,7 +33,7 @@ export class AgentTerminalToolProvider extends AgentToolProviderInterface {
     this.readImageToolService = readImageToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
       new AgentPtyListTool(this.promptScope).createDefinition(),
       new AgentPtyExecTool(this.promptScope, this.logger).createDefinition(),

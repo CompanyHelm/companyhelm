@@ -37,6 +37,7 @@ export class AgentPtyReadOutputTool {
             text: AgentTerminalResultFormatter.formatOutputResult(params.pty_id, page),
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "pty_read_output",

@@ -37,6 +37,7 @@ export class AgentPtyResizeTool {
             text: `Resized PTY ${params.pty_id} to ${params.columns} columns by ${params.rows} rows.`,
             type: "text",
           }],
+          details: undefined,
         };
       },
       label: "pty_resize",

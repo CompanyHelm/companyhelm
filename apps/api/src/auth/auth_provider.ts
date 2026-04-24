@@ -1,4 +1,10 @@
-import { AppRuntimeDatabase } from "../db/app_runtime_database.ts";
+import type { DatabaseClientInterface } from "../db/database_interface.ts";
+
+export type AuthRuntimeDatabase = {
+  getDatabase?(): DatabaseClientInterface;
+  applyCompanyContext?(database: DatabaseClientInterface, companyId: string): Promise<void>;
+  withCompanyContext?<T>(companyId: string, callback: (database: unknown) => Promise<T>): Promise<T>;
+};
 
 export type AuthProviderName = "clerk" | "dev" | "local";
 
@@ -32,7 +38,7 @@ export type AuthenticateBearerTokenHeaders = Record<string, unknown>;
 export abstract class AuthProvider {
   abstract readonly name: AuthProviderName;
   abstract authenticateBearerToken(
-    database: AppRuntimeDatabase,
+    database: AuthRuntimeDatabase,
     token: string,
     headers: AuthenticateBearerTokenHeaders,
   ): Promise<AuthSession>;

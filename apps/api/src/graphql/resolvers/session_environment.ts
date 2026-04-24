@@ -116,13 +116,15 @@ export class SessionEnvironmentQueryResolver {
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
+    const transactionProvider = context.app_runtime_transaction_provider;
     if (arguments_.sessionId.length === 0) {
       throw new Error("sessionId is required.");
     }
 
     const sessionRecord = await this.sessionReadService.getSession(
-      context.app_runtime_transaction_provider,
-      context.authSession.company.id,
+      transactionProvider,
+      companyId,
       arguments_.sessionId,
       context.authSession.user.id,
     );
@@ -131,17 +133,17 @@ export class SessionEnvironmentQueryResolver {
     }
 
     const session = await this.catalogService.loadSession(
-      context.app_runtime_transaction_provider,
+      transactionProvider,
       arguments_.sessionId,
     );
-    if (session.companyId !== context.authSession.company.id) {
+    if (session.companyId !== companyId) {
       throw new Error("Session not found.");
     }
 
-    await this.leaseService.expireElapsedLeases(context.app_runtime_transaction_provider);
+    await this.leaseService.expireElapsedLeases(transactionProvider);
 
-    const agent = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+    const agent = await transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const agentRows = await selectableDatabase
         .select({
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
@@ -149,7 +151,7 @@ export class SessionEnvironmentQueryResolver {
         })
         .from(agents)
         .where(and(
-          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.companyId, companyId),
           eq(agents.id, session.agentId),
         )) as AgentRecord[];
 
@@ -160,24 +162,24 @@ export class SessionEnvironmentQueryResolver {
     }
 
     const existingLease = await this.leaseService.findOpenLeaseForSession(
-      context.app_runtime_transaction_provider,
+      transactionProvider,
       session.agentId,
       arguments_.sessionId,
     );
     let currentEnvironment: AgentEnvironmentRecord | null = null;
     if (existingLease) {
       const leasedEnvironment = await this.catalogService.loadEnvironmentById(
-        context.app_runtime_transaction_provider,
+        transactionProvider,
         existingLease.environmentId,
       );
-      if (leasedEnvironment && await this.canReuseEnvironment(context.app_runtime_transaction_provider, leasedEnvironment)) {
+      if (leasedEnvironment && await this.canReuseEnvironment(transactionProvider, leasedEnvironment)) {
         currentEnvironment = leasedEnvironment;
       }
     }
 
     if (!currentEnvironment) {
       currentEnvironment = await this.selectionService.findReusableEnvironmentForAgentSession(
-        context.app_runtime_transaction_provider,
+        transactionProvider,
         session.agentId,
         arguments_.sessionId,
       );
@@ -185,24 +187,24 @@ export class SessionEnvironmentQueryResolver {
 
     const [activeSkills, currentEnvironmentStatus, currentEnvironmentDefinition, defaultComputeProviderDefinition] = await Promise.all([
       this.sessionSkillService.listActiveSkills(
-        context.app_runtime_transaction_provider,
-        context.authSession.company.id,
+        transactionProvider,
+        companyId,
         arguments_.sessionId,
       ),
       currentEnvironment
-        ? this.resolveEnvironmentStatus(context.app_runtime_transaction_provider, currentEnvironment)
+        ? this.resolveEnvironmentStatus(transactionProvider, currentEnvironment)
         : Promise.resolve<AgentEnvironmentStatus | null>(null),
       currentEnvironment?.providerDefinitionId
         ? this.computeProviderDefinitionService.loadDefinitionById(
-          context.app_runtime_transaction_provider,
-          context.authSession.company.id,
+          transactionProvider,
+          companyId,
           currentEnvironment.providerDefinitionId,
         )
         : Promise.resolve(null),
       agent.defaultComputeProviderDefinitionId
         ? this.computeProviderDefinitionService.loadDefinitionById(
-          context.app_runtime_transaction_provider,
-          context.authSession.company.id,
+          transactionProvider,
+          companyId,
           agent.defaultComputeProviderDefinitionId,
         )
         : Promise.resolve(null),

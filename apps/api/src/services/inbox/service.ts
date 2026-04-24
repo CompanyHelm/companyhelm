@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, type SQLWrapper } from "drizzle-orm";
 import { inject, injectable } from "inversify";
 import {
   agentInboxHumanQuestionAnswers,
@@ -533,7 +533,7 @@ export class AgentInboxService {
       status: "open" | "resolved" | null;
     },
   ): Promise<AgentInboxHumanQuestionRecord[]> {
-    const conditions: unknown[] = [
+    const conditions: SQLWrapper[] = [
       eq(agentInboxItems.companyId, companyId),
       eq(agentInboxItems.kind, "human_question"),
     ];

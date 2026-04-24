@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
 import { AgentCreateAgentTool } from "./create_agent.ts";
 import { AgentListAgentsTool } from "./list_agents.ts";
@@ -17,11 +16,11 @@ export class AgentManagementToolProvider extends AgentToolProviderInterface {
     this.agentManagementToolService = agentManagementToolService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
-      new AgentListAgentsTool(this.agentManagementToolService).createDefinition() as unknown as ToolDefinition,
-      new AgentCreateAgentTool(this.agentManagementToolService).createDefinition() as unknown as ToolDefinition,
-      new AgentUpdateAgentTool(this.agentManagementToolService).createDefinition() as unknown as ToolDefinition,
+      new AgentListAgentsTool(this.agentManagementToolService).createDefinition(),
+      new AgentCreateAgentTool(this.agentManagementToolService).createDefinition(),
+      new AgentUpdateAgentTool(this.agentManagementToolService).createDefinition(),
     ];
   }
 }

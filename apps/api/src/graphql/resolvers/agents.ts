@@ -77,9 +77,10 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const agentRecords = await selectableDatabase
         .select({
           id: agents.id,
@@ -93,7 +94,7 @@ export class AgentsQueryResolver extends Resolver<GraphqlAgentRecord[]> {
           updatedAt: agents.updated_at,
         })
         .from(agents)
-        .where(eq(agents.companyId, context.authSession.company.id)) as AgentRecord[];
+        .where(eq(agents.companyId, companyId)) as AgentRecord[];
 
       const modelIds = agentRecords
         .map((agentRecord) => agentRecord.defaultModelProviderCredentialModelId)

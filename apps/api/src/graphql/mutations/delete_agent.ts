@@ -59,13 +59,14 @@ export class DeleteAgentMutation extends Mutation<DeleteAgentMutationArguments, 
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
 
     const [agent] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const deletableDatabase = tx as DeletableDatabase;
+      const deletableDatabase = tx as unknown as DeletableDatabase;
       return deletableDatabase
         .delete(agents)
         .where(and(
-          eq(agents.companyId, context.authSession.company.id),
+          eq(agents.companyId, companyId),
           eq(agents.id, arguments_.input.id),
         ))
         .returning?.({

@@ -4,6 +4,7 @@ import { agentEnvironments, agents } from "../../db/schema.ts";
 import { AgentComputeProviderRegistry } from "../../services/environments/providers/provider_registry.ts";
 import type {
   AgentComputeProviderInterface,
+  AgentEnvironmentRecord,
   AgentEnvironmentStatus,
 } from "../../services/environments/providers/provider_interface.ts";
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
@@ -115,17 +116,19 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
     if (!context.app_runtime_transaction_provider) {
       throw new Error("Authentication required.");
     }
+    const companyId = context.authSession.company.id;
+    const transactionProvider = context.app_runtime_transaction_provider;
 
     const providerDefinitions = await this.computeProviderDefinitionService.listDefinitions(
-      context.app_runtime_transaction_provider,
-      context.authSession.company.id,
+      transactionProvider,
+      companyId,
     );
     const providerDefinitionNameById = new Map(
       providerDefinitions.map((definition) => [definition.id, definition.name]),
     );
 
-    return context.app_runtime_transaction_provider.transaction(async (tx) => {
-      const selectableDatabase = tx as SelectableDatabase;
+    return transactionProvider.transaction(async (tx) => {
+      const selectableDatabase = tx as unknown as SelectableDatabase;
       const environmentRecords = await selectableDatabase
         .select({
           agentId: agentEnvironments.agentId,
@@ -145,7 +148,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
           updatedAt: agentEnvironments.updatedAt,
         })
         .from(agentEnvironments)
-        .where(eq(agentEnvironments.companyId, context.authSession.company.id)) as EnvironmentRecord[];
+        .where(eq(agentEnvironments.companyId, companyId)) as EnvironmentRecord[];
 
       const agentIds = [...new Set(environmentRecords.map((environmentRecord) => environmentRecord.agentId))];
       const agentRecords = agentIds.length === 0
@@ -169,7 +172,7 @@ export class EnvironmentsQueryResolver extends Resolver<GraphqlEnvironmentRecord
                 environmentRecord.id,
                 await this.providerRegistry
                   .get(environmentRecord.provider)
-                  .getEnvironmentStatus(context.app_runtime_transaction_provider, environmentRecord),
+                  .getEnvironmentStatus(transactionProvider, environmentRecord as AgentEnvironmentRecord),
               ] as const;
             } catch {
               return [environmentRecord.id, "unhealthy"] as const;

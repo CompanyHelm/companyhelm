@@ -1,4 +1,5 @@
 import { inject, injectable } from "inversify";
+import type { Sql } from "postgres";
 import { AdminDatabase } from "../db/admin_database.ts";
 import { ApiLogger } from "../log/api_logger.ts";
 import {
@@ -38,7 +39,8 @@ export class LlmOauthRefreshWorker extends WorkerBase {
     );
 
     await this.adminDatabase.getSqlClient().begin(async (transactionSql) => {
-      const credentials = await transactionSql<LlmOauthCredentialRow[]>`
+      const sql = transactionSql as unknown as Sql;
+      const credentials = await sql<LlmOauthCredentialRow[]>`
         SELECT
           "id",
           "model_provider" AS "modelProvider",
@@ -58,7 +60,7 @@ export class LlmOauthRefreshWorker extends WorkerBase {
         try {
           const refreshedCredential = await this.refreshCredential(credential);
           const refreshedAt = LlmOauthRefreshWorker.serializeTimestamp(new Date());
-          await transactionSql`
+          await sql`
             UPDATE "model_provider_credentials"
             SET
               "encrypted_api_key" = ${refreshedCredential.access},
@@ -75,7 +77,7 @@ export class LlmOauthRefreshWorker extends WorkerBase {
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown OAuth refresh failure.";
           const failedAt = LlmOauthRefreshWorker.serializeTimestamp(new Date());
-          await transactionSql`
+          await sql`
             UPDATE "model_provider_credentials"
             SET
               "status" = 'error',

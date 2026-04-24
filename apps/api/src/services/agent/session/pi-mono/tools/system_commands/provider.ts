@@ -1,4 +1,3 @@
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { SystemCommandService } from "../../../../../system_command_service.ts";
 import { AgentSessionBootstrapContext } from "../../bootstrap_context.ts";
 import { AgentToolProviderInterface } from "../provider_interface.ts";
@@ -21,9 +20,9 @@ export class AgentSystemCommandToolProvider extends AgentToolProviderInterface {
     this.systemCommandService = systemCommandService;
   }
 
-  createToolDefinitions(): ToolDefinition[] {
+  createToolDefinitions(): unknown[] {
     return [
-      new AgentSystemCommandTool(this.bootstrapContext, this.systemCommandService).createDefinition() as unknown as ToolDefinition,
+      new AgentSystemCommandTool(this.bootstrapContext, this.systemCommandService).createDefinition(),
     ];
   }
 }
