@@ -104,16 +104,15 @@ function MissionPageContent() {
         rightControls={(
           <>
             <Button
-              disabled={controller.isUpdateCompanyOnboardingInFlight}
+              disabled={controller.isSkipCompanyOnboardingInFlight}
               onClick={() => {
                 controller.clearErrorMessage();
-                void controller.updateOnboarding({
-                  skipMission: true,
-                }).then(() => {
-                  navigateToOnboardingStep({
-                    navigate,
-                    organizationSlug,
-                    step: "create-agents",
+                void controller.skipOnboarding().then(() => {
+                  void navigate({
+                    params: {
+                      organizationSlug,
+                    },
+                    to: OrganizationPath.route("/"),
                   });
                 }).catch(() => undefined);
               }}

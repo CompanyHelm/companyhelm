@@ -13,6 +13,7 @@ import type { flowAddModelProviderCredentialMutation } from "./__generated__/flo
 import type { flowCreateGithubInstallationUrlMutation } from "./__generated__/flowCreateGithubInstallationUrlMutation.graphql";
 import type { flowEnsureCompanyOnboardingMutation } from "./__generated__/flowEnsureCompanyOnboardingMutation.graphql";
 import type { flowQuery } from "./__generated__/flowQuery.graphql";
+import type { flowSkipCompanyOnboardingMutation } from "./__generated__/flowSkipCompanyOnboardingMutation.graphql";
 import type { flowUpdateCompanyOnboardingMutation } from "./__generated__/flowUpdateCompanyOnboardingMutation.graphql";
 import { OnboardingStepPresenter, type OnboardingStepKey } from "./steps";
 
@@ -107,6 +108,28 @@ const onboardingPageUpdateCompanyOnboardingMutationNode = graphql`
   }
 `;
 
+const onboardingPageSkipCompanyOnboardingMutationNode = graphql`
+  mutation flowSkipCompanyOnboardingMutation {
+    SkipCompanyOnboarding {
+      id
+      companyId
+      status
+      companyMission
+      missionSkippedAt
+      githubSetupStatus
+      githubCompletedAt
+      githubSkippedAt
+      llmSetupStatus
+      llmCompletedAt
+      llmSkippedAt
+      agentId
+      sessionId
+      workflowRunId
+      updatedAt
+    }
+  }
+`;
+
 const onboardingPageCreateGithubInstallationUrlMutationNode = graphql`
   mutation flowCreateGithubInstallationUrlMutation($returnPath: String) {
     CreateGithubInstallationUrl(returnPath: $returnPath) {
@@ -157,6 +180,7 @@ export interface OnboardingFlowController {
   isCreateGithubInstallationUrlInFlight: boolean;
   isCredentialDialogOpen: boolean;
   isEnsureCompanyOnboardingInFlight: boolean;
+  isSkipCompanyOnboardingInFlight: boolean;
   isUpdateCompanyOnboardingInFlight: boolean;
   llmResolved: boolean;
   modelProviderCredentials: Array<{
@@ -186,6 +210,7 @@ export interface OnboardingFlowController {
   openGithubInstall(returnPath: string): void;
   setCredentialDialogOpen(open: boolean): void;
   setMissionDraft(value: string): void;
+  skipOnboarding(): Promise<void>;
   updateOnboarding(input: {
     companyMission?: string | null;
     githubSetupStatus?: "completed" | "skipped";
@@ -222,6 +247,10 @@ export function useOnboardingFlowController(options?: {
   const [commitUpdateCompanyOnboarding, isUpdateCompanyOnboardingInFlight] =
     useMutation<flowUpdateCompanyOnboardingMutation>(
       onboardingPageUpdateCompanyOnboardingMutationNode,
+    );
+  const [commitSkipCompanyOnboarding, isSkipCompanyOnboardingInFlight] =
+    useMutation<flowSkipCompanyOnboardingMutation>(
+      onboardingPageSkipCompanyOnboardingMutationNode,
     );
   const [commitCreateGithubInstallationUrl, isCreateGithubInstallationUrlInFlight] =
     useMutation<flowCreateGithubInstallationUrlMutation>(
@@ -381,6 +410,32 @@ export function useOnboardingFlowController(options?: {
     });
   }
 
+  async function skipOnboarding(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      commitSkipCompanyOnboarding({
+        variables: {},
+        onCompleted: (response, errors) => {
+          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+          if (nextErrorMessage.length > 0) {
+            reject(new Error(nextErrorMessage));
+            return;
+          }
+
+          if (!response.SkipCompanyOnboarding?.id) {
+            reject(new Error("Failed to skip company onboarding."));
+            return;
+          }
+
+          resolve();
+        },
+        onError: reject,
+      });
+    }).catch((error) => {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to skip company onboarding.");
+      throw error;
+    });
+  }
+
   async function createCredential(input: {
     accessToken?: string;
     accessTokenExpiresAtMilliseconds?: string;
@@ -488,6 +543,7 @@ export function useOnboardingFlowController(options?: {
     isCreateGithubInstallationUrlInFlight,
     isCredentialDialogOpen,
     isEnsureCompanyOnboardingInFlight,
+    isSkipCompanyOnboardingInFlight,
     isUpdateCompanyOnboardingInFlight,
     llmResolved,
     modelProviderCredentials,
@@ -507,6 +563,7 @@ export function useOnboardingFlowController(options?: {
       setIsCredentialDialogOpen(open);
     },
     setMissionDraft,
+    skipOnboarding,
     updateOnboarding,
   };
 }
