@@ -483,7 +483,7 @@ test("AgentToolsService custom tools can be injected into a live PI Mono session
   const tools = service.initializeTools();
   const { session } = await createAgentSession({
     authStorage,
-    tools: [],
+    noTools: "builtin",
     customTools: tools,
     model,
     modelRegistry,

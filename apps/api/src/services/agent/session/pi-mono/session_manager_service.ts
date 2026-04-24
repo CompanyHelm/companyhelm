@@ -223,9 +223,9 @@ export class PiMonoSessionManagerService {
       cwd: DEFAULT_PI_WORKING_DIRECTORY,
       model,
       resourceLoader,
-      // Keep the built-in active set empty at startup and register our CompanyHelm tools through
-      // `customTools`, because the PI SDK only treats `tools` as an active-name selector.
-      tools: [],
+      // Disable PI's default built-in tools while keeping CompanyHelm custom tools registered.
+      // Passing `tools: []` would create an empty allowlist and filter out custom tools too.
+      noTools: "builtin",
       customTools: initializedTools,
       thinkingLevel: this.resolveThinkingLevel(bootstrapContext.reasoningLevel),
     });
