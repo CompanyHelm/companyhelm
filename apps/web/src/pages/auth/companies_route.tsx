@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAuth, useOrganization } from "@/components/auth/auth_provider";
 import { DevAuthSelectionStorage } from "@/auth/dev_auth_selection_storage";
 import { config } from "@/config";
+import { OrganizationPath } from "@/lib/organization_path";
 import { CompaniesPage } from "./companies_page";
 
 export function CompaniesRoute() {
@@ -18,7 +19,13 @@ export function CompaniesRoute() {
     }
 
     if (auth.isLoaded && auth.isSignedIn && organization.isLoaded && organization.organization?.slug) {
-      void navigate({ to: "/", replace: true });
+      void navigate({
+        params: {
+          organizationSlug: organization.organization.slug,
+        },
+        replace: true,
+        to: OrganizationPath.route("/"),
+      });
       return;
     }
 
