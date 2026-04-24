@@ -23,6 +23,7 @@ const E2B_DESKTOP_STREAM_PORT = 6080;
 const E2B_DESKTOP_BOOTSTRAP_TIMEOUT_MS = 10_000;
 const E2B_DESKTOP_STREAM_START_TIMEOUT_MS = 10_000;
 const E2B_GET_VNC_URL_TIMEOUT_MS = 30_000;
+const E2B_DESKTOP_USER = "user";
 
 /**
  * Bridges the shared compute-provider contract onto E2B sandboxes. The environment services decide
@@ -394,6 +395,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
       {
         background: true,
         timeoutMs: 0,
+        user: E2B_DESKTOP_USER,
       },
     );
 
@@ -414,6 +416,7 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
         DISPLAY: display,
       },
       timeoutMs: 0,
+      user: E2B_DESKTOP_USER,
     });
 
     if (!await this.waitForDesktopSession(sandbox)) {
@@ -426,12 +429,29 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     display: string,
     timeoutSeconds = 1,
   ): Promise<boolean> {
-    return sandbox.waitAndVerify(
-      `xdpyinfo -display ${display}`,
-      (result) => result.exitCode === 0,
-      timeoutSeconds,
-      0.25,
-    );
+    const deadline = Date.now() + timeoutSeconds * 1_000;
+    while (Date.now() < deadline) {
+      try {
+        const result = await sandbox.commands.run(
+          `xdpyinfo -display ${display}`,
+          {
+            timeoutMs: Math.max(1_000, timeoutSeconds * 1_000),
+            user: E2B_DESKTOP_USER,
+          },
+        );
+        if (result.exitCode === 0) {
+          return true;
+        }
+      } catch (error) {
+        if (!(error instanceof CommandExitError)) {
+          throw error;
+        }
+      }
+
+      await this.sleep(250);
+    }
+
+    return false;
   }
 
   private async waitForDesktopSession(sandbox: DesktopSandbox): Promise<boolean> {
@@ -451,6 +471,9 @@ export class AgentComputeE2bProvider extends AgentComputeProviderInterface {
     try {
       const result = await sandbox.commands.run(
         "ps -ef | grep -E \"xfce4-session|xfwm4|xfsettingsd\" | grep -v grep",
+        {
+          user: E2B_DESKTOP_USER,
+        },
       );
       return result.stdout.trim().length > 0;
     } catch (error) {

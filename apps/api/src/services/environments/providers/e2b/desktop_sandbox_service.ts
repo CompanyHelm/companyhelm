@@ -10,6 +10,7 @@ const E2B_SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
 const E2B_CONNECT_REQUEST_TIMEOUT_MS = 15_000;
 const E2B_DESKTOP_DISPLAY = ":0";
 const E2B_DESKTOP_DPI = 96;
+const E2B_DESKTOP_USER = "user";
 
 /**
  * Connects to an existing E2B desktop sandbox and ensures the XFCE desktop runtime is usable
@@ -77,6 +78,7 @@ export class AgentComputeE2bDesktopSandboxService {
       {
         background: true,
         timeoutMs: 0,
+        user: E2B_DESKTOP_USER,
       },
     );
 
@@ -92,6 +94,7 @@ export class AgentComputeE2bDesktopSandboxService {
         DISPLAY: display,
       },
       timeoutMs: 0,
+      user: E2B_DESKTOP_USER,
     });
 
     const deadline = Date.now() + 5_000;
@@ -111,18 +114,38 @@ export class AgentComputeE2bDesktopSandboxService {
     display: string,
     timeoutSeconds = 1,
   ): Promise<boolean> {
-    return sandbox.waitAndVerify(
-      `xdpyinfo -display ${display}`,
-      (result) => result.exitCode === 0,
-      timeoutSeconds,
-      0.25,
-    );
+    const deadline = Date.now() + timeoutSeconds * 1_000;
+    while (Date.now() < deadline) {
+      try {
+        const result = await sandbox.commands.run(
+          `xdpyinfo -display ${display}`,
+          {
+            timeoutMs: Math.max(1_000, timeoutSeconds * 1_000),
+            user: E2B_DESKTOP_USER,
+          },
+        );
+        if (result.exitCode === 0) {
+          return true;
+        }
+      } catch (error) {
+        if (!(error instanceof CommandExitError)) {
+          throw error;
+        }
+      }
+
+      await this.sleep(250);
+    }
+
+    return false;
   }
 
   private async isDesktopSessionRunning(sandbox: DesktopSandbox): Promise<boolean> {
     try {
       const result = await sandbox.commands.run(
         "ps -ef | grep -E \"xfce4-session|xfwm4|xfsettingsd\" | grep -v grep",
+        {
+          user: E2B_DESKTOP_USER,
+        },
       );
       return result.stdout.trim().length > 0;
     } catch (error) {

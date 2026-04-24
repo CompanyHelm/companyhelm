@@ -14,6 +14,7 @@ test("AgentComputeE2bShell returns command output on successful execution", asyn
             EXAMPLE: "1",
           },
           timeoutMs: 5_000,
+          user: "user",
         });
         return {
           exitCode: 0,
