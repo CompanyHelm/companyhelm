@@ -678,15 +678,32 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   session: SessionRecord;
 }) {
   const workflowRun = session.associatedWorkflowRun ?? null;
+  if (!workflowRun) {
+    return null;
+  }
+
+  return (
+    <WorkflowRunProgressStripContent
+      organizationSlug={organizationSlug}
+      workflowRun={workflowRun}
+    />
+  );
+});
+
+WorkflowRunProgressStrip.displayName = "WorkflowRunProgressStrip";
+
+const WorkflowRunProgressStripContent = memo(function WorkflowRunProgressStripContent({
+  organizationSlug,
+  workflowRun,
+}: {
+  organizationSlug: string;
+  workflowRun: NonNullable<SessionRecord["associatedWorkflowRun"]>;
+}) {
   const [isExpanded, setIsExpanded] = useState(() => ChatsPagePreferenceStorage.loadWorkflowStatusExpanded());
 
   useEffect(() => {
     ChatsPagePreferenceStorage.saveWorkflowStatusExpanded(isExpanded);
   }, [isExpanded]);
-
-  if (!workflowRun) {
-    return null;
-  }
 
   const progressLabel = WorkflowRunPresenter.formatProgress(workflowRun);
   const statusLabel = WorkflowRunPresenter.formatStatus(workflowRun.status);
@@ -836,7 +853,7 @@ const WorkflowRunProgressStrip = memo(function WorkflowRunProgressStrip({
   );
 });
 
-WorkflowRunProgressStrip.displayName = "WorkflowRunProgressStrip";
+WorkflowRunProgressStripContent.displayName = "WorkflowRunProgressStripContent";
 
 type ChatTranscriptPaneProps = {
   isTranscriptStuckToBottom: boolean;
