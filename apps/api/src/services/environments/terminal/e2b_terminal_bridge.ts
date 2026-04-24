@@ -7,6 +7,7 @@ import { EnvironmentE2bTerminalConnection } from "./e2b_terminal_connection.ts";
 
 const E2B_TERMINAL_REQUEST_TIMEOUT_MS = 15_000;
 const E2B_TERMINAL_SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
+const E2B_TERMINAL_USER = "user";
 
 /**
  * Opens low-latency E2B PTY clients and immediately attaches them to CompanyHelm's named tmux
@@ -63,6 +64,7 @@ export class EnvironmentE2bTerminalBridge {
       },
       rows: input.rows,
       timeoutMs: 0,
+      user: E2B_TERMINAL_USER,
     });
     const connection = new EnvironmentE2bTerminalConnection(sandbox, terminal);
     await connection.attachTmuxSession(input.terminalSessionId);

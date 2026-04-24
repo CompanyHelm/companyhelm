@@ -15,6 +15,8 @@ type E2bCommandExitError = {
   };
 };
 
+const E2B_RUNTIME_USER = "user";
+
 /**
  * Adapts the E2B sandbox SDK into the shared shell contract used by tmux orchestration and other
  * tool runners. It intentionally narrows the provider surface down to direct command execution so
@@ -42,6 +44,7 @@ export class AgentComputeE2bShell extends AgentEnvironmentShellInterface {
         cwd: workingDirectory,
         envs: environment,
         timeoutMs: timeoutSeconds ? timeoutSeconds * 1000 : undefined,
+        user: E2B_RUNTIME_USER,
       });
 
       return {

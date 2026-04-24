@@ -203,14 +203,20 @@ test("AgentComputeE2bProvider starts desktop streaming on demand and returns the
   const start = vi.fn(async () => undefined);
   const getUrl = vi.fn(() => "https://desktop.example/vnc");
   const getHost = vi.fn(() => "desktop.example");
-  const waitAndVerify = vi.fn(async () => true);
+  const run = vi.fn()
+    .mockResolvedValueOnce({
+      exitCode: 0,
+      stderr: "",
+      stdout: "display ready",
+    })
+    .mockResolvedValueOnce({
+      exitCode: 0,
+      stderr: "",
+      stdout: "user 202 xfce4-session",
+    });
   const connect = vi.spyOn(DesktopSandbox, "connect").mockResolvedValue({
     commands: {
-      run: vi.fn(async () => ({
-        exitCode: 0,
-        stderr: "",
-        stdout: "user 202 xfce4-session",
-      })),
+      run,
     },
     display: ":0",
     getHost,
@@ -218,7 +224,6 @@ test("AgentComputeE2bProvider starts desktop streaming on demand and returns the
       getUrl,
       start,
     },
-    waitAndVerify,
   } as never);
   const provider = new AgentComputeE2bProvider(
     createConfig() as never,
@@ -239,33 +244,77 @@ test("AgentComputeE2bProvider starts desktop streaming on demand and returns the
   ]);
   assert.equal(start.mock.calls.length, 1);
   assert.equal(getUrl.mock.calls.length, 1);
-  assert.equal(waitAndVerify.mock.calls.length, 1);
-  assert.equal(waitAndVerify.mock.calls[0]?.[0], "xdpyinfo -display :0");
-  assert.equal(typeof waitAndVerify.mock.calls[0]?.[1], "function");
-  assert.equal(waitAndVerify.mock.calls[0]?.[2], 1);
-  assert.equal(waitAndVerify.mock.calls[0]?.[3], 0.25);
+  assert.equal(run.mock.calls.length, 2);
+  assert.deepEqual(run.mock.calls[0], [
+    "xdpyinfo -display :0",
+    {
+      timeoutMs: 1_000,
+      user: "user",
+    },
+  ]);
+  assert.deepEqual(run.mock.calls[1], [
+    "ps -ef | grep -E \"xfce4-session|xfwm4|xfsettingsd\" | grep -v grep",
+    {
+      user: "user",
+    },
+  ]);
 });
 
 test("AgentComputeE2bProvider bootstraps the desktop runtime when a reconnected sandbox has no display", async () => {
   const start = vi.fn(async () => undefined);
-  const run = vi.fn()
-    .mockResolvedValueOnce({
-      pid: 101,
-    })
-    .mockRejectedValueOnce(new CommandExitError({
-      error: "exit status 1",
-      exitCode: 1,
-      stderr: "",
-      stdout: "",
-    }))
-    .mockResolvedValueOnce({
-      pid: 202,
-    })
-    .mockResolvedValueOnce({
-      exitCode: 0,
-      stderr: "",
-      stdout: "user 202 xfce4-session",
-    });
+  let displayStarted = false;
+  let desktopSessionStarted = false;
+  const run = vi.fn(async (command: string) => {
+    if (command === "xdpyinfo -display :0") {
+      if (!displayStarted) {
+        throw new CommandExitError({
+          error: "exit status 1",
+          exitCode: 1,
+          stderr: "",
+          stdout: "",
+        });
+      }
+
+      return {
+        exitCode: 0,
+        stderr: "",
+        stdout: "display ready",
+      };
+    }
+
+    if (command === "ps -ef | grep -E \"xfce4-session|xfwm4|xfsettingsd\" | grep -v grep") {
+      if (!desktopSessionStarted) {
+        throw new CommandExitError({
+          error: "exit status 1",
+          exitCode: 1,
+          stderr: "",
+          stdout: "",
+        });
+      }
+
+      return {
+        exitCode: 0,
+        stderr: "",
+        stdout: "user 202 xfce4-session",
+      };
+    }
+
+    if (command.startsWith("Xvfb :0 ")) {
+      displayStarted = true;
+      return {
+        pid: 101,
+      };
+    }
+
+    if (command === "startxfce4") {
+      desktopSessionStarted = true;
+      return {
+        pid: 202,
+      };
+    }
+
+    throw new Error(`Unexpected command: ${command}`);
+  });
   const connect = vi.spyOn(DesktopSandbox, "connect").mockResolvedValue({
     commands: {
       run,
@@ -276,9 +325,6 @@ test("AgentComputeE2bProvider bootstraps the desktop runtime when a reconnected 
       getUrl: vi.fn(() => "https://desktop.example/vnc"),
       start,
     },
-    waitAndVerify: vi.fn()
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true),
   } as never);
   const provider = new AgentComputeE2bProvider(
     createConfig() as never,
@@ -289,15 +335,24 @@ test("AgentComputeE2bProvider bootstraps the desktop runtime when a reconnected 
 
   assert.equal(url, "https://desktop.example/vnc");
   assert.equal(connect.mock.calls.length, 1);
-  assert.equal(run.mock.calls.length, 4);
   assert.deepEqual(run.mock.calls[0], [
+    "xdpyinfo -display :0",
+    {
+      timeoutMs: 1_000,
+      user: "user",
+    },
+  ]);
+  const xvfbCall = run.mock.calls.find((call) => call[0] === "Xvfb :0 -ac -screen 0 1920x1080x24 -retro -dpi 96 -nolisten tcp -nolisten unix");
+  assert.deepEqual(xvfbCall, [
     "Xvfb :0 -ac -screen 0 1920x1080x24 -retro -dpi 96 -nolisten tcp -nolisten unix",
     {
       background: true,
       timeoutMs: 0,
+      user: "user",
     },
   ]);
-  assert.deepEqual(run.mock.calls[2], [
+  const startXfceCall = run.mock.calls.find((call) => call[0] === "startxfce4");
+  assert.deepEqual(startXfceCall, [
     "startxfce4",
     {
       background: true,
@@ -305,8 +360,12 @@ test("AgentComputeE2bProvider bootstraps the desktop runtime when a reconnected 
         DISPLAY: ":0",
       },
       timeoutMs: 0,
+      user: "user",
     },
   ]);
+  assert.ok(
+    run.mock.calls.some((call) => call[0] === "ps -ef | grep -E \"xfce4-session|xfwm4|xfsettingsd\" | grep -v grep"),
+  );
 });
 
 test("AgentComputeE2bProvider reuses an already running stream by reconstructing the stream URL", async () => {
