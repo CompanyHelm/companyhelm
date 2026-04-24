@@ -20,6 +20,7 @@ type TaskRecord = {
   description: string | null;
   status: TaskStatus;
   taskStageId: string;
+  completedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -31,6 +32,7 @@ type GraphqlTaskRecord = {
   status: TaskStatus;
   taskStageId: string;
   taskStageName: string;
+  completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -90,6 +92,7 @@ export class SetTaskStageMutation extends Mutation<SetTaskStageMutationArguments
           description: tasks.description,
           status: tasks.status,
           taskStageId: tasks.taskStageId,
+          completedAt: tasks.completedAt,
           createdAt: tasks.createdAt,
           updatedAt: tasks.updatedAt,
         }) as TaskRecord[];
@@ -105,6 +108,7 @@ export class SetTaskStageMutation extends Mutation<SetTaskStageMutationArguments
         status: taskRecord.status,
         taskStageId: taskRecord.taskStageId,
         taskStageName: taskStageRecord.name,
+        completedAt: taskRecord.completedAt?.toISOString() ?? null,
         createdAt: taskRecord.createdAt.toISOString(),
         updatedAt: taskRecord.updatedAt.toISOString(),
       };

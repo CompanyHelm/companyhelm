@@ -911,6 +911,13 @@
       "when": 1776980000000,
       "tag": "0130_system_companyhelm_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1777005859449,
+      "tag": "0131_short_excalibur",
+      "breakpoints": true
     }
   ]
 }

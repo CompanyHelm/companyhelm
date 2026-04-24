@@ -25,6 +25,7 @@ type GraphqlTaskAssignee = {
 type GraphqlTaskRecord = {
   assignedAt: string | null;
   assignee: GraphqlTaskAssignee | null;
+  completedAt: string | null;
   createdAt: string;
   description: string | null;
   id: string;
@@ -78,6 +79,7 @@ export class UpdateTaskMutation extends Mutation<UpdateTaskMutationArguments, Gr
     return {
       assignedAt: task.assignedAt?.toISOString() ?? null,
       assignee: task.assignee,
+      completedAt: task.completedAt?.toISOString() ?? null,
       createdAt: task.createdAt.toISOString(),
       description: task.description,
       id: task.id,

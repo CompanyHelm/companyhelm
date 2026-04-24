@@ -13,6 +13,7 @@ type GraphqlTaskAssignee = {
 type GraphqlTaskRecord = {
   assignedAt: string | null;
   assignee: GraphqlTaskAssignee | null;
+  completedAt: string | null;
   createdAt: string;
   description: string | null;
   id: string;
@@ -53,6 +54,7 @@ export class TasksQueryResolver extends Resolver<GraphqlTaskRecord[]> {
     return result.tasks.map((task) => ({
       assignedAt: task.assignedAt?.toISOString() ?? null,
       assignee: task.assignee,
+      completedAt: task.completedAt?.toISOString() ?? null,
       createdAt: task.createdAt.toISOString(),
       description: task.description,
       id: task.id,

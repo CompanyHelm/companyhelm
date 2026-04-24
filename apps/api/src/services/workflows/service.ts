@@ -499,17 +499,18 @@ export class WorkflowService {
   async listWorkflowRuns(
     transactionProvider: TransactionProviderInterface,
     companyId: string,
-    workflowDefinitionId: string,
+    workflowDefinitionId?: string | null,
   ): Promise<WorkflowRunRecord[]> {
     return transactionProvider.transaction(async (tx) => {
-      await this.requireWorkflowDefinitionRow(tx, companyId, workflowDefinitionId);
+      const conditions = [eq(workflowRuns.companyId, companyId)];
+      if (workflowDefinitionId) {
+        await this.requireWorkflowDefinitionRow(tx, companyId, workflowDefinitionId);
+        conditions.push(eq(workflowRuns.workflowDefinitionId, workflowDefinitionId));
+      }
       const runRows = await tx
         .select(this.getWorkflowRunSelection())
         .from(workflowRuns)
-        .where(and(
-          eq(workflowRuns.companyId, companyId),
-          eq(workflowRuns.workflowDefinitionId, workflowDefinitionId),
-        )) as WorkflowRunRow[];
+        .where(conditions.length === 1 ? conditions[0]! : and(...conditions)) as WorkflowRunRow[];
       runRows.sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
       return this.hydrateWorkflowRunRows(tx, companyId, runRows);

@@ -8,6 +8,7 @@ test("DeleteTaskMutation returns the deleted task snapshot", async () => {
       return {
         assignedAt: null,
         assignee: null,
+        completedAt: null,
         createdAt: new Date("2026-04-03T18:00:00.000Z"),
         description: "Remove the obsolete workflow task.",
         id: "task-1",
@@ -50,6 +51,7 @@ test("DeleteTaskMutation returns the deleted task snapshot", async () => {
   assert.deepEqual(result, {
     assignedAt: null,
     assignee: null,
+    completedAt: null,
     createdAt: "2026-04-03T18:00:00.000Z",
     description: "Remove the obsolete workflow task.",
     id: "task-1",

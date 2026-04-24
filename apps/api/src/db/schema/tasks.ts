@@ -68,6 +68,7 @@ export const tasks = pgTable("tasks", {
   assignedAgentId: uuid("assigned_agent_id")
     .references(() => agents.id, { onDelete: "set null" }),
   assignedAt: timestamp("assigned_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -78,6 +79,7 @@ export const tasks = pgTable("tasks", {
   companyAssignedUserIdIndex: index("tasks_company_assigned_user_id_idx").on(table.companyId, table.assignedUserId),
   companyAssignedAgentIdIndex: index("tasks_company_assigned_agent_id_idx").on(table.companyId, table.assignedAgentId),
   companyStatusCreatedAtIndex: index("tasks_company_status_created_at_idx").on(table.companyId, table.status, table.createdAt),
+  companyStatusCompletedAtIndex: index("tasks_company_status_completed_at_idx").on(table.companyId, table.status, table.completedAt),
   oneCreatorCheck: check(
     "tasks_one_creator_check",
     sql`num_nonnulls(${table.createdByUserId}, ${table.createdByAgentId}) <= 1`,

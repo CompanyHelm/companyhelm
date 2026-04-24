@@ -18,6 +18,7 @@ export type TaskServiceTaskAssignee = {
 export type TaskServiceTask = {
   assignedAt: Date | null;
   assignee: TaskServiceTaskAssignee | null;
+  completedAt: Date | null;
   createdAt: Date;
   description: string | null;
   id: string;
@@ -89,6 +90,7 @@ type TaskRow = {
   assignedAgentId: string | null;
   assignedAt: Date | null;
   assignedUserId: string | null;
+  completedAt: Date | null;
   createdAt: Date;
   description: string | null;
   id: string;
@@ -157,6 +159,7 @@ export class TaskService {
       });
       const now = new Date();
       const taskId = randomUUID();
+      const status = this.resolveStatus(input.status);
       const [taskRecord] = await tx
         .insert(tasks)
         .values({
@@ -164,6 +167,7 @@ export class TaskService {
           assignedAt: assignee ? now : null,
           assignedUserId: assignee?.kind === "user" ? assignee.id : null,
           companyId: input.companyId,
+          completedAt: status === "completed" ? now : null,
           createdAt: now,
           createdByAgentId: input.createdByAgentId ?? null,
           createdByUserId: input.createdByUserId ?? null,
@@ -172,7 +176,7 @@ export class TaskService {
           name: input.name,
           parentTaskId: null,
           rootTaskId: taskId,
-          status: this.resolveStatus(input.status),
+          status,
           taskStageId: taskStageRecord.id,
           updatedAt: now,
         })
@@ -180,6 +184,7 @@ export class TaskService {
           assignedAgentId: tasks.assignedAgentId,
           assignedAt: tasks.assignedAt,
           assignedUserId: tasks.assignedUserId,
+          completedAt: tasks.completedAt,
           createdAt: tasks.createdAt,
           description: tasks.description,
           id: tasks.id,
@@ -195,6 +200,7 @@ export class TaskService {
       return {
         assignedAt: taskRecord.assignedAt,
         assignee,
+        completedAt: taskRecord.completedAt,
         createdAt: taskRecord.createdAt,
         description: taskRecord.description,
         id: taskRecord.id,
@@ -218,6 +224,7 @@ export class TaskService {
           assignedAgentId: tasks.assignedAgentId,
           assignedAt: tasks.assignedAt,
           assignedUserId: tasks.assignedUserId,
+          completedAt: tasks.completedAt,
           createdAt: tasks.createdAt,
           description: tasks.description,
           id: tasks.id,
@@ -323,6 +330,7 @@ export class TaskService {
       const didAssigneeChange = nextAssignedAgentId !== existingTaskRow.assignedAgentId
         || nextAssignedUserId !== existingTaskRow.assignedUserId;
       const now = new Date();
+      const nextCompletedAt = this.resolveCompletedAt(existingTaskRow, nextStatus, now);
 
       const [updatedTaskRow] = await tx
         .update(tasks)
@@ -332,6 +340,7 @@ export class TaskService {
             ? (didAssigneeChange ? now : existingTaskRow.assignedAt)
             : null,
           assignedUserId: nextAssignedUserId,
+          completedAt: nextCompletedAt,
           description: nextDescription,
           name: nextName,
           status: nextStatus,
@@ -346,6 +355,7 @@ export class TaskService {
           assignedAgentId: tasks.assignedAgentId,
           assignedAt: tasks.assignedAt,
           assignedUserId: tasks.assignedUserId,
+          completedAt: tasks.completedAt,
           createdAt: tasks.createdAt,
           description: tasks.description,
           id: tasks.id,
@@ -513,6 +523,16 @@ export class TaskService {
     }
 
     return name;
+  }
+
+  private resolveCompletedAt(taskRow: TaskRow, nextStatus: TaskStatus, now: Date): Date | null {
+    if (nextStatus !== "completed") {
+      return null;
+    }
+
+    // Preserve the original completion timestamp once a task is done so later edits do not move it
+    // between dashboard time buckets.
+    return taskRow.completedAt ?? now;
   }
 
   private async resolveAssignee(
@@ -731,6 +751,7 @@ export class TaskService {
         assignedAgentId: tasks.assignedAgentId,
         assignedAt: tasks.assignedAt,
         assignedUserId: tasks.assignedUserId,
+        completedAt: tasks.completedAt,
         createdAt: tasks.createdAt,
         description: tasks.description,
         id: tasks.id,
@@ -776,6 +797,7 @@ export class TaskService {
     return {
       assignedAt: taskRow.assignedAt,
       assignee,
+      completedAt: taskRow.completedAt,
       createdAt: taskRow.createdAt,
       description: taskRow.description,
       id: taskRow.id,

@@ -7,7 +7,7 @@ import {
 } from "../workflow_graphql_presenter.ts";
 
 type WorkflowRunsQueryResolverArguments = {
-  workflowDefinitionId: string;
+  workflowDefinitionId?: string | null;
 };
 
 /**
@@ -35,7 +35,7 @@ export class WorkflowRunsQueryResolver {
     const runs = await this.workflowService.listWorkflowRuns(
       context.app_runtime_transaction_provider,
       context.authSession.company.id,
-      arguments_.workflowDefinitionId,
+      arguments_.workflowDefinitionId ?? null,
     );
     return runs.map((run) => this.presenter.serializeRun(run));
   };
