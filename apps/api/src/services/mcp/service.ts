@@ -369,10 +369,13 @@ export class McpService {
       refreshWindowMs?: number;
     },
   ): Promise<Record<string, string>> {
-    return transactionProvider.transaction(async (tx) => {
+    const resolution = await transactionProvider.transaction(async (tx) => {
       const server = await this.requireMcpServer(tx, input.companyId, input.mcpServerId);
       if (!this.isOauthAuthType(server.authType)) {
-        return { ...server.headers };
+        return {
+          headers: { ...server.headers },
+          kind: "success" as const,
+        };
       }
 
       const connection = await this.requireOauthConnection(tx, input.companyId, input.mcpServerId);
@@ -384,20 +387,33 @@ export class McpService {
       const refreshWindowMs = input.refreshWindowMs ?? McpService.DEFAULT_REFRESH_WINDOW_MS;
       if (expiresAt && Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() > now.getTime() + refreshWindowMs) {
         return {
-          ...server.headers,
-          Authorization: this.buildOauthAuthorizationHeader(storedToken.tokenType, storedToken.accessToken),
+          headers: {
+            ...server.headers,
+            Authorization: this.buildOauthAuthorizationHeader(storedToken.tokenType, storedToken.accessToken),
+          },
+          kind: "success" as const,
         };
       }
 
       const refreshToken = normalizeNonEmptyString(storedToken.refreshToken);
       const tokenEndpoint = normalizeNonEmptyString(connection.authorizationServerMetadata.token_endpoint);
       if (!tokenEndpoint) {
-        await this.markOauthConnectionDegraded(tx, {
-          companyId: input.companyId,
-          errorMessage: "MCP OAuth connection is missing a token endpoint.",
-          mcpServerId: input.mcpServerId,
-        });
-        throw new Error("MCP OAuth connection must be reconnected.");
+        const errorMessage = "MCP OAuth connection is missing a token endpoint.";
+        return {
+          error: new Error("MCP OAuth connection must be reconnected."),
+          errorMessage,
+          kind: "failure" as const,
+          status: "reauth_required" as const,
+        };
+      }
+
+      if (server.authType === "oauth_authorization_code" && !refreshToken) {
+        return {
+          error: new Error("MCP OAuth connection must be reconnected."),
+          errorMessage: "Invalid refresh token.",
+          kind: "failure" as const,
+          status: "reauth_required" as const,
+        };
       }
 
       try {
@@ -458,19 +474,34 @@ export class McpService {
           .returning();
 
         return {
-          ...server.headers,
-          Authorization: this.buildOauthAuthorizationHeader(refreshedToken.tokenType, refreshedToken.accessToken),
+          headers: {
+            ...server.headers,
+            Authorization: this.buildOauthAuthorizationHeader(refreshedToken.tokenType, refreshedToken.accessToken),
+          },
+          kind: "success" as const,
         };
       } catch (error) {
-        await this.markOauthConnectionDegraded(tx, {
-          companyId: input.companyId,
-          errorMessage: error instanceof Error ? error.message : "Unknown OAuth refresh failure.",
-          mcpServerId: input.mcpServerId,
-        });
-
-        throw error;
+        const oauthFailure = this.resolveOauthFailure(server.authType, error);
+        return {
+          error: oauthFailure.error,
+          errorMessage: oauthFailure.errorMessage,
+          kind: "failure" as const,
+          status: oauthFailure.status,
+        };
       }
     });
+
+    if (resolution.kind === "success") {
+      return resolution.headers;
+    }
+
+    await this.persistOauthConnectionFailure(transactionProvider, {
+      companyId: input.companyId,
+      errorMessage: resolution.errorMessage,
+      mcpServerId: input.mcpServerId,
+      status: resolution.status,
+    });
+    throw resolution.error;
   }
 
   private async hydrateServerRecords(
@@ -599,26 +630,68 @@ export class McpService {
     return connection;
   }
 
-  private async markOauthConnectionDegraded(
-    updatableDatabase: UpdatableDatabase,
+  private async persistOauthConnectionFailure(
+    transactionProvider: TransactionProviderInterface,
     input: {
       companyId: string;
       errorMessage: string;
       mcpServerId: string;
+      status: Exclude<McpOauthConnectionStatus, "connected" | "not_connected">;
     },
   ): Promise<void> {
-    await updatableDatabase
-      .update(mcpOauthConnections)
-      .set({
-        lastError: input.errorMessage,
-        status: "degraded",
-        updatedAt: new Date(),
-      })
-      .where(and(
-        eq(mcpOauthConnections.companyId, input.companyId),
-        eq(mcpOauthConnections.mcpServerId, input.mcpServerId),
-      ))
-      .returning();
+    await transactionProvider.transaction(async (tx) => {
+      const updatableDatabase = tx as UpdatableDatabase;
+      await updatableDatabase
+        .update(mcpOauthConnections)
+        .set({
+          lastError: input.errorMessage,
+          status: input.status,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(mcpOauthConnections.companyId, input.companyId),
+          eq(mcpOauthConnections.mcpServerId, input.mcpServerId),
+        ))
+        .returning();
+    });
+  }
+
+  /**
+   * Converts raw OAuth exchange failures into user-facing connection states so the UI can
+   * distinguish between a broken credential that must be re-authorized and a generic runtime
+   * error that only needs operator attention.
+   */
+  private resolveOauthFailure(
+    authType: McpServerAuthType,
+    error: unknown,
+  ): {
+    error: Error;
+    errorMessage: string;
+    status: Exclude<McpOauthConnectionStatus, "connected" | "not_connected">;
+  } {
+    const normalizedError = error instanceof Error ? error : new Error(String(error));
+    const rawMessage = normalizeNonEmptyString(normalizedError.message) ?? "Unknown OAuth refresh failure.";
+    const lowerMessage = rawMessage.toLowerCase();
+    const requiresReauthorization = authType === "oauth_authorization_code" && (
+      lowerMessage.includes("invalid_grant")
+      || lowerMessage.includes("invalid refresh token")
+      || lowerMessage.includes("refresh token")
+      || lowerMessage.includes("must be reconnected")
+    );
+
+    if (requiresReauthorization) {
+      return {
+        error: normalizedError,
+        errorMessage: "Invalid refresh token.",
+        status: "reauth_required",
+      };
+    }
+
+    return {
+      error: normalizedError,
+      errorMessage: rawMessage,
+      status: "error",
+    };
   }
 
   private async resetOauthState(
@@ -711,7 +784,14 @@ export class McpService {
       return "not_connected";
     }
 
-    return connection.status === "degraded" ? "degraded" : "connected";
+    if (connection.status === "reauth_required") {
+      return "reauth_required";
+    }
+    if (connection.status === "error" || connection.status === "degraded") {
+      return "error";
+    }
+
+    return "connected";
   }
 
   private buildOauthAuthorizationHeader(tokenType: string, accessToken: string): string {

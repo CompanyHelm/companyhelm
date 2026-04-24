@@ -217,8 +217,9 @@ enum McpServerAuthType {
 
 enum McpOauthConnectionStatus {
   connected
-  degraded
+  error
   not_connected
+  reauth_required
 }
 
 type AuthenticatedCompany {
@@ -644,6 +645,15 @@ type SessionEnvironmentInfo {
   activeSkills: [Skill!]!
   currentEnvironment: Environment
   agentDefaultComputeProviderDefinition: ComputeProviderDefinition
+  mcpWarnings: [SessionMcpWarning!]!
+}
+
+type SessionMcpWarning {
+  serverId: ID!
+  serverName: String!
+  status: McpOauthConnectionStatus!
+  errorMessage: String!
+  recommendedAction: String!
 }
 
 type SessionMessage {

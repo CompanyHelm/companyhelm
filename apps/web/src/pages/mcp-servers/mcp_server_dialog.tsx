@@ -38,7 +38,7 @@ export type EditableMcpServerRecord = {
   id: string;
   name: string;
   oauthClientId: string | null;
-  oauthConnectionStatus: "connected" | "degraded" | "not_connected" | null;
+  oauthConnectionStatus: "connected" | "error" | "not_connected" | "reauth_required" | null;
   oauthGrantedScopes: string[];
   oauthLastError: string | null;
   oauthRequestedScopes: string[];
@@ -146,11 +146,25 @@ function getOauthStatusBadgeVariant(status: EditableMcpServerRecord["oauthConnec
   if (status === "connected") {
     return "positive";
   }
-  if (status === "degraded") {
+  if (status === "reauth_required") {
+    return "destructive";
+  }
+  if (status === "error") {
     return "warning";
   }
 
   return "outline";
+}
+
+function formatOauthStatusLabel(status: EditableMcpServerRecord["oauthConnectionStatus"] | undefined): string {
+  if (status === "reauth_required") {
+    return "reauth required";
+  }
+  if (status === "error") {
+    return "error";
+  }
+
+  return status ?? "not_connected";
 }
 
 export function McpServerDialog(props: McpServerDialogProps) {
@@ -578,7 +592,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
                   </span>
                 </div>
                 <Badge variant={getOauthStatusBadgeVariant(props.server?.oauthConnectionStatus)}>
-                  {props.server?.oauthConnectionStatus ?? "not_connected"}
+                  {formatOauthStatusLabel(props.server?.oauthConnectionStatus)}
                 </Badge>
               </div>
 
@@ -698,7 +712,7 @@ export function McpServerDialog(props: McpServerDialogProps) {
                   </span>
                 </div>
                 <Badge variant={getOauthStatusBadgeVariant(props.server?.oauthConnectionStatus)}>
-                  {props.server?.oauthConnectionStatus ?? "not_connected"}
+                  {formatOauthStatusLabel(props.server?.oauthConnectionStatus)}
                 </Badge>
               </div>
 

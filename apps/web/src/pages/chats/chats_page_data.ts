@@ -186,6 +186,13 @@ export const chatsPageSessionEnvironmentQueryNode = graphql`
         name
         description
       }
+      mcpWarnings {
+        serverId
+        serverName
+        status
+        errorMessage
+        recommendedAction
+      }
       currentEnvironment {
         id
         displayName

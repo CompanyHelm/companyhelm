@@ -11,6 +11,7 @@ import { AgentEnvironmentCatalogService } from "../../services/environments/cata
 import { AgentEnvironmentLeaseService } from "../../services/environments/lease_service.ts";
 import { AgentEnvironmentSelectionService } from "../../services/environments/selection_service.ts";
 import { ComputeProviderDefinitionService } from "../../services/compute_provider_definitions/service.ts";
+import { McpService } from "../../services/mcp/service.ts";
 import { SessionReadService } from "../../services/agent/session/read_service.ts";
 import type { GraphqlRequestContext } from "../graphql_request_context.ts";
 import { GraphqlSkillPresenter, type GraphqlSkillRecord } from "../skill_presenter.ts";
@@ -61,6 +62,15 @@ type GraphqlSessionEnvironmentInfo = {
   activeSkills: GraphqlSkillRecord[];
   agentDefaultComputeProviderDefinition: GraphqlComputeProviderDefinitionRecord | null;
   currentEnvironment: GraphqlEnvironmentRecord | null;
+  mcpWarnings: GraphqlSessionMcpWarningRecord[];
+};
+
+type GraphqlSessionMcpWarningRecord = {
+  errorMessage: string;
+  recommendedAction: string;
+  serverId: string;
+  serverName: string;
+  status: "connected" | "error" | "not_connected" | "reauth_required";
 };
 
 type SelectableDatabase = {
@@ -81,6 +91,7 @@ export class SessionEnvironmentQueryResolver {
   private readonly catalogService: AgentEnvironmentCatalogService;
   private readonly computeProviderDefinitionService: ComputeProviderDefinitionService;
   private readonly leaseService: AgentEnvironmentLeaseService;
+  private readonly mcpService: McpService;
   private readonly providerRegistry: AgentComputeProviderRegistry;
   private readonly sessionSkillService: SessionSkillService;
   private readonly sessionReadService: SessionReadService;
@@ -91,6 +102,7 @@ export class SessionEnvironmentQueryResolver {
     @inject(ComputeProviderDefinitionService)
     computeProviderDefinitionService: ComputeProviderDefinitionService,
     @inject(AgentEnvironmentLeaseService) leaseService: AgentEnvironmentLeaseService,
+    @inject(McpService) mcpService: McpService,
     @inject(AgentComputeProviderRegistry) providerRegistry: AgentComputeProviderRegistry,
     @inject(SessionSkillService) sessionSkillService: SessionSkillService = new SessionSkillService(),
     @inject(SessionReadService) sessionReadService: SessionReadService = new SessionReadService(),
@@ -99,6 +111,7 @@ export class SessionEnvironmentQueryResolver {
     this.catalogService = catalogService;
     this.computeProviderDefinitionService = computeProviderDefinitionService;
     this.leaseService = leaseService;
+    this.mcpService = mcpService;
     this.providerRegistry = providerRegistry;
     this.sessionSkillService = sessionSkillService;
     this.sessionReadService = sessionReadService;
@@ -185,11 +198,22 @@ export class SessionEnvironmentQueryResolver {
       );
     }
 
-    const [activeSkills, currentEnvironmentStatus, currentEnvironmentDefinition, defaultComputeProviderDefinition] = await Promise.all([
+    const [
+      activeSkills,
+      attachedMcpServers,
+      currentEnvironmentStatus,
+      currentEnvironmentDefinition,
+      defaultComputeProviderDefinition,
+    ] = await Promise.all([
       this.sessionSkillService.listActiveSkills(
         transactionProvider,
         companyId,
         arguments_.sessionId,
+      ),
+      this.mcpService.listAgentMcpServers(
+        transactionProvider,
+        companyId,
+        session.agentId,
       ),
       currentEnvironment
         ? this.resolveEnvironmentStatus(transactionProvider, currentEnvironment)
@@ -245,6 +269,20 @@ export class SessionEnvironmentQueryResolver {
             updatedAt: currentEnvironment.updatedAt.toISOString(),
           }
         : null,
+      mcpWarnings: attachedMcpServers
+        .filter((server) => server.enabled)
+        .filter((server): server is typeof server & {
+          oauthConnectionStatus: "error" | "reauth_required";
+        } => server.oauthConnectionStatus === "error" || server.oauthConnectionStatus === "reauth_required")
+        .map((server) => ({
+          errorMessage: server.oauthLastError ?? "MCP tool discovery failed.",
+          recommendedAction: server.oauthConnectionStatus === "reauth_required"
+            ? "Reconnect this MCP server in MCP settings to restore its tools for new chat sessions."
+            : "Open MCP settings and review this server's credentials or runtime configuration.",
+          serverId: server.id,
+          serverName: server.name,
+          status: server.oauthConnectionStatus,
+        })),
     };
   };
 
