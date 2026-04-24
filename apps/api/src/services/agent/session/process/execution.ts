@@ -655,7 +655,7 @@ export class SessionProcessExecutionService {
         modelId: modelRow.modelId,
         ...(modelRow.name ? { modelName: modelRow.name } : {}),
         modelProviderCredentialId: modelRow.modelProviderCredentialId,
-        providerId: credentialRow.modelProvider,
+        providerId: this.resolveRuntimeProviderId(credentialRow),
         ...(typeof modelRow.reasoningSupported === "boolean" ? { reasoningSupported: modelRow.reasoningSupported } : {}),
         reasoningLevel: sessionRow.currentReasoningLevel,
         ...(userFirstName ? { userFirstName } : {}),
@@ -716,6 +716,18 @@ export class SessionProcessExecutionService {
     }
 
     return credentialRow.encryptedApiKey;
+  }
+
+  private resolveRuntimeProviderId(credentialRow: CredentialRow): string {
+    if (credentialRow.isManaged) {
+      if (!this.companyHelmLlmProviderService) {
+        throw new Error("CompanyHelm model provider service is not configured.");
+      }
+
+      return this.companyHelmLlmProviderService.getRuntimeModelProvider();
+    }
+
+    return credentialRow.modelProvider;
   }
 
   private async clearQueuedMessages(

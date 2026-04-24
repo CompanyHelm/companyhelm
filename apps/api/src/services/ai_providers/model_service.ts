@@ -14,6 +14,7 @@ import { OpenAiCodexModelAdapter } from "../providers/models-adapters/openai_cod
 import { OpenAiCompatibleModelAdapter } from "../providers/models-adapters/openai_compatible_model_adapter.js";
 import { OpenAiModelAdapter } from "../providers/models-adapters/openai_model_adapter.js";
 import { OpenRouterModelAdapter } from "../providers/models-adapters/openrouter_model_adapter.js";
+import { CompanyHelmLlmProviderService } from "./companyhelm_service.ts";
 
 type StoredModelRecord = {
   id: string;
@@ -91,7 +92,7 @@ export class ModelService {
       throw new Error("Model provider API key is required.");
     }
 
-    const adapter = this.providerAdapters.get(normalizedProvider);
+    const adapter = this.providerAdapters.get(this.resolveRuntimeProvider(normalizedProvider));
     if (!adapter) {
       throw new Error(`Unsupported model provider: ${normalizedProvider}`);
     }
@@ -245,6 +246,14 @@ export class ModelService {
     }
 
     return fetchedModelIds[0] ?? null;
+  }
+
+  private resolveRuntimeProvider(modelProvider: string): string {
+    if (modelProvider === CompanyHelmLlmProviderService.PROVIDER_ID) {
+      return CompanyHelmLlmProviderService.RUNTIME_PROVIDER_ID;
+    }
+
+    return modelProvider;
   }
 }
 

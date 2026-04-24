@@ -53,7 +53,7 @@ type ModelProviderCredentialRow = {
   id: string;
   isDefault: boolean;
   isManaged: boolean;
-  modelProvider: "openai";
+  modelProvider: "openai" | "companyhelm";
   name: string;
   type: "api_key";
   updatedAt: Date;
@@ -313,7 +313,7 @@ class CompanyBootstrapServiceTestHarness {
                       id: "companyhelm-model-credential-1",
                       isDefault: Boolean(value.isDefault),
                       isManaged: Boolean(value.isManaged),
-                      modelProvider: value.modelProvider as "openai",
+                      modelProvider: value.modelProvider as "openai" | "companyhelm",
                       name: value.name as string,
                       type: value.type as "api_key",
                       updatedAt: value.updatedAt as Date,
@@ -599,7 +599,7 @@ test("CompanyBootstrapService seeds the CompanyHelm definition and default task 
   assert.equal(defaultDefinition?.isDefault, true);
   const [managedCredential] = harness.listModelCredentials();
   assert.equal(managedCredential?.name, "CompanyHelm");
-  assert.equal(managedCredential?.modelProvider, "openai");
+  assert.equal(managedCredential?.modelProvider, "companyhelm");
   assert.equal(managedCredential?.isManaged, true);
   assert.equal(managedCredential?.isDefault, true);
   assert.ok(harness.listModels().some((model) => model.modelId === "gpt-5.4" && model.isDefault));
@@ -659,17 +659,15 @@ test("CompanyBootstrapService seeds the CEO agent for newly created companies", 
   assert.deepEqual(workflowSteps.map((step) => step.name), [
     "Capture company intent",
     "Connect GitHub",
-    "Map the tech stack",
     "Propose starter agents",
   ]);
   assert.match(workflowSteps[0]?.instructions_template ?? "", /artifact\.markdown\.create/);
   assert.match(workflowSteps[1]?.instructions_template ?? "", /github\.installation\.start/);
   assert.match(workflowSteps[1]?.instructions_template ?? "", /Connect GitHub card/);
   assert.doesNotMatch(workflowSteps[1]?.instructions_template ?? "", /Show the returned installationUrl/);
-  assert.match(workflowSteps[2]?.instructions_template ?? "", /clone_github_repository/);
-  assert.match(workflowSteps[3]?.instructions_template ?? "", /skill\.github\.import/);
-  assert.match(workflowSteps[3]?.instructions_template ?? "", /public repositories/);
-  assert.match(workflowSteps[3]?.instructions_template ?? "", /plain git clone/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /skill\.github\.import/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /public repositories/);
+  assert.match(workflowSteps[2]?.instructions_template ?? "", /plain git clone/);
 
   const [onboarding] = harness.listCompanyOnboardings();
   assert.equal(onboarding?.companyId, "company-1");
@@ -706,7 +704,7 @@ test("CompanyBootstrapService does not duplicate seeded defaults when rerun", as
       id: "companyhelm-model-credential-1",
       isDefault: true,
       isManaged: true,
-      modelProvider: "openai",
+      modelProvider: "companyhelm",
       name: "CompanyHelm",
       type: "api_key",
       updatedAt: now,

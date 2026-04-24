@@ -41,6 +41,7 @@ type ComputeProviderDefinitionRecord = {
 type ModelProviderCredentialRecord = {
   id: string;
   isManaged: boolean;
+  modelProvider: string;
 };
 
 type ModelProviderCredentialModelRecord = {
@@ -347,10 +348,12 @@ export class CompanyBootstrapService {
     transaction: DatabaseTransactionInterface,
     companyId: string,
   ): Promise<ModelProviderCredentialRecord> {
+    const updatableDatabase = transaction as BootstrapUpdatableDatabase;
     const [existingCredential] = await transaction
       .select({
         id: modelProviderCredentials.id,
         isManaged: modelProviderCredentials.isManaged,
+        modelProvider: modelProviderCredentials.modelProvider,
       })
       .from(modelProviderCredentials)
       .where(and(
@@ -359,6 +362,27 @@ export class CompanyBootstrapService {
       ))
       .limit(1) as ModelProviderCredentialRecord[];
     if (existingCredential) {
+      if (!this.companyHelmLlmProviderService.matchesCredential(existingCredential)) {
+        await updatableDatabase
+          .update(modelProviderCredentials)
+          .set({
+            accessTokenExpiresAt: null,
+            baseUrl: null,
+            encryptedApiKey: this.companyHelmLlmProviderService.getStoredApiKeySentinel(),
+            errorMessage: null,
+            modelProvider: this.companyHelmLlmProviderService.getModelProvider(),
+            name: this.companyHelmLlmProviderService.getCredentialName(),
+            refreshedAt: null,
+            refreshToken: null,
+            status: "active",
+            type: "api_key",
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(modelProviderCredentials.companyId, companyId),
+            eq(modelProviderCredentials.id, existingCredential.id),
+          ));
+      }
       await this.ensureCompanyHelmLlmProviderModels(transaction, companyId, existingCredential.id);
       return existingCredential;
     }
@@ -398,6 +422,7 @@ export class CompanyBootstrapService {
       .returning?.({
         id: modelProviderCredentials.id,
         isManaged: modelProviderCredentials.isManaged,
+        modelProvider: modelProviderCredentials.modelProvider,
       }) as ModelProviderCredentialRecord[] | undefined;
     const credential = createdRows?.[0]
       ?? await this.findCompanyHelmLlmProviderCredential(transaction, companyId);
@@ -440,6 +465,7 @@ export class CompanyBootstrapService {
       .select({
         id: modelProviderCredentials.id,
         isManaged: modelProviderCredentials.isManaged,
+        modelProvider: modelProviderCredentials.modelProvider,
       })
       .from(modelProviderCredentials)
       .where(and(

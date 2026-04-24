@@ -101,6 +101,12 @@ test("GraphQL ModelProviders query lists provider setup metadata", async () => {
   const document = response.json();
   assert.deepEqual(document.data.ModelProviders, [
     {
+      id: "companyhelm",
+      name: "CompanyHelm",
+      type: "api_key",
+      authorizationInstructionsMarkdown: "Included and managed by CompanyHelm.",
+    },
+    {
       id: "openai",
       name: "OpenAI",
       type: "api_key",

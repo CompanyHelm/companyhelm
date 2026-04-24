@@ -208,6 +208,49 @@ test("ModelService fetchModels uses the dedicated openai-codex adapter", async (
   }
 });
 
+test("ModelService fetchModels aliases companyhelm to the OpenAI adapter", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{
+    authorization: string | null;
+    url: string;
+  }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({
+      authorization: new Headers(init?.headers).get("authorization"),
+      url,
+    });
+
+    return new Response(JSON.stringify({
+      data: [
+        {
+          id: "gpt-5.4",
+        },
+      ],
+    }), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+  }) as typeof fetch;
+
+  try {
+    const modelService = new ModelService(new ModelRegistry());
+
+    const models = await modelService.fetchModels("companyhelm", "sk-companyhelm");
+
+    assert.deepEqual(calls, [{
+      authorization: "Bearer sk-companyhelm",
+      url: "https://api.openai.com/v1/models",
+    }]);
+    assert.equal(models[0]?.provider, "openai");
+    assert.ok(models.some((model) => model.modelId === "gpt-5.4"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("ModelService fetchModels uses the dedicated google-gemini-cli adapter", async () => {
   const originalFetch = globalThis.fetch;
   let fetchCallCount = 0;

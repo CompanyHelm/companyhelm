@@ -113,6 +113,9 @@ export class AddModelProviderCredentialMutation extends Mutation<
   ) => {
     const modelProvider = String(arguments_.input.modelProvider || "").trim();
     const providerDefinition = this.modelProviderService.get(modelProvider);
+    if (this.modelProviderService.isSystemManagedProviderId(modelProvider)) {
+      throw new Error("CompanyHelm model provider is managed by the system.");
+    }
     const credentialName = AddModelProviderCredentialMutation.resolveCredentialName(
       arguments_.input.name,
       providerDefinition,

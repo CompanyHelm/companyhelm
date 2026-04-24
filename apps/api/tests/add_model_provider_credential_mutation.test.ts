@@ -408,6 +408,79 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
   await app.close();
 });
 
+test("GraphQL AddModelProviderCredential mutation rejects the CompanyHelm managed provider", async () => {
+  const app = Fastify();
+  const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
+  const database = AddModelProviderCredentialMutationTestHarness.createDatabaseMock();
+  const modelManager = {
+    async fetchModels(): Promise<ModelProviderModel[]> {
+      throw new Error("fetchModels should not be called for the CompanyHelm provider");
+    },
+  };
+  const authProvider = {
+    async authenticateBearerToken() {
+      return {
+        token: "jwt-token",
+        user: {
+          id: "user-123",
+          email: "user@example.com",
+          firstName: "User",
+          lastName: "Example",
+          provider: "clerk" as const,
+          providerSubject: "user_clerk_123",
+        },
+        company: {
+          id: "company-123",
+          name: "Example Org",
+        },
+      };
+    },
+  };
+
+  await GraphqlApplication.fromResolvers(
+    config,
+    new AddModelProviderCredentialMutation(modelManager as never),
+    new DeleteModelProviderCredentialMutation(),
+    new RefreshModelProviderCredentialModelsMutation(modelManager as never),
+    new GraphqlRequestContextResolver(authProvider as never, database),
+    new HealthQueryResolver(),
+    new MeQueryResolver(),
+    new ModelProviderCredentialModelsQueryResolver(),
+    new ModelProviderCredentialsQueryResolver(),
+  ).register(app);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/graphql",
+    headers: {
+      authorization: "Bearer jwt-token",
+    },
+    payload: {
+      query: `
+        mutation AddModelProviderCredential($input: AddModelProviderCredentialInput!) {
+          AddModelProviderCredential(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          modelProvider: "companyhelm",
+          apiKey: "secret-value",
+        },
+      },
+    },
+  });
+
+  assert.equal(response.statusCode, 200);
+  const document = response.json();
+  assert.equal(document.data, null);
+  assert.equal(document.errors?.[0]?.message, "CompanyHelm model provider is managed by the system.");
+  assert.equal(database.insertedValues.length, 0);
+
+  await app.close();
+});
+
 test("GraphQL AddModelProviderCredential mutation supports anthropic credentials", async () => {
   const app = Fastify();
   const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();

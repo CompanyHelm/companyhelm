@@ -268,7 +268,7 @@ function ModelProviderCredentialsPageContent() {
     }));
   }, [data.Agents, data.ModelProviderCredentials, sessionCountByCredentialId]);
   const providers = ModelProviderCredentialCatalog.toDialogProviders(
-    data.ModelProviders.map((provider) => ({
+    data.ModelProviders.filter((provider) => provider.id !== "companyhelm").map((provider) => ({
       authorizationInstructionsMarkdown: provider.authorizationInstructionsMarkdown ?? null,
       id: provider.id,
       name: formatProviderLabel(provider.id),

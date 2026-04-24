@@ -76,8 +76,19 @@ test("ModelProviderService lists supported providers in modal order", () => {
 
   assert.deepEqual(
     service.list().map((provider) => provider.id),
-    ["openai", "anthropic", "openrouter", "openai-compatible", "openai-codex", "google-gemini-cli"],
+    ["companyhelm", "openai", "anthropic", "openrouter", "openai-compatible", "openai-codex", "google-gemini-cli"],
   );
+});
+
+test("ModelProviderService returns metadata for the CompanyHelm system provider", () => {
+  const service = new ModelProviderService();
+
+  assert.deepEqual(service.get("companyhelm"), {
+    id: "companyhelm",
+    name: "CompanyHelm",
+    type: ModelProviderAuthorizationType.ApiKey,
+    authorizationInstructionsMarkdown: "Included and managed by CompanyHelm.",
+  });
 });
 
 test("ModelProviderService rejects unsupported providers", () => {

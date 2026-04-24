@@ -13,6 +13,8 @@ import { ModelRegistry } from "./model_registry.ts";
 export class CompanyHelmLlmProviderService {
   static readonly CREDENTIAL_NAME = "CompanyHelm";
   static readonly ENCRYPTED_API_KEY_SENTINEL = "companyhelm-managed-openai-api-key";
+  static readonly PROVIDER_ID = "companyhelm";
+  static readonly RUNTIME_PROVIDER_ID = "openai";
   private readonly config: Config;
   private readonly modelRegistry: ModelRegistry;
 
@@ -28,8 +30,12 @@ export class CompanyHelmLlmProviderService {
     return CompanyHelmLlmProviderService.CREDENTIAL_NAME;
   }
 
-  getModelProvider(): "openai" {
-    return "openai";
+  getModelProvider(): "companyhelm" {
+    return CompanyHelmLlmProviderService.PROVIDER_ID;
+  }
+
+  getRuntimeModelProvider(): "openai" {
+    return CompanyHelmLlmProviderService.RUNTIME_PROVIDER_ID;
   }
 
   getStoredApiKeySentinel(): string {
@@ -67,7 +73,8 @@ export class CompanyHelmLlmProviderService {
 
   matchesCredential(credential: {
     isManaged: boolean;
+    modelProvider?: string;
   }): boolean {
-    return credential.isManaged;
+    return credential.isManaged || credential.modelProvider === this.getModelProvider();
   }
 }

@@ -16,6 +16,10 @@ export function formatProviderLabel(value: string, options: {
     return "OpenAI (API key)";
   }
 
+  if (value === "companyhelm") {
+    return "CompanyHelm";
+  }
+
   if (value === "openrouter") {
     return "OpenRouter (API key)";
   }

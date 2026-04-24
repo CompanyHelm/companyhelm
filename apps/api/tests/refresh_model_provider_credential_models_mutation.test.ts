@@ -78,7 +78,7 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
                           encryptedApiKey: CompanyHelmLlmProviderService.ENCRYPTED_API_KEY_SENTINEL,
                           id: "credential-123",
                           isManaged: true,
-                          modelProvider: "openai",
+                          modelProvider: "companyhelm",
                         }];
                       },
                     };
@@ -111,7 +111,7 @@ test("RefreshModelProviderCredentialModelsMutation resolves managed credentials 
     apiKey: "sk-companyhelm-managed",
     baseUrl: null,
     companyId: "company-123",
-    modelProvider: "openai",
+    modelProvider: "companyhelm",
     modelProviderCredentialId: "credential-123",
   });
   assert.deepEqual(models, [{
