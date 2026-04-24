@@ -298,14 +298,6 @@ function DashboardPageContent() {
         </p>
       </header>
 
-      <UsageSection
-        budget={data.CompanyManagedLlmBudget}
-        currentDayUsage={currentDayUsage}
-        currentMonthUsage={currentMonthUsage}
-        organizationName={organizationName}
-        totalUsage={totalUsage}
-      />
-
       <div className="grid gap-6 xl:grid-cols-2">
         <TasksSection
           description={`${runningTasks.length} tasks are currently in progress.`}
@@ -349,6 +341,14 @@ function DashboardPageContent() {
           totalCount={completedWorkflowRuns.length}
         />
       </div>
+
+      <UsageSection
+        budget={data.CompanyManagedLlmBudget}
+        currentDayUsage={currentDayUsage}
+        currentMonthUsage={currentMonthUsage}
+        organizationName={organizationName}
+        totalUsage={totalUsage}
+      />
 
       <EnvironmentsSection
         environments={environments.slice(0, DASHBOARD_SECTION_LIMIT)}
