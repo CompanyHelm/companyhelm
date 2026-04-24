@@ -20,6 +20,7 @@ import {
 } from "../session_turn_usage_service.ts";
 import { SessionProcessPubSubNames } from "../process/pub_sub_names.ts";
 import { UserSessionReadService } from "../user_session_read_service.ts";
+import { EnhancedLoggingService } from "../../../../log/enhanced_logging_service.ts";
 
 type InsertableDatabase = {
   insert(table: unknown): {
@@ -151,6 +152,7 @@ type PiMonoSessionEventHandlerDependencies = {
   sessionProcessPubSubNames?: SessionProcessPubSubNames;
   sessionTurnUsageService?: SessionTurnUsageService;
   userSessionReadService?: UserSessionReadService;
+  enhancedLoggingService?: EnhancedLoggingService;
 };
 
 /**
@@ -171,6 +173,7 @@ export class PiMonoSessionEventHandler {
   private readonly sessionProcessPubSubNames: SessionProcessPubSubNames;
   private readonly sessionTurnUsageService: SessionTurnUsageService;
   private readonly userSessionReadService: UserSessionReadService;
+  private readonly enhancedLoggingService: EnhancedLoggingService;
   private readonly contextMessagesSnapshotProvider: () => unknown;
   private readonly contextSnapshotProvider: () => PiMonoSessionContextSnapshot;
   private readonly messageIdByEventKey = new Map<string, string>();
@@ -214,6 +217,7 @@ export class PiMonoSessionEventHandler {
     this.sessionProcessPubSubNames = dependencies.sessionProcessPubSubNames ?? new SessionProcessPubSubNames();
     this.sessionTurnUsageService = dependencies.sessionTurnUsageService ?? new SessionTurnUsageService();
     this.userSessionReadService = dependencies.userSessionReadService ?? new UserSessionReadService();
+    this.enhancedLoggingService = dependencies.enhancedLoggingService ?? new EnhancedLoggingService();
   }
 
   async handle(event: unknown): Promise<void> {
@@ -381,12 +385,24 @@ export class PiMonoSessionEventHandler {
   private async handleAgentEnd(sessionEvent: SessionEvent): Promise<void> {
     this.logDebug("pi mono agent ended", sessionEvent);
     const companyId = await this.resolveCompanyId();
+    const clearReadsStartedAtMilliseconds = Date.now();
     await this.userSessionReadService.clearSessionReads(this.transactionProvider, {
       companyId,
       sessionId: this.sessionId,
     });
+    this.logEnhanced(companyId, "session_agent_end", "session_agent_end_clear_reads_end", {
+      durationMs: Date.now() - clearReadsStartedAtMilliseconds,
+    });
+    const persistContextStartedAtMilliseconds = Date.now();
     await this.persistContextMessagesSnapshot(new Date(), true);
+    this.logEnhanced(companyId, "session_agent_end", "session_agent_end_persist_context_end", {
+      durationMs: Date.now() - persistContextStartedAtMilliseconds,
+    });
+    const updateStatusStartedAtMilliseconds = Date.now();
     await this.updateSessionStatus("stopped");
+    this.logEnhanced(companyId, "session_agent_end", "session_agent_end_update_status_end", {
+      durationMs: Date.now() - updateStatusStartedAtMilliseconds,
+    });
   }
 
   private async handleAutoCompactionStart(sessionEvent: SessionEvent): Promise<void> {
@@ -1346,6 +1362,26 @@ export class PiMonoSessionEventHandler {
       logMessage,
       sessionId: this.sessionId,
     });
+  }
+
+  private logEnhanced(
+    companyId: string,
+    diagnosticComponent: string,
+    diagnosticEvent: string,
+    fields: Record<string, unknown>,
+  ): void {
+    if (!this.enhancedLoggingService.shouldLogEnhanced(companyId, diagnosticComponent, this.sessionId)) {
+      return;
+    }
+
+    this.logger.info({
+      ...fields,
+      companyId,
+      diagnostic: "enhanced",
+      diagnosticComponent,
+      diagnosticEvent,
+      sessionId: this.sessionId,
+    }, "enhanced diagnostic log");
   }
 
   private async publishMessageUpdate(messageId: string): Promise<void> {

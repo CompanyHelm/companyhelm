@@ -59,6 +59,7 @@ class PiMonoSessionEventHandlerTestHarness {
     const clearedSessionReadSessionIds: string[] = [];
     const debugLogs: unknown[] = [];
     const errorLogs: unknown[] = [];
+    const infoLogs: unknown[] = [];
     const contextSnapshot = {
       currentContextTokens: null as number | null,
       isCompacting: false,
@@ -84,11 +85,15 @@ class PiMonoSessionEventHandlerTestHarness {
       error(entry: unknown) {
         errorLogs.push(entry);
       },
+      info(entry: unknown) {
+        infoLogs.push(entry);
+      },
     } as unknown as PinoLogger;
 
     return {
       debugLogs,
       errorLogs,
+      infoLogs,
       contextSnapshot,
       clearedSessionReadSessionIds,
       logger,
@@ -2022,4 +2027,33 @@ test("PiMonoSessionEventHandler error logs unhandled message roles", async () =>
       sessionId: "session-1",
     },
   );
+});
+
+test("PiMonoSessionEventHandler emits enhanced agent-end diagnostics when enabled", async () => {
+  const harness = PiMonoSessionEventHandlerTestHarness.create();
+  const handler = new PiMonoSessionEventHandler(
+    harness.transactionProvider as never,
+    "session-1",
+    harness.redisService as never,
+    {
+      enhancedLoggingService: {
+        shouldLogEnhanced(_companyId: string, diagnosticComponent: string, sessionId?: string) {
+          return diagnosticComponent === "session_agent_end" && sessionId === "session-1";
+        },
+      } as never,
+      logger: harness.logger,
+    },
+  );
+
+  try {
+    await handler.handle({
+      type: "agent_end",
+    });
+  } finally {
+    harness.restore();
+  }
+
+  assert.ok(harness.infoLogs.some((entry) => (entry as Record<string, unknown>).diagnosticEvent === "session_agent_end_clear_reads_end"));
+  assert.ok(harness.infoLogs.some((entry) => (entry as Record<string, unknown>).diagnosticEvent === "session_agent_end_persist_context_end"));
+  assert.ok(harness.infoLogs.some((entry) => (entry as Record<string, unknown>).diagnosticEvent === "session_agent_end_update_status_end"));
 });

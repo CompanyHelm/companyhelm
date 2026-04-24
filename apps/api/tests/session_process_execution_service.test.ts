@@ -126,6 +126,78 @@ test("SessionProcessExecutionService schedules a delayed wake when pending work 
   }]);
 });
 
+test("SessionProcessExecutionService emits enhanced cleanup diagnostics when enabled", async () => {
+  const infoLogs: Array<Record<string, unknown>> = [];
+  let releasedLeaseCount = 0;
+  const service = new SessionProcessExecutionService(
+    {
+      async withCompanyContext(_companyId: string, callback: (database: unknown) => Promise<unknown>) {
+        return callback({});
+      },
+    } as never,
+    {
+      child() {
+        return {
+          debug() {
+            return undefined;
+          },
+          info(payload: Record<string, unknown>) {
+            infoLogs.push(payload);
+          },
+        };
+      },
+    } as never,
+    {
+      async createRuntime() {
+        throw new Error("createRuntime should not be called.");
+      },
+    } as never,
+    {} as never,
+    {
+      async acquire() {
+        return {
+          companyId: "company-1",
+          sessionId: "session-1",
+          token: "lease-1",
+        };
+      },
+      async release() {
+        releasedLeaseCount += 1;
+      },
+    } as never,
+    {
+      async enqueueSessionWake() {
+        throw new Error("enqueueSessionWake should not be called.");
+      },
+    } as never,
+    new SessionProcessQueuedNames(),
+    {
+      async listProcessable() {
+        return [];
+      },
+      async hasPendingMessages() {
+        return false;
+      },
+    } as never,
+    undefined as never,
+    companySettingsService as never,
+    undefined as never,
+    undefined as never,
+    {
+      shouldLogEnhanced(_companyId: string, diagnosticComponent: string) {
+        return diagnosticComponent === "session_process_cleanup";
+      },
+    } as never,
+  );
+
+  await service.execute("company-1", "session-1");
+
+  assert.equal(releasedLeaseCount, 1);
+  assert.ok(infoLogs.some((entry) => entry.diagnosticEvent === "session_process_finalize_start"));
+  assert.ok(infoLogs.some((entry) => entry.diagnosticEvent === "session_process_release_lease_end"));
+  assert.ok(infoLogs.some((entry) => entry.diagnosticEvent === "session_process_finalize_end"));
+});
+
 test("SessionProcessExecutionService does not replay an in-flight row when another wake arrives", async () => {
   const promptCalls: Array<{ sessionId: string; text: string }> = [];
   const queuedMessages = [{
