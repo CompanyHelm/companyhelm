@@ -22,6 +22,8 @@ export class ModelProviderCredentialCatalog {
 
   static readonly NVIDIA_PROVIDER_ID = "nvidia";
 
+  private static readonly OPENAI_COMPATIBLE_PROVIDER_ID = "openai-compatible";
+
   private static readonly DIALOG_PROVIDER_ORDER = new Map([
     ["openai-codex", 0],
     ["anthropic", 1],
@@ -29,9 +31,8 @@ export class ModelProviderCredentialCatalog {
     ["google-gemini-cli", 3],
     ["openrouter", 4],
     [ModelProviderCredentialCatalog.NVIDIA_PROVIDER_ID, 5],
+    [ModelProviderCredentialCatalog.OPENAI_COMPATIBLE_PROVIDER_ID, 6],
   ]);
-
-  private static readonly OPENAI_COMPATIBLE_PROVIDER_ID = "openai-compatible";
 
   static toDialogProviders(
     providers: ModelProviderCredentialApiProvider[],
@@ -40,7 +41,6 @@ export class ModelProviderCredentialCatalog {
     for (const provider of providers) {
       if (provider.id === ModelProviderCredentialCatalog.OPENAI_COMPATIBLE_PROVIDER_ID) {
         dialogProviders.push(ModelProviderCredentialCatalog.createNvidiaProvider());
-        continue;
       }
 
       dialogProviders.push(ModelProviderCredentialCatalog.createDialogProvider(provider));
@@ -114,6 +114,9 @@ export class ModelProviderCredentialCatalog {
     }
     if (providerId === "openrouter") {
       return "OpenRouter";
+    }
+    if (providerId === ModelProviderCredentialCatalog.OPENAI_COMPATIBLE_PROVIDER_ID) {
+      return "OpenAI Compatible";
     }
 
     return fallbackName.replaceAll("-", " ");

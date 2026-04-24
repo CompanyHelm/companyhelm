@@ -249,7 +249,7 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
             </div>
           ) : (
             <div className="grid gap-4">
-              {selectedProvider && ModelProviderCredentialCatalog.requiresBaseUrl(selectedProvider) ? (
+              {selectedProvider && usesEditableBaseUrl ? (
                 <div className="grid gap-2">
                   <label className="text-xs font-medium text-foreground" htmlFor="provider-base-url">
                     Base URL
@@ -261,7 +261,6 @@ export function CreateCredentialDialog(props: CreateCredentialDialogProps) {
                       setBaseUrl(event.target.value);
                     }}
                     placeholder="http://localhost:11434/v1"
-                    readOnly={!usesEditableBaseUrl}
                     value={baseUrl}
                   />
                 </div>

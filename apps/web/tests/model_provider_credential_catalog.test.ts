@@ -12,11 +12,15 @@ test("adds NVIDIA as the web-only OpenAI-compatible credential option", () => {
     },
   ]);
 
-  assert.deepEqual(providers.map((provider) => provider.id), ["nvidia"]);
+  assert.deepEqual(providers.map((provider) => provider.id), ["nvidia", "openai-compatible"]);
   assert.equal(providers[0]?.authorizationLabel, "API key");
   assert.equal(providers[0]?.name, "NVIDIA");
   assert.equal(providers[0]?.submittedProviderId, "openai-compatible");
   assert.equal(providers[0]?.baseUrl, "https://integrate.api.nvidia.com/v1");
+  assert.equal(providers[1]?.authorizationLabel, "API key");
+  assert.equal(providers[1]?.name, "OpenAI Compatible");
+  assert.equal(providers[1]?.submittedProviderId, "openai-compatible");
+  assert.equal(providers[1]?.baseUrl, null);
   assert.match(
     providers[0]?.authorizationInstructionsMarkdown ?? "",
     /https:\/\/build\.nvidia\.com\/settings\/api-keys/,
@@ -72,6 +76,7 @@ test("orders and labels dialog providers for the credential picker", () => {
       ["google-gemini-cli", "Gemini", "Subscription"],
       ["openrouter", "OpenRouter", "API key"],
       ["nvidia", "NVIDIA", "API key"],
+      ["openai-compatible", "OpenAI Compatible", "API key"],
     ],
   );
 });
