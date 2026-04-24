@@ -1,9 +1,11 @@
 import type { FormEvent, ReactNode } from "react";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CompanyHelmAuthContext,
   type CompanyHelmOrganization,
+  type DevAuthCompanyDocument,
+  type DevAuthUserDetailDocument,
   type DevCreateCompanyInput,
   type DevSignInInput,
   type DevSignUpInput,
@@ -38,8 +40,9 @@ function DevAuthShell(props: {
   );
 }
 
-function DevUserListCard() {
-  const authContext = useDevAuthContext();
+function DevUserListCard(props: {
+  emptyMessage: string;
+}) {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<DevAuthUserSummaryDocument[]>([]);
 
@@ -73,7 +76,7 @@ function DevUserListCard() {
   if (users.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No dev users exist yet. Create one from the sign-up page.
+        {props.emptyMessage}
       </p>
     );
   }
@@ -92,27 +95,13 @@ function DevUserListCard() {
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             <p className="truncate text-xs text-muted-foreground">
               {user.hasActiveCompany
-                ? `Company: ${user.primaryCompanyName || user.primaryCompanySlug || "Unknown"}`
+                ? `Primary company: ${user.primaryCompanyName || user.primaryCompanySlug || "Unknown"}`
                 : "No active company yet"}
             </p>
           </div>
-          {user.hasActiveCompany ? (
-            <Button
-              size="sm"
-              type="button"
-              onClick={() => {
-                void authContext.devAuth.signIn({
-                  userId: user.id,
-                });
-              }}
-            >
-              Log in
-            </Button>
-          ) : (
-            <Button asChild size="sm" type="button" variant="outline">
-              <Link search={{ email: user.email }} to="/create-company">Create company</Link>
-            </Button>
-          )}
+          <Button asChild size="sm" type="button" variant="outline">
+            <Link search={{ userId: user.id }} to="/companies">Continue</Link>
+          </Button>
         </div>
       ))}
     </div>
@@ -143,11 +132,10 @@ function DevSignInCard() {
 
   return (
     <DevAuthShell
-      description="Use passwordless dev auth to impersonate an existing user, or create a new test account."
+      description="Use passwordless dev auth to jump into a user quickly, or browse the available dev users below."
       footer={(
         <span className="flex flex-wrap gap-3">
-          <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Create a new dev user</Link>
-          <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/create-company">Create a company for an existing user</Link>
+          <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Choose or add a dev user</Link>
         </span>
       )}
       title="Dev sign in"
@@ -167,7 +155,7 @@ function DevSignInCard() {
             <p className="text-sm text-destructive">{errorMessage || authContext.devAuth.errorMessage}</p>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            URL shortcut: add <code>?email=…</code> or <code>?userId=…</code> to the page URL to log in automatically.
+            URL shortcut: add <code>?email=…</code> or <code>?userId=…</code> to the page URL to sign in directly.
           </p>
           <Button className="w-full" disabled={submitting} size="lg" type="submit">
             {submitting ? "Signing in…" : "Sign in by email"}
@@ -176,9 +164,9 @@ function DevSignInCard() {
         <div className="space-y-3 border-t border-border/70 pt-5">
           <div>
             <h3 className="text-sm font-medium text-foreground">Available dev users</h3>
-            <p className="text-xs text-muted-foreground">Use one click for users that already belong to a company.</p>
+            <p className="text-xs text-muted-foreground">Pick a user first, then choose which company to open.</p>
           </div>
-          <DevUserListCard />
+          <DevUserListCard emptyMessage="No dev users exist yet. Create one from the sign-up page." />
         </div>
       </div>
     </DevAuthShell>
@@ -187,10 +175,11 @@ function DevSignInCard() {
 
 function DevSignUpCard() {
   const authContext = useDevAuthContext();
-  const [companyName, setCompanyName] = useState("");
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
+  const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
   const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -200,11 +189,17 @@ function DevSignUpCard() {
     setErrorMessage(null);
 
     try {
-      await authContext.devAuth.signUp({
-        companyName,
+      const nextUser = await authContext.devAuth.signUp({
         email,
         firstName,
         lastName,
+      });
+
+      void navigate({
+        search: {
+          userId: nextUser.user.id,
+        },
+        to: "/companies",
       });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to create the dev user.");
@@ -215,96 +210,275 @@ function DevSignUpCard() {
 
   return (
     <DevAuthShell
-      description="Create a new passwordless dev user together with a fresh company."
+      description="Pick an existing dev user or add a new one, then choose which company to open or create."
       footer={(
         <span className="flex flex-wrap gap-3">
           <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-in">Back to sign in</Link>
-          <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/create-company">Need a company for an existing user?</Link>
         </span>
       )}
-      title="Create dev user"
+      title="Choose dev user"
     >
-      <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Company</span>
-          <Input value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
-        </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">First name</span>
-            <Input autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Last name</span>
-            <Input autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} />
-          </label>
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Dev users</h3>
+              <p className="text-xs text-muted-foreground">Select a user to continue to company selection.</p>
+            </div>
+            <Button
+              size="sm"
+              type="button"
+              variant={isCreateFormVisible ? "outline" : "default"}
+              onClick={() => {
+                setIsCreateFormVisible((value) => !value);
+              }}
+            >
+              {isCreateFormVisible ? "Hide form" : "Add user"}
+            </Button>
+          </div>
+          <DevUserListCard emptyMessage="No dev users exist yet. Add the first one below." />
         </div>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Email</span>
-          <Input autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-        </label>
-        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-        <Button className="w-full" disabled={submitting} size="lg" type="submit">
-          {submitting ? "Creating account…" : "Create dev user"}
-        </Button>
-      </form>
+        {isCreateFormVisible ? (
+          <form className="space-y-4 border-t border-border/70 pt-5" onSubmit={(event) => void handleSubmit(event)}>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Add user</h3>
+              <p className="text-xs text-muted-foreground">Only the identity is required here. Companies come next.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">First name</span>
+                <Input autoComplete="given-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Last name</span>
+                <Input autoComplete="family-name" value={lastName} onChange={(event) => setLastName(event.target.value)} />
+              </label>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Email</span>
+              <Input autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+            <Button className="w-full" disabled={submitting} size="lg" type="submit">
+              {submitting ? "Creating user…" : "Create user"}
+            </Button>
+          </form>
+        ) : null}
+      </div>
     </DevAuthShell>
   );
 }
 
-function DevCreateCompanyCard() {
+function DevCompanyList(props: {
+  companies: DevAuthCompanyDocument[];
+  isSubmitting: boolean;
+  onSelect(company: DevAuthCompanyDocument): Promise<void>;
+}) {
+  if (props.companies.length === 0) {
+    return (
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+        This dev user does not belong to any companies yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {props.companies.map((company) => (
+        <div
+          key={company.id}
+          className="flex items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background/70 px-4 py-3"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">{company.name}</p>
+            <p className="truncate text-xs text-muted-foreground">/{company.slug}</p>
+          </div>
+          <Button
+            disabled={props.isSubmitting}
+            size="sm"
+            type="button"
+            onClick={() => {
+              void props.onSelect(company);
+            }}
+          >
+            Open company
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DevCompaniesCard(props: {
+  userId: string;
+}) {
   const authContext = useDevAuthContext();
+  const navigate = useNavigate();
   const [companyName, setCompanyName] = useState("");
-  const [email, setEmail] = useState(authContext.devAuth.prefilledEmail || "");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [isCreateFormVisible, setIsCreateFormVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSelectingCompany, setIsSelectingCompany] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<DevAuthUserDetailDocument | null>(null);
+  const [submittingCompany, setSubmittingCompany] = useState(false);
 
   useEffect(() => {
-    setEmail(authContext.devAuth.prefilledEmail || "");
-  }, [authContext.devAuth.prefilledEmail]);
+    let cancelled = false;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmitting(true);
+    async function loadUser() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const nextUser = await authContext.devAuth.loadUser({
+          userId: props.userId,
+        });
+        if (!cancelled) {
+          setSelectedUser(nextUser);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedUser(null);
+          setErrorMessage(error instanceof Error ? error.message : "Failed to load the dev user.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authContext.devAuth, props.userId]);
+
+  async function handleSelectCompany(company: DevAuthCompanyDocument): Promise<void> {
+    if (!selectedUser) {
+      return;
+    }
+
+    setIsSelectingCompany(true);
     setErrorMessage(null);
 
     try {
-      await authContext.devAuth.createCompany({
-        companyName,
-        email,
+      await authContext.devAuth.signIn({
+        companyId: company.id,
+        userId: selectedUser.user.id,
       });
+
+      void navigate({
+        params: {
+          organizationSlug: company.slug,
+        },
+        replace: true,
+        to: OrganizationPath.route("/"),
+      });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to open the company.");
+    } finally {
+      setIsSelectingCompany(false);
+    }
+  }
+
+  async function handleCreateCompany(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (!selectedUser) {
+      return;
+    }
+
+    setSubmittingCompany(true);
+    setErrorMessage(null);
+
+    try {
+      const nextUser = await authContext.devAuth.createCompany({
+        companyName,
+        userId: selectedUser.user.id,
+      });
+      setCompanyName("");
+      setIsCreateFormVisible(false);
+      setSelectedUser(nextUser);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to create the company.");
     } finally {
-      setSubmitting(false);
+      setSubmittingCompany(false);
     }
+  }
+
+  if (isLoading) {
+    return (
+      <DevAuthShell
+        description="Loading the selected dev user and their companies."
+        footer={<Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Back to users</Link>}
+        title="Choose company"
+      >
+        <p className="text-sm text-muted-foreground">Loading companies…</p>
+      </DevAuthShell>
+    );
   }
 
   return (
     <DevAuthShell
-      description="Attach an existing dev user to a brand new company and log in to it immediately."
+      description="Open one of this user’s companies or create a new one before signing in."
       footer={(
         <span className="flex flex-wrap gap-3">
+          <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Back to users</Link>
           <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-in">Back to sign in</Link>
-          <Link className="font-medium text-foreground underline-offset-4 hover:underline" to="/sign-up">Need a new user instead?</Link>
         </span>
       )}
-      title="Create company"
+      title="Choose company"
     >
-      <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Existing user email</span>
-          <Input autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Company</span>
-          <Input value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
-        </label>
+      <div className="space-y-5">
+        {selectedUser ? (
+          <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-4">
+            <p className="text-sm font-medium text-foreground">
+              {selectedUser.user.firstName} {selectedUser.user.lastName || ""}
+            </p>
+            <p className="text-xs text-muted-foreground">{selectedUser.user.email}</p>
+          </div>
+        ) : null}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Companies</h3>
+              <p className="text-xs text-muted-foreground">Select a company to open this user into that workspace.</p>
+            </div>
+            <Button
+              size="sm"
+              type="button"
+              variant={isCreateFormVisible ? "outline" : "default"}
+              onClick={() => {
+                setIsCreateFormVisible((value) => !value);
+              }}
+            >
+              {isCreateFormVisible ? "Hide form" : "Add company"}
+            </Button>
+          </div>
+          <DevCompanyList
+            companies={selectedUser?.companies ?? []}
+            isSubmitting={isSelectingCompany}
+            onSelect={handleSelectCompany}
+          />
+        </div>
+        {isCreateFormVisible && selectedUser ? (
+          <form className="space-y-4 border-t border-border/70 pt-5" onSubmit={(event) => void handleCreateCompany(event)}>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">Add company</h3>
+              <p className="text-xs text-muted-foreground">This creates a fresh company and attaches the selected user to it.</p>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Company</span>
+              <Input value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
+            </label>
+            <Button className="w-full" disabled={submittingCompany} size="lg" type="submit">
+              {submittingCompany ? "Creating company…" : "Create company"}
+            </Button>
+          </form>
+        ) : null}
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-        <Button className="w-full" disabled={submitting} size="lg" type="submit">
-          {submitting ? "Creating company…" : "Create company"}
-        </Button>
-      </form>
+      </div>
     </DevAuthShell>
   );
 }
@@ -362,7 +536,6 @@ export function CompanyHelmDevProvider(props: {
   const [isLoaded, setIsLoaded] = useState(false);
   const [session, setSession] = useState<LocalAuthSessionDocument | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [prefilledEmail, setPrefilledEmail] = useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -379,7 +552,6 @@ export function CompanyHelmDevProvider(props: {
       const url = new URL(window.location.href);
       const userId = String(url.searchParams.get("userId") || "").trim();
       const email = String(url.searchParams.get("email") || "").trim();
-      setPrefilledEmail(email);
 
       if (userId || email) {
         try {
@@ -469,14 +641,18 @@ export function CompanyHelmDevProvider(props: {
     await persistSession(nextSession);
   }
 
-  async function signUp(input: DevSignUpInput): Promise<void> {
-    const nextSession = await new DevAuthClient().signUp(input);
-    await persistSession(nextSession);
+  async function signUp(input: DevSignUpInput): Promise<DevAuthUserDetailDocument> {
+    return await new DevAuthClient().signUp(input);
   }
 
-  async function createCompany(input: DevCreateCompanyInput): Promise<void> {
-    const nextSession = await new DevAuthClient().createCompany(input);
-    await persistSession(nextSession);
+  async function createCompany(input: DevCreateCompanyInput): Promise<DevAuthUserDetailDocument> {
+    return await new DevAuthClient().createCompany(input);
+  }
+
+  async function loadUser(input: {
+    userId: string;
+  }): Promise<DevAuthUserDetailDocument> {
+    return await new DevAuthClient().loadUser(input);
   }
 
   async function signOut(): Promise<void> {
@@ -505,7 +681,7 @@ export function CompanyHelmDevProvider(props: {
     devAuth: {
       createCompany,
       errorMessage,
-      prefilledEmail,
+      loadUser,
       signIn,
       signOut,
       signUp,
@@ -547,7 +723,7 @@ export function CompanyHelmDevProvider(props: {
         }
         : null,
     },
-  }), [activeOrganization, errorMessage, isLoaded, prefilledEmail, session]);
+  }), [activeOrganization, errorMessage, isLoaded, session]);
 
   return (
     <CompanyHelmAuthContext.Provider value={contextValue}>
@@ -609,8 +785,10 @@ export function DevSignUp() {
   return <DevSignUpCard />;
 }
 
-export function DevCreateCompany() {
-  return <DevCreateCompanyCard />;
+export function DevCompanies(props: {
+  userId: string;
+}) {
+  return <DevCompaniesCard userId={props.userId} />;
 }
 
 export function DevUserButton() {

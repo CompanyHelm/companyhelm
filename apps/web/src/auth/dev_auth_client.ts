@@ -1,4 +1,5 @@
 import { config } from "@/config";
+import type { DevAuthUserDetailDocument, DevCreateCompanyInput, DevSignInInput, DevSignUpInput } from "./companyhelm_auth";
 import type { LocalAuthSessionDocument } from "./local_auth_client";
 
 export type DevAuthUserSummaryDocument = {
@@ -35,10 +36,27 @@ export class DevAuthClient {
     return response.users;
   }
 
-  async signIn(input: {
-    email?: string;
-    userId?: string;
-  }): Promise<LocalAuthSessionDocument> {
+  async loadUser(input: {
+    userId: string;
+  }): Promise<DevAuthUserDetailDocument> {
+    const url = new URL(this.resolveUrl("/auth/dev/user"));
+    url.searchParams.set("userId", input.userId);
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+    });
+    const payload = await response.json().catch(() => null) as {
+      error?: string;
+    } | null;
+
+    if (!response.ok) {
+      throw new Error(String(payload?.error || `Request failed with status ${response.status}.`));
+    }
+
+    return payload as DevAuthUserDetailDocument;
+  }
+
+  async signIn(input: DevSignInInput): Promise<LocalAuthSessionDocument> {
     return this.request("/auth/dev/sign-in", {
       body: JSON.stringify(input),
       headers: {
@@ -48,12 +66,7 @@ export class DevAuthClient {
     });
   }
 
-  async signUp(input: {
-    companyName: string;
-    email: string;
-    firstName: string;
-    lastName?: string;
-  }): Promise<LocalAuthSessionDocument> {
+  async signUp(input: DevSignUpInput): Promise<DevAuthUserDetailDocument> {
     return this.request("/auth/dev/sign-up", {
       body: JSON.stringify(input),
       headers: {
@@ -63,11 +76,7 @@ export class DevAuthClient {
     });
   }
 
-  async createCompany(input: {
-    companyName: string;
-    email?: string;
-    userId?: string;
-  }): Promise<LocalAuthSessionDocument> {
+  async createCompany(input: DevCreateCompanyInput): Promise<DevAuthUserDetailDocument> {
     return this.request("/auth/dev/create-company", {
       body: JSON.stringify(input),
       headers: {

@@ -63,12 +63,28 @@ export type LocalSignUpInput = {
 };
 
 export type DevSignInInput = {
+  companyId?: string;
   email?: string;
   userId?: string;
 };
 
+export type DevAuthCompanyDocument = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type DevAuthUserDetailDocument = {
+  companies: DevAuthCompanyDocument[];
+  user: {
+    email: string;
+    firstName: string;
+    id: string;
+    lastName: string | null;
+  };
+};
+
 export type DevSignUpInput = {
-  companyName: string;
   email: string;
   firstName: string;
   lastName?: string;
@@ -76,8 +92,7 @@ export type DevSignUpInput = {
 
 export type DevCreateCompanyInput = {
   companyName: string;
-  email?: string;
-  userId?: string;
+  userId: string;
 };
 
 export type CompanyHelmAuthContextValue = {
@@ -88,12 +103,14 @@ export type CompanyHelmAuthContextValue = {
     signUp(input: LocalSignUpInput): Promise<void>;
   } | null;
   devAuth: {
-    createCompany(input: DevCreateCompanyInput): Promise<void>;
+    createCompany(input: DevCreateCompanyInput): Promise<DevAuthUserDetailDocument>;
     errorMessage?: string | null;
-    prefilledEmail?: string;
+    loadUser(input: {
+      userId: string;
+    }): Promise<DevAuthUserDetailDocument>;
     signIn(input: DevSignInInput): Promise<void>;
     signOut(): Promise<void>;
-    signUp(input: DevSignUpInput): Promise<void>;
+    signUp(input: DevSignUpInput): Promise<DevAuthUserDetailDocument>;
   } | null;
   organization: CompanyHelmOrganizationState;
   organizationList: CompanyHelmOrganizationListState;

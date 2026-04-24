@@ -1,6 +1,10 @@
-import { CreateCompany } from "@/components/auth/auth_provider";
+import { Companies } from "@/components/auth/auth_provider";
 
-export function CreateCompanyPage() {
+interface CompaniesPageProps {
+  userId: string;
+}
+
+export function CompaniesPage(props: CompaniesPageProps) {
   return (
     <main className="auth-shell">
       <section className="auth-shell__hero">
@@ -8,15 +12,15 @@ export function CreateCompanyPage() {
           <img className="auth-shell__brand-mark" src="/logos/logo-only.svg" alt="" aria-hidden="true" />
           <span className="auth-shell__brand-name">CompanyHelm</span>
         </div>
-        <h1>Create a company.</h1>
+        <h1>Choose a company.</h1>
         <p>
-          CompanyHelm can attach an existing test user to a fresh company so you can jump straight
-          into a clean workspace.
+          Dev auth now separates user creation from company selection so you can reuse a test user
+          across multiple workspaces.
         </p>
       </section>
 
       <section className="auth-shell__panel">
-        <CreateCompany />
+        <Companies userId={props.userId} />
       </section>
     </main>
   );

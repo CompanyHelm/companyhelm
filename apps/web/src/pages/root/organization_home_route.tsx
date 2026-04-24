@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { OrganizationList, useOrganizationList } from "@/components/auth/auth_provider";
+import { OrganizationList, useOrganizationList, useUser } from "@/components/auth/auth_provider";
 import { useNavigate } from "@tanstack/react-router";
 import { config } from "@/config";
 import { OrganizationPath } from "@/lib/organization_path";
@@ -16,6 +16,7 @@ export function OrganizationHomeRoute() {
       pageSize: 100,
     },
   });
+  const user = useUser();
   const memberships = organizationListState.userMemberships.data;
   const homeDecision = organizationListState.isLoaded
     ? OrganizationHomeDecision.resolve({
@@ -50,7 +51,7 @@ export function OrganizationHomeRoute() {
   }
 
   const hasMemberships = memberships.length > 0;
-  const isCreateCompanyFlow = homeDecision?.kind === "create-company";
+  const isCompaniesFlow = homeDecision?.kind === "companies";
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-10">
@@ -70,17 +71,25 @@ export function OrganizationHomeRoute() {
             </p>
           )}
         </div>
-        {isCreateCompanyFlow ? (
+        {isCompaniesFlow ? (
           <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
             <p>This dev user does not belong to a company yet.</p>
             <button
               className="inline-flex rounded-md border border-border/70 bg-background px-3 py-2 font-medium text-foreground transition hover:bg-muted"
               onClick={() => {
-                void navigate({ replace: true, to: "/create-company" });
+                void navigate({
+                  replace: true,
+                  search: user.user?.id
+                    ? {
+                      userId: user.user.id,
+                    }
+                    : {},
+                  to: "/companies",
+                });
               }}
               type="button"
             >
-              Create company
+              Choose company
             </button>
           </div>
         ) : (

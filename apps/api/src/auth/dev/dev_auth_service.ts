@@ -42,6 +42,22 @@ export type DevAuthUserSummaryDocument = {
   primaryCompanySlug: string | null;
 };
 
+export type DevAuthCompanyDocument = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type DevAuthUserDetailDocument = {
+  companies: DevAuthCompanyDocument[];
+  user: {
+    email: string;
+    firstName: string;
+    id: string;
+    lastName: string | null;
+  };
+};
+
 /**
  * Owns the dev-only passwordless auth workflow: browse users, impersonate one of them, create new
  * users with a fresh company, or attach an existing user to a newly created company.
@@ -71,6 +87,7 @@ export class DevAuthService {
   }
 
   async signIn(input: {
+    companyId?: string;
     email?: string;
     userId?: string;
   }): Promise<LocalAuthSessionDocument> {
@@ -79,7 +96,7 @@ export class DevAuthService {
       throw new Error("Configured database does not support transactions.");
     }
 
-    const normalizedInput = this.normalizeUserLookup(input);
+    const normalizedInput = this.normalizeSignInInput(input);
 
     return db.transaction(async (transaction) => {
       const user = normalizedInput.userId
@@ -89,9 +106,16 @@ export class DevAuthService {
         throw new Error("The requested dev auth user does not exist.");
       }
 
-      const company = await this.findFirstMembershipCompany(transaction, user.id);
+      const company = normalizedInput.companyId
+        ? await this.findMembershipCompanyById(transaction, {
+          companyId: normalizedInput.companyId,
+          userId: user.id,
+        })
+        : await this.findFirstMembershipCompany(transaction, user.id);
       if (!company) {
-        throw new Error("This user has no active company. Create one before signing in.");
+        throw new Error(normalizedInput.companyId
+          ? "This user is not assigned to the requested company."
+          : "This user has no active company. Create one before signing in.");
       }
 
       await this.database.applyCompanyContext(transaction as never, company.id);
@@ -106,17 +130,15 @@ export class DevAuthService {
   }
 
   async signUp(input: {
-    companyName: string;
     email: string;
     firstName: string;
     lastName?: string | null;
-  }): Promise<LocalAuthSessionDocument> {
+  }): Promise<DevAuthUserDetailDocument> {
     const db = this.database.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
 
-    const companyName = this.normalizeCompanyName(input.companyName);
     const email = this.normalizeEmail(input.email);
     const firstName = this.normalizeFirstName(input.firstName);
     const lastName = this.normalizeLastName(input.lastName);
@@ -127,7 +149,6 @@ export class DevAuthService {
         throw new Error("An account with that email already exists.");
       }
 
-      const companySlug = await this.createUniqueCompanySlug(transaction, companyName);
       const insertableDatabase = transaction as unknown as InsertableDatabase;
       const now = new Date();
       const [createdUser] = await insertableDatabase
@@ -148,54 +169,28 @@ export class DevAuthService {
           isPlatformAdmin: users.isPlatformAdmin,
           last_name: users.last_name,
         }) as DevAuthUserRecord[];
-      const [createdCompany] = await insertableDatabase
-        .insert(companies)
-        .values({
-          clerkOrganizationId: null,
-          name: companyName,
-          plan: "free",
-          slug: companySlug,
-        })
-        .returning({
-          deletion_status: companies.deletionStatus,
-          id: companies.id,
-          name: companies.name,
-          slug: companies.slug,
-        }) as DevAuthCompanyRecord[];
-      if (!createdUser || !createdCompany) {
+      if (!createdUser) {
         throw new Error("Failed to provision the dev auth account.");
       }
 
-      await this.database.applyCompanyContext(transaction as never, createdCompany.id);
-      await this.companyBootstrapService.ensureMembership(transaction as never, {
-        companyId: createdCompany.id,
-        userId: createdUser.id,
-      });
-      await this.companyBootstrapService.ensureCompanyDefaults(transaction as never, createdCompany.id, {
-        seedAgent: true,
-      });
-
-      return this.createSessionDocument(transaction, createdUser.id, createdCompany.id);
+      return this.buildUserDetailDocument(createdUser, []);
     });
   }
 
   async createCompany(input: {
     companyName: string;
-    email?: string;
-    userId?: string;
-  }): Promise<LocalAuthSessionDocument> {
+    userId: string;
+  }): Promise<DevAuthUserDetailDocument> {
     const db = this.database.getDatabase();
     if (!db.transaction) {
       throw new Error("Configured database does not support transactions.");
     }
 
     const companyName = this.normalizeCompanyName(input.companyName);
-    const normalizedInput = this.normalizeUserLookup(input);
+    const userId = this.normalizeRequiredIdentifier(input.userId, "User ID is required.");
 
     return db.transaction(async (transaction) => {
-      const user = normalizedInput.userId
-        ? await this.findUserById(transaction, normalizedInput.userId)
-        : await this.findUserByEmail(transaction, normalizedInput.email ?? "");
+      const user = await this.findUserById(transaction, userId);
       if (!user) {
         throw new Error("The requested dev auth user does not exist.");
       }
@@ -229,8 +224,23 @@ export class DevAuthService {
         seedAgent: true,
       });
 
-      return this.createSessionDocument(transaction, user.id, createdCompany.id);
+      const membershipCompanies = await this.findMembershipCompanies(transaction, user.id);
+      return this.buildUserDetailDocument(user, membershipCompanies);
     });
+  }
+
+  async loadUser(input: {
+    userId: string;
+  }): Promise<DevAuthUserDetailDocument> {
+    const database = this.database.getDatabase();
+    const userId = this.normalizeRequiredIdentifier(input.userId, "User ID is required.");
+    const user = await this.findUserById(database, userId);
+    if (!user) {
+      throw new Error("The requested dev auth user does not exist.");
+    }
+
+    const membershipCompanies = await this.findMembershipCompanies(database, user.id);
+    return this.buildUserDetailDocument(user, membershipCompanies);
   }
 
   async loadSession(token: string): Promise<LocalAuthSessionDocument> {
@@ -311,6 +321,29 @@ export class DevAuthService {
         ...session.user,
         provider: "dev",
         providerSubject: `dev:${session.user.id}`,
+      },
+    };
+  }
+
+  private buildUserDetailDocument(
+    user: DevAuthUserRecord,
+    membershipCompanies: DevAuthCompanyRecord[],
+  ): DevAuthUserDetailDocument {
+    return {
+      companies: membershipCompanies
+        .filter((company): company is DevAuthCompanyRecord & {
+          slug: string;
+        } => Boolean(company.slug))
+        .map((company) => ({
+          id: company.id,
+          name: company.name,
+          slug: company.slug,
+        })),
+      user: {
+        email: user.email,
+        firstName: user.first_name,
+        id: user.id,
+        lastName: user.last_name,
       },
     };
   }
@@ -430,6 +463,72 @@ export class DevAuthService {
     return company ?? null;
   }
 
+  private async findMembershipCompanyById(
+    transaction: unknown,
+    input: {
+      companyId: string;
+      userId: string;
+    },
+  ): Promise<DevAuthCompanyRecord | null> {
+    const database = transaction as {
+      select(selection: Record<string, unknown>): {
+        from(table: unknown): {
+          innerJoin(table: unknown, condition: unknown): {
+            where(condition: unknown): {
+              limit(limit: number): Promise<unknown[]>;
+            };
+          };
+        };
+      };
+    };
+    const [company] = await database
+      .select({
+        deletion_status: companies.deletionStatus,
+        id: companies.id,
+        name: companies.name,
+        slug: companies.slug,
+      })
+      .from(companyMembers)
+      .innerJoin(companies, eq(companyMembers.companyId, companies.id))
+      .where(and(
+        eq(companyMembers.companyId, input.companyId),
+        eq(companyMembers.userId, input.userId),
+        eq(companies.deletionStatus, "active"),
+      ))
+      .limit(1) as DevAuthCompanyRecord[];
+
+    return company ?? null;
+  }
+
+  private async findMembershipCompanies(transaction: unknown, userId: string): Promise<DevAuthCompanyRecord[]> {
+    const database = transaction as {
+      select(selection: Record<string, unknown>): {
+        from(table: unknown): {
+          innerJoin(table: unknown, condition: unknown): {
+            where(condition: unknown): {
+              orderBy(...arguments_: unknown[]): Promise<unknown[]>;
+            };
+          };
+        };
+      };
+    };
+
+    return await database
+      .select({
+        deletion_status: companies.deletionStatus,
+        id: companies.id,
+        name: companies.name,
+        slug: companies.slug,
+      })
+      .from(companyMembers)
+      .innerJoin(companies, eq(companyMembers.companyId, companies.id))
+      .where(and(
+        eq(companyMembers.userId, userId),
+        eq(companies.deletionStatus, "active"),
+      ))
+      .orderBy(asc(companies.name)) as DevAuthCompanyRecord[];
+  }
+
   private async createUniqueCompanySlug(transaction: unknown, companyName: string): Promise<string> {
     const baseSlug = this.createBaseSlug(companyName);
     const database = transaction as {
@@ -503,13 +602,16 @@ export class DevAuthService {
     return normalizedLastName || null;
   }
 
-  private normalizeUserLookup(input: {
+  private normalizeSignInInput(input: {
+    companyId?: string;
     email?: string;
     userId?: string;
   }): {
+    companyId?: string;
     email?: string;
     userId?: string;
   } {
+    const companyId = String(input.companyId || "").trim();
     const userId = String(input.userId || "").trim();
     const email = input.email ? this.normalizeEmail(input.email) : "";
     if (!userId && !email) {
@@ -518,11 +620,22 @@ export class DevAuthService {
 
     return userId
       ? {
+        companyId: companyId || undefined,
         userId,
       }
       : {
+        companyId: companyId || undefined,
         email,
       };
+  }
+
+  private normalizeRequiredIdentifier(value: string, errorMessage: string): string {
+    const normalizedValue = String(value || "").trim();
+    if (!normalizedValue) {
+      throw new Error(errorMessage);
+    }
+
+    return normalizedValue;
   }
 
   private requireDevConfig(): Extract<Config["auth"], {

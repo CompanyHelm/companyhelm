@@ -12,7 +12,7 @@ import {
 } from "./clerk_provider";
 import {
   CompanyHelmDevProvider,
-  DevCreateCompany,
+  DevCompanies,
   DevOrganizationList,
   DevOrganizationSwitcher,
   DevSignIn,
@@ -115,9 +115,11 @@ export function SignUp(props: {
     : <ClerkSignUp {...props} />;
 }
 
-export function CreateCompany() {
+export function Companies(props: {
+  userId: string;
+}) {
   return config.authProvider === "dev"
-    ? <DevCreateCompany />
+    ? <DevCompanies userId={props.userId} />
     : null;
 }
 

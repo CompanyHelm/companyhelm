@@ -46,18 +46,40 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
           primaryCompanySlug: "acme",
         }];
       },
-      async signIn(input: {
-        email?: string;
-        userId?: string;
+      async loadUser(input: {
+        userId: string;
       }) {
         return {
-          activeOrganizationId: "company-1",
-          organizations: [{
+          companies: [{
             id: "company-1",
             name: "Acme",
             slug: "acme",
           }],
-          token: input.email === "dev@example.com" ? "token-1" : "token-2",
+          user: {
+            email: "dev@example.com",
+            firstName: "Dev",
+            id: input.userId,
+            lastName: "User",
+          },
+        };
+      },
+      async signIn(input: {
+        companyId?: string;
+        email?: string;
+        userId?: string;
+      }) {
+        return {
+          activeOrganizationId: input.companyId || "company-1",
+          organizations: [{
+            id: input.companyId || "company-1",
+            name: input.companyId === "company-2" ? "Beta" : "Acme",
+            slug: input.companyId === "company-2" ? "beta" : "acme",
+          }],
+          token: input.companyId === "company-2"
+            ? "token-2"
+            : input.email === "dev@example.com"
+              ? "token-1"
+              : "token-3",
           user: {
             email: "dev@example.com",
             firstName: "Dev",
@@ -87,10 +109,18 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
     method: "GET",
     url: "/auth/dev/users",
   });
+  const userResponse = await app.inject({
+    method: "GET",
+    query: {
+      userId: "user-1",
+    },
+    url: "/auth/dev/user",
+  });
   const signInResponse = await app.inject({
     method: "POST",
     payload: {
-      email: "dev@example.com",
+      companyId: "company-2",
+      userId: "user-1",
     },
     url: "/auth/dev/sign-in",
   });
@@ -107,13 +137,27 @@ test("DevAuthRoute exposes the dev user browser and sign-in endpoints", async ()
       primaryCompanySlug: "acme",
     }],
   });
+  assert.equal(userResponse.statusCode, 200);
+  assert.deepEqual(JSON.parse(userResponse.body), {
+    companies: [{
+      id: "company-1",
+      name: "Acme",
+      slug: "acme",
+    }],
+    user: {
+      email: "dev@example.com",
+      firstName: "Dev",
+      id: "user-1",
+      lastName: "User",
+    },
+  });
   assert.equal(signInResponse.statusCode, 200);
-  assert.equal(JSON.parse(signInResponse.body).token, "token-1");
+  assert.equal(JSON.parse(signInResponse.body).token, "token-2");
 
   await app.close();
 });
 
-test("DevAuthRoute exposes the company creation endpoint", async () => {
+test("DevAuthRoute exposes the user creation and company creation endpoints", async () => {
   const app = Fastify();
   const route = new DevAuthRoute(
     DevAuthRouteTestHarness.createConfig("dev"),
@@ -124,27 +168,38 @@ test("DevAuthRoute exposes the company creation endpoint", async () => {
       async signIn() {
         throw new Error("signIn should not be called.");
       },
-      async signUp() {
-        throw new Error("signUp should not be called.");
+      async loadUser() {
+        throw new Error("loadUser should not be called.");
+      },
+      async signUp(input: {
+        email: string;
+        firstName: string;
+        lastName?: string;
+      }) {
+        return {
+          companies: [],
+          user: {
+            email: input.email,
+            firstName: input.firstName,
+            id: "user-3",
+            lastName: input.lastName || null,
+          },
+        };
       },
       async createCompany(input: {
         companyName: string;
-        email?: string;
-        userId?: string;
+        userId: string;
       }) {
         return {
-          activeOrganizationId: "company-2",
-          organizations: [{
+          companies: [{
             id: "company-2",
             name: input.companyName,
             slug: "new-co",
           }],
-          token: input.userId === "user-2" ? "token-2" : "token-3",
           user: {
             email: "existing@example.com",
             firstName: "Existing",
-            id: "user-2",
-            isPlatformAdmin: false,
+            id: input.userId,
             lastName: "User",
           },
         };
@@ -159,7 +214,16 @@ test("DevAuthRoute exposes the company creation endpoint", async () => {
   );
   route.register(app);
 
-  const response = await app.inject({
+  const signUpResponse = await app.inject({
+    method: "POST",
+    payload: {
+      email: "new@example.com",
+      firstName: "New",
+      lastName: "Person",
+    },
+    url: "/auth/dev/sign-up",
+  });
+  const createCompanyResponse = await app.inject({
     method: "POST",
     payload: {
       companyName: "New Co",
@@ -168,8 +232,30 @@ test("DevAuthRoute exposes the company creation endpoint", async () => {
     url: "/auth/dev/create-company",
   });
 
-  assert.equal(response.statusCode, 200);
-  assert.equal(JSON.parse(response.body).token, "token-2");
+  assert.equal(signUpResponse.statusCode, 200);
+  assert.deepEqual(JSON.parse(signUpResponse.body), {
+    companies: [],
+    user: {
+      email: "new@example.com",
+      firstName: "New",
+      id: "user-3",
+      lastName: "Person",
+    },
+  });
+  assert.equal(createCompanyResponse.statusCode, 200);
+  assert.deepEqual(JSON.parse(createCompanyResponse.body), {
+    companies: [{
+      id: "company-2",
+      name: "New Co",
+      slug: "new-co",
+    }],
+    user: {
+      email: "existing@example.com",
+      firstName: "Existing",
+      id: "user-2",
+      lastName: "User",
+    },
+  });
 
   await app.close();
 });
@@ -181,6 +267,9 @@ test("DevAuthRoute skips registration when dev auth is disabled", async () => {
     {
       async listUsers() {
         throw new Error("listUsers should not be called.");
+      },
+      async loadUser() {
+        throw new Error("loadUser should not be called.");
       },
     } as never,
   );

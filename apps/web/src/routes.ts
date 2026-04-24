@@ -9,7 +9,7 @@ import { AgentDetailPage } from "./pages/agents/agent_detail_page";
 import { AgentsPage } from "./pages/agents/agents_page";
 import { AdminDashboardPage } from "./pages/admin/dashboard_page";
 import { AdminUsersPage } from "./pages/admin/users_page";
-import { CreateCompanyRoute } from "./pages/auth/create_company_route";
+import { CompaniesRoute } from "./pages/auth/companies_route";
 import { AuthenticationRoute } from "./pages/auth/route";
 import { ChatsPage } from "./pages/chats/chats_page";
 import { ComputeProviderDefinitionsPage } from "./pages/compute-providers/compute_provider_definitions_page";
@@ -90,6 +90,10 @@ type ConversationsRouteSearch = {
 
 type SettingsRouteSearch = {
   tab?: "tasks" | "AI" | "company";
+};
+
+type CompaniesRouteSearch = {
+  userId?: string;
 };
 
 function validateChatsRouteSearch(search: Record<string, unknown>): ChatsRouteSearch {
@@ -193,6 +197,14 @@ function validateSettingsRouteSearch(search: Record<string, unknown>): SettingsR
   };
 }
 
+function validateCompaniesRouteSearch(search: Record<string, unknown>): CompaniesRouteSearch {
+  return {
+    userId: typeof search.userId === "string" && search.userId.trim().length > 0
+      ? search.userId.trim()
+      : undefined,
+  };
+}
+
 function SignInRoute() {
   return createElement(AuthenticationRoute, { mode: "signIn" });
 }
@@ -201,8 +213,8 @@ function SignUpRoute() {
   return createElement(AuthenticationRoute, { mode: "signUp" });
 }
 
-function CreateCompanyAuthRoute() {
-  return createElement(CreateCompanyRoute);
+function CompaniesAuthRoute() {
+  return createElement(CompaniesRoute);
 }
 
 const rootRoute = createRootRoute({
@@ -472,10 +484,11 @@ const signUpRoute = createRoute({
   component: SignUpRoute,
 });
 
-const createCompanyRoute = createRoute({
+const companiesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/create-company",
-  component: CreateCompanyAuthRoute,
+  path: "/companies",
+  validateSearch: validateCompaniesRouteSearch,
+  component: CompaniesAuthRoute,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -525,7 +538,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   signInRoute,
   signUpRoute,
-  createCompanyRoute,
+  companiesRoute,
 ]);
 
 export const applicationRouter = createRouter({

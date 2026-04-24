@@ -6,6 +6,7 @@ import { DevAuthService } from "../auth/dev/dev_auth_service.ts";
 import { Config } from "../config/schema.ts";
 
 const DevAuthSignInRequestSchema = z.object({
+  companyId: z.string().optional(),
   email: z.string().optional(),
   userId: z.string().optional(),
 }).refine((value) => Boolean(value.email || value.userId), {
@@ -13,18 +14,18 @@ const DevAuthSignInRequestSchema = z.object({
 });
 
 const DevAuthSignUpRequestSchema = z.object({
-  companyName: z.string(),
   email: z.string(),
   firstName: z.string(),
   lastName: z.string().optional(),
 });
 
+const DevAuthUserRequestSchema = z.object({
+  userId: z.string(),
+});
+
 const DevAuthCreateCompanyRequestSchema = z.object({
   companyName: z.string(),
-  email: z.string().optional(),
-  userId: z.string().optional(),
-}).refine((value) => Boolean(value.email || value.userId), {
-  message: "Either email or userId is required.",
+  userId: z.string(),
 });
 
 type DevAuthSignInRequest = FastifyRequest<{
@@ -33,6 +34,10 @@ type DevAuthSignInRequest = FastifyRequest<{
 
 type DevAuthSignUpRequest = FastifyRequest<{
   Body: z.infer<typeof DevAuthSignUpRequestSchema>;
+}>;
+
+type DevAuthUserRequest = FastifyRequest<{
+  Querystring: z.infer<typeof DevAuthUserRequestSchema>;
 }>;
 
 type DevAuthCreateCompanyRequest = FastifyRequest<{
@@ -64,6 +69,9 @@ export class DevAuthRoute {
 
     app.get(`${DevAuthRoute.BASE_PATH}/users`, async (_request: FastifyRequest, reply: FastifyReply) => {
       await this.handleListUsers(reply);
+    });
+    app.get(`${DevAuthRoute.BASE_PATH}/user`, async (request: DevAuthUserRequest, reply: FastifyReply) => {
+      await this.handleLoadUser(request, reply);
     });
     app.post(`${DevAuthRoute.BASE_PATH}/sign-in`, async (request: DevAuthSignInRequest, reply: FastifyReply) => {
       await this.handleSignIn(request, reply);
@@ -99,6 +107,15 @@ export class DevAuthRoute {
     try {
       const body = DevAuthSignInRequestSchema.parse(request.body);
       await reply.send(await this.devAuthService.signIn(body));
+    } catch (error) {
+      await this.replyWithError(reply, error);
+    }
+  }
+
+  private async handleLoadUser(request: DevAuthUserRequest, reply: FastifyReply): Promise<void> {
+    try {
+      const query = DevAuthUserRequestSchema.parse(request.query);
+      await reply.send(await this.devAuthService.loadUser(query));
     } catch (error) {
       await this.replyWithError(reply, error);
     }
