@@ -87,7 +87,9 @@ function PageContainerOrganizationShell(props: PageContainerProps & {
     pageContainerCompanyOnboardingQueryNode,
     {},
     {
-      fetchPolicy: "store-or-network",
+      // The org shell must reflect the currently selected company, not a partial cached `Me.company`
+      // object from a previous route that did not include onboarding.
+      fetchPolicy: "network-only",
     },
   );
   const [commitSkipCompanyOnboarding, isSkipCompanyOnboardingInFlight] =
