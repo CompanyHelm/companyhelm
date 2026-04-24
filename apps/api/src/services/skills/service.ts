@@ -423,23 +423,30 @@ export class SkillService {
       const groupAttachments = await selectableDatabase
         .select({
           skillGroupId: agentSkillGroups.skillGroupId,
+          systemSkillGroupKey: agentSkillGroups.systemSkillGroupKey,
         })
         .from(agentSkillGroups)
         .where(and(
           eq(agentSkillGroups.companyId, companyId),
           eq(agentSkillGroups.agentId, agentId),
-        )) as Array<{ skillGroupId: string }>;
+        )) as AgentSkillGroupAttachmentRecord[];
 
       const customSkills = await this.listAgentAvailableCustomSkills(
         selectableDatabase,
         companyId,
         skillAttachments.flatMap((attachment) => attachment.skillId ? [attachment.skillId] : []),
-        groupAttachments.map((attachment) => attachment.skillGroupId),
+        groupAttachments.flatMap((attachment) => attachment.skillGroupId ? [attachment.skillGroupId] : []),
       );
-      const systemSkills = this.systemSkillRegistry.listSkillsByKeys(
-        companyId,
-        skillAttachments.flatMap((attachment) => attachment.systemSkillKey ? [attachment.systemSkillKey] : []),
-      );
+      const hasSystemSkillGroup = groupAttachments.some((attachment) => {
+        return attachment.systemSkillGroupKey
+          && this.systemSkillRegistry.isSystemSkillGroupId(attachment.systemSkillGroupKey);
+      });
+      const systemSkills = hasSystemSkillGroup
+        ? this.systemSkillRegistry.listSkills(companyId)
+        : this.systemSkillRegistry.listSkillsByKeys(
+          companyId,
+          skillAttachments.flatMap((attachment) => attachment.systemSkillKey ? [attachment.systemSkillKey] : []),
+        );
 
       return [...systemSkills, ...customSkills].sort((left, right) => left.name.localeCompare(right.name));
     });

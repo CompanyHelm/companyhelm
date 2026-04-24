@@ -22,7 +22,8 @@ type MockAgentSkillAttachmentRecord = {
   companyId: string;
   createdAt: Date;
   createdByUserId: string | null;
-  skillId: string;
+  skillId: string | null;
+  systemSkillKey?: string | null;
 };
 
 type MockSkillGroupRecord = {
@@ -92,6 +93,7 @@ class AgentSkillDefaultsServiceTestHarness {
                 if (table === agentSkills) {
                   return agentSkillAttachments.map((attachment) => ({
                     skillId: attachment.skillId,
+                    systemSkillKey: attachment.systemSkillKey ?? null,
                   }));
                 }
 
@@ -126,7 +128,8 @@ class AgentSkillDefaultsServiceTestHarness {
                 companyId: String(value.companyId),
                 createdAt: value.createdAt as Date,
                 createdByUserId: value.createdByUserId ? String(value.createdByUserId) : null,
-                skillId: String(value.skillId),
+                skillId: value.skillId ? String(value.skillId) : null,
+                systemSkillKey: value.systemSkillKey ? String(value.systemSkillKey) : null,
               });
 
               return {};
@@ -162,7 +165,12 @@ class AgentSkillDefaultsServiceTestHarness {
               return {
                 async returning() {
                   const [deletedAttachment] = agentSkillAttachments.splice(0, 1);
-                  return deletedAttachment ? [{ skillId: deletedAttachment.skillId }] : [];
+                  return deletedAttachment
+                    ? [{
+                      skillId: deletedAttachment.skillId,
+                      systemSkillKey: deletedAttachment.systemSkillKey ?? null,
+                    }]
+                    : [];
                 },
               };
             },
@@ -278,6 +286,7 @@ test("SkillService detaches agent skill defaults independently", async () => {
       createdAt: new Date("2026-04-08T12:00:00.000Z"),
       createdByUserId: "user-1",
       skillId: "skill-1",
+      systemSkillKey: null,
     }],
     agents: [{
       companyId: "company-123",
@@ -326,4 +335,43 @@ test("SkillService detaches agent skill defaults independently", async () => {
   assert.equal(detachedSystemGroup.id, "system");
   assert.equal(transactionProvider.agentSkillGroupAttachments.length, 0);
   assert.equal(transactionProvider.agentSkillAttachments.length, 0);
+});
+
+test("SkillService expands attached system skill group into available system skills", async () => {
+  const transactionProvider = AgentSkillDefaultsServiceTestHarness.createTransactionProvider({
+    agentSkillGroupAttachments: [{
+      agentId: "agent-1",
+      companyId: "company-123",
+      createdAt: new Date("2026-04-08T12:00:00.000Z"),
+      createdByUserId: "user-1",
+      skillGroupId: null,
+      systemSkillGroupKey: "system",
+    }],
+    agents: [{
+      companyId: "company-123",
+      id: "agent-1",
+    }],
+    groups: [],
+    skills: [],
+  });
+  const service = new SkillService();
+
+  const availableSkills = await service.listAgentAvailableSkills(
+    transactionProvider as never,
+    "company-123",
+    "agent-1",
+  );
+
+  assert.deepEqual(
+    availableSkills.map((skill) => skill.id),
+    [
+      "system:company_directory",
+      "system:execute_workflows",
+      "system:manage_agents",
+      "system:manage_artifacts",
+      "system:manage_github_installations",
+      "system:manage_skills",
+      "system:manage_workflows",
+    ],
+  );
 });
