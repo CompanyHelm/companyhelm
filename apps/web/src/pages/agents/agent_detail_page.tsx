@@ -19,6 +19,7 @@ import { AgentMcpServerDefaultsCard } from "./agent_mcp_server_defaults_card";
 import { AgentSkillDefaultsCard } from "./agent_skill_defaults_card";
 import type {
   AgentCreateComputeProviderDefinitionOption,
+  AgentCreateImageModelOption,
   AgentCreateProviderOption,
   AgentCreateSecretGroupOption,
   AgentCreateSkillGroupOption,
@@ -33,6 +34,10 @@ const agentDetailPageQueryNode = graphql`
     Agent(id: $agentId) {
       id
       name
+      imageProviderCredentialId
+      imageProviderCredentialModelId
+      imageProvider
+      imageModelName
       modelProviderCredentialId
       modelProviderCredentialModelId
       modelProvider
@@ -116,6 +121,17 @@ const agentDetailPageQueryNode = graphql`
         description
         reasoningSupported
         reasoningLevels
+      }
+    }
+    ModelProviderCredentials {
+      id
+      modelProvider
+      name
+      imageModels {
+        id
+        modelId
+        name
+        description
       }
     }
     Secrets {
@@ -235,6 +251,10 @@ const agentDetailPageUpdateAgentMutationNode = graphql`
     UpdateAgent(input: $input) {
       id
       name
+      imageProviderCredentialId
+      imageProviderCredentialModelId
+      imageProvider
+      imageModelName
       modelProviderCredentialId
       modelProviderCredentialModelId
       modelProvider
@@ -468,6 +488,16 @@ function AgentDetailPageContent() {
       })),
     }));
   }, [data.AgentCreateOptions]);
+  const imageModelOptions: AgentCreateImageModelOption[] = useMemo(() => {
+    return data.ModelProviderCredentials.flatMap((credential) => {
+      return credential.imageModels.map((imageModel) => ({
+        description: imageModel.description,
+        id: imageModel.id,
+        label: `${imageModel.name} (${credential.name})`,
+        modelId: imageModel.modelId,
+      }));
+    });
+  }, [data.ModelProviderCredentials]);
   const computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[] = useMemo(() => {
     return data.ComputeProviderDefinitions.map((definition) => ({
       id: definition.id,
@@ -504,6 +534,9 @@ function AgentDetailPageContent() {
       (option) => option.modelProviderCredentialModelId === agent.modelProviderCredentialModelId,
     ) ?? null
     : null;
+  const selectedImageModelOption = agent.imageProviderCredentialModelId
+    ? imageModelOptions.find((option) => option.id === agent.imageProviderCredentialModelId) ?? null
+    : null;
   const archivedChats = data.Sessions.filter((session) => {
     return session.agentId === agent.id && session.status.trim().toLowerCase() === "archived";
   }).map((session) => {
@@ -527,6 +560,7 @@ function AgentDetailPageContent() {
   const saveAgent = async (patch: {
     defaultComputeProviderDefinitionId?: string;
     defaultEnvironmentTemplateId?: string;
+    imageProviderCredentialModelId?: string | null;
     modelProviderCredentialId?: string;
     modelProviderCredentialModelId?: string;
     name?: string;
@@ -580,6 +614,9 @@ function AgentDetailPageContent() {
             id: agent.id,
             defaultComputeProviderDefinitionId: nextComputeProviderDefinitionId,
             defaultEnvironmentTemplateId: nextEnvironmentTemplateId,
+            imageProviderCredentialModelId: patch.imageProviderCredentialModelId === undefined
+              ? agent.imageProviderCredentialModelId
+              : patch.imageProviderCredentialModelId,
             name: patch.name ?? agent.name,
             modelProviderCredentialId: nextProviderOption.modelProviderCredentialId,
             modelProviderCredentialModelId: nextModelOption.modelProviderCredentialModelId,
@@ -702,6 +739,27 @@ function AgentDetailPageContent() {
                       providerLabel: selectedProviderOption?.label ?? "",
                     }))}
                     value={selectedModelOption?.id ?? null}
+                    variant="plain"
+                  />
+
+                  <EditableField
+                    displayValue={selectedImageModelOption?.label ?? null}
+                    emptyValueLabel="Image generation disabled"
+                    fieldType="select"
+                    label="Image model"
+                    onSave={async (value) => {
+                      await saveAgent({
+                        imageProviderCredentialModelId: value === "__none__" ? null : value,
+                      });
+                    }}
+                    options={[
+                      { label: "Image generation disabled", value: "__none__" },
+                      ...imageModelOptions.map((imageModelOption) => ({
+                        label: imageModelOption.label,
+                        value: imageModelOption.id,
+                      })),
+                    ]}
+                    value={selectedImageModelOption?.id ?? "__none__"}
                     variant="plain"
                   />
 

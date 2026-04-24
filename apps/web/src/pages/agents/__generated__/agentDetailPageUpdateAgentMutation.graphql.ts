@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7e1df9b65d1a0a60b18d820f8c5a7a02>>
+ * @generated SignedSource<<5af64700533be3d7e14915d0ed5d97d3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type UpdateAgentInput = {
   defaultComputeProviderDefinitionId: string;
   defaultEnvironmentTemplateId: string;
   id: string;
+  imageProviderCredentialModelId?: string | null | undefined;
   modelProviderCredentialId: string;
   modelProviderCredentialModelId: string;
   name: string;
@@ -38,6 +39,10 @@ export type agentDetailPageUpdateAgentMutation$data = {
       readonly templateId: string;
     };
     readonly id: string;
+    readonly imageModelName: string | null | undefined;
+    readonly imageProvider: string | null | undefined;
+    readonly imageProviderCredentialId: string | null | undefined;
+    readonly imageProviderCredentialModelId: string | null | undefined;
     readonly modelName: string | null | undefined;
     readonly modelProvider: string | null | undefined;
     readonly modelProviderCredentialId: string | null | undefined;
@@ -91,6 +96,34 @@ v2 = [
         "storageKey": null
       },
       (v1/*: any*/),
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "imageProviderCredentialId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "imageProviderCredentialModelId",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "imageProvider",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "imageModelName",
+        "storageKey": null
+      },
       {
         "alias": null,
         "args": null,
@@ -244,16 +277,16 @@ return {
     "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "50a1a1f9c96ed4b339c8837241f58ea3",
+    "cacheID": "5b17e1504741f1e8a6d525b625a01910",
     "id": null,
     "metadata": {},
     "name": "agentDetailPageUpdateAgentMutation",
     "operationKind": "mutation",
-    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
+    "text": "mutation agentDetailPageUpdateAgentMutation(\n  $input: UpdateAgentInput!\n) {\n  UpdateAgent(input: $input) {\n    id\n    name\n    imageProviderCredentialId\n    imageProviderCredentialModelId\n    imageProvider\n    imageModelName\n    modelProviderCredentialId\n    modelProviderCredentialModelId\n    modelProvider\n    modelName\n    defaultComputeProvider\n    defaultComputeProviderDefinitionId\n    defaultComputeProviderDefinitionName\n    defaultEnvironmentTemplateId\n    environmentTemplate {\n      computerUse\n      cpuCount\n      diskSpaceGb\n      memoryGb\n      name\n      templateId\n    }\n    reasoningLevel\n    systemPrompt\n    createdAt\n    updatedAt\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "20696625a1587890371a75c82483e17b";
+(node as any).hash = "03f3f4494a5dc6af0d40af28e00819c4";
 
 export default node;

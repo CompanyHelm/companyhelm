@@ -23,6 +23,7 @@ import { ComputerUseSessionModule } from "./computer_use.ts";
 import { ConversationSessionModule } from "./conversation.ts";
 import { CorePromptSessionModule } from "./core_prompt.ts";
 import { GithubSessionModule } from "./github.ts";
+import { ImageGenerationSessionModule } from "./image_generation.ts";
 import { InboxSessionModule } from "./inbox.ts";
 import { McpSessionModule } from "./mcp.ts";
 import { RuntimeSessionModule } from "./runtime.ts";
@@ -81,6 +82,7 @@ export class DefaultAgentSessionModuleRegistry {
       }),
       new GithubSessionModule(input.githubClient),
       new WebSessionModule(input.exaWebClient),
+      new ImageGenerationSessionModule(),
       new McpSessionModule(input.logger, input.mcpService),
       new InboxSessionModule(input.inboxService),
       new ConversationSessionModule(input.agentConversationService),

@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { imageProviderCredentialModels, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import type {
   GraphqlModelProviderCredentialRecord,
+  ImageProviderCredentialModelRecord as ImageModelRecord,
   ModelProviderCredentialModelRecord as ModelRecord,
   ModelProviderCredentialRecord,
 } from "../model_provider_credential_record.ts";
@@ -69,9 +70,26 @@ export class ModelProviderCredentialsQueryResolver extends Resolver<GraphqlModel
         })
         .from(modelProviderCredentialModels)
         .where(eq(modelProviderCredentialModels.companyId, companyId)) as ModelRecord[];
+      const imageModelRecords = await selectableDatabase
+        .select({
+          description: imageProviderCredentialModels.description,
+          id: imageProviderCredentialModels.id,
+          isDefault: imageProviderCredentialModels.isDefault,
+          modelId: imageProviderCredentialModels.modelId,
+          modelProviderCredentialId: imageProviderCredentialModels.modelProviderCredentialId,
+          name: imageProviderCredentialModels.name,
+          outputMimeTypes: imageProviderCredentialModels.outputMimeTypes,
+          supportedQualities: imageProviderCredentialModels.supportedQualities,
+          supportedSizes: imageProviderCredentialModels.supportedSizes,
+          supportsEditing: imageProviderCredentialModels.supportsEditing,
+          supportsFlexibleSizes: imageProviderCredentialModels.supportsFlexibleSizes,
+          supportsTransparentBackground: imageProviderCredentialModels.supportsTransparentBackground,
+        })
+        .from(imageProviderCredentialModels)
+        .where(eq(imageProviderCredentialModels.companyId, companyId)) as ImageModelRecord[];
 
       return credentials.map((credential) =>
-        serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords)
+        serializeModelProviderCredentialRecord(this.modelRegistry, credential, modelRecords, imageModelRecords)
       );
     });
   };

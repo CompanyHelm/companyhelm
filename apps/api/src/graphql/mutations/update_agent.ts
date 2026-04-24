@@ -3,6 +3,7 @@ import { inject, injectable } from "inversify";
 import {
   agents,
   computeProviderDefinitions,
+  imageProviderCredentialModels,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
@@ -17,6 +18,7 @@ type UpdateAgentMutationArguments = {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
     id: string;
+    imageProviderCredentialModelId?: string | null;
     name: string;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
@@ -29,6 +31,7 @@ type AgentRecord = {
   id: string;
   name: string;
   defaultModelProviderCredentialModelId: string | null;
+  defaultImageProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
@@ -42,6 +45,12 @@ type ModelRecord = {
   modelProviderCredentialId: string;
   name: string;
   reasoningLevels: string[] | null;
+};
+
+type ImageModelRecord = {
+  id: string;
+  modelProviderCredentialId: string;
+  name: string;
 };
 
 type CredentialRecord = {
@@ -66,6 +75,10 @@ type GraphqlAgentRecord = {
   defaultEnvironmentTemplateId: string;
   environmentTemplate: AgentEnvironmentTemplate;
   id: string;
+  imageModelName: string | null;
+  imageProvider: ModelProviderId | null;
+  imageProviderCredentialId: string | null;
+  imageProviderCredentialModelId: string | null;
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
@@ -207,6 +220,44 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         throw new Error("Provider model does not belong to the selected credential.");
       }
 
+      const imageModelRowId = arguments_.input.imageProviderCredentialModelId === undefined
+        ? undefined
+        : String(arguments_.input.imageProviderCredentialModelId || "").trim();
+      const [imageModelRecord] = imageModelRowId === undefined || imageModelRowId.length === 0
+        ? [null]
+        : await databaseTransaction
+          .select({
+            id: imageProviderCredentialModels.id,
+            modelProviderCredentialId: imageProviderCredentialModels.modelProviderCredentialId,
+            name: imageProviderCredentialModels.name,
+          })
+          .from(imageProviderCredentialModels)
+          .where(and(
+            eq(imageProviderCredentialModels.companyId, companyId),
+            eq(imageProviderCredentialModels.id, imageModelRowId),
+          )) as Array<ImageModelRecord | null>;
+      if (imageModelRowId !== undefined && imageModelRowId.length > 0 && !imageModelRecord) {
+        throw new Error("Image provider model not found.");
+      }
+
+      const [imageCredentialRecord] = !imageModelRecord
+        ? [null]
+        : imageModelRecord.modelProviderCredentialId === credentialRecord.id
+          ? [credentialRecord]
+          : await databaseTransaction
+            .select({
+              id: modelProviderCredentials.id,
+              modelProvider: modelProviderCredentials.modelProvider,
+            })
+            .from(modelProviderCredentials)
+            .where(and(
+              eq(modelProviderCredentials.companyId, companyId),
+              eq(modelProviderCredentials.id, imageModelRecord.modelProviderCredentialId),
+            )) as Array<CredentialRecord | null>;
+      if (imageModelRecord && !imageCredentialRecord) {
+        throw new Error("Image provider credential not found.");
+      }
+
       const [computeProviderDefinitionRecord] = await databaseTransaction
         .select({
           id: computeProviderDefinitions.id,
@@ -238,6 +289,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         .set({
           name: arguments_.input.name,
           defaultModelProviderCredentialModelId: modelRecord.id,
+          defaultImageProviderCredentialModelId: imageModelRowId === undefined ? undefined : (imageModelRecord?.id ?? null),
           defaultComputeProviderDefinitionId: computeProviderDefinitionRecord.id,
           defaultEnvironmentTemplateId: environmentTemplate.templateId,
           default_reasoning_level: reasoningLevel,
@@ -252,6 +304,7 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
           id: agents.id,
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
+          defaultImageProviderCredentialModelId: agents.defaultImageProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultReasoningLevel: agents.default_reasoning_level,
@@ -268,6 +321,8 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
         agentRecord,
         modelRecord,
         credentialRecord,
+        imageModelRecord,
+        imageCredentialRecord,
         computeProviderDefinitionRecord,
         environmentTemplate,
       );
@@ -308,6 +363,8 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
     agentRecord: AgentRecord,
     modelRecord: ModelRecord,
     credentialRecord: CredentialRecord,
+    imageModelRecord: ImageModelRecord | null,
+    imageCredentialRecord: CredentialRecord | null,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord,
     environmentTemplate: AgentEnvironmentTemplate,
   ): GraphqlAgentRecord {
@@ -318,6 +375,10 @@ export class UpdateAgentMutation extends Mutation<UpdateAgentMutationArguments, 
       defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
       environmentTemplate,
       id: agentRecord.id,
+      imageModelName: imageModelRecord?.name ?? null,
+      imageProvider: imageCredentialRecord?.modelProvider ?? null,
+      imageProviderCredentialId: imageCredentialRecord?.id ?? null,
+      imageProviderCredentialModelId: imageModelRecord?.id ?? null,
       name: agentRecord.name,
       modelProviderCredentialId: credentialRecord.id,
       modelProviderCredentialModelId: modelRecord.id,

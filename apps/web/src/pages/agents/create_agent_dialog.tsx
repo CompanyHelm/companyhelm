@@ -40,6 +40,13 @@ export type AgentCreateProviderOption = {
   }>;
 };
 
+export type AgentCreateImageModelOption = {
+  description: string | null | undefined;
+  id: string;
+  label: string;
+  modelId: string;
+};
+
 export type AgentCreateSecretOption = {
   description: string | null | undefined;
   envVarName: string;
@@ -93,6 +100,7 @@ export type AgentCreateEnvironmentTemplateOption = {
 interface CreateAgentDialogProps {
   computeProviderDefinitionOptions: AgentCreateComputeProviderDefinitionOption[];
   errorMessage: string | null;
+  imageModelOptions: AgentCreateImageModelOption[];
   isOpen: boolean;
   isSaving: boolean;
   providerOptions: AgentCreateProviderOption[];
@@ -104,6 +112,7 @@ interface CreateAgentDialogProps {
   onCreate(input: {
     defaultComputeProviderDefinitionId: string;
     defaultEnvironmentTemplateId: string;
+    imageProviderCredentialModelId?: string;
     modelProviderCredentialId: string;
     modelProviderCredentialModelId: string;
     name: string;
@@ -127,6 +136,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
   const [agentName, setAgentName] = useState("");
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
+  const [imageModelOptionId, setImageModelOptionId] = useState("");
   const [computeProviderDefinitionId, setComputeProviderDefinitionId] = useState("");
   const [environmentTemplateId, setEnvironmentTemplateId] = useState("");
   const [providerOptionId, setProviderOptionId] = useState("");
@@ -224,6 +234,9 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       })
       .map(({ modelOption }) => modelOption);
   }, [modelOptionId, selectedProviderOption]);
+  const orderedImageModelOptions = useMemo(() => {
+    return props.imageModelOptions;
+  }, [props.imageModelOptions]);
   const selectedReasoningLevels = selectedModelOption?.reasoningLevels ?? [];
 
   useEffect(() => {
@@ -231,6 +244,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
       setAgentName("");
       setIsAdvancedOpen(false);
       setIsModelDialogOpen(false);
+      setImageModelOptionId("");
       setComputeProviderDefinitionId("");
       setEnvironmentTemplateId("");
       setProviderOptionId("");
@@ -607,6 +621,37 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
             />
           </div>
 
+          <div className="grid gap-2">
+            <label className="text-xs font-medium text-foreground" htmlFor="agent-image-model">
+              Image model (optional)
+            </label>
+            <Select
+              items={[
+                { label: "No image generation", value: "__none__" },
+                ...orderedImageModelOptions.map((imageModelOption) => ({
+                  label: imageModelOption.label,
+                  value: imageModelOption.id,
+                })),
+              ]}
+              onValueChange={(value) => {
+                setImageModelOptionId(value === "__none__" ? "" : (value ?? ""));
+              }}
+              value={imageModelOptionId.length > 0 ? imageModelOptionId : "__none__"}
+            >
+              <SelectTrigger id="agent-image-model">
+                <SelectValue placeholder="No image generation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No image generation</SelectItem>
+                {orderedImageModelOptions.map((imageModelOption) => (
+                  <SelectItem key={imageModelOption.id} value={imageModelOption.id}>
+                    {imageModelOption.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {isReasoningLevelRequired ? (
             <div className="grid gap-2">
               <label className="text-xs font-medium text-foreground" htmlFor="agent-reasoning-level">
@@ -805,6 +850,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
               await props.onCreate({
                 defaultComputeProviderDefinitionId: computeProviderDefinitionId,
                 defaultEnvironmentTemplateId: environmentTemplateId,
+                imageProviderCredentialModelId: imageModelOptionId.length === 0 ? undefined : imageModelOptionId,
                 modelProviderCredentialId: selectedProviderOption.modelProviderCredentialId,
                 modelProviderCredentialModelId: selectedModelOption.modelProviderCredentialModelId,
                 name: agentName,

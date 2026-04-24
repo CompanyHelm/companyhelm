@@ -1,12 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { imageProviderCredentialModels, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import {
   LlmOauthCredentialRefreshService,
 } from "../../services/ai_providers/llm_oauth_credential_refresh_service.ts";
 import type { GraphqlModelProviderCredentialRecord } from "../model_provider_credential_record.ts";
 import {
+  type ImageProviderCredentialModelRecord,
   serializeModelProviderCredentialRecord,
   type ModelProviderCredentialModelRecord,
   type ModelProviderCredentialRecord,
@@ -195,8 +196,29 @@ export class RefreshModelProviderCredentialTokenMutation extends Mutation<
           eq(modelProviderCredentialModels.modelProviderCredentialId, credential.id),
         ))
         .limit(1000) as ModelProviderCredentialModelRecord[];
+      const imageModels = await selectableDatabase
+        .select({
+          description: imageProviderCredentialModels.description,
+          id: imageProviderCredentialModels.id,
+          isDefault: imageProviderCredentialModels.isDefault,
+          modelId: imageProviderCredentialModels.modelId,
+          modelProviderCredentialId: imageProviderCredentialModels.modelProviderCredentialId,
+          name: imageProviderCredentialModels.name,
+          outputMimeTypes: imageProviderCredentialModels.outputMimeTypes,
+          supportedQualities: imageProviderCredentialModels.supportedQualities,
+          supportedSizes: imageProviderCredentialModels.supportedSizes,
+          supportsEditing: imageProviderCredentialModels.supportsEditing,
+          supportsFlexibleSizes: imageProviderCredentialModels.supportsFlexibleSizes,
+          supportsTransparentBackground: imageProviderCredentialModels.supportsTransparentBackground,
+        })
+        .from(imageProviderCredentialModels)
+        .where(and(
+          eq(imageProviderCredentialModels.companyId, companyId),
+          eq(imageProviderCredentialModels.modelProviderCredentialId, credential.id),
+        ))
+        .limit(1000) as ImageProviderCredentialModelRecord[];
 
-      return serializeModelProviderCredentialRecord(this.modelRegistry, updatedCredential, models);
+      return serializeModelProviderCredentialRecord(this.modelRegistry, updatedCredential, models, imageModels);
     });
   };
 }

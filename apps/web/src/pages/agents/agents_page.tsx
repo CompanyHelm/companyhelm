@@ -8,6 +8,7 @@ import { AgentsTable, type AgentsTableRecord } from "./agents_table";
 import {
   CreateAgentDialog,
   type AgentCreateComputeProviderDefinitionOption,
+  type AgentCreateImageModelOption,
   type AgentCreateSecretGroupOption,
   type AgentCreateSecretOption,
   type AgentCreateSkillGroupOption,
@@ -47,6 +48,17 @@ const agentsPageQueryNode = graphql`
         name
         reasoningSupported
         reasoningLevels
+      }
+    }
+    ModelProviderCredentials {
+      id
+      modelProvider
+      name
+      imageModels {
+        id
+        modelId
+        name
+        description
       }
     }
     Secrets {
@@ -192,6 +204,14 @@ function AgentsPageContent() {
       reasoningLevels: [...modelOption.reasoningLevels],
     })),
   }));
+  const imageModelOptions: AgentCreateImageModelOption[] = data.ModelProviderCredentials.flatMap((credential) => {
+    return credential.imageModels.map((imageModel) => ({
+      description: imageModel.description,
+      id: imageModel.id,
+      label: `${imageModel.name} (${credential.name})`,
+      modelId: imageModel.modelId,
+    }));
+  });
   const secretOptions: AgentCreateSecretOption[] = data.Secrets.map((secret) => ({
     description: secret.description,
     envVarName: secret.envVarName,
@@ -355,6 +375,7 @@ function AgentsPageContent() {
         errorMessage={isCreateDialogOpen ? errorMessage : null}
         isOpen={isCreateDialogOpen}
         isSaving={isCreateAgentInFlight}
+        imageModelOptions={imageModelOptions}
         providerOptions={providerOptions}
         secretOptions={secretOptions}
         secretGroupOptions={secretGroupOptions}

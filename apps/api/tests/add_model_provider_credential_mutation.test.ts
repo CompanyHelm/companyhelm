@@ -208,6 +208,12 @@ class AddModelProviderCredentialMutationTestHarness {
   }
 }
 
+const imageGenerationModelService = {
+  async fetchModels(): Promise<[]> {
+    return [];
+  },
+};
+
 test("GraphQL AddModelProviderCredential mutation uses the authenticated company from the bearer token", async () => {
   const app = Fastify();
   const config = AddModelProviderCredentialMutationTestHarness.createConfigMock();
@@ -251,7 +257,7 @@ test("GraphQL AddModelProviderCredential mutation uses the authenticated company
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
@@ -365,7 +371,7 @@ test("GraphQL AddModelProviderCredential mutation stores the provided credential
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
@@ -439,7 +445,7 @@ test("GraphQL AddModelProviderCredential mutation rejects the CompanyHelm manage
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
@@ -517,7 +523,7 @@ test("GraphQL AddModelProviderCredential mutation supports anthropic credentials
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
@@ -614,7 +620,7 @@ test("GraphQL AddModelProviderCredential mutation stores OpenAI-compatible base 
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
@@ -706,7 +712,7 @@ test("GraphQL AddModelProviderCredential mutation supports openai-codex oauth cr
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),

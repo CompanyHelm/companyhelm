@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { inject, injectable } from "inversify";
-import { modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
+import { imageProviderCredentialModels, modelProviderCredentialModels, modelProviderCredentials } from "../../db/schema.ts";
 import { CompanyHelmLlmProviderService } from "../../services/ai_providers/companyhelm_service.ts";
+import { ImageGenerationModelService } from "../../services/ai_providers/image_generation/model_service.ts";
 import { ModelRegistry } from "../../services/ai_providers/model_registry.js";
 import {
   ModelProviderAuthorizationType,
@@ -57,6 +58,7 @@ type GraphqlModelProviderCredentialRecord = {
   refreshToken: string | null;
   refreshedAt: string | null;
   createdAt: string;
+  imageModels: [];
   updatedAt: string;
 };
 
@@ -93,6 +95,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
   GraphqlModelProviderCredentialRecord
 > {
   private readonly modelManager: ModelService;
+  private readonly imageGenerationModelService: ImageGenerationModelService;
   private readonly modelRegistry: ModelRegistry;
   private readonly modelProviderService: ModelProviderService;
 
@@ -100,9 +103,12 @@ export class AddModelProviderCredentialMutation extends Mutation<
     @inject(ModelService) modelManager: ModelService,
     @inject(ModelRegistry) modelRegistry: ModelRegistry = new ModelRegistry(),
     @inject(ModelProviderService) modelProviderService: ModelProviderService = new ModelProviderService(),
+    @inject(ImageGenerationModelService)
+    imageGenerationModelService: ImageGenerationModelService = new ImageGenerationModelService(),
   ) {
     super();
     this.modelManager = modelManager;
+    this.imageGenerationModelService = imageGenerationModelService;
     this.modelRegistry = modelRegistry;
     this.modelProviderService = modelProviderService;
   }
@@ -142,11 +148,17 @@ export class AddModelProviderCredentialMutation extends Mutation<
     const models = await this.modelManager.fetchModels(modelProvider, credentialPayload.accessToken, {
       baseUrl,
     });
+    const imageModels = await this.imageGenerationModelService.fetchModels(modelProvider, credentialPayload.accessToken, {
+      baseUrl,
+    });
     const defaultModelId = AddModelProviderCredentialMutation.resolveDefaultModelId(
       this.modelRegistry,
       modelProvider,
       models,
     );
+    const defaultImageModelId = imageModels.find((model) => model.modelId === "gpt-image-2")?.modelId
+      ?? imageModels[0]?.modelId
+      ?? null;
     const now = new Date();
     const [credential] = await context.app_runtime_transaction_provider.transaction(async (tx) => {
       const selectableDatabase = tx as unknown as SelectableDatabase;
@@ -223,6 +235,26 @@ export class AddModelProviderCredentialMutation extends Mutation<
             modelProviderCredentialId: createdCredential.id,
           })));
       }
+      if (imageModels.length > 0) {
+        await insertableDatabase
+          .insert(imageProviderCredentialModels)
+          .values(imageModels.map((model) => ({
+            companyId,
+            createdAt: now,
+            description: model.description,
+            isDefault: false,
+            modelId: model.modelId,
+            modelProviderCredentialId: createdCredential.id,
+            name: model.name,
+            outputMimeTypes: model.outputMimeTypes,
+            supportedQualities: model.supportedQualities,
+            supportedSizes: model.supportedSizes,
+            supportsEditing: model.supportsEditing,
+            supportsFlexibleSizes: model.supportsFlexibleSizes,
+            supportsTransparentBackground: model.supportsTransparentBackground,
+            updatedAt: now,
+          })));
+      }
 
       if (shouldSetDefaultCredential) {
         await AddModelProviderCredentialMutation.setDefaultCredential(
@@ -238,6 +270,16 @@ export class AddModelProviderCredentialMutation extends Mutation<
           createdCredential.id,
           defaultModelId,
         );
+      }
+      if (defaultImageModelId) {
+        await updatableDatabase
+          .update(imageProviderCredentialModels)
+          .set({ isDefault: true })
+          .where(and(
+            eq(imageProviderCredentialModels.companyId, companyId),
+            eq(imageProviderCredentialModels.modelProviderCredentialId, createdCredential.id),
+            eq(imageProviderCredentialModels.modelId, defaultImageModelId),
+          ));
       }
 
       const reloadedCredentials = await selectableDatabase
@@ -488,6 +530,7 @@ export class AddModelProviderCredentialMutation extends Mutation<
       ),
       refreshedAt: credential.refreshedAt?.toISOString() ?? null,
       createdAt: credential.createdAt.toISOString(),
+      imageModels: [],
       updatedAt: credential.updatedAt.toISOString(),
     };
   }

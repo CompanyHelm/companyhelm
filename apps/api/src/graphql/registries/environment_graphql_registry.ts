@@ -8,9 +8,11 @@ import { DeleteEnvironmentMutation } from "../mutations/delete_environment.ts";
 import { DeleteModelProviderCredentialMutation } from "../mutations/delete_model_provider_credential.ts";
 import { CreateEnvironmentTerminalConnectionMutation } from "../mutations/create_environment_terminal_connection.ts";
 import { GetEnvironmentVncUrlMutation } from "../mutations/get_environment_vnc_url.ts";
+import { RefreshImageProviderCredentialModelsMutation } from "../mutations/refresh_image_provider_credential_models.ts";
 import { RefreshModelProviderCredentialModelsMutation } from "../mutations/refresh_model_provider_credential_models.ts";
 import { RefreshModelProviderCredentialTokenMutation } from "../mutations/refresh_model_provider_credential_token.ts";
 import { SetDefaultComputeProviderDefinitionMutation } from "../mutations/set_default_compute_provider_definition.ts";
+import { SetDefaultImageProviderCredentialModelMutation } from "../mutations/set_default_image_provider_credential_model.ts";
 import { SetDefaultModelProviderCredentialMutation } from "../mutations/set_default_model_provider_credential.ts";
 import { SetDefaultModelProviderCredentialModelMutation } from "../mutations/set_default_model_provider_credential_model.ts";
 import { StartEnvironmentMutation } from "../mutations/start_environment.ts";
@@ -52,10 +54,12 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
   private readonly modelProviderCredentialModelsQueryResolver: ModelProviderCredentialModelsQueryResolver;
   private readonly modelProviderCredentialsQueryResolver: ModelProviderCredentialsQueryResolver;
   private readonly modelProvidersQueryResolver: ModelProvidersQueryResolver;
+  private readonly refreshImageProviderCredentialModelsMutation: RefreshImageProviderCredentialModelsMutation;
   private readonly refreshModelProviderCredentialModelsMutation: RefreshModelProviderCredentialModelsMutation;
   private readonly refreshModelProviderCredentialTokenMutation: RefreshModelProviderCredentialTokenMutation;
   private readonly sessionEnvironmentQueryResolver: SessionEnvironmentQueryResolver;
   private readonly setDefaultComputeProviderDefinitionMutation: SetDefaultComputeProviderDefinitionMutation;
+  private readonly setDefaultImageProviderCredentialModelMutation: SetDefaultImageProviderCredentialModelMutation;
   private readonly setDefaultModelProviderCredentialMutation: SetDefaultModelProviderCredentialMutation;
   private readonly setDefaultModelProviderCredentialModelMutation: SetDefaultModelProviderCredentialModelMutation;
   private startEnvironmentMutation: MutationLike;
@@ -152,6 +156,18 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
         throw new Error("SetDefaultModelProviderCredentialModel mutation is not configured.");
       },
     } as never,
+    @inject(RefreshImageProviderCredentialModelsMutation)
+    refreshImageProviderCredentialModelsMutation: RefreshImageProviderCredentialModelsMutation = {
+      async execute() {
+        throw new Error("RefreshImageProviderCredentialModels mutation is not configured.");
+      },
+    } as never,
+    @inject(SetDefaultImageProviderCredentialModelMutation)
+    setDefaultImageProviderCredentialModelMutation: SetDefaultImageProviderCredentialModelMutation = {
+      async execute() {
+        throw new Error("SetDefaultImageProviderCredentialModel mutation is not configured.");
+      },
+    } as never,
   ) {
     const defaultAgentEnvironmentTemplateService = agentEnvironmentTemplateService
       ?? EnvironmentGraphqlRegistry.createFallbackAgentEnvironmentTemplateService();
@@ -170,10 +186,12 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
     this.modelProviderCredentialModelsQueryResolver = modelProviderCredentialModelsQueryResolver;
     this.modelProviderCredentialsQueryResolver = modelProviderCredentialsQueryResolver;
     this.modelProvidersQueryResolver = modelProvidersQueryResolver;
+    this.refreshImageProviderCredentialModelsMutation = refreshImageProviderCredentialModelsMutation;
     this.refreshModelProviderCredentialModelsMutation = refreshModelProviderCredentialModelsMutation;
     this.refreshModelProviderCredentialTokenMutation = refreshModelProviderCredentialTokenMutation;
     this.sessionEnvironmentQueryResolver = sessionEnvironmentQueryResolver;
     this.setDefaultComputeProviderDefinitionMutation = setDefaultComputeProviderDefinitionMutation;
+    this.setDefaultImageProviderCredentialModelMutation = setDefaultImageProviderCredentialModelMutation;
     this.setDefaultModelProviderCredentialMutation = setDefaultModelProviderCredentialMutation;
     this.setDefaultModelProviderCredentialModelMutation = setDefaultModelProviderCredentialModelMutation;
     this.startEnvironmentMutation = startEnvironmentMutation;
@@ -194,9 +212,11 @@ export class EnvironmentGraphqlRegistry implements GraphqlRegistryInterface {
         DeleteEnvironment: this.deleteEnvironmentMutation.execute,
         DeleteModelProviderCredential: this.deleteModelProviderCredentialMutation.execute,
         GetEnvironmentVncUrl: this.getEnvironmentVncUrlMutation.execute,
+        RefreshImageProviderCredentialModels: this.refreshImageProviderCredentialModelsMutation.execute,
         RefreshModelProviderCredentialModels: this.refreshModelProviderCredentialModelsMutation.execute,
         RefreshModelProviderCredentialToken: this.refreshModelProviderCredentialTokenMutation.execute,
         SetDefaultComputeProviderDefinition: this.setDefaultComputeProviderDefinitionMutation.execute,
+        SetDefaultImageProviderCredentialModel: this.setDefaultImageProviderCredentialModelMutation.execute,
         SetDefaultModelProviderCredential: this.setDefaultModelProviderCredentialMutation.execute,
         SetDefaultModelProviderCredentialModel: this.setDefaultModelProviderCredentialModelMutation.execute,
         StartEnvironment: this.startEnvironmentMutation.execute,

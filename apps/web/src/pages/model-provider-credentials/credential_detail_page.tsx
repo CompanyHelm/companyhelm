@@ -14,8 +14,10 @@ import { OrganizationPath } from "@/lib/organization_path";
 import { UsageMetrics } from "@/lib/usage_metrics";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
 import type { credentialDetailPageQuery } from "./__generated__/credentialDetailPageQuery.graphql";
+import type { credentialDetailPageRefreshImageModelsMutation } from "./__generated__/credentialDetailPageRefreshImageModelsMutation.graphql";
 import type { credentialDetailPageRefreshCredentialTokenMutation } from "./__generated__/credentialDetailPageRefreshCredentialTokenMutation.graphql";
 import type { credentialDetailPageRefreshModelsMutation } from "./__generated__/credentialDetailPageRefreshModelsMutation.graphql";
+import type { credentialDetailPageSetDefaultImageModelMutation } from "./__generated__/credentialDetailPageSetDefaultImageModelMutation.graphql";
 import type { credentialDetailPageSetDefaultModelMutation } from "./__generated__/credentialDetailPageSetDefaultModelMutation.graphql";
 import {
   getCredentialRefreshFailureReason,
@@ -37,6 +39,19 @@ const modelProviderCredentialDetailPageQueryNode = graphql`
       errorMessage
       refreshedAt
       updatedAt
+      imageModels {
+        id
+        isDefault
+        modelId
+        name
+        description
+        outputMimeTypes
+        supportedQualities
+        supportedSizes
+        supportsEditing
+        supportsFlexibleSizes
+        supportsTransparentBackground
+      }
     }
     CompanyManagedLlmBudget {
       plan
@@ -148,6 +163,17 @@ const modelProviderCredentialDetailPageSetDefaultModelMutationNode = graphql`
   }
 `;
 
+const modelProviderCredentialDetailPageSetDefaultImageModelMutationNode = graphql`
+  mutation credentialDetailPageSetDefaultImageModelMutation(
+    $input: SetDefaultImageProviderCredentialModelInput!
+  ) {
+    SetDefaultImageProviderCredentialModel(input: $input) {
+      id
+      isDefault
+    }
+  }
+`;
+
 const modelProviderCredentialDetailPageRefreshCredentialTokenMutationNode = graphql`
   mutation credentialDetailPageRefreshCredentialTokenMutation(
     $input: RefreshModelProviderCredentialTokenInput!
@@ -175,6 +201,26 @@ const modelProviderCredentialDetailPageRefreshModelsMutationNode = graphql`
       description
       reasoningSupported
       reasoningLevels
+    }
+  }
+`;
+
+const modelProviderCredentialDetailPageRefreshImageModelsMutationNode = graphql`
+  mutation credentialDetailPageRefreshImageModelsMutation(
+    $input: RefreshImageProviderCredentialModelsInput!
+  ) {
+    RefreshImageProviderCredentialModels(input: $input) {
+      id
+      isDefault
+      modelId
+      name
+      description
+      outputMimeTypes
+      supportedQualities
+      supportedSizes
+      supportsEditing
+      supportsFlexibleSizes
+      supportsTransparentBackground
     }
   }
 `;
@@ -226,12 +272,30 @@ function formatReasoning(model: {
   return "Supported";
 }
 
+function formatImageCapabilities(model: {
+  outputMimeTypes: ReadonlyArray<string>;
+  supportedQualities: ReadonlyArray<string>;
+  supportedSizes: ReadonlyArray<string>;
+  supportsEditing: boolean;
+  supportsFlexibleSizes: boolean;
+  supportsTransparentBackground: boolean;
+}): string {
+  return [
+    model.supportsEditing ? "Editing" : null,
+    model.supportsTransparentBackground ? "Transparent BG" : null,
+    model.supportsFlexibleSizes ? "Flexible sizes" : null,
+    model.supportedQualities.length > 0 ? `Quality: ${model.supportedQualities.join(", ")}` : null,
+    model.supportedSizes.length > 0 ? `Sizes: ${model.supportedSizes.join(", ")}` : null,
+    model.outputMimeTypes.length > 0 ? `Formats: ${model.outputMimeTypes.join(", ")}` : null,
+  ].filter((line): line is string => line !== null).join(" · ");
+}
+
 function ModelProviderCredentialDetailPageContent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
   const navigate = useNavigate();
   const { credentialId } = useParams({ strict: false }) as { credentialId?: string };
-  const search = useSearch({ strict: false }) as { tab?: "models" | "usage" };
+  const search = useSearch({ strict: false }) as { tab?: "image-models" | "models" | "usage" };
   const organizationSlug = useCurrentOrganizationSlug();
   const { setDetailLabel } = useApplicationBreadcrumb();
   const normalizedCredentialId = String(credentialId || "").trim();
@@ -254,6 +318,10 @@ function ModelProviderCredentialDetailPageContent() {
     useMutation<credentialDetailPageRefreshModelsMutation>(
       modelProviderCredentialDetailPageRefreshModelsMutationNode,
     );
+  const [commitRefreshImageModels, isRefreshImageModelsInFlight] =
+    useMutation<credentialDetailPageRefreshImageModelsMutation>(
+      modelProviderCredentialDetailPageRefreshImageModelsMutationNode,
+    );
   const [commitRefreshCredentialToken, isRefreshTokenInFlight] =
     useMutation<credentialDetailPageRefreshCredentialTokenMutation>(
       modelProviderCredentialDetailPageRefreshCredentialTokenMutationNode,
@@ -261,6 +329,10 @@ function ModelProviderCredentialDetailPageContent() {
   const [commitSetDefaultModel, isSetDefaultModelInFlight] =
     useMutation<credentialDetailPageSetDefaultModelMutation>(
       modelProviderCredentialDetailPageSetDefaultModelMutationNode,
+    );
+  const [commitSetDefaultImageModel, isSetDefaultImageModelInFlight] =
+    useMutation<credentialDetailPageSetDefaultImageModelMutation>(
+      modelProviderCredentialDetailPageSetDefaultImageModelMutationNode,
     );
   const currentCredential = data.ModelProviderCredentials.find((credential) => credential.id === normalizedCredentialId);
   const providerLabel = formatProviderLabel(String(currentCredential?.modelProvider || "").trim(), {
@@ -270,7 +342,11 @@ function ModelProviderCredentialDetailPageContent() {
     || "Credential";
   const isOauthCredential = currentCredential?.type === "oauth_token";
   const isManagedCredential = currentCredential?.isManaged ?? false;
-  const selectedTab = search.tab === "usage" ? "usage" : "models";
+  const selectedTab = search.tab === "usage"
+    ? "usage"
+    : search.tab === "image-models"
+      ? "image-models"
+      : "models";
   const showRefreshFailure = currentCredential ? hasCredentialRefreshFailure(currentCredential) : false;
   const credentialStatus = isOauthCredential
     ? (currentCredential?.refreshedAt
@@ -300,6 +376,10 @@ function ModelProviderCredentialDetailPageContent() {
           {
             key: "models" as const,
             label: "Models",
+          },
+          {
+            key: "image-models" as const,
+            label: "Image Models",
           },
           {
             key: "usage" as const,
@@ -413,6 +493,45 @@ function ModelProviderCredentialDetailPageContent() {
                   Refresh models
                 </Button>
               )}
+              {isManagedCredential ? null : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isRefreshImageModelsInFlight}
+                  onClick={async () => {
+                    if (isRefreshImageModelsInFlight) {
+                      return;
+                    }
+
+                    setErrorMessage(null);
+                    await new Promise<void>((resolve, reject) => {
+                      commitRefreshImageModels({
+                        variables: {
+                          input: {
+                            modelProviderCredentialId: normalizedCredentialId,
+                          },
+                        },
+                        onCompleted: (_response, errors) => {
+                          const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                          if (nextErrorMessage) {
+                            reject(new Error(nextErrorMessage));
+                            return;
+                          }
+
+                          setFetchKey((current) => current + 1);
+                          resolve();
+                        },
+                        onError: reject,
+                      });
+                    }).catch((error: unknown) => {
+                      setErrorMessage(error instanceof Error ? error.message : "Failed to refresh image models.");
+                    });
+                  }}
+                >
+                  <RefreshCcwIcon className={isRefreshImageModelsInFlight ? "animate-spin" : ""} />
+                  Refresh image models
+                </Button>
+              )}
             </div>
           </CardAction>
         </CardHeader>
@@ -454,6 +573,75 @@ function ModelProviderCredentialDetailPageContent() {
                 title={`${currentCredential?.name ?? providerLabel} usage`}
               />
             </div>
+          ) : selectedTab === "image-models" ? (
+            (currentCredential?.imageModels.length ?? 0) === 0 ? (
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
+                <p className="text-sm font-medium text-foreground">No image models returned</p>
+                <p className="mt-2 text-xs/relaxed text-muted-foreground">
+                  This credential did not return any image generation models from the provider.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Capabilities</TableHead>
+                    <TableHead className="w-24 text-right">Default</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentCredential?.imageModels.map((model) => (
+                    <TableRow key={model.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{model.name}</span>
+                          {model.isDefault ? <Badge variant="secondary">Default</Badge> : null}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{model.modelId}</p>
+                      </TableCell>
+                      <TableCell>{model.description}</TableCell>
+                      <TableCell>{formatImageCapabilities(model)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          disabled={model.isDefault || isSetDefaultImageModelInFlight}
+                          onClick={async () => {
+                            if (model.isDefault || isSetDefaultImageModelInFlight) {
+                              return;
+                            }
+
+                            setErrorMessage(null);
+                            await new Promise<void>((resolve, reject) => {
+                              commitSetDefaultImageModel({
+                                variables: { input: { id: model.id } },
+                                onCompleted: (_response, errors) => {
+                                  const nextErrorMessage = String(errors?.[0]?.message || "").trim();
+                                  if (nextErrorMessage) {
+                                    reject(new Error(nextErrorMessage));
+                                    return;
+                                  }
+
+                                  setFetchKey((current) => current + 1);
+                                  resolve();
+                                },
+                                onError: reject,
+                              });
+                            }).catch((error: unknown) => {
+                              setErrorMessage(error instanceof Error ? error.message : "Failed to update default image model.");
+                            });
+                          }}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <StarIcon className={`size-4 ${model.isDefault ? "fill-current" : ""}`} />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )
           ) : data.ModelProviderCredentialModels.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center">
               <p className="text-sm font-medium text-foreground">No models returned</p>

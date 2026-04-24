@@ -3,6 +3,7 @@ import { injectable } from "inversify";
 import {
   agents,
   computeProviderDefinitions,
+  imageProviderCredentialModels,
   modelProviderCredentialModels,
   modelProviderCredentials,
 } from "../../db/schema.ts";
@@ -17,6 +18,7 @@ type AgentRecord = {
   id: string;
   name: string;
   defaultModelProviderCredentialModelId: string | null;
+  defaultImageProviderCredentialModelId: string | null;
   defaultComputeProviderDefinitionId: string | null;
   defaultEnvironmentTemplateId: string;
   defaultReasoningLevel: string | null;
@@ -26,6 +28,12 @@ type AgentRecord = {
 };
 
 type ModelRecord = {
+  id: string;
+  modelProviderCredentialId: string;
+  name: string;
+};
+
+type ImageModelRecord = {
   id: string;
   modelProviderCredentialId: string;
   name: string;
@@ -48,6 +56,10 @@ type GraphqlAgentRecord = {
   defaultComputeProviderDefinitionName: string | null;
   defaultEnvironmentTemplateId: string;
   id: string;
+  imageModelName: string | null;
+  imageProvider: ModelProviderId | null;
+  imageProviderCredentialId: string | null;
+  imageProviderCredentialModelId: string | null;
   name: string;
   modelProviderCredentialId: string | null;
   modelProviderCredentialModelId: string | null;
@@ -96,6 +108,7 @@ export class AgentQueryResolver {
           id: agents.id,
           name: agents.name,
           defaultModelProviderCredentialModelId: agents.defaultModelProviderCredentialModelId,
+          defaultImageProviderCredentialModelId: agents.defaultImageProviderCredentialModelId,
           defaultComputeProviderDefinitionId: agents.defaultComputeProviderDefinitionId,
           defaultEnvironmentTemplateId: agents.defaultEnvironmentTemplateId,
           defaultReasoningLevel: agents.default_reasoning_level,
@@ -128,6 +141,8 @@ export class AgentQueryResolver {
           agentRecord,
           null,
           null,
+          null,
+          null,
           computeProviderDefinitionRecord ?? null,
         );
       }
@@ -154,10 +169,34 @@ export class AgentQueryResolver {
           .where(eq(modelProviderCredentials.id, modelRecord.modelProviderCredentialId)) as CredentialRecord[]
         : [];
 
+      const [imageModelRecord] = agentRecord.defaultImageProviderCredentialModelId
+        ? await selectableDatabase
+          .select({
+            id: imageProviderCredentialModels.id,
+            modelProviderCredentialId: imageProviderCredentialModels.modelProviderCredentialId,
+            name: imageProviderCredentialModels.name,
+          })
+          .from(imageProviderCredentialModels)
+          .where(eq(imageProviderCredentialModels.id, agentRecord.defaultImageProviderCredentialModelId)) as ImageModelRecord[]
+        : [];
+      const [imageCredentialRecord] = imageModelRecord
+        ? imageModelRecord.modelProviderCredentialId === credentialRecord?.id
+          ? [credentialRecord]
+          : await selectableDatabase
+            .select({
+              id: modelProviderCredentials.id,
+              modelProvider: modelProviderCredentials.modelProvider,
+            })
+            .from(modelProviderCredentials)
+            .where(eq(modelProviderCredentials.id, imageModelRecord.modelProviderCredentialId)) as CredentialRecord[]
+        : [];
+
       return AgentQueryResolver.serializeRecord(
         agentRecord,
         modelRecord ?? null,
         credentialRecord ?? null,
+        imageModelRecord ?? null,
+        imageCredentialRecord ?? null,
         computeProviderDefinitionRecord ?? null,
       );
     });
@@ -167,6 +206,8 @@ export class AgentQueryResolver {
     agentRecord: AgentRecord,
     modelRecord: ModelRecord | null,
     credentialRecord: CredentialRecord | null,
+    imageModelRecord: ImageModelRecord | null,
+    imageCredentialRecord: CredentialRecord | null,
     computeProviderDefinitionRecord: ComputeProviderDefinitionRecord | null,
   ): GraphqlAgentRecord {
     return {
@@ -175,6 +216,10 @@ export class AgentQueryResolver {
       defaultComputeProviderDefinitionName: computeProviderDefinitionRecord?.name ?? null,
       defaultEnvironmentTemplateId: agentRecord.defaultEnvironmentTemplateId,
       id: agentRecord.id,
+      imageModelName: imageModelRecord?.name ?? null,
+      imageProvider: imageCredentialRecord?.modelProvider ?? null,
+      imageProviderCredentialId: imageCredentialRecord?.id ?? null,
+      imageProviderCredentialModelId: agentRecord.defaultImageProviderCredentialModelId,
       name: agentRecord.name,
       modelProviderCredentialId: modelRecord?.modelProviderCredentialId ?? null,
       modelProviderCredentialModelId: agentRecord.defaultModelProviderCredentialModelId,

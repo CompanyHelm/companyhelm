@@ -125,6 +125,7 @@ class ModelProviderCredentialsQueryTestHarness {
       modelProviderCredentialId: "credential-1",
       reasoningLevels: ["low", "medium", "high"],
     }];
+    const imageModelRows: Array<Record<string, unknown>> = [];
     const scopedCompanyIds: string[] = [];
     let selectCallCount = 0;
 
@@ -138,7 +139,13 @@ class ModelProviderCredentialsQueryTestHarness {
               from() {
                 return {
                   async where() {
-                    return selectCallCount === 1 ? credentialRows : modelRows;
+                    if (selectCallCount === 1) {
+                      return credentialRows;
+                    }
+                    if (selectCallCount === 2) {
+                      return modelRows;
+                    }
+                    return imageModelRows;
                   },
                 };
               },
@@ -153,6 +160,12 @@ class ModelProviderCredentialsQueryTestHarness {
     };
   }
 }
+
+const imageGenerationModelService = {
+  async fetchModels(): Promise<[]> {
+    return [];
+  },
+};
 
 test("GraphQL ModelProviderCredentials query lists credentials for the authenticated company", async () => {
   const app = Fastify();
@@ -185,7 +198,7 @@ test("GraphQL ModelProviderCredentials query lists credentials for the authentic
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),
@@ -263,7 +276,7 @@ test("GraphQL ModelProviderCredentials query rejects unauthenticated requests", 
 
   await GraphqlApplication.fromResolvers(
     config,
-    new AddModelProviderCredentialMutation(modelManager as never),
+    new AddModelProviderCredentialMutation(modelManager as never, undefined, undefined, imageGenerationModelService as never),
     new DeleteModelProviderCredentialMutation(),
     new RefreshModelProviderCredentialModelsMutation(modelManager as never),
     new GraphqlRequestContextResolver(authProvider as never, database),

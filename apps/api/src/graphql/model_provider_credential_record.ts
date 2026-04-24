@@ -25,6 +25,36 @@ export type ModelProviderCredentialModelRecord = {
   reasoningLevels: string[] | null;
 };
 
+export type ImageProviderCredentialModelRecord = {
+  description: string;
+  id: string;
+  isDefault: boolean;
+  modelId: string;
+  modelProviderCredentialId: string;
+  name: string;
+  outputMimeTypes: string[];
+  supportedQualities: string[];
+  supportedSizes: string[];
+  supportsEditing: boolean;
+  supportsFlexibleSizes: boolean;
+  supportsTransparentBackground: boolean;
+};
+
+export type GraphqlImageProviderCredentialModelRecord = {
+  description: string;
+  id: string;
+  isDefault: boolean;
+  modelId: string;
+  modelProviderCredentialId: string;
+  name: string;
+  outputMimeTypes: string[];
+  supportedQualities: string[];
+  supportedSizes: string[];
+  supportsEditing: boolean;
+  supportsFlexibleSizes: boolean;
+  supportsTransparentBackground: boolean;
+};
+
 export type GraphqlModelProviderCredentialRecord = {
   id: string;
   baseUrl: string | null;
@@ -41,6 +71,7 @@ export type GraphqlModelProviderCredentialRecord = {
   refreshToken: string | null;
   refreshedAt: string | null;
   createdAt: string;
+  imageModels: GraphqlImageProviderCredentialModelRecord[];
   updatedAt: string;
 };
 
@@ -48,6 +79,7 @@ export function serializeModelProviderCredentialRecord(
   modelRegistry: ModelRegistry,
   credential: ModelProviderCredentialRecord,
   models: ModelProviderCredentialModelRecord[],
+  imageModels: ImageProviderCredentialModelRecord[],
 ): GraphqlModelProviderCredentialRecord {
   const defaultModel = models.find((model) =>
     model.modelProviderCredentialId === credential.id && model.isDefault
@@ -63,6 +95,14 @@ export function serializeModelProviderCredentialRecord(
       : (supportedReasoningLevels[0] ?? null),
     refreshedAt: credential.refreshedAt?.toISOString() ?? null,
     createdAt: credential.createdAt.toISOString(),
+    imageModels: imageModels
+      .filter((model) => model.modelProviderCredentialId === credential.id)
+      .map((model) => ({
+        ...model,
+        outputMimeTypes: [...model.outputMimeTypes],
+        supportedQualities: [...model.supportedQualities],
+        supportedSizes: [...model.supportedSizes],
+      })),
     updatedAt: credential.updatedAt.toISOString(),
   };
 }

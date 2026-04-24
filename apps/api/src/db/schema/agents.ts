@@ -39,6 +39,8 @@ export const agents = pgTable("agents", {
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull(),
   defaultModelProviderCredentialModelId: uuid("default_model_provider_credential_model_id")
     .references(() => modelProviderCredentialModels.id, { onDelete: "set null" }),
+  defaultImageProviderCredentialModelId: uuid("default_image_provider_credential_model_id")
+    .references(() => imageProviderCredentialModels.id, { onDelete: "set null" }),
   defaultComputeProviderDefinitionId: uuid("default_compute_provider_definition_id")
     .references(() => computeProviderDefinitions.id, { onDelete: "restrict" }),
   defaultEnvironmentTemplateId: text("default_environment_template_id").notNull(),
@@ -103,6 +105,42 @@ export const modelProviderCredentialModels = pgTable("model_provider_credential_
     table.modelProviderCredentialId,
   ),
   credentialDefaultUnique: uniqueIndex("model_provider_credential_models_credential_default_uidx")
+    .on(table.modelProviderCredentialId)
+    .where(sql`${table.isDefault}`),
+}));
+
+export const imageProviderCredentialModels = pgTable("image_provider_credential_models", {
+  id: uuid("id")
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
+  companyId: uuid("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  modelProviderCredentialId: uuid("model_provider_credential_id")
+    .references(() => modelProviderCredentials.id, { onDelete: "cascade" })
+    .notNull(),
+  modelId: text("model_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  outputMimeTypes: text("output_mime_types").array().notNull(),
+  supportedQualities: text("supported_qualities").array().notNull(),
+  supportedSizes: text("supported_sizes").array().notNull(),
+  supportsEditing: boolean("supports_editing").notNull().default(false),
+  supportsFlexibleSizes: boolean("supports_flexible_sizes").notNull().default(false),
+  supportsTransparentBackground: boolean("supports_transparent_background").notNull().default(false),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  companyIdIndex: index("image_provider_credential_models_company_id_idx").on(table.companyId),
+  modelProviderCredentialIdIndex: index("image_provider_credential_models_credential_id_idx").on(
+    table.modelProviderCredentialId,
+  ),
+  credentialModelUnique: uniqueIndex("image_provider_credential_models_credential_model_uidx").on(
+    table.modelProviderCredentialId,
+    table.modelId,
+  ),
+  credentialDefaultUnique: uniqueIndex("image_provider_credential_models_credential_default_uidx")
     .on(table.modelProviderCredentialId)
     .where(sql`${table.isDefault}`),
 }));

@@ -161,6 +161,9 @@ type Mutation {
   RefreshModelProviderCredentialModels(
     input: RefreshModelProviderCredentialModelsInput!
   ): [ModelProviderCredentialModel!]!
+  RefreshImageProviderCredentialModels(
+    input: RefreshImageProviderCredentialModelsInput!
+  ): [ImageProviderCredentialModel!]!
   SetDefaultComputeProviderDefinition(
     input: SetDefaultComputeProviderDefinitionInput!
   ): ComputeProviderDefinition!
@@ -170,6 +173,9 @@ type Mutation {
   SetDefaultModelProviderCredentialModel(
     input: SetDefaultModelProviderCredentialModelInput!
   ): ModelProviderCredentialModel!
+  SetDefaultImageProviderCredentialModel(
+    input: SetDefaultImageProviderCredentialModelInput!
+  ): ImageProviderCredentialModel!
   SetTaskStage(input: SetTaskStageInput!): Task!
   TriggerRoutine(input: TriggerRoutineInput!): RoutineRun!
   CreateWorkflow(input: CreateWorkflowInput!): Workflow!
@@ -510,6 +516,10 @@ type Agent {
   defaultEnvironmentTemplateId: ID!
   id: ID!
   name: String!
+  imageProviderCredentialId: ID
+  imageProviderCredentialModelId: ID
+  imageProvider: String
+  imageModelName: String
   modelProviderCredentialId: ID
   modelProviderCredentialModelId: ID
   modelProvider: String
@@ -800,6 +810,7 @@ type ModelProviderCredential {
   refreshToken: String
   refreshedAt: String
   createdAt: String!
+  imageModels: [ImageProviderCredentialModel!]!
   updatedAt: String!
 }
 
@@ -898,6 +909,21 @@ type ModelProviderCredentialModel {
   description: String!
   reasoningSupported: Boolean!
   reasoningLevels: [String!]!
+}
+
+type ImageProviderCredentialModel {
+  id: ID!
+  isDefault: Boolean!
+  modelProviderCredentialId: ID!
+  modelId: String!
+  name: String!
+  description: String!
+  outputMimeTypes: [String!]!
+  supportedQualities: [String!]!
+  supportedSizes: [String!]!
+  supportsEditing: Boolean!
+  supportsFlexibleSizes: Boolean!
+  supportsTransparentBackground: Boolean!
 }
 
 type ModelProvider {
@@ -1121,6 +1147,7 @@ input CreateGithubRepositoryProvisioningInput {
 input AddAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
+  imageProviderCredentialModelId: ID
   name: String!
   modelProviderCredentialId: ID!
   modelProviderCredentialModelId: ID!
@@ -1137,6 +1164,7 @@ input UpdateAgentInput {
   defaultComputeProviderDefinitionId: ID!
   defaultEnvironmentTemplateId: ID!
   id: ID!
+  imageProviderCredentialModelId: ID
   name: String!
   modelProviderCredentialId: ID!
   modelProviderCredentialModelId: ID!
@@ -1500,6 +1528,10 @@ input RefreshModelProviderCredentialModelsInput {
   modelProviderCredentialId: ID!
 }
 
+input RefreshImageProviderCredentialModelsInput {
+  modelProviderCredentialId: ID!
+}
+
 input RefreshModelProviderCredentialTokenInput {
   modelProviderCredentialId: ID!
 }
@@ -1513,6 +1545,10 @@ input SetDefaultModelProviderCredentialInput {
 }
 
 input SetDefaultModelProviderCredentialModelInput {
+  id: ID!
+}
+
+input SetDefaultImageProviderCredentialModelInput {
   id: ID!
 }
 
