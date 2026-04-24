@@ -5,6 +5,7 @@ import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { Button } from "@/components/ui/button";
 import { OrganizationPath } from "@/lib/organization_path";
 import { useCurrentOrganizationSlug } from "@/lib/use_current_organization_slug";
+import { formatProviderLabel } from "@/pages/model-provider-credentials/provider_label";
 import {
   OnboardingModelProviderDialog,
   OnboardingPageSuspense,
@@ -30,6 +31,10 @@ const supportedLlmProviders = [
   {
     label: "OpenRouter",
     providerId: "openrouter",
+  },
+  {
+    label: "NVIDIA",
+    providerId: "nvidia",
   },
 ] as const;
 
@@ -89,10 +94,34 @@ function ModelProviderPageContent() {
         title="Model provider setup"
       >
         <div className="mt-6 space-y-6">
-          <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-900 dark:text-amber-200">
-            CompanyHelm-managed access currently has low token limits and higher prices.
-            Using your own provider is strongly recommended.
-          </p>
+          {controller.hasThirdPartyCredential ? (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-800 dark:text-emerald-200">
+              <p className="font-medium">LLM provider credentials are connected</p>
+              <ul className="mt-2 grid gap-1">
+                {controller.modelProviderCredentials.map((credential) => (
+                  <li className="flex items-center gap-2" key={credential.id}>
+                    <ModelProviderIcon
+                      className="size-4 rounded-sm bg-transparent"
+                      imageClassName="size-3"
+                      label={credential.name}
+                      providerId={credential.modelProvider}
+                    />
+                    <span>
+                      {credential.name} · {formatProviderLabel(credential.modelProvider, {
+                        baseUrl: credential.baseUrl,
+                        isManaged: credential.isManaged,
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-900 dark:text-amber-200">
+              CompanyHelm-managed access currently has low token limits and higher prices.
+              Using your own provider is strongly recommended.
+            </p>
+          )}
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Supported providers
@@ -145,39 +174,57 @@ function ModelProviderPageContent() {
               Add LLM provider
             </Button>
           )}
-          skipControl={(
-            <Button
-              disabled={controller.isUpdateCompanyOnboardingInFlight}
-              onClick={() => {
-                controller.clearErrorMessage();
-                void controller.updateOnboarding({
-                  llmSetupStatus: "skipped",
-                }).then(() => {
-                  navigateToOnboardingStep({
-                    navigate,
-                    organizationSlug,
-                    step: "mission",
-                  });
-                }).catch(() => undefined);
-              }}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              Skip
-            </Button>
+          rightControls={(
+            <>
+              {controller.hasThirdPartyCredential ? null : (
+                <Button
+                  disabled={controller.isUpdateCompanyOnboardingInFlight}
+                  onClick={() => {
+                    controller.clearErrorMessage();
+                    void controller.updateOnboarding({
+                      llmSetupStatus: "skipped",
+                    }).then(() => {
+                      navigateToOnboardingStep({
+                        navigate,
+                        organizationSlug,
+                        step: "mission",
+                      });
+                    }).catch(() => undefined);
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Skip
+                </Button>
+              )}
+              <Button
+                disabled={!controller.hasThirdPartyCredential || controller.isUpdateCompanyOnboardingInFlight}
+                onClick={() => {
+                  controller.clearErrorMessage();
+                  void controller.updateOnboarding({
+                    llmSetupStatus: "third_party",
+                  }).then(() => {
+                    navigateToOnboardingStep({
+                      navigate,
+                      organizationSlug,
+                      step: "mission",
+                    });
+                  }).catch(() => undefined);
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Continue
+              </Button>
+            </>
           )}
         />
       </OnboardingStepFrame>
       <OnboardingModelProviderDialog
         controller={controller}
-        onCompleted={() => {
-          navigateToOnboardingStep({
-            navigate,
-            organizationSlug,
-            step: "mission",
-          });
-        }}
+        onCompleted={() => undefined}
       />
     </>
   );

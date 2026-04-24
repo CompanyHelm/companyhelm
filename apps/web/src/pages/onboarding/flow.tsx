@@ -123,6 +123,20 @@ const onboardingPageAddModelProviderCredentialMutationNode = graphql`
   }
 `;
 
+type StoreCredentialRecord = {
+  getDataID(): string;
+};
+
+type StoreRootRecord = {
+  getLinkedRecords(name: string): ReadonlyArray<StoreCredentialRecord | null> | null;
+  setLinkedRecords(records: ReadonlyArray<StoreCredentialRecord>, name: string): void;
+};
+
+type CredentialStoreProxy = {
+  getRoot(): StoreRootRecord;
+  getRootField(name: string): StoreCredentialRecord | null;
+};
+
 export type OnboardingStepKey = "mission" | "github" | "model-provider";
 
 export interface OnboardingFlowController {
@@ -143,6 +157,13 @@ export interface OnboardingFlowController {
   isEnsureCompanyOnboardingInFlight: boolean;
   isUpdateCompanyOnboardingInFlight: boolean;
   llmResolved: boolean;
+  modelProviderCredentials: Array<{
+    baseUrl: string | null | undefined;
+    id: string;
+    isManaged: boolean;
+    modelProvider: string;
+    name: string;
+  }>;
   missionDraft: string;
   missionResolved: boolean;
   needsOnboardingStart: boolean;
@@ -224,6 +245,15 @@ export function useOnboardingFlowController(options?: {
     id: installation.id,
     installationId: installation.installationId,
   }));
+  const modelProviderCredentials = data.ModelProviderCredentials
+    .filter((credential) => !credential.isManaged)
+    .map((credential) => ({
+      baseUrl: credential.baseUrl,
+      id: credential.id,
+      isManaged: credential.isManaged,
+      modelProvider: credential.modelProvider,
+      name: credential.name,
+    }));
   const hasManagedCredential = data.ModelProviderCredentials.some((credential) => credential.isManaged);
   const hasThirdPartyCredential = data.ModelProviderCredentials.some((credential) => !credential.isManaged);
   const thirdPartyProviders = useMemo(() => {
@@ -368,6 +398,23 @@ export function useOnboardingFlowController(options?: {
             modelProvider: input.modelProvider,
           },
         },
+        updater: (store) => {
+          const relayStore = store as unknown as CredentialStoreProxy;
+          const newCredential = relayStore.getRootField("AddModelProviderCredential");
+          if (!newCredential) {
+            return;
+          }
+
+          const rootRecord = relayStore.getRoot();
+          const currentCredentials = rootRecord.getLinkedRecords("ModelProviderCredentials") || [];
+          rootRecord.setLinkedRecords(
+            [
+              newCredential,
+              ...currentCredentials.filter((record): record is StoreCredentialRecord => Boolean(record)),
+            ],
+            "ModelProviderCredentials",
+          );
+        },
         onCompleted: async (response, errors) => {
           const nextErrorMessage = String(errors?.[0]?.message || "").trim();
           if (nextErrorMessage.length > 0) {
@@ -441,6 +488,7 @@ export function useOnboardingFlowController(options?: {
     isEnsureCompanyOnboardingInFlight,
     isUpdateCompanyOnboardingInFlight,
     llmResolved,
+    modelProviderCredentials,
     missionDraft,
     missionResolved,
     needsOnboardingStart,

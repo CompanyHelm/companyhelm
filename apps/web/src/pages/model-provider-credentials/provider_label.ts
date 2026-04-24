@@ -9,11 +9,11 @@ export function formatProviderLabel(value: string, options: {
   }
 
   if (ModelProviderCredentialCatalog.isNvidiaCredential({ baseUrl: options.baseUrl, modelProvider: value })) {
-    return "NVIDIA (API key)";
+    return "NVIDIA";
   }
 
   if (value === "openai") {
-    return "OpenAI (API key)";
+    return "OpenAI";
   }
 
   if (value === "companyhelm") {
@@ -21,23 +21,23 @@ export function formatProviderLabel(value: string, options: {
   }
 
   if (value === "openrouter") {
-    return "OpenRouter (API key)";
+    return "OpenRouter";
   }
 
   if (value === "openai-compatible") {
-    return "OpenAI-compatible API";
+    return "OpenAI Compatible";
   }
 
   if (value === "openai-codex") {
-    return "OpenAI (Subscription)";
+    return "Codex";
   }
 
   if (value === "google-gemini-cli") {
-    return "Google Gemini CLI (Subscription)";
+    return "Gemini";
   }
 
   if (value === "anthropic") {
-    return "Anthropic (API key)";
+    return "Anthropic";
   }
 
   return value;

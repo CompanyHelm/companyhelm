@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { CheckIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 export type SearchableSelectionDialogItem = {
   description: string;
+  icon?: ReactNode;
   id: string;
   searchText: string;
   title: string;
@@ -179,11 +180,14 @@ export function SearchableSelectionDialog(props: SearchableSelectionDialogProps)
                       role="option"
                       type="button"
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">{item.title}</p>
-                        {item.description.length > 0 ? (
-                          <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
-                        ) : null}
+                      <div className="flex min-w-0 items-start gap-3">
+                        {item.icon}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground">{item.title}</p>
+                          {item.description.length > 0 ? (
+                            <p className="mt-1 text-xs text-muted-foreground">{item.description}</p>
+                          ) : null}
+                        </div>
                       </div>
                       {isSelected ? <CheckIcon className="mt-0.5 size-4 shrink-0 text-foreground" /> : null}
                     </button>

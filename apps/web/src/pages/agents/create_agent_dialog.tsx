@@ -601,6 +601,7 @@ export function CreateAgentDialog(props: CreateAgentDialogProps) {
                 id: modelOption.id,
                 modelId: modelOption.modelId,
                 name: modelOption.name,
+                providerId: selectedProviderOption?.modelProvider,
                 providerLabel: selectedProviderOption?.label ?? "",
               }))}
               selectedOptionId={modelOptionId}

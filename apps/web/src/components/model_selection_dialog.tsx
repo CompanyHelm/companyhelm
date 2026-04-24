@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { SearchableSelectionDialog } from "@/components/searchable_selection_dialog";
 
 export type ModelSelectionOption = {
@@ -6,6 +7,7 @@ export type ModelSelectionOption = {
   id: string;
   modelId: string;
   name: string;
+  providerId?: string;
   providerLabel: string;
 };
 
@@ -33,10 +35,18 @@ export function ModelSelectionDialog(props: ModelSelectionDialogProps) {
 
       return {
         description,
+        icon: modelOption.providerId ? (
+          <ModelProviderIcon
+            className="mt-0.5"
+            label={modelOption.providerLabel}
+            providerId={modelOption.providerId}
+          />
+        ) : undefined,
         id: modelOption.id,
         searchText: [
           modelOption.name,
           modelOption.modelId,
+          modelOption.providerId ?? "",
           modelOption.providerLabel,
           modelOption.description ?? "",
         ].join(" "),

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
+import { ModelProviderIcon } from "@/components/model_provider_icon";
 import { ModelSelectionDialog, type ModelSelectionOption } from "@/components/model_selection_dialog";
 import {
   Select,
@@ -12,6 +13,7 @@ import {
 export type ChatComposerModelOption = ModelSelectionOption & {
   description: string;
   modelProviderCredentialModelId: string;
+  providerId: string;
   reasoningSupported: boolean;
   reasoningLevels: string[];
 };
@@ -40,6 +42,7 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
       id: modelOption.id,
       modelId: modelOption.modelId,
       name: modelOption.name,
+      providerId: modelOption.providerId,
       providerLabel: modelOption.providerLabel,
     }));
   }, [props.modelOptions]);
@@ -64,6 +67,14 @@ export function ChatComposerModelPicker(props: ChatComposerModelPickerProps) {
         }}
         type="button"
       >
+        {selectedModelOption ? (
+          <ModelProviderIcon
+            className="size-5 rounded-full bg-transparent"
+            imageClassName="size-3.5"
+            label={selectedModelOption.providerLabel}
+            providerId={selectedModelOption.providerId}
+          />
+        ) : null}
         <span className="truncate">{selectedModelDisplayValue}</span>
         <ChevronDownIcon className="size-3.5 shrink-0" />
       </button>

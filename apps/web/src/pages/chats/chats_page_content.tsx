@@ -293,6 +293,7 @@ export function ChatsPageContent(props: ChatsPageContentProps = {}) {
           modelProviderCredentialModelId: modelOption.modelProviderCredentialModelId,
           modelId: modelOption.modelId,
           name: modelOption.name,
+          providerId: providerOption.modelProvider,
           providerLabel: providerOption.label,
           reasoningSupported: modelOption.reasoningSupported,
           reasoningLevels: [...modelOption.reasoningLevels],

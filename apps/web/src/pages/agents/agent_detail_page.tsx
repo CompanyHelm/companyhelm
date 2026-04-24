@@ -699,6 +699,7 @@ function AgentDetailPageContent() {
                       id: modelOption.id,
                       modelId: modelOption.modelId,
                       name: modelOption.name,
+                      providerId: selectedProviderOption?.modelProvider,
                       providerLabel: selectedProviderOption?.label ?? "",
                     }))}
                     value={selectedModelOption?.id ?? null}
